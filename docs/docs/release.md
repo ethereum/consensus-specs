@@ -21,7 +21,8 @@
 
 ## Introduction
 
-This document describes the necessary steps to produce a consensus-specs release.
+This document describes the necessary steps to produce a consensus-specs
+release.
 
 ## Open a Release Pull Request
 
@@ -32,13 +33,14 @@ First, create a PR which merges `dev` into `master`.
 
 > [!TIP]
 > Click on the following link to draft a PR:
-> * https://github.com/ethereum/consensus-specs/compare/dev...master?expand=1
+>
+> - https://github.com/ethereum/consensus-specs/compare/dev...master?expand=1
 
-Title this PR "Release &lt;version&gt;" (_e.g._, "Release v1.5.0-alpha.10").
+Title this PR "Release \<version>" (_e.g._, "Release v1.5.0-alpha.10").
 
-In the PR's description, provide a list of items that must be done. At the bottom, list unmerged PRs
-which are to be included in the release; this signals to other maintainers and developers that they
-should review these PRs soon.
+In the PR's description, provide a list of items that must be done. At the
+bottom, list unmerged PRs which are to be included in the release; this signals
+to other maintainers and developers that they should review these PRs soon.
 
 ```markdown
 - [ ] testgen
@@ -54,30 +56,34 @@ Next, update the `VERSION.txt` file which contains the eth2spec version.
 
 > [!TIP]
 > Click on the following link to open the GitHub editor for this file:
-> * https://github.com/ethereum/consensus-specs/edit/dev/tests/core/pyspec/eth2spec/VERSION.txt
+>
+> - https://github.com/ethereum/consensus-specs/edit/dev/tests/core/pyspec/eth2spec/VERSION.txt
 
-Next, change the version to the appropriate value and click the "Commit changes..." button.
+Next, change the version to the appropriate value and click the "Commit
+changes..." button.
 
-For the commit message, put "Bump version to &lt;version&gt;" (_e.g._, "Bump version to 1.5.0-alpha.10").
+For the commit message, put "Bump version to \<version>" (_e.g._, "Bump version
+to 1.5.0-alpha.10").
 
 Next, click the "Propose changes" button and proceed to make the PR.
 
 ## Pick a Release Name
 
-Generally, names are based on some theme. For example, for Electra, releases are named after
-Electric-type Pokemon.
+Generally, names are based on some theme. For example, for Electra, releases are
+named after Electric-type Pokemon.
 
 > [!NOTE]
-> Please ensure that the name you choose does not have an unwanted meaning in other languages;
-use [WordSafety.com](http://wordsafety.com) to check this.
+> Please ensure that the name you choose does not have an unwanted meaning in
+> other languages; use [WordSafety.com](http://wordsafety.com) to check this.
 
 ## Generate Reference Tests
 
 ### Install Git Large File Storage
 
-The consensus-spec-tests repository uses [Git LFS](https://git-lfs.com) because it contains many
-large files. Attempt to install LFS support with the following command. If it does not work, please
-refer to the installation directions on their website.
+The consensus-spec-tests repository uses [Git LFS](https://git-lfs.com) because
+it contains many large files. Attempt to install LFS support with the following
+command. If it does not work, please refer to the installation directions on
+their website.
 
 ```bash
 git lfs install
@@ -88,9 +94,9 @@ git lfs install
 Next, clone the consensus-spec-tests repository.
 
 > [!NOTE]
-> Only the single latest commit is needed to make the release. Use `--depth=1` to do this. Please
-> note that even this may take some time to checkout, as the combined size of the test vectors is
-> multiple gigabytes.
+> Only the single latest commit is needed to make the release. Use `--depth=1`
+> to do this. Please note that even this may take some time to checkout, as the
+> combined size of the test vectors is multiple gigabytes.
 
 ```bash
 git clone https://github.com/ethereum/consensus-spec-tests.git --depth=1
@@ -125,22 +131,24 @@ cp -r presets ../consensus-spec-tests
 cp -r configs ../consensus-spec-tests
 ```
 
-Next, use `make reftests` to generate all the reference tests. The following command will run all
-generators in parallel for maximum speed. The console output is saved to a file so we can check for
-errors afterwards.
+Next, use `make reftests` to generate all the reference tests. The following
+command will run all generators in parallel for maximum speed. The console
+output is saved to a file so we can check for errors afterwards.
 
 > [!TIP]
-> Instead of this, another option is to use the test vectors that are automatically generated each
-> night. To download these files, click the following link, then click the latest action run, and
-> then download all of the artifacts. Please note, if there has been a change to the dev branch
-> after the test vectors were generated, you can manually trigger the action with the "Run workflow"
-> button.
+> Instead of this, another option is to use the test vectors that are
+> automatically generated each night. To download these files, click the
+> following link, then click the latest action run, and then download all of the
+> artifacts. Please note, if there has been a change to the dev branch after the
+> test vectors were generated, you can manually trigger the action with the "Run
+> workflow" button.
 >
-> * https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml
+> - https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml
 >
-> After downloading these artifacts, move them to the `consensus-spec-tests` directory. Then unzip
-> each, then untar each of the `*.tar.gz` files. Use `unzip <file>.zip` and `tar -xvf <file>.tar.gz`
-> to do this. Note that the "Bundle Reference Tests" section can be skipped if this route is taken.
+> After downloading these artifacts, move them to the `consensus-spec-tests`
+> directory. Then unzip each, then untar each of the `*.tar.gz` files. Use
+> `unzip <file>.zip` and `tar -xvf <file>.tar.gz` to do this. Note that the
+> "Bundle Reference Tests" section can be skipped if this route is taken.
 
 ```bash
 make reftests verbose=true 2>&1 | tee ../consensustestgen.log
@@ -153,8 +161,8 @@ grep "ERROR" ../consensustestgen.log
 ```
 
 > [!WARNING]
-> If there is an error: (1) determine what the issue is, (2) create/merge a PR to fix the issue, and
-> (3) restart the release process.
+> If there is an error: (1) determine what the issue is, (2) create/merge a PR
+> to fix the issue, and (3) restart the release process.
 
 Next, change directory to the consensus-spec-tests repository:
 
@@ -162,17 +170,18 @@ Next, change directory to the consensus-spec-tests repository:
 cd ../consensus-spec-tests
 ```
 
-Next, check that the differences look sane; that there are no unexpected changes. Sometimes there
-are several hundred (if not more) changes per release so use your best judgement when reviewing. One
-might ensure that there are no changes to old forks and double check a few reference tests to ensure
-they were indeed modified in this release.
+Next, check that the differences look sane; that there are no unexpected
+changes. Sometimes there are several hundred (if not more) changes per release
+so use your best judgement when reviewing. One might ensure that there are no
+changes to old forks and double check a few reference tests to ensure they were
+indeed modified in this release.
 
 ```bash
 git lfs status
 ```
 
-Next, after reviewing the changes and are reasonably confident that they are okay, stage the
-changes.
+Next, after reviewing the changes and are reasonably confident that they are
+okay, stage the changes.
 
 ```bash
 git add .
@@ -181,8 +190,8 @@ git add .
 Next, commit the changes.
 
 > [!IMPORTANT]
-> Commits to consensus-spec-tests must be signed. Please refer to [Signing
-> Commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits)
+> Commits to consensus-spec-tests must be signed. Please refer to
+> [Signing Commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits)
 > for instructions on setting this up.
 
 ```bash
@@ -213,9 +222,10 @@ tar -czvf mainnet.tar.gz tests/mainnet
 
 ## Merge the Release Pull Request
 
-After successfully generating the test vectors, we have confidence that the release is fine. We can
-now merge the release pull request which brings changes from the development branch into the master
-branch. Releases are made from the master branch.
+After successfully generating the test vectors, we have confidence that the
+release is fine. We can now merge the release pull request which brings changes
+from the development branch into the master branch. Releases are made from the
+master branch.
 
 ## Create Tests Release
 
@@ -223,12 +233,15 @@ First, begin to draft a new consensus-spec-tests release.
 
 > [!TIP]
 > Click on the following link to draft a new release:
-> * https://github.com/ethereum/consensus-spec-tests/releases/new
+>
+> - https://github.com/ethereum/consensus-spec-tests/releases/new
 
-Next, click the "Choose a tag" button to create a new tag. Type in the release version (_e.g._,
-"v1.5.0-alpha.10") and click the "Create new tag: &lt;version&gt; on publish" button.
+Next, click the "Choose a tag" button to create a new tag. Type in the release
+version (_e.g._, "v1.5.0-alpha.10") and click the "Create new tag: \<version> on
+publish" button.
 
-Next, provide a title "Spec tests for &lt;version&gt;" (_e.g._, "Spec tests for v1.5.0-alpha.10").
+Next, provide a title "Spec tests for \<version>" (_e.g._, "Spec tests for
+v1.5.0-alpha.10").
 
 Next, provide a description. Use the following template:
 
@@ -238,14 +251,16 @@ Spec tests for <version>.
 Detailed changelog can be found in [<version> specs release](https://github.com/ethereum/consensus-specs/releases/tag/<version>).
 ```
 
-Next, upload the tarballs from the [Bundle Reference Tests]() section to the release.
+Next, upload the tarballs from the [Bundle Reference Tests](<>) section to the
+release.
 
 > [!NOTE]
-> This is expected to take a while if your upload speed is below average. The tarballs are at
-> least 1 gigabyte in total. There is a progress bar shown for each artifact.
+> This is expected to take a while if your upload speed is below average. The
+> tarballs are at least 1 gigabyte in total. There is a progress bar shown for
+> each artifact.
 
-Next, if this is an alpha/beta release, please select the "Set as a pre-release" checkbox, otherwise
-select the "Set as the latest release" checkbox.
+Next, if this is an alpha/beta release, please select the "Set as a pre-release"
+checkbox, otherwise select the "Set as the latest release" checkbox.
 
 > [!IMPORTANT]
 > Do no click the release button just yet.
@@ -256,17 +271,19 @@ First, begin to draft a new consensus-specs release.
 
 > [!TIP]
 > Click on the following link to draft a new release:
-> * https://github.com/ethereum/consensus-specs/releases/new
+>
+> - https://github.com/ethereum/consensus-specs/releases/new
 
-Next, click the "Choose a tag" button to create a new tag. Type in the release version (_e.g._,
-"v1.5.0-alpha.10") and click the "Create new tag: &lt;version&gt; on publish" button.
+Next, click the "Choose a tag" button to create a new tag. Type in the release
+version (_e.g._, "v1.5.0-alpha.10") and click the "Create new tag: \<version> on
+publish" button.
 
 Next, change the target from `dev` to `master`.
 
 > [!IMPORTANT]
 > Do not forget this to change the target branch.
 
-Next, provide a title "&lt;release-name&gt;" (_e.g._, "Bellibolt").
+Next, provide a title "\<release-name>" (_e.g._, "Bellibolt").
 
 Next, provide a description. Use the following template:
 
@@ -290,8 +307,8 @@ _PR showing full diff can be found here: <this-PR-number>_
 * Improve documentation #5678
 ```
 
-If this is an alpha/beta release, please select the "Set as a pre-release" checkbox, otherwise
-select the "Set as the latest release" checkbox.
+If this is an alpha/beta release, please select the "Set as a pre-release"
+checkbox, otherwise select the "Set as the latest release" checkbox.
 
 > [!IMPORTANT]
 > Do no click the release button just yet.
@@ -303,17 +320,19 @@ select the "Set as the latest release" checkbox.
 2. Then, click the release button for consensus-spec-tests.
 
 > [!NOTE]
-> It should be done in this order because the tests release references the specs release. Also,
-> we wait to push these buttons at the same time so their time/date will be approximately the same.
+> It should be done in this order because the tests release references the specs
+> release. Also, we wait to push these buttons at the same time so their
+> time/date will be approximately the same.
 
 ## Make an Announcement
 
 > [!IMPORTANT]
 > In order to do this, you must be granted the appropriate access.
 
-Finally, make an announcement to the Eth R&D server on Discord. This should be posted in the
-`#announcements` channel. This will notify client developers of the new release and they will begin
-to incorporate the new reference tests into their client.
+Finally, make an announcement to the Eth R&D server on Discord. This should be
+posted in the `#announcements` channel. This will notify client developers of
+the new release and they will begin to incorporate the new reference tests into
+their client.
 
 Use the following template for your announcement:
 

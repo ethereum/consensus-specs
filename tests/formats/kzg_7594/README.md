@@ -1,6 +1,8 @@
 # KZG tests for EIP-7594
 
-A test type for KZG libraries. Tests all the public interfaces that a KZG library is required to implement for EIP-7594, as defined in `polynomial-commitments-sampling.md`.
+A test type for KZG libraries. Tests all the public interfaces that a KZG
+library is required to implement for EIP-7594, as defined in
+`polynomial-commitments-sampling.md`.
 
 We do not recommend rolling your own crypto or using an untested KZG library.
 

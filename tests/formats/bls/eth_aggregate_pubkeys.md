@@ -11,9 +11,11 @@ input: List[BLS Pubkey] -- list of input BLS pubkeys
 output: BLSPubkey -- expected output, single BLS pubkeys or `null`.
 ```
 
-- `BLS Pubkey` here is encoded as a string: hexadecimal encoding of 48 bytes (96 nibbles), prefixed with `0x`.
+- `BLS Pubkey` here is encoded as a string: hexadecimal encoding of 48 bytes (96
+  nibbles), prefixed with `0x`.
 - output value is `null` if the input is invalid.
 
 ## Condition
 
-The `eth_aggregate_pubkeys` handler should aggregate the signatures in the `input`, and the result should match the expected `output`.
+The `eth_aggregate_pubkeys` handler should aggregate the signatures in the
+`input`, and the result should match the expected `output`.
