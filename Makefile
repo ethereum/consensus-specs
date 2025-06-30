@@ -184,7 +184,6 @@ lint: pyspec
 	@$(MDFORMAT_VENV) --number --wrap=80 \
 		--exclude="tests/README.md" \
 		--exclude="docs/docs/new-feature.md" \
-		--exclude="tests/formats/rewards/README.md" \
 		$(MARKDOWN_FILES)
 	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
 	@$(PYTHON_VENV) -m ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py

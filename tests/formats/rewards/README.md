@@ -59,6 +59,6 @@ The provided `deltas` should match the return values of the
  deltas function. Specifically the following must hold true for each set of deltas:
 
 ```python
-    deltas.rewards == deltas_function(state)[0]
-    deltas.penalties == deltas_function(state)[1]
+deltas.rewards == deltas_function(state)[0]
+deltas.penalties == deltas_function(state)[1]
 ```
