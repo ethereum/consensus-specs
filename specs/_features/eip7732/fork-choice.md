@@ -44,7 +44,6 @@ This is the modification of the fork choice accompanying the EIP-7732 upgrade.
 | Name                           | Value                         |
 | ------------------------------ | ----------------------------- |
 | `PAYLOAD_TIMELY_THRESHOLD`     | `PTC_SIZE // 2` (= 256)       |
-| `INTERVALS_PER_SLOT`           | `4` # [modified in EIP-7732]  |
 | `PROPOSER_SCORE_BOOST_EIP7732` | `20` # [modified in EIP-7732] |
 | `PAYLOAD_WITHHOLD_BOOST`       | `40`                          |
 | `PAYLOAD_REVEAL_BOOST`         | `40`                          |
@@ -494,7 +493,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     notify_ptc_messages(store, state, block.body.payload_attestations)
     # Add proposer score boost if the block is timely
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    is_before_attesting_interval = time_into_slot * 1000 < ATTESTATION_DUE_MS_EIP7732
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
 
@@ -565,7 +564,7 @@ def on_tick_per_slot(store: Store, time: uint64) -> None:
         store.proposer_boost_root = Root()
     else:
         # Reset the payload boost if this is the attestation time
-        if seconds_into_slot(store) >= SECONDS_PER_SLOT // INTERVALS_PER_SLOT:
+        if seconds_into_slot(store) * 1000 >= ATTESTATION_DUE_MS_EIP7732:
             store.payload_withhold_boost_root = Root()
             store.payload_withhold_boost_full = False
             store.payload_reveal_boost_root = Root()
@@ -619,7 +618,7 @@ def on_payload_attestation_message(
     if is_from_block and data.slot + 1 != get_current_slot(store):
         return
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    if is_from_block and time_into_slot >= SECONDS_PER_SLOT // INTERVALS_PER_SLOT:
+    if is_from_block and time_into_slot * 1000 >= ATTESTATION_DUE_MS_EIP7732:
         return
 
     # Update the payload boosts if threshold has been achieved

@@ -209,11 +209,11 @@ def on_inclusion_list(
     assert get_current_slot(store) in [message.slot, message.slot + 1]
 
     time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    is_before_late_block_cutoff = time_into_slot * 1000 < LATE_BLOCK_CUTOFF_MS
 
     # If the inclusion list is from the previous slot, ignore it if already past the attestation deadline
     if get_current_slot(store) == message.slot + 1:
-        assert is_before_attesting_interval
+        assert is_before_late_block_cutoff
 
     # Sanity check that the given `inclusion_list_committee` matches the root in the inclusion list
     root = message.inclusion_list_committee_root

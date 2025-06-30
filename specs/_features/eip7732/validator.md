@@ -5,6 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Presets](#presets)
 - [Validator assignment](#validator-assignment)
   - [Lookahead](#lookahead)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
@@ -23,6 +24,16 @@
 
 This document represents the changes and additions to the Honest validator guide
 included in the EIP-7732 fork.
+
+## Presets
+
+| Name                                 | Value  |
+| ------------------------------------ | ------ |
+| `ATTESTATION_DUE_MS_EIP7732`         | `3000` |
+| `AGGREGATE_DUE_MS_EIP7732`           | `6000` |
+| `SYNC_MESSAGE_DUE_MS_EIP7732`        | `3000` |
+| `CONTRIBUTION_DUE_MS_EIP7732`        | `6000` |
+| `PAYLOAD_ATTESTATION_MESSAGE_DUE_MS` | `9000` |
 
 ## Validator assignment
 
@@ -67,18 +78,18 @@ All validator responsibilities remain unchanged other than the following:
   becomes a builder's duty.
 - Some validators are selected per slot to become PTC members, these validators
   must broadcast `PayloadAttestationMessage` objects during the assigned slot
-  before the deadline of `3 * SECONDS_PER_SLOT // INTERVALS_PER_SLOT` seconds
-  into the slot.
+  before the deadline of `PAYLOAD_ATTESTATION_MESSAGE_DUE_MS` seconds into the
+  slot.
 
 ### Attestation
 
 Attestation duties are not changed for validators, however the attestation
-deadline is implicitly changed by the change in `INTERVALS_PER_SLOT`.
+deadline is changed by `ATTESTATION_DUE_MS_EIP7732`.
 
 ### Sync Committee participations
 
 Sync committee duties are not changed for validators, however the submission
-deadline is implicitly changed by the change in `INTERVALS_PER_SLOT`.
+deadline is changed by `SYNC_MESSAGE_DUE_MS_EIP7732`.
 
 ### Block proposal
 
@@ -143,7 +154,7 @@ prepared to submit their PTC attestations during the next epoch.
 
 A validator should create and broadcast the `payload_attestation_message` to the
 global execution attestation subnet not after
-`SECONDS_PER_SLOT * 3 / INTERVALS_PER_SLOT` seconds since the start of `slot`
+`PAYLOAD_ATTESTATION_MESSAGE_DUE_MS` seconds since the start of `slot`
 
 #### Constructing a payload attestation
 
@@ -151,8 +162,8 @@ If a validator is in the payload attestation committee for the current slot (as
 obtained from `get_ptc_assignment` above) then the validator should prepare a
 `PayloadAttestationMessage` for the current slot, according to the logic in
 `get_payload_attestation_message` below and broadcast it not after
-`SECONDS_PER_SLOT * 3 / INTERVALS_PER_SLOT` seconds since the start of the slot,
-to the global `payload_attestation_message` pubsub topic.
+`PAYLOAD_ATTESTATION_MESSAGE_DUE_MS` seconds since the start of the slot, to the
+global `payload_attestation_message` pubsub topic.
 
 The validator creates `payload_attestation_message` as follows:
 
