@@ -613,15 +613,12 @@ a peer.
 A supernode is a node which subscribes to all data column sidecar subnets,
 custodies all data column sidecars, and performs
 [reconstruction and cross-seeding](./das-core.md#reconstruction-and-cross-seeding).
-Supernodes are not required for the network to function but they do improve
-network stability, reduce latency, and reduce attackability. Being a supernode
-requires considerably higher bandwidth, storage, and computation resources. Due
-to [validator custody requirements](./validator.md#validator-custody), a node
-which is connected to validator(s) with a combined balance greater than or equal
-to 4096 ETH must be a supernode. Though, any node with the necessary resources
-may altruisticly be a supernode.
-
-Like regular nodes, supernodes can be discovered via discv5. They can also be
-found out-of-band and configured into a node to connect to directly and
-prioritize. Nodes can add some set of these to their local configuration for
-persistent connection to bolster their DAS quality of service.
+In order to reconstruct missing data, there must be at least one supernode on
+the network. There are expected to be many (hundreds) of supernodes on mainnet
+and it is likely for a node to be connected to several of these by chance. Being
+a supernode requires considerably higher bandwidth, storage, and computation
+resources. Due to
+[validator custody requirements](./validator.md#validator-custody), a node which
+is connected to validator(s) with a combined balance greater than or equal to
+4096 ETH must be a supernode. Though, any node with the necessary resources may
+altruisticly be a supernode.
