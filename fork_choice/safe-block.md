@@ -10,10 +10,9 @@
 
 ## Introduction
 
-Under honest majority and certain network synchronicity assumptions
-there exists a block that is safe from re-orgs. Normally this block is
-pretty close to the head of canonical chain which makes it valuable
-to expose a safe block to users.
+Under honest majority and certain network synchronicity assumptions there exists
+a block that is safe from re-orgs. Normally this block is pretty close to the
+head of canonical chain which makes it valuable to expose a safe block to users.
 
 This section describes an algorithm to find a safe block.
 
@@ -24,8 +23,9 @@ def get_safe_beacon_block_root(store: Store) -> Root:
     # Use most recent justified block as a stopgap
     return store.justified_checkpoint.root
 ```
-*Note*: Currently safe block algorithm simply returns `store.justified_checkpoint.root`
-and is meant to be improved in the future.
+
+*Note*: Currently safe block algorithm simply returns
+`store.justified_checkpoint.root` and is meant to be improved in the future.
 
 ## `get_safe_execution_block_hash`
 
@@ -41,4 +41,5 @@ def get_safe_execution_block_hash(store: Store) -> Hash32:
         return Hash32()
 ```
 
-*Note*: This helper uses beacon block container extended in [Bellatrix](../specs/bellatrix/beacon-chain.md).
+*Note*: This helper uses beacon block container extended in
+[Bellatrix](../specs/bellatrix/beacon-chain.md).
