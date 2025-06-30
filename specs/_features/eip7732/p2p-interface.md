@@ -207,8 +207,6 @@ The following validations MUST pass before forwarding the
 
 - _[IGNORE]_ The message's slot is for the current slot (with a
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `data.slot == current_slot`.
-- _[REJECT]_ The message's payload status is a valid status, i.e.
-  `data.payload_status < PAYLOAD_INVALID_STATUS`.
 - _[IGNORE]_ The `payload_attestation_message` is the first valid message
   received from the validator with index
   `payload_attestation_message.validate_index`.

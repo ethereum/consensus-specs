@@ -6,7 +6,6 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
-  - [Payload status](#payload-status)
 - [Preset](#preset)
   - [Misc](#misc)
   - [Domain types](#domain-types)
@@ -93,15 +92,6 @@ At any given slot, the status of the blockchain's head may be either
 
 ## Constants
 
-### Payload status
-
-| Name                     | Value      |
-| ------------------------ | ---------- |
-| `PAYLOAD_ABSENT`         | `uint8(0)` |
-| `PAYLOAD_PRESENT`        | `uint8(1)` |
-| `PAYLOAD_WITHHELD`       | `uint8(2)` |
-| `PAYLOAD_INVALID_STATUS` | `uint8(3)` |
-
 ## Preset
 
 ### Misc
@@ -119,9 +109,9 @@ At any given slot, the status of the blockchain's head may be either
 
 ### Max operations per block
 
-| Name                       | Value                            |
-| -------------------------- | -------------------------------- |
-| `MAX_PAYLOAD_ATTESTATIONS` | `2**2` (= 4) # (New in EIP-7732) |
+| Name                       | Value                   |
+| -------------------------- | ----------------------- |
+| `MAX_PAYLOAD_ATTESTATIONS` | `2` # (New in EIP-7732) |
 
 ### Withdrawal prefixes
 
@@ -139,7 +129,7 @@ At any given slot, the status of the blockchain's head may be either
 class PayloadAttestationData(Container):
     beacon_block_root: Root
     slot: Slot
-    payload_status: uint8
+    payload_present: boolean
 ```
 
 #### `PayloadAttestation`
@@ -187,7 +177,6 @@ class ExecutionPayloadEnvelope(Container):
     beacon_block_root: Root
     slot: Slot
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    payload_withheld: boolean
     state_root: Root
 ```
 
@@ -367,10 +356,6 @@ def is_valid_indexed_payload_attestation(
     Check if ``indexed_payload_attestation`` is not empty, has sorted and unique indices and has
     a valid aggregate signature.
     """
-    # Verify the data is valid
-    if indexed_payload_attestation.data.payload_status >= PAYLOAD_INVALID_STATUS:
-        return False
-
     # Verify indices are sorted and unique
     indices = indexed_payload_attestation.attesting_indices
     if len(indices) == 0 or not indices == sorted(set(indices)):
