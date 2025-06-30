@@ -38,7 +38,7 @@
       - [Custody group count](#custody-group-count)
       - [Next fork digest](#next-fork-digest)
 - [Peer Scoring](#peer-scoring)
-- [DAS providers](#das-providers)
+- [Supernodes](#supernodes)
 
 <!-- mdformat-toc end -->
 
@@ -608,18 +608,17 @@ should be able to respond to. In the event that a peer does not respond to
 samples of their custodied rows/columns, a node may downscore or disconnect from
 a peer.
 
-## DAS providers
+## Supernodes
 
-A DAS provider is a consistently-available-for-DAS-queries, super-full (or high
-capacity) node. To the p2p, these look just like other nodes but with high
-advertised capacity, and they should generally be able to be latently found via
-normal discovery.
-
-DAS providers can also be found out-of-band and configured into a node to
-connect to directly and prioritize. Nodes can add some set of these to their
-local configuration for persistent connection to bolster their DAS quality of
-service.
-
-Such direct peering utilizes a feature supported out of the box today on all
-nodes and can complement (and reduce attackability and increase
-quality-of-service) alternative peer discovery mechanisms.
+A supernode is a node which subscribes to all data column sidecar subnets,
+custodies all data column sidecars, and performs
+[reconstruction and cross-seeding](./das-core.md#reconstruction-and-cross-seeding).
+Being a supernode requires considerably higher bandwidth, storage, and
+computation resources. In order to reconstruct missing data, there must be at
+least one supernode on the network. Due to
+[validator custody requirements](./validator.md#validator-custody), a node which
+is connected to validator(s) with a combined balance greater than or equal to
+4096 ETH must be a supernode. Moreover, any node with the necessary resources
+may altruistically be a supernode. Therefore, there are expected to be many
+(hundreds) of supernodes on mainnet and it is likely (though not necessary) for
+a node to be connected to several of these by chance.
