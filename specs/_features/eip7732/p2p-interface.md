@@ -230,6 +230,8 @@ The following validations MUST pass before forwarding the
 `signed_execution_payload_header` on the network, assuming the alias
 `header = signed_execution_payload_header.message`:
 
+- _[REJECT]_ the builder's withdrawal credentials' prefix equals
+  `BUILDER_WITHDRAWAL_PREFIX`.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the pair of the

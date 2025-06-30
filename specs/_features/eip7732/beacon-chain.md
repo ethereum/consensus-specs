@@ -11,6 +11,7 @@
   - [Misc](#misc)
   - [Domain types](#domain-types)
   - [Max operations per block](#max-operations-per-block)
+  - [Withdrawal prefixes](#withdrawal-prefixes)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`PayloadAttestationData`](#payloadattestationdata)
@@ -30,6 +31,9 @@
   - [Misc](#misc-1)
     - [`remove_flag`](#remove_flag)
   - [Predicates](#predicates)
+    - [Modified `is_compounding_withdrawal_credential`](#modified-is_compounding_withdrawal_credential)
+    - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
+    - [New `is_builder`](#new-is_builder)
     - [`is_valid_indexed_payload_attestation`](#is_valid_indexed_payload_attestation)
     - [`is_parent_block_full`](#is_parent_block_full)
   - [Beacon State accessors](#beacon-state-accessors)
@@ -119,6 +123,12 @@ At any given slot, the status of the blockchain's head may be either
 | Name                       | Value                            |
 | -------------------------- | -------------------------------- |
 | `MAX_PAYLOAD_ATTESTATIONS` | `2**2` (= 4) # (New in EIP-7732) |
+
+### Withdrawal prefixes
+
+| Name                        | Value            | Description                                                   |
+| --------------------------- | ---------------- | ------------------------------------------------------------- |
+| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` | *[New in EIP7732]* Withdrawal credential prefix for a builder |
 
 ## Containers
 
@@ -321,6 +331,31 @@ def remove_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlag
 ```
 
 ### Predicates
+
+#### Modified `is_compounding_withdrawal_credential`
+
+```python
+def is_compounding_withdrawal_credential(withdrawal_credentials: Bytes32) -> bool:
+    prefix = withdrawal_credentials[:1]
+    return prefix == COMPOUNDING_WITHDRAWAL_PREFIX or prefix == BUILDER_WITHDRAWAL_PREFIX
+```
+
+#### New `is_builder_withdrawal_credential`
+
+```python
+def is_builder_withdrawal_credential(withdrawal_credentials: Bytes32) -> bool:
+    return withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX
+```
+
+#### New `is_builder`
+
+```python
+def is_builder(validator: Validator) -> bool:
+    """
+    Check if ``validator`` has an 0x03 prefixed "builder" withdrawal credential.
+    """
+    return is_builder_withdrawal_credential(validator.withdrawal_credentials)
+```
 
 #### `is_valid_indexed_payload_attestation`
 
@@ -551,6 +586,11 @@ def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> 
     assert not builder.slashed
     amount = header.value
     assert state.balances[builder_index] >= amount
+
+    # Check that the builder is registered as a builder unless self-building with zero value
+    if not is_builder(builder):
+        assert builder_index == block.proposer_index
+        assert amount == 0
 
     # Verify that the bid is for the current slot
     assert header.slot == block.slot
