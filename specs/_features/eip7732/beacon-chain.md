@@ -38,7 +38,6 @@
     - [`is_parent_block_full`](#is_parent_block_full)
   - [Beacon State accessors](#beacon-state-accessors)
     - [`get_ptc`](#get_ptc)
-    - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
     - [`get_payload_attesting_indices`](#get_payload_attesting_indices)
     - [`get_indexed_payload_attestation`](#get_indexed_payload_attestation)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -415,34 +414,6 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     return validator_indices
 ```
 
-#### Modified `get_attesting_indices`
-
-`get_attesting_indices` is modified to ignore PTC votes
-
-```python
-def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[ValidatorIndex]:
-    """
-    Return the set of attesting indices corresponding to ``aggregation_bits`` and ``committee_bits``.
-    """
-    output: Set[ValidatorIndex] = set()
-    committee_indices = get_committee_indices(attestation.committee_bits)
-    committee_offset = 0
-    for index in committee_indices:
-        committee = get_beacon_committee(state, attestation.data.slot, index)
-        committee_attesters = set(
-            index
-            for i, index in enumerate(committee)
-            if attestation.aggregation_bits[committee_offset + i]
-        )
-        output = output.union(committee_attesters)
-        committee_offset += len(committee)
-
-    if compute_epoch_at_slot(attestation.data.slot) < EIP7732_FORK_EPOCH:
-        return output
-    ptc = get_ptc(state, attestation.data.slot)
-    return set(i for i in output if i not in ptc)
-```
-
 #### `get_payload_attesting_indices`
 
 ```python
@@ -654,43 +625,6 @@ def process_payload_attestation(
         state, data.slot, payload_attestation
     )
     assert is_valid_indexed_payload_attestation(state, indexed_payload_attestation)
-
-    if state.slot % SLOTS_PER_EPOCH == 0:
-        epoch_participation = state.previous_epoch_participation
-    else:
-        epoch_participation = state.current_epoch_participation
-
-    # Return early if the attestation is for the wrong payload status
-    payload_was_present = data.slot == state.latest_full_slot
-    voted_present = data.payload_status == PAYLOAD_PRESENT
-    proposer_reward_denominator = (
-        (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
-    )
-    proposer_index = get_beacon_proposer_index(state)
-    if voted_present != payload_was_present:
-        # Unset the flags in case they were set by an equivocating ptc attestation
-        proposer_penalty_numerator = 0
-        for index in indexed_payload_attestation.attesting_indices:
-            for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
-                if has_flag(epoch_participation[index], flag_index):
-                    epoch_participation[index] = remove_flag(epoch_participation[index], flag_index)
-                    proposer_penalty_numerator += get_base_reward(state, index) * weight
-        # Penalize the proposer
-        proposer_penalty = Gwei(2 * proposer_penalty_numerator // proposer_reward_denominator)
-        decrease_balance(state, proposer_index, proposer_penalty)
-        return
-
-    # Reward the proposer and set all the participation flags in case of correct attestations
-    proposer_reward_numerator = 0
-    for index in indexed_payload_attestation.attesting_indices:
-        for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
-            if not has_flag(epoch_participation[index], flag_index):
-                epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
-                proposer_reward_numerator += get_base_reward(state, index) * weight
-
-    # Reward proposer
-    proposer_reward = Gwei(proposer_reward_numerator // proposer_reward_denominator)
-    increase_balance(state, proposer_index, proposer_reward)
 ```
 
 #### Modified `is_merge_transition_complete`
