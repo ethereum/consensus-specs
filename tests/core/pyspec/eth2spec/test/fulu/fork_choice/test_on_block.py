@@ -31,7 +31,10 @@ def get_alt_sidecars(spec, state):
     Get alternative sidecars for negative test cases.
     """
     rng = Random(4321)
-    _, _, _, _, alt_sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+    state_copy = state.copy()
+    _, _, _, _, alt_sidecars = get_block_with_blob_and_sidecars(
+        spec, state_copy, rng=rng, blob_count=2
+    )
     return alt_sidecars
 
 
