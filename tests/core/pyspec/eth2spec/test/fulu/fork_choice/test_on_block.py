@@ -58,7 +58,7 @@ def test_on_block_peerdas__ok(spec, state):
     assert store.time == current_time
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
-    _, blobs, blob_kzg_proofs, signed_block, sidecars = get_block_with_blob_and_sidecars(
+    _, _, _, signed_block, sidecars = get_block_with_blob_and_sidecars(
         spec, state, rng=rng, blob_count=2
     )
     blob_data = BlobData(sidecars=sidecars)
@@ -68,7 +68,7 @@ def test_on_block_peerdas__ok(spec, state):
     assert spec.get_head(store) == signed_block.message.hash_tree_root()
 
     # On receiving a block of next epoch
-    _, blobs, blob_kzg_proofs, signed_block, sidecars = get_block_with_blob_and_sidecars(
+    _, _, _, signed_block, sidecars = get_block_with_blob_and_sidecars(
         spec, state, rng=rng, blob_count=2
     )
     blob_data = BlobData(sidecars=sidecars)
