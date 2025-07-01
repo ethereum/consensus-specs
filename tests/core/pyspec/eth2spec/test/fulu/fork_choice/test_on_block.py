@@ -58,7 +58,7 @@ def test_on_block_peerdas__ok(spec, state):
     _, blobs, blob_kzg_proofs, signed_block, sidecars = get_block_with_blob_and_sidecars(
         spec, state, rng=rng, blob_count=2
     )
-    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+    blob_data = BlobData(sidecars=sidecars)
 
     yield from tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data)
 
@@ -68,7 +68,7 @@ def test_on_block_peerdas__ok(spec, state):
     _, blobs, blob_kzg_proofs, signed_block, sidecars = get_block_with_blob_and_sidecars(
         spec, state, rng=rng, blob_count=2
     )
-    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+    blob_data = BlobData(sidecars=sidecars)
 
     yield from tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data)
 
@@ -93,11 +93,11 @@ def run_on_block_peerdas_invalid_test(spec, state, fn):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
-    _, blobs, blob_kzg_proofs, signed_block, sidecars = get_block_with_blob_and_sidecars(
+    _, _, _, signed_block, sidecars = get_block_with_blob_and_sidecars(
         spec, state, rng=rng, blob_count=2
     )
     sidecars = fn(sidecars)
-    blob_data = BlobData(blobs, blob_kzg_proofs, [])
+    blob_data = BlobData(sidecars=sidecars)
 
     yield from tick_and_add_block_with_data(
         spec, store, signed_block, test_steps, blob_data, valid=False
