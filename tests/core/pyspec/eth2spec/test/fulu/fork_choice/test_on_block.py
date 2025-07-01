@@ -285,7 +285,7 @@ def test_on_block_peerdas__invalid_wrong_commitment_1(spec, state):
     """
     alt_sidecars = get_alt_sidecars(spec, state)
 
-    def invalid_wrong_commitment(sidecars):
+    def invalid_wrong_commitment(sidecars, alt_sidecars=alt_sidecars):
         sidecars[0].kzg_commitments[0] = alt_sidecars[0].kzg_commitments[0]
         return sidecars
 
@@ -300,7 +300,7 @@ def test_on_block_peerdas__invalid_wrong_commitment_2(spec, state):
     """
     alt_sidecars = get_alt_sidecars(spec, state)
 
-    def invalid_wrong_commitment(sidecars):
+    def invalid_wrong_commitment(sidecars, alt_sidecars=alt_sidecars):
         sidecars[1].kzg_commitments[1] = alt_sidecars[1].kzg_commitments[1]
         return sidecars
 
@@ -315,7 +315,7 @@ def test_on_block_peerdas__invalid_wrong_proof_1(spec, state):
     """
     alt_sidecars = get_alt_sidecars(spec, state)
 
-    def invalid_wrong_proof(sidecars):
+    def invalid_wrong_proof(sidecars, alt_sidecars=alt_sidecars):
         sidecars[0].kzg_proofs[0] = alt_sidecars[0].kzg_proofs[0]
         return sidecars
 
@@ -330,7 +330,7 @@ def test_on_block_peerdas__invalid_wrong_proof_2(spec, state):
     """
     alt_sidecars = get_alt_sidecars(spec, state)
 
-    def invalid_wrong_proof(sidecars):
+    def invalid_wrong_proof(sidecars, alt_sidecars=alt_sidecars):
         sidecars[1].kzg_proofs[1] = alt_sidecars[1].kzg_proofs[1]
         return sidecars
 
