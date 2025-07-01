@@ -1,6 +1,7 @@
 # `compute_columns_for_custody_group` tests
 
-`compute_columns_for_custody_group` tests provide sanity checks for the correctness of the `compute_columns_for_custody_group` helper function.
+`compute_columns_for_custody_group` tests provide sanity checks for the
+correctness of the `compute_columns_for_custody_group` helper function.
 
 ## Test case format
 

@@ -1,3 +1,5 @@
+name: Release
+
 on:
   push:
     tags:
@@ -25,11 +27,17 @@ jobs:
         with:
           python-version: '3.13'
 
-      # As a sanity check, ensure tests pass
+      # Ensure minimal tests pass
       - name: Run tests for minimal
-        run: make test preset=minimal
+        run: |
+          cd consensus-specs
+          make test preset=minimal
+
+      # Ensure mainnet tests pass
       - name: Run tests for mainnet
-        run: make test preset=mainnet
+        run: |
+          cd consensus-specs
+          make test preset=mainnet
 
       # Add support for large files
       - name: Install Git LFS

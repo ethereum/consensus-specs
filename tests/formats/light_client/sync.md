@@ -1,6 +1,7 @@
 # Light client sync tests
 
-This series of tests provides reference test vectors for validating that a light client implementing the sync protocol can sync to the latest block header.
+This series of tests provides reference test vectors for validating that a light
+client implementing the sync protocol can sync to the latest block header.
 
 ## Test case format
 
@@ -15,9 +16,14 @@ store_fork_digest: string         -- encoded `ForkDigest`-context of `store` obj
 
 ### `bootstrap.ssz_snappy`
 
-An SSZ-snappy encoded `bootstrap` object of type `LightClientBootstrap` to initialize a local `store` object of type `LightClientStore` with `store_fork_digest` using `initialize_light_client_store(trusted_block_rooot, bootstrap)`. The SSZ type can be determined from `bootstrap_fork_digest`.
+An SSZ-snappy encoded `bootstrap` object of type `LightClientBootstrap` to
+initialize a local `store` object of type `LightClientStore` with
+`store_fork_digest` using
+`initialize_light_client_store(trusted_block_rooot, bootstrap)`. The SSZ type
+can be determined from `bootstrap_fork_digest`.
 
-If `store_fork_digest` differs from `bootstrap_fork_digest`, the `bootstrap` object may need to be upgraded before initializing the store.
+If `store_fork_digest` differs from `bootstrap_fork_digest`, the `bootstrap`
+object may need to be upgraded before initializing the store.
 
 ### `steps.yaml`
 
@@ -56,7 +62,9 @@ After this step, the `store` object may have been updated.
 
 #### `process_update` execution step
 
-The function `process_light_client_update(store, update, current_slot, genesis_validators_root)` should be executed with the specified parameters:
+The function
+`process_light_client_update(store, update, current_slot, genesis_validators_root)`
+should be executed with the specified parameters:
 
 ```yaml
 {
@@ -68,7 +76,8 @@ The function `process_light_client_update(store, update, current_slot, genesis_v
 }
 ```
 
-If `store_fork_digest` differs from `update_fork_digest`, the `update` object may need to be upgraded before processing the update.
+If `store_fork_digest` differs from `update_fork_digest`, the `update` object
+may need to be upgraded before processing the update.
 
 After this step, the `store` object may have been updated.
 
@@ -87,4 +96,7 @@ After this step, the `store` object may have been updated.
 
 ## Condition
 
-A test-runner should initialize a local `LightClientStore` using the provided `bootstrap` object. It should then proceed to execute all the test steps in sequence. After each step, it should verify that the resulting `store` verifies against the provided `checks`.
+A test-runner should initialize a local `LightClientStore` using the provided
+`bootstrap` object. It should then proceed to execute all the test steps in
+sequence. After each step, it should verify that the resulting `store` verifies
+against the provided `checks`.

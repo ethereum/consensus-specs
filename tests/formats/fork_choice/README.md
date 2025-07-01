@@ -1,6 +1,7 @@
 # Fork choice tests
 
-The aim of the fork choice tests is to provide test coverage of the various components of the fork choice.
+The aim of the fork choice tests is to provide test coverage of the various
+components of the fork choice.
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
@@ -33,15 +34,20 @@ bls_setting: int       -- see general test-format spec.
 
 ### `anchor_state.ssz_snappy`
 
-An SSZ-snappy encoded `BeaconState`, the state to initialize store with `get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock)` helper.
+An SSZ-snappy encoded `BeaconState`, the state to initialize store with
+`get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock)`
+helper.
 
 ### `anchor_block.ssz_snappy`
 
-An SSZ-snappy encoded `BeaconBlock`, the block to initialize store with `get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock)` helper.
+An SSZ-snappy encoded `BeaconBlock`, the block to initialize store with
+`get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock)`
+helper.
 
 ### `steps.yaml`
 
-The steps to execute in sequence. There may be multiple items of the following types:
+The steps to execute in sequence. There may be multiple items of the following
+types:
 
 #### `on_tick` execution step
 
@@ -59,7 +65,8 @@ After this step, the `store` object may have been updated.
 
 #### `on_attestation` execution step
 
-The parameter that is required for executing `on_attestation(store, attestation)`.
+The parameter that is required for executing
+`on_attestation(store, attestation)`.
 
 ```yaml
 {
@@ -69,6 +76,7 @@ The parameter that is required for executing `on_attestation(store, attestation)
                             If it's `false`, this execution step is expected to be invalid.
 }
 ```
+
 The file is located in the same folder (see below).
 
 After this step, the `store` object may have been updated.
@@ -92,7 +100,10 @@ The parameter that is required for executing `on_block(store, block)`.
 
 The file is located in the same folder (see below).
 
-`blobs` and `proofs` are new fields from Deneb EIP-4844. These fields indicate the expected values from `retrieve_blobs_and_proofs()` helper inside `is_data_available()` helper. If these two fields are not provided, `retrieve_blobs_and_proofs()` returns empty lists.
+`blobs` and `proofs` are new fields from Deneb EIP-4844. These fields indicate
+the expected values from `retrieve_blobs_and_proofs()` helper inside
+`is_data_available()` helper. If these two fields are not provided,
+`retrieve_blobs_and_proofs()` returns empty lists.
 
 `columns` is a new field in Fulu EIP-7594. This field indicate the expected values from `retrieve_column_sidecars` helper inside `is_data_available()` helper. If this field is an empty array, `retrieve_column_sidecars` should throw an exception (not enough data sampled). If this field is not provided, `retrieve_column_sidecars` returns an empty list.
 
@@ -103,18 +114,22 @@ After this step, the `store` object may have been updated.
 #### `on_merge_block` execution step
 
 Adds `PowBlock` data which is required for executing `on_block(store, block)`.
+
 ```yaml
 {
     pow_block: string  -- the name of the `pow_block_<32-byte-root>.ssz_snappy` file.
                           To be used in `get_pow_block` lookup
 }
 ```
-The file is located in the same folder (see below).
-PowBlocks should be used as return values for `get_pow_block(hash: Hash32) -> PowBlock` function if hashes match.
+
+The file is located in the same folder (see below). PowBlocks should be used as
+return values for `get_pow_block(hash: Hash32) -> PowBlock` function if hashes
+match.
 
 #### `on_attester_slashing` execution step
 
-The parameter that is required for executing `on_attester_slashing(store, attester_slashing)`.
+The parameter that is required for executing
+`on_attester_slashing(store, attester_slashing)`.
 
 ```yaml
 {
@@ -124,6 +139,7 @@ The parameter that is required for executing `on_attester_slashing(store, attest
                             If it's `false`, this execution step is expected to be invalid.
 }
 ```
+
 The file is located in the same folder (see below).
 
 After this step, the `store` object may have been updated.
@@ -143,14 +159,21 @@ Optional step for optimistic sync tests.
 }
 ```
 
-This step sets the [`payloadStatus`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#payloadstatusv1)
-value that Execution Layer client mock returns in responses to the following Engine API calls:
-* [`engine_newPayloadV1(payload)`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#engine_newpayloadv1) if `payload.blockHash == payload_info.block_hash`
-* [`engine_forkchoiceUpdatedV1(forkchoiceState, ...)`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#engine_forkchoiceupdatedv1) if `forkchoiceState.headBlockHash == payload_info.block_hash`
+This step sets the
+[`payloadStatus`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#payloadstatusv1)
+value that Execution Layer client mock returns in responses to the following
+Engine API calls:
 
-*Note*: Status of a payload must be *initialized* via `on_payload_info` before the corresponding `on_block` execution step.
+- [`engine_newPayloadV1(payload)`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#engine_newpayloadv1)
+  if `payload.blockHash == payload_info.block_hash`
+- [`engine_forkchoiceUpdatedV1(forkchoiceState, ...)`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#engine_forkchoiceupdatedv1)
+  if `forkchoiceState.headBlockHash == payload_info.block_hash`
 
-*Note*: Status of the same payload may be updated for several times throughout the test.
+*Note*: Status of a payload must be *initialized* via `on_payload_info` before
+the corresponding `on_block` execution step.
+
+*Note*: Status of the same payload may be updated for several times throughout
+the test.
 
 #### Checks step
 
@@ -160,7 +183,9 @@ The checks to verify the current status of `store`.
 checks: {<store_attribute>: value}  -- the assertions.
 ```
 
-`<store_attribute>` is the field member or property of [`Store`](../../../specs/phase0/fork-choice.md#store) object that maintained by client implementation. The fields include:
+`<store_attribute>` is the field member or property of
+[`Store`](../../../specs/phase0/fork-choice.md#store) object that maintained by
+client implementation. The fields include:
 
 ```yaml
 head: {
@@ -184,7 +209,8 @@ viable_for_head_roots_and_weights: [{
 }]
 ```
 
-Additionally, these fields if `get_proposer_head` and `should_override_forkchoice_update` features are implemented:
+Additionally, these fields if `get_proposer_head` and
+`should_override_forkchoice_update` features are implemented:
 
 ```yaml
 get_proposer_head: string             -- Encoded 32-byte value from get_proposer_head(store)
@@ -211,7 +237,8 @@ For example:
     ]
 ```
 
-*Note*: Each `checks` step may include one or multiple items. Each item has to be checked against the current store.
+*Note*: Each `checks` step may include one or multiple items. Each item has to
+be checked against the current store.
 
 ### `attestation_<32-byte-root>.ssz_snappy`
 
@@ -227,8 +254,15 @@ Each file is an SSZ-snappy encoded `SignedBeaconBlock`.
 
 ## Condition
 
-1. Deserialize `anchor_state.ssz_snappy` and `anchor_block.ssz_snappy` to initialize the local store object by with `get_forkchoice_store(anchor_state, anchor_block)` helper.
+1. Deserialize `anchor_state.ssz_snappy` and `anchor_block.ssz_snappy` to
+   initialize the local store object by with
+   `get_forkchoice_store(anchor_state, anchor_block)` helper.
 2. Iterate sequentially through `steps.yaml`
-    - For each execution, look up the corresponding ssz_snappy file. Execute the corresponding helper function on the current store.
-        - For the `on_block` execution step: if `len(block.message.body.attestations) > 0`, execute each attestation with `on_attestation(store, attestation)` after executing `on_block(store, block)`.
-    - For each `checks` step, the assertions on the current store must be satisfied.
+   - For each execution, look up the corresponding ssz_snappy file. Execute the
+     corresponding helper function on the current store.
+     - For the `on_block` execution step: if
+       `len(block.message.body.attestations) > 0`, execute each attestation with
+       `on_attestation(store, attestation)` after executing
+       `on_block(store, block)`.
+   - For each `checks` step, the assertions on the current store must be
+     satisfied.

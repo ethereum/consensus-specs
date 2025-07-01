@@ -1,6 +1,7 @@
 # `get_custody_groups` tests
 
-`get_custody_groups` tests provide sanity checks for the correctness of the `get_custody_groups` helper function.
+`get_custody_groups` tests provide sanity checks for the correctness of the
+`get_custody_groups` helper function.
 
 ## Test case format
 
