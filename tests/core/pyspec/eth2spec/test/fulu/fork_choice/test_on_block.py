@@ -148,7 +148,7 @@ def test_on_block_peerdas__invalid_index_1(spec, state):
         sidecars[0].index = 128  # Invalid index
         return sidecars
 
-    run_on_block_peerdas_invalid_test(spec, state, invalid_index)
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_index)
 
 
 @with_fulu_and_later
@@ -162,7 +162,7 @@ def test_on_block_peerdas__invalid_index_2(spec, state):
         sidecars[0].index = 256  # Invalid index
         return sidecars
 
-    run_on_block_peerdas_invalid_test(spec, state, invalid_index)
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_index)
 
 
 @with_fulu_and_later
@@ -176,7 +176,7 @@ def test_on_block_peerdas__invalid_mismatch_len_column_1(spec, state):
         sidecars[0].column = sidecars[0].column[1:]
         return sidecars
 
-    run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_column)
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_column)
 
 
 @with_fulu_and_later
@@ -190,7 +190,7 @@ def test_on_block_peerdas__invalid_mismatch_len_column_2(spec, state):
         sidecars[1].column = sidecars[1].column[1:]
         return sidecars
 
-    run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_column)
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_column)
 
 
 @with_fulu_and_later
@@ -204,7 +204,7 @@ def test_on_block_peerdas__invalid_mismatch_len_kzg_commitments_1(spec, state):
         sidecars[0].kzg_commitments = sidecars[0].kzg_commitments[1:]
         return sidecars
 
-    run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_commitments)
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_commitments)
 
 
 @with_fulu_and_later
@@ -218,7 +218,7 @@ def test_on_block_peerdas__invalid_mismatch_len_kzg_commitments_2(spec, state):
         sidecars[1].kzg_commitments = sidecars[1].kzg_commitments[1:]
         return sidecars
 
-    run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_commitments)
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_commitments)
 
 
 @with_fulu_and_later
@@ -232,7 +232,7 @@ def test_on_block_peerdas__invalid_mismatch_len_kzg_proofs_1(spec, state):
         sidecars[0].kzg_proofs = sidecars[0].kzg_proofs[1:]
         return sidecars
 
-    run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_proofs)
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_proofs)
 
 
 @with_fulu_and_later
@@ -246,7 +246,7 @@ def test_on_block_peerdas__invalid_mismatch_len_kzg_proofs_2(spec, state):
         sidecars[1].kzg_proofs = sidecars[1].kzg_proofs[1:]
         return sidecars
 
-    run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_proofs)
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_proofs)
 
 
 @with_fulu_and_later
@@ -260,7 +260,7 @@ def test_on_block_peerdas__invalid_wrong_column_1(spec, state):
         sidecars[0].column[0] = flip_one_bit_in_bytes(sidecars[0].column[0], 80)
         return sidecars
 
-    run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_column)
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_column)
 
 
 @with_fulu_and_later
@@ -274,7 +274,7 @@ def test_on_block_peerdas__invalid_wrong_column_2(spec, state):
         sidecars[1].column[1] = flip_one_bit_in_bytes(sidecars[1].column[1], 20)
         return sidecars
 
-    run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_column)
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_column)
 
 
 @with_fulu_and_later
@@ -289,7 +289,7 @@ def test_on_block_peerdas__invalid_wrong_commitment_1(spec, state):
         sidecars[0].kzg_commitments[0] = alt_sidecars[0].kzg_commitments[0]
         return sidecars
 
-    run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_commitment)
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_commitment)
 
 
 @with_fulu_and_later
@@ -304,7 +304,7 @@ def test_on_block_peerdas__invalid_wrong_commitment_2(spec, state):
         sidecars[1].kzg_commitments[1] = alt_sidecars[1].kzg_commitments[1]
         return sidecars
 
-    run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_commitment)
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_commitment)
 
 
 @with_fulu_and_later
@@ -319,7 +319,7 @@ def test_on_block_peerdas__invalid_wrong_proof_1(spec, state):
         sidecars[0].kzg_proofs[0] = alt_sidecars[0].kzg_proofs[0]
         return sidecars
 
-    run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_proof)
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_proof)
 
 
 @with_fulu_and_later
@@ -334,4 +334,4 @@ def test_on_block_peerdas__invalid_wrong_proof_2(spec, state):
         sidecars[1].kzg_proofs[1] = alt_sidecars[1].kzg_proofs[1]
         return sidecars
 
-    run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_proof)
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_proof)
