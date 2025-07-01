@@ -30,9 +30,15 @@ class BlobData(NamedTuple):
     The return values of ``retrieve_blobs_and_proofs`` helper.
     """
 
-    blobs: Sequence[Any]
+    blobs: Sequence[Any] | None = None
     proofs: Sequence[bytes] | None = None
     sidecars: Sequence[DataColumnSidecar] | None = None
+
+    def is_post_fulu(self):
+        return self.sidecars is not None and self.blobs is None and self.proofs is None
+
+    def is_pre_fulu(self):
+        return self.blobs is not None and self.proofs is not None and self.sidecars is None
 
 
 def with_blob_data(spec, blob_data: BlobData, func):
@@ -245,7 +251,7 @@ def get_sidecar_file_name(sidecar: DataColumnSidecar) -> str:
     """
     Returns the file name for a single sidecar.
     """
-    return f"sidecar_{encode_hex(sidecar.hash_tree_root())}"
+    return f"column_{encode_hex(sidecar.hash_tree_root())}"
 
 
 def on_tick_and_append_step(spec, store, time, test_steps):
@@ -292,25 +298,32 @@ def add_block(
 
     # Check blob_data
     if blob_data is not None:
-        blobs = spec.List[spec.Blob, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](blob_data.blobs)
-        blobs_root = blobs.hash_tree_root()
-        yield get_blobs_file_name(blobs_root=blobs_root), blobs
+        assert blob_data.is_pre_fulu() or blob_data.is_post_fulu(), "Integrity fail blob_data"
 
-        if blob_data.sidecars is not None:
+        if blob_data.is_pre_fulu():
+            blobs = spec.List[spec.Blob, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](blob_data.blobs)
+            blobs_root = blobs.hash_tree_root()
+            yield get_blobs_file_name(blobs_root=blobs_root), blobs
+
+        if blob_data.is_post_fulu():
             for sidecar in blob_data.sidecars:
                 yield get_sidecar_file_name(sidecar), sidecar
 
     def _append_step(valid=True):
         if blob_data is not None:
-            step = {
-                "block": get_block_file_name(signed_block),
-                "blobs": get_blobs_file_name(blobs_root=blobs_root),
-                "valid": valid,
-            }
-            if blob_data.proofs is not None:
-                step["proofs"] = [encode_hex(proof) for proof in blob_data.proofs]
-            if blob_data.sidecars is not None:
-                step["sidecars"] = get_sidecars_file_names(blob_data.sidecars)
+            if blob_data.is_post_fulu():
+                step = {
+                    "block": get_block_file_name(signed_block),
+                    "columns": get_sidecars_file_names(blob_data.sidecars),
+                    "valid": valid,
+                }
+            if blob_data.is_pre_fulu():
+                step = {
+                    "block": get_block_file_name(signed_block),
+                    "blobs": get_blobs_file_name(blobs_root=blobs_root),
+                    "proofs": [encode_hex(proof) for proof in blob_data.proofs],
+                    "valid": valid,
+                }
 
             test_steps.append(step)
         else:

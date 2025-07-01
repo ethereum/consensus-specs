@@ -92,7 +92,7 @@ The parameter that is required for executing `on_block(store, block)`.
     blobs: string           -- optional, the name of the `blobs_<32-byte-root>.ssz_snappy` file.
                                The blobs file content is a `List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]` SSZ object.
     proofs: array of byte48 hex string -- optional, the proofs of blob commitments.
-    sidecars: string        -- optional, array of the names of the `sidecar_<32-byte-root>.ssz_snappy` files.
+    columns: string        -- optional, array of the names of the `column_<32-byte-root>.ssz_snappy` files.
     valid: bool             -- optional, default to `true`.
                                If it's `false`, this execution step is expected to be invalid.
 }
@@ -104,6 +104,15 @@ The file is located in the same folder (see below).
 the expected values from `retrieve_blobs_and_proofs()` helper inside
 `is_data_available()` helper. If these two fields are not provided,
 `retrieve_blobs_and_proofs()` returns empty lists.
+
+`columns` is a new field in Fulu EIP-7594. This field indicate the expected
+values from `retrieve_column_sidecars` helper inside `is_data_available()`
+helper. If this field is an empty array, `retrieve_column_sidecars` should throw
+an exception (not enough data sampled). If this field is not provided,
+`retrieve_column_sidecars` returns an empty list.
+
+Post-Deneb and pre-Fulu, `columns` should not be present. Post-Fulu `blobs` and
+`proofs` should not be present.
 
 After this step, the `store` object may have been updated.
 
