@@ -105,9 +105,14 @@ the expected values from `retrieve_blobs_and_proofs()` helper inside
 `is_data_available()` helper. If these two fields are not provided,
 `retrieve_blobs_and_proofs()` returns empty lists.
 
-`columns` is a new field in Fulu EIP-7594. This field indicate the expected values from `retrieve_column_sidecars` helper inside `is_data_available()` helper. If this field is an empty array, `retrieve_column_sidecars` should throw an exception (not enough data sampled). If this field is not provided, `retrieve_column_sidecars` returns an empty list.
+`columns` is a new field in Fulu EIP-7594. This field indicate the expected
+values from `retrieve_column_sidecars` helper inside `is_data_available()`
+helper. If this field is an empty array, `retrieve_column_sidecars` should throw
+an exception (not enough data sampled). If this field is not provided,
+`retrieve_column_sidecars` returns an empty list.
 
-Post-Deneb and pre-Fulu, `columns` should not be present. Post-Fulu `blobs` and `proofs` should not be present.
+Post-Deneb and pre-Fulu, `columns` should not be present. Post-Fulu `blobs` and
+`proofs` should not be present.
 
 After this step, the `store` object may have been updated.
 
