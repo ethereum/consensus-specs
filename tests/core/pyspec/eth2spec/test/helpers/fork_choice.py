@@ -313,10 +313,10 @@ def add_block(
         if blob_data is not None:
             if blob_data.is_post_fulu():
                 step = {
-                "block": get_block_file_name(signed_block),
-                "columns": get_sidecars_file_names(blob_data.sidecars),
-                "valid": valid,
-            }
+                    "block": get_block_file_name(signed_block),
+                    "columns": get_sidecars_file_names(blob_data.sidecars),
+                    "valid": valid,
+                }
             if blob_data.is_pre_fulu():
                 step = {
                     "block": get_block_file_name(signed_block),
