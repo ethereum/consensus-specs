@@ -7,7 +7,7 @@ on:
 
 jobs:
   release:
-    timeout-minutes: 720  # 12 hours
+    timeout-minutes: 1440  # 24 hours
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     permissions:
       contents: write
