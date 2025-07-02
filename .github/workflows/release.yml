@@ -42,8 +42,8 @@ jobs:
       # Add support for large files
       - name: Install Git LFS
         run: |
-          apt-get update
-          apt-get install -y git-lfs
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
           git lfs install
 
       # Clone the repo with our PAT and delete old files
