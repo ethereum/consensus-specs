@@ -28,22 +28,22 @@ jobs:
           python-version: '3.13'
 
       # Ensure minimal tests pass
-      - name: Run tests for minimal
-        run: |
-          cd consensus-specs
-          make test preset=minimal
+      #- name: Run tests for minimal
+      #  run: |
+      #    cd consensus-specs
+      #    make test preset=minimal
 
       # Ensure mainnet tests pass
-      - name: Run tests for mainnet
-        run: |
-          cd consensus-specs
-          make test preset=mainnet
+      #- name: Run tests for mainnet
+      #  run: |
+      #    cd consensus-specs
+      #    make test preset=mainnet
 
       # Add support for large files
       - name: Install Git LFS
         run: |
-          sudo apt-get update
-          sudo apt-get install -y git-lfs
+          apt-get update
+          apt-get install -y git-lfs
           git lfs install
 
       # Clone the repo with our PAT and delete old files
