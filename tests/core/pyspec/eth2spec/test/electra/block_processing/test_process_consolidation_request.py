@@ -673,7 +673,7 @@ def test_incorrect_exceed_pending_consolidations_limit(spec, state):
     )
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
-    # Check the the return condition
+    # Check the return condition
     assert len(state.pending_consolidations) == spec.PENDING_CONSOLIDATIONS_LIMIT
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
@@ -702,7 +702,7 @@ def test_incorrect_not_enough_consolidation_churn_available(spec, state):
 
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
-    # Check the the return condition
+    # Check the return condition
     assert spec.get_consolidation_churn_limit(state) <= spec.MIN_ACTIVATION_BALANCE
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
@@ -735,7 +735,7 @@ def test_incorrect_exited_source(spec, state):
     # exit source
     spec.initiate_validator_exit(state, source_index)
 
-    # Check the the return condition
+    # Check the return condition
     assert state.validators[source_index].exit_epoch != spec.FAR_FUTURE_EPOCH
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
@@ -767,7 +767,7 @@ def test_incorrect_exited_target(spec, state):
     # exit target
     spec.initiate_validator_exit(state, 1)
 
-    # Check the the return condition
+    # Check the return condition
     assert state.validators[target_index].exit_epoch != spec.FAR_FUTURE_EPOCH
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
@@ -800,7 +800,7 @@ def test_incorrect_inactive_source(spec, state):
     # set source validator as not yet activated
     state.validators[source_index].activation_epoch = spec.FAR_FUTURE_EPOCH
 
-    # Check the the return condition
+    # Check the return condition
     assert not spec.is_active_validator(state.validators[source_index], current_epoch)
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
@@ -833,7 +833,7 @@ def test_incorrect_inactive_target(spec, state):
     # set target validator as not yet activated
     state.validators[1].activation_epoch = spec.FAR_FUTURE_EPOCH
 
-    # Check the the return condition
+    # Check the return condition
     assert not spec.is_active_validator(state.validators[target_index], current_epoch)
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
@@ -863,7 +863,7 @@ def test_incorrect_no_source_execution_withdrawal_credential(spec, state):
     )
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
-    # Check the the return condition
+    # Check the return condition
     assert not spec.has_execution_withdrawal_credential(state.validators[source_index])
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
@@ -893,7 +893,7 @@ def test_incorrect_target_with_bls_credential(spec, state):
         target_pubkey=state.validators[target_index].pubkey,
     )
 
-    # Check the the return condition
+    # Check the return condition
     assert not spec.has_execution_withdrawal_credential(state.validators[target_index])
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
@@ -916,7 +916,7 @@ def test_incorrect_source_with_bls_credential(spec, state):
     target_index = spec.get_active_validator_indices(state, current_epoch)[1]
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
-    # Ensure that the source validator has BLS-type withdrawal credentials
+    # Ensure that source validator has BLS-type withdrawal credentials
     assert state.validators[source_index].withdrawal_credentials[:1] == spec.BLS_WITHDRAWAL_PREFIX
 
     # An attacker could create a new validator with BLS withdrawal credentials where the last twenty
@@ -987,7 +987,7 @@ def test_incorrect_source_address(spec, state):
     )
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
-    # Check the the return condition
+    # Check the return condition
     assert (
         not state.validators[source_index].withdrawal_credentials[12:]
         == consolidation.source_address
@@ -1049,7 +1049,7 @@ def test_incorrect_unknown_source_pubkey(spec, state):
     )
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
-    # Check the the return condition
+    # Check the return condition
     assert not state.validators[source_index].pubkey == consolidation.source_pubkey
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
@@ -1209,7 +1209,7 @@ def test_switch_to_compounding_inactive_source(spec, state):
     # Set source validator as not yet activated
     state.validators[source_index].activation_epoch = spec.FAR_FUTURE_EPOCH
 
-    # Check the the return condition
+    # Check the return condition
     assert not spec.is_active_validator(state.validators[source_index], current_epoch)
 
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=False)
@@ -1228,7 +1228,7 @@ def test_switch_to_compounding_source_bls_withdrawal_credential(spec, state):
         target_pubkey=state.validators[source_index].pubkey,
     )
 
-    # Check the the return condition
+    # Check the return condition
     assert not spec.has_eth1_withdrawal_credential(state.validators[source_index])
 
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=False)
@@ -1250,7 +1250,7 @@ def test_switch_to_compounding_source_compounding_withdrawal_credential(spec, st
     )
     state.balances[source_index] = spec.MIN_ACTIVATION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
 
-    # Check the the return condition
+    # Check the return condition
     assert not spec.has_eth1_withdrawal_credential(state.validators[source_index])
 
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=False)
@@ -1271,7 +1271,7 @@ def test_switch_to_compounding_not_authorized(spec, state):
         target_pubkey=state.validators[source_index].pubkey,
     )
 
-    # Check the the return condition
+    # Check the return condition
     assert (
         not state.validators[source_index].withdrawal_credentials[12:]
         == consolidation.source_address
@@ -1295,7 +1295,7 @@ def test_switch_to_compounding_unknown_source_pubkey(spec, state):
         target_pubkey=b"\x00" * 48,
     )
 
-    # Check the the return condition
+    # Check the return condition
     assert not state.validators[source_index].pubkey == consolidation.source_pubkey
 
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=False)
