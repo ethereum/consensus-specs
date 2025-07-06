@@ -11,6 +11,7 @@ from eth2spec.test.helpers.fork_choice import (
     on_tick_and_append_step,
     tick_and_add_block_with_data,
 )
+from tests.infra.spec_cache import spec_cache_peerdas
 
 
 def flip_one_bit_in_bytes(data: bytes, index: int = 0) -> bytes:
@@ -40,6 +41,7 @@ def get_alt_sidecars(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__ok(spec, state):
     """
     Similar to test_simple_blob_data, but in PeerDAS version that is from Fulu onwards.
@@ -112,6 +114,7 @@ def run_on_block_peerdas_invalid_test(spec, state, fn):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__not_available(spec, state):
     """
     Test is_data_available throws an exception when not enough columns are sampled.
@@ -126,6 +129,7 @@ def test_on_block_peerdas__not_available(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_zero_blobs(spec, state):
     """
     Test is_data_available returns false when there are no blobs in the sidecars.
@@ -142,6 +146,7 @@ def test_on_block_peerdas__invalid_zero_blobs(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_index_1(spec, state):
     """
     Test invalid index in sidecars for negative PeerDAS on_block test.
@@ -156,6 +161,7 @@ def test_on_block_peerdas__invalid_index_1(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_index_2(spec, state):
     """
     Test invalid index in sidecars for negative PeerDAS on_block test.
@@ -170,6 +176,7 @@ def test_on_block_peerdas__invalid_index_2(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_mismatch_len_column_1(spec, state):
     """
     Test mismatch length in column for negative PeerDAS on_block test.
@@ -184,6 +191,7 @@ def test_on_block_peerdas__invalid_mismatch_len_column_1(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_mismatch_len_column_2(spec, state):
     """
     Test mismatch length in column for negative PeerDAS on_block test.
@@ -198,6 +206,7 @@ def test_on_block_peerdas__invalid_mismatch_len_column_2(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_mismatch_len_kzg_commitments_1(spec, state):
     """
     Test mismatch length in kzg_commitments for negative PeerDAS on_block test.
@@ -212,6 +221,7 @@ def test_on_block_peerdas__invalid_mismatch_len_kzg_commitments_1(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_mismatch_len_kzg_commitments_2(spec, state):
     """
     Test mismatch length in kzg_commitments for negative PeerDAS on_block test.
@@ -226,6 +236,7 @@ def test_on_block_peerdas__invalid_mismatch_len_kzg_commitments_2(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_mismatch_len_kzg_proofs_1(spec, state):
     """
     Test mismatch length in kzg_proofs for negative PeerDAS on_block test.
@@ -240,6 +251,7 @@ def test_on_block_peerdas__invalid_mismatch_len_kzg_proofs_1(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_mismatch_len_kzg_proofs_2(spec, state):
     """
     Test mismatch length in kzg_proofs for negative PeerDAS on_block test.
@@ -254,6 +266,7 @@ def test_on_block_peerdas__invalid_mismatch_len_kzg_proofs_2(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_wrong_column_1(spec, state):
     """
     Test wrong column for negative PeerDAS on_block test.
@@ -268,6 +281,7 @@ def test_on_block_peerdas__invalid_wrong_column_1(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_wrong_column_2(spec, state):
     """
     Test wrong column for negative PeerDAS on_block test.
@@ -282,6 +296,7 @@ def test_on_block_peerdas__invalid_wrong_column_2(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_wrong_commitment_1(spec, state):
     """
     Test wrong commitment for negative PeerDAS on_block test.
@@ -297,6 +312,7 @@ def test_on_block_peerdas__invalid_wrong_commitment_1(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_wrong_commitment_2(spec, state):
     """
     Test wrong commitment for negative PeerDAS on_block test.
@@ -312,6 +328,7 @@ def test_on_block_peerdas__invalid_wrong_commitment_2(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_wrong_proof_1(spec, state):
     """
     Test wrong proof for negative PeerDAS on_block test.
@@ -327,6 +344,7 @@ def test_on_block_peerdas__invalid_wrong_proof_1(spec, state):
 
 @with_fulu_and_later
 @spec_state_test
+@spec_cache_peerdas
 def test_on_block_peerdas__invalid_wrong_proof_2(spec, state):
     """
     Test wrong proof for negative PeerDAS on_block test.
