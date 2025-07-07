@@ -103,4 +103,3 @@ consensus specifications:
 - [Specifications viewer (jtraglia)](https://jtraglia.github.io/eth-spec-viewer/)
 - [The Eth2 Book](https://eth2book.info)
 - [PySpec Tests](tests/core/pyspec/README.md)
-- [Reference Tests Generators](tests/generators/README.md)
