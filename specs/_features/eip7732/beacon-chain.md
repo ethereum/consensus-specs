@@ -41,10 +41,12 @@
     - [`is_valid_indexed_payload_attestation`](#is_valid_indexed_payload_attestation)
     - [`is_parent_block_full`](#is_parent_block_full)
   - [Beacon State accessors](#beacon-state-accessors)
+    - [`get_attestation_participation_flag_indices`](#get_attestation_participation_flag_indices)
     - [`get_ptc`](#get_ptc)
     - [`get_payload_attesting_indices`](#get_payload_attesting_indices)
     - [`get_indexed_payload_attestation`](#get_indexed_payload_attestation)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
     - [New `process_builder_pending_payments(state)`](#new-process_builder_pending_paymentsstate)
@@ -330,6 +332,8 @@ class BeaconState(Container):
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
     # [New in EIP-7732]
+    execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
+    # [New in EIP-7732]
     builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
     # [New in EIP-7732]
     builder_pending_withdrawals: List[BuilderPendingWithdrawal, BUILDER_PENDING_WITHDRAWALS_LIMIT]
@@ -446,6 +450,52 @@ def is_parent_block_full(state: BeaconState) -> bool:
 
 ### Beacon State accessors
 
+#### `get_attestation_participation_flag_indices`
+
+```python
+def get_attestation_participation_flag_indices(
+    state: BeaconState, data: AttestationData, inclusion_delay: uint64
+) -> Sequence[int]:
+    """
+    Return the flag indices that are satisfied by an attestation.
+    """
+    if data.target.epoch == get_current_epoch(state):
+        justified_checkpoint = state.current_justified_checkpoint
+    else:
+        justified_checkpoint = state.previous_justified_checkpoint
+
+    # Matching roots
+    is_matching_source = data.source == justified_checkpoint
+    is_matching_target = is_matching_source and data.target.root == get_block_root(
+        state, data.target.epoch
+    )
+    is_matching_blockroot = is_matching_target and data.beacon_block_root == get_block_root_at_slot(
+        state, Slot(data.slot)
+    )
+    is_matching_payload = False
+    if is_attestation_same_slot(state, data):
+        assert data.index == 0
+        is_matching_payload = True
+    else:
+        is_matching_payload = (
+            data.index
+            == state.execution_payload_availability[data.slot % SLOTS_PER_HISTORICAL_ROOT]
+        )
+    is_matching_head = is_matching_blockroot and is_matching_payload
+
+    assert is_matching_source
+
+    participation_flag_indices = []
+    if is_matching_source and inclusion_delay <= integer_squareroot(SLOTS_PER_EPOCH):
+        participation_flag_indices.append(TIMELY_SOURCE_FLAG_INDEX)
+    if is_matching_target and inclusion_delay <= SLOTS_PER_EPOCH:
+        participation_flag_indices.append(TIMELY_TARGET_FLAG_INDEX)
+    if is_matching_head and inclusion_delay == MIN_ATTESTATION_INCLUSION_DELAY:
+        participation_flag_indices.append(TIMELY_HEAD_FLAG_INDEX)
+
+    return participation_flag_indices
+```
+
 #### `get_ptc`
 
 ```python
@@ -514,6 +564,25 @@ trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list
 access) are considered invalid. State transitions that cause an `uint64`
 overflow or underflow are also considered invalid.
 
+### Modified `process_slot`
+
+*Note*: `process_slot` is modified to unset the payload availability bit.
+
+```python
+def process_slot(state: BeaconState) -> None:
+    # Cache state root
+    previous_state_root = hash_tree_root(state)
+    state.state_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_state_root
+    # Cache latest block header state root
+    if state.latest_block_header.state_root == Bytes32():
+        state.latest_block_header.state_root = previous_state_root
+    # Cache block root
+    previous_block_root = hash_tree_root(state.latest_block_header)
+    state.block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
+    # Unset the next payload availability [New in EIP-7732]
+    state.execution_payload_availability[(state.slot + 1) % SLOTS_PER_HISTORICAL_ROOT] = 0b0
+```
+
 ### Epoch processing
 
 #### Modified `process_epoch`
@@ -558,9 +627,9 @@ def process_builder_pending_payments(state: BeaconState) -> None:
                 exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
             )
             state.builder_pending_withdrawals.append(payment.withdrawal)
-    state.builder_pending_payments[:SLOTS_PER_EPOCH] = state.builder_pending_payments[
-        SLOTS_PER_EPOCH:
-    ] + [BuilderPendingPayment() for _ in range(SLOTS_PER_EPOCH)]
+    state.builder_pending_payments = state.builder_pending_payments[SLOTS_PER_EPOCH:] + [
+        BuilderPendingPayment() for _ in range(SLOTS_PER_EPOCH)
+    ]
 ```
 
 ### Block processing
@@ -875,7 +944,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 ###### Modified `process_attestation`
 
 *Note*: The function is modified to track the weight for pending builder
-payments.
+payments and to use the `index` field in the `AttestationData` to signal the
+payload availability.
 
 ```python
 def process_attestation(state: BeaconState, attestation: Attestation) -> None:
@@ -885,7 +955,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
 
     # [Modified in Electra:EIP7549]
-    assert data.index == 0
+    assert data.index < 2  # [Modified in EIP-7732]
     committee_indices = get_committee_indices(attestation.committee_bits)
     committee_offset = 0
     for committee_index in committee_indices:
@@ -1113,6 +1183,7 @@ def process_execution_payload(
     )
 
     # Cache the execution payload hash
+    state.execution_payload_availability[state.slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
     state.latest_block_hash = payload.block_hash
     state.latest_full_slot = state.slot
 

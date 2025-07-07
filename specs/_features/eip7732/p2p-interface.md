@@ -15,10 +15,13 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
+        - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
         - [`beacon_block`](#beacon_block)
         - [`execution_payload`](#execution_payload)
         - [`payload_attestation_message`](#payload_attestation_message)
         - [`execution_payload_header`](#execution_payload_header)
+      - [Attestation subnets](#attestation-subnets)
+        - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
@@ -129,6 +132,20 @@ are given in this table:
 
 EIP-7732 introduces new global topics for execution header, execution payload
 and payload attestation.
+
+###### `beacon_aggregate_and_proof`
+
+Let `block` be the beacon block corresponding to
+`aggregate.data.beacon_block_root`.
+
+The following validations are added:
+
+- _[REJECT]_ `aggregate.data.index < 2`
+- _[REJECT]_ `aggregate.data.index == 0` if `block.slot == aggregate.data.slot`
+
+The following validations are removed:
+
+- _[REJECT]_ `aggregate.data.index == 0`
 
 ###### `beacon_block`
 
@@ -247,6 +264,23 @@ The following validations MUST pass before forwarding the
 - _[REJECT]_ The builder signature,
   `signed_execution_payload_header_envelope.signature`, is valid with respect to
   the `header_envelope.builder_index`.
+
+##### Attestation subnets
+
+###### `beacon_attestation_{subnet_id}`
+
+Let `block` be the beacon block corresponding to
+`attestation.data.beacon_block_root`.
+
+The following validations are added:
+
+- _[REJECT]_ `attestation.data.index < 2`
+- _[REJECT]_ `attestation.data.index == 0` if
+  `block.slot == attestation.data.slot`
+
+The following validations are removed:
+
+- _[REJECT]_ `attestation.data.index == 0`
 
 ### The Req/Resp domain
 

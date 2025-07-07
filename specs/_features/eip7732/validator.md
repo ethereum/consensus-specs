@@ -74,8 +74,20 @@ All validator responsibilities remain unchanged other than the following:
 
 ### Attestation
 
-Attestation duties are not changed for validators, however the attestation
-deadline is implicitly changed by the change in `INTERVALS_PER_SLOT`.
+The attestation deadline is implicitly changed by the change in
+`INTERVALS_PER_SLOT`. Moreover, the `attestation.data.index` field is now used
+to signal the payload status of the block being attested to
+(`attestation.data.beacon_block_root`). With the alias
+`data = attestation.data`, the validator should set this field as follows:
+
+- If `block.slot == current_slot` (i.e., `data.slot`), then always set
+  `data.index = 0`.
+- Otherwise, set `data.index` based on the payload status in the validator's
+  fork-choice:
+  - Set `data.index = 0` to signal that the payload is not present in the
+    canonical chain (payload status is `EMPTY` in the fork-choice).
+  - Set `data.index = 1` to signal that the payload is present in the canonical
+    chain (payload status is `FULL` in the fork-choice).
 
 ### Sync Committee participations
 
