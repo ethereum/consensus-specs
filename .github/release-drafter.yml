@@ -14,6 +14,8 @@ categories:
     label: electra
   - title: Fulu
     label: fulu
+  - title: Gloas
+    label: gloas
 
   # Features
   - title: EIP-6110
