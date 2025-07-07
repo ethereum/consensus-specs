@@ -115,8 +115,10 @@ def prepare_random_genesis_deposits(
     max_amount=None,
     min_amount=None,
     deposit_data_list=None,
-    rng=Random(3131),
+    rng=None,
 ):
+    if rng is None:
+        rng = Random(3131)
     if max_amount is None:
         max_amount = spec.MAX_EFFECTIVE_BALANCE
     if min_amount is None:

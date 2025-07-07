@@ -43,7 +43,9 @@ class Eip4844RlpTransaction(Serializable):
     )
 
 
-def get_sample_blob(spec, rng=random.Random(5566), is_valid_blob=True):
+def get_sample_blob(spec, rng=None, is_valid_blob=True):
+    if rng is None:
+        rng = random.Random(5566)
     values = [
         rng.randint(0, spec.BLS_MODULUS - 1) if is_valid_blob else spec.BLS_MODULUS
         for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
@@ -85,7 +87,9 @@ def get_poly_in_both_forms(spec, rng=None):
     return coeffs, evals
 
 
-def get_sample_blob_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_blob=True):
+def get_sample_blob_tx(spec, blob_count=1, rng=None, is_valid_blob=True):
+    if rng is None:
+        rng = random.Random(5566)
     blobs = []
     blob_kzg_commitments = []
     blob_kzg_proofs = []
