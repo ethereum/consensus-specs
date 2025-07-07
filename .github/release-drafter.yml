@@ -34,7 +34,6 @@ categories:
   # Fallback
   - title: Other
 
-sort-by: number
 sort-direction: ascending
 change-title-escapes: '\<*_&'
 change-template: '- $TITLE (#$NUMBER)'
