@@ -117,10 +117,10 @@ def validate_inclusion_lists(
 
 ```python
 def get_attester_head(store: Store, head_root: Root) -> Root:
-    head_block = store.blocks[head_root]
-
     if head_root in store.unsatisfied_inclusion_list_blocks:
+        head_block = store.blocks[head_root]
         return head_block.parent_root
+
     return head_root
 ```
 
