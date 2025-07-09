@@ -10,6 +10,7 @@ actions of a "validator" participating in the Ethereum proof-of-stake protocol.
 - [Prerequisites](#prerequisites)
 - [Constants](#constants)
   - [Misc](#misc)
+- [Presets](#presets)
 - [Containers](#containers)
   - [`SyncCommitteeMessage`](#synccommitteemessage)
   - [`SyncCommitteeContribution`](#synccommitteecontribution)
@@ -76,6 +77,13 @@ as a reference throughout.
 | ------------------------------------------ | ------------- | :------------------------------------------------------------------------------: |
 | `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `2**4` (= 16) |                                    validators                                    |
 | `SYNC_COMMITTEE_SUBNET_COUNT`              | `4`           | The number of sync committee subnets used in the gossipsub aggregation protocol. |
+
+## Presets
+
+| Name                  | Value  |
+| --------------------- | ------ |
+| `SYNC_MESSAGE_DUE_MS` | `4000` |
+| `CONTRIBUTION_DUE_MS` | `8000` |
 
 ## Containers
 
@@ -320,9 +328,9 @@ is prepared and broadcast in `slot-1 ` instead of `slot`.
 This logic is triggered upon the same conditions as when producing an
 attestation. Meaning, a sync committee member should produce and broadcast a
 `SyncCommitteeMessage` either when (a) the validator has received a valid block
-from the expected block proposer for the current `slot` or (b) one-third of the
-slot has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the
-start of the slot) -- whichever comes first.
+from the expected block proposer for the current `slot` or (b)
+`SYNC_MESSAGE_DUE_MS` milliseconds after the start of the slot has transpired --
+whichever comes first.
 
 `get_sync_committee_message(state, block_root, validator_index, privkey)`
 assumes the parameter `state` is the head state corresponding to processing the
@@ -500,8 +508,7 @@ if one validator maps to multiple indices within the subcommittee.
 If the validator is selected to aggregate (`is_sync_committee_aggregator()`),
 then they broadcast their best aggregate as a `SignedContributionAndProof` to
 the global aggregate channel (`sync_committee_contribution_and_proof` topic)
-two-thirds of the way through the `slot`-that is,
-`SECONDS_PER_SLOT * 2 / INTERVALS_PER_SLOT` seconds after the start of `slot`.
+`CONTRIBUTION_DUE_MS` milliseconds after the start of `slot` has transpired.
 
 Selection proofs are provided in `ContributionAndProof` to prove to the gossip
 channel that the validator has been selected as an aggregator.
