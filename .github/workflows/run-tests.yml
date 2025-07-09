@@ -6,8 +6,11 @@ defaults:
 
 on:
   push:
-    branches: [dev, master]
+    branches:
+      - master
   pull_request:
+    branches:
+      - master
 
 jobs:
   lint:
