@@ -9,7 +9,7 @@
 - [Helpers](#helpers)
   - [`BlobsBundle`](#blobsbundle)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
-- [Protocol](#protocol)
+- [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [Modified `get_payload`](#modified-get_payload)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
@@ -84,7 +84,7 @@ class GetPayloadResponse(object):
     execution_requests: Sequence[bytes]
 ```
 
-## Protocol
+## Protocols
 
 ### `ExecutionEngine`
 
