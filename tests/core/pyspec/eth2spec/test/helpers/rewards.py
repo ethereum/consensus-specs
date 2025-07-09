@@ -350,7 +350,9 @@ def run_test_full_all_correct(spec, state):
     yield from run_deltas(spec, state)
 
 
-def run_test_full_but_partial_participation(spec, state, rng=Random(5522)):
+def run_test_full_but_partial_participation(spec, state, rng=None):
+    if rng is None:
+        rng = Random(5522)
     cached_prepare_state_with_attestations(spec, state)
 
     if not is_post_altair(spec):
@@ -391,21 +393,27 @@ def run_test_one_attestation_one_correct(spec, state):
     yield from run_deltas(spec, state)
 
 
-def run_test_with_not_yet_activated_validators(spec, state, rng=Random(5555)):
+def run_test_with_not_yet_activated_validators(spec, state, rng=None):
+    if rng is None:
+        rng = Random(5555)
     set_some_new_deposits(spec, state, rng)
     cached_prepare_state_with_attestations(spec, state)
 
     yield from run_deltas(spec, state)
 
 
-def run_test_with_exited_validators(spec, state, rng=Random(1337)):
+def run_test_with_exited_validators(spec, state, rng=None):
+    if rng is None:
+        rng = Random(1337)
     exit_random_validators(spec, state, rng)
     cached_prepare_state_with_attestations(spec, state)
 
     yield from run_deltas(spec, state)
 
 
-def run_test_with_slashed_validators(spec, state, rng=Random(3322)):
+def run_test_with_slashed_validators(spec, state, rng=None):
+    if rng is None:
+        rng = Random(3322)
     exit_random_validators(spec, state, rng)
     slash_random_validators(spec, state, rng)
 
@@ -474,7 +482,9 @@ def run_test_full_delay_max_slots(spec, state):
     yield from run_deltas(spec, state)
 
 
-def run_test_full_mixed_delay(spec, state, rng=Random(1234)):
+def run_test_full_mixed_delay(spec, state, rng=None):
+    if rng is None:
+        rng = Random(1234)
     cached_prepare_state_with_attestations(spec, state)
     for a in state.previous_epoch_attestations:
         a.inclusion_delay = rng.randint(1, spec.SLOTS_PER_EPOCH)
@@ -540,6 +550,8 @@ def run_test_all_balances_too_low_for_reward(spec, state):
     yield from run_deltas(spec, state)
 
 
-def run_test_full_random(spec, state, rng=Random(8020)):
+def run_test_full_random(spec, state, rng=None):
+    if rng is None:
+        rng = Random(8020)
     randomize_state(spec, state, rng)
     yield from run_deltas(spec, state)
