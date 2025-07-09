@@ -19,6 +19,7 @@ from .helpers.constants import (
     CAPELLA,
     DENEB,
     EIP7441,
+    EIP7805,
     ELECTRA,
     FULU,
     LIGHT_CLIENT_TESTING_FORKS,
@@ -638,6 +639,7 @@ with_deneb_and_later = with_all_phases_from(DENEB)
 with_electra_and_later = with_all_phases_from(ELECTRA)
 with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7441_and_later = with_all_phases_from(EIP7441, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip7805_and_later = with_all_phases_from(EIP7805, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 
 class quoted_str(str):
