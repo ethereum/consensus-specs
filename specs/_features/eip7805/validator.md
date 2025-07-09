@@ -6,7 +6,7 @@
 - [Prerequisites](#prerequisites)
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
-- [Protocol](#protocol)
+- [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
 - [New inclusion list committee assignment](#new-inclusion-list-committee-assignment)
   - [Lookahead](#lookahead)
@@ -47,7 +47,7 @@ continuing and use them as a reference throughout.
 | --------------------------------- | ---------------------- | :-----: | :--------: |
 | `PROPOSER_INCLUSION_LIST_CUT_OFF` | `SECONDS_PER_SLOT - 1` | seconds | 11 seconds |
 
-## Protocol
+## Protocols
 
 ### `ExecutionEngine`
 

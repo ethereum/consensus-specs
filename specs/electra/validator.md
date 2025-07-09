@@ -10,7 +10,7 @@
   - [Modified containers](#modified-containers)
     - [`AggregateAndProof`](#aggregateandproof)
     - [`SignedAggregateAndProof`](#signedaggregateandproof)
-- [Protocol](#protocol)
+- [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [Modified `get_payload`](#modified-get_payload)
 - [Block proposal](#block-proposal)
@@ -82,7 +82,7 @@ class SignedAggregateAndProof(Container):
     signature: BLSSignature
 ```
 
-## Protocol
+## Protocols
 
 ### `ExecutionEngine`
 

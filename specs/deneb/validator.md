@@ -7,7 +7,7 @@
 - [Helpers](#helpers)
   - [`BlobsBundle`](#blobsbundle)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
-- [Protocol](#protocol)
+- [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [Modified `get_payload`](#modified-get_payload)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
@@ -74,7 +74,7 @@ def compute_signed_block_header(signed_block: SignedBeaconBlock) -> SignedBeacon
     return SignedBeaconBlockHeader(message=block_header, signature=signed_block.signature)
 ```
 
-## Protocol
+## Protocols
 
 ### `ExecutionEngine`
 
