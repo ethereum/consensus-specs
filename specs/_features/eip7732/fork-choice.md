@@ -126,7 +126,9 @@ class Store(object):
     execution_payload_states: Dict[Root, BeaconState] = field(
         default_factory=dict
     )  # [New in EIP-7732]
-    ptc_vote: Dict[Root, Vector[uint8, PTC_SIZE]] = field(default_factory=dict)  # [New in EIP-7732]
+    ptc_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
+        default_factory=dict
+    )  # [New in EIP-7732]
 ```
 
 ### Modified `get_forkchoice_store`
@@ -156,7 +158,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
         execution_payload_states={anchor_root: copy(anchor_state)},  # [New in EIP-7732]
-        ptc_vote={anchor_root: Vector[uint8, PTC_SIZE]()},
+        ptc_vote={anchor_root: Vector[boolean, PTC_SIZE]()},
     )
 ```
 
@@ -198,7 +200,7 @@ def is_payload_present(store: Store, beacon_block_root: Root) -> bool:
     """
     # The beacon block root must be known
     assert beacon_block_root in store.ptc_vote
-    return store.ptc_vote[beacon_block_root].count(PAYLOAD_PRESENT) > PAYLOAD_TIMELY_THRESHOLD
+    return store.ptc_vote[beacon_block_root].count(True) > PAYLOAD_TIMELY_THRESHOLD
 ```
 
 ### `is_parent_node_full`
@@ -488,7 +490,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
     # Add a new PTC voting for this block to the store
-    store.ptc_vote[block_root] = [PAYLOAD_ABSENT] * PTC_SIZE
+    store.ptc_vote[block_root] = [False] * PTC_SIZE
 
     # Notify the store about the payload_attestations in the block
     notify_ptc_messages(store, state, block.body.payload_attestations)
@@ -613,7 +615,7 @@ def on_payload_attestation_message(
     # Update the ptc vote for the block
     ptc_index = ptc.index(ptc_message.validator_index)
     ptc_vote = store.ptc_vote[data.beacon_block_root]
-    ptc_vote[ptc_index] = data.payload_status
+    ptc_vote[ptc_index] = data.payload_present
 
     # Only update payload boosts with attestations from a block if the block is for the current slot and it's early
     if is_from_block and data.slot + 1 != get_current_slot(store):
@@ -623,9 +625,9 @@ def on_payload_attestation_message(
         return
 
     # Update the payload boosts if threshold has been achieved
-    if ptc_vote.count(PAYLOAD_PRESENT) > PAYLOAD_TIMELY_THRESHOLD:
+    if ptc_vote.count(True) > PAYLOAD_TIMELY_THRESHOLD:
         store.payload_reveal_boost_root = data.beacon_block_root
-    if ptc_vote.count(PAYLOAD_WITHHELD) > PAYLOAD_TIMELY_THRESHOLD:
+    if ptc_vote.count(False) > PAYLOAD_TIMELY_THRESHOLD:
         block = store.blocks[data.beacon_block_root]
         store.payload_withhold_boost_root = block.parent_root
         store.payload_withhold_boost_full = is_parent_node_full(store, block)

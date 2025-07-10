@@ -41,29 +41,32 @@ payloads.
 Builders can broadcast a payload bid for the current or the next slot's proposer
 to include. They produce a `SignedExecutionPayloadHeader` as follows.
 
-1. Set `header.parent_block_hash` to the current head of the execution chain
-   (this can be obtained from the beacon state as `state.last_block_hash`).
-2. Set `header.parent_block_root` to be the head of the consensus chain (this
-   can be obtained from the beacon state as
-   `hash_tree_root(state.latest_block_header)`. The `parent_block_root` and
-   `parent_block_hash` must be compatible, in the sense that they both should
-   come from the same `state` by the method described in this and the previous
-   point.
-3. Construct an execution payload. This can be performed with an external
-   execution engine with a call to `engine_getPayloadV4`.
-4. Set `header.block_hash` to be the block hash of the constructed payload, that
-   is `payload.block_hash`.
-5. Set `header.gas_limit` to be the gas limit of the constructed payload, that
-   is `payload.gas_limit`.
-6. Set `header.builder_index` to be the validator index of the builder
-   performing these actions.
-7. Set `header.slot` to be the slot for which this bid is aimed. This slot
-   **MUST** be either the current slot or the next slot.
-8. Set `header.value` to be the value that the builder will pay the proposer if
-   the bid is accepted. The builder **MUST** have balance enough to fulfill this
-   bid.
-9. Set `header.kzg_commitments_root` to be the `hash_tree_root` of the
-   `blobsbundle.commitments` field returned by `engine_getPayloadV4`.
+01. Set `header.parent_block_hash` to the current head of the execution chain
+    (this can be obtained from the beacon state as `state.last_block_hash`).
+02. Set `header.parent_block_root` to be the head of the consensus chain (this
+    can be obtained from the beacon state as
+    `hash_tree_root(state.latest_block_header)`. The `parent_block_root` and
+    `parent_block_hash` must be compatible, in the sense that they both should
+    come from the same `state` by the method described in this and the previous
+    point.
+03. Construct an execution payload. This can be performed with an external
+    execution engine with a call to `engine_getPayloadV4`.
+04. Set `header.block_hash` to be the block hash of the constructed payload,
+    that is `payload.block_hash`.
+05. Set `header.gas_limit` to be the gas limit of the constructed payload, that
+    is `payload.gas_limit`.
+06. Set `header.builder_index` to be the validator index of the builder
+    performing these actions.
+07. Set `header.slot` to be the slot for which this bid is aimed. This slot
+    **MUST** be either the current slot or the next slot.
+08. Set `header.value` to be the value that the builder will pay the proposer if
+    the bid is accepted. The builder **MUST** have balance enough to fulfill
+    this bid.
+09. Set `header.kzg_commitments_root` to be the `hash_tree_root` of the
+    `blobsbundle.commitments` field returned by `engine_getPayloadV4`.
+10. Set `header.fee_recipient` to be an execution address to receive the
+    payment. This address can be obtained from the proposer directly via a
+    request or can be set from the withdrawal credentials of the proposer.
 
 After building the `header`, the builder obtains a `signature` of the header by
 using
@@ -186,10 +189,5 @@ and broadcasts it on the `execution_payload` global gossip topic.
 An honest builder that has seen a `SignedBeaconBlock` referencing his signed
 bid, but that block was not timely and thus it is not the head of the builder's
 chain, may choose to withhold their execution payload. For this the builder
-should simply act as if it were building an empty payload, without any
-transactions, withdrawals, etc. The `payload.block_hash` may not be equal to
-`header.block_hash`. The builder may then sets `payload_withheld` to `True`. If
-the PTC sees this message and votes for it, validators will attribute a
-*withholding boost* to the builder, which would increase the forkchoice weight
-of the parent block, favoring it and preventing the builder from being charged
-for the bid by not revealing.
+should simply act as if no block was ever produced and simply not broadcast the
+payload.

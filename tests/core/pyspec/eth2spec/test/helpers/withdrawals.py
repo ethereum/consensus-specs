@@ -2,7 +2,10 @@ from eth2spec.test.helpers.forks import is_post_eip7732, is_post_electra
 
 
 def get_expected_withdrawals(spec, state):
-    if is_post_electra(spec):
+    if is_post_eip7732(spec):
+        withdrawals, _, _ = spec.get_expected_withdrawals(state)
+        return withdrawals
+    elif is_post_electra(spec):
         withdrawals, _ = spec.get_expected_withdrawals(state)
         return withdrawals
     else:
