@@ -136,20 +136,14 @@ def test_get_sync_committee_message(spec, state):
     block = spec.BeaconBlock(state_root=state.hash_tree_root())
     block_root = spec.Root(block.hash_tree_root())
     if is_post_eip7805(spec):
-        sync_committee_message = spec.get_sync_committee_message(
-            state=state,
-            block_root=block_root,
-            validator_index=validator_index,
-            privkey=privkeys[validator_index],
-            store=spec.get_forkchoice_store(state, block),
-        )
-    else:
-        sync_committee_message = spec.get_sync_committee_message(
-            state=state,
-            block_root=block_root,
-            validator_index=validator_index,
-            privkey=privkeys[validator_index],
-        )
+        store = spec.get_forkchoice_store(state, block)
+        block_root = spec.get_attester_head(store, block_root)
+    sync_committee_message = spec.get_sync_committee_message(
+        state=state,
+        block_root=block_root,
+        validator_index=validator_index,
+        privkey=privkeys[validator_index],
+    )
     assert sync_committee_message.slot == state.slot
     assert sync_committee_message.beacon_block_root == block_root
     assert sync_committee_message.validator_index == validator_index

@@ -5,12 +5,25 @@
 - [Introduction](#introduction)
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
+- [Containers](#containers)
+  - [New containers](#new-containers)
+    - [`InclusionListStore`](#inclusionliststore)
+- [Protocols](#protocols)
+  - [`ExecutionEngine`](#executionengine)
+    - [New `is_inclusion_list_satisfied`](#new-is_inclusion_list_satisfied)
+    - [Modified `notify_forkchoice_updated`](#modified-notify_forkchoice_updated)
 - [Helpers](#helpers)
+  - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
+  - [New `get_inclusion_list_store`](#new-get_inclusion_list_store)
+  - [New `process_inclusion_list`](#new-process_inclusion_list)
+  - [New `get_inclusion_list_transactions`](#new-get_inclusion_list_transactions)
+    - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
   - [New `get_attester_head`](#new-get_attester_head)
   - [Modified `get_proposer_head`](#modified-get_proposer_head)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
+  - [New `on_inclusion_list`](#new-on_inclusion_list)
   - [Modified `on_block`](#modified-on_block)
 
 <!-- mdformat-toc end -->
@@ -27,7 +40,86 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 | ---------------------- | ------------------------------- | :-----: | :-------: |
 | `VIEW_FREEZE_DEADLINE` | `SECONDS_PER_SLOT * 2 // 3 + 1` | seconds | 9 seconds |
 
+## Containers
+
+### New containers
+
+#### `InclusionListStore`
+
+```python
+@dataclass
+class InclusionListStore(object):
+    inclusion_lists: DefaultDict[Tuple[Slot, Root], Set[InclusionList]] = field(
+        default_factory=lambda: defaultdict(set)
+    )
+    equivocators: DefaultDict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(
+        default_factory=lambda: defaultdict(set)
+    )
+```
+
+## Protocols
+
+### `ExecutionEngine`
+
+*Note*: The `is_inclusion_list_satisfied` function is added to the
+`ExecutionEngine` protocol to instantiate the inclusion list constraints
+validation.
+
+The body of this function is implementation dependent. The Engine API may be
+used to implement it with an external execution engine.
+
+#### New `is_inclusion_list_satisfied`
+
+```python
+def is_inclusion_list_satisfied(
+    self: ExecutionEngine,
+    execution_payload: ExecutionPayload,
+    inclusion_list_transactions: Sequence[Transaction],
+) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload`` satisfies the inclusion
+    list constraints with respect to ``inclusion_list_transactions``.
+    """
+    ...
+```
+
+#### Modified `notify_forkchoice_updated`
+
+The only change made is to the `PayloadAttributes` container through the
+addition of `inclusion_list_transactions`. Otherwise,
+`notify_forkchoice_updated` inherits all prior functionality.
+
+*Note*: If the `inclusion_list_transactions` field of `payload_attributes` is
+not empty, the payload build process MUST produce an execution payload that
+satisfies the inclusion list constraints with respect to
+`inclusion_list_transactions`.
+
+```python
+def notify_forkchoice_updated(
+    self: ExecutionEngine,
+    head_block_hash: Hash32,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    payload_attributes: Optional[PayloadAttributes],
+) -> Optional[PayloadId]: ...
+```
+
 ## Helpers
+
+### Modified `PayloadAttributes`
+
+`PayloadAttributes` is extended with the `inclusion_list_transactions` field.
+
+```python
+@dataclass
+class PayloadAttributes(object):
+    timestamp: uint64
+    prev_randao: Bytes32
+    suggested_fee_recipient: ExecutionAddress
+    withdrawals: Sequence[Withdrawal]
+    parent_beacon_block_root: Root
+    inclusion_list_transactions: Sequence[Transaction]  # [New in EIP7805]
+```
 
 ### Modified `Store`
 
@@ -51,7 +143,7 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    unsatisfied_inclusion_list_blocks: Set[Root] = field(default_factory=Set)  # [New in EIP-7805]
+    unsatisfied_inclusion_list_blocks: Set[Root] = field(default_factory=Set)  # [New in EIP7805]
 ```
 
 ### Modified `get_forkchoice_store`
@@ -77,7 +169,102 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
-        unsatisfied_inclusion_list_blocks=set(),  # [New in EIP-7805]
+        unsatisfied_inclusion_list_blocks=set(),  # [New in EIP7805]
+    )
+```
+
+### New `get_inclusion_list_store`
+
+```python
+def get_inclusion_list_store() -> InclusionListStore:
+    # `cached_or_new_inclusion_list_store` is implementation and context dependent.
+    # It returns the cached `InclusionListStore`; if none exists,
+    # it initializes a new instance, caches it and returns it.
+    inclusion_list_store = cached_or_new_inclusion_list_store()
+
+    return inclusion_list_store
+```
+
+### New `process_inclusion_list`
+
+```python
+def process_inclusion_list(
+    store: InclusionListStore, inclusion_list: InclusionList, is_before_view_freeze_deadline: bool
+) -> None:
+    key = (inclusion_list.slot, inclusion_list.inclusion_list_committee_root)
+
+    # Ignore `inclusion_list` from equivocators.
+    if inclusion_list.validator_index in store.equivocators[key]:
+        return
+
+    for stored_inclusion_list in store.inclusion_lists[key]:
+        if stored_inclusion_list.validator_index != inclusion_list.validator_index:
+            continue
+
+        if stored_inclusion_list != inclusion_list:
+            store.equivocators[key].add(inclusion_list.validator_index)
+            store.inclusion_lists[key].remove(stored_inclusion_list)
+
+        # Whether it was an equivocation or not, we have processed this `inclusion_list`.
+        return
+
+    # Only store `inclusion_list` if it arrived before the view freeze deadline.
+    if is_before_view_freeze_deadline:
+        store.inclusion_lists[key].add(inclusion_list)
+```
+
+### New `get_inclusion_list_transactions`
+
+*Note*: `get_inclusion_list_transactions` returns a list of unique transactions
+from all valid and non-equivocating `InclusionList`s that were received in a
+timely manner on the p2p network for the given slot and for which the
+`inclusion_list_committee_root` in the `InclusionList` matches the one
+calculated based on the current state.
+
+```python
+def get_inclusion_list_transactions(
+    store: InclusionListStore, state: BeaconState, slot: Slot
+) -> Sequence[Transaction]:
+    inclusion_list_committee = get_inclusion_list_committee(state, slot)
+    inclusion_list_committee_root = hash_tree_root(inclusion_list_committee)
+    key = (slot, inclusion_list_committee_root)
+
+    inclusion_list_transactions = [
+        transaction
+        for inclusion_list in store.inclusion_lists[key]
+        if inclusion_list.validator_index not in store.equivocators[key]
+        for transaction in inclusion_list.transactions
+    ]
+
+    # Deduplicate inclusion list transactions. Order does not need to be preserved.
+    return list(set(inclusion_list_transactions))
+```
+
+#### New `validate_inclusion_lists`
+
+Blocks previously validated as satisfying the inclusion list constraints SHOULD
+NOT be invalidated even if their associated `InclusionList`s have subsequently
+been pruned.
+
+*Note*: Invalid or equivocating `InclusionList`s received on the p2p network
+MUST NOT invalidate a block that is otherwise valid and satisfies the inclusion
+list constraints.
+
+```python
+def validate_inclusion_lists(
+    store: Store, beacon_block_root: Root, execution_engine: ExecutionEngine
+) -> bool:
+    inclusion_list_store = get_inclusion_list_store()
+
+    block = store.blocks[beacon_block_root]
+    state = store.block_states[beacon_block_root]
+
+    inclusion_list_transactions = get_inclusion_list_transactions(
+        inclusion_list_store, state, Slot(block.slot - 1)
+    )
+
+    return execution_engine.is_inclusion_list_satisfied(
+        block.body.execution_payload, inclusion_list_transactions
     )
 ```
 
@@ -145,7 +332,7 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
     # Check that the head block is in the unsatisfied inclusion list blocks
     inclusion_list_not_satisfied = (
         head_root in store.unsatisfied_inclusion_list_blocks
-    )  # [New in EIP-7805]
+    )  # [New in EIP7805]
 
     if reorg_prerequisites and (head_late or inclusion_list_not_satisfied):
         return parent_root
@@ -154,6 +341,30 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
 ```
 
 ## Updated fork-choice handlers
+
+### New `on_inclusion_list`
+
+*Note*: A new handler `on_inclusion_list` is called whenever an inclusion list
+is received. Any call to this handler that triggers an unhandled exception
+(e.g., a failed assert or an out-of-range list access) is considered invalid and
+MUST NOT modify the store.
+
+```python
+def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) -> None:
+    """
+    Run ``on_inclusion_list`` upon receiving a new inclusion list.
+    """
+    inclusion_list = signed_inclusion_list.message
+
+    inclusion_list_store = get_inclusion_list_store()
+
+    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
+    is_before_view_freeze_deadline = (
+        get_current_slot(store) == inclusion_list.slot and time_into_slot < VIEW_FREEZE_DEADLINE
+    )
+
+    process_inclusion_list(inclusion_list_store, inclusion_list, is_before_view_freeze_deadline)
+```
 
 ### Modified `on_block`
 
@@ -193,14 +404,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Make a copy of the state to avoid mutability issues
     state = copy(store.block_states[block.parent_root])
     block_root = hash_tree_root(block)
-    # [Modified in EIP-7805]
-    try:
-        state_transition(state, signed_block, True)
-    except AssertionError as e:
-        if str(e) == "INVALID_INCLUSION_LIST":
-            store.unsatisfied_inclusion_list_blocks.add(block_root)
-        else:
-            assert False
+    state_transition(state, signed_block, True)
 
     # Add new block to the store
     store.blocks[block_root] = block
@@ -213,13 +417,17 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
 
+    # [New in EIP7805]
+    # Check if block satisfies the inclusion list constraints
+    # If not, add this block to the store as inclusion list constraints unsatisfied
+    is_inclusion_list_satisfied = validate_inclusion_lists(store, block_root, EXECUTION_ENGINE)
+    if not is_inclusion_list_satisfied:
+        store.unsatisfied_inclusion_list_blocks.add(block_root)
+
     # Add proposer score boost if the block is timely, not conflicting with an existing block
     # and satisfies the inclusion list constraints.
     is_first_block = store.proposer_boost_root == Root()
-    is_inclusion_list_satisfied = (
-        not block_root in store.unsatisfied_inclusion_list_blocks
-    )  # [New in EIP-7805]
-    if is_timely and is_first_block and is_inclusion_list_satisfied:  # [Modified in EIP-7805]
+    if is_timely and is_first_block and is_inclusion_list_satisfied:  # [Modified in EIP7805]
         store.proposer_boost_root = hash_tree_root(block)
 
     # Update checkpoints in store if necessary
