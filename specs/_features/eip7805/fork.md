@@ -71,7 +71,7 @@ def upgrade_to_eip7805(pre: electra.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            # [Modified in EIP-7805]
+            # [Modified in EIP7805]
             current_version=EIP7805_FORK_VERSION,
             epoch=epoch,
         ),
