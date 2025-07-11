@@ -1,5 +1,5 @@
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
-from eth2spec.utils.ssz.ssz_typing import List
+from eth2spec.utils.ssz.ssz_typing import Vector
 
 
 def get_empty_inclusion_list(spec, state, slot=None, validator_index=None):
@@ -13,7 +13,7 @@ def get_empty_inclusion_list(spec, state, slot=None, validator_index=None):
 
     committee = spec.get_inclusion_list_committee(state, slot)
     committee_root = hash_tree_root(
-        List[spec.ValidatorIndex, spec.INCLUSION_LIST_COMMITTEE_SIZE](committee)
+        Vector[spec.ValidatorIndex, spec.INCLUSION_LIST_COMMITTEE_SIZE](*committee)
     )
 
     if validator_index is None:
