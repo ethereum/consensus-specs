@@ -112,9 +112,9 @@ A node with validators attached downloads and custodies a higher minimum of
 custody groups per slot, determined by
 `get_validators_custody_requirement(state, validator_indices)`. Here, `state` is
 the current `BeaconState` and `validator_indices` is the list of indices
-corresponding to validators attached to the node. Any node with at least
-one validator attached, and with the sum of the effective balances of all
-attached validators being `total_node_balance`, downloads and custodies
+corresponding to validators attached to the node. Any node with at least one
+validator attached, and with the sum of the effective balances of all attached
+validators being `total_node_balance`, downloads and custodies
 `total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` custody groups per
 slot, with a minimum of `VALIDATOR_CUSTODY_REQUIREMENT` and of course a maximum
 of `NUMBER_OF_CUSTODY_GROUPS`.
