@@ -111,8 +111,8 @@ def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadRespo
 A node with validators attached downloads and custodies a higher minimum of
 custody groups per slot, determined by
 `get_validators_custody_requirement(state, validator_indices)`. Here, `state` is
-the current `BeaconState` and `validator_indices` is the list of
-indices corresponding to validators attached to the node. Any node with at least
+the current `BeaconState` and `validator_indices` is the list of indices
+corresponding to validators attached to the node. Any node with at least
 one validator attached, and with the sum of the effective balances of all
 attached validators being `total_node_balance`, downloads and custodies
 `total_node_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` custody groups per
