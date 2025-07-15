@@ -29,6 +29,7 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
         latest_message = spec.LatestMessage(
             slot=attestation.data.slot,
             root=attestation.data.beacon_block_root,
+            payload_present=0,
         )
     elif spec.fork in ALL_PHASES:
         latest_message = spec.LatestMessage(

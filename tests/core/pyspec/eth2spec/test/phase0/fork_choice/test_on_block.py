@@ -522,9 +522,9 @@ def test_proposer_boost(spec, state):
     payload_state_transition(spec, store, signed_block.message)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
     if is_post_eip7732(spec):
-        node = spec.ChildNode(
+        node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block),
-            slot=block.slot,
+            payload_status=spec.PAYLOAD_STATUS_PENDING,
         )
         assert spec.get_weight(store, node) > 0
     else:
@@ -539,9 +539,9 @@ def test_proposer_boost(spec, state):
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
     if is_post_eip7732(spec):
-        node = spec.ChildNode(
+        node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block),
-            slot=block.slot,
+            payload_status=spec.PAYLOAD_STATUS_PENDING,
         )
         assert spec.get_weight(store, node) == 0
     else:
@@ -558,9 +558,9 @@ def test_proposer_boost(spec, state):
     payload_state_transition(spec, store, signed_block.message)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
     if is_post_eip7732(spec):
-        node = spec.ChildNode(
+        node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block),
-            slot=block.slot,
+            payload_status=spec.PAYLOAD_STATUS_PENDING,
         )
         assert spec.get_weight(store, node) > 0
     else:
@@ -575,9 +575,9 @@ def test_proposer_boost(spec, state):
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
     if is_post_eip7732(spec):
-        node = spec.ChildNode(
+        node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block),
-            slot=block.slot,
+            payload_status=spec.PAYLOAD_STATUS_PENDING,
         )
         assert spec.get_weight(store, node) == 0
     else:
@@ -665,9 +665,9 @@ def test_proposer_boost_is_first_block(spec, state):
     # `proposer_boost_root` is now `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
     if is_post_eip7732(spec):
-        node = spec.ChildNode(
+        node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block_a),
-            slot=block_a.slot,
+            payload_status=spec.PAYLOAD_STATUS_PENDING,
         )
         assert spec.get_weight(store, node) > 0
     else:
@@ -690,9 +690,9 @@ def test_proposer_boost_is_first_block(spec, state):
     # `proposer_boost_root` is still `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
     if is_post_eip7732(spec):
-        node = spec.ChildNode(
+        node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block_b),
-            slot=block_b.slot,
+            payload_status=spec.PAYLOAD_STATUS_PENDING,
         )
         assert spec.get_weight(store, node) == 0
     else:
