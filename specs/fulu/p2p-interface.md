@@ -149,7 +149,7 @@ def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetI
 ### MetaData
 
 The `MetaData` stored locally by clients is updated with an additional field to
-communicate the custody subnet count.
+communicate the custody group count.
 
 ```
 (
