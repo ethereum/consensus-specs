@@ -5,6 +5,12 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Becoming a builder](#becoming-a-builder)
+  - [Builder withdrawal credentials](#builder-withdrawal-credentials)
+  - [Submit deposit](#submit-deposit)
+  - [Process deposit](#process-deposit)
+  - [Builder index](#builder-index)
+  - [Activation](#activation)
 - [Builders attributions](#builders-attributions)
   - [Constructing the payload bid](#constructing-the-payload-bid)
   - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
@@ -23,6 +29,42 @@ protocol called *Builders*. While Builders are a subset of the validator set,
 they have extra attributions that are optional. Validators may opt to not be
 builders and as such we collect the set of guidelines for those validators that
 want to act as builders in this document.
+
+## Becoming a builder
+
+#### Builder withdrawal credentials
+
+The `withdrawal_credentials` field for builders has a specific format that identifies them as registered builders in the network. Builders must use the `BUILDER_WITHDRAWAL_PREFIX` to participate in the EIP-7732 mechanism.
+
+The `withdrawal_credentials` field must be such that:
+- `withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX` (i.e., `0x03`)
+- `withdrawal_credentials[1:12] == b'\x00' * 11`
+- `withdrawal_credentials[12:] == builder_execution_address`
+
+Where `builder_execution_address` is a 20-byte execution layer address that will receive:
+- Withdrawal rewards (similar to `ETH1_ADDRESS_WITHDRAWAL_PREFIX`)
+- Compounding rewards (builders inherit compounding functionality)
+
+### Submit deposit
+
+Builders follow the same deposit process as regular validators, but with the builder-specific withdrawal credentials. The deposit must include:
+
+- `pubkey`: The builder's BLS public key
+- `withdrawal_credentials`: Set with `BUILDER_WITHDRAWAL_PREFIX` (`0x03`)
+- `amount`: At least `MIN_DEPOSIT_AMOUNT`
+- `signature`: BLS signature over the deposit data
+
+### Process deposit
+
+The beacon chain processes builder deposits identically to validator deposits, with the withdrawal credentials using `BUILDER_WITHDRAWAL_PREFIX`.
+
+### Builder index
+
+Once the deposit is processed, the builder is assigned a unique `validator_index` within the validator registry. This index is used to identify the builder in execution payload headers and envelopes.
+
+### Activation
+
+Builder activation follows the same process as validator activation.
 
 ## Builders attributions
 
