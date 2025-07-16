@@ -15,7 +15,7 @@
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [`notify_ptc_messages`](#notify_ptc_messages)
-  - [`is_payload_present`](#is_payload_present)
+  - [`is_payload_timely`](#is_payload_timely)
   - [`is_parent_node_full`](#is_parent_node_full)
   - [Modified `get_ancestor`](#modified-get_ancestor)
   - [Modified `get_checkpoint_block`](#modified-get_checkpoint_block)
@@ -185,10 +185,10 @@ def notify_ptc_messages(
             )
 ```
 
-### `is_payload_present`
+### `is_payload_timely`
 
 ```python
-def is_payload_present(store: Store, beacon_block_root: Root) -> bool:
+def is_payload_timely(store: Store, beacon_block_root: Root) -> bool:
     """
     Return whether the execution payload for the beacon block with root ``beacon_block_root`` 
     was voted as present by the PTC, and was locally determined to be available
@@ -297,17 +297,23 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
         store.blocks[node.root].slot + 1 == get_current_slot(store)
         and node.payload_status != PAYLOAD_STATUS_PENDING
     ):
-        proposer_root = store.proposer_boost_root
-        if is_payload_present(store, node.root) or (
-            proposer_root != Root()
-            and store.blocks[proposer_root].parent_root == node.root
-            and is_parent_node_full(store, store.blocks[proposer_root])
-        ):
-            # If we consider the payload present, payload status FULL
-            # gets more weight than EMPTY, and viceversa
-            return Gwei(1) if node.payload_status == PAYLOAD_STATUS_FULL else Gwei(0)
-        else:
-            return Gwei(1) if node.payload_status == PAYLOAD_STATUS_EMPTY else Gwei(0)
+        payload_status = PAYLOAD_STATUS_EMPTY
+        # payload is locally available
+        if node.root in store.execution_payload_states: 
+            # Move to FULL if the PTC has determined timeliness. 
+            # Regardless of the PTC, default to FULL whenever
+            # the proposer boost root is not set, or if it is
+            # already determined not to to be canonical,
+            # or if it itself agrees with FULL.
+            proposer_root = store.proposer_boost_root
+            if (
+                is_payload_timely(store, node.root)
+                or proposer_root == Root()
+                or store.blocks[proposer_root].parent_root != node.root
+                or is_parent_node_full(store, store.blocks[proposer_root])
+            ):
+                payload_status = PAYLOAD_STATUS_FULL
+        return Gwei(1) if node.payload_status == payload_status else Gwei(0)
     else:
         state = store.checkpoint_states[store.justified_checkpoint]
         unslashed_and_active_indices = [
