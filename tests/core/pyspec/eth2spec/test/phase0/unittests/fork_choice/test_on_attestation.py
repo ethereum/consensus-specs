@@ -26,12 +26,13 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
 
     sample_index = indexed_attestation.attesting_indices[0]
     if is_post_eip7732(spec):
+        assert attestation.data.index < 2
         latest_message = spec.LatestMessage(
             slot=attestation.data.slot,
             root=attestation.data.beacon_block_root,
-            payload_present=0,
+            payload_present=attestation.data.index == 1,
         )
-    elif spec.fork in ALL_PHASES:
+    else:
         latest_message = spec.LatestMessage(
             epoch=attestation.data.target.epoch,
             root=attestation.data.beacon_block_root,
