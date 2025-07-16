@@ -1,7 +1,6 @@
 from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
-from eth2spec.test.helpers.constants import ALL_PHASES
 from eth2spec.test.helpers.fork_choice import get_genesis_forkchoice_store
 from eth2spec.test.helpers.forks import is_post_eip7732, is_post_electra
 from eth2spec.test.helpers.state import (

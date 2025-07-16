@@ -23,7 +23,6 @@ from eth2spec.test.helpers.fork_choice import (
     payload_state_transition_no_store,
     tick_and_add_block,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732
 from eth2spec.test.helpers.state import (
     next_epoch,
     state_transition_and_sign_block,
