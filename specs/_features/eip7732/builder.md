@@ -60,13 +60,14 @@ to include. They produce a `SignedExecutionPayloadHeader` as follows.
 07. Set `header.slot` to be the slot for which this bid is aimed. This slot
     **MUST** be either the current slot or the next slot.
 08. Set `header.value` to be the value that the builder will pay the proposer if
-    the bid is accepted. The builder **MUST** have balance enough to fulfill
-    this bid.
+    the bid is accepted. The builder **MUST** have enough balance to fulfill
+    this bid and all pending payments.
 09. Set `header.kzg_commitments_root` to be the `hash_tree_root` of the
     `blobsbundle.commitments` field returned by `engine_getPayloadV4`.
 10. Set `header.fee_recipient` to be an execution address to receive the
     payment. This address can be obtained from the proposer directly via a
-    request or can be set from the withdrawal credentials of the proposer.
+    request or can be set from the withdrawal credentials of the proposer. The
+    burn address can be used as a fallback.
 
 After building the `header`, the builder obtains a `signature` of the header by
 using
@@ -189,5 +190,4 @@ and broadcasts it on the `execution_payload` global gossip topic.
 An honest builder that has seen a `SignedBeaconBlock` referencing his signed
 bid, but that block was not timely and thus it is not the head of the builder's
 chain, may choose to withhold their execution payload. For this the builder
-should simply act as if no block was ever produced and simply not broadcast the
-payload.
+should act as if no block was produced and not broadcast the payload.

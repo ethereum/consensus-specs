@@ -140,12 +140,12 @@ Let `block` be the beacon block corresponding to
 
 The following validations are added:
 
-- _[REJECT]_ `aggregate.data.index < 2`
-- _[REJECT]_ `aggregate.data.index == 0` if `block.slot == aggregate.data.slot`
+- _[REJECT]_ `aggregate.data.index < 2`.
+- _[REJECT]_ `aggregate.data.index == 0` if `block.slot == aggregate.data.slot`.
 
 The following validations are removed:
 
-- _[REJECT]_ `aggregate.data.index == 0`
+- _[REJECT]_ `aggregate.data.index == 0`.
 
 ###### `beacon_block`
 
@@ -274,13 +274,13 @@ Let `block` be the beacon block corresponding to
 
 The following validations are added:
 
-- _[REJECT]_ `attestation.data.index < 2`
+- _[REJECT]_ `attestation.data.index < 2`.
 - _[REJECT]_ `attestation.data.index == 0` if
-  `block.slot == attestation.data.slot`
+  `block.slot == attestation.data.slot`.
 
 The following validations are removed:
 
-- _[REJECT]_ `attestation.data.index == 0`
+- _[REJECT]_ `attestation.data.index == 0`.
 
 ### The Req/Resp domain
 
