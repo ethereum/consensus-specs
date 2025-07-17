@@ -194,6 +194,37 @@ def case_verify_cell_kzg_proof_batch():
             get_test_runner(get_inputs),
         )
 
+    # Valid: Not sorted
+    if True:
+
+        def get_inputs():
+            cell_indices = [3, 2, 0, 1]
+
+            commitments = []
+            commitments.append(cached_blob_to_kzg_commitment(VALID_BLOBS[3]))
+            commitments.append(cached_blob_to_kzg_commitment(VALID_BLOBS[4]))
+            commitments.append(cached_blob_to_kzg_commitment(VALID_BLOBS[3]))
+            commitments.append(cached_blob_to_kzg_commitment(VALID_BLOBS[5]))
+
+            cells = []
+            cells.append(cached_compute_cells_and_kzg_proofs(VALID_BLOBS[3])[0][3])
+            cells.append(cached_compute_cells_and_kzg_proofs(VALID_BLOBS[4])[0][2])
+            cells.append(cached_compute_cells_and_kzg_proofs(VALID_BLOBS[3])[0][0])
+            cells.append(cached_compute_cells_and_kzg_proofs(VALID_BLOBS[5])[0][1])
+
+            proofs = []
+            proofs.append(cached_compute_cells_and_kzg_proofs(VALID_BLOBS[3])[1][3])
+            proofs.append(cached_compute_cells_and_kzg_proofs(VALID_BLOBS[4])[1][2])
+            proofs.append(cached_compute_cells_and_kzg_proofs(VALID_BLOBS[3])[1][0])
+            proofs.append(cached_compute_cells_and_kzg_proofs(VALID_BLOBS[5])[1][1])
+
+            return commitments, cell_indices, cells, proofs
+
+        yield (
+            "verify_cell_kzg_proof_batch_case_valid_not_sorted",
+            get_test_runner(get_inputs),
+        )
+
     # Incorrect commitment
     if True:
 

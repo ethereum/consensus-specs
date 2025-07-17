@@ -650,7 +650,9 @@ def verify_cell_kzg_proof_batch(
 
     # Create the list of deduplicated commitments we are dealing with
     deduplicated_commitments = [
-        bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in set(commitments_bytes)
+        bytes_to_kzg_commitment(commitment_bytes)
+        for index, commitment_bytes in enumerate(commitments_bytes)
+        if commitments_bytes.index(commitment_bytes) == index
     ]
     # Create indices list mapping initial commitments (that may contain duplicates) to the deduplicated commitments
     commitment_indices = [
