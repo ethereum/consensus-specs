@@ -108,10 +108,10 @@ At any given slot, the status of the blockchain's head may be either
 
 ### Domain types
 
-| Name                    | Value                                          |
-| ----------------------- | ---------------------------------------------- |
-| `DOMAIN_BEACON_BUILDER` | `DomainType('0x1B000000')` # (New in EIP-7732) |
-| `DOMAIN_PTC_ATTESTER`   | `DomainType('0x0C000000')` # (New in EIP-7732) |
+| Name                    | Value                      |
+| ----------------------- | -------------------------- |
+| `DOMAIN_BEACON_BUILDER` | `DomainType('0x1B000000')` |
+| `DOMAIN_PTC_ATTESTER`   | `DomainType('0x0C000000')` |
 
 ### Misc
 
@@ -142,9 +142,9 @@ At any given slot, the status of the blockchain's head may be either
 
 ### Withdrawal prefixes
 
-| Name                        | Value            | Description                                                   |
-| --------------------------- | ---------------- | ------------------------------------------------------------- |
-| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` | *[New in EIP7732]* Withdrawal credential prefix for a builder |
+| Name                        | Value            | Description                                |
+| --------------------------- | ---------------- | ------------------------------------------ |
+| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` | Withdrawal credential prefix for a builder |
 
 ## Containers
 
@@ -237,14 +237,11 @@ class SignedExecutionPayloadEnvelope(Container):
 
 #### `BeaconBlockBody`
 
-*Note*: The Beacon Block body is modified to contain a
-`Signed ExecutionPayloadHeader`. The containers `BeaconBlock` and
+*Note*: The `BeaconBlockBody` container is modified to contain a
+`SignedExecutionPayloadHeader`. The containers `BeaconBlock` and
 `SignedBeaconBlock` are modified indirectly. The field `execution_requests` is
 removed from the beacon block body and moved into the signed execution payload
 envelope.
-
-*Note*: `execution_payload`, `blob_kzg_commitments`, and `execution_requests`
-have been removed.
 
 ```python
 class BeaconBlockBody(Container):
@@ -257,10 +254,16 @@ class BeaconBlockBody(Container):
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     sync_aggregate: SyncAggregate
+    # [Modified in EIP7732]
+    # Removed `execution_payload`
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
-    # [New in EIP-7732]
+    # [Modified in EIP7732]
+    # Removed `blob_kzg_commitments`
+    # [Modified in EIP7732]
+    # Removed `execution_requests`
+    # [New in EIP7732]
     signed_execution_payload_header: SignedExecutionPayloadHeader
-    # [New in EIP-7732]
+    # [New in EIP7732]
     payload_attestations: List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]
 ```
 
@@ -331,17 +334,17 @@ class BeaconState(Container):
     pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
-    # [New in EIP-7732]
+    # [New in EIP7732]
     execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
-    # [New in EIP-7732]
+    # [New in EIP7732]
     builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
-    # [New in EIP-7732]
+    # [New in EIP7732]
     builder_pending_withdrawals: List[BuilderPendingWithdrawal, BUILDER_PENDING_WITHDRAWALS_LIMIT]
-    # [New in EIP-7732]
+    # [New in EIP7732]
     latest_block_hash: Hash32
-    # [New in EIP-7732]
+    # [New in EIP7732]
     latest_full_slot: Slot
-    # [New in EIP-7732]
+    # [New in EIP7732]
     latest_withdrawals_root: Root
 ```
 
@@ -586,7 +589,7 @@ def process_slot(state: BeaconState) -> None:
     # Cache block root
     previous_block_root = hash_tree_root(state.latest_block_header)
     state.block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
-    # [New in EIP-7732]
+    # [New in EIP7732]
     # Unset the next payload availability
     state.execution_payload_availability[(state.slot + 1) % SLOTS_PER_HISTORICAL_ROOT] = 0b0
 ```
@@ -614,7 +617,8 @@ def process_epoch(state: BeaconState) -> None:
     process_historical_summaries_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
-    process_builder_pending_payments(state)  # [New in EIP-7732]
+    # [New in EIP7732]
+    process_builder_pending_payments(state)
 ```
 
 #### New `process_builder_pending_payments(state)`
@@ -642,15 +646,26 @@ def process_builder_pending_payments(state: BeaconState) -> None:
 
 ### Block processing
 
+*Note*: The function `process_block` is modified to call the new and updated
+functions and removes the call to `process_execution_payload`.
+
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    process_withdrawals(state)  # [Modified in EIP-7732]
-    # Removed `process_execution_payload` in EIP-7732
-    process_execution_payload_header(state, block)  # [New in EIP-7732]
+    # [Modified in EIP7732]
+    process_withdrawals(state)
+    # [Modified in EIP7732]
+    # Removed `process_execution_payload`
+    # [New in EIP7732]
+    process_execution_payload_header(state, block)
+    # [Modified in EIP7732]
+    process_withdrawals(state)
+    # [New in EIP7732]
+    process_execution_payload_header(state, block)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)  # [Modified in EIP-7732]
+    # [Modified in EIP7732]
+    process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
@@ -684,7 +699,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     processed_partial_withdrawals_count = 0
     processed_builder_withdrawals_count = 0
 
-    # [New in EIP-7732]
+    # [New in EIP7732]
     # Sweep for builder payments
     for withdrawal in state.builder_pending_withdrawals:
         if (
@@ -919,8 +934,9 @@ def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> 
 
 ##### Modified `process_operations`
 
-*Note*: `process_operations` is modified to process PTC attestations and to call
-updated functions
+*Note*: `process_operations` is modified to process PTC attestations and removes
+calls to `process_deposit_request`, `process_withdrawal_request`, and
+`process_consolidation_request`.
 
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
@@ -935,14 +951,19 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
-    for_ops(body.attestations, process_attestation)  # [Modified in EIP-7732]
+    # [Modified in EIP7732]
+    for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
-    # Removed `process_deposit_request` in EIP-7732
-    # Removed `process_withdrawal_request` in EIP-7732
-    # Removed `process_consolidation_request` in EIP-7732
-    for_ops(body.payload_attestations, process_payload_attestation)  # [New in EIP-7732]
+    # [Modified in EIP7732]
+    # Removed `process_deposit_request`
+    # [Modified in EIP7732]
+    # Removed `process_withdrawal_request`
+    # [Modified in EIP7732]
+    # Removed `process_consolidation_request`
+    # [New in EIP7732]
+    for_ops(body.payload_attestations, process_payload_attestation)
 ```
 
 ##### Attestations
@@ -960,7 +981,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
 
-    assert data.index < 2  # [Modified in EIP-7732]
+    # [Modified in EIP7732]
+    assert data.index < 2
     committee_indices = get_committee_indices(attestation.committee_bits)
     committee_offset = 0
     for committee_index in committee_indices:
@@ -1003,7 +1025,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
             ):
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
                 proposer_reward_numerator += get_base_reward(state, index) * weight
-                # [New in EIP-7732]
+                # [New in EIP7732]
                 # Update the builder payment weight
                 if flag_index == TIMELY_HEAD_FLAG_INDEX and is_attestation_same_slot(state, data):
                     payment.weight += state.validators[index].effective_balance
@@ -1080,7 +1102,7 @@ def validate_merge_block(block: BeaconBlock) -> None:
         )
         return
 
-    # Modified in EIP-7732
+    # [Modified in EIP7732]
     pow_block = get_pow_block(block.body.signed_execution_payload_header.message.parent_block_hash)
     # Check if `pow_block` is available
     assert pow_block is not None

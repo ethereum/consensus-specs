@@ -28,7 +28,8 @@ class PayloadAttributes(object):
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
     withdrawals: Sequence[Withdrawal]
-    parent_beacon_block_root: Root  # [New in Deneb:EIP4788]
+    # [New in Deneb:EIP4788]
+    parent_beacon_block_root: Root
 ```
 
 ### `is_data_available`

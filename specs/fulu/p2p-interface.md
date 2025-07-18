@@ -284,7 +284,8 @@ Request, Response Content:
   finalized_epoch: Epoch
   head_root: Root
   head_slot: Slot
-  earliest_available_slot: Slot  # [New in Fulu:EIP7594]
+  # [New in Fulu:EIP7594]
+  earliest_available_slot: Slot
 )
 ```
 
@@ -520,7 +521,7 @@ are unchanged from the Altair p2p networking document.
 
 ##### `eth2` field
 
-*[Updated in Fulu:EIP7892]*
+*[Modified in Fulu:EIP7892]*
 
 *Note*: The structure of `ENRForkID` has not changed but the field value
 computations have changed. Unless explicitly mentioned here, all specifications

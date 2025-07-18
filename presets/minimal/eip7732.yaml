@@ -6,5 +6,5 @@
 PTC_SIZE: 2
 # 2**2 (= 4)
 MAX_PAYLOAD_ATTESTATIONS: 2
-# floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK) (= 8 + 1 + 5 = 14)
+# floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK) (= 9 + 1 + 5 = 15)
 KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732: 15

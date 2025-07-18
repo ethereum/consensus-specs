@@ -13,7 +13,7 @@
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
-    - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
+  - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
   - [New `get_attester_head`](#new-get_attester_head)
   - [Modified `get_proposer_head`](#modified-get_proposer_head)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
@@ -95,7 +95,8 @@ class PayloadAttributes(object):
     suggested_fee_recipient: ExecutionAddress
     withdrawals: Sequence[Withdrawal]
     parent_beacon_block_root: Root
-    inclusion_list_transactions: Sequence[Transaction]  # [New in EIP7805]
+    # [New in EIP7805]
+    inclusion_list_transactions: Sequence[Transaction]
 ```
 
 ### Modified `Store`
@@ -120,7 +121,8 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    unsatisfied_inclusion_list_blocks: Set[Root] = field(default_factory=Set)  # [New in EIP7805]
+    # [New in EIP7805]
+    unsatisfied_inclusion_list_blocks: Set[Root] = field(default_factory=Set)
 ```
 
 ### Modified `get_forkchoice_store`
@@ -146,11 +148,12 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
-        unsatisfied_inclusion_list_blocks=set(),  # [New in EIP7805]
+        # [New in EIP7805]
+        unsatisfied_inclusion_list_blocks=set(),
     )
 ```
 
-#### New `validate_inclusion_lists`
+### New `validate_inclusion_lists`
 
 Blocks previously validated as satisfying the inclusion list constraints SHOULD
 NOT be invalidated even if their associated `InclusionList`s have subsequently
@@ -239,10 +242,9 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
         ]
     )
 
+    # [New in EIP7805]
     # Check that the head block is in the unsatisfied inclusion list blocks
-    inclusion_list_not_satisfied = (
-        head_root in store.unsatisfied_inclusion_list_blocks
-    )  # [New in EIP7805]
+    inclusion_list_not_satisfied = head_root in store.unsatisfied_inclusion_list_blocks
 
     if reorg_prerequisites and (head_late or inclusion_list_not_satisfied):
         return parent_root
@@ -337,7 +339,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add proposer score boost if the block is timely, not conflicting with an existing block
     # and satisfies the inclusion list constraints.
     is_first_block = store.proposer_boost_root == Root()
-    if is_timely and is_first_block and is_inclusion_list_satisfied:  # [Modified in EIP7805]
+    # [Modified in EIP7805]
+    if is_timely and is_first_block and is_inclusion_list_satisfied:
         store.proposer_boost_root = hash_tree_root(block)
 
     # Update checkpoints in store if necessary

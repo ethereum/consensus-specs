@@ -298,7 +298,8 @@ def process_epoch(state: BeaconState) -> None:
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
-    process_historical_summaries_update(state)  # [Modified in Capella]
+    # [Modified in Capella]
+    process_historical_summaries_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
 ```
@@ -322,12 +323,16 @@ def process_historical_summaries_update(state: BeaconState) -> None:
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    # [Modified in Capella] Removed `is_execution_enabled` check in Capella
-    process_withdrawals(state, block.body.execution_payload)  # [New in Capella]
-    process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [Modified in Capella]
+    # [Modified in Capella]
+    # Removed `is_execution_enabled` call
+    # [New in Capella]
+    process_withdrawals(state, block.body.execution_payload)
+    # [Modified in Capella]
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)  # [Modified in Capella]
+    # [Modified in Capella]
+    process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
@@ -409,7 +414,8 @@ def process_execution_payload(
     state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine
 ) -> None:
     payload = body.execution_payload
-    # [Modified in Capella] Removed `is_merge_transition_complete` check in Capella
+    # [Modified in Capella]
+    # Removed `is_merge_transition_complete` check
     # Verify consistency of the parent hash with respect to the previous execution payload header
     assert payload.parent_hash == state.latest_execution_payload_header.block_hash
     # Verify prev_randao
