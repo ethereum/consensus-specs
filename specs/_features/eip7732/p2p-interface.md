@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modification in EIP7732](#modification-in-eip7732)
+- [Modification in EIP-7732](#modification-in-eip-7732)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
@@ -39,7 +39,7 @@ This document contains the consensus-layer networking specification for EIP7732.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modification in EIP7732
+## Modification in EIP-7732
 
 ### Preset
 
@@ -78,7 +78,7 @@ class BlobSidecar(Container):
 
 ##### Modified `verify_blob_sidecar_inclusion_proof`
 
-`verify_blob_sidecar_inclusion_proof` is modified in EIP7732 to account for the
+`verify_blob_sidecar_inclusion_proof` is modified in EIP-7732 to account for the
 fact that the KZG commitments are included in the `ExecutionPayloadEnvelope` and
 no longer in the beacon block body.
 
@@ -149,7 +149,7 @@ The following validations are removed:
 
 ###### `beacon_block`
 
-[Modified in EIP7732]
+*[Modified in EIP7732]*
 
 The *type* of the payload of this topic changes to the (modified)
 `SignedBeaconBlock` found in [the Beacon Chain changes](./beacon-chain.md).

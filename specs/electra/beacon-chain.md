@@ -1196,7 +1196,8 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     withdrawals: List[Withdrawal] = []
     processed_partial_withdrawals_count = 0
 
-    # [New in Electra:EIP7251] Consume pending partial withdrawals
+    # [New in Electra:EIP7251]
+    # Consume pending partial withdrawals
     for withdrawal in state.pending_partial_withdrawals:
         if (
             withdrawal.withdrawable_epoch > epoch

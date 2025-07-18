@@ -87,7 +87,7 @@ and broadcasts it on the `execution_payload_header` global gossip topic.
 
 ### Constructing the `BlobSidecar`s
 
-[Modified in EIP7732]
+*[Modified in EIP7732]*
 
 The `BlobSidecar` container is modified indirectly because the constant
 `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` is modified. The function

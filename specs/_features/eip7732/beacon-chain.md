@@ -142,9 +142,9 @@ At any given slot, the status of the blockchain's head may be either
 
 ### Withdrawal prefixes
 
-| Name                        | Value            | Description                                                   |
-| --------------------------- | ---------------- | ------------------------------------------------------------- |
-| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` | *[New in EIP7732]* Withdrawal credential prefix for a builder |
+| Name                        | Value            | Description                                |
+| --------------------------- | ---------------- | ------------------------------------------ |
+| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` | Withdrawal credential prefix for a builder |
 
 ## Containers
 
@@ -653,6 +653,8 @@ functions and removes the call to `process_execution_payload`.
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     # [Modified in EIP7732]
+    process_withdrawals(state)
+    # [Modified in EIP7732]
     # Removed `process_execution_payload`
     # [New in EIP7732]
     process_execution_payload_header(state, block)
@@ -1100,7 +1102,7 @@ def validate_merge_block(block: BeaconBlock) -> None:
         )
         return
 
-    # Modified in EIP7732
+    # [Modified in EIP7732]
     pow_block = get_pow_block(block.body.signed_execution_payload_header.message.parent_block_hash)
     # Check if `pow_block` is available
     assert pow_block is not None
