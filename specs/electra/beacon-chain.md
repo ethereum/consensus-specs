@@ -438,7 +438,8 @@ def compute_proposer_index(
     Return from ``indices`` a random index sampled by effective balance.
     """
     assert len(indices) > 0
-    MAX_RANDOM_VALUE = 2**16 - 1  # [Modified in Electra]
+    # [Modified in Electra]
+    MAX_RANDOM_VALUE = 2**16 - 1
     i = uint64(0)
     total = uint64(len(indices))
     while True:
@@ -649,7 +650,8 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
     """
     epoch = Epoch(get_current_epoch(state) + 1)
 
-    MAX_RANDOM_VALUE = 2**16 - 1  # [Modified in Electra]
+    # [Modified in Electra]
+    MAX_RANDOM_VALUE = 2**16 - 1
     active_validator_indices = get_active_validator_indices(state, epoch)
     active_validator_count = uint64(len(active_validator_indices))
     seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
@@ -876,13 +878,15 @@ def process_registry_updates(state: BeaconState) -> None:
 
     # Process activation eligibility, ejections, and activations
     for index, validator in enumerate(state.validators):
-        if is_eligible_for_activation_queue(validator):  # [Modified in Electra:EIP7251]
+        # [Modified in Electra:EIP7251]
+        if is_eligible_for_activation_queue(validator):
             validator.activation_eligibility_epoch = current_epoch + 1
         elif (
             is_active_validator(validator, current_epoch)
             and validator.effective_balance <= EJECTION_BALANCE
         ):
-            initiate_validator_exit(state, ValidatorIndex(index))  # [Modified in Electra:EIP7251]
+            # [Modified in Electra:EIP7251]
+            initiate_validator_exit(state, ValidatorIndex(index))
         elif is_eligible_for_activation(state, validator):
             validator.activation_epoch = activation_epoch
 ```

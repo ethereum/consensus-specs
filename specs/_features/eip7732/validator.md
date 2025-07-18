@@ -55,7 +55,7 @@ def get_ptc_assignment(
 
 ### Lookahead
 
-[New in EIP-7732]
+*[New in EIP7732]*
 
 `get_ptc_assignment` should be called at the start of each epoch to get the
 assignment for the next epoch (`current_epoch + 1`). A validator should plan for
@@ -216,8 +216,9 @@ def prepare_execution_payload(
     # Verify consistency of the parent hash with respect to the previous execution payload header
     parent_hash = state.latest_execution_payload_header.block_hash
 
+    # [Modified in EIP7732]
     # Set the forkchoice head and initiate the payload build process
-    withdrawals, _, _ = get_expected_withdrawals(state)  # [Modified in EIP-7732]
+    withdrawals, _, _ = get_expected_withdrawals(state)
 
     payload_attributes = PayloadAttributes(
         timestamp=compute_time_at_slot(state, state.slot),

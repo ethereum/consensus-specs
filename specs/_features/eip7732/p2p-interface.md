@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modification in EIP-7732](#modification-in-eip-7732)
+- [Modification in EIP7732](#modification-in-eip7732)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
@@ -39,11 +39,11 @@ This document contains the consensus-layer networking specification for EIP7732.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modification in EIP-7732
+## Modification in EIP7732
 
 ### Preset
 
-*[Modified in EIP-7732]*
+*[Modified in EIP7732]*
 
 | Name                                           | Value        | Description                                                 |
 | ---------------------------------------------- | ------------ | ----------------------------------------------------------- |
@@ -78,7 +78,7 @@ class BlobSidecar(Container):
 
 ##### Modified `verify_blob_sidecar_inclusion_proof`
 
-`verify_blob_sidecar_inclusion_proof` is modified in EIP-7732 to account for the
+`verify_blob_sidecar_inclusion_proof` is modified in EIP7732 to account for the
 fact that the KZG commitments are included in the `ExecutionPayloadEnvelope` and
 no longer in the beacon block body.
 
@@ -115,18 +115,18 @@ Topics follow the same specification as in prior upgrades.
 
 The `beacon_block` topic is updated to support the modified type
 
-| Name           | Message Type                               |
-| -------------- | ------------------------------------------ |
-| `beacon_block` | `SignedBeaconBlock` [modified in EIP-7732] |
+| Name           | Message Type        |
+| -------------- | ------------------- |
+| `beacon_block` | `SignedBeaconBlock` |
 
 The new topics along with the type of the `data` field of a gossipsub message
 are given in this table:
 
-| Name                          | Message Type                                       |
-| ----------------------------- | -------------------------------------------------- |
-| `execution_payload_header`    | `SignedExecutionPayloadHeader` [New in EIP-7732]   |
-| `execution_payload`           | `SignedExecutionPayloadEnvelope` [New in EIP-7732] |
-| `payload_attestation_message` | `PayloadAttestationMessage` [New in EIP-7732]      |
+| Name                          | Message Type                     |
+| ----------------------------- | -------------------------------- |
+| `execution_payload_header`    | `SignedExecutionPayloadHeader`   |
+| `execution_payload`           | `SignedExecutionPayloadEnvelope` |
+| `payload_attestation_message` | `PayloadAttestationMessage`      |
 
 ##### Global topics
 
@@ -149,7 +149,7 @@ The following validations are removed:
 
 ###### `beacon_block`
 
-[Modified in EIP-7732]
+[Modified in EIP7732]
 
 The *type* of the payload of this topic changes to the (modified)
 `SignedBeaconBlock` found in [the Beacon Chain changes](./beacon-chain.md).
@@ -334,7 +334,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 **Protocol ID:**
 `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
 
-*[New in EIP-7732]*
+*[New in EIP7732]*
 
 Request Content:
 

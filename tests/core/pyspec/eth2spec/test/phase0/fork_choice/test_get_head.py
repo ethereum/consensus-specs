@@ -272,7 +272,7 @@ def test_filtered_block_tree(spec, state):
     yield "steps", test_steps
 
 
-# This test is skipped in EIP-7732 because the block's slot decides first on weight ties
+# This test is skipped in EIP7732 because the block's slot decides first on weight ties
 @with_all_phases_from_except(ALTAIR, [EIP7732])
 @spec_state_test
 def test_proposer_boost_correct_head(spec, state):

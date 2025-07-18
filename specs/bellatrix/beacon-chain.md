@@ -369,7 +369,8 @@ the reveal of the previous block.
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     if is_execution_enabled(state, block.body):
-        process_execution_payload(state, block.body, EXECUTION_ENGINE)  # [New in Bellatrix]
+        # [New in Bellatrix]
+        process_execution_payload(state, block.body, EXECUTION_ENGINE)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
@@ -429,7 +430,8 @@ def process_slashings(state: BeaconState) -> None:
     total_balance = get_total_active_balance(state)
     adjusted_total_slashing_balance = min(
         sum(state.slashings)
-        * PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX,  # [Modified in Bellatrix]
+        # [Modified in Bellatrix]
+        * PROPORTIONAL_SLASHING_MULTIPLIER_BELLATRIX,
         total_balance,
     )
     for index, validator in enumerate(state.validators):

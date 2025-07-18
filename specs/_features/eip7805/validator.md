@@ -176,9 +176,10 @@ def prepare_execution_payload(
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=withdrawals,
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
+        # [New in EIP7805]
         inclusion_list_transactions=get_inclusion_list_transactions(
             inclusion_list_store, state, Slot(state.slot - 1)
-        ),  # [New in EIP7805]
+        ),
     )
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=parent_hash,
