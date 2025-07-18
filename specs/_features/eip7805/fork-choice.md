@@ -13,7 +13,7 @@
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
-    - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
+  - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
   - [New `get_attester_head`](#new-get_attester_head)
   - [Modified `get_proposer_head`](#modified-get_proposer_head)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
@@ -150,7 +150,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     )
 ```
 
-#### New `validate_inclusion_lists`
+### New `validate_inclusion_lists`
 
 Blocks previously validated as satisfying the inclusion list constraints SHOULD
 NOT be invalidated even if their associated `InclusionList`s have subsequently
