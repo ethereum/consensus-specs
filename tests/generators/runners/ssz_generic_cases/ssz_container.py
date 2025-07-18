@@ -10,6 +10,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     ByteList,
     Container,
     List,
+    ProgressiveList,
     uint8,
     uint16,
     uint32,
@@ -52,6 +53,13 @@ class ComplexTestStruct(Container):
     G: Vector[VarTestStruct, 2]
 
 
+class ProgressiveTestStruct(Container):
+    A: ProgressiveList[byte]
+    B: ProgressiveList[uint64]
+    C: ProgressiveList[SmallTestStruct]
+    D: ProgressiveList[ProgressiveList[VarTestStruct]]
+
+
 class BitsStruct(Container):
     A: Bitlist[5]
     B: Bitvector[2]
@@ -72,6 +80,7 @@ PRESET_CONTAINERS: dict[str, tuple[type[View], Sequence[int]]] = {
     "FixedTestStruct": (FixedTestStruct, []),
     "VarTestStruct": (VarTestStruct, [2]),
     "ComplexTestStruct": (ComplexTestStruct, [2, 2 + 4 + 1, 2 + 4 + 1 + 4]),
+    "ProgressiveTestStruct": (ProgressiveTestStruct, [0, 4, 8, 12]),
     "BitsStruct": (BitsStruct, [0, 4 + 1 + 1, 4 + 1 + 1 + 4]),
 }
 
@@ -197,7 +206,7 @@ def invalid_cases():
                         )
                     if mode == RandomizationMode.mode_max_count:
                         serialized = serialize(container_case_fn(rng, mode, typ))
-                        serialized = serialized + serialized[:2]
+                        serialized = serialized + serialized[:3]
                         yield (
                             f"{name}_{mode.to_name()}_last_offset_{offset_index}_overflow",
                             invalid_test_case(lambda serialized=serialized: serialized),

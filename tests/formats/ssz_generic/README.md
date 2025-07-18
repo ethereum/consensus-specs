@@ -16,6 +16,9 @@ into a SSZ type:
 - List
   - `basic_list` *not supported yet*
   - `complex_list` *not supported yet*
+- ProgressiveList
+  - `basic_progressivelist`
+  - `complex_progressivelist` *not supported yet*
 - Bitfields
   - `bitvector`
   - `bitlist`
@@ -105,6 +108,18 @@ Data:
 {length}: an unsigned integer
 ```
 
+### `basic_progressivelist`
+
+```
+Template:
+
+proglist_{element type}
+
+Data:
+
+{element type}: bool, uint8, uint16, uint32, uint64, uint128, uint256
+```
+
 ### `bitlist`
 
 ```
@@ -191,6 +206,13 @@ class ComplexTestStruct(Container):
     E: VarTestStruct
     F: Vector[FixedTestStruct, 4]
     G: Vector[VarTestStruct, 2]
+
+
+class ProgressiveTestStruct(Container):
+    A: ProgressiveList[byte]
+    B: ProgressiveList[uint64]
+    C: ProgressiveList[SmallTestStruct]
+    D: ProgressiveList[ProgressiveList[VarTestStruct]]
 
 
 class BitsStruct(Container):
