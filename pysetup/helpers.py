@@ -284,6 +284,8 @@ ignored_dependencies = [
     "ByteVector",
     "ceillog2",
     "Container",
+    "defaultdict",
+    "DefaultDict",
     "dict",
     "Dict",
     "field",
