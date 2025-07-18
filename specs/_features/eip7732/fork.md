@@ -116,6 +116,12 @@ def upgrade_to_eip7732(pre: electra.BeaconState) -> BeaconState:
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
         # [New in EIP-7732]
+        execution_payload_availability=[0b1 for _ in range(SLOTS_PER_HISTORICAL_ROOT)],
+        # [New in EIP-7732]
+        builder_pending_payments=[BuilderPendingPayment() for _ in range(2 * SLOTS_PER_EPOCH)],
+        # [New in EIP-7732]
+        builder_pending_withdrawals=[],
+        # [New in EIP-7732]
         latest_block_hash=pre.latest_execution_payload_header.block_hash,
         # [New in EIP-7732]
         latest_full_slot=pre.slot,
