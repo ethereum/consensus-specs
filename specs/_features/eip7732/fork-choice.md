@@ -20,6 +20,7 @@
   - [Modified `get_ancestor`](#modified-get_ancestor)
   - [Modified `get_checkpoint_block`](#modified-get_checkpoint_block)
   - [`is_supporting_vote`](#is_supporting_vote)
+  - [`should_extend_payload`](#should_extend_payload)
   - [Modified `get_weight`](#modified-get_weight)
   - [New `get_fork_choice_children`](#new-get_fork_choice_children)
   - [Modified `get_head`](#modified-get_head)
@@ -286,34 +287,42 @@ def is_supporting_vote(store: Store, node: ForkChoiceNode, message: LatestMessag
         )
 ```
 
+### `should_extend_payload`
+
+*Note*: `should_extend_payload` decides whether to extend an available payload
+from the previous slot, corresponding to the beacon block `root`. We extend it
+if a majority of the PTC has voted for it. If not, we also extend it if the
+proposer boost root is not set, set to something conflicting with the given
+root, or to something extending the payload.
+
+```python
+def should_extend_payload(store: Store, root: Root) -> bool:
+    proposer_root = store.proposer_boost_root
+    return (
+        is_payload_timely(store, root)
+        or proposer_root == Root()
+        or store.blocks[proposer_root].parent_root != root
+        or is_parent_node_full(store, store.blocks[proposer_root])
+    )
+```
+
 ### Modified `get_weight`
 
 ```python
 def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
-    # When deciding on the payload status of a block from the previous slot,
-    # we consider the payload present if either a majority of the PTC voted
-    # for it or if the current proposer built its block on it
     if (
         store.blocks[node.root].slot + 1 == get_current_slot(store)
         and node.payload_status != PAYLOAD_STATUS_PENDING
     ):
-        payload_status = PAYLOAD_STATUS_EMPTY
-        # payload is locally available
-        if node.root in store.execution_payload_states:
-            # Move to FULL if the PTC has determined timeliness.
-            # Regardless of the PTC, default to FULL whenever
-            # the proposer boost root is not set, or if it is
-            # already determined not to to be canonical,
-            # or if it itself agrees with FULL.
-            proposer_root = store.proposer_boost_root
-            if (
-                is_payload_timely(store, node.root)
-                or proposer_root == Root()
-                or store.blocks[proposer_root].parent_root != node.root
-                or is_parent_node_full(store, store.blocks[proposer_root])
-            ):
-                payload_status = PAYLOAD_STATUS_FULL
-        return Gwei(1) if node.payload_status == payload_status else Gwei(0)
+        # When deciding on the payload status of a block from
+        # the previous slot, we choose between FULL and EMPTY
+        # based on `should_extend_payload`
+        if node.payload_status == PAYLOAD_STATUS_EMPTY:
+            return Gwei(1)
+        else:
+            # the node has payload status `PAYLOAD_STATUS_FULL`,
+            # and is already known to be locally available
+            return Gwei(2) if should_extend_payload(store, node.root) else Gwei(0)
     else:
         state = store.checkpoint_states[store.justified_checkpoint]
         unslashed_and_active_indices = [
@@ -361,10 +370,10 @@ def get_fork_choice_children(
     store: Store, blocks: Dict[Root, BeaconBlock], node: ForkChoiceNode
 ) -> Sequence[ForkChoiceNode]:
     if node.payload_status == PAYLOAD_STATUS_PENDING:
-        return [
-            ForkChoiceNode(root=node.root, payload_status=payload_status)
-            for payload_status in (PAYLOAD_STATUS_FULL, PAYLOAD_STATUS_EMPTY)
-        ]
+        children = [ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_EMPTY)]
+        if node.root in store.execution_payload_states:
+            children.append(ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_FULL))
+        return children
     else:
         return [
             ForkChoiceNode(root=root, payload_status=PAYLOAD_STATUS_PENDING)
