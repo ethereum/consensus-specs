@@ -47,7 +47,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                           | Value        | Description                                                 |
 | ---------------------------------------------- | ------------ | ----------------------------------------------------------- |
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732` | `21` **TBD** | Merkle proof depth for the `blob_kzg_commitments` list item |
+| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732` | `22` **TBD** | Merkle proof depth for the `blob_kzg_commitments` list item |
 
 ### Configuration
 
