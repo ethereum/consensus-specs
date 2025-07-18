@@ -54,7 +54,7 @@ jobs:
         run: python3 scripts/check_fork_comments.py
 
   tests:
-    needs: [lint, whitespace]
+    needs: [lint, whitespace, comments]
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     strategy:
       matrix:
