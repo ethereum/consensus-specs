@@ -583,7 +583,7 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
     slot = store.blocks[attestation.data.beacon_block_root].slot
     assert slot <= attestation.data.slot
 
-    # [New in EIP-7732]
+    # [New in EIP7732]
     assert attestation.data.index in [0, 1]
     if slot == attestation.data.slot:
         assert attestation.data.index == 0
