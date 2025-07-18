@@ -87,7 +87,8 @@ def prepare_execution_payload(
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
-    # [Modified in Capella] Removed `is_merge_transition_complete` check in Capella
+    # [Modified in Capella]
+    # Removed `is_merge_transition_complete` check
     parent_hash = state.latest_execution_payload_header.block_hash
 
     # Set the forkchoice head and initiate the payload build process
@@ -95,7 +96,8 @@ def prepare_execution_payload(
         timestamp=compute_time_at_slot(state, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
-        withdrawals=get_expected_withdrawals(state),  # [New in Capella]
+        # [New in Capella]
+        withdrawals=get_expected_withdrawals(state),
     )
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=parent_hash,

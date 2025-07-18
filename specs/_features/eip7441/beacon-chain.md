@@ -232,7 +232,8 @@ def process_epoch(state: BeaconState) -> None:
     process_historical_summaries_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
-    process_whisk_updates(state)  # [New in EIP7441]
+    # [New in EIP7441]
+    process_whisk_updates(state)
 ```
 
 ## Block processing
@@ -273,7 +274,8 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify proposer is not slashed
     proposer = state.validators[block.proposer_index]
     assert not proposer.slashed
-    process_whisk_opening_proof(state, block)  # [New in EIP7441]
+    # [New in EIP7441]
+    process_whisk_opening_proof(state, block)
 ```
 
 ### Whisk
@@ -378,8 +380,10 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
-    process_shuffled_trackers(state, block.body)  # [New in EIP7441]
-    process_whisk_registration(state, block.body)  # [New in EIP7441]
+    # [New in EIP7441]
+    process_shuffled_trackers(state, block.body)
+    # [New in EIP7441]
+    process_whisk_registration(state, block.body)
 ```
 
 ### Deposits

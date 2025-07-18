@@ -58,7 +58,8 @@ class BlobsBundle(object):
 class GetPayloadResponse(object):
     execution_payload: ExecutionPayload
     block_value: uint256
-    blobs_bundle: BlobsBundle  # [New in Deneb:EIP4844]
+    # [New in Deneb:EIP4844]
+    blobs_bundle: BlobsBundle
 ```
 
 ```python
@@ -131,9 +132,8 @@ def prepare_execution_payload(
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=get_expected_withdrawals(state),
-        parent_beacon_block_root=hash_tree_root(
-            state.latest_block_header
-        ),  # [New in Deneb:EIP4788]
+        # [New in Deneb:EIP4788]
+        parent_beacon_block_root=hash_tree_root(state.latest_block_header),
     )
     return execution_engine.notify_forkchoice_updated(
         head_block_hash=parent_hash,

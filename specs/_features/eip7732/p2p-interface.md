@@ -43,7 +43,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Preset
 
-*[Modified in EIP-7732]*
+*[Modified in EIP7732]*
 
 | Name                                           | Value        | Description                                                 |
 | ---------------------------------------------- | ------------ | ----------------------------------------------------------- |
@@ -115,18 +115,18 @@ Topics follow the same specification as in prior upgrades.
 
 The `beacon_block` topic is updated to support the modified type
 
-| Name           | Message Type                               |
-| -------------- | ------------------------------------------ |
-| `beacon_block` | `SignedBeaconBlock` [modified in EIP-7732] |
+| Name           | Message Type        |
+| -------------- | ------------------- |
+| `beacon_block` | `SignedBeaconBlock` |
 
 The new topics along with the type of the `data` field of a gossipsub message
 are given in this table:
 
-| Name                          | Message Type                                       |
-| ----------------------------- | -------------------------------------------------- |
-| `execution_payload_header`    | `SignedExecutionPayloadHeader` [New in EIP-7732]   |
-| `execution_payload`           | `SignedExecutionPayloadEnvelope` [New in EIP-7732] |
-| `payload_attestation_message` | `PayloadAttestationMessage` [New in EIP-7732]      |
+| Name                          | Message Type                     |
+| ----------------------------- | -------------------------------- |
+| `execution_payload_header`    | `SignedExecutionPayloadHeader`   |
+| `execution_payload`           | `SignedExecutionPayloadEnvelope` |
+| `payload_attestation_message` | `PayloadAttestationMessage`      |
 
 ##### Global topics
 
@@ -149,7 +149,7 @@ The following validations are removed:
 
 ###### `beacon_block`
 
-[Modified in EIP-7732]
+*[Modified in EIP7732]*
 
 The *type* of the payload of this topic changes to the (modified)
 `SignedBeaconBlock` found in [the Beacon Chain changes](./beacon-chain.md).
@@ -334,7 +334,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 **Protocol ID:**
 `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
 
-*[New in EIP-7732]*
+*[New in EIP7732]*
 
 Request Content:
 

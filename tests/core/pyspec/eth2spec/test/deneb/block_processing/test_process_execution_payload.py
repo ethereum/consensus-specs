@@ -152,7 +152,7 @@ def test_incorrect_blob_tx_type(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
+    # Make the first block full in EIP7732
     if is_post_eip7732(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
 
@@ -175,7 +175,7 @@ def test_incorrect_transaction_length_1_extra_byte(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
+    # Make the first block full in EIP7732
     if is_post_eip7732(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
@@ -197,7 +197,7 @@ def test_incorrect_transaction_length_1_byte_short(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
+    # Make the first block full in EIP7732
     if is_post_eip7732(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
@@ -219,7 +219,7 @@ def test_incorrect_transaction_length_empty(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
+    # Make the first block full in EIP7732
     if is_post_eip7732(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
@@ -241,7 +241,7 @@ def test_incorrect_transaction_length_32_extra_bytes(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
+    # Make the first block full in EIP7732
     if is_post_eip7732(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
@@ -262,7 +262,7 @@ def test_no_transactions_with_commitments(spec, state):
     execution_payload.transactions = []
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
+    # Make the first block full in EIP7732
     if is_post_eip7732(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
@@ -284,7 +284,7 @@ def test_incorrect_commitment(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
+    # Make the first block full in EIP7732
     if is_post_eip7732(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
@@ -328,7 +328,7 @@ def test_incorrect_commitments_order(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
+    # Make the first block full in EIP7732
     if is_post_eip7732(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
@@ -375,7 +375,7 @@ def test_incorrect_block_hash(spec, state):
     execution_payload.block_hash = b"\x12" * 32  # incorrect block hash
 
     # CL itself doesn't verify EL block hash
-    # Make the first block full in EIP-7732
+    # Make the first block full in EIP7732
     if is_post_eip7732(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
@@ -399,7 +399,7 @@ def test_zeroed_commitment(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
+    # Make the first block full in EIP7732
     if is_post_eip7732(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
@@ -420,7 +420,7 @@ def test_invalid_correct_input__execution_invalid(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
+    # Make the first block full in EIP7732
     if is_post_eip7732(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
@@ -443,7 +443,7 @@ def test_invalid_exceed_max_blobs_per_block(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
+    # Make the first block full in EIP7732
     if is_post_eip7732(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(

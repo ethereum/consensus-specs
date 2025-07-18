@@ -41,13 +41,13 @@ This is the modification of the fork choice accompanying the EIP-7732 upgrade.
 
 ## Constants
 
-| Name                           | Value                         |
-| ------------------------------ | ----------------------------- |
-| `PAYLOAD_TIMELY_THRESHOLD`     | `PTC_SIZE // 2` (= 256)       |
-| `INTERVALS_PER_SLOT`           | `4` # [modified in EIP-7732]  |
-| `PROPOSER_SCORE_BOOST_EIP7732` | `20` # [modified in EIP-7732] |
-| `PAYLOAD_WITHHOLD_BOOST`       | `40`                          |
-| `PAYLOAD_REVEAL_BOOST`         | `40`                          |
+| Name                           | Value                   |
+| ------------------------------ | ----------------------- |
+| `PAYLOAD_TIMELY_THRESHOLD`     | `PTC_SIZE // 2` (= 256) |
+| `INTERVALS_PER_SLOT`           | `4`                     |
+| `PROPOSER_SCORE_BOOST_EIP7732` | `20`                    |
+| `PAYLOAD_WITHHOLD_BOOST`       | `40`                    |
+| `PAYLOAD_REVEAL_BOOST`         | `40`                    |
 
 ## Containers
 
@@ -113,9 +113,12 @@ class Store(object):
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
-    payload_withhold_boost_root: Root  # [New in EIP-7732]
-    payload_withhold_boost_full: boolean  # [New in EIP-7732]
-    payload_reveal_boost_root: Root  # [New in EIP-7732]
+    # [New in EIP7732]
+    payload_withhold_boost_root: Root
+    # [New in EIP7732]
+    payload_withhold_boost_full: boolean
+    # [New in EIP7732]
+    payload_reveal_boost_root: Root
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
@@ -123,12 +126,10 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    execution_payload_states: Dict[Root, BeaconState] = field(
-        default_factory=dict
-    )  # [New in EIP-7732]
-    ptc_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
-        default_factory=dict
-    )  # [New in EIP-7732]
+    # [New in EIP7732]
+    execution_payload_states: Dict[Root, BeaconState] = field(default_factory=dict)
+    # [New in EIP7732]
+    ptc_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
 ```
 
 ### Modified `get_forkchoice_store`
@@ -149,15 +150,19 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         unrealized_justified_checkpoint=justified_checkpoint,
         unrealized_finalized_checkpoint=finalized_checkpoint,
         proposer_boost_root=proposer_boost_root,
-        payload_withhold_boost_root=proposer_boost_root,  # [New in EIP-7732]
-        payload_withhold_boost_full=True,  # [New in EIP-7732]
-        payload_reveal_boost_root=proposer_boost_root,  # [New in EIP-7732]
+        # [New in EIP7732]
+        payload_withhold_boost_root=proposer_boost_root,
+        # [New in EIP7732]
+        payload_withhold_boost_full=True,
+        # [New in EIP7732]
+        payload_reveal_boost_root=proposer_boost_root,
         equivocating_indices=set(),
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
-        execution_payload_states={anchor_root: copy(anchor_state)},  # [New in EIP-7732]
+        # [New in EIP7732]
+        execution_payload_states={anchor_root: copy(anchor_state)},
         ptc_vote={anchor_root: Vector[boolean, PTC_SIZE]()},
     )
 ```
