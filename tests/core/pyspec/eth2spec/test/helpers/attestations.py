@@ -2,7 +2,12 @@ from lru import LRU
 
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
-from eth2spec.test.helpers.forks import is_post_altair, is_post_deneb, is_post_electra
+from eth2spec.test.helpers.forks import (
+    is_post_altair,
+    is_post_deneb,
+    is_post_eip7732,
+    is_post_electra,
+)
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.state import (
     next_epoch,
@@ -79,9 +84,15 @@ def build_attestation_data(spec, state, slot, index, beacon_block_root=None, sha
         source_epoch = state.current_justified_checkpoint.epoch
         source_root = state.current_justified_checkpoint.root
 
+    if is_post_electra(spec):
+        index = 0
+        if is_post_eip7732(spec):
+            if slot >= 1 and beacon_block_root == spec.get_block_root_at_slot(state, slot - 1):
+                index = 1
+
     data = spec.AttestationData(
         slot=slot,
-        index=0 if is_post_electra(spec) else index,
+        index=index,
         beacon_block_root=beacon_block_root,
         source=spec.Checkpoint(epoch=source_epoch, root=source_root),
         target=spec.Checkpoint(epoch=spec.compute_epoch_at_slot(slot), root=epoch_boundary_root),
