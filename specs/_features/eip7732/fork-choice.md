@@ -14,22 +14,22 @@
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [`notify_ptc_messages`](#notify_ptc_messages)
-  - [`is_payload_timely`](#is_payload_timely)
-  - [`get_parent_payload_status`](#get_parent_payload_status)
-  - [`is_parent_node_full`](#is_parent_node_full)
+  - [New `is_payload_timely`](#new-is_payload_timely)
+  - [New `get_parent_payload_status`](#new-get_parent_payload_status)
+  - [New `is_parent_node_full`](#new-is_parent_node_full)
   - [Modified `get_ancestor`](#modified-get_ancestor)
   - [Modified `get_checkpoint_block`](#modified-get_checkpoint_block)
-  - [`is_supporting_vote`](#is_supporting_vote)
-  - [`should_extend_payload`](#should_extend_payload)
+  - [New `is_supporting_vote`](#new-is_supporting_vote)
+  - [New `should_extend_payload`](#new-should_extend_payload)
   - [Modified `get_weight`](#modified-get_weight)
-  - [New `get_fork_choice_children`](#new-get_fork_choice_children)
+  - [New `get_node_children`](#new-get_node_children)
   - [Modified `get_head`](#modified-get_head)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [Modified `on_block`](#modified-on_block)
 - [New fork-choice handlers](#new-fork-choice-handlers)
   - [New `on_execution_payload`](#new-on_execution_payload)
-  - [`on_payload_attestation_message`](#on_payload_attestation_message)
-  - [`validate_on_attestation`](#validate_on_attestation)
+  - [New `on_payload_attestation_message`](#new-on_payload_attestation_message)
+  - [Modified `validate_on_attestation`](#modified-validate_on_attestation)
   - [Modified `validate_merge_block`](#modified-validate_merge_block)
 
 <!-- mdformat-toc end -->
@@ -349,8 +349,8 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
         proposer_score = Gwei(0)
 
         # `proposer_boost_root` is treated as a vote for the
-        # proposer's block, in the current slot. Proposer boost
-        # is applied accordingly, to all ancestors
+        # proposer's block in the current slot. Proposer boost
+        # is applied accordingly to all ancestors
         message = LatestMessage(
             slot=get_current_slot(store),
             root=store.proposer_boost_root,
@@ -362,10 +362,10 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
         return attestation_score + proposer_score
 ```
 
-### New `get_fork_choice_children`
+### New `get_node_children`
 
 ```python
-def get_fork_choice_children(
+def get_node_children(
     store: Store, blocks: Dict[Root, BeaconBlock], node: ForkChoiceNode
 ) -> Sequence[ForkChoiceNode]:
     if node.payload_status == PAYLOAD_STATUS_PENDING:
@@ -400,7 +400,7 @@ def get_head(store: Store) -> ForkChoiceNode:
     )
 
     while True:
-        children = get_fork_choice_children(store, blocks, head)
+        children = get_node_children(store, blocks, head)
         if len(children) == 0:
             return head
         # Sort by latest attesting balance with ties broken lexicographically
@@ -552,13 +552,6 @@ def on_payload_attestation_message(
     ptc_index = ptc.index(ptc_message.validator_index)
     ptc_vote = store.ptc_vote[data.beacon_block_root]
     ptc_vote[ptc_index] = data.payload_present
-
-    # Only update payload boosts with attestations from a block if the block is for the current slot and it's early
-    if is_from_block and data.slot + 1 != get_current_slot(store):
-        return
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    if is_from_block and time_into_slot >= SECONDS_PER_SLOT // INTERVALS_PER_SLOT:
-        return
 ```
 
 ### Modified `validate_on_attestation`
@@ -567,25 +560,29 @@ def on_payload_attestation_message(
 def validate_on_attestation(store: Store, attestation: Attestation, is_from_block: bool) -> None:
     target = attestation.data.target
 
-    # If the given attestation is not from a beacon block message, we have to check the target epoch scope.
+    # If the given attestation is not from a beacon block message,
+    # we have to check the target epoch scope.
     if not is_from_block:
         validate_target_epoch_against_current_time(store, attestation)
 
-    # Check that the epoch number and slot number are matching
+    # Check that the epoch number and slot number are matching.
     assert target.epoch == compute_epoch_at_slot(attestation.data.slot)
 
-    # Attestation target must be for a known block. If target block is unknown, delay consideration until block is found
+    # Attestation target must be for a known block. If target block
+    # is unknown, delay consideration until block is found.
     assert target.root in store.blocks
 
-    # Attestations must be for a known block. If block is unknown, delay consideration until the block is found
+    # Attestations must be for a known block. If block
+    # is unknown, delay consideration until the block is found.
     assert attestation.data.beacon_block_root in store.blocks
-    # Attestations must not be for blocks in the future. If not, the attestation should not be considered
-    slot = store.blocks[attestation.data.beacon_block_root].slot
-    assert slot <= attestation.data.slot
+    # Attestations must not be for blocks in the future.
+    # If not, the attestation should not be considered.
+    block_slot = store.blocks[attestation.data.beacon_block_root].slot
+    assert block_slot <= attestation.data.slot
 
     # [New in EIP7732]
     assert attestation.data.index in [0, 1]
-    if slot == attestation.data.slot:
+    if block_slot == attestation.data.slot:
         assert attestation.data.index == 0
 
     # LMD vote must be consistent with FFG vote target
