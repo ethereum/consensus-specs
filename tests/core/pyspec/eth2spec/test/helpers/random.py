@@ -157,7 +157,9 @@ def randomize_epoch_participation(spec, state, epoch, rng):
             epoch_participation[index] = flags
 
 
-def randomize_previous_epoch_participation(spec, state, rng=Random(8020)):
+def randomize_previous_epoch_participation(spec, state, rng=None):
+    if rng is None:
+        rng = Random(8020)
     cached_prepare_state_with_attestations(spec, state)
     randomize_epoch_participation(spec, state, spec.get_previous_epoch(state), rng)
     if not is_post_altair(spec):
@@ -168,13 +170,17 @@ def randomize_previous_epoch_participation(spec, state, rng=Random(8020)):
         ]
 
 
-def randomize_attestation_participation(spec, state, rng=Random(8020)):
+def randomize_attestation_participation(spec, state, rng=None):
+    if rng is None:
+        rng = Random(8020)
     cached_prepare_state_with_attestations(spec, state)
     randomize_epoch_participation(spec, state, spec.get_previous_epoch(state), rng)
     randomize_epoch_participation(spec, state, spec.get_current_epoch(state), rng)
 
 
-def randomize_state(spec, state, rng=Random(8020), exit_fraction=0.5, slash_fraction=0.5):
+def randomize_state(spec, state, rng=None, exit_fraction=0.5, slash_fraction=0.5):
+    if rng is None:
+        rng = Random(8020)
     set_some_new_deposits(spec, state, rng)
     exit_random_validators(spec, state, rng, fraction=exit_fraction)
     slash_random_validators(spec, state, rng, fraction=slash_fraction)

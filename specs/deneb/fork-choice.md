@@ -3,7 +3,6 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Containers](#containers)
 - [Helpers](#helpers)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [`is_data_available`](#is_data_available)
@@ -15,8 +14,6 @@
 ## Introduction
 
 This is the modification of the fork choice accompanying the Deneb upgrade.
-
-## Containers
 
 ## Helpers
 
@@ -31,7 +28,8 @@ class PayloadAttributes(object):
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
     withdrawals: Sequence[Withdrawal]
-    parent_beacon_block_root: Root  # [New in Deneb:EIP4788]
+    # [New in Deneb:EIP4788]
+    parent_beacon_block_root: Root
 ```
 
 ### `is_data_available`

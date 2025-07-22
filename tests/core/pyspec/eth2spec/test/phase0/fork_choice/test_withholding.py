@@ -207,7 +207,7 @@ def test_withholding_attack_unviable_honest_chain(spec, state):
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
 
     # Upon revealing the withheld attack block, it should become the head
-    # Except in EIP-7732 in which it's parent becomes head because of the
+    # Except in EIP7732 in which it's parent becomes head because of the
     # attestations during the attacker's block's committee.
     yield from tick_and_add_block(spec, store, signed_attack_block, test_steps)
     payload_state_transition(spec, store, signed_attack_block.message)

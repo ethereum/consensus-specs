@@ -41,13 +41,13 @@ This is the modification of the fork choice accompanying the EIP-7732 upgrade.
 
 ## Constants
 
-| Name                           | Value                         |
-| ------------------------------ | ----------------------------- |
-| `PAYLOAD_TIMELY_THRESHOLD`     | `PTC_SIZE // 2` (= 256)       |
-| `INTERVALS_PER_SLOT`           | `4` # [modified in EIP-7732]  |
-| `PROPOSER_SCORE_BOOST_EIP7732` | `20` # [modified in EIP-7732] |
-| `PAYLOAD_WITHHOLD_BOOST`       | `40`                          |
-| `PAYLOAD_REVEAL_BOOST`         | `40`                          |
+| Name                           | Value                   |
+| ------------------------------ | ----------------------- |
+| `PAYLOAD_TIMELY_THRESHOLD`     | `PTC_SIZE // 2` (= 256) |
+| `INTERVALS_PER_SLOT`           | `4`                     |
+| `PROPOSER_SCORE_BOOST_EIP7732` | `20`                    |
+| `PAYLOAD_WITHHOLD_BOOST`       | `40`                    |
+| `PAYLOAD_REVEAL_BOOST`         | `40`                    |
 
 ## Containers
 
@@ -113,9 +113,12 @@ class Store(object):
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
-    payload_withhold_boost_root: Root  # [New in EIP-7732]
-    payload_withhold_boost_full: boolean  # [New in EIP-7732]
-    payload_reveal_boost_root: Root  # [New in EIP-7732]
+    # [New in EIP7732]
+    payload_withhold_boost_root: Root
+    # [New in EIP7732]
+    payload_withhold_boost_full: boolean
+    # [New in EIP7732]
+    payload_reveal_boost_root: Root
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
@@ -123,10 +126,10 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    execution_payload_states: Dict[Root, BeaconState] = field(
-        default_factory=dict
-    )  # [New in EIP-7732]
-    ptc_vote: Dict[Root, Vector[uint8, PTC_SIZE]] = field(default_factory=dict)  # [New in EIP-7732]
+    # [New in EIP7732]
+    execution_payload_states: Dict[Root, BeaconState] = field(default_factory=dict)
+    # [New in EIP7732]
+    ptc_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
 ```
 
 ### Modified `get_forkchoice_store`
@@ -147,16 +150,20 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         unrealized_justified_checkpoint=justified_checkpoint,
         unrealized_finalized_checkpoint=finalized_checkpoint,
         proposer_boost_root=proposer_boost_root,
-        payload_withhold_boost_root=proposer_boost_root,  # [New in EIP-7732]
-        payload_withhold_boost_full=True,  # [New in EIP-7732]
-        payload_reveal_boost_root=proposer_boost_root,  # [New in EIP-7732]
+        # [New in EIP7732]
+        payload_withhold_boost_root=proposer_boost_root,
+        # [New in EIP7732]
+        payload_withhold_boost_full=True,
+        # [New in EIP7732]
+        payload_reveal_boost_root=proposer_boost_root,
         equivocating_indices=set(),
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
-        execution_payload_states={anchor_root: copy(anchor_state)},  # [New in EIP-7732]
-        ptc_vote={anchor_root: Vector[uint8, PTC_SIZE]()},
+        # [New in EIP7732]
+        execution_payload_states={anchor_root: copy(anchor_state)},
+        ptc_vote={anchor_root: Vector[boolean, PTC_SIZE]()},
     )
 ```
 
@@ -198,7 +205,7 @@ def is_payload_present(store: Store, beacon_block_root: Root) -> bool:
     """
     # The beacon block root must be known
     assert beacon_block_root in store.ptc_vote
-    return store.ptc_vote[beacon_block_root].count(PAYLOAD_PRESENT) > PAYLOAD_TIMELY_THRESHOLD
+    return store.ptc_vote[beacon_block_root].count(True) > PAYLOAD_TIMELY_THRESHOLD
 ```
 
 ### `is_parent_node_full`
@@ -488,7 +495,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
     # Add a new PTC voting for this block to the store
-    store.ptc_vote[block_root] = [PAYLOAD_ABSENT] * PTC_SIZE
+    store.ptc_vote[block_root] = [False] * PTC_SIZE
 
     # Notify the store about the payload_attestations in the block
     notify_ptc_messages(store, state, block.body.payload_attestations)
@@ -613,7 +620,7 @@ def on_payload_attestation_message(
     # Update the ptc vote for the block
     ptc_index = ptc.index(ptc_message.validator_index)
     ptc_vote = store.ptc_vote[data.beacon_block_root]
-    ptc_vote[ptc_index] = data.payload_status
+    ptc_vote[ptc_index] = data.payload_present
 
     # Only update payload boosts with attestations from a block if the block is for the current slot and it's early
     if is_from_block and data.slot + 1 != get_current_slot(store):
@@ -623,9 +630,9 @@ def on_payload_attestation_message(
         return
 
     # Update the payload boosts if threshold has been achieved
-    if ptc_vote.count(PAYLOAD_PRESENT) > PAYLOAD_TIMELY_THRESHOLD:
+    if ptc_vote.count(True) > PAYLOAD_TIMELY_THRESHOLD:
         store.payload_reveal_boost_root = data.beacon_block_root
-    if ptc_vote.count(PAYLOAD_WITHHELD) > PAYLOAD_TIMELY_THRESHOLD:
+    if ptc_vote.count(False) > PAYLOAD_TIMELY_THRESHOLD:
         block = store.blocks[data.beacon_block_root]
         store.payload_withhold_boost_root = block.parent_root
         store.payload_withhold_boost_full = is_parent_node_full(store, block)

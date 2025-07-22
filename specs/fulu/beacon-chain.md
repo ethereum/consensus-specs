@@ -206,7 +206,8 @@ and is now computed for the given epoch with `compute_fork_version`.
 ```python
 def compute_fork_digest(
     genesis_validators_root: Root,
-    epoch: Epoch,  # [New in Fulu:EIP7892]
+    # [New in Fulu:EIP7892]
+    epoch: Epoch,
 ) -> ForkDigest:
     """
     Return the 4-byte fork digest for the ``version`` and ``genesis_validators_root``
@@ -300,7 +301,8 @@ def process_epoch(state: BeaconState) -> None:
     process_historical_summaries_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
-    process_proposer_lookahead(state)  # [New in Fulu:EIP7917]
+    # [New in Fulu:EIP7917]
+    process_proposer_lookahead(state)
 ```
 
 #### New `process_proposer_lookahead`

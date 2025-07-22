@@ -8,12 +8,13 @@ class Phase0SpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str) -> str:
         return """from lru import LRU
+from collections import defaultdict
 from dataclasses import (
     dataclass,
     field,
 )
 from typing import (
-    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple, Final
+    Any, Callable, Dict, DefaultDict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple, Final
 )
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes

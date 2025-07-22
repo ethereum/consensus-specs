@@ -41,7 +41,6 @@ def run_execution_payload_processing(
         envelope = spec.ExecutionPayloadEnvelope(
             payload=execution_payload,
             beacon_block_root=state.latest_block_header.hash_tree_root(),
-            payload_withheld=False,
         )
         post_state = state.copy()
         post_state.latest_block_hash = execution_payload.block_hash

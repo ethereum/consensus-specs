@@ -21,7 +21,7 @@ A new handler is added with this upgrade:
 
 - `on_reused_index(store, index)` whenever a validator index
   `index: ValidatorIndex` is reused. That is,
-  [`get_index_for_new_validator()`](./beacon-chain.md#get_index_for_new_validator)
+  [`get_index_for_new_validator()`](./beacon-chain.md#modified-get_index_for_new_validator)
   provides an index due to a return value of `True` from
   [`is_reusable_validator()`](./beacon-chain.md#is_reusable_validator).
 

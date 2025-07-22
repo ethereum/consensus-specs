@@ -3,7 +3,6 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
@@ -20,8 +19,6 @@ This is the modification of the fork choice according to the Capella upgrade.
 
 Unless stated explicitly, all prior functionality from
 [Bellatrix](../bellatrix/fork-choice.md) is inherited.
-
-## Custom types
 
 ## Protocols
 
@@ -58,7 +55,8 @@ class PayloadAttributes(object):
     timestamp: uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
-    withdrawals: Sequence[Withdrawal]  # [New in Capella]
+    # [New in Capella]
+    withdrawals: Sequence[Withdrawal]
 ```
 
 ## Updated fork-choice handlers

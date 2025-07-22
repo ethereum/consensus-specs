@@ -16,6 +16,8 @@
     - [Blob sidecars](#blob-sidecars)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing a payload attestation](#constructing-a-payload-attestation)
+- [Modified functions](#modified-functions)
+  - [Modified `prepare_execution_payload`](#modified-prepare_execution_payload)
 
 <!-- mdformat-toc end -->
 
@@ -53,7 +55,7 @@ def get_ptc_assignment(
 
 ### Lookahead
 
-[New in EIP-7732]
+*[New in EIP7732]*
 
 `get_ptc_assignment` should be called at the start of each epoch to get the
 assignment for the next epoch (`current_epoch + 1`). A validator should plan for
@@ -72,8 +74,20 @@ All validator responsibilities remain unchanged other than the following:
 
 ### Attestation
 
-Attestation duties are not changed for validators, however the attestation
-deadline is implicitly changed by the change in `INTERVALS_PER_SLOT`.
+The attestation deadline is implicitly changed by the change in
+`INTERVALS_PER_SLOT`. Moreover, the `attestation.data.index` field is now used
+to signal the payload status of the block being attested to
+(`attestation.data.beacon_block_root`). With the alias
+`data = attestation.data`, the validator should set this field as follows:
+
+- If `block.slot == current_slot` (i.e., `data.slot`), then always set
+  `data.index = 0`.
+- Otherwise, set `data.index` based on the payload status in the validator's
+  fork-choice:
+  - Set `data.index = 0` to signal that the payload is not present in the
+    canonical chain (payload status is `EMPTY` in the fork-choice).
+  - Set `data.index = 1` to signal that the payload is present in the canonical
+    chain (payload status is `FULL` in the fork-choice).
 
 ### Sync Committee participations
 
@@ -122,11 +136,6 @@ in the block. The validator will have to
   `aggregation_bits` field by using the relative position of the validator
   indices with respect to the PTC that is obtained from
   `get_ptc(state, block_slot - 1)`.
-- The proposer should only include payload attestations that are consistent with
-  the current block they are proposing. That is, if the previous block had a
-  payload, they should only include attestations with
-  `payload_status = PAYLOAD_PRESENT`. Proposers are penalized for attestations
-  that are not-consistent with their view.
 
 #### Blob sidecars
 
@@ -161,15 +170,9 @@ The validator creates `payload_attestation_message` as follows:
 - Set `data.beacon_block_root` be the HTR of the beacon block seen for the
   assigned slot
 - Set `data.slot` to be the assigned slot.
-- Set `data.payload_status` as follows
-  - If a `SignedExecutionPayloadEnvelope` has been seen referencing the block
-    `data.beacon_block_root` and the envelope has `payload_withheld = False`,
-    set to `PAYLOAD_PRESENT`.
-  - If a `SignedExecutionPayloadEnvelope` has been seen referencing the block
-    `data.beacon_block_root` and the envelope has `payload_withheld = True`, set
-    to `PAYLOAD_WITHHELD`.
-  - If no `SignedExecutionPayloadEnvelope` has been seen referencing the block
-    `data.beacon_block_root` set to `PAYLOAD_ABSENT`.
+- If a `SignedExecutionPayloadEnvelope` has been seen referencing the block
+  `data.beacon_block_root` set `data.payload_present = True`. Otherwise set it
+  to `False`.
 - Set `payload_attestation_message.validator_index = validator_index` where
   `validator_index` is the validator chosen to submit. The private key mapping
   to `state.validators[validator_index].pubkey` is used to sign the payload
@@ -194,3 +197,40 @@ def get_payload_attestation_message_signature(
 `ExecutionPayload` contained in within the envelope, but the checks in the
 [P2P guide](./p2p-interface.md) should pass for the
 `SignedExecutionPayloadEnvelope`.
+
+## Modified functions
+
+### Modified `prepare_execution_payload`
+
+*Note*: The function `prepare_execution_payload` is modified to handle the
+updated `get_expected_withdrawals` return signature.
+
+```python
+def prepare_execution_payload(
+    state: BeaconState,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    suggested_fee_recipient: ExecutionAddress,
+    execution_engine: ExecutionEngine,
+) -> Optional[PayloadId]:
+    # Verify consistency of the parent hash with respect to the previous execution payload header
+    parent_hash = state.latest_execution_payload_header.block_hash
+
+    # [Modified in EIP7732]
+    # Set the forkchoice head and initiate the payload build process
+    withdrawals, _, _ = get_expected_withdrawals(state)
+
+    payload_attributes = PayloadAttributes(
+        timestamp=compute_time_at_slot(state, state.slot),
+        prev_randao=get_randao_mix(state, get_current_epoch(state)),
+        suggested_fee_recipient=suggested_fee_recipient,
+        withdrawals=withdrawals,
+        parent_beacon_block_root=hash_tree_root(state.latest_block_header),
+    )
+    return execution_engine.notify_forkchoice_updated(
+        head_block_hash=parent_hash,
+        safe_block_hash=safe_block_hash,
+        finalized_block_hash=finalized_block_hash,
+        payload_attributes=payload_attributes,
+    )
+```
