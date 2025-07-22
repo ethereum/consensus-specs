@@ -601,8 +601,8 @@ A validator MUST create and broadcast the `attestation` to the associated
 attestation subnet immediately upon receiving a valid block from the expected
 block proposer for the assigned `slot`. If no valid block is received by
 `1 / INTERVALS_PER_SLOT` of the `slot` transpiring
-(`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of `slot`),
-the validator MUST create and broadcast the attestation at that time.
+(`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of `slot`), the
+validator MUST create and broadcast the attestation at that time.
 
 *Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG
 finality, these initial attestations do give weight to the fork choice, are
