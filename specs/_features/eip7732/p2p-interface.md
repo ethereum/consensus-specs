@@ -18,7 +18,6 @@
         - [`beacon_block`](#beacon_block)
         - [`execution_payload`](#execution_payload)
         - [`payload_attestation_message`](#payload_attestation_message)
-        - [`execution_payload_header`](#execution_payload_header)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
@@ -121,7 +120,6 @@ are given in this table:
 
 | Name                          | Message Type                                       |
 | ----------------------------- | -------------------------------------------------- |
-| `execution_payload_header`    | `SignedExecutionPayloadHeader` [New in EIP-7732]   |
 | `execution_payload`           | `SignedExecutionPayloadEnvelope` [New in EIP-7732] |
 | `payload_attestation_message` | `PayloadAttestationMessage` [New in EIP-7732]      |
 
@@ -182,19 +180,19 @@ The following validations MUST pass before forwarding the
   gossip or non-gossip sources) (a client MAY queue payload for processing once
   the block is retrieved).
 - _[IGNORE]_ The node has not seen another valid
-  `SignedExecutionPayloadEnvelope` for this block root from this builder.
+  `SignedExecutionPayloadEnvelope` for this block root from this proposer.
 
 Let `block` be the block with `envelope.beacon_block_root`. Let `header` alias
 `block.body.signed_execution_payload_header.message` (notice that this can be
 obtained from the `state.signed_execution_payload_header`)
 
 - _[REJECT]_ `block` passes validation.
-- _[REJECT]_ `envelope.builder_index == header.builder_index`
+- _[REJECT]_ `envelope.proposer_index == header.proposer_index`
 - if `envelope.payload_withheld == False` then
   - _[REJECT]_ `payload.block_hash == header.block_hash`
-- _[REJECT]_ The builder signature,
+- _[REJECT]_ The proposer signature,
   `signed_execution_payload_envelope.signature`, is valid with respect to the
-  builder's public key.
+  proposer's public key.
 
 ###### `payload_attestation_message`
 
@@ -221,31 +219,6 @@ The following validations MUST pass before forwarding the
   processing the block up to the current slot as determined by the fork choice.
 - _[REJECT]_ The message's signature of `payload_attestation_message.signature`
   is valid with respect to the validator index.
-
-###### `execution_payload_header`
-
-This topic is used to propagate signed bids as `SignedExecutionPayloadHeader`.
-
-The following validations MUST pass before forwarding the
-`signed_execution_payload_header` on the network, assuming the alias
-`header = signed_execution_payload_header.message`:
-
-- _[IGNORE]_ this is the first signed bid seen with a valid signature from the
-  given builder for this slot.
-- _[IGNORE]_ this bid is the highest value bid seen for the pair of the
-  corresponding slot and the given parent block hash.
-- _[REJECT]_ The signed builder bid, `header.builder_index` is a valid, active,
-  and non-slashed builder index in state.
-- _[IGNORE]_ The signed builder bid value, `header.value`, is less or equal than
-  the builder's balance in state. i.e.
-  `MIN_BUILDER_BALANCE + header.value < state.builder_balances[header.builder_index]`.
-- _[IGNORE]_ `header.parent_block_hash` is the block hash of a known execution
-  payload in fork choice. _ _[IGNORE]_ `header.parent_block_root` is the hash
-  tree root of a known beacon block in fork choice.
-- _[IGNORE]_ `header.slot` is the current slot or the next slot.
-- _[REJECT]_ The builder signature,
-  `signed_execution_payload_header_envelope.signature`, is valid with respect to
-  the `header_envelope.builder_index`.
 
 ### The Req/Resp domain
 

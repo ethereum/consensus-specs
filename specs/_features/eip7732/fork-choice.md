@@ -367,10 +367,10 @@ def get_weight(store: Store, node: ChildNode) -> Gwei:
 
     # Compute boosts
     proposer_score = compute_proposer_boost(store, state, node)
-    builder_reveal_score = compute_reveal_boost(store, state, node)
-    builder_withhold_score = compute_withhold_boost(store, state, node)
+    proposer_reveal_score = compute_reveal_boost(store, state, node)
+    proposer_withhold_score = compute_withhold_boost(store, state, node)
 
-    return attestation_score + proposer_score + builder_reveal_score + builder_withhold_score
+    return attestation_score + proposer_score + proposer_reveal_score + proposer_withhold_score
 ```
 
 ### Modified `get_head`
