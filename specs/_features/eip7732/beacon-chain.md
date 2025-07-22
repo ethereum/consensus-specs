@@ -60,33 +60,31 @@
 
 ## Introduction
 
-This is the beacon chain specification of the enshrined proposer builder
+This is the beacon chain specification of the execution payload
 separation feature.
 
 *Note*: This specification is built upon
 [Electra](../../electra/beacon-chain.md) and is under active development.
 
-This feature adds new staked consensus participants called *Builders* and new
+This feature adds  new
 honest validators duties called *payload timeliness attestations*. The slot is
-divided in **four** intervals. Honest validators gather *signed bids* (a
-`SignedExecutionPayloadHeader`) from builders and submit their consensus blocks
-(a `SignedBeaconBlock`) including these bids at the beginning of the slot. At
+divided in **four** intervals. Honest validators submit their consensus blocks
+(a `SignedBeaconBlock`) at the beginning of the slot. At
 the start of the second interval, honest validators submit attestations just as
 they do previous to this feature). At the start of the third interval,
-aggregators aggregate these attestations and the builder broadcasts either a
+aggregators aggregate these attestations and the proposer broadcasts either a
 full payload or a message indicating that they are withholding the payload (a
 `SignedExecutionPayloadEnvelope`). At the start of the fourth interval, some
 validators selected to be members of the new **Payload Timeliness Committee**
-(PTC) attest to the presence and timeliness of the builder's payload.
+(PTC) attest to the presence and timeliness of the proposer's payload.
 
 At any given slot, the status of the blockchain's head may be either
 
 - A block from a previous slot (e.g. the current slot's proposer did not submit
   its block).
 - An *empty* block from the current slot (e.g. the proposer submitted a timely
-  block, but the builder did not reveal the payload on time).
-- A full block for the current slot (both the proposer and the builder revealed
-  on time).
+  block, but did not reveal the payload on time).
+- A full block for the current slot (proposer revealed the payload on time).
 
 ## Constants
 
@@ -111,7 +109,7 @@ At any given slot, the status of the blockchain's head may be either
 
 | Name                    | Value                                          |
 | ----------------------- | ---------------------------------------------- |
-| `DOMAIN_BEACON_BUILDER` | `DomainType('0x1B000000')` # (New in EIP-7732) |
+| `DOMAIN_EXECUTION_PAYLOAD` | `DomainType('0x1B000000')` # (New in EIP-7732) |
 | `DOMAIN_PTC_ATTESTER`   | `DomainType('0x0C000000')` # (New in EIP-7732) |
 
 ### Max operations per block
@@ -174,7 +172,7 @@ class SignedExecutionPayloadHeader(Container):
 class ExecutionPayloadEnvelope(Container):
     payload: ExecutionPayload
     execution_requests: ExecutionRequests
-    builder_index: ValidatorIndex
+    proposer_index: ValidatorIndex
     beacon_block_root: Root
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     payload_withheld: boolean
@@ -223,8 +221,8 @@ class BeaconBlockBody(Container):
 #### `ExecutionPayloadHeader`
 
 *Note*: The `ExecutionPayloadHeader` is modified to only contain the block hash
-of the committed `ExecutionPayload` in addition to the builder's payment
-information, gas limit and KZG commitments root to verify the inclusion proofs.
+of the committed `ExecutionPayload`,
+gas limit and KZG commitments root to verify the inclusion proofs.
 
 ```python
 class ExecutionPayloadHeader(Container):
@@ -232,9 +230,8 @@ class ExecutionPayloadHeader(Container):
     parent_block_root: Root
     block_hash: Hash32
     gas_limit: uint64
-    builder_index: ValidatorIndex
+    proposer_index: ValidatorIndex
     slot: Slot
-    value: Gwei
     blob_kzg_commitments_root: Root
 ```
 
@@ -243,7 +240,8 @@ class ExecutionPayloadHeader(Container):
 *Note*: The `BeaconState` is modified to track the last withdrawals honored in
 the CL. The `latest_execution_payload_header` is modified semantically to refer
 not to a past committed `ExecutionPayload` but instead it corresponds to the
-state's slot builder's bid. Another addition is to track the last committed
+state's slot blinded block.
+Another addition is to track the last committed
 block hash and the last slot that was full, that is in which there were both
 consensus and execution blocks included.
 
@@ -528,11 +526,11 @@ def verify_execution_payload_header_signature(
     state: BeaconState, signed_header: SignedExecutionPayloadHeader
 ) -> bool:
     # Check the signature
-    builder = state.validators[signed_header.message.builder_index]
+    proposer = state.validators[signed_header.message.proposer_index]
     signing_root = compute_signing_root(
-        signed_header.message, get_domain(state, DOMAIN_BEACON_BUILDER)
+        signed_header.message, get_domain(state, DOMAIN_EXECUTION_PAYLOAD)
     )
-    return bls.Verify(builder.pubkey, signing_root, signed_header.signature)
+    return bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
 ```
 
 ##### New `process_execution_payload_header`
@@ -543,24 +541,18 @@ def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> 
     signed_header = block.body.signed_execution_payload_header
     assert verify_execution_payload_header_signature(state, signed_header)
 
-    # Check that the builder is active non-slashed has funds to cover the bid
+    # Check that the proposer is active non-slashed 
     header = signed_header.message
-    builder_index = header.builder_index
-    builder = state.validators[builder_index]
-    assert is_active_validator(builder, get_current_epoch(state))
-    assert not builder.slashed
-    amount = header.value
-    assert state.balances[builder_index] >= amount
+    proposer_index = header.proposer_index
+    proposer = state.validators[proposer_index]
+    assert is_active_validator(proposer, get_current_epoch(state))
+    assert not proposer.slashed
 
     # Verify that the bid is for the current slot
     assert header.slot == block.slot
     # Verify that the bid is for the right parent block
     assert header.parent_block_hash == state.latest_block_hash
     assert header.parent_block_root == block.parent_root
-
-    # Transfer the funds from the builder to the proposer
-    decrease_balance(state, builder_index, amount)
-    increase_balance(state, block.proposer_index, amount)
 
     # Cache the signed execution payload header
     state.latest_execution_payload_header = header
@@ -709,18 +701,18 @@ def validate_merge_block(block: BeaconBlock) -> None:
 def verify_execution_payload_envelope_signature(
     state: BeaconState, signed_envelope: SignedExecutionPayloadEnvelope
 ) -> bool:
-    builder = state.validators[signed_envelope.message.builder_index]
+    proposer = state.validators[signed_envelope.message.proposer_index]
     signing_root = compute_signing_root(
-        signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER)
+        signed_envelope.message, get_domain(state, DOMAIN_EXECUTION_PAYLOAD)
     )
-    return bls.Verify(builder.pubkey, signing_root, signed_envelope.signature)
+    return bls.Verify(proposer.pubkey, signing_root, signed_envelope.signature)
 ```
 
 #### New `process_execution_payload`
 
 *Note*: `process_execution_payload` is now an independent check in state
-transition. It is called when importing a signed execution payload proposed by
-the builder of the current slot.
+transition. It is called when importing a signed execution payload
+of the current slot.
 
 ```python
 def process_execution_payload(
@@ -744,7 +736,7 @@ def process_execution_payload(
 
     # Verify consistency with the committed header
     committed_header = state.latest_execution_payload_header
-    assert envelope.builder_index == committed_header.builder_index
+    assert envelope.proposer_index == committed_header.proposer_index
     assert committed_header.blob_kzg_commitments_root == hash_tree_root(
         envelope.blob_kzg_commitments
     )

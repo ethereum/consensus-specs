@@ -63,8 +63,6 @@ future assignments by noting their assigned PTC slot.
 
 All validator responsibilities remain unchanged other than the following:
 
-- Proposers are no longer required to broadcast `BlobSidecar` objects, as this
-  becomes a builder's duty.
 - Some validators are selected per slot to become PTC members, these validators
   must broadcast `PayloadAttestationMessage` objects during the assigned slot
   before the deadline of `3 * SECONDS_PER_SLOT // INTERVALS_PER_SLOT` seconds
@@ -86,24 +84,6 @@ Validators are still expected to propose `SignedBeaconBlock` at the beginning of
 any slot during which `is_proposer(state, validator_index)` returns `true`. The
 mechanism to prepare this beacon block and related sidecars differs from
 previous forks as follows
-
-#### Constructing the new `signed_execution_payload_header` field in `BeaconBlockBody`
-
-To obtain `signed_execution_payload_header`, a block proposer building a block
-on top of a `state` must take the following actions:
-
-- Listen to the `execution_payload_header` gossip global topic and save an
-  accepted `signed_execution_payload_header` from a builder. Proposer MAY obtain
-  these signed messages by other off-protocol means.
-- The `signed_execution_payload_header` must satisfy the verification conditions
-  found in `process_execution_payload_header`, that is
-  - The header signature must be valid
-  - The builder balance can cover the header value
-  - The header slot is for the proposal block slot
-  - The header parent block hash equals the state's `latest_block_hash`.
-  - The header parent block root equals the current block's `parent_root`.
-- Select one bid and set
-  `body.signed_execution_payload_header = signed_execution_payload_header`
 
 #### Constructing the new `payload_attestations` field in `BeaconBlockBody`
 
@@ -127,13 +107,6 @@ in the block. The validator will have to
   payload, they should only include attestations with
   `payload_status = PAYLOAD_PRESENT`. Proposers are penalized for attestations
   that are not-consistent with their view.
-
-#### Blob sidecars
-
-The blob sidecars are no longer broadcast by the validator, and thus their
-construction is not necessary. This deprecates the corresponding sections from
-the honest validator guide in the Electra fork, moving them, albeit with some
-modifications, to the [honest Builder guide](./builder.md)
 
 ### Payload timeliness attestation
 
