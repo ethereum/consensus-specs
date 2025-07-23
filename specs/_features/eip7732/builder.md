@@ -160,8 +160,8 @@ alias `header` to be the committed `ExecutionPayloadHeader` in
    associated with `payload`.
 3. Set the `builder_index` field to be the validator index of the builder
    performing these steps. This field **MUST** be `header.builder_index`.
-4. Set `beacon_block_root` to be the `hash_tree_root(block)`.
-5. Set `slot` to be the `block.slot`.
+4. Set `beacon_block_root` to be `hash_tree_root(block)`.
+5. Set `slot` to be `block.slot`.
 6. Set `blob_kzg_commitments` to be the `commitments` field of the blobs bundle
    constructed when constructing the bid. This field **MUST** have a
    `hash_tree_root` equal to `header.blob_kzg_commitments_root`.
