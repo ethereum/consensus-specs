@@ -5,6 +5,10 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.withdrawals import (
+    set_builder_withdrawal_credential,
+    set_builder_withdrawal_credential_with_balance,
+)
 
 
 def run_execution_payload_header_processing(spec, state, block, valid=True):
@@ -112,10 +116,7 @@ def make_validator_builder(spec, state, validator_index):
     """
     Helper to make a validator a builder by setting builder withdrawal credentials
     """
-    # Set builder withdrawal credentials (0x03 prefix)
-    builder_credentials = spec.BLS_WITHDRAWAL_PREFIX + b"\x00" * 31
-    builder_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + builder_credentials[1:]
-    state.validators[validator_index].withdrawal_credentials = builder_credentials
+    set_builder_withdrawal_credential(spec, state, validator_index)
 
 
 def prepare_block_with_execution_payload_header(spec, state, **header_kwargs):
@@ -329,6 +330,60 @@ def test_process_execution_payload_header_insufficient_balance(spec, state):
     )
 
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+
+
+@with_eip7732_and_later
+@spec_state_test
+@always_bls
+def test_process_execution_payload_header_excess_balance(spec, state):
+    """
+    Test builder with excess balance (2048.25 ETH) can submit bid for 2016.25 ETH
+    Edge case where bid limit depends on builder's balance, not effective balance
+    """
+    builder_index = spec.get_beacon_proposer_index(state)
+
+    # Set up builder with excess balance as requested by reviewer
+    excess_balance = spec.Gwei(2048250000000)  # 2048.25 ETH in Gwei
+    bid_value = spec.Gwei(2016250000000)  # 2016.25 ETH in Gwei
+
+    # Use the helper function to set up builder with specific balance
+    set_builder_withdrawal_credential_with_balance(
+        spec,
+        state,
+        builder_index,
+        balance=excess_balance,
+        effective_balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,  # Standard max effective balance
+    )
+
+    pre_balance = state.balances[builder_index]
+    pre_pending_payments_len = len(
+        [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
+    )
+
+    block, signed_header = prepare_block_with_execution_payload_header(
+        spec, state, builder_index=builder_index, value=bid_value
+    )
+
+    yield from run_execution_payload_header_processing(spec, state, block)
+
+    # Verify state updates
+    assert state.latest_execution_payload_header == signed_header.message
+
+    # Verify builder balance is still the same (payment is pending)
+    assert state.balances[builder_index] == pre_balance
+
+    # Verify pending payment was recorded
+    slot_index = spec.SLOTS_PER_EPOCH + (signed_header.message.slot % spec.SLOTS_PER_EPOCH)
+    pending_payment = state.builder_pending_payments[slot_index]
+    assert pending_payment.withdrawal.amount == bid_value
+    assert pending_payment.withdrawal.builder_index == builder_index
+    assert pending_payment.weight == 0
+
+    # Verify pending payments count increased by 1
+    post_pending_payments_len = len(
+        [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
+    )
+    assert post_pending_payments_len == pre_pending_payments_len + 1
 
 
 #
