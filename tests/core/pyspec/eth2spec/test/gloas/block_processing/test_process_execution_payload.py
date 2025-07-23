@@ -1,7 +1,10 @@
 from eth2spec.test.context import (
     always_bls,
     spec_state_test,
-    with_eip7732_and_later,
+    with_gloas_and_later,
+)
+from eth2spec.test.gloas.block_processing.test_process_execution_payload_header import (
+    make_validator_builder,
 )
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
@@ -151,16 +154,6 @@ def prepare_execution_payload_envelope(
     )
 
 
-def make_validator_builder(spec, state, validator_index):
-    """
-    Helper to make a validator a builder by setting builder withdrawal credentials
-    """
-    # Set builder withdrawal credentials (0x03 prefix)
-    builder_credentials = spec.BLS_WITHDRAWAL_PREFIX + b"\x00" * 31
-    builder_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + builder_credentials[1:]
-    state.validators[validator_index].withdrawal_credentials = builder_credentials
-
-
 def setup_state_with_payload_header(spec, state, builder_index=None, value=None):
     """
     Helper to setup state with a committed execution payload header.
@@ -211,7 +204,7 @@ def setup_state_with_payload_header(spec, state, builder_index=None, value=None)
 #
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_valid(spec, state):
@@ -228,7 +221,6 @@ def test_process_execution_payload_valid(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.block_hash = state.latest_execution_payload_header.block_hash
     execution_payload.gas_limit = state.latest_execution_payload_header.gas_limit
-    execution_payload.parent_hash = state.latest_block_hash
     execution_payload.parent_hash = state.latest_block_hash
 
     signed_envelope = prepare_execution_payload_envelope(
@@ -260,7 +252,7 @@ def test_process_execution_payload_valid(spec, state):
     assert cleared_payment.withdrawal.amount == 0
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_self_build_zero_value(spec, state):
@@ -289,7 +281,7 @@ def test_process_execution_payload_self_build_zero_value(spec, state):
     assert state.latest_full_slot == state.slot
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_with_blob_commitments(spec, state):
@@ -331,7 +323,7 @@ def test_process_execution_payload_with_blob_commitments(spec, state):
     yield from run_execution_payload_processing(spec, state, signed_envelope)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_with_execution_requests(spec, state):
@@ -384,7 +376,7 @@ def test_process_execution_payload_with_execution_requests(spec, state):
 #
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_invalid_signature(spec, state):
     """
@@ -417,7 +409,7 @@ def test_process_execution_payload_invalid_signature(spec, state):
 #
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_wrong_beacon_block_root(spec, state):
@@ -447,7 +439,7 @@ def test_process_execution_payload_wrong_beacon_block_root(spec, state):
     yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_wrong_slot(spec, state):
@@ -476,7 +468,7 @@ def test_process_execution_payload_wrong_slot(spec, state):
     yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_wrong_builder_index(spec, state):
@@ -508,7 +500,7 @@ def test_process_execution_payload_wrong_builder_index(spec, state):
     yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_wrong_blob_commitments_root(spec, state):
@@ -548,7 +540,7 @@ def test_process_execution_payload_wrong_blob_commitments_root(spec, state):
     yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_wrong_gas_limit(spec, state):
@@ -575,7 +567,7 @@ def test_process_execution_payload_wrong_gas_limit(spec, state):
     yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_wrong_block_hash(spec, state):
@@ -591,6 +583,7 @@ def test_process_execution_payload_wrong_block_hash(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.block_hash = spec.Hash32(b"\x42" * 32)  # Wrong block hash
     execution_payload.gas_limit = state.latest_execution_payload_header.gas_limit
+    execution_payload.parent_hash = state.latest_block_hash
 
     signed_envelope = prepare_execution_payload_envelope(
         spec, state, builder_index=builder_index, execution_payload=execution_payload
@@ -599,7 +592,7 @@ def test_process_execution_payload_wrong_block_hash(spec, state):
     yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_wrong_parent_hash(spec, state):
@@ -615,7 +608,6 @@ def test_process_execution_payload_wrong_parent_hash(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.block_hash = state.latest_execution_payload_header.block_hash
     execution_payload.gas_limit = state.latest_execution_payload_header.gas_limit
-    execution_payload.parent_hash = state.latest_block_hash
     execution_payload.parent_hash = spec.Hash32(b"\x42" * 32)  # Wrong parent hash
 
     signed_envelope = prepare_execution_payload_envelope(
@@ -625,7 +617,7 @@ def test_process_execution_payload_wrong_parent_hash(spec, state):
     yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_wrong_prev_randao(spec, state):
@@ -651,7 +643,7 @@ def test_process_execution_payload_wrong_prev_randao(spec, state):
     yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_wrong_timestamp(spec, state):
@@ -677,7 +669,7 @@ def test_process_execution_payload_wrong_timestamp(spec, state):
     yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_max_blob_commitments_valid(spec, state):
@@ -695,9 +687,9 @@ def test_process_execution_payload_max_blob_commitments_valid(spec, state):
     execution_payload.gas_limit = state.latest_execution_payload_header.gas_limit
     execution_payload.parent_hash = state.latest_block_hash
 
-    # Create exactly MAX_BLOBS_PER_BLOCK commitments (should be valid)
+    # Create exactly MAX_BLOBS_PER_BLOCK_ELECTRA commitments (should be valid)
     max_blob_commitments = [
-        spec.KZGCommitment(b"\x42" * 48) for _ in range(spec.config.MAX_BLOBS_PER_BLOCK)
+        spec.KZGCommitment(b"\x42" * 48) for _ in range(spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA)
     ]
     blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
         max_blob_commitments
@@ -724,7 +716,7 @@ def test_process_execution_payload_max_blob_commitments_valid(spec, state):
 #
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_execution_engine_invalid(spec, state):
