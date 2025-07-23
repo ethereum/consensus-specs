@@ -13,7 +13,7 @@
   - [Modified `update_latest_messages`](#modified-update_latest_messages)
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
-  - [`notify_ptc_messages`](#notify_ptc_messages)
+  - [New `notify_ptc_messages`](#new-notify_ptc_messages)
   - [New `is_payload_timely`](#new-is_payload_timely)
   - [New `get_parent_payload_status`](#new-get_parent_payload_status)
   - [New `is_parent_node_full`](#new-is_parent_node_full)
@@ -160,7 +160,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     )
 ```
 
-### `notify_ptc_messages`
+### New `notify_ptc_messages`
 
 ```python
 def notify_ptc_messages(
