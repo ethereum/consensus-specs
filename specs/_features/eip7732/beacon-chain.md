@@ -86,7 +86,7 @@ This feature adds new staked consensus participants called *Builders* and new
 honest validators duties called *payload timeliness attestations*. The slot is
 divided in **four** intervals. Honest validators gather *signed bids* (a
 `SignedExecutionPayloadHeader`) from builders and submit their consensus blocks
-(a `SignedBeaconBlock`) including an accepted bid at the beginning of the slot. At
+(a `SignedBeaconBlock`) including accepted bids at the beginning of the slot. At
 the start of the second interval, honest validators submit attestations just as
 they do previous to this feature). At the start of the third interval,
 aggregators aggregate these attestations and the builder broadcasts either a
