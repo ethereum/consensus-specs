@@ -32,7 +32,7 @@ want to act as builders in this document.
 
 ## Becoming a builder
 
-#### Builder withdrawal credentials
+### Builder withdrawal credentials
 
 The `withdrawal_credentials` field for builders has a specific format that
 identifies them as registered builders in the network. Builders must use the
