@@ -1176,7 +1176,7 @@ def process_execution_payload(
     # Verify timestamp
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
     # Verify commitments are under limit
-    assert len(envelope.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+    assert len(envelope.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA
     # Verify the execution payload is valid
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in envelope.blob_kzg_commitments
