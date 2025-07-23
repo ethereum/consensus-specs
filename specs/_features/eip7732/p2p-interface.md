@@ -208,8 +208,7 @@ obtained from the `state.signed_execution_payload_header`)
 - _[REJECT]_ `block` passes validation.
 - _[REJECT]_ `block.slot` equals `envelope.slot`.
 - _[REJECT]_ `envelope.builder_index == header.builder_index`
-- if `envelope.payload_withheld == False` then
-  - _[REJECT]_ `payload.block_hash == header.block_hash`
+- _[REJECT]_ `payload.block_hash == header.block_hash`
 - _[REJECT]_ The builder signature,
   `signed_execution_payload_envelope.signature`, is valid with respect to the
   builder's public key.
