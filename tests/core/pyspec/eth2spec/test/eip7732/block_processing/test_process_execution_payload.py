@@ -229,7 +229,6 @@ def test_process_execution_payload_valid(spec, state):
     execution_payload.block_hash = state.latest_execution_payload_header.block_hash
     execution_payload.gas_limit = state.latest_execution_payload_header.gas_limit
     execution_payload.parent_hash = state.latest_block_hash
-    execution_payload.parent_hash = state.latest_block_hash
 
     signed_envelope = prepare_execution_payload_envelope(
         spec, state, builder_index=builder_index, execution_payload=execution_payload
@@ -591,6 +590,7 @@ def test_process_execution_payload_wrong_block_hash(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.block_hash = spec.Hash32(b"\x42" * 32)  # Wrong block hash
     execution_payload.gas_limit = state.latest_execution_payload_header.gas_limit
+    execution_payload.parent_hash = state.latest_block_hash
 
     signed_envelope = prepare_execution_payload_envelope(
         spec, state, builder_index=builder_index, execution_payload=execution_payload
@@ -615,7 +615,6 @@ def test_process_execution_payload_wrong_parent_hash(spec, state):
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.block_hash = state.latest_execution_payload_header.block_hash
     execution_payload.gas_limit = state.latest_execution_payload_header.gas_limit
-    execution_payload.parent_hash = state.latest_block_hash
     execution_payload.parent_hash = spec.Hash32(b"\x42" * 32)  # Wrong parent hash
 
     signed_envelope = prepare_execution_payload_envelope(
@@ -695,9 +694,9 @@ def test_process_execution_payload_max_blob_commitments_valid(spec, state):
     execution_payload.gas_limit = state.latest_execution_payload_header.gas_limit
     execution_payload.parent_hash = state.latest_block_hash
 
-    # Create exactly MAX_BLOBS_PER_BLOCK commitments (should be valid)
+    # Create exactly MAX_BLOBS_PER_BLOCK_ELECTRA commitments (should be valid)
     max_blob_commitments = [
-        spec.KZGCommitment(b"\x42" * 48) for _ in range(spec.config.MAX_BLOBS_PER_BLOCK)
+        spec.KZGCommitment(b"\x42" * 48) for _ in range(spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA)
     ]
     blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
         max_blob_commitments
