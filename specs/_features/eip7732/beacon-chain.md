@@ -30,26 +30,26 @@
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
   - [Math](#math)
-    - [`bit_floor`](#bit_floor)
+    - [New `bit_floor`](#new-bit_floor)
   - [Misc](#misc-2)
-    - [`remove_flag`](#remove_flag)
+    - [New `remove_flag`](#new-remove_flag)
   - [Predicates](#predicates)
     - [New `has_builder_withdrawal_credentials`](#new-has_builder_withdrawal_credentials)
     - [Modified `has_compounding_withdrawal_credential`](#modified-has_compounding_withdrawal_credential)
     - [New `is_attestation_same_slot`](#new-is_attestation_same_slot)
     - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
-    - [`is_valid_indexed_payload_attestation`](#is_valid_indexed_payload_attestation)
-    - [`is_parent_block_full`](#is_parent_block_full)
+    - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
+    - [New `is_parent_block_full`](#new-is_parent_block_full)
   - [Beacon State accessors](#beacon-state-accessors)
-    - [`get_attestation_participation_flag_indices`](#get_attestation_participation_flag_indices)
-    - [`get_ptc`](#get_ptc)
-    - [`get_payload_attesting_indices`](#get_payload_attesting_indices)
-    - [`get_indexed_payload_attestation`](#get_indexed_payload_attestation)
+    - [New `get_attestation_participation_flag_indices`](#new-get_attestation_participation_flag_indices)
+    - [New `get_ptc`](#new-get_ptc)
+    - [New `get_payload_attesting_indices`](#new-get_payload_attesting_indices)
+    - [New `get_indexed_payload_attestation`](#new-get_indexed_payload_attestation)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
-    - [New `process_builder_pending_payments(state)`](#new-process_builder_pending_paymentsstate)
+    - [New `process_builder_pending_payments`](#new-process_builder_pending_payments)
   - [Block processing](#block-processing)
     - [Withdrawals](#withdrawals)
       - [New `is_builder_payment_withdrawable`](#new-is_builder_payment_withdrawable)
@@ -63,7 +63,7 @@
       - [Attestations](#attestations)
         - [Modified `process_attestation`](#modified-process_attestation)
       - [Payload Attestations](#payload-attestations)
-        - [`process_payload_attestation`](#process_payload_attestation)
+        - [New `process_payload_attestation`](#new-process_payload_attestation)
     - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete)
     - [Modified `validate_merge_block`](#modified-validate_merge_block)
   - [Execution payload processing](#execution-payload-processing)
@@ -352,7 +352,7 @@ class BeaconState(Container):
 
 ### Math
 
-#### `bit_floor`
+#### New `bit_floor`
 
 ```python
 def bit_floor(n: uint64) -> uint64:
@@ -366,7 +366,7 @@ def bit_floor(n: uint64) -> uint64:
 
 ### Misc
 
-#### `remove_flag`
+#### New `remove_flag`
 
 ```python
 def remove_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlags:
@@ -424,7 +424,7 @@ def is_builder_withdrawal_credential(withdrawal_credentials: Bytes32) -> bool:
     return withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX
 ```
 
-#### `is_valid_indexed_payload_attestation`
+#### New `is_valid_indexed_payload_attestation`
 
 ```python
 def is_valid_indexed_payload_attestation(
@@ -446,7 +446,7 @@ def is_valid_indexed_payload_attestation(
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_payload_attestation.signature)
 ```
 
-#### `is_parent_block_full`
+#### New `is_parent_block_full`
 
 This function returns true if the last committed payload header was fulfilled
 with a payload, this can only happen when both beacon block and payload were
@@ -460,7 +460,7 @@ def is_parent_block_full(state: BeaconState) -> bool:
 
 ### Beacon State accessors
 
-#### `get_attestation_participation_flag_indices`
+#### New `get_attestation_participation_flag_indices`
 
 ```python
 def get_attestation_participation_flag_indices(
@@ -506,7 +506,7 @@ def get_attestation_participation_flag_indices(
     return participation_flag_indices
 ```
 
-#### `get_ptc`
+#### New `get_ptc`
 
 ```python
 def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
@@ -524,7 +524,7 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     return validator_indices
 ```
 
-#### `get_payload_attesting_indices`
+#### New `get_payload_attesting_indices`
 
 ```python
 def get_payload_attesting_indices(
@@ -537,7 +537,7 @@ def get_payload_attesting_indices(
     return set(index for i, index in enumerate(ptc) if payload_attestation.aggregation_bits[i])
 ```
 
-#### `get_indexed_payload_attestation`
+#### New `get_indexed_payload_attestation`
 
 ```python
 def get_indexed_payload_attestation(
@@ -621,7 +621,7 @@ def process_epoch(state: BeaconState) -> None:
     process_builder_pending_payments(state)
 ```
 
-#### New `process_builder_pending_payments(state)`
+#### New `process_builder_pending_payments`
 
 ```python
 def process_builder_pending_payments(state: BeaconState) -> None:
@@ -1046,7 +1046,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ##### Payload Attestations
 
-###### `process_payload_attestation`
+###### New `process_payload_attestation`
 
 ```python
 def process_payload_attestation(
