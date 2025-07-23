@@ -149,15 +149,15 @@ corresponding `SignedExecutionPayloadEnvelope` that fulfills this commitment.
 See below for a special case of an *honestly withheld payload*.
 
 To construct the `execution_payload_envelope` the builder must perform the
-following steps. We alias `block` to be the corresponding beacon block and
-alias `header` to be the committed `ExecutionPayloadHeader` in
+following steps. We alias `block` to be the corresponding beacon block and alias
+`header` to be the committed `ExecutionPayloadHeader` in
 `block.body.signed_execution_payload_header.message`.
 
 1. Set the `payload` field to be the `ExecutionPayload` constructed when
    creating the corresponding bid. This payload **MUST** have the same block
    hash as `header.block_hash`.
-2. Set the `execution_requests` field to be the `ExecutionRequests`
-   associated with `payload`.
+2. Set the `execution_requests` field to be the `ExecutionRequests` associated
+   with `payload`.
 3. Set the `builder_index` field to be the validator index of the builder
    performing these steps. This field **MUST** be `header.builder_index`.
 4. Set `beacon_block_root` to be `hash_tree_root(block)`.
