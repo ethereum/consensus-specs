@@ -34,20 +34,26 @@ want to act as builders in this document.
 
 #### Builder withdrawal credentials
 
-The `withdrawal_credentials` field for builders has a specific format that identifies them as registered builders in the network. Builders must use the `BUILDER_WITHDRAWAL_PREFIX` to participate in the EIP-7732 mechanism.
+The `withdrawal_credentials` field for builders has a specific format that
+identifies them as registered builders in the network. Builders must use the
+`BUILDER_WITHDRAWAL_PREFIX` to participate in the EIP-7732 mechanism.
 
 The `withdrawal_credentials` field must be such that:
+
 - `withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX` (i.e., `0x03`)
 - `withdrawal_credentials[1:12] == b'\x00' * 11`
 - `withdrawal_credentials[12:] == builder_execution_address`
 
-Where `builder_execution_address` is a 20-byte execution layer address that will receive:
+Where `builder_execution_address` is a 20-byte execution layer address that will
+receive:
+
 - Withdrawal rewards (similar to `ETH1_ADDRESS_WITHDRAWAL_PREFIX`)
 - Compounding rewards (builders inherit compounding functionality)
 
 ### Submit deposit
 
-Builders follow the same deposit process as regular validators, but with the builder-specific withdrawal credentials. The deposit must include:
+Builders follow the same deposit process as regular validators, but with the
+builder-specific withdrawal credentials. The deposit must include:
 
 - `pubkey`: The builder's BLS public key
 - `withdrawal_credentials`: Set with `BUILDER_WITHDRAWAL_PREFIX` (`0x03`)
@@ -56,11 +62,14 @@ Builders follow the same deposit process as regular validators, but with the bui
 
 ### Process deposit
 
-The beacon chain processes builder deposits identically to validator deposits, with the withdrawal credentials using `BUILDER_WITHDRAWAL_PREFIX`.
+The beacon chain processes builder deposits identically to validator deposits,
+with the withdrawal credentials using `BUILDER_WITHDRAWAL_PREFIX`.
 
 ### Builder index
 
-Once the deposit is processed, the builder is assigned a unique `validator_index` within the validator registry. This index is used to identify the builder in execution payload headers and envelopes.
+Once the deposit is processed, the builder is assigned a unique
+`validator_index` within the validator registry. This index is used to identify
+the builder in execution payload headers and envelopes.
 
 ### Activation
 
