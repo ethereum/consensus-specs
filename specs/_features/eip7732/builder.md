@@ -149,8 +149,8 @@ corresponding `SignedExecutionPayloadEnvelope` that fulfills this commitment.
 See below for a special case of an *honestly withheld payload*.
 
 To construct the `execution_payload_envelope` the builder must perform the
-following steps. We alias `block` to be the corresponding beacon block and 
-alias `header` to be the committed `ExecutionPayloadHeader` in 
+following steps. We alias `block` to be the corresponding beacon block and
+alias `header` to be the committed `ExecutionPayloadHeader` in
 `block.body.signed_execution_payload_header.message`.
 
 1. Set the `payload` field to be the `ExecutionPayload` constructed when
