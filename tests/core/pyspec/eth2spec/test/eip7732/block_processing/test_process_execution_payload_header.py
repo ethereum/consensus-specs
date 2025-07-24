@@ -56,14 +56,15 @@ def prepare_signed_execution_payload_header(
 ):
     """
     Helper to create a signed execution payload header with customizable parameters.
-    Note: Always call build_empty_block_for_next_slot BEFORE this function if using it,
-    since that function advances the state slot.
+    If slot is None, the current state slot will be used.
     """
-    if builder_index is None:
-        builder_index = spec.get_beacon_proposer_index(state)
-
     if slot is None:
         slot = state.slot
+    assert slot >= state.slot
+    spec.process_slots(state, slot)
+
+    if builder_index is None:
+        builder_index = spec.get_beacon_proposer_index(state)
 
     if parent_block_hash is None:
         parent_block_hash = state.latest_block_hash
@@ -82,6 +83,11 @@ def prepare_signed_execution_payload_header(
 
     if value is None:
         value = spec.Gwei(0)
+
+    # Validation: if builder index equals proposer index, value must be 0
+    proposer_index = spec.get_beacon_proposer_index(state)
+    if builder_index == proposer_index and value != 0:
+        raise ValueError("Self-builder (builder_index == proposer_index) must use zero value")
 
     if blob_kzg_commitments_root is None:
         kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
@@ -114,7 +120,7 @@ def prepare_signed_execution_payload_header(
 
 def make_validator_builder(spec, state, validator_index):
     """
-    Helper to make a validator a builder by setting builder withdrawal credentials
+    Helper to make a validator a builder by setting builder withdrawal credentials.
     """
     set_builder_withdrawal_credential(spec, state, validator_index)
 
@@ -173,7 +179,7 @@ def test_process_execution_payload_header_valid_builder(spec, state):
     make_validator_builder(spec, state, builder_index)
 
     # Ensure builder has sufficient balance
-    value = spec.Gwei(1000000)  # 1 ETH
+    value = spec.Gwei(1000000)  # 0.001 ETH
     required_balance = value + spec.MIN_ACTIVATION_BALANCE
     state.balances[builder_index] = required_balance
 
@@ -206,6 +212,25 @@ def test_process_execution_payload_header_valid_builder(spec, state):
         [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
     )
     assert post_pending_payments_len == pre_pending_payments_len + 1
+
+
+@with_eip7732_and_later
+@spec_state_test
+@always_bls
+def test_process_execution_payload_header_valid_builder_zero_value(spec, state):
+    """
+    Test valid builder scenario with registered builder and zero value
+    """
+    builder_index = spec.get_beacon_proposer_index(state)
+
+    # Make the validator a registered builder
+    make_validator_builder(spec, state, builder_index)
+
+    block, signed_header = prepare_block_with_execution_payload_header(
+        spec, state, builder_index=builder_index, value=spec.Gwei(0)
+    )
+
+    yield from run_execution_payload_header_processing(spec, state, block)
 
 
 #
@@ -321,7 +346,7 @@ def test_process_execution_payload_header_insufficient_balance(spec, state):
     builder_index = spec.get_beacon_proposer_index(state)
     make_validator_builder(spec, state, builder_index)
 
-    value = spec.Gwei(1000000)  # 1 ETH
+    value = spec.Gwei(1000000)  # 0.001 ETH
     # Set balance too low
     state.balances[builder_index] = value - 1
 
