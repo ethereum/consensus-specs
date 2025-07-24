@@ -1,7 +1,7 @@
 from random import Random
 
 from eth2spec.test.context import (
-    low_single_balance,
+    one_validator_one_gwei_balances,
     misc_balances,
     PHASE0,
     single_phase,
@@ -28,6 +28,7 @@ from eth2spec.test.helpers.state import (
     next_epoch,
     next_slot,
 )
+from eth2spec.test.helpers.typing import Spec
 
 
 def run_process_rewards_and_penalties(spec, state):
@@ -155,9 +156,11 @@ def test_full_attestations_misc_balances(spec, state):
             brs[br] = state.validators[index].effective_balance
 
 
+
+
 @with_all_phases
 @spec_test
-@with_custom_state(balances_fn=low_single_balance, threshold_fn=zero_activation_threshold)
+@with_custom_state(balances_fn=one_validator_one_gwei_balances, threshold_fn=zero_activation_threshold)
 @single_phase
 def test_full_attestations_one_validator_one_gwei(spec, state):
     attestations = prepare_state_with_attestations(spec, state)
@@ -166,7 +169,7 @@ def test_full_attestations_one_validator_one_gwei(spec, state):
 
     # Few assertions. Mainly to check that this extreme case can run without exception
     attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
-    assert len(attesting_indices) == 1
+    assert len(attesting_indices) == len(state.validators)
 
 
 @with_all_phases
