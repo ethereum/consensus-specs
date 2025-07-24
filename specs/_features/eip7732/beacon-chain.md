@@ -656,8 +656,6 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_withdrawals(state)
     # [Modified in EIP7732]
     # Removed `process_execution_payload`
-    # [Modified in EIP7732]
-    process_withdrawals(state)
     # [New in EIP7732]
     process_execution_payload_header(state, block)
     process_randao(state, block.body)
