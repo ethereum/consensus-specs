@@ -1,8 +1,8 @@
 from random import Random
 
 from eth2spec.test.context import (
-    one_validator_one_gwei_balances,
     misc_balances,
+    one_validator_one_gwei_balances,
     PHASE0,
     single_phase,
     spec_state_test,
@@ -28,7 +28,6 @@ from eth2spec.test.helpers.state import (
     next_epoch,
     next_slot,
 )
-from eth2spec.test.helpers.typing import Spec
 
 
 def run_process_rewards_and_penalties(spec, state):
@@ -156,11 +155,11 @@ def test_full_attestations_misc_balances(spec, state):
             brs[br] = state.validators[index].effective_balance
 
 
-
-
 @with_all_phases
 @spec_test
-@with_custom_state(balances_fn=one_validator_one_gwei_balances, threshold_fn=zero_activation_threshold)
+@with_custom_state(
+    balances_fn=one_validator_one_gwei_balances, threshold_fn=zero_activation_threshold
+)
 @single_phase
 def test_full_attestations_one_validator_one_gwei(spec, state):
     attestations = prepare_state_with_attestations(spec, state)
