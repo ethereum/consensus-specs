@@ -17,8 +17,8 @@ into a SSZ type:
   - `basic_list` *not supported yet*
   - `complex_list` *not supported yet*
 - ProgressiveList
-  - `basic_progressivelist`
-  - `complex_progressivelist` *not supported yet*
+  - `basic_progressive_list`
+  - `complex_progressive_list` *not supported yet*
 - Bitfields
   - `bitvector`
   - `bitlist`
@@ -108,7 +108,7 @@ Data:
 {length}: an unsigned integer
 ```
 
-### `basic_progressivelist`
+### `basic_progressive_list`
 
 ```
 Template:

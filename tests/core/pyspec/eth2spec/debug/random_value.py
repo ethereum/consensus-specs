@@ -105,9 +105,8 @@ def get_random_ssz_object(
         )
     elif issubclass(typ, List) or issubclass(typ, ProgressiveList) or issubclass(typ, Bitlist):
         limit = max_list_length
-        if (
-            not issubclass(typ, ProgressiveList) and typ.limit() < limit
-        ):  # SSZ imposes a hard limit on lists, we can't put in more than that
+        # SSZ imposes a hard limit on lists, we can't put in more than that
+        if not issubclass(typ, ProgressiveList) and typ.limit() < limit:
             limit = typ.limit()
 
         length = rng.randint(0, limit)
