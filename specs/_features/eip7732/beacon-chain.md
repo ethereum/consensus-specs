@@ -658,10 +658,6 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     # Removed `process_execution_payload`
     # [New in EIP7732]
     process_execution_payload_header(state, block)
-    # [Modified in EIP7732]
-    process_withdrawals(state)
-    # [New in EIP7732]
-    process_execution_payload_header(state, block)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     # [Modified in EIP7732]
@@ -885,10 +881,12 @@ def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> 
     assert is_active_validator(builder, get_current_epoch(state))
     assert not builder.slashed
     amount = header.value
-    # Check that the builder is registered as a builder unless self-building with zero value
-    if not has_builder_withdrawal_credential(builder):
-        assert builder_index == block.proposer_index
+    # For self-builds, amount must be zero regardless of withdrawal credential prefix
+    if builder_index == block.proposer_index:
         assert amount == 0
+    else:
+        # Non-self builds require builder withdrawal credential
+        assert has_builder_withdrawal_credential(builder)
 
     # Check that the builder is active, non-slashed, and has funds to cover the bid
     pending_payments = sum(
