@@ -1027,8 +1027,17 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
                 proposer_reward_numerator += get_base_reward(state, index) * weight
                 # [New in EIP7732]
                 # Update the builder payment weight
-                if flag_index == TIMELY_HEAD_FLAG_INDEX and is_attestation_same_slot(state, data):
+                if flag_index == TIMELY_HEAD_FLAG_INDEX:
                     payment.weight += state.validators[index].effective_balance
+                elif flag_index == TIMELY_TARGET_FLAG_INDEX:
+                    # Also count non-timely head votes towards quorum
+                    is_correct_block = data.beacon_block_root == get_block_root_at_slot(state, Slot(data.slot))
+                    is_same_slot = is_attestation_same_slot(state, data)
+                    expected_index = 0 if is_same_slot else state.execution_payload_availability[data.slot % SLOTS_PER_HISTORICAL_ROOT]
+                    is_correct_payload = data.index == expected_index
+                    
+                    if is_correct_block and is_correct_payload:
+                        payment.weight += state.validators[index].effective_balance
 
     # Reward proposer
     proposer_reward_denominator = (
