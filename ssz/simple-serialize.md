@@ -17,7 +17,7 @@
   - [`boolean`](#boolean)
   - [`Bitvector[N]`](#bitvectorn)
   - [`Bitlist[N]`](#bitlistn)
-  - [Vectors, containers, lists](#vectors-containers-lists)
+  - [Vectors, containers, lists, progressive lists](#vectors-containers-lists-progressive-lists)
   - [Union](#union)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
@@ -58,6 +58,9 @@
 - **list**: ordered variable-length homogeneous collection, limited to `N`
   values
   - notation `List[type, N]`, e.g. `List[uint64, N]`
+- **progressive list** _[EIP-7916, currently unused]_: ordered variable-length
+  homogeneous collection, without limit
+  - notation `ProgressiveList[type]`, e.g. `ProgressiveList[uint64]`
 - **bitvector**: ordered fixed-length collection of `boolean` values, with `N`
   bits
   - notation `Bitvector[N]`
@@ -75,9 +78,9 @@ efficiencies.
 
 ### Variable-size and fixed-size
 
-We recursively define "variable-size" types to be lists, unions, `Bitlist` and
-all types that contain a variable-size type. All other types are said to be
-"fixed-size".
+We recursively define "variable-size" types to be lists, progressive lists,
+unions, `Bitlist` and all types that contain a variable-size type. All other
+types are said to be "fixed-size".
 
 ### Byte
 
@@ -91,6 +94,7 @@ For convenience we alias:
 - `bit` to `boolean`
 - `BytesN` and `ByteVector[N]` to `Vector[byte, N]` (this is *not* a basic type)
 - `ByteList[N]` to `List[byte, N]`
+- `ProgressiveByteList` to `ProgressiveList[byte]`
 
 Aliases are semantically equivalent to their underlying type and therefore share
 canonical representations both in SSZ and in related formats.
@@ -108,6 +112,7 @@ Assuming a helper function `default(type)` which returns the default value for
 | `Vector[type, N]`            | `[default(type)] * N`                   |
 | `Bitvector[N]`               | `[False] * N`                           |
 | `List[type, N]`              | `[]`                                    |
+| `ProgressiveList[type]`      | `[]`                                    |
 | `Bitlist[N]`                 | `[]`                                    |
 | `Union[type_0, type_1, ...]` | `default(type_0)`                       |
 
@@ -168,7 +173,7 @@ array[len(value) // 8] |= 1 << (len(value) % 8)
 return bytes(array)
 ```
 
-### Vectors, containers, lists
+### Vectors, containers, lists, progressive lists
 
 ```python
 # Recursively serialize
@@ -227,15 +232,16 @@ deserialization of basic objects is easy, and from there we can find a simple
 recursive algorithm for all fixed-size objects. For variable-size objects we
 have to do one of the following depending on what kind of object it is:
 
-- Vector/list of a variable-size object: The serialized data will start with
-  offsets of all the serialized objects (`BYTES_PER_LENGTH_OFFSET` bytes each).
+- Vector/list/progressive list of a variable-size object: The serialized data
+  will start with offsets of all the serialized objects
+  (`BYTES_PER_LENGTH_OFFSET` bytes each).
   - Using the first offset, we can compute the length of the list (divide by
     `BYTES_PER_LENGTH_OFFSET`), as it gives us the total number of bytes in the
     offset data.
-  - The size of each object in the vector/list can be inferred from the
-    difference of two offsets. To get the size of the last object, the total
-    number of bytes has to be known (it is not generally possible to deserialize
-    an SSZ object of unknown length)
+  - The size of each object in the vector/list/progressive list can be inferred
+    from the difference of two offsets. To get the size of the last object, the
+    total number of bytes has to be known (it is not generally possible to
+    deserialize an SSZ object of unknown length)
 - Containers follow the same principles as vectors, with the difference that
   there may be fixed-size objects in a container as well. This means the
   `fixed_parts` data will contain offsets as well as fixed-size objects.
@@ -299,6 +305,16 @@ We first define helper functions:
   - Then, merkleize the chunks (empty input is padded to 1 zero chunk):
     - If `1` chunk: the root is the chunk itself.
     - If `> 1` chunks: merkleize as binary tree.
+- `merkleize_progressive(chunks, num_leaves=1)`: Given ordered
+  `BYTES_PER_CHUNK`-byte chunks:
+  - The merkleization depends on the number of input chunks and is defined
+    recursively:
+    - If `len(chunks) == 0`: the root is a zero value, `Bytes32()`.
+    - Otherwise: compute the root using `hash(a, b)`
+      - `a`: Recursively merkleize chunks beyond `num_leaves` using
+        `merkleize_progressive(chunks[num_leaves:], num_leaves * 4)`.
+      - `b`: Merkleize the first up to `num_leaves` chunks as a binary tree
+        using `merkleize(chunks[:num_leaves], num_leaves)`.
 - `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"`
   little-endian serialization) return `hash(root + length)`.
 - `mix_in_selector`: Given a Merkle root `root` and a type selector `selector`
@@ -313,12 +329,16 @@ recursively:
   bitvector.
 - `mix_in_length(merkleize(pack(value), limit=chunk_count(type)), len(value))`
   if `value` is a list of basic objects.
+- `mix_in_length(merkleize_progressive(pack(value)), len(value))` if `value` is
+  a progressive list of basic objects.
 - `mix_in_length(merkleize(pack_bits(value), limit=chunk_count(type)), len(value))`
   if `value` is a bitlist.
 - `merkleize([hash_tree_root(element) for element in value])` if `value` is a
   vector of composite objects or a container.
 - `mix_in_length(merkleize([hash_tree_root(element) for element in value], limit=chunk_count(type)), len(value))`
   if `value` is a list of composite objects.
+- `mix_in_length(merkleize_progressive([hash_tree_root(element) for element in value]), len(value))`
+  if `value` is a progressive list of composite objects.
 - `mix_in_selector(hash_tree_root(value.value), value.selector)` if `value` is
   of union type, and `value.value` is not `None`
 - `mix_in_selector(Bytes32(), 0)` if `value` is of union type, and `value.value`
@@ -362,6 +382,8 @@ value. Parsers may ignore additional JSON fields.
 | `Bitvector[N]`               | hex-byte-string | `"0x1122"`                               |
 | `List[type, N]`              | array           | `[element, ...]`                         |
 | `List[byte, N]`              | hex-byte-string | `"0x1122"`                               |
+| `ProgressiveList[type]`      | array           | `[element, ...]`                         |
+| `ProgressiveList[byte]`      | hex-byte-string | `"0x1122"`                               |
 | `Bitlist[N]`                 | hex-byte-string | `"0x1122"`                               |
 | `Union[type_0, type_1, ...]` | selector-object | `{ "selector": number, "data": type_N }` |
 
@@ -372,9 +394,9 @@ Aliases are encoded as their underlying type.
 `hex-byte-string` is a `0x`-prefixed hex encoding of byte data, as it would
 appear in an SSZ stream.
 
-`List` and `Vector` of `byte` (and aliases thereof) are encoded as
-`hex-byte-string`. `Bitlist` and `Bitvector` similarly map their SSZ-byte
-encodings to a `hex-byte-string`.
+`List`, `ProgressiveList`, and `Vector` of `byte` (and aliases thereof) are
+encoded as `hex-byte-string`. `Bitlist` and `Bitvector` similarly map their
+SSZ-byte encodings to a `hex-byte-string`.
 
 `Union` is encoded as an object with a `selector` and `data` field, where the
 contents of `data` change according to the selector.
