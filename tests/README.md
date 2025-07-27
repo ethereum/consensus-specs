@@ -105,7 +105,7 @@ we can treat it as a partial return statement that doesn't stop the function's
 processing, only adds to a list of return values. Here we add two values, the
 string `'pre'` and the initial state, to the list of return values.
 
-[You can read more about test generators and how they are used here](generators).
+[You can read more about test generators and how they are used here](./generators/README.md).
 
 ```python
 block = build_empty_block_for_next_slot(spec, state)
