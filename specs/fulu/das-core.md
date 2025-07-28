@@ -100,6 +100,10 @@ class MatrixEntry(Container):
 def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence[CustodyIndex]:
     assert custody_group_count <= NUMBER_OF_CUSTODY_GROUPS
 
+    # Skip computation if all groups are custodied
+    if custody_group_count == NUMBER_OF_CUSTODY_GROUPS:
+        return [CustodyIndex(i) for i in range(NUMBER_OF_CUSTODY_GROUPS)]
+
     current_id = uint256(node_id)
     custody_groups: List[CustodyIndex] = []
     while len(custody_groups) < custody_group_count:
