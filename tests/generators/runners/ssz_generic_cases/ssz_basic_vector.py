@@ -14,6 +14,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     Vector,
 )
 
+from .ssz_boolean import INVALID_BOOL_CASES
 from .ssz_test_case import invalid_test_case, valid_test_case
 
 
@@ -72,6 +73,21 @@ def invalid_cases():
         for length in [1, 2, 3, 4, 5, 8, 16, 31, 512, 513]:
             yield f"vec_{name}_{length}_nil", invalid_test_case(lambda: b"")
             for mode in random_modes:
+                if name == "bool":
+                    for description, data in INVALID_BOOL_CASES:
+                        yield (
+                            f"proglist_{name}_{length}_{mode.to_name()}_{description}",
+                            invalid_test_case(
+                                lambda rng=rng,
+                                mode=mode,
+                                typ=typ,
+                                length=length,
+                                data=data: serialize(basic_vector_case_fn(rng, mode, typ, length))[
+                                    :-1
+                                ]
+                                + data
+                            ),
+                        )
                 if length == 1:
                     # empty bytes, no elements. It may seem valid, but empty fixed-size elements are not valid SSZ.
                     yield (
