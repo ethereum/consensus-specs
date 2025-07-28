@@ -821,10 +821,8 @@ def process_withdrawals(state: BeaconState) -> None:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 
     # Update the pending builder withdrawals
-    state.builder_pending_withdrawals[:processed_builder_withdrawals_count] = [
-        w
-        for w in state.builder_pending_withdrawals[:processed_builder_withdrawals_count]
-        if not is_builder_payment_withdrawable(state, w)
+    state.builder_pending_withdrawals = state.builder_pending_withdrawals[
+        processed_builder_withdrawals_count:
     ]
 
     # Update pending partial withdrawals
