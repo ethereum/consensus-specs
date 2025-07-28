@@ -312,7 +312,12 @@ class MarkdownToSpec:
             )
 
         # Set the config variable
-        self.spec["config_vars"][list_of_records_name] = list_of_records_config_file
+        self.spec["config_vars"][list_of_records_name] = VariableDefinition(
+            "tuple[dict[str, Any], ...]",
+            json.dumps(list_of_records_config_file, indent=4),
+            None,
+            None,
+        )
 
     @staticmethod
     def _make_list_of_records_type_map(list_of_records: list[dict[str, str]]) -> dict[str, str]:
