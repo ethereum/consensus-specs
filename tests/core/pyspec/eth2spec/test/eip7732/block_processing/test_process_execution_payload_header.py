@@ -270,8 +270,13 @@ def test_process_execution_payload_header_inactive_builder(spec, state):
 
     make_validator_builder(spec, state, builder_index)
 
+    # Ensure builder has sufficient balance for the bid to avoid balance check failure
+    value = spec.Gwei(1000000)
+    required_balance = value + spec.MIN_ACTIVATION_BALANCE
+    state.balances[builder_index] = required_balance
+
     block, signed_header = prepare_block_with_execution_payload_header(
-        spec, state, builder_index=builder_index, value=spec.Gwei(1000000)
+        spec, state, builder_index=builder_index, value=value
     )
 
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
@@ -289,8 +294,13 @@ def test_process_execution_payload_header_slashed_builder(spec, state):
     state.validators[builder_index].slashed = True
     make_validator_builder(spec, state, builder_index)
 
+    # Ensure builder has sufficient balance for the bid to avoid balance check failure
+    value = spec.Gwei(1000000)
+    required_balance = value + spec.MIN_ACTIVATION_BALANCE
+    state.balances[builder_index] = required_balance
+
     block, signed_header = prepare_block_with_execution_payload_header(
-        spec, state, builder_index=builder_index, value=spec.Gwei(1000000)
+        spec, state, builder_index=builder_index, value=value
     )
 
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
@@ -350,12 +360,17 @@ def test_process_execution_payload_header_non_builder_non_zero_value(spec, state
     """
     proposer_index = spec.get_beacon_proposer_index(state)
 
+    # Ensure builder has sufficient balance for the bid to avoid balance check failure
+    value = spec.Gwei(1000000)
+    required_balance = value + spec.MIN_ACTIVATION_BALANCE
+    state.balances[proposer_index] = required_balance
+
     # Don't make proposer a builder, but try non-zero value
     block, signed_header = prepare_block_with_execution_payload_header(
         spec,
         state,
         builder_index=proposer_index,
-        value=spec.Gwei(1000000),  # Non-zero value should fail for non-builder
+        value=value,  # Non-zero value should fail for non-builder
     )
 
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
