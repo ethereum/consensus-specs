@@ -108,7 +108,7 @@ def prepare_signed_payload_attestation(
 @with_eip7732_and_later
 @spec_state_test
 @always_bls
-def test_process_payload_attestation_valid_basic(spec, state):
+def test_process_payload_attestation_payload_present(spec, state):
     """
     Test basic valid payload attestation processing
     """
@@ -206,11 +206,6 @@ def test_process_payload_attestation_too_old_slot(spec, state):
     payload_attestation = prepare_signed_payload_attestation(spec, state, slot=state.slot - 2)
 
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
-
-
-#
-# Invalid signature tests
-#
 
 
 @with_eip7732_and_later
