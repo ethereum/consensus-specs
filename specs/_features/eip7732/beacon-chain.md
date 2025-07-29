@@ -132,7 +132,7 @@ At any given slot, the status of the blockchain's head may be either
 
 | Name                       | Value |
 | -------------------------- | ----- |
-| `MAX_PAYLOAD_ATTESTATIONS` | `2`   |
+| `MAX_PAYLOAD_ATTESTATIONS` | `4`   |
 
 ### State list lengths
 
@@ -175,6 +175,7 @@ class PayloadAttestationData(Container):
     beacon_block_root: Root
     slot: Slot
     payload_present: boolean
+    blob_data_available: boolean
 ```
 
 #### `PayloadAttestation`
