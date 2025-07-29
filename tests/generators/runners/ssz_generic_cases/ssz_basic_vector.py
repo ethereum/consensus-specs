@@ -76,7 +76,7 @@ def invalid_cases():
                 if name == "bool":
                     for description, data in INVALID_BOOL_CASES:
                         yield (
-                            f"proglist_{name}_{length}_{mode.to_name()}_{description}",
+                            f"vec_{name}_{length}_{mode.to_name()}_{description}",
                             invalid_test_case(
                                 lambda rng=rng,
                                 mode=mode,
