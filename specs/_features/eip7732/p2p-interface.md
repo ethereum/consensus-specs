@@ -209,9 +209,8 @@ obtained from the `state.signed_execution_payload_header`)
 - _[REJECT]_ `block.slot` equals `envelope.slot`.
 - _[REJECT]_ `envelope.builder_index == header.builder_index`
 - _[REJECT]_ `payload.block_hash == header.block_hash`
-- _[REJECT]_ The builder signature,
-  `signed_execution_payload_envelope.signature`, is valid with respect to the
-  builder's public key.
+- _[REJECT]_ `signed_execution_payload_envelope.signature` is valid with respect
+  to the builder's public key.
 
 ###### `payload_attestation_message`
 
@@ -234,8 +233,8 @@ The following validations MUST pass before forwarding the
 - _[REJECT]_ The message's validator index is within the payload committee in
   `get_ptc(state, data.slot)`. The `state` is the head state corresponding to
   processing the block up to the current slot as determined by the fork choice.
-- _[REJECT]_ The message's signature of `payload_attestation_message.signature`
-  is valid with respect to the validator index.
+- _[REJECT]_ `payload_attestation_message.signature` is valid with respect to
+  the validator index.
 
 ###### `execution_payload_header`
 
@@ -245,24 +244,26 @@ The following validations MUST pass before forwarding the
 `signed_execution_payload_header` on the network, assuming the alias
 `header = signed_execution_payload_header.message`:
 
-- _[REJECT]_ the builder's withdrawal credentials' prefix equals
-  `BUILDER_WITHDRAWAL_PREFIX`.
+- _[REJECT]_ `header.builder_index` is a valid, active, and non-slashed builder
+  index.
+- _[REJECT]_ the builder's withdrawal credentials' prefix is
+  `BUILDER_WITHDRAWAL_PREFIX` -- i.e.
+  `is_builder_withdrawal_credential(state.validators[header.builder_index].withdrawal_credentials)`
+  returns `True`.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
-- _[IGNORE]_ this bid is the highest value bid seen for the pair of the
-  corresponding slot and the given parent block hash.
-- _[REJECT]_ The signed builder bid, `header.builder_index` is a valid, active,
-  and non-slashed builder index in state.
-- _[IGNORE]_ The signed builder bid value, `header.value`, is less or equal than
-  the builder's balance in state. i.e.
-  `MIN_BUILDER_BALANCE + header.value < state.builder_balances[header.builder_index]`.
+- _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
+  and the given parent block hash.
+- _[IGNORE]_ `header.value` is less or equal than the builder's excess balance
+  -- i.e.
+  `MIN_ACTIVATION_BALANCE + header.value <= state.balances[header.builder_index]`.
 - _[IGNORE]_ `header.parent_block_hash` is the block hash of a known execution
-  payload in fork choice. _ _[IGNORE]_ `header.parent_block_root` is the hash
-  tree root of a known beacon block in fork choice.
+  payload in fork choice.
+- _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon
+  block in fork choice.
 - _[IGNORE]_ `header.slot` is the current slot or the next slot.
-- _[REJECT]_ The builder signature,
-  `signed_execution_payload_header_envelope.signature`, is valid with respect to
-  the `header_envelope.builder_index`.
+- _[REJECT]_ `signed_execution_payload_header.signature` is valid with respect
+  to the `header.builder_index`.
 
 ##### Attestation subnets
 
