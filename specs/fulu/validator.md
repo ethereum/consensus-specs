@@ -48,7 +48,7 @@ document and used throughout.
 | Name                                   | Value              | Description                                                                                                |
 | -------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------- |
 | `VALIDATOR_CUSTODY_REQUIREMENT`        | `8`                | Minimum number of custody groups an honest node with validators attached custodies and serves samples from |
-| `BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` | `Gwei(32 * 10**9)` | Effective balance increment corresponding to one additional group to custody                               |
+| `BALANCE_PER_ADDITIONAL_CUSTODY_GROUP` | `Gwei(128 * 10**9)` | Effective balance increment corresponding to one additional group to custody                               |
 
 ## Helpers
 
