@@ -63,8 +63,10 @@ EIP7805_FORK_EPOCH: 18446744073709551615
 
 # Time parameters
 # ---------------------------------------------------------------
-# [customized] 6 seconds
+# [customized] 6 seconds (*deprecated*)
 SECONDS_PER_SLOT: 6
+# [customized] 6000 milliseconds, 6 seconds
+SLOT_DURATION_MS: 6000
 # 14 (estimate from Eth1 mainnet)
 SECONDS_PER_ETH1_BLOCK: 14
 # 2**8 (= 256) epochs, ~27 hours
@@ -73,6 +75,30 @@ MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
 SHARD_COMMITTEE_PERIOD: 64
 # [customized] 2**4 (= 16) Eth1 blocks, ~4 minutes
 ETH1_FOLLOW_DISTANCE: 16
+# 3333 basis points, ~33% of SLOT_DURATION_MS
+LATE_BLOCK_CUTOFF_BPS: 3333
+# 1667 basis points, ~17% of SLOT_DURATION_MS
+PROPOSER_REORG_CUTOFF_BPS: 1667
+# 3333 basis points, ~33% of SLOT_DURATION_MS
+ATTESTATION_DUE_BPS: 3333
+# 6667 basis points, ~67% of SLOT_DURATION_MS
+AGGREGRATE_DUE_BPS: 6667
+# 3333 basis points, ~33% of SLOT_DURATION_MS
+SYNC_MESSAGE_DUE_BPS: 3333
+# 6667 basis points, ~67% of SLOT_DURATION_MS
+CONTRIBUTION_DUE_BPS: 6667
+
+# EIP-7732
+# 2500 basis points, 25% of SLOT_DURATION_MS
+ATTESTATION_DUE_BPS_EIP7732: 2500
+# 5000 basis points, 50% of SLOT_DURATION_MS
+AGGREGRATE_DUE_BPS_EIP7732: 5000
+# 2500 basis points, 25% of SLOT_DURATION_MS
+SYNC_MESSAGE_DUE_BPS_EIP7732: 2500
+# 5000 basis points, 50% of SLOT_DURATION_MS
+CONTRIBUTION_DUE_BPS_EIP7732: 5000
+# 7500 basis points, 75% of SLOT_DURATION_MS
+PAYLOAD_ATTESTATION_DUE_BPS: 7500
 
 # Validator cycle
 # ---------------------------------------------------------------

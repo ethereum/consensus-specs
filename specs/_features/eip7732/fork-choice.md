@@ -50,7 +50,6 @@ This is the modification of the fork-choice accompanying the EIP-7732 upgrade.
 | Name                       | Value                   |
 | -------------------------- | ----------------------- |
 | `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE // 2` (= 256) |
-| `INTERVALS_PER_SLOT`       | `4`                     |
 | `PAYLOAD_STATUS_PENDING`   | `PayloadStatus(0)`      |
 | `PAYLOAD_STATUS_EMPTY`     | `PayloadStatus(1)`      |
 | `PAYLOAD_STATUS_FULL`      | `PayloadStatus(2)`      |
@@ -499,8 +498,11 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Notify the store about the payload_attestations in the block
     notify_ptc_messages(store, state, block.body.payload_attestations)
     # Add proposer score boost if the block is timely
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    # [Modified in EIP7732]
+    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS_EIP7732)
+    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
 
