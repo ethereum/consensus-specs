@@ -69,8 +69,6 @@
   - [Execution payload processing](#execution-payload-processing)
     - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
     - [New `process_execution_payload`](#new-process_execution_payload)
-- [Testing](#testing)
-  - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete-1)
 
 <!-- mdformat-toc end -->
 
@@ -1216,20 +1214,4 @@ def process_execution_payload(
     # Verify the state root
     if verify:
         assert envelope.state_root == hash_tree_root(state)
-```
-
-## Testing
-
-### Modified `is_merge_transition_complete`
-
-The function `is_merge_transition_complete` is modified for test purposes only
-to include the hash tree root of the empty KZG commitment list
-
-```python
-def is_merge_transition_complete(state: BeaconState) -> bool:
-    header = ExecutionPayloadHeader()
-    kzgs = List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]()
-    header.blob_kzg_commitments_root = kzgs.hash_tree_root()
-
-    return state.latest_execution_payload_header != header
 ```
