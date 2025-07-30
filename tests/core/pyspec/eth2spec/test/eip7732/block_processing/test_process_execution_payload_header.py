@@ -23,11 +23,6 @@ def run_execution_payload_header_processing(spec, state, block, valid=True):
     yield "block", block
 
     if not valid:
-        expect_assertion_error = True
-    else:
-        expect_assertion_error = False
-
-    if expect_assertion_error:
         try:
             spec.process_execution_payload_header(state, block)
             assert False, "Expected AssertionError but none was raised"
@@ -148,6 +143,24 @@ def prepare_block_with_execution_payload_header(spec, state, **header_kwargs):
     return block, signed_header
 
 
+def prepare_block_with_non_proposer_builder(spec, state):
+    """
+    Helper that creates a block and sets up a non-proposer builder for non-self-building tests.
+    Returns (block, builder_index) where builder_index != block.proposer_index.
+    """
+    # Create block first (this advances state.slot)
+    block = build_empty_block_for_next_slot(spec, state)
+
+    # Use a different validator as builder (clearly not self-building)
+    builder_index = (block.proposer_index + 1) % len(state.validators)
+    make_validator_builder(spec, state, builder_index)
+
+    # Ensure the contract is satisfied
+    assert builder_index != block.proposer_index, "Helper must return non-self-building scenario"
+
+    return block, builder_index
+
+
 #
 # Valid cases
 #
@@ -173,10 +186,7 @@ def test_process_execution_payload_header_valid_builder(spec, state):
     """
     Test valid builder scenario with registered builder and non-zero value
     """
-    builder_index = spec.get_beacon_proposer_index(state)
-
-    # Make the validator a registered builder
-    make_validator_builder(spec, state, builder_index)
+    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
     # Ensure builder has sufficient balance
     value = spec.Gwei(1000000)  # 0.001 ETH
@@ -188,9 +198,17 @@ def test_process_execution_payload_header_valid_builder(spec, state):
         [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
     )
 
-    block, signed_header = prepare_block_with_execution_payload_header(
-        spec, state, builder_index=builder_index, value=value
+    # Create header with this non-proposer builder
+    signed_header = prepare_signed_execution_payload_header(
+        spec,
+        state,
+        builder_index=builder_index,
+        value=value,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
     )
+
+    block.body.signed_execution_payload_header = signed_header
 
     yield from run_execution_payload_header_processing(spec, state, block)
 
@@ -221,14 +239,19 @@ def test_process_execution_payload_header_valid_builder_zero_value(spec, state):
     """
     Test valid builder scenario with registered builder and zero value
     """
-    builder_index = spec.get_beacon_proposer_index(state)
+    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
-    # Make the validator a registered builder
-    make_validator_builder(spec, state, builder_index)
-
-    block, signed_header = prepare_block_with_execution_payload_header(
-        spec, state, builder_index=builder_index, value=spec.Gwei(0)
+    # Create header with this non-proposer builder
+    signed_header = prepare_signed_execution_payload_header(
+        spec,
+        state,
+        builder_index=builder_index,
+        value=spec.Gwei(0),
+        slot=block.slot,
+        parent_block_root=block.parent_root,
     )
+
+    block.body.signed_execution_payload_header = signed_header
 
     yield from run_execution_payload_header_processing(spec, state, block)
 
@@ -264,20 +287,27 @@ def test_process_execution_payload_header_inactive_builder(spec, state):
     """
     Test inactive builder fails
     """
-    # Make builder inactive by setting exit epoch
-    builder_index = spec.get_beacon_proposer_index(state)
-    state.validators[builder_index].exit_epoch = spec.get_current_epoch(state)
+    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
-    make_validator_builder(spec, state, builder_index)
+    # Make builder inactive by setting exit epoch
+    state.validators[builder_index].exit_epoch = spec.get_current_epoch(state)
 
     # Ensure builder has sufficient balance for the bid to avoid balance check failure
     value = spec.Gwei(1000000)
     required_balance = value + spec.MIN_ACTIVATION_BALANCE
     state.balances[builder_index] = required_balance
 
-    block, signed_header = prepare_block_with_execution_payload_header(
-        spec, state, builder_index=builder_index, value=value
+    # Create header with this non-proposer builder
+    signed_header = prepare_signed_execution_payload_header(
+        spec,
+        state,
+        builder_index=builder_index,
+        value=value,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
     )
+
+    block.body.signed_execution_payload_header = signed_header
 
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
 
@@ -288,20 +318,27 @@ def test_process_execution_payload_header_slashed_builder(spec, state):
     """
     Test slashed builder fails
     """
-    builder_index = spec.get_beacon_proposer_index(state)
+    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
     # Slash the builder
     state.validators[builder_index].slashed = True
-    make_validator_builder(spec, state, builder_index)
 
     # Ensure builder has sufficient balance for the bid to avoid balance check failure
     value = spec.Gwei(1000000)
     required_balance = value + spec.MIN_ACTIVATION_BALANCE
     state.balances[builder_index] = required_balance
 
-    block, signed_header = prepare_block_with_execution_payload_header(
-        spec, state, builder_index=builder_index, value=value
+    # Create header with this non-proposer builder
+    signed_header = prepare_signed_execution_payload_header(
+        spec,
+        state,
+        builder_index=builder_index,
+        value=value,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
     )
+
+    block.body.signed_execution_payload_header = signed_header
 
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
 
@@ -404,16 +441,23 @@ def test_process_execution_payload_header_insufficient_balance(spec, state):
     """
     Test insufficient balance for bid fails
     """
-    builder_index = spec.get_beacon_proposer_index(state)
-    make_validator_builder(spec, state, builder_index)
+    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
     value = spec.Gwei(1000000)  # 0.001 ETH
     # Set balance too low
     state.balances[builder_index] = value - 1
 
-    block, signed_header = prepare_block_with_execution_payload_header(
-        spec, state, builder_index=builder_index, value=value
+    # Create header with this non-proposer builder
+    signed_header = prepare_signed_execution_payload_header(
+        spec,
+        state,
+        builder_index=builder_index,
+        value=value,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
     )
+
+    block.body.signed_execution_payload_header = signed_header
 
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
 
@@ -426,7 +470,7 @@ def test_process_execution_payload_header_excess_balance(spec, state):
     Test builder with excess balance (2048.25 ETH) can submit bid for 2016.25 ETH
     Edge case where bid limit depends on builder's balance, not effective balance
     """
-    builder_index = spec.get_beacon_proposer_index(state)
+    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
     # Set up builder with excess balance as requested by reviewer
     excess_balance = spec.Gwei(2048250000000)  # 2048.25 ETH in Gwei
@@ -446,9 +490,17 @@ def test_process_execution_payload_header_excess_balance(spec, state):
         [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
     )
 
-    block, signed_header = prepare_block_with_execution_payload_header(
-        spec, state, builder_index=builder_index, value=bid_value
+    # Create header with this non-proposer builder
+    signed_header = prepare_signed_execution_payload_header(
+        spec,
+        state,
+        builder_index=builder_index,
+        value=bid_value,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
     )
+
+    block.body.signed_execution_payload_header = signed_header
 
     yield from run_execution_payload_header_processing(spec, state, block)
 
@@ -470,6 +522,229 @@ def test_process_execution_payload_header_excess_balance(spec, state):
         [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
     )
     assert post_pending_payments_len == pre_pending_payments_len + 1
+
+
+@with_eip7732_and_later
+@spec_state_test
+def test_process_execution_payload_header_insufficient_balance_with_pending_payments(spec, state):
+    """
+    Test builder with sufficient balance for bid alone but insufficient when considering pending payments
+    """
+    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+
+    # Set up scenario: balance=1000, bid=600, existing_pending=500
+    # Total needed: 600 + 500 = 1100 > 1000 (should fail)
+    balance = spec.Gwei(1000)
+    bid_amount = spec.Gwei(600)
+    existing_pending = spec.Gwei(500)
+
+    state.balances[builder_index] = balance
+
+    # Create existing pending payment for this builder
+    slot_index = 5  # Some slot in first epoch
+    state.builder_pending_payments[slot_index] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(),
+            amount=existing_pending,
+            builder_index=builder_index,
+            withdrawable_epoch=spec.Epoch(0),
+        ),
+    )
+
+    # Create header with this non-proposer builder
+    signed_header = prepare_signed_execution_payload_header(
+        spec,
+        state,
+        builder_index=builder_index,
+        value=bid_amount,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
+    )
+
+    block.body.signed_execution_payload_header = signed_header
+
+    yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+
+
+@with_eip7732_and_later
+@spec_state_test
+def test_process_execution_payload_header_sufficient_balance_with_pending_payments(spec, state):
+    """
+    Test builder with sufficient balance for both bid and existing pending payments
+    """
+    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+
+    # Set up scenario: balance=2000, bid=600, existing_pending=500, min_activation=32ETH
+    # Total needed: 600 + 500 + 32000000000 = ~32.0011 ETH < 2000 ETH (should pass)
+    balance = spec.Gwei(2000000000000)  # 2000 ETH
+    bid_amount = spec.Gwei(600)
+    existing_pending = spec.Gwei(500)
+
+    state.balances[builder_index] = balance
+
+    # Create existing pending payment for this builder
+    slot_index = 5  # Some slot in first epoch
+    state.builder_pending_payments[slot_index] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(),
+            amount=existing_pending,
+            builder_index=builder_index,
+            withdrawable_epoch=spec.Epoch(0),
+        ),
+    )
+
+    pre_balance = state.balances[builder_index]
+    pre_pending_payments_len = len(
+        [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
+    )
+
+    # Create header with this non-proposer builder
+    signed_header = prepare_signed_execution_payload_header(
+        spec,
+        state,
+        builder_index=builder_index,
+        value=bid_amount,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
+    )
+
+    block.body.signed_execution_payload_header = signed_header
+
+    yield from run_execution_payload_header_processing(spec, state, block)
+
+    # Verify state updates
+    assert state.latest_execution_payload_header == signed_header.message
+
+    # Verify builder balance is still the same (payment is pending)
+    assert state.balances[builder_index] == pre_balance
+
+    # Verify new pending payment was recorded
+    slot_index_new = spec.SLOTS_PER_EPOCH + (signed_header.message.slot % spec.SLOTS_PER_EPOCH)
+    pending_payment = state.builder_pending_payments[slot_index_new]
+    assert pending_payment.withdrawal.amount == bid_amount
+    assert pending_payment.withdrawal.builder_index == builder_index
+    assert pending_payment.weight == 0
+
+    # Verify pending payments count increased by 1 (now we have 2 total)
+    post_pending_payments_len = len(
+        [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
+    )
+    assert post_pending_payments_len == pre_pending_payments_len + 1
+
+
+@with_eip7732_and_later
+@spec_state_test
+def test_process_execution_payload_header_insufficient_balance_with_pending_withdrawals(
+    spec, state
+):
+    """
+    Test builder with sufficient balance for bid alone but insufficient when considering pending withdrawals
+    """
+    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+
+    # Set up scenario: balance=1000, bid=600, existing_withdrawal=500
+    # Total needed: 600 + 500 = 1100 > 1000 (should fail)
+    balance = spec.Gwei(1000)
+    bid_amount = spec.Gwei(600)
+    existing_withdrawal = spec.Gwei(500)
+
+    state.balances[builder_index] = balance
+
+    # Create existing pending withdrawal for this builder
+    state.builder_pending_withdrawals.append(
+        spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(),
+            amount=existing_withdrawal,
+            builder_index=builder_index,
+            withdrawable_epoch=spec.Epoch(100),  # Future epoch
+        )
+    )
+
+    # Create header with this non-proposer builder
+    signed_header = prepare_signed_execution_payload_header(
+        spec,
+        state,
+        builder_index=builder_index,
+        value=bid_amount,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
+    )
+
+    block.body.signed_execution_payload_header = signed_header
+
+    yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+
+
+@with_eip7732_and_later
+@spec_state_test
+def test_process_execution_payload_header_sufficient_balance_with_pending_withdrawals(spec, state):
+    """
+    Test builder with sufficient balance for both bid and existing pending withdrawals
+    """
+    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+
+    # Set up scenario: balance=2000, bid=600, existing_withdrawal=500, min_activation=32ETH
+    # Total needed: 600 + 500 + 32000000000 = ~32.0011 ETH < 2000 ETH (should pass)
+    balance = spec.Gwei(2000000000000)  # 2000 ETH
+    bid_amount = spec.Gwei(600)
+    existing_withdrawal = spec.Gwei(500)
+
+    state.balances[builder_index] = balance
+
+    # Create existing pending withdrawal for this builder
+    state.builder_pending_withdrawals.append(
+        spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(),
+            amount=existing_withdrawal,
+            builder_index=builder_index,
+            withdrawable_epoch=spec.Epoch(100),  # Future epoch
+        )
+    )
+
+    pre_balance = state.balances[builder_index]
+    pre_pending_payments_len = len(
+        [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
+    )
+    pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
+
+    # Create header with this non-proposer builder
+    signed_header = prepare_signed_execution_payload_header(
+        spec,
+        state,
+        builder_index=builder_index,
+        value=bid_amount,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
+    )
+
+    block.body.signed_execution_payload_header = signed_header
+
+    yield from run_execution_payload_header_processing(spec, state, block)
+
+    # Verify state updates
+    assert state.latest_execution_payload_header == signed_header.message
+
+    # Verify builder balance is still the same (payment is pending)
+    assert state.balances[builder_index] == pre_balance
+
+    # Verify new pending payment was recorded
+    slot_index_new = spec.SLOTS_PER_EPOCH + (signed_header.message.slot % spec.SLOTS_PER_EPOCH)
+    pending_payment = state.builder_pending_payments[slot_index_new]
+    assert pending_payment.withdrawal.amount == bid_amount
+    assert pending_payment.withdrawal.builder_index == builder_index
+    assert pending_payment.weight == 0
+
+    # Verify pending payments count increased by 1
+    post_pending_payments_len = len(
+        [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
+    )
+    assert post_pending_payments_len == pre_pending_payments_len + 1
+
+    # Verify pending withdrawals count stayed the same (existing withdrawal still there)
+    post_pending_withdrawals_len = len(state.builder_pending_withdrawals)
+    assert post_pending_withdrawals_len == pre_pending_withdrawals_len
 
 
 #
