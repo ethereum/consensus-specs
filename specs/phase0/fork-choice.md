@@ -122,7 +122,6 @@ handlers must not modify `store`.
 
 | Name                        | Value          |     Unit     |          Duration          |
 | --------------------------- | -------------- | :----------: | :------------------------: |
-| `LATE_BLOCK_CUTOFF_BPS`     | `uint64(3333)` | basis points | ~33% of `SLOT_DURATION_MS` |
 | `PROPOSER_REORG_CUTOFF_BPS` | `uint64(1667)` | basis points | ~17% of `SLOT_DURATION_MS` |
 
 ### Helpers

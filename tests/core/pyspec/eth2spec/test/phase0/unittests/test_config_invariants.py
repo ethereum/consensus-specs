@@ -100,5 +100,4 @@ def test_networking(spec, state):
 @spec_state_test
 def test_fork_choice(spec, state):
     assert spec.config.PROPOSER_SCORE_BOOST <= 100
-    assert spec.config.LATE_BLOCK_CUTOFF_BPS <= spec.BASIS_POINTS
     assert spec.config.PROPOSER_REORG_CUTOFF_BPS <= spec.BASIS_POINTS
