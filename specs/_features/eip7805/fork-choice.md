@@ -30,9 +30,9 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 
 ### Time parameters
 
-| Name                   | Value                           |  Unit   | Duration  |
-| ---------------------- | ------------------------------- | :-----: | :-------: |
-| `VIEW_FREEZE_DEADLINE` | `SECONDS_PER_SLOT * 2 // 3 + 1` | seconds | 9 seconds |
+| Name                       | Value          |     Unit     |         Duration          |
+| -------------------------- | -------------- | :----------: | :-----------------------: |
+| `VIEW_FREEZE_DEADLINE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
 
 ## Protocols
 
@@ -270,10 +270,10 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
     inclusion_list_store = get_inclusion_list_store()
 
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_view_freeze_deadline = (
-        get_current_slot(store) == inclusion_list.slot and time_into_slot < VIEW_FREEZE_DEADLINE
-    )
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    view_freeze_deadline_ms = get_slot_component_duration_ms(VIEW_FREEZE_DEADLINE_BPS)
+    is_before_view_freeze_deadline = time_into_slot_ms < view_freeze_deadline_ms
 
     process_inclusion_list(inclusion_list_store, inclusion_list, is_before_view_freeze_deadline)
 ```
