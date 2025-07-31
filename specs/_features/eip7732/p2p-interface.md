@@ -234,7 +234,7 @@ The following validations MUST pass before forwarding the
   `get_ptc(state, data.slot)`. The `state` is the head state corresponding to
   processing the block up to the current slot as determined by the fork choice.
 - _[REJECT]_ `payload_attestation_message.signature` is valid with respect to
-  the validator index.
+  the validator's public key.
 
 ###### `execution_payload_header`
 
