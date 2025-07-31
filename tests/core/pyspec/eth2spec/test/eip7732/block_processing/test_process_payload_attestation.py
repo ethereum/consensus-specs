@@ -30,13 +30,6 @@ def run_payload_attestation_processing(spec, state, payload_attestation, valid=T
     yield "post", state
 
 
-def get_payload_timeliness_committee(spec, state, slot):
-    """
-    Get the payload timeliness committee for a given slot.
-    """
-    return spec.get_ptc(state, slot)
-
-
 def prepare_signed_payload_attestation(
     spec,
     state,
@@ -50,13 +43,15 @@ def prepare_signed_payload_attestation(
     Helper to create a signed payload attestation with customizable parameters.
     """
     if slot is None:
+        if state.slot == 0:
+            raise ValueError("Cannot attest to previous slot when state.slot is 0")
         slot = state.slot - 1  # Attest to previous slot
 
     if beacon_block_root is None:
         beacon_block_root = state.latest_block_header.parent_root
 
     # Get the PTC for the attested slot
-    ptc = get_payload_timeliness_committee(spec, state, slot)
+    ptc = spec.get_ptc(state, slot)
 
     if attesting_indices is None:
         # Default to all PTC members attesting
@@ -142,7 +137,7 @@ def test_process_payload_attestation_partial_participation(spec, state):
     """
     spec.process_slots(state, state.slot + 1)
 
-    ptc = get_payload_timeliness_committee(spec, state, state.slot - 1)
+    ptc = spec.get_ptc(state, state.slot - 1)
     # Only half of the PTC members attest
     attesting_indices = ptc[: len(ptc) // 2] if ptc else []
 
