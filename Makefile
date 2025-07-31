@@ -13,7 +13,8 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	eip6800   \
 	eip7441   \
 	eip7732   \
-	eip7805
+	eip7805   \
+	eip7928
 
 # A list of fake targets.
 .PHONY: \

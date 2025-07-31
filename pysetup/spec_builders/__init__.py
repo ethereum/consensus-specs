@@ -6,6 +6,7 @@ from .eip6800 import EIP6800SpecBuilder
 from .eip7441 import EIP7441SpecBuilder
 from .eip7732 import EIP7732SpecBuilder
 from .eip7805 import EIP7805SpecBuilder
+from .eip7928 import EIP7928SpecBuilder
 from .electra import ElectraSpecBuilder
 from .fulu import FuluSpecBuilder
 from .phase0 import Phase0SpecBuilder
@@ -24,5 +25,6 @@ spec_builders = {
         EIP7441SpecBuilder,
         EIP7732SpecBuilder,
         EIP7805SpecBuilder,
+        EIP7928SpecBuilder,
     )
 }
