@@ -619,7 +619,7 @@ computation resources. In order to reconstruct missing data, there must be at
 least one supernode on the network. Due to
 [validator custody requirements](./validator.md#validator-custody), a node which
 is connected to validator(s) with a combined balance greater than or equal to
-4096 ETH must be a supernode. Moreover, any node with the necessary resources
+16384 ETH must be a supernode. Moreover, any node with the necessary resources
 may altruistically be a supernode. Therefore, there are expected to be many
 (hundreds) of supernodes on mainnet and it is likely (though not necessary) for
 a node to be connected to several of these by chance.
