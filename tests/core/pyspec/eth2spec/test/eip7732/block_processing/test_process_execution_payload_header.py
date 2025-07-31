@@ -528,13 +528,13 @@ def test_process_execution_payload_header_excess_balance(spec, state):
 @spec_state_test
 def test_process_execution_payload_header_insufficient_balance_with_pending_payments(spec, state):
     """
-    Test builder with sufficient balance for bid alone but insufficient when considering pending payments
+    Test builder with sufficient balance for bid alone but insufficient when considering pending payments and min activation balance
     """
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
-    # Set up scenario: balance=1000, bid=600, existing_pending=500
-    # Total needed: 600 + 500 = 1100 > 1000 (should fail)
-    balance = spec.Gwei(1000)
+    # Set up scenario: balance=32000000000 + 1000, bid=600, existing_pending=500
+    # Total needed: 600 + 500 + 32000000000 = 32000001100 > 32000001000 (should fail)
+    balance = spec.MIN_ACTIVATION_BALANCE + spec.Gwei(1000)  # 32 ETH + 1000 gwei
     bid_amount = spec.Gwei(600)
     existing_pending = spec.Gwei(500)
 
@@ -640,13 +640,13 @@ def test_process_execution_payload_header_insufficient_balance_with_pending_with
     spec, state
 ):
     """
-    Test builder with sufficient balance for bid alone but insufficient when considering pending withdrawals
+    Test builder with sufficient balance for bid alone but insufficient when considering pending withdrawals and min activation balance
     """
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
-    # Set up scenario: balance=1000, bid=600, existing_withdrawal=500
-    # Total needed: 600 + 500 = 1100 > 1000 (should fail)
-    balance = spec.Gwei(1000)
+    # Set up scenario: balance=32000000000 + 1000, bid=600, existing_withdrawal=500
+    # Total needed: 600 + 500 + 32000000000 = 32000001100 > 32000001000 (should fail)
+    balance = spec.MIN_ACTIVATION_BALANCE + spec.Gwei(1000)  # 32 ETH + 1000 gwei
     bid_amount = spec.Gwei(600)
     existing_withdrawal = spec.Gwei(500)
 
