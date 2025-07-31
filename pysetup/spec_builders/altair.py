@@ -1,5 +1,6 @@
 from ..constants import ALTAIR, OPTIMIZED_BLS_AGGREGATE_PUBKEYS
 from .base import BaseSpecBuilder
+from typing import NewType, Union as PyUnion, Any, TypeVar
 
 
 class AltairSpecBuilder(BaseSpecBuilder):
@@ -8,11 +9,12 @@ class AltairSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str) -> str:
         return f"""
-from typing import NewType, Union as PyUnion
+from typing import NewType, Union as PyUnion, Any
 
 from eth2spec.phase0 import {preset_name} as phase0
 from eth2spec.test.helpers.merkle import build_proof
-from eth2spec.utils.ssz.ssz_typing import Path
+from eth2spec.utils.ssz.ssz_typing import Path, View
+from eth2spec.utils.ssz.ssz_typing import Bytes32
 """
 
     @classmethod
@@ -20,6 +22,7 @@ from eth2spec.utils.ssz.ssz_typing import Path
         return """
 SSZVariableName = str
 GeneralizedIndex = int
+SSZObject = TypeVar('SSZObject', bound=View)
 """
 
     @classmethod
