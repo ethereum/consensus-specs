@@ -1020,26 +1020,23 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, attestation):
         # [New in EIP7732]
-        # Calculate weight for same-slot attestations outside the flag loop
-        weight_to_add = 0
-        if is_attestation_same_slot(state, data):
-            is_correct_block = data.beacon_block_root == get_block_root_at_slot(
-                state, Slot(data.slot)
-            )
-            is_correct_payload = data.index == 0  # Same-slot attestations must have index=0
-
-            if is_correct_block and is_correct_payload:
-                weight_to_add = state.validators[index].effective_balance
-
+        # For same-slot attestations, check if we're setting any new flags
+        # If we are, this validator hasn't contributed to this slot's quorum yet
+        will_set_new_flag = False
+        
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
             if flag_index in participation_flag_indices and not has_flag(
                 epoch_participation[index], flag_index
             ):
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
                 proposer_reward_numerator += get_base_reward(state, index) * weight
-
-        # Add the weight once per validator outside the flag loop
-        payment.weight += weight_to_add
+                will_set_new_flag = True
+        
+        # [New in EIP7732]
+        # Add weight for same-slot attestations when any new flag is set
+        # This ensures each validator contributes exactly once per slot
+        if will_set_new_flag and is_attestation_same_slot(state, data):
+            payment.weight += state.validators[index].effective_balance
 
     # Reward proposer
     proposer_reward_denominator = (
