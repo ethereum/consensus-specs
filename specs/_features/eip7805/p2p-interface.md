@@ -21,10 +21,6 @@ EIP-7805.
 
 ### Configuration
 
-| Name                   | Value                   |  Unit   | Duration  |
-| ---------------------- | ----------------------- | :-----: | :-------: |
-| `ATTESTATION_DEADLINE` | `SECONDS_PER_SLOT // 3` | seconds | 4 seconds |
-
 | Name                           | Value            | Description                                                |
 | ------------------------------ | ---------------- | ---------------------------------------------------------- |
 | `MAX_REQUEST_INCLUSION_LIST`   | `2**4` (= 16)    | Maximum number of inclusion list in a single request       |
@@ -56,7 +52,8 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
 - _[REJECT]_ The slot `message.slot` is equal to the previous or current slot.
 - _[IGNORE]_ The slot `message.slot` is equal to the current slot, or it is
   equal to the previous slot and the current time is less than
-  `ATTESTATION_DEADLINE` seconds into the slot.
+  `get_slot_component_duration_ms(ATTESTATION_DUE_BPS)` milliseconds into the
+  slot.
 - _[IGNORE]_ The `inclusion_list_committee` for slot `message.slot` on the
   current branch corresponds to `message.inclusion_list_committee_root`, as
   determined by
