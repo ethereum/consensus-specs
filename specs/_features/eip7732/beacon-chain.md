@@ -1023,7 +1023,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         # For same-slot attestations, check if we're setting any new flags
         # If we are, this validator hasn't contributed to this slot's quorum yet
         will_set_new_flag = False
-        
+
         for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
             if flag_index in participation_flag_indices and not has_flag(
                 epoch_participation[index], flag_index
@@ -1031,7 +1031,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
                 epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
                 proposer_reward_numerator += get_base_reward(state, index) * weight
                 will_set_new_flag = True
-        
+
         # [New in EIP7732]
         # Add weight for same-slot attestations when any new flag is set
         # This ensures each validator contributes exactly once per slot
