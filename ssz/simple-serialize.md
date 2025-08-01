@@ -16,7 +16,7 @@
   - [`uintN`](#uintn)
   - [`boolean`](#boolean)
   - [`Bitvector[N]`](#bitvectorn)
-  - [`Bitlist[N]`](#bitlistn)
+  - [`Bitlist[N]`, `ProgressiveBitlist`](#bitlistn-progressivebitlist)
   - [Vectors, containers, lists, progressive lists](#vectors-containers-lists-progressive-lists)
   - [Union](#union)
 - [Deserialization](#deserialization)
@@ -67,6 +67,9 @@
 - **bitlist**: ordered variable-length collection of `boolean` values, limited
   to `N` bits
   - notation `Bitlist[N]`
+- **progressive bitlist** _[EIP-7916, currently unused]_: ordered
+  variable-length collection of `boolean` values, without limit
+  - notation `ProgressiveBitlist`
 - **union**: union type containing one of the given subtypes
   - notation `Union[type_0, type_1, ...]`, e.g. `union[None, uint64, uint32]`
 
@@ -79,8 +82,8 @@ efficiencies.
 ### Variable-size and fixed-size
 
 We recursively define "variable-size" types to be lists, progressive lists,
-unions, `Bitlist` and all types that contain a variable-size type. All other
-types are said to be "fixed-size".
+unions, bitlists, progressive bitlists, and all composite types that contain a
+variable-size type. All other types are said to be "fixed-size".
 
 ### Byte
 
@@ -114,6 +117,7 @@ Assuming a helper function `default(type)` which returns the default value for
 | `List[type, N]`              | `[]`                                    |
 | `ProgressiveList[type]`      | `[]`                                    |
 | `Bitlist[N]`                 | `[]`                                    |
+| `ProgressiveBitlist`         | `[]`                                    |
 | `Union[type_0, type_1, ...]` | `default(type_0)`                       |
 
 #### `is_zero`
@@ -159,7 +163,7 @@ for i in range(N):
 return bytes(array)
 ```
 
-### `Bitlist[N]`
+### `Bitlist[N]`, `ProgressiveBitlist`
 
 Note that from the offset coding, the length (in bytes) of the bitlist is known.
 An additional `1` bit is added to the end, at index `e` where `e` is the length
@@ -245,10 +249,10 @@ have to do one of the following depending on what kind of object it is:
 - Containers follow the same principles as vectors, with the difference that
   there may be fixed-size objects in a container as well. This means the
   `fixed_parts` data will contain offsets as well as fixed-size objects.
-- In the case of bitlists, the length in bits cannot be uniquely inferred from
-  the number of bytes in the object. Because of this, they have a bit at the end
-  that is always set. This bit has to be used to infer the size of the bitlist
-  in bits.
+- In the case of bitlists/progressive bitlists, the length in bits cannot be
+  uniquely inferred from the number of bytes in the object. Because of this,
+  they have a bit at the end that is always set. This bit has to be used to
+  infer the size of the bitlist in bits.
 - In the case of unions, the first byte of the deserialization scope is
   deserialized as type selector, the remainder of the scope is deserialized as
   the selected type.
@@ -333,6 +337,8 @@ recursively:
   a progressive list of basic objects.
 - `mix_in_length(merkleize(pack_bits(value), limit=chunk_count(type)), len(value))`
   if `value` is a bitlist.
+- `mix_in_length(merkleize_progressive(pack_bits(value)), len(value))` if
+  `value` is a progressive bitlist.
 - `merkleize([hash_tree_root(element) for element in value])` if `value` is a
   vector of composite objects or a container.
 - `mix_in_length(merkleize([hash_tree_root(element) for element in value], limit=chunk_count(type)), len(value))`
@@ -385,6 +391,7 @@ value. Parsers may ignore additional JSON fields.
 | `ProgressiveList[type]`      | array           | `[element, ...]`                         |
 | `ProgressiveList[byte]`      | hex-byte-string | `"0x1122"`                               |
 | `Bitlist[N]`                 | hex-byte-string | `"0x1122"`                               |
+| `ProgressiveBitlist`         | hex-byte-string | `"0x1122"`                               |
 | `Union[type_0, type_1, ...]` | selector-object | `{ "selector": number, "data": type_N }` |
 
 Integers are encoded as strings to avoid loss of precision in 64-bit values.
@@ -395,8 +402,8 @@ Aliases are encoded as their underlying type.
 appear in an SSZ stream.
 
 `List`, `ProgressiveList`, and `Vector` of `byte` (and aliases thereof) are
-encoded as `hex-byte-string`. `Bitlist` and `Bitvector` similarly map their
-SSZ-byte encodings to a `hex-byte-string`.
+encoded as `hex-byte-string`. `Bitlist`, `ProgressiveBitlist`, and `Bitvector`
+similarly map their SSZ-byte encodings to a `hex-byte-string`.
 
 `Union` is encoded as an object with a `selector` and `data` field, where the
 contents of `data` change according to the selector.

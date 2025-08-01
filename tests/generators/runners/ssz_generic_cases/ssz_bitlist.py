@@ -6,6 +6,12 @@ from eth2spec.utils.ssz.ssz_typing import Bitlist
 
 from .ssz_test_case import invalid_test_case, valid_test_case
 
+INVALID_BITLIST_CASES = [
+    ("no_delimiter_empty", b""),
+    ("no_delimiter_zero_byte", b"\x00"),
+    ("no_delimiter_zeroes", b"\x00\x00\x00"),
+]
+
 
 def bitlist_case_fn(rng: Random, mode: RandomizationMode, limit: int):
     return get_random_ssz_object(
@@ -38,9 +44,8 @@ def valid_cases():
 
 
 def invalid_cases():
-    yield "bitlist_no_delimiter_empty", invalid_test_case(lambda: b"")
-    yield "bitlist_no_delimiter_zero_byte", invalid_test_case(lambda: b"\x00")
-    yield "bitlist_no_delimiter_zeroes", invalid_test_case(lambda: b"\x00\x00\x00")
+    for description, data in INVALID_BITLIST_CASES:
+        yield f"bitlist_{description}", invalid_test_case(lambda data=data: data)
     rng = Random(1234)
     for typ_limit, test_limit in [
         (1, 2),
