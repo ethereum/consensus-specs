@@ -9,7 +9,7 @@ from eth2spec.test.helpers.state import next_epoch
 def create_builder_pending_payment(spec, builder_index, amount, weight=0, fee_recipient=None):
     """Create a BuilderPendingPayment for testing."""
     if fee_recipient is None:
-        fee_recipient = b"\x00" * 20
+        fee_recipient = spec.ExecutionAddress()
 
     return spec.BuilderPendingPayment(
         weight=weight,
