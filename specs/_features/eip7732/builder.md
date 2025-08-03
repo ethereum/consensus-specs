@@ -93,7 +93,7 @@ Builders can broadcast a payload bid for the current or the next slot's proposer
 to include. They produce a `SignedExecutionPayloadHeader` as follows.
 
 01. Set `header.parent_block_hash` to the current head of the execution chain
-    (this can be obtained from the beacon state as `state.last_block_hash`).
+    (this can be obtained from the beacon state as `state.latest_block_hash`).
 02. Set `header.parent_block_root` to be the head of the consensus chain (this
     can be obtained from the beacon state as
     `hash_tree_root(state.latest_block_header)`. The `parent_block_root` and
