@@ -313,8 +313,8 @@ class MarkdownToSpec:
 
         # Set the config variable
         self.spec["config_vars"][list_of_records_name] = VariableDefinition(
-            "tuple[dict[str, Any], ...]",
-            json.dumps(list_of_records_config_file, indent=4),
+            "tuple[frozendict[str, Any], ...]",
+            self._format_frozen_records(list_of_records_config_file),
             None,
             None,
         )
@@ -381,6 +381,17 @@ class MarkdownToSpec:
                     new_entry[k] = v
             list_of_records_config_file.append(new_entry)
         return list_of_records_config_file
+
+    @staticmethod
+    def _format_frozen_records(records: list[dict[str, str]]) -> str:
+        lines = ["("]
+        for record in records:
+            lines.append("    frozendict({")
+            for key, value in record.items():
+                lines.append(f'        "{str(key)}": {str(value)},')
+            lines.append("    }),")
+        lines.append(")")
+        return "\n".join(lines)
 
     def _process_html_block(self, html: HTMLBlock) -> None:
         """

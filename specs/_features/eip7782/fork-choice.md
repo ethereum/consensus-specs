@@ -3,19 +3,37 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Helpers](#helpers)
+  - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [Modified `get_slots_since_genesis`](#modified-get_slots_since_genesis)
   - [Modified `get_slot_component_duration_ms`](#modified-get_slot_component_duration_ms)
+- [Handlers](#handlers)
+  - [`on_tick`](#on_tick)
 
 <!-- mdformat-toc end -->
 
 ### Helpers
 
+#### Modified `get_forkchoice_store`
+
+*TODO*
+
 #### Modified `get_slots_since_genesis`
+
+*TODO* Fix this. Most test cases start with a state associated with the fork.
+The state's slot is zero despite `EIP7782_FORK_EPOCH` being `FAR_FUTURE_EPOCH`.
+And we cannot define an `EIP7782_SLOT_TIME` as it will overflow when multipled
+with. The fix will require an extensive refactor.
 
 ```python
 def get_slots_since_genesis(store: Store) -> int:
+    # A bandaid until we figure out how to do this properly
+    if EIP7782_FORK_EPOCH == FAR_FUTURE_EPOCH:
+        eip7782_fork_epoch = GENESIS_EPOCH
+    else:
+        eip7782_fork_epoch = EIP7782_FORK_EPOCH
+
     # Calculate number of slots before eip7782 fork
-    eip7782_fork_slot = EIP7782_FORK_EPOCH * SLOTS_PER_EPOCH
+    eip7782_fork_slot = eip7782_fork_epoch * SLOTS_PER_EPOCH
     eip7782_fork_time_secs = store.genesis_time + eip7782_fork_slot * SECONDS_PER_SLOT
 
     # Calculate number of slots after eip7782 fork
@@ -34,3 +52,9 @@ def get_slot_component_duration_ms(basis_points: uint64) -> uint64:
     """
     return basis_points * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
 ```
+
+### Handlers
+
+#### `on_tick`
+
+*TODO*
