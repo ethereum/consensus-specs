@@ -248,10 +248,6 @@ MAX_BYTES_PER_INCLUSION_LIST: 8192
 # Blob Scheduling
 # ---------------------------------------------------------------
 
-BLOB_SCHEDULE: [
-    {
-        "EPOCH": 18446744073709551615,  # EIP7782_FORK_EPOCH (TBD)
-        "MAX_BLOBS_PER_BLOCK": 3,       # Half of current 6 blobs for 6-second slots
-        "DESCRIPTION": "EIP-7782: Reduced blob count for 6-second slot timing"
-    }
-]
+BLOB_SCHEDULE:
+  - EPOCH: 18446744073709551615  # EIP7782_FORK_EPOCH (TBD)
+    MAX_BLOBS_PER_BLOCK: 3

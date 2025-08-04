@@ -50,8 +50,9 @@ be sorted by epoch in ascending order. The blob schedule MAY be empty.
 
 <!-- list-of-records:blob_schedule -->
 
-| Epoch | Max Blobs Per Block | Description |
-| ----- | ------------------- | ----------- |
+| Epoch                | Max Blobs Per Block | Description                                 |
+| -------------------- | ------------------- | ------------------------------------------- |
+| 18446744073709551615 | 3                   | Reduced blob count for 6-second slot timing |
 
 ## Beacon chain state transition function
 
