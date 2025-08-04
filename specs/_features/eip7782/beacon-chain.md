@@ -71,17 +71,11 @@ def get_validator_churn_limit(state: BeaconState) -> uint64:
     """
     Return the validator churn limit for the current epoch.
     """
-    if compute_epoch_at_slot(state.slot) >= EIP7782_FORK_EPOCH:
-        active_validator_indices = get_active_validator_indices(state, get_current_epoch(state))
-        return max(
-            MIN_PER_EPOCH_CHURN_LIMIT_EIP7782,
-            uint64(len(active_validator_indices)) // CHURN_LIMIT_QUOTIENT,
-        )
-    else:
-        active_validator_indices = get_active_validator_indices(state, get_current_epoch(state))
-        return max(
-            MIN_PER_EPOCH_CHURN_LIMIT, uint64(len(active_validator_indices)) // CHURN_LIMIT_QUOTIENT
-        )
+    active_validator_indices = get_active_validator_indices(state, get_current_epoch(state))
+    return max(
+        MIN_PER_EPOCH_CHURN_LIMIT_EIP7782,
+        uint64(len(active_validator_indices)) // CHURN_LIMIT_QUOTIENT,
+    )
 ```
 
 #### Modified `get_validator_activation_churn_limit`
@@ -91,10 +85,7 @@ def get_validator_activation_churn_limit(state: BeaconState) -> uint64:
     """
     Return the validator activation churn limit for the current epoch.
     """
-    if compute_epoch_at_slot(state.slot) >= EIP7782_FORK_EPOCH:
-        return min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_EIP7782, get_validator_churn_limit(state))
-    else:
-        return min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT, get_validator_churn_limit(state))
+    return min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_EIP7782, get_validator_churn_limit(state))
 ```
 
 #### Modified `get_balance_churn_limit`
@@ -104,18 +95,11 @@ def get_balance_churn_limit(state: BeaconState) -> Gwei:
     """
     Return the churn limit for the current epoch.
     """
-    if compute_epoch_at_slot(state.slot) >= EIP7782_FORK_EPOCH:
-        churn = max(
-            MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA_EIP7782,
-            get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT,
-        )
-        return churn - churn % EFFECTIVE_BALANCE_INCREMENT
-    else:
-        churn = max(
-            MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA,
-            get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT,
-        )
-        return churn - churn % EFFECTIVE_BALANCE_INCREMENT
+    churn = max(
+        MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA_EIP7782,
+        get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT,
+    )
+    return churn - churn % EFFECTIVE_BALANCE_INCREMENT
 ```
 
 #### Modified `get_activation_exit_churn_limit`
@@ -125,12 +109,7 @@ def get_activation_exit_churn_limit(state: BeaconState) -> Gwei:
     """
     Return the churn limit for the current epoch dedicated to activations and exits.
     """
-    if compute_epoch_at_slot(state.slot) >= EIP7782_FORK_EPOCH:
-        return min(
-            MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT_EIP7782, get_balance_churn_limit(state)
-        )
-    else:
-        return min(MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT, get_balance_churn_limit(state))
+    return min(MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT_EIP7782, get_balance_churn_limit(state))
 ```
 
 ## Rewards and penalties
