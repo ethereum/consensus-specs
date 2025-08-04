@@ -22,11 +22,11 @@ This document describes the process of the EIP-7782 upgrade.
 
 Warning: this configuration is not definitive.
 
-| Name | Value |
+| Name                   | Value                                 |
 | ---------------------- | ------------------------------------- |
-| `EIP7782_FORK_VERSION` | `Version('0x0A000000')` |
-| `EIP7782_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
-| `EIP7782_FORK_TIME` | `1234567890` **TBD** |
+| `EIP7782_FORK_VERSION` | `Version('0x0A000000')`               |
+| `EIP7782_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+| `EIP7782_FORK_TIME`    | `1234567890` **TBD**                  |
 
 ## Helper functions
 
