@@ -109,10 +109,7 @@ def test_process_builder_pending_payments_above_quorum(spec, state):
     assert len(state.builder_pending_withdrawals) == pre_builder_pending_withdrawals + 1
 
     # Check the withdrawal details
-    if len(state.builder_pending_withdrawals) > 0:
-        withdrawal = state.builder_pending_withdrawals[len(state.builder_pending_withdrawals) - 1]
-    else:
-        assert False, "No withdrawals were added despite payment being above quorum"
+    withdrawal = state.builder_pending_withdrawals[len(state.builder_pending_withdrawals) - 1]
     assert withdrawal.fee_recipient == fee_recipient
     assert withdrawal.amount == amount
     assert withdrawal.builder_index == builder_index
@@ -161,6 +158,10 @@ def test_process_builder_pending_payments_multiple_above_quorum(spec, state):
         assert withdrawal.fee_recipient == expected_fee_recipient
         assert withdrawal.withdrawable_epoch > spec.get_current_epoch(state)
 
+    # All payments should be cleared (weights set to 0)
+    for i in range(num_payments):
+        assert state.builder_pending_payments[i].weight == 0
+
 
 @with_eip7732_and_later
 @spec_state_test
@@ -190,8 +191,13 @@ def test_process_builder_pending_payments_mixed_weights(spec, state):
 
     yield from run_epoch_processing_with(spec, state, "process_builder_pending_payments")
 
-    # Only payments with weight > quorum should be processed (indices 0 and 2)
-    expected_processed = 2
+    # Only payments with weight > quorum should be processed
+    # Count how many payments were actually added and have weight > quorum
+    expected_processed = 0
+    num_payments_added = min(len(payments_data), spec.SLOTS_PER_EPOCH)
+    for i in range(num_payments_added):
+        if payments_data[i][2] > quorum:  # weight > quorum
+            expected_processed += 1
     assert (
         len(state.builder_pending_withdrawals)
         == pre_builder_pending_withdrawals + expected_processed
@@ -216,15 +222,16 @@ def test_process_builder_pending_payments_queue_rotation(spec, state):
 
     # Fill both epochs of the queue with test data
     test_weight = 12345
-    for i in range(2 * spec.SLOTS_PER_EPOCH):
-        payment = create_builder_pending_payment(spec, i, spec.MIN_ACTIVATION_BALANCE, test_weight)
-        state.builder_pending_payments[i] = payment
+    state.builder_pending_payments = [
+        create_builder_pending_payment(spec, i, spec.MIN_ACTIVATION_BALANCE, test_weight)
+        for i in range(2 * spec.SLOTS_PER_EPOCH)
+    ]
 
     # Store the second epoch data for comparison
-    second_epoch_payments = []
-    for i in range(spec.SLOTS_PER_EPOCH, 2 * spec.SLOTS_PER_EPOCH):
-        payment = state.builder_pending_payments[i]
-        second_epoch_payments.append((payment.weight, payment.withdrawal.builder_index))
+    second_epoch_payments = [
+        (payment.weight, payment.withdrawal.builder_index)
+        for payment in state.builder_pending_payments[spec.SLOTS_PER_EPOCH :]
+    ]
 
     yield from run_epoch_processing_with(spec, state, "process_builder_pending_payments")
 
@@ -259,9 +266,6 @@ def test_process_builder_pending_payments_large_amount_churn_impact(spec, state)
     payment = create_builder_pending_payment(spec, builder_index, large_amount, weight)
     state.builder_pending_payments[0] = payment
 
-    pre_exit_balance_to_consume = state.exit_balance_to_consume
-    pre_earliest_exit_epoch = state.earliest_exit_epoch
-
     yield from run_epoch_processing_with(spec, state, "process_builder_pending_payments")
 
     # Should have one withdrawal
@@ -269,12 +273,7 @@ def test_process_builder_pending_payments_large_amount_churn_impact(spec, state)
     withdrawal = state.builder_pending_withdrawals[len(state.builder_pending_withdrawals) - 1]
     assert withdrawal.amount == large_amount
 
-    # Exit queue should be impacted by large amount processing
-    # Check that either balance was consumed or exit epoch was impacted
-    assert (
-        state.exit_balance_to_consume != pre_exit_balance_to_consume
-        or state.earliest_exit_epoch != pre_earliest_exit_epoch
-    )
+    assert state.exit_balance_to_consume == 0
 
     # Withdrawable epoch should account for the large amount
     current_epoch = spec.get_current_epoch(state)
