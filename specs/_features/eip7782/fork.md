@@ -16,7 +16,7 @@
 
 ## Introduction
 
-This document describes the process of the EIP-7732 upgrade.
+This document describes the process of the EIP-7782 upgrade.
 
 ## Configuration
 
