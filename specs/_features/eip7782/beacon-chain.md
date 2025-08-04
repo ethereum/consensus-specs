@@ -55,12 +55,12 @@ proportional to time rather than slot count.
 
 ### EIP-7782 churn limit parameters
 
-| Name                                                | Value                   |    Unit    |               Description                |
-| --------------------------------------------------- | ----------------------- | :--------: | :--------------------------------------: |
-| `MIN_PER_EPOCH_CHURN_LIMIT_EIP7782`                 | `uint64(2)`             | validators |  Minimum validators per epoch (halved)   |
-| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_EIP7782`      | `uint64(4)`             | validators |  Maximum activations per epoch (halved)  |
-| `MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA_EIP7782`         | `Gwei(64,000,000,000)`  |    Gwei    |    Minimum balance per epoch (halved)    |
-| `MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT_EIP7782` | `Gwei(128,000,000,000)` |    Gwei    | Maximum activation/exit balance (halved) |
+| Name                                                | Value                |    Unit    |               Description                |
+| --------------------------------------------------- | -------------------- | :--------: | :--------------------------------------: |
+| `MIN_PER_EPOCH_CHURN_LIMIT_EIP7782`                 | `uint64(2)`          | validators |  Minimum validators per epoch (halved)   |
+| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_EIP7782`      | `uint64(4)`          | validators |  Maximum activations per epoch (halved)  |
+| `MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA_EIP7782`         | `Gwei(64000000000)`  |    Gwei    |    Minimum balance per epoch (halved)    |
+| `MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT_EIP7782` | `Gwei(128000000000)` |    Gwei    | Maximum activation/exit balance (halved) |
 
 ### Modified churn limit functions
 

@@ -26,7 +26,6 @@ Warning: this configuration is not definitive.
 | ---------------------- | ------------------------------------- |
 | `EIP7782_FORK_VERSION` | `Version('0x0A000000')`               |
 | `EIP7782_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
-| `EIP7782_FORK_TIME`    | `1234567890` **TBD**                  |
 
 ## Helper functions
 
