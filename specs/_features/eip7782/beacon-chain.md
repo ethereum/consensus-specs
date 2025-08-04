@@ -34,6 +34,8 @@
 | `SYNC_MESSAGE_DUE_BPS_EIP7782` | `uint64(3333)` | basis points | ~33% of slot |
 | `CONTRIBUTION_DUE_BPS_EIP7782` | `uint64(6667)` | basis points | ~67% of slot |
 
+*Note*: EIP-7782 uses the blob schedule mechanism to reduce blob throughput. The blob schedule entry for EIP-7782 sets `MAX_BLOBS_PER_BLOCK` to 3 (half of the current 6 blobs) to maintain constant throughput per unit time with 6-second slots. Transaction limits remain unchanged.
+
 ## Rewards and penalties
 
 ### Helpers
