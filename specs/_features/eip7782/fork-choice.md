@@ -22,11 +22,11 @@
 
 ```python
 def get_slots_since_genesis(store: Store) -> int:
-    if store.time < EIP_7782_FORK_TIME:
+    if store.time < EIP7782_FORK_TIME:
         return (store.time - store.genesis_time) // SECONDS_PER_SLOT
     else:
-        slots_to_eip7782 = (EIP_7782_FORK_TIME - store.genesis_time) // SECONDS_PER_SLOT
-        return slots_to_eip7782 + 1000 * (store.time - EIP_7782_FORK_TIME) / SLOT_DURATION_MS_EIP7782
+        slots_to_eip7782 = (EIP7782_FORK_TIME - store.genesis_time) // SECONDS_PER_SLOT
+        return slots_to_eip7782 + 1000 * (store.time - EIP7782_FORK_TIME) / SLOT_DURATION_MS_EIP7782
 ```
 
 #### `get_slot_component_duration_ms`
