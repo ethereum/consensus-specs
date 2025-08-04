@@ -33,3 +33,18 @@
 | `AGGREGRATE_DUE_BPS_EIP7782` | `uint64(7500)` | basis points | ~75% of slot |
 | `SYNC_MESSAGE_DUE_BPS_EIP7782` | `uint64(3333)` | basis points | ~33% of slot |
 | `CONTRIBUTION_DUE_BPS_EIP7782` | `uint64(6667)` | basis points | ~67% of slot |
+
+## Rewards and penalties
+
+### Helpers
+
+#### `get_base_reward_per_increment`
+
+```python
+def get_base_reward_per_increment(state: BeaconState) -> Gwei:
+    return Gwei(
+        EFFECTIVE_BALANCE_INCREMENT
+        * BASE_REWARD_FACTOR_EIP7782
+        // integer_squareroot(get_total_active_balance(state))
+    )
+```
