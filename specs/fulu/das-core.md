@@ -8,8 +8,9 @@
   - [Misc](#misc)
 - [Custom types](#custom-types)
 - [Configuration](#configuration)
-  - [Data size](#data-size)
   - [Custody setting](#custody-setting)
+- [Preset](#preset)
+  - [Size parameters](#size-parameters)
   - [Containers](#containers)
     - [`DataColumnSidecar`](#datacolumnsidecar)
     - [`MatrixEntry`](#matrixentry)
@@ -54,12 +55,6 @@ specification.
 
 ## Configuration
 
-### Data size
-
-| Name                | Value                                | Description                                   |
-| ------------------- | ------------------------------------ | --------------------------------------------- |
-| `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
-
 ### Custody setting
 
 | Name                       | Value | Description                                                                       |
@@ -67,6 +62,14 @@ specification.
 | `SAMPLES_PER_SLOT`         | `8`   | Minimum number of samples for an honest node                                      |
 | `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody                           |
 | `CUSTODY_REQUIREMENT`      | `4`   | Minimum number of custody groups an honest node custodies and serves samples from |
+
+## Preset
+
+### Size parameters
+
+| Name                | Value                                | Description                                   |
+| ------------------- | ------------------------------------ | --------------------------------------------- |
+| `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
 
 ### Containers
 
