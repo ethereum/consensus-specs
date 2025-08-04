@@ -128,6 +128,16 @@ SYNC_MESSAGE_DUE_BPS_EIP7782: 3333
 # 6667 basis points, ~67% of SLOT_DURATION_MS_EIP7782
 CONTRIBUTION_DUE_BPS_EIP7782: 6667
 
+# EIP-7782 churn limits (halved for 6-second slots)
+# 2 validators (half of 4)
+MIN_PER_EPOCH_CHURN_LIMIT_EIP7782: 2
+# 4 validators (half of 8)
+MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_EIP7782: 4
+# 64,000,000,000 Gwei (half of 128B)
+MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA_EIP7782: 64000000000
+# 128,000,000,000 Gwei (half of 256B)
+MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT_EIP7782: 128000000000
+
 # Validator cycle
 # ---------------------------------------------------------------
 # 2**2 (= 4)

@@ -6,6 +6,16 @@
 - [Rewards and penalties](#rewards-and-penalties)
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters-1)
+  - [EIP-7782 timing parameters](#eip-7782-timing-parameters)
+  - [EIP-7782 churn limit parameters](#eip-7782-churn-limit-parameters)
+  - [Modified churn limit functions](#modified-churn-limit-functions)
+    - [Modified `get_validator_churn_limit`](#modified-get_validator_churn_limit)
+    - [Modified `get_validator_activation_churn_limit`](#modified-get_validator_activation_churn_limit)
+    - [Modified `get_balance_churn_limit`](#modified-get_balance_churn_limit)
+    - [Modified `get_activation_exit_churn_limit`](#modified-get_activation_exit_churn_limit)
+- [Rewards and penalties](#rewards-and-penalties-1)
+  - [Helpers](#helpers)
+    - [`get_base_reward_per_increment`](#get_base_reward_per_increment)
 
 <!-- mdformat-toc end -->
 
