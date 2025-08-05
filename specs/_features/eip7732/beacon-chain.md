@@ -494,6 +494,10 @@ def compute_balance_weighted_acceptance(
 
 #### Modified `compute_proposer_indices`
 
+*Note*: `compute_proposer_indices` is refactored to use
+`compute_balance_weighted_selection` as a helper for the balance-weighted
+sampling process.
+
 ```python
 def compute_proposer_indices(
     state: BeaconState, epoch: Epoch, seed: Bytes32, indices: Sequence[ValidatorIndex]
@@ -509,6 +513,10 @@ def compute_proposer_indices(
 ### Beacon State accessors
 
 #### Modified `get_next_sync_committee_indices`
+
+*Note*: `get_next_sync_committee_indices` is refactored to use
+`compute_balance_weighted_selection` as a helper for the balance-weighted
+sampling process.
 
 ```python
 def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
