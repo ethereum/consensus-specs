@@ -183,8 +183,8 @@ def notify_ptc_messages(
                     validator_index=idx,
                     data=payload_attestation.data,
                     signature=BLSSignature(),
-                    is_from_block=True,
                 ),
+                is_from_block=True,
             )
 ```
 
