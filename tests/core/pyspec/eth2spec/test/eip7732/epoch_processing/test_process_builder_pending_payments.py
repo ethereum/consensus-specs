@@ -22,11 +22,6 @@ def create_builder_pending_payment(spec, builder_index, amount, weight=0, fee_re
     )
 
 
-def get_quorum_threshold(spec, state):
-    """Calculate the quorum threshold for builder payments."""
-    return spec.get_builder_payment_quorum_threshold(state)
-
-
 @with_eip7732_and_later
 @spec_state_test
 def test_process_builder_pending_payments_empty_queue(spec, state):
@@ -65,7 +60,7 @@ def test_process_builder_pending_payments_below_quorum(spec, state):
 
     builder_index = 0
     amount = spec.MIN_ACTIVATION_BALANCE
-    quorum = get_quorum_threshold(spec, state)
+    quorum = spec.get_builder_payment_quorum_threshold(state)
     weight = quorum // 2  # Below threshold
 
     # Add pending payment with weight below quorum
@@ -93,7 +88,7 @@ def test_process_builder_pending_payments_above_quorum(spec, state):
 
     builder_index = 0
     amount = spec.MIN_ACTIVATION_BALANCE
-    quorum = get_quorum_threshold(spec, state)
+    quorum = spec.get_builder_payment_quorum_threshold(state)
     weight = quorum + 1  # Above threshold
     fee_recipient = b"\x42" * 20
 
@@ -127,7 +122,7 @@ def test_process_builder_pending_payments_multiple_above_quorum(spec, state):
     next_epoch(spec, state)
     next_epoch(spec, state)
 
-    quorum = get_quorum_threshold(spec, state)
+    quorum = spec.get_builder_payment_quorum_threshold(state)
     weight = quorum + 1
 
     # Add multiple payments above quorum
@@ -171,7 +166,7 @@ def test_process_builder_pending_payments_mixed_weights(spec, state):
     next_epoch(spec, state)
     next_epoch(spec, state)
 
-    quorum = get_quorum_threshold(spec, state)
+    quorum = spec.get_builder_payment_quorum_threshold(state)
 
     # Add payments with different weights
     payments_data = [
@@ -260,11 +255,15 @@ def test_process_builder_pending_payments_large_amount_churn_impact(spec, state)
 
     builder_index = 0
     large_amount = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
-    quorum = get_quorum_threshold(spec, state)
+    quorum = spec.get_builder_payment_quorum_threshold(state)
     weight = quorum + 1
 
     payment = create_builder_pending_payment(spec, builder_index, large_amount, weight)
     state.builder_pending_payments[0] = payment
+
+    # Store pre-processing state for churn verification
+    pre_exit_balance_to_consume = state.exit_balance_to_consume
+    per_epoch_churn = spec.get_activation_exit_churn_limit(state)
 
     yield from run_epoch_processing_with(spec, state, "process_builder_pending_payments")
 
@@ -273,8 +272,14 @@ def test_process_builder_pending_payments_large_amount_churn_impact(spec, state)
     withdrawal = state.builder_pending_withdrawals[len(state.builder_pending_withdrawals) - 1]
     assert withdrawal.amount == large_amount
 
-    assert state.exit_balance_to_consume == 0
+    balance_to_process = large_amount - pre_exit_balance_to_consume
+    additional_epochs = (balance_to_process - 1) // per_epoch_churn + 1
+    expected_exit_balance_to_consume = (
+        pre_exit_balance_to_consume + (additional_epochs * per_epoch_churn) - large_amount
+    )
+    assert state.exit_balance_to_consume == expected_exit_balance_to_consume, (
+        f"Expected exit_balance_to_consume {expected_exit_balance_to_consume}, got {state.exit_balance_to_consume}"
+    )
 
-    # Withdrawable epoch should account for the large amount
     current_epoch = spec.get_current_epoch(state)
     assert withdrawal.withdrawable_epoch > current_epoch
