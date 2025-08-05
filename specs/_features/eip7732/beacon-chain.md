@@ -344,8 +344,6 @@ class BeaconState(Container):
     # [New in EIP7732]
     latest_block_hash: Hash32
     # [New in EIP7732]
-    latest_full_slot: Slot
-    # [New in EIP7732]
     latest_withdrawals_root: Root
 ```
 
@@ -1292,7 +1290,6 @@ def process_execution_payload(
     # Cache the execution payload hash
     state.execution_payload_availability[state.slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
     state.latest_block_hash = payload.block_hash
-    state.latest_full_slot = state.slot
 
     # Verify the state root
     if verify:
