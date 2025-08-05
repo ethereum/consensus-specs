@@ -26,7 +26,7 @@ def bitlist_case_fn(rng: Random, mode: RandomizationMode, limit: int):
 
 def valid_cases():
     rng = Random(1234)
-    for size in [1, 2, 3, 4, 5, 8, 16, 31, 512, 513]:
+    for size in [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 511, 512, 513]:
         for variation in range(5):
             for mode in [
                 RandomizationMode.mode_nil_count,
@@ -49,12 +49,15 @@ def invalid_cases():
     rng = Random(1234)
     for typ_limit, test_limit in [
         (1, 2),
+        (1, 7),
         (1, 8),
         (1, 9),
         (2, 3),
         (3, 4),
         (4, 5),
         (5, 6),
+        (6, 7),
+        (7, 8),
         (8, 9),
         (32, 64),
         (32, 33),
