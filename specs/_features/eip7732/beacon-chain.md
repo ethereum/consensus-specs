@@ -29,8 +29,6 @@
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
-  - [Misc](#misc-2)
-    - [New `remove_flag`](#new-remove_flag)
   - [Predicates](#predicates)
     - [New `has_builder_withdrawal_credential`](#new-has_builder_withdrawal_credential)
     - [Modified `has_compounding_withdrawal_credential`](#modified-has_compounding_withdrawal_credential)
@@ -38,7 +36,13 @@
     - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
     - [New `is_parent_block_full`](#new-is_parent_block_full)
+  - [Misc](#misc-2)
+    - [New `remove_flag`](#new-remove_flag)
+    - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
+    - [New `compute_balance_weighted_acceptance`](#new-compute_balance_weighted_acceptance)
+    - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
   - [Beacon State accessors](#beacon-state-accessors)
+    - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
     - [New `get_attestation_participation_flag_indices`](#new-get_attestation_participation_flag_indices)
     - [New `get_ptc`](#new-get_ptc)
     - [New `get_payload_attesting_indices`](#new-get_payload_attesting_indices)
@@ -347,16 +351,6 @@ class BeaconState(Container):
 
 ## Helper functions
 
-### Misc
-
-#### New `remove_flag`
-
-```python
-def remove_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlags:
-    flag = ParticipationFlags(2**flag_index)
-    return flags & ~flag
-```
-
 ### Predicates
 
 #### New `has_builder_withdrawal_credential`
@@ -441,7 +435,93 @@ def is_parent_block_full(state: BeaconState) -> bool:
     return state.latest_execution_payload_header.block_hash == state.latest_block_hash
 ```
 
+### Misc
+
+#### New `remove_flag`
+
+```python
+def remove_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlags:
+    flag = ParticipationFlags(2**flag_index)
+    return flags & ~flag
+```
+
+#### New `compute_balance_weighted_selection`
+
+```python
+def compute_balance_weighted_selection(
+    state: BeaconState,
+    indices: Sequence[ValidatorIndex],
+    seed: Bytes32,
+    size: uint64,
+    shuffle_indices: bool = True,
+) -> Sequence[ValidatorIndex]:
+    """
+    Return `size` indices sampled by effective balance, using `indices`
+    as candidates. If `shuffle_indices` is `True`, candidate indices
+    are themselves sampled from `indices` by shuffling it, otherwise
+    `indices` is traversed in order.
+    """
+    total = uint64(len(indices))
+    assert total > 0
+    selected: List[ValidatorIndex] = []
+    i = uint64(0)
+    while len(selected) < size:
+        next_index = i % total
+        if shuffle_indices:
+            next_index = compute_shuffled_index(next_index, total, seed)
+        candidate_index = indices[next_index]
+        if compute_balance_weighted_acceptance(state, candidate_index, seed, i):
+            selected.append(candidate_index)
+        i += 1
+    return selected
+```
+
+#### New `compute_balance_weighted_acceptance`
+
+```python
+def compute_balance_weighted_acceptance(
+    state: BeaconState, index: ValidatorIndex, seed: Bytes32, i: uint64
+) -> bool:
+    """
+    Return whether to accept the selection of the validator `index`, with probability
+    proportional to its `effective_balance`, and randomness given by `seed` and `i`.
+    """
+    MAX_RANDOM_VALUE = 2**16 - 1
+    random_bytes = hash(seed + uint_to_bytes(i // 16))
+    offset = i % 16 * 2
+    random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
+    effective_balance = state.validators[index].effective_balance
+    return effective_balance * MAX_RANDOM_VALUE >= MAX_EFFECTIVE_BALANCE_ELECTRA * random_value
+```
+
+#### Modified `compute_proposer_indices`
+
+```python
+def compute_proposer_indices(
+    state: BeaconState, epoch: Epoch, seed: Bytes32, indices: Sequence[ValidatorIndex]
+) -> Vector[ValidatorIndex, SLOTS_PER_EPOCH]:
+    """
+    Return the proposer indices for the given ``epoch``.
+    """
+    start_slot = compute_start_slot_at_epoch(epoch)
+    seeds = [hash(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
+    return [compute_balance_weighted_selection(state, indices, seed, size=1)[0] for seed in seeds]
+```
+
 ### Beacon State accessors
+
+#### Modified `get_next_sync_committee_indices`
+
+```python
+def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
+    """
+    Return the sync committee indices, with possible duplicates, for the next sync committee.
+    """
+    epoch = Epoch(get_current_epoch(state) + 1)
+    seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
+    indices = get_active_validator_indices(state, epoch)
+    return compute_balance_weighted_selection(state, indices, seed, size=SYNC_COMMITTEE_SIZE)
+```
 
 #### New `get_attestation_participation_flag_indices`
 
@@ -496,36 +576,25 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     """
     Get the payload timeliness committee for the given ``slot``
     """
-    MAX_RANDOM_VALUE = 2**16 - 1
     epoch = compute_epoch_at_slot(slot)
     seed = hash(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
     committees_per_slot = get_committee_count_per_slot(state, epoch)
-    committee_indices = [CommitteeIndex(i) for i in range(committees_per_slot)]
     epoch_start_slot = compute_start_slot_at_epoch(epoch)
-    slot_into_epoch = slot % SLOTS_PER_EPOCH
-    i = uint64(0)
-    ptc: List[ValidatorIndex] = []
-    while len(ptc) < PTC_SIZE:
-        for committee_index in committee_indices:
+    indices: List[ValidatorIndex] = []
+    # concatenate all committees for this epoch in order,
+    # starting from the committees for `slot`
+    for s in range(SLOTS_PER_EPOCH):
+        slots_into_epoch = (slot + s) % SLOTS_PER_EPOCH
+        for i in range(committees_per_slot):
             committee = get_beacon_committee(
                 state=state,
-                slot=epoch_start_slot + slot_into_epoch,
-                index=committee_index,
+                slot=epoch_start_slot + slots_into_epoch,
+                index=CommitteeIndex(i),
             )
-            for candidate_index in committee:
-                random_bytes = hash(seed + uint_to_bytes(i // 16))
-                offset = i % 16 * 2
-                random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
-                effective_balance = state.validators[candidate_index].effective_balance
-                if (
-                    effective_balance * MAX_RANDOM_VALUE
-                    >= MAX_EFFECTIVE_BALANCE_ELECTRA * random_value
-                ):
-                    ptc.append(candidate_index)
-                    if len(ptc) == PTC_SIZE:
-                        return ptc
-                i += 1
-        slot_into_epoch = (slot_into_epoch + 1) % SLOTS_PER_EPOCH
+            indices.extend(committee)
+    return compute_balance_weighted_selection(
+        state, indices, seed, size=PTC_SIZE, shuffle_indices=False
+    )
 ```
 
 #### New `get_payload_attesting_indices`
