@@ -29,12 +29,10 @@
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
-  - [Math](#math)
-    - [New `bit_floor`](#new-bit_floor)
   - [Misc](#misc-2)
     - [New `remove_flag`](#new-remove_flag)
   - [Predicates](#predicates)
-    - [New `has_builder_withdrawal_credentials`](#new-has_builder_withdrawal_credentials)
+    - [New `has_builder_withdrawal_credential`](#new-has_builder_withdrawal_credential)
     - [Modified `has_compounding_withdrawal_credential`](#modified-has_compounding_withdrawal_credential)
     - [New `is_attestation_same_slot`](#new-is_attestation_same_slot)
     - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
@@ -349,20 +347,6 @@ class BeaconState(Container):
 
 ## Helper functions
 
-### Math
-
-#### New `bit_floor`
-
-```python
-def bit_floor(n: uint64) -> uint64:
-    """
-    if ``n`` is not zero, returns the largest power of `2` that is not greater than `n`.
-    """
-    if n == 0:
-        return 0
-    return uint64(1) << (n.bit_length() - 1)
-```
-
 ### Misc
 
 #### New `remove_flag`
@@ -375,7 +359,7 @@ def remove_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlag
 
 ### Predicates
 
-#### New `has_builder_withdrawal_credentials`
+#### New `has_builder_withdrawal_credential`
 
 ```python
 def has_builder_withdrawal_credential(validator: Validator) -> bool:
@@ -512,15 +496,36 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     """
     Get the payload timeliness committee for the given ``slot``
     """
+    MAX_RANDOM_VALUE = 2**16 - 1
     epoch = compute_epoch_at_slot(slot)
-    committees_per_slot = bit_floor(min(get_committee_count_per_slot(state, epoch), PTC_SIZE))
-    members_per_committee = PTC_SIZE // committees_per_slot
-
-    validator_indices: List[ValidatorIndex] = []
-    for idx in range(committees_per_slot):
-        beacon_committee = get_beacon_committee(state, slot, CommitteeIndex(idx))
-        validator_indices += beacon_committee[:members_per_committee]
-    return validator_indices
+    seed = hash(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
+    committees_per_slot = get_committee_count_per_slot(state, epoch)
+    committee_indices = [CommitteeIndex(i) for i in range(committees_per_slot)]
+    epoch_start_slot = compute_start_slot_at_epoch(epoch)
+    slot_into_epoch = slot % SLOTS_PER_EPOCH
+    i = uint64(0)
+    ptc: List[ValidatorIndex] = []
+    while len(ptc) < PTC_SIZE:
+        for committee_index in committee_indices:
+            committee = get_beacon_committee(
+                state=state,
+                slot=epoch_start_slot + slot_into_epoch,
+                index=committee_index,
+            )
+            for candidate_index in committee:
+                random_bytes = hash(seed + uint_to_bytes(i // 16))
+                offset = i % 16 * 2
+                random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
+                effective_balance = state.validators[candidate_index].effective_balance
+                if (
+                    effective_balance * MAX_RANDOM_VALUE
+                    >= MAX_EFFECTIVE_BALANCE_ELECTRA * random_value
+                ):
+                    ptc.append(candidate_index)
+                    if len(ptc) == PTC_SIZE:
+                        return ptc
+                i += 1
+        slot_into_epoch = (slot_into_epoch + 1) % SLOTS_PER_EPOCH
 ```
 
 #### New `get_payload_attesting_indices`
