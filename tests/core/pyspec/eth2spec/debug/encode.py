@@ -5,6 +5,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     boolean,
     Container,
     List,
+    ProgressiveList,
     uint,
     Union,
     Vector,
@@ -23,7 +24,7 @@ def encode(value, include_hash_tree_roots=False):
         return "0x" + serialize(value).hex()
     elif isinstance(value, list):  # normal python lists
         return [encode(element, include_hash_tree_roots) for element in value]
-    elif isinstance(value, List | Vector):
+    elif isinstance(value, List | ProgressiveList | Vector):
         return [encode(element, include_hash_tree_roots) for element in value]
     elif isinstance(value, bytes):  # bytes, ByteList, ByteVector
         return "0x" + value.hex()

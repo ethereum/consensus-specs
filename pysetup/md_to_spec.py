@@ -359,6 +359,17 @@ class MarkdownToSpec:
 
         return list_of_records_spec
 
+    @staticmethod
+    def _format_frozen_records(records: list[dict[str, str]]) -> str:
+        lines = ["("]
+        for record in records:
+            lines.append("    frozendict({")
+            for key, value in record.items():
+                lines.append(f'        "{str(key)}": {str(value)},')
+            lines.append("    }),")
+        lines.append(")")
+        return "\n".join(lines)
+
     def _extract_typed_records_config(
         self, list_of_records_name: str, type_map: dict[str, str]
     ) -> list[dict[str, str]]:

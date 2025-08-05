@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 import pytest
@@ -110,12 +109,19 @@ def test_run_includes_list_of_records_table(tmp_path, dummy_preset, dummy_config
     # The result should have 'BLOB_SCHEDULE' in config_vars
     assert "BLOB_SCHEDULE" in spec_obj.config_vars
     # The value should be a list of dicts with type constructors applied
-    var = json.loads(spec_obj.config_vars["BLOB_SCHEDULE"].value)
-    assert isinstance(var, list)
-    assert var[0]["EPOCH"] == "Epoch(269568)"
-    assert var[0]["MAX_BLOBS_PER_BLOCK"] == "uint64(6)"
-    assert var[1]["EPOCH"] == "Epoch(364032)"
-    assert var[1]["MAX_BLOBS_PER_BLOCK"] == "uint64(9)"
+    assert (
+        spec_obj.config_vars["BLOB_SCHEDULE"].value
+        == """(
+    frozendict({
+        "EPOCH": Epoch(269568),
+        "MAX_BLOBS_PER_BLOCK": uint64(6),
+    }),
+    frozendict({
+        "EPOCH": Epoch(364032),
+        "MAX_BLOBS_PER_BLOCK": uint64(9),
+    }),
+)"""
+    )
 
 
 def test_run_includes_list_of_records_table_minimal(tmp_path, dummy_preset, dummy_config):
@@ -144,26 +150,33 @@ def test_run_includes_list_of_records_table_minimal(tmp_path, dummy_preset, dumm
     spec_obj = m2s.run()
     assert "BLOB_SCHEDULE" in spec_obj.config_vars
     # The result should follow the config, not the table
-    var = json.loads(spec_obj.config_vars["BLOB_SCHEDULE"].value)
-    assert isinstance(var, list)
-    assert var[0]["EPOCH"] == "Epoch(2)"
-    assert var[0]["MAX_BLOBS_PER_BLOCK"] == "uint64(3)"
-    assert var[1]["EPOCH"] == "Epoch(4)"
-    assert var[1]["MAX_BLOBS_PER_BLOCK"] == "uint64(5)"
+    assert (
+        spec_obj.config_vars["BLOB_SCHEDULE"].value
+        == """(
+    frozendict({
+        "EPOCH": Epoch(2),
+        "MAX_BLOBS_PER_BLOCK": uint64(3),
+    }),
+    frozendict({
+        "EPOCH": Epoch(4),
+        "MAX_BLOBS_PER_BLOCK": uint64(5),
+    }),
+)"""
+    )
 
 
 def test_run_includes_python_function(tmp_path, dummy_preset, dummy_config):
-    md_content = """
+    md_content = '''
 #### `compute_epoch_at_slot`
 
 ```python
 def compute_epoch_at_slot(slot: Slot) -> Epoch:
-    \"\"\"
+    """
     Return the epoch number at slot.
-    \"\"\"
+    """
     return Epoch(slot // SLOTS_PER_EPOCH)
 ```
-"""
+'''
     file = tmp_path / "function.md"
     file.write_text(md_content)
     m2s = MarkdownToSpec(
