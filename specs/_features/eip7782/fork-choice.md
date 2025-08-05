@@ -19,14 +19,15 @@
 
 #### Modified `get_slots_since_genesis`
 
-*TODO* Fix this. Most test cases start with a state associated with the fork.
-The state's slot is zero despite `EIP7782_FORK_EPOCH` being `FAR_FUTURE_EPOCH`.
-And we cannot define an `EIP7782_SLOT_TIME` as it will overflow when multipled
-with. The fix will require an extensive refactor.
+*TODO* Fix this. Most test cases start with a state associated with the fork;
+the state's slot is zero despite `EIP7782_FORK_EPOCH` being `FAR_FUTURE_EPOCH`.
+The logic here will not work because `EIP7782_FORK_EPOCH` (and
+`EIP7782_FORK_TIME`) are placeholder values (`UINT64_MAX`). The fix will require
+some type of refactor to the fork-choice store.
 
 ```python
 def get_slots_since_genesis(store: Store) -> int:
-    # A bandaid until we figure out how to do this properly
+    # XXX: A bandaid until we figure out how to do this properly
     if EIP7782_FORK_EPOCH == FAR_FUTURE_EPOCH:
         eip7782_fork_epoch = GENESIS_EPOCH
     else:
