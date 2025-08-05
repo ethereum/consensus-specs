@@ -13,8 +13,10 @@ INVALID_BITLIST_CASES = [
 ]
 
 
-def bitlist_case_fn(rng: Random, mode: RandomizationMode, limit: int):
-    return get_random_ssz_object(
+def bitlist_case_fn(
+    rng: Random, mode: RandomizationMode, limit: int, force_final_bit: bool | None = None
+):
+    bits = get_random_ssz_object(
         rng,
         Bitlist[limit],
         max_bytes_length=(limit // 8) + 1,
@@ -22,6 +24,9 @@ def bitlist_case_fn(rng: Random, mode: RandomizationMode, limit: int):
         mode=mode,
         chaos=False,
     )
+    if force_final_bit is not None and bits.length() > 0:
+        bits[bits.length() - 1] = force_final_bit
+    return bits
 
 
 def valid_cases():
@@ -38,7 +43,9 @@ def valid_cases():
                 yield (
                     f"bitlist_{size}_{mode.to_name()}_{variation}",
                     valid_test_case(
-                        lambda rng=rng, mode=mode, size=size: bitlist_case_fn(rng, mode, size)
+                        lambda rng=rng, mode=mode, size=size, variation=variation: bitlist_case_fn(
+                            rng, mode, size, force_final_bit=[None, True, False][variation % 3]
+                        )
                     ),
                 )
 
