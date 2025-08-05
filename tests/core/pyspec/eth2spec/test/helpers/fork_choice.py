@@ -552,3 +552,23 @@ def get_pow_block_file_name(pow_block):
 def add_pow_block(spec, store, pow_block, test_steps):
     yield get_pow_block_file_name(pow_block), pow_block
     test_steps.append({"pow_block": get_pow_block_file_name(pow_block)})
+
+
+# EIP7732 Fork Choice Helpers
+
+
+def create_payload_attestation_message(
+    spec, validator_index, beacon_block_root, slot, payload_present=True
+):
+    """Create PayloadAttestationMessage for PTC voting"""
+    data = spec.PayloadAttestationData(
+        beacon_block_root=beacon_block_root,
+        slot=slot,
+        payload_present=payload_present,
+    )
+
+    return spec.PayloadAttestationMessage(
+        validator_index=validator_index,
+        data=data,
+        signature=spec.BLSSignature(),  # Empty signature for testing
+    )
