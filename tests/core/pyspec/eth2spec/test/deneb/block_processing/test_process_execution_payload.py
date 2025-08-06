@@ -65,7 +65,6 @@ def run_execution_payload_processing(
 
         post_state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] = 0b1
         post_state.latest_block_hash = execution_payload.block_hash
-        post_state.latest_full_slot = state.slot
         envelope.state_root = post_state.hash_tree_root()
         privkey = privkeys[envelope.builder_index]
         signature = spec.get_execution_payload_envelope_signature(
@@ -124,7 +123,6 @@ def run_execution_payload_processing(
             state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] == 0b1
         )
         assert state.latest_block_hash == execution_payload.block_hash
-        assert state.latest_full_slot == state.slot
     else:
         assert state.latest_execution_payload_header == get_execution_payload_header(
             spec, state, execution_payload
