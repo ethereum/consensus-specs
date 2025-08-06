@@ -584,20 +584,12 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     """
     epoch = compute_epoch_at_slot(slot)
     seed = hash(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
-    committees_per_slot = get_committee_count_per_slot(state, epoch)
-    epoch_start_slot = compute_start_slot_at_epoch(epoch)
     indices: List[ValidatorIndex] = []
-    # concatenate all committees for this epoch in order,
-    # starting from the committees for `slot`
-    for s in range(SLOTS_PER_EPOCH):
-        slots_into_epoch = (slot + s) % SLOTS_PER_EPOCH
-        for i in range(committees_per_slot):
-            committee = get_beacon_committee(
-                state=state,
-                slot=epoch_start_slot + slots_into_epoch,
-                index=CommitteeIndex(i),
-            )
-            indices.extend(committee)
+    # Concatenate all committees for this slot in order
+    committees_per_slot = get_committee_count_per_slot(state, epoch)
+    for i in range(committees_per_slot):
+        committee = get_beacon_committee(state, slot, CommitteeIndex(i))
+        indices.extend(committee)
     return compute_balance_weighted_selection(
         state, indices, seed, size=PTC_SIZE, shuffle_indices=False
     )
