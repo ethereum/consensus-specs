@@ -24,6 +24,8 @@
     - [`SignedExecutionPayloadHeader`](#signedexecutionpayloadheader)
     - [`ExecutionPayloadEnvelope`](#executionpayloadenvelope)
     - [`SignedExecutionPayloadEnvelope`](#signedexecutionpayloadenvelope)
+    - [`InclusionList`](#inclusionlist)
+    - [`SignedInclusionList`](#signedinclusionlist)
   - [Modified containers](#modified-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
@@ -40,11 +42,13 @@
     - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
     - [New `is_parent_block_full`](#new-is_parent_block_full)
+    - [New `is_valid_inclusion_list_signature`](#new-is_valid_inclusion_list_signature)
   - [Beacon State accessors](#beacon-state-accessors)
     - [New `get_attestation_participation_flag_indices`](#new-get_attestation_participation_flag_indices)
     - [New `get_ptc`](#new-get_ptc)
     - [New `get_payload_attesting_indices`](#new-get_payload_attesting_indices)
     - [New `get_indexed_payload_attestation`](#new-get_indexed_payload_attestation)
+    - [New `get_inclusion_list_committee`](#new-get_inclusion_list_committee)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
@@ -106,10 +110,11 @@ At any given slot, the status of the blockchain's head may be either
 
 ### Domain types
 
-| Name                    | Value                      |
-| ----------------------- | -------------------------- |
-| `DOMAIN_BEACON_BUILDER` | `DomainType('0x1B000000')` |
-| `DOMAIN_PTC_ATTESTER`   | `DomainType('0x0C000000')` |
+| Name                              | Value                      |
+| --------------------------------- | -------------------------- |
+| `DOMAIN_BEACON_BUILDER`           | `DomainType('0x1B000000')` |
+| `DOMAIN_PTC_ATTESTER`             | `DomainType('0x0C000000')` |
+| `DOMAIN_INCLUSION_LIST_COMMITTEE` | `DomainType('0x0C000000')` |
 
 ### Misc
 
@@ -122,9 +127,10 @@ At any given slot, the status of the blockchain's head may be either
 
 ### Misc
 
-| Name       | Value                 |
-| ---------- | --------------------- |
-| `PTC_SIZE` | `uint64(2**9)` (=512) |
+| Name                            | Value                 |
+| ------------------------------- | --------------------- |
+| `PTC_SIZE`                      | `uint64(2**9)` (=512) |
+| `INCLUSION_LIST_COMMITTEE_SIZE` | `uint64(2**4)` (=16)  |
 
 ### Max operations per block
 
@@ -232,6 +238,24 @@ class SignedExecutionPayloadEnvelope(Container):
     signature: BLSSignature
 ```
 
+#### `InclusionList`
+
+```python
+class InclusionList(Container):
+    slot: Slot
+    validator_index: ValidatorIndex
+    inclusion_list_committee_root: Root
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+```
+
+#### `SignedInclusionList`
+
+```python
+class SignedInclusionList(Container):
+    message: InclusionList
+    signature: BLSSignature
+```
+
 ### Modified containers
 
 #### `BeaconBlockBody`
@@ -264,6 +288,7 @@ class BeaconBlockBody(Container):
     signed_execution_payload_header: SignedExecutionPayloadHeader
     # [New in EIP7732]
     payload_attestations: List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]
+    inclusion_list_bits: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]
 ```
 
 #### `ExecutionPayloadHeader`
@@ -457,6 +482,23 @@ def is_parent_block_full(state: BeaconState) -> bool:
     return state.latest_execution_payload_header.block_hash == state.latest_block_hash
 ```
 
+#### New `is_valid_inclusion_list_signature`
+
+```python
+def is_valid_inclusion_list_signature(
+    state: BeaconState, signed_inclusion_list: SignedInclusionList
+) -> bool:
+    """
+    Check if ``signed_inclusion_list`` has a valid signature.
+    """
+    message = signed_inclusion_list.message
+    index = message.validator_index
+    pubkey = state.validators[index].pubkey
+    domain = get_domain(state, DOMAIN_INCLUSION_LIST_COMMITTEE, compute_epoch_at_slot(message.slot))
+    signing_root = compute_signing_root(message, domain)
+    return bls.Verify(pubkey, signing_root, signed_inclusion_list.signature)
+```
+
 ### Beacon State accessors
 
 #### New `get_attestation_participation_flag_indices`
@@ -551,6 +593,25 @@ def get_indexed_payload_attestation(
         attesting_indices=sorted(attesting_indices),
         data=payload_attestation.data,
         signature=payload_attestation.signature,
+    )
+```
+
+#### New `get_inclusion_list_committee`
+
+```python
+def get_inclusion_list_committee(
+    state: BeaconState, slot: Slot
+) -> Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]:
+    epoch = compute_epoch_at_slot(slot)
+    seed = get_seed(state, epoch, DOMAIN_INCLUSION_LIST_COMMITTEE)
+    indices = get_active_validator_indices(state, epoch)
+    start = (slot % SLOTS_PER_EPOCH) * INCLUSION_LIST_COMMITTEE_SIZE
+    end = start + INCLUSION_LIST_COMMITTEE_SIZE
+    return Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE](
+        [
+            indices[compute_shuffled_index(uint64(i % len(indices)), uint64(len(indices)), seed)]
+            for i in range(start, end)
+        ]
     )
 ```
 

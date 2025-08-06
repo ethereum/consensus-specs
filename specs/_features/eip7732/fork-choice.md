@@ -6,11 +6,19 @@
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
+- [Configuration](#configuration)
+  - [Time parameters](#time-parameters)
 - [Constants](#constants)
 - [Containers](#containers)
   - [New `ForkChoiceNode`](#new-forkchoicenode)
+- [Protocols](#protocols)
+  - [`ExecutionEngine`](#executionengine)
+    - [New `is_inclusion_list_satisfied`](#new-is_inclusion_list_satisfied)
+    - [Modified `notify_forkchoice_updated`](#modified-notify_forkchoice_updated)
+- [Helpers](#helpers)
   - [Modified `LatestMessage`](#modified-latestmessage)
   - [Modified `update_latest_messages`](#modified-update_latest_messages)
+  - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [New `notify_ptc_messages`](#new-notify_ptc_messages)
@@ -25,11 +33,16 @@
   - [Modified `get_weight`](#modified-get_weight)
   - [New `get_node_children`](#new-get_node_children)
   - [Modified `get_head`](#modified-get_head)
+  - [New `is_inclusion_list_satisfied_block`](#new-is_inclusion_list_satisfied_block)
+  - [New `is_inclusion_list_satisfied_payload`](#new-is_inclusion_list_satisfied_payload)
+  - [New `get_attester_head`](#new-get_attester_head)
+  - [Modified `get_proposer_head`](#modified-get_proposer_head)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [Modified `on_block`](#modified-on_block)
 - [New fork-choice handlers](#new-fork-choice-handlers)
   - [New `on_execution_payload`](#new-on_execution_payload)
   - [New `on_payload_attestation_message`](#new-on_payload_attestation_message)
+  - [New `on_inclusion_list`](#new-on_inclusion_list)
   - [Modified `validate_on_attestation`](#modified-validate_on_attestation)
   - [Modified `validate_merge_block`](#modified-validate_merge_block)
 
@@ -44,6 +57,14 @@ This is the modification of the fork-choice accompanying the EIP-7732 upgrade.
 | Name            | SSZ equivalent | Description                                     |
 | --------------- | -------------- | ----------------------------------------------- |
 | `PayloadStatus` | `uint8`        | Possible status of a payload in the fork-choice |
+
+## Configuration
+
+### Time parameters
+
+| Name                   | Value                           |  Unit   | Duration  |
+| ---------------------- | ------------------------------- | :-----: | :-------: |
+| `VIEW_FREEZE_DEADLINE` | `SECONDS_PER_SLOT * 2 // 3 + 1` | seconds | 9 seconds |
 
 ## Constants
 
@@ -64,6 +85,55 @@ class ForkChoiceNode(Container):
     root: Root
     payload_status: PayloadStatus  # One of PAYLOAD_STATUS_* values
 ```
+
+## Protocols
+
+### `ExecutionEngine`
+
+*Note*: The `is_inclusion_list_satisfied` function is added to the
+`ExecutionEngine` protocol to instantiate the inclusion list constraints
+validation.
+
+The body of this function is implementation dependent. The Engine API may be
+used to implement it with an external execution engine.
+
+#### New `is_inclusion_list_satisfied`
+
+```python
+def is_inclusion_list_satisfied(
+    self: ExecutionEngine,
+    execution_payload: ExecutionPayload,
+    inclusion_list_transactions: Sequence[Transaction],
+) -> bool:
+    """
+    Return ``True`` if and only if ``execution_payload`` satisfies the inclusion
+    list constraints with respect to ``inclusion_list_transactions``.
+    """
+    ...
+```
+
+#### Modified `notify_forkchoice_updated`
+
+The only change made is to the `PayloadAttributes` container through the
+addition of `inclusion_list_transactions`. Otherwise,
+`notify_forkchoice_updated` inherits all prior functionality.
+
+*Note*: If the `inclusion_list_transactions` field of `payload_attributes` is
+not empty, the payload build process MUST produce an execution payload that
+satisfies the inclusion list constraints with respect to
+`inclusion_list_transactions`.
+
+```python
+def notify_forkchoice_updated(
+    self: ExecutionEngine,
+    head_block_hash: Hash32,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    payload_attributes: Optional[PayloadAttributes],
+) -> Optional[PayloadId]: ...
+```
+
+## Helpers
 
 ### Modified `LatestMessage`
 
@@ -102,6 +172,22 @@ def update_latest_messages(
             )
 ```
 
+### Modified `PayloadAttributes`
+
+`PayloadAttributes` is extended with the `inclusion_list_transactions` field.
+
+```python
+@dataclass
+class PayloadAttributes(object):
+    timestamp: uint64
+    prev_randao: Bytes32
+    suggested_fee_recipient: ExecutionAddress
+    withdrawals: Sequence[Withdrawal]
+    parent_beacon_block_root: Root
+    # [New in EIP7805]
+    inclusion_list_transactions: Sequence[Transaction]
+```
+
 ### Modified `Store`
 
 *Note*: `Store` is modified to track the intermediate states of "empty"
@@ -129,6 +215,8 @@ class Store(object):
     execution_payload_states: Dict[Root, BeaconState] = field(default_factory=dict)
     # [New in EIP7732]
     ptc_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
+    # [New in EIP7805]
+    unsatisfied_inclusion_list_payloads: Set[Hash32] = field(default_factory=Set)
 ```
 
 ### Modified `get_forkchoice_store`
@@ -157,6 +245,8 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         # [New in EIP7732]
         execution_payload_states={anchor_root: copy(anchor_state)},
         ptc_vote={anchor_root: Vector[boolean, PTC_SIZE]()},
+        # [New in EIP7805]
+        unsatisfied_inclusion_list_payloads=set(),
     )
 ```
 
@@ -440,6 +530,121 @@ def get_head(store: Store) -> ForkChoiceNode:
         )
 ```
 
+### New `is_inclusion_list_satisfied_block`
+
+```python
+def is_inclusion_list_satisfied_block(store: Store, block_root: Root) -> bool:
+    inclusion_list_store = get_inclusion_list_store()
+
+    block = store.blocks[block_root]
+    state = store.block_states[block_root]
+    payload_header = block.body.signed_execution_payload_header.message
+
+    inclusion_list_bits_inclusive = is_inclusion_list_bits_inclusive(
+        inclusion_list_store, state, block.slot, block.body.inclusion_list_bits
+    )
+    inclusion_list_transactions_satisfied = (
+        not is_parent_node_full(store, block)
+        or payload_header.parent_block_hash not in store.unsatisfied_inclusion_list_payloads
+    )
+
+    return inclusion_list_bits_inclusive and inclusion_list_transactions_satisfied
+```
+
+### New `is_inclusion_list_satisfied_payload`
+
+```python
+def is_inclusion_list_satisfied_payload(
+    store: Store,
+    block_root: Root,
+    payload: ExecutionPayload,
+    execution_engine: ExecutionEngine,
+) -> bool:
+    inclusion_list_store = get_inclusion_list_store()
+
+    block = store.blocks[block_root]
+    state = store.block_states[block_root]
+
+    inclusion_list_transactions = get_inclusion_list_transactions(
+        inclusion_list_store, state, Slot(block.slot - 1)
+    )
+
+    return execution_engine.is_inclusion_list_satisfied(payload, inclusion_list_transactions)
+```
+
+### New `get_attester_head`
+
+```python
+def get_attester_head(store: Store, head_root: Root) -> Root:
+    is_inclusion_list_satisfied = is_inclusion_list_satisfied_block(store, head_root)
+
+    if not is_inclusion_list_satisfied:
+        head_block = store.blocks[head_root]
+        return head_block.parent_root
+
+    return head_root
+```
+
+### Modified `get_proposer_head`
+
+The implementation of `get_proposer_head` is modified to also account for
+`store.unsatisfied_inclusion_list_payloads`.
+
+```python
+def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
+    head_block = store.blocks[head_root]
+    parent_root = head_block.parent_root
+    parent_block = store.blocks[parent_root]
+
+    # Only re-org the head block if it arrived later than the attestation deadline.
+    head_late = is_head_late(store, head_root)
+
+    # Do not re-org on an epoch boundary where the proposer shuffling could change.
+    shuffling_stable = is_shuffling_stable(slot)
+
+    # Ensure that the FFG information of the new head will be competitive with the current head.
+    ffg_competitive = is_ffg_competitive(store, head_root, parent_root)
+
+    # Do not re-org if the chain is not finalizing with acceptable frequency.
+    finalization_ok = is_finalization_ok(store, slot)
+
+    # Only re-org if we are proposing on-time.
+    proposing_on_time = is_proposing_on_time(store)
+
+    # Only re-org a single slot at most.
+    parent_slot_ok = parent_block.slot + 1 == head_block.slot
+    current_time_ok = head_block.slot + 1 == slot
+    single_slot_reorg = parent_slot_ok and current_time_ok
+
+    # Check that the head has few enough votes to be overpowered by our proposer boost.
+    assert store.proposer_boost_root != head_root  # ensure boost has worn off
+    head_weak = is_head_weak(store, head_root)
+
+    # Check that the missing votes are assigned to the parent and not being hoarded.
+    parent_strong = is_parent_strong(store, parent_root)
+
+    reorg_prerequisites = all(
+        [
+            shuffling_stable,
+            ffg_competitive,
+            finalization_ok,
+            proposing_on_time,
+            single_slot_reorg,
+            head_weak,
+            parent_strong,
+        ]
+    )
+
+    # [New in EIP7805]
+    # Check that the head block satisfies the inclusion list constraints
+    inclusion_list_satisfied = is_inclusion_list_satisfied_block(store, head_root)
+
+    if reorg_prerequisites and (head_late or not inclusion_list_satisfied):  # [Modified in EIP-7805]
+        return parent_root
+    else:
+        return head_root
+```
+
 ## Updated fork-choice handlers
 
 ### Modified `on_block`
@@ -506,7 +711,10 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Add proposer score boost if the block is timely and not conflicting with an existing block
     is_first_block = store.proposer_boost_root == Root()
-    if is_timely and is_first_block:
+    is_inclusion_list_satisfied = is_inclusion_list_satisfied_block(
+        store, block_root
+    )  # [New in EIP-7805]
+    if is_timely and is_first_block and is_inclusion_list_satisfied:  # [Modified in EIP-7805]
         store.proposer_boost_root = hash_tree_root(block)
 
     # Update checkpoints in store if necessary
@@ -541,6 +749,15 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
 
     # Process the execution payload
     process_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
+
+    # [New in EIP7805]
+    # Check if payload satisfies the inclusion list constraints
+    # If not, add this payload to the store as inclusion list unsatisfied
+    is_inclusion_list_satisfied = is_inclusion_list_satisfied_payload(
+        store, envelope.beacon_block_root, envelope.payload, EXECUTION_ENGINE
+    )
+    if not is_inclusion_list_satisfied:
+        store.unsatisfied_inclusion_list_payloads.add(envelope.payload.block_hash)
 
     # Add new state for this payload to the store
     store.execution_payload_states[envelope.beacon_block_root] = state
@@ -583,6 +800,25 @@ def on_payload_attestation_message(
     ptc_index = ptc.index(ptc_message.validator_index)
     ptc_vote = store.ptc_vote[data.beacon_block_root]
     ptc_vote[ptc_index] = data.payload_present
+```
+
+### New `on_inclusion_list`
+
+```python
+def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) -> None:
+    """
+    Run ``on_inclusion_list`` upon receiving a new inclusion list.
+    """
+    inclusion_list = signed_inclusion_list.message
+
+    inclusion_list_store = get_inclusion_list_store()
+
+    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
+    is_before_view_freeze_deadline = (
+        get_current_slot(store) == inclusion_list.slot and time_into_slot < VIEW_FREEZE_DEADLINE
+    )
+
+    process_inclusion_list(inclusion_list_store, inclusion_list, is_before_view_freeze_deadline)
 ```
 
 ### Modified `validate_on_attestation`
