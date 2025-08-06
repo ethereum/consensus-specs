@@ -78,7 +78,6 @@
     - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
     - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
     - [`compute_fork_data_root`](#compute_fork_data_root)
-    - [`compute_fork_digest`](#compute_fork_digest)
     - [`compute_domain`](#compute_domain)
     - [`compute_signing_root`](#compute_signing_root)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -928,18 +927,6 @@ def compute_fork_data_root(current_version: Version, genesis_validators_root: Ro
             genesis_validators_root=genesis_validators_root,
         )
     )
-```
-
-#### `compute_fork_digest`
-
-```python
-def compute_fork_digest(current_version: Version, genesis_validators_root: Root) -> ForkDigest:
-    """
-    Return the 4-byte fork digest for the ``current_version`` and ``genesis_validators_root``.
-    This is a digest primarily used for domain separation on the p2p layer.
-    4-bytes suffices for practical separation of forks/chains.
-    """
-    return ForkDigest(compute_fork_data_root(current_version, genesis_validators_root)[:4])
 ```
 
 #### `compute_domain`

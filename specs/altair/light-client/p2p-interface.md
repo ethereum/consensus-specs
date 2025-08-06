@@ -87,10 +87,10 @@ forwarding the `finality_update` on the network.
 Light clients SHOULD call `process_light_client_finality_update` even if the
 message is ignored.
 
-The gossip `ForkDigestValue` is determined based on
-`compute_fork_version(compute_epoch_at_slot(finality_update.attested_header.beacon.slot))`.
+The `ForkDigest` context epoch is determined by
+`compute_epoch_at_slot(finality_update.attested_header.beacon.slot)`.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+Per `fork_version = compute_fork_version(context_epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -135,10 +135,10 @@ forwarding the `optimistic_update` on the network.
 Light clients SHOULD call `process_light_client_optimistic_update` even if the
 message is ignored.
 
-The gossip `ForkDigestValue` is determined based on
-`compute_fork_version(compute_epoch_at_slot(optimistic_update.attested_header.beacon.slot))`.
+The `ForkDigest` context epoch is determined by
+`compute_epoch_at_slot(optimistic_update.attested_header.beacon.slot)`.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+Per `fork_version = compute_fork_version(context_epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -183,11 +183,10 @@ To fulfill a request, the requested block and its post state need to be known.
 When a `LightClientBootstrap` instance cannot be produced for a given block
 root, peers SHOULD respond with error code `3: ResourceUnavailable`.
 
-A `ForkDigest`-context based on
-`compute_fork_version(compute_epoch_at_slot(bootstrap.header.beacon.slot))` is
-used to select the fork namespace of the Response type.
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(bootstrap.header.beacon.slot)`.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+Per `fork_version = compute_fork_version(context_epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -232,13 +231,12 @@ MUST respond with at least the earliest known result within the requested range,
 and MUST send results in consecutive order (by period). The response MUST NOT
 contain more than `min(MAX_REQUEST_LIGHT_CLIENT_UPDATES, count)` results.
 
-For each `response_chunk`, a `ForkDigest`-context based on
-`compute_fork_version(compute_epoch_at_slot(update.attested_header.beacon.slot))`
-is used to select the fork namespace of the Response type. Note that this
-`fork_version` may be different from the one used to verify the
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(update.attested_header.beacon.slot)`. Note
+that the `context_epoch` may differ from the one used to verify the
 `update.sync_aggregate`, which is based on `update.signature_slot`.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+Per `fork_version = compute_fork_version(context_epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -269,14 +267,14 @@ Peers SHOULD provide results as defined in
 When no `LightClientFinalityUpdate` is available, peers SHOULD respond with
 error code `3: ResourceUnavailable`.
 
-A `ForkDigest`-context based on
-`compute_fork_version(compute_epoch_at_slot(finality_update.attested_header.beacon.slot))`
-is used to select the fork namespace of the Response type. Note that this
-`fork_version` may be different from the one used to verify the
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by
+`compute_epoch_at_slot(finality_update.attested_header.beacon.slot)`. Note that
+the `context_epoch` may differ from the one used to verify the
 `finality_update.sync_aggregate`, which is based on
 `finality_update.signature_slot`.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+Per `fork_version = compute_fork_version(context_epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -307,14 +305,14 @@ Peers SHOULD provide results as defined in
 When no `LightClientOptimisticUpdate` is available, peers SHOULD respond with
 error code `3: ResourceUnavailable`.
 
-A `ForkDigest`-context based on
-`compute_fork_version(compute_epoch_at_slot(optimistic_update.attested_header.beacon.slot))`
-is used to select the fork namespace of the Response type. Note that this
-`fork_version` may be different from the one used to verify the
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by
+`compute_epoch_at_slot(optimistic_update.attested_header.beacon.slot)`. Note
+that the `context_epoch` may differ from the one used to verify the
 `optimistic_update.sync_aggregate`, which is based on
 `optimistic_update.signature_slot`.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+Per `fork_version = compute_fork_version(context_epoch)`:
 
 <!-- eth2spec: skip -->
 
