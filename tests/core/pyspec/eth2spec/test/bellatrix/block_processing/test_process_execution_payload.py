@@ -44,7 +44,6 @@ def run_execution_payload_processing(
         )
         post_state = state.copy()
         post_state.latest_block_hash = execution_payload.block_hash
-        post_state.latest_full_slot = state.slot
         envelope.state_root = post_state.hash_tree_root()
         privkey = privkeys[envelope.builder_index]
         signature = spec.get_execution_payload_envelope_signature(
@@ -96,7 +95,6 @@ def run_execution_payload_processing(
     yield "post", state
 
     if is_post_eip7732(spec):
-        assert state.latest_full_slot == state.slot
         assert state.latest_block_hash == execution_payload.block_hash
     else:
         assert state.latest_execution_payload_header == get_execution_payload_header(
