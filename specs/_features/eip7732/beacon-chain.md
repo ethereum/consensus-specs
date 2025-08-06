@@ -454,10 +454,10 @@ def compute_balance_weighted_selection(
     shuffle_indices: bool = True,
 ) -> Sequence[ValidatorIndex]:
     """
-    Return `size` indices sampled by effective balance, using `indices`
-    as candidates. If `shuffle_indices` is `True`, candidate indices
-    are themselves sampled from `indices` by shuffling it, otherwise
-    `indices` is traversed in order.
+    Return ``size`` indices sampled by effective balance, using ``indices``
+    as candidates. If ``shuffle_indices`` is ``True``, candidate indices
+    are themselves sampled from ``indices`` by shuffling it, otherwise
+    ``indices`` is traversed in order.
     """
     total = uint64(len(indices))
     assert total > 0
@@ -481,8 +481,8 @@ def compute_balance_weighted_acceptance(
     state: BeaconState, index: ValidatorIndex, seed: Bytes32, i: uint64
 ) -> bool:
     """
-    Return whether to accept the selection of the validator `index`, with probability
-    proportional to its `effective_balance`, and randomness given by `seed` and `i`.
+    Return whether to accept the selection of the validator ``index``, with probability
+    proportional to its ``effective_balance``, and randomness given by ``seed`` and ``i``.
     """
     MAX_RANDOM_VALUE = 2**16 - 1
     random_bytes = hash(seed + uint_to_bytes(i // 16))
