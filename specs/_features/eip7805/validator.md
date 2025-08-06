@@ -53,7 +53,7 @@ continuing and use them as a reference throughout.
 | Name                                 | Value                       |  Unit   |  Duration  |
 | ------------------------------------ | --------------------------- | :-----: | :--------: |
 | `INCLUSION_LIST_SUBMISSION_DEADLINE` | `SECONDS_PER_SLOT * 2 // 3` | seconds | 8 seconds  |
-| `PROPOSER_INCLUSION_LIST_CUT_OFF`    | `SECONDS_PER_SLOT - 1`      | seconds | 11 seconds |
+| `PROPOSER_INCLUSION_LIST_CUTOFF`     | `SECONDS_PER_SLOT - 1`      | seconds | 11 seconds |
 
 ## Helpers
 
@@ -150,7 +150,7 @@ processed through any empty slots up to the assigned slot using
 
 *Note*: A proposer should produce an execution payload that satisfies the
 inclusion list constraints with respect to the inclusion lists gathered up to
-`PROPOSER_INCLUSION_LIST_CUT_OFF` into the slot.
+`PROPOSER_INCLUSION_LIST_CUTOFF` into the slot.
 
 ```python
 def prepare_execution_payload(
