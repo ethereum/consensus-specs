@@ -451,7 +451,7 @@ def compute_balance_weighted_selection(
     indices: Sequence[ValidatorIndex],
     seed: Bytes32,
     size: uint64,
-    shuffle_indices: bool = True,
+    shuffle_indices: bool,
 ) -> Sequence[ValidatorIndex]:
     """
     Return ``size`` indices sampled by effective balance, using ``indices``
@@ -507,7 +507,10 @@ def compute_proposer_indices(
     """
     start_slot = compute_start_slot_at_epoch(epoch)
     seeds = [hash(seed + uint_to_bytes(Slot(start_slot + i))) for i in range(SLOTS_PER_EPOCH)]
-    return [compute_balance_weighted_selection(state, indices, seed, size=1)[0] for seed in seeds]
+    return [
+        compute_balance_weighted_selection(state, indices, seed, size=1, shuffle_indices=True)[0]
+        for seed in seeds
+    ]
 ```
 
 ### Beacon State accessors
@@ -526,7 +529,9 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
     epoch = Epoch(get_current_epoch(state) + 1)
     seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
     indices = get_active_validator_indices(state, epoch)
-    return compute_balance_weighted_selection(state, indices, seed, size=SYNC_COMMITTEE_SIZE)
+    return compute_balance_weighted_selection(
+        state, indices, seed, size=SYNC_COMMITTEE_SIZE, shuffle_indices=True
+    )
 ```
 
 #### New `get_attestation_participation_flag_indices`
