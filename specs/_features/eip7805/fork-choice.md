@@ -30,9 +30,9 @@ This is the modification of the fork choice accompanying the EIP-7805 upgrade.
 
 ### Time parameters
 
-| Name                   | Value                           |  Unit   | Duration  |
-| ---------------------- | ------------------------------- | :-----: | :-------: |
-| `VIEW_FREEZE_DEADLINE` | `SECONDS_PER_SLOT * 2 // 3 + 1` | seconds | 9 seconds |
+| Name                     | Value          |     Unit     |         Duration          |
+| ------------------------ | -------------- | :----------: | :-----------------------: |
+| `VIEW_FREEZE_CUTOFF_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
 
 ## Protocols
 
@@ -270,12 +270,12 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
     inclusion_list_store = get_inclusion_list_store()
 
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_view_freeze_deadline = (
-        get_current_slot(store) == inclusion_list.slot and time_into_slot < VIEW_FREEZE_DEADLINE
-    )
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    view_freeze_cutoff_ms = get_slot_component_duration_ms(VIEW_FREEZE_CUTOFF_BPS)
+    is_before_view_freeze_cutoff = time_into_slot_ms < view_freeze_cutoff_ms
 
-    process_inclusion_list(inclusion_list_store, inclusion_list, is_before_view_freeze_deadline)
+    process_inclusion_list(inclusion_list_store, inclusion_list, is_before_view_freeze_cutoff)
 ```
 
 ### Modified `on_block`
@@ -324,8 +324,10 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     store.block_states[block_root] = state
 
     # Add block timeliness to the store
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
 
