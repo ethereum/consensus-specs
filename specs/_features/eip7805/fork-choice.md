@@ -272,10 +272,10 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    view_freeze_deadline_ms = get_slot_component_duration_ms(VIEW_FREEZE_CUTOFF_BPS)
-    is_before_view_freeze_deadline = time_into_slot_ms < view_freeze_deadline_ms
+    view_freeze_cutoff_ms = get_slot_component_duration_ms(VIEW_FREEZE_CUTOFF_BPS)
+    is_before_view_freeze_cutoff = time_into_slot_ms < view_freeze_cutoff_ms
 
-    process_inclusion_list(inclusion_list_store, inclusion_list, is_before_view_freeze_deadline)
+    process_inclusion_list(inclusion_list_store, inclusion_list, is_before_view_freeze_cutoff)
 ```
 
 ### Modified `on_block`

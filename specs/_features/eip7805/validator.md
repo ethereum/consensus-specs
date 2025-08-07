@@ -50,10 +50,10 @@ continuing and use them as a reference throughout.
 
 ### Time parameters
 
-| Name                                | Value          |     Unit     |          Duration          |
-| ----------------------------------- | -------------- | :----------: | :------------------------: |
-| `INCLUSION_LIST_SUBMISSION_DUE_BPS` | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
-| `PROPOSER_INCLUSION_LIST_DUE_BPS`   | `uint64(9167)` | basis points | ~92% of `SLOT_DURATION_MS` |
+| Name                                 | Value          |     Unit     |          Duration          |
+| ------------------------------------ | -------------- | :----------: | :------------------------: |
+| `INCLUSION_LIST_SUBMISSION_DUE_BPS`  | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
+| `PROPOSER_INCLUSION_LIST_CUTOFF_BPS` | `uint64(9167)` | basis points | ~92% of `SLOT_DURATION_MS` |
 
 ## Helpers
 
@@ -150,8 +150,8 @@ processed through any empty slots up to the assigned slot using
 
 *Note*: A proposer should produce an execution payload that satisfies the
 inclusion list constraints with respect to the inclusion lists gathered up to
-`get_slot_component_duration_ms(PROPOSER_INCLUSION_LIST_DUE_BPS)` milliseconds
-into the slot.
+`get_slot_component_duration_ms(PROPOSER_INCLUSION_LIST_CUTOFF_BPS)`
+milliseconds into the slot.
 
 ```python
 def prepare_execution_payload(
