@@ -4,9 +4,6 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-- [Helper functions](#helper-functions)
-  - [Misc](#misc)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [Fork to Electra](#fork-to-electra)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -25,30 +22,6 @@ Warning: this configuration is not definitive.
 | ---------------------- | --------------------------------------------- |
 | `ELECTRA_FORK_VERSION` | `Version('0x05000000')`                       |
 | `ELECTRA_FORK_EPOCH`   | `Epoch(364032)` (May 7, 2025, 10:05:11am UTC) |
-
-## Helper functions
-
-### Misc
-
-#### Modified `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= ELECTRA_FORK_EPOCH:
-        return ELECTRA_FORK_VERSION
-    if epoch >= DENEB_FORK_EPOCH:
-        return DENEB_FORK_VERSION
-    if epoch >= CAPELLA_FORK_EPOCH:
-        return CAPELLA_FORK_VERSION
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
 
 ## Fork to Electra
 

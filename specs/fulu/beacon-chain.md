@@ -200,27 +200,24 @@ def get_blob_parameters(epoch: Epoch) -> BlobParameters:
 #### Modified `compute_fork_digest`
 
 *Note:* The `compute_fork_digest` helper is updated to account for
-Blob-Parameters-Only forks. Also, the `fork_version` parameter has been removed
-and is now computed for the given epoch with `compute_fork_version`.
+Blob-Parameters-Only forks.
 
 ```python
 def compute_fork_digest(
     genesis_validators_root: Root,
-    # [New in Fulu:EIP7892]
-    epoch: Epoch,
+    context_epoch: Epoch,
 ) -> ForkDigest:
     """
-    Return the 4-byte fork digest for the ``version`` and ``genesis_validators_root``
-    XOR'd with the hash of the blob parameters for ``epoch``.
+    Return the 4-byte fork digest for the ``genesis_validators_root`` at a given ``context_epoch``.
 
     This is a digest primarily used for domain separation on the p2p layer.
     4-bytes suffices for practical separation of forks/chains.
     """
-    fork_version = compute_fork_version(epoch)
+    fork_version = compute_fork_version(context_epoch)
     base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
-    blob_parameters = get_blob_parameters(epoch)
 
-    # Bitmask digest with hash of blob parameters
+    # [Modified in Fulu:EIP7892] Bitmask digest with hash of blob parameters
+    blob_parameters = get_blob_parameters(context_epoch)
     return ForkDigest(
         bytes(
             xor(

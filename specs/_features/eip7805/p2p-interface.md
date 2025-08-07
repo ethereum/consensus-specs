@@ -6,6 +6,8 @@ EIP-7805.
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Modifications in EIP-7805](#modifications-in-eip-7805)
+  - [Helper functions](#helper-functions)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Configuration](#configuration)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -18,6 +20,30 @@ EIP-7805.
 <!-- mdformat-toc end -->
 
 ## Modifications in EIP-7805
+
+### Helper functions
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= EIP7805_FORK_EPOCH:
+        return EIP7805_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ### Configuration
 
@@ -77,8 +103,10 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
 
 **Protocol ID:** `/eth2/beacon_chain/req/inclusion_list_by_committee_indices/1/`
 
-The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`:
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(signed_inclusion_list.message.slot)`.
+
+Per `fork_version = compute_fork_version(context_epoch)`:
 
 <!-- eth2spec: skip -->
 
