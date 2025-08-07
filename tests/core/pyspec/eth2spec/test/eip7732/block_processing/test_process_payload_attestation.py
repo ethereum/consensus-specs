@@ -59,11 +59,15 @@ def prepare_signed_payload_attestation(
         # Default to all PTC members attesting
         attesting_indices = ptc
 
-    # Create aggregation bits
+    # Indices whose corresponding aggregation bits are unset,
+    # to deal with duplicates indices in the PTC.
+    unset_indices = list(attesting_indices)
+
     aggregation_bits = Bitvector[spec.PTC_SIZE]()
     for i, validator_index in enumerate(ptc):
-        if validator_index in attesting_indices:
+        if validator_index in unset_indices:
             aggregation_bits[i] = True
+            unset_indices.remove(validator_index)
 
     # Create payload attestation data
     data = spec.PayloadAttestationData(
