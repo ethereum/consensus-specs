@@ -264,6 +264,7 @@ def test_process_builder_pending_payments_large_amount_churn_impact(spec, state)
     # Store pre-processing state for churn verification
     pre_exit_balance_to_consume = state.exit_balance_to_consume
     per_epoch_churn = spec.get_activation_exit_churn_limit(state)
+    current_epoch = spec.get_current_epoch(state)
 
     yield from run_epoch_processing_with(spec, state, "process_builder_pending_payments")
 
@@ -281,5 +282,10 @@ def test_process_builder_pending_payments_large_amount_churn_impact(spec, state)
         f"Expected exit_balance_to_consume {expected_exit_balance_to_consume}, got {state.exit_balance_to_consume}"
     )
 
-    current_epoch = spec.get_current_epoch(state)
-    assert withdrawal.withdrawable_epoch > current_epoch
+    earliest_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
+    balance_to_process = large_amount - per_epoch_churn
+    additional_epochs = (balance_to_process - 1) // per_epoch_churn + 1
+    expected_exit_queue_epoch = earliest_exit_epoch + additional_epochs
+    expected_withdrawable_epoch = expected_exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+
+    assert withdrawal.withdrawable_epoch == expected_withdrawable_epoch
