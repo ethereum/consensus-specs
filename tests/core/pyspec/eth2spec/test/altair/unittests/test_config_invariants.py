@@ -6,6 +6,13 @@ from eth2spec.test.context import (
 
 @with_altair_and_later
 @spec_state_test
+def test_time(spec, state):
+    assert spec.config.SYNC_MESSAGE_DUE_BPS <= spec.BASIS_POINTS
+    assert spec.config.CONTRIBUTION_DUE_BPS <= spec.BASIS_POINTS
+
+
+@with_altair_and_later
+@spec_state_test
 def test_weight_denominator(spec, state):
     assert (
         spec.TIMELY_HEAD_WEIGHT
