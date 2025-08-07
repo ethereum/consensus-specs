@@ -64,7 +64,7 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
 - _[IGNORE]_ The `message` is either the first or second valid message received
   from the validator with index `message.validator_index`.
 - _[REJECT]_ The signature of `inclusion_list.signature` is valid with respect
-  to the validator index.
+  to the validator's public key.
 
 ### The Req/Resp domain
 

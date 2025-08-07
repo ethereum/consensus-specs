@@ -19,6 +19,7 @@ from .helpers.constants import (
     CAPELLA,
     DENEB,
     EIP7441,
+    EIP7732,
     EIP7805,
     ELECTRA,
     FULU,
@@ -249,6 +250,16 @@ def low_single_balance(spec: Spec):
     Usage: `@with_custom_state(balances_fn=low_single_balance, ...)`
     """
     return [1]
+
+
+def one_validator_one_gwei_balances(spec: Spec):
+    """
+    Helper method to create a single validator with 1 Gwei balance,
+    among other validators with default balances.
+    """
+    balances = default_balances(spec)
+    balances[0] = 1
+    return balances
 
 
 def large_validator_set(spec: Spec):
@@ -639,6 +650,7 @@ with_deneb_and_later = with_all_phases_from(DENEB)
 with_electra_and_later = with_all_phases_from(ELECTRA)
 with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7441_and_later = with_all_phases_from(EIP7441, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip7732_and_later = with_all_phases_from(EIP7732, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7805_and_later = with_all_phases_from(EIP7805, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 

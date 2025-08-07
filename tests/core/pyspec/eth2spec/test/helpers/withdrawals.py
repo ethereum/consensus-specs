@@ -322,3 +322,30 @@ def run_withdrawals_processing(
             assert withdrawal.amount == request.amount
 
     return expected_withdrawals
+
+
+def set_builder_withdrawal_credential(spec, state, index, address=None):
+    if address is None:
+        address = b"\x11" * 20
+
+    validator = state.validators[index]
+    validator.withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + address
+
+
+def set_builder_withdrawal_credential_with_balance(
+    spec, state, index, effective_balance=None, balance=None, address=None
+):
+    set_builder_withdrawal_credential(spec, state, index, address)
+
+    if balance is None and effective_balance is None:
+        balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+        effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    elif balance is None:
+        balance = effective_balance
+    elif effective_balance is None:
+        effective_balance = min(
+            balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+        )
+
+    state.validators[index].effective_balance = effective_balance
+    state.balances[index] = balance
