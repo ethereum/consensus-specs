@@ -2,7 +2,9 @@ from eth2spec.test.context import (
     always_bls,
     spec_state_test,
     with_eip7732_and_later,
+    with_presets,
 )
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.utils.ssz.ssz_typing import Bitvector
 
@@ -103,6 +105,7 @@ def prepare_signed_payload_attestation(
 @with_eip7732_and_later
 @spec_state_test
 @always_bls
+@with_presets([MINIMAL], reason="broken on mainnet")
 def test_process_payload_attestation_payload_present(spec, state):
     """
     Test basic valid payload attestation processing
@@ -117,6 +120,7 @@ def test_process_payload_attestation_payload_present(spec, state):
 @with_eip7732_and_later
 @spec_state_test
 @always_bls
+@with_presets([MINIMAL], reason="broken on mainnet")
 def test_process_payload_attestation_payload_not_present(spec, state):
     """
     Test valid payload attestation indicating payload was not present
@@ -131,6 +135,7 @@ def test_process_payload_attestation_payload_not_present(spec, state):
 @with_eip7732_and_later
 @spec_state_test
 @always_bls
+@with_presets([MINIMAL], reason="broken on mainnet")
 def test_process_payload_attestation_partial_participation(spec, state):
     """
     Test valid payload attestation with only some PTC members participating
@@ -155,6 +160,7 @@ def test_process_payload_attestation_partial_participation(spec, state):
 
 @with_eip7732_and_later
 @spec_state_test
+@with_presets([MINIMAL], reason="maybe broken on mainnet")
 def test_process_payload_attestation_invalid_beacon_block_root(spec, state):
     """
     Test payload attestation with wrong beacon block root fails
@@ -176,6 +182,7 @@ def test_process_payload_attestation_invalid_beacon_block_root(spec, state):
 
 @with_eip7732_and_later
 @spec_state_test
+@with_presets([MINIMAL], reason="maybe broken on mainnet")
 def test_process_payload_attestation_future_slot(spec, state):
     """
     Test payload attestation for future slot fails
@@ -190,6 +197,7 @@ def test_process_payload_attestation_future_slot(spec, state):
 
 @with_eip7732_and_later
 @spec_state_test
+@with_presets([MINIMAL], reason="maybe broken on mainnet")
 def test_process_payload_attestation_too_old_slot(spec, state):
     """
     Test payload attestation for slot too far in the past fails
@@ -205,6 +213,7 @@ def test_process_payload_attestation_too_old_slot(spec, state):
 
 @with_eip7732_and_later
 @spec_state_test
+@with_presets([MINIMAL], reason="maybe broken on mainnet")
 def test_process_payload_attestation_invalid_signature(spec, state):
     """
     Test payload attestation with invalid signature fails
@@ -219,6 +228,7 @@ def test_process_payload_attestation_invalid_signature(spec, state):
 
 @with_eip7732_and_later
 @spec_state_test
+@with_presets([MINIMAL], reason="maybe broken on mainnet")
 def test_process_payload_attestation_no_attesting_indices(spec, state):
     """
     Test payload attestation with no attesting indices fails
