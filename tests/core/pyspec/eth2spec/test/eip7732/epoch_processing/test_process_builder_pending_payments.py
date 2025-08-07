@@ -286,6 +286,8 @@ def test_process_builder_pending_payments_large_amount_churn_impact(spec, state)
     balance_to_process = large_amount - per_epoch_churn
     additional_epochs = (balance_to_process - 1) // per_epoch_churn + 1
     expected_exit_queue_epoch = earliest_exit_epoch + additional_epochs
-    expected_withdrawable_epoch = expected_exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+    expected_withdrawable_epoch = (
+        expected_exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+    )
 
     assert withdrawal.withdrawable_epoch == expected_withdrawable_epoch
