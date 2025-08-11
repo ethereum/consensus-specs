@@ -45,7 +45,6 @@
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
     - [New `get_attestation_participation_flag_indices`](#new-get_attestation_participation_flag_indices)
     - [New `get_ptc`](#new-get_ptc)
-    - [New `get_payload_attesting_indices`](#new-get_payload_attesting_indices)
     - [New `get_indexed_payload_attestation`](#new-get_indexed_payload_attestation)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `process_slot`](#modified-process_slot)
@@ -409,9 +408,9 @@ def is_valid_indexed_payload_attestation(
     Check if ``indexed_payload_attestation`` is not empty, has sorted and unique indices and has
     a valid aggregate signature.
     """
-    # Verify indices are sorted and unique
+    # Verify indices are non-empty and sorted
     indices = indexed_payload_attestation.attesting_indices
-    if len(indices) == 0 or not indices == sorted(set(indices)):
+    if len(indices) == 0 or not indices == sorted(indices):
         return False
 
     # Verify aggregate signature
@@ -600,19 +599,6 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     )
 ```
 
-#### New `get_payload_attesting_indices`
-
-```python
-def get_payload_attesting_indices(
-    state: BeaconState, slot: Slot, payload_attestation: PayloadAttestation
-) -> Set[ValidatorIndex]:
-    """
-    Return the set of attesting indices corresponding to ``payload_attestation``.
-    """
-    ptc = get_ptc(state, slot)
-    return set(index for i, index in enumerate(ptc) if payload_attestation.aggregation_bits[i])
-```
-
 #### New `get_indexed_payload_attestation`
 
 ```python
@@ -622,7 +608,10 @@ def get_indexed_payload_attestation(
     """
     Return the indexed payload attestation corresponding to ``payload_attestation``.
     """
-    attesting_indices = get_payload_attesting_indices(state, slot, payload_attestation)
+    ptc = get_ptc(state, slot)
+    attesting_indices = [
+        index for i, index in enumerate(ptc) if payload_attestation.aggregation_bits[i]
+    ]
 
     return IndexedPayloadAttestation(
         attesting_indices=sorted(attesting_indices),
