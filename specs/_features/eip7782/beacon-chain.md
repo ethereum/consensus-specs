@@ -1,4 +1,4 @@
-# Phase 0 -- The Beacon Chain
+# EIP-7782 -- The Beacon Chain
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
@@ -9,8 +9,6 @@
   - [EIP-7782 timing parameters](#eip-7782-timing-parameters)
   - [EIP-7782 churn limit parameters](#eip-7782-churn-limit-parameters)
   - [Modified churn limit functions](#modified-churn-limit-functions)
-    - [Modified `get_validator_churn_limit`](#modified-get_validator_churn_limit)
-    - [Modified `get_validator_activation_churn_limit`](#modified-get_validator_activation_churn_limit)
     - [Modified `get_balance_churn_limit`](#modified-get_balance_churn_limit)
     - [Modified `get_activation_exit_churn_limit`](#modified-get_activation_exit_churn_limit)
 - [Rewards and penalties](#rewards-and-penalties-1)
@@ -55,38 +53,12 @@ proportional to time rather than slot count.
 
 ### EIP-7782 churn limit parameters
 
-| Name                                                | Value                |    Unit    |               Description                |
-| --------------------------------------------------- | -------------------- | :--------: | :--------------------------------------: |
-| `MIN_PER_EPOCH_CHURN_LIMIT_EIP7782`                 | `uint64(2)`          | validators |  Minimum validators per epoch (halved)   |
-| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_EIP7782`      | `uint64(4)`          | validators |  Maximum activations per epoch (halved)  |
-| `MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA_EIP7782`         | `Gwei(64000000000)`  |    Gwei    |    Minimum balance per epoch (halved)    |
-| `MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT_EIP7782` | `Gwei(128000000000)` |    Gwei    | Maximum activation/exit balance (halved) |
+| Name                                                | Value                | Unit |           Description           |
+| --------------------------------------------------- | -------------------- | :--: | :-----------------------------: |
+| `MIN_PER_EPOCH_CHURN_LIMIT_EIP7782`                 | `Gwei(64000000000)`  | Gwei |    Minimum balance per epoch    |
+| `MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT_EIP7782` | `Gwei(128000000000)` | Gwei | Maximum activation/exit balance |
 
 ### Modified churn limit functions
-
-#### Modified `get_validator_churn_limit`
-
-```python
-def get_validator_churn_limit(state: BeaconState) -> uint64:
-    """
-    Return the validator churn limit for the current epoch.
-    """
-    active_validator_indices = get_active_validator_indices(state, get_current_epoch(state))
-    return max(
-        MIN_PER_EPOCH_CHURN_LIMIT_EIP7782,
-        uint64(len(active_validator_indices)) // CHURN_LIMIT_QUOTIENT,
-    )
-```
-
-#### Modified `get_validator_activation_churn_limit`
-
-```python
-def get_validator_activation_churn_limit(state: BeaconState) -> uint64:
-    """
-    Return the validator activation churn limit for the current epoch.
-    """
-    return min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_EIP7782, get_validator_churn_limit(state))
-```
 
 #### Modified `get_balance_churn_limit`
 
@@ -96,7 +68,7 @@ def get_balance_churn_limit(state: BeaconState) -> Gwei:
     Return the churn limit for the current epoch.
     """
     churn = max(
-        MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA_EIP7782,
+        MIN_PER_EPOCH_CHURN_LIMIT_EIP7782,
         get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT,
     )
     return churn - churn % EFFECTIVE_BALANCE_INCREMENT

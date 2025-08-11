@@ -1,4 +1,4 @@
-# Phase 0 -- Beacon Chain Fork Choice
+# EIP-7782 -- Beacon Chain Fork Choice
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
@@ -6,6 +6,8 @@
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [Modified `get_slots_since_genesis`](#modified-get_slots_since_genesis)
   - [Modified `get_slot_component_duration_ms`](#modified-get_slot_component_duration_ms)
+  - [New `get_slot_duration_ms_for_epoch`](#new-get_slot_duration_ms_for_epoch)
+  - [New `get_slots_since_genesis_ms`](#new-get_slots_since_genesis_ms)
 - [Handlers](#handlers)
   - [`on_tick`](#on_tick)
 
@@ -20,7 +22,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     assert anchor_block.state_root == hash_tree_root(anchor_state)
     anchor_root = hash_tree_root(anchor_block)
     anchor_epoch = get_current_epoch(anchor_state)
-    
+
     # Calculate time in milliseconds based on the slot duration that applies to the anchor epoch
     if anchor_epoch >= EIP7782_FORK_EPOCH:
         # Use EIP-7782 slot duration (6000 milliseconds)
@@ -28,10 +30,10 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     else:
         # Use standard slot duration (12000 milliseconds)
         time_ms = anchor_state.genesis_time * 1000 + SLOT_DURATION_MS * anchor_state.slot
-    
+
     # Convert back to seconds for the store (maintaining backward compatibility)
     time = uint64(time_ms // 1000)
-    
+
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     proposer_boost_root = Root()
@@ -62,16 +64,16 @@ def get_slots_since_genesis(store: Store) -> int:
     # Convert store time to milliseconds for precise calculations
     store_time_ms = store.time * 1000
     genesis_time_ms = store.genesis_time * 1000
-    
+
     # Calculate the time when EIP-7782 fork occurs
     if EIP7782_FORK_EPOCH == FAR_FUTURE_EPOCH:
         # If EIP-7782 is not scheduled, use standard slot duration
         return (store_time_ms - genesis_time_ms) // SLOT_DURATION_MS
-    
+
     # Calculate the slot and time when EIP-7782 fork occurs (in milliseconds)
     eip7782_fork_slot = EIP7782_FORK_EPOCH * SLOTS_PER_EPOCH
     eip7782_fork_time_ms = genesis_time_ms + eip7782_fork_slot * SLOT_DURATION_MS
-    
+
     if store_time_ms < eip7782_fork_time_ms:
         # Before EIP-7782 fork, use standard slot duration
         return (store_time_ms - genesis_time_ms) // SLOT_DURATION_MS
@@ -117,13 +119,13 @@ def get_slots_since_genesis_ms(store: Store) -> int:
     """
     store_time_ms = store.time * 1000
     genesis_time_ms = store.genesis_time * 1000
-    
+
     if EIP7782_FORK_EPOCH == FAR_FUTURE_EPOCH:
         return (store_time_ms - genesis_time_ms) // SLOT_DURATION_MS
-    
+
     eip7782_fork_slot = EIP7782_FORK_EPOCH * SLOTS_PER_EPOCH
     eip7782_fork_time_ms = genesis_time_ms + eip7782_fork_slot * SLOT_DURATION_MS
-    
+
     if store_time_ms < eip7782_fork_time_ms:
         return (store_time_ms - genesis_time_ms) // SLOT_DURATION_MS
     else:
