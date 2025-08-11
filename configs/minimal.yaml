@@ -19,11 +19,11 @@ TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: 18446744073709551615
 
 # Genesis
 # ---------------------------------------------------------------
-# [customized] 2**6 (= 64)
+# [customized] 2**6 (= 64) validators
 MIN_GENESIS_ACTIVE_VALIDATOR_COUNT: 64
-# Jan 3, 2020
+# [customized] Jan 3, 2020, 12am UTC
 MIN_GENESIS_TIME: 1578009600
-# [customized]
+# [customized] Initial fork version for minimal
 GENESIS_FORK_VERSION: 0x00000001
 # [customized] 5 * 60 (= 300) seconds
 GENESIS_DELAY: 300
@@ -65,15 +65,15 @@ EIP7805_FORK_EPOCH: 18446744073709551615
 # ---------------------------------------------------------------
 # [customized] 6 seconds (*deprecated*)
 SECONDS_PER_SLOT: 6
-# [customized] 6000 milliseconds, 6 seconds
+# [customized] 6000 milliseconds
 SLOT_DURATION_MS: 6000
 # 14 (estimate from Eth1 mainnet)
 SECONDS_PER_ETH1_BLOCK: 14
-# 2**8 (= 256) epochs, ~27 hours
+# 2**8 (= 256) epochs
 MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 256
-# [customized] 2**6 (= 64) epochs, ~7 hours
+# [customized] 2**6 (= 64) epochs
 SHARD_COMMITTEE_PERIOD: 64
-# [customized] 2**4 (= 16) Eth1 blocks, ~4 minutes
+# [customized] 2**4 (= 16) Eth1 blocks
 ETH1_FOLLOW_DISTANCE: 16
 # 1667 basis points, ~17% of SLOT_DURATION_MS
 PROPOSER_REORG_CUTOFF_BPS: 1667
@@ -160,9 +160,9 @@ MAX_REQUEST_BLOCKS: 1024
 EPOCHS_PER_SUBNET_SUBSCRIPTION: 256
 # [customized] MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2 (= 272) epochs
 MIN_EPOCHS_FOR_BLOCK_REQUESTS: 272
-# 5s
+# 5 seconds
 TTFB_TIMEOUT: 5
-# 10s
+# 10 seconds
 RESP_TIMEOUT: 10
 # 2**5 (= 32) slots
 ATTESTATION_PROPAGATION_SLOT_RANGE: 32
@@ -182,7 +182,7 @@ ATTESTATION_SUBNET_PREFIX_BITS: 6
 # Deneb
 # 2**7 (= 128) blocks
 MAX_REQUEST_BLOCKS_DENEB: 128
-# 2**12 (= 4,096) epochs, ~18 days
+# 2**12 (= 4,096) epochs
 MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS: 4096
 # 6 subnets
 BLOB_SIDECAR_SUBNET_COUNT: 6
@@ -214,13 +214,13 @@ CUSTODY_REQUIREMENT: 4
 VALIDATOR_CUSTODY_REQUIREMENT: 8
 # 2**5 * 10**9 (= 32,000,000,000) Gwei
 BALANCE_PER_ADDITIONAL_CUSTODY_GROUP: 32000000000
-# 2**12 (= 4,096) epochs, ~18 days
+# 2**12 (= 4,096) epochs
 MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS: 4096
 
 # EIP7441
-# [customized] 2**2 (= 4) epochs, 25.6 minutes
+# [customized] 2**2 (= 4) epochs
 EPOCHS_PER_SHUFFLING_PHASE: 4
-# [customized] 2**0 (= 1) epochs, 6.4 minutes
+# [customized] 2**0 (= 1) epochs
 PROPOSER_SELECTION_GAP: 1
 
 # EIP7732
