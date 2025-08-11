@@ -104,9 +104,9 @@ def get_slot_duration_ms_for_epoch(epoch: Epoch) -> uint64:
     This function enables future support for fractional slot times.
     """
     if epoch >= EIP7782_FORK_EPOCH:
-        return SLOT_DURATION_MS_EIP7782  # 6000 milliseconds
+        return SLOT_DURATION_MS_EIP7782
     else:
-        return SLOT_DURATION_MS  # 12000 milliseconds
+        return SLOT_DURATION_MS
 ```
 
 #### New `get_slots_since_genesis_ms`

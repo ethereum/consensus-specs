@@ -116,7 +116,7 @@ def upgrade_to_eip7782(pre: fulu.BeaconState) -> BeaconState:
         pending_deposits=pre.pending_deposits,
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
-        proposer_lookahead=initialize_proposer_lookahead(pre),
+        proposer_lookahead=pre.proposer_lookahead,
     )
 
     return post
