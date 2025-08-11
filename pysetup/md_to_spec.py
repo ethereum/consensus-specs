@@ -393,17 +393,6 @@ class MarkdownToSpec:
             list_of_records_config_file.append(new_entry)
         return list_of_records_config_file
 
-    @staticmethod
-    def _format_frozen_records(records: list[dict[str, str]]) -> str:
-        lines = ["("]
-        for record in records:
-            lines.append("    frozendict({")
-            for key, value in record.items():
-                lines.append(f'        "{str(key)}": {str(value)},')
-            lines.append("    }),")
-        lines.append(")")
-        return "\n".join(lines)
-
     def _process_html_block(self, html: HTMLBlock) -> None:
         """
         Handles HTML comments for skip logic and list-of-records detection.
