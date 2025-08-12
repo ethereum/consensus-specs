@@ -512,6 +512,8 @@ def with_all_phases_from_to_except(earliest_phase, latest_phase, except_phases=N
             ]
         )(fn)
 
+    return decorator
+
 
 def with_all_phases_except(exclusion_phases):
     """
