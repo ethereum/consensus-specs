@@ -2,13 +2,13 @@ from random import Random
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to_except,
 )
 from eth2spec.test.helpers.blob import get_block_with_blob
 from eth2spec.test.helpers.constants import (
     DENEB,
     EIP7732,
-    FULU,
+    ELECTRA,
 )
 from eth2spec.test.helpers.fork_choice import (
     BlobData,
@@ -21,9 +21,9 @@ from eth2spec.test.helpers.state import (
 )
 
 
-# TODO(jtraglia): Use with_all_phases_from_to_except after EIP7732 is based on Fulu.
+# TODO(jtraglia): Use with_all_phases_from_to after EIP7732 is rebased on Fulu.
 # This applies to every other test in this file too.
-@with_all_phases_from_except(DENEB, [FULU, EIP7732])
+@with_all_phases_from_to_except(DENEB, ELECTRA, [EIP7732])
 @spec_state_test
 def test_simple_blob_data(spec, state):
     rng = Random(1234)
@@ -58,7 +58,7 @@ def test_simple_blob_data(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases_from_except(DENEB, [FULU, EIP7732])
+@with_all_phases_from_to_except(DENEB, ELECTRA, [EIP7732])
 @spec_state_test
 def test_invalid_incorrect_proof(spec, state):
     rng = Random(1234)
@@ -88,7 +88,7 @@ def test_invalid_incorrect_proof(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases_from_except(DENEB, [FULU, EIP7732])
+@with_all_phases_from_to_except(DENEB, ELECTRA, [EIP7732])
 @spec_state_test
 def test_invalid_data_unavailable(spec, state):
     rng = Random(1234)
@@ -118,7 +118,7 @@ def test_invalid_data_unavailable(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases_from_except(DENEB, [FULU, EIP7732])
+@with_all_phases_from_to_except(DENEB, ELECTRA, [EIP7732])
 @spec_state_test
 def test_invalid_wrong_proofs_length(spec, state):
     rng = Random(1234)
@@ -148,7 +148,7 @@ def test_invalid_wrong_proofs_length(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases_from_except(DENEB, [FULU, EIP7732])
+@with_all_phases_from_to_except(DENEB, ELECTRA, [EIP7732])
 @spec_state_test
 def test_invalid_wrong_blobs_length(spec, state):
     rng = Random(1234)
