@@ -4,6 +4,8 @@
 
 - [Introduction](#introduction)
 - [Modifications in Deneb](#modifications-in-deneb)
+  - [Helper functions](#helper-functions)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Constant](#constant)
   - [Preset](#preset)
   - [Configuration](#configuration)
@@ -42,6 +44,26 @@ The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Deneb
+
+### Helper functions
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ### Constant
 
@@ -231,10 +253,10 @@ network, assuming the alias
   be queued for later processing while proposers for the block's branch are
   calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
-The gossip `ForkDigestValue` is determined based on
-`compute_fork_version(compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot))`.
+The `ForkDigest` context epoch is determined by
+`compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot)`.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+Per `fork_version = compute_fork_version(context_epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -300,8 +322,6 @@ details on how to handle transitioning gossip topics for this upgrade.
 The Deneb fork-digest is introduced to the `context` enum to specify Deneb
 beacon block type.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
-
 <!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
@@ -317,8 +337,6 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 ##### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
-
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 
@@ -424,11 +442,11 @@ within the context of the request.
 After the initial blob sidecar, clients MAY stop in the process of responding if
 their fork choice changes the view of the chain in the context of the request.
 
-For each `response_chunk`, a `ForkDigest`-context based on
-`compute_fork_version(compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot))`
-is used to select the fork namespace of the Response type.
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by
+`compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot)`.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+Per `fork_version = compute_fork_version(context_epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -488,11 +506,11 @@ validation rules. Clients SHOULD NOT respond with sidecars related to blocks
 that fail gossip validation rules. Clients SHOULD NOT respond with sidecars
 related to blocks that fail the beacon chain state transition
 
-For each `response_chunk`, a `ForkDigest`-context based on
-`compute_fork_version(compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot))`
-is used to select the fork namespace of the Response type.
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by
+`compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot)`.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+Per `fork_version = compute_fork_version(context_epoch)`:
 
 <!-- eth2spec: skip -->
 

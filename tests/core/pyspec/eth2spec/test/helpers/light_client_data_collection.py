@@ -651,8 +651,8 @@ def _encode_lc_object(test, prefix, obj, slot, genesis_validators_root):
     return {
         "fork_digest": encode_hex(
             obj.spec.compute_fork_digest(
-                obj.spec.compute_fork_version(obj.spec.compute_epoch_at_slot(slot)),
                 genesis_validators_root,
+                obj.spec.compute_epoch_at_slot(slot),
             )
         ),
         "data": file_name,

@@ -6,9 +6,6 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-- [Helper functions](#helper-functions)
-  - [Misc](#misc)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [Fork to EIP-7732](#fork-to-eip-7732)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -27,32 +24,6 @@ Warning: this configuration is not definitive.
 | ---------------------- | ------------------------------------- |
 | `EIP7732_FORK_VERSION` | `Version('0x09000000')`               |
 | `EIP7732_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
-
-## Helper functions
-
-### Misc
-
-#### Modified `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= EIP7732_FORK_EPOCH:
-        return EIP7732_FORK_VERSION
-    if epoch >= ELECTRA_FORK_EPOCH:
-        return ELECTRA_FORK_VERSION
-    if epoch >= DENEB_FORK_EPOCH:
-        return DENEB_FORK_VERSION
-    if epoch >= CAPELLA_FORK_EPOCH:
-        return CAPELLA_FORK_VERSION
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
 
 ## Fork to EIP-7732
 

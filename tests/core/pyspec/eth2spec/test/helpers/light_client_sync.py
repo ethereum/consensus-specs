@@ -35,14 +35,14 @@ class LightClientSyncTest:
     store: Any
 
 
-def _get_store_fork_version(s_spec):
+def _get_store_fork_epoch(s_spec):
     if is_post_electra(s_spec):
-        return s_spec.config.ELECTRA_FORK_VERSION
+        return s_spec.config.ELECTRA_FORK_EPOCH
     if is_post_deneb(s_spec):
-        return s_spec.config.DENEB_FORK_VERSION
+        return s_spec.config.DENEB_FORK_EPOCH
     if is_post_capella(s_spec):
-        return s_spec.config.CAPELLA_FORK_VERSION
-    return s_spec.config.ALTAIR_FORK_VERSION
+        return s_spec.config.CAPELLA_FORK_EPOCH
+    return s_spec.config.ALTAIR_FORK_EPOCH
 
 
 def setup_lc_sync_test(spec, state, s_spec=None, phases=None):
@@ -66,20 +66,18 @@ def setup_lc_sync_test(spec, state, s_spec=None, phases=None):
     trusted_block_root = trusted_block.message.hash_tree_root()
     yield "trusted_block_root", "meta", "0x" + trusted_block_root.hex()
 
-    data_fork_version = spec.compute_fork_version(
-        spec.compute_epoch_at_slot(trusted_block.message.slot)
-    )
-    data_fork_digest = spec.compute_fork_digest(data_fork_version, test.genesis_validators_root)
-    d_spec = get_spec_for_fork_version(spec, data_fork_version, phases)
+    data_context_epoch = spec.compute_epoch_at_slot(trusted_block.message.slot)
+    data_fork_digest = spec.compute_fork_digest(test.genesis_validators_root, data_context_epoch)
+    d_spec = get_spec_for_fork_version(spec, spec.compute_fork_version(data_context_epoch), phases)
     data = d_spec.create_light_client_bootstrap(state, trusted_block)
     yield "bootstrap_fork_digest", "meta", encode_hex(data_fork_digest)
     yield "bootstrap", data
 
     upgraded = upgrade_lc_bootstrap_to_new_spec(d_spec, test.s_spec, data, phases)
     test.store = test.s_spec.initialize_light_client_store(trusted_block_root, upgraded)
-    store_fork_version = _get_store_fork_version(test.s_spec)
+    store_context_epoch = _get_store_fork_epoch(test.s_spec)
     store_fork_digest = test.s_spec.compute_fork_digest(
-        store_fork_version, test.genesis_validators_root
+        test.genesis_validators_root, store_context_epoch
     )
     yield "store_fork_digest", "meta", encode_hex(store_fork_digest)
 
@@ -155,11 +153,9 @@ def emit_update(
     with_next=True,
     phases=None,
 ):
-    data_fork_version = spec.compute_fork_version(
-        spec.compute_epoch_at_slot(attested_block.message.slot)
-    )
-    data_fork_digest = spec.compute_fork_digest(data_fork_version, test.genesis_validators_root)
-    d_spec = get_spec_for_fork_version(spec, data_fork_version, phases)
+    data_context_epoch = spec.compute_epoch_at_slot(attested_block.message.slot)
+    data_fork_digest = spec.compute_fork_digest(test.genesis_validators_root, data_context_epoch)
+    d_spec = get_spec_for_fork_version(spec, spec.compute_fork_version(data_context_epoch), phases)
     data = d_spec.create_light_client_update(
         state, block, attested_state, attested_block, finalized_block
     )
@@ -188,11 +184,13 @@ def emit_update(
 
 
 def _emit_upgrade_store(test, new_s_spec, phases=None):
+    old_context_epoch = _get_store_fork_epoch(test.s_spec)
     test.store = upgrade_lc_store_to_new_spec(test.s_spec, new_s_spec, test.store, phases)
     test.s_spec = new_s_spec
-    store_fork_version = _get_store_fork_version(test.s_spec)
+    store_context_epoch = _get_store_fork_epoch(test.s_spec)
+    assert store_context_epoch != old_context_epoch
     store_fork_digest = test.s_spec.compute_fork_digest(
-        store_fork_version, test.genesis_validators_root
+        test.genesis_validators_root, store_context_epoch
     )
 
     yield from []  # Consistently enable `yield from` syntax in calling tests

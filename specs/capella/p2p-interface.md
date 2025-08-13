@@ -4,6 +4,8 @@
 
 - [Introduction](#introduction)
 - [Modifications in Capella](#modifications-in-capella)
+  - [Helper functions](#helper-functions)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -25,6 +27,24 @@ The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Capella
+
+### Helper functions
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ### The gossip domain: gossipsub
 
@@ -95,8 +115,6 @@ details on how to handle transitioning gossip topics for Capella.
 The Capella fork-digest is introduced to the `context` enum to specify Capella
 block type.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
-
 <!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
@@ -112,8 +130,6 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 The Capella fork-digest is introduced to the `context` enum to specify Capella
 block type.
-
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 

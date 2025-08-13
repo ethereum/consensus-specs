@@ -6,6 +6,8 @@
 
 - [Introduction](#introduction)
 - [Modifications in Fulu](#modifications-in-fulu)
+  - [Helper functions](#helper-functions)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
@@ -50,6 +52,30 @@ The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Fulu
+
+### Helper functions
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ### Preset
 
@@ -289,15 +315,10 @@ Request, Response Content:
 )
 ```
 
-The added fields are, as seen by the client at the time of sending the message:
+As seen by the client at the time of sending the message:
 
 - `earliest_available_slot`: The slot of earliest available block
-  (`BeaconBlock`).
-
-*Note*: `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)`
-where `genesis_validators_root` is the static `Root` found in
-`state.genesis_validators_root` and `epoch` is the node's current epoch defined
-by the wall-clock time (not necessarily the epoch to which the node is sync).
+  (`SignedBeaconBlock`).
 
 ##### BlobSidecarsByRange v1
 
@@ -335,15 +356,6 @@ During the deprecation transition period:
 ##### DataColumnSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_range/1/`
-
-The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(genesis_validators_root, epoch)`:
-
-<!-- eth2spec: skip -->
-
-| `epoch`              | Chunk SSZ type           |
-| -------------------- | ------------------------ |
-| >= `FULU_FORK_EPOCH` | `fulu.DataColumnSidecar` |
 
 Request Content:
 
@@ -435,20 +447,23 @@ After the initial data column sidecar, clients MAY stop in the process of
 responding if their fork choice changes the view of the chain in the context of
 the request.
 
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by
+`compute_epoch_at_slot(data_column_sidecar.signed_block_header.message.slot)`.
+
+Per `fork_version = compute_fork_version(context_epoch)`:
+
+<!-- eth2spec: skip -->
+
+| `epoch`                     | Chunk SSZ type           |
+| --------------------------- | ------------------------ |
+| `FULU_FORK_EPOCH` and later | `fulu.DataColumnSidecar` |
+
 ##### DataColumnSidecarsByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_root/1/`
 
 *[New in Fulu:EIP7594]*
-
-The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(genesis_validators_root, epoch)`:
-
-<!-- eth2spec: skip -->
-
-| `epoch`              | Chunk SSZ type           |
-| -------------------- | ------------------------ |
-| >= `FULU_FORK_EPOCH` | `fulu.DataColumnSidecar` |
 
 Request Content:
 
@@ -496,6 +511,18 @@ Clients SHOULD include a sidecar in the response as soon as it passes the gossip
 validation rules. Clients SHOULD NOT respond with sidecars related to blocks
 that fail gossip validation rules. Clients SHOULD NOT respond with sidecars
 related to blocks that fail the beacon chain state transition
+
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by
+`compute_epoch_at_slot(data_column_sidecar.signed_block_header.message.slot)`.
+
+Per `fork_version = compute_fork_version(context_epoch)`:
+
+<!-- eth2spec: skip -->
+
+| `epoch`                     | Chunk SSZ type           |
+| --------------------------- | ------------------------ |
+| `FULU_FORK_EPOCH` and later | `fulu.DataColumnSidecar` |
 
 ##### GetMetaData v3
 
@@ -547,13 +574,14 @@ object (`ENRForkID`):
 )
 ```
 
-Where the fields of `ENRForkID` are defined as:
+The fields of `ENRForkID` are defined as:
 
-- `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)` where:
+- `fork_digest` is `compute_fork_digest(genesis_validators_root, context_epoch)`
+  where:
   - `genesis_validators_root` is the static `Root` found in
     `state.genesis_validators_root`.
-  - `epoch` is the node's current epoch defined by the wall-clock time (not
-    necessarily the epoch to which the node is sync).
+  - `context_epoch` is the node's current epoch defined by the wall-clock time
+    (not necessarily the epoch to which the node is sync).
 - `next_fork_version` is the fork version corresponding to the next planned fork
   at a future epoch. The fork version will only change for regular forks, _not
   BPO forks_. Note that it is possible for the blob schedule to define a change
