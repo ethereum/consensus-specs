@@ -37,8 +37,8 @@ validator" to implement EIP-7805.
 ## Prerequisites
 
 This document is an extension of the
-[Electra -- Honest Validator](../../electra/validator.md) guide. All behaviors
-and definitions defined in this document, and documents it extends, carry over
+[Fulu -- Honest Validator](../../fulu/validator.md) guide. All behaviors and
+definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the
@@ -136,8 +136,6 @@ committee slot.
 #### Constructing the `BeaconBlockBody`
 
 ##### ExecutionPayload
-
-`prepare_execution_payload` is updated from the Electra specs.
 
 *Note*: In this section, `state` is the state of the slot for the block proposal
 _without_ the block yet applied. That is, `state` is the `previous_state`
