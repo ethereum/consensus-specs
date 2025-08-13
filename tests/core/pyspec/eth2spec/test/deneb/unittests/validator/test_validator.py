@@ -7,7 +7,7 @@ from eth2spec.test.helpers.blob import (
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot, sign_block
 from eth2spec.test.helpers.constants import (
     DENEB,
-    ELECTRA,
+    FULU,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
@@ -38,7 +38,7 @@ def _get_sample_sidecars(spec, state, rng):
     return spec.get_blob_sidecars(signed_block, blobs, proofs)
 
 
-@with_all_phases_from_to(DENEB, ELECTRA)
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_blob_sidecar_inclusion_proof_correct(spec, state):
     rng = random.Random(1234)
@@ -48,7 +48,7 @@ def test_blob_sidecar_inclusion_proof_correct(spec, state):
         assert spec.verify_blob_sidecar_inclusion_proof(blob_sidecar)
 
 
-@with_all_phases_from_to(DENEB, ELECTRA)
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_blob_sidecar_inclusion_proof_incorrect_wrong_body(spec, state):
     rng = random.Random(1234)
@@ -60,7 +60,7 @@ def test_blob_sidecar_inclusion_proof_incorrect_wrong_body(spec, state):
         assert not spec.verify_blob_sidecar_inclusion_proof(blob_sidecar)
 
 
-@with_all_phases_from_to(DENEB, ELECTRA)
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_blob_sidecar_inclusion_proof_incorrect_wrong_proof(spec, state):
     rng = random.Random(1234)

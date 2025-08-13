@@ -7,7 +7,7 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.blob import get_block_with_blob
 from eth2spec.test.helpers.constants import (
     DENEB,
-    ELECTRA,
+    FULU,
 )
 from eth2spec.test.helpers.fork_choice import (
     BlobData,
@@ -20,7 +20,7 @@ from eth2spec.test.helpers.state import (
 )
 
 
-@with_all_phases_from_to(DENEB, ELECTRA)
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_simple_blob_data(spec, state):
     rng = Random(1234)
@@ -55,7 +55,7 @@ def test_simple_blob_data(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases_from_to(DENEB, ELECTRA)
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_invalid_incorrect_proof(spec, state):
     rng = Random(1234)
@@ -85,7 +85,7 @@ def test_invalid_incorrect_proof(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases_from_to(DENEB, ELECTRA)
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_invalid_data_unavailable(spec, state):
     rng = Random(1234)
@@ -115,7 +115,7 @@ def test_invalid_data_unavailable(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases_from_to(DENEB, ELECTRA)
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_invalid_wrong_proofs_length(spec, state):
     rng = Random(1234)
@@ -145,7 +145,7 @@ def test_invalid_wrong_proofs_length(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases_from_to(DENEB, ELECTRA)
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_invalid_wrong_blobs_length(spec, state):
     rng = Random(1234)

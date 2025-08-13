@@ -18,7 +18,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.constants import (
     DENEB,
-    ELECTRA,
+    FULU,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
@@ -71,14 +71,14 @@ def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_all_phases_from_to(DENEB, ELECTRA)
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_blob_kzg_commitment_merkle_proof__basic(spec, state):
     yield from _run_blob_kzg_commitment_merkle_proof_test(spec, state)
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_all_phases_from_to(DENEB, ELECTRA)
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_blob_kzg_commitment_merkle_proof__random_block_1(spec, state):
     rng = random.Random(1111)
@@ -86,7 +86,7 @@ def test_blob_kzg_commitment_merkle_proof__random_block_1(spec, state):
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_all_phases_from_to(DENEB, ELECTRA)
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_blob_kzg_commitment_merkle_proof__random_block_2(spec, state):
     rng = random.Random(2222)
@@ -94,7 +94,7 @@ def test_blob_kzg_commitment_merkle_proof__random_block_2(spec, state):
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_all_phases_from_to(DENEB, ELECTRA)
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_blob_kzg_commitment_merkle_proof__random_block_3(spec, state):
     rng = random.Random(3333)
