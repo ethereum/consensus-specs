@@ -3,7 +3,6 @@ import sys
 import types
 import unittest
 from collections.abc import Callable
-from typing import Any
 from unittest import TestCase
 
 from eth2spec.test.helpers.constants import BELLATRIX, CAPELLA, DENEB, PHASE0
