@@ -512,7 +512,12 @@ def test_proposer_boost(spec, state):
 
     # Process block on timely arrival just before end of boost interval
     # Round up to nearest second
-    late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
+    if is_post_eip7732(spec):
+        late_block_cutoff_ms = spec.get_slot_component_duration_ms(
+            spec.config.ATTESTATION_DUE_BPS_EIP7732
+        )
+    else:
+        late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
     late_block_cutoff = (late_block_cutoff_ms + 999) // 1000
     time = store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT + late_block_cutoff - 1
 
@@ -612,7 +617,12 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
 
     # Process block on untimely arrival in the same slot
     # Round up to nearest second
-    late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
+    if is_post_eip7732(spec):
+        late_block_cutoff_ms = spec.get_slot_component_duration_ms(
+            spec.config.ATTESTATION_DUE_BPS_EIP7732
+        )
+    else:
+        late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
     late_block_cutoff = (late_block_cutoff_ms + 999) // 1000
     time = store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT + late_block_cutoff
 
@@ -653,7 +663,12 @@ def test_proposer_boost_is_first_block(spec, state):
 
     # Process block on timely arrival just before end of boost interval
     # Round up to nearest second
-    late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
+    if is_post_eip7732(spec):
+        late_block_cutoff_ms = spec.get_slot_component_duration_ms(
+            spec.config.ATTESTATION_DUE_BPS_EIP7732
+        )
+    else:
+        late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
     late_block_cutoff = (late_block_cutoff_ms + 999) // 1000
     time = store.genesis_time + block_a.slot * spec.config.SECONDS_PER_SLOT + late_block_cutoff - 1
 
