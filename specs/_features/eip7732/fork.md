@@ -41,6 +41,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     if epoch >= EIP7732_FORK_EPOCH:
         return EIP7732_FORK_VERSION
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
     if epoch >= ELECTRA_FORK_EPOCH:
         return ELECTRA_FORK_VERSION
     if epoch >= DENEB_FORK_EPOCH:
@@ -68,8 +70,8 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and
 change is made to upgrade to EIP-7732.
 
 ```python
-def upgrade_to_eip7732(pre: electra.BeaconState) -> BeaconState:
-    epoch = electra.get_current_epoch(pre)
+def upgrade_to_eip7732(pre: fulu.BeaconState) -> BeaconState:
+    epoch = fulu.get_current_epoch(pre)
 
     post = BeaconState(
         genesis_time=pre.genesis_time,
@@ -115,6 +117,7 @@ def upgrade_to_eip7732(pre: electra.BeaconState) -> BeaconState:
         pending_deposits=pre.pending_deposits,
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
+        proposer_lookahead=pre.proposer_lookahead,
         # [New in EIP7732]
         execution_payload_availability=[0b1 for _ in range(SLOTS_PER_HISTORICAL_ROOT)],
         # [New in EIP7732]

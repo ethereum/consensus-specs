@@ -13,7 +13,9 @@
   - [Activation](#activation)
 - [Builders attributions](#builders-attributions)
   - [Constructing the payload bid](#constructing-the-payload-bid)
-  - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
+  - [Constructing the `DataColumnSidecar`s](#constructing-the-datacolumnsidecars)
+    - [Modified `get_data_column_sidecars`](#modified-get_data_column_sidecars)
+    - [Modified `get_data_column_sidecars_from_block`](#modified-get_data_column_sidecars_from_block)
   - [Constructing the execution payload envelope](#constructing-the-execution-payload-envelope)
   - [Honest payload withheld messages](#honest-payload-withheld-messages)
 
@@ -136,60 +138,84 @@ The builder assembles then
 `signed_execution_payload_header = SignedExecutionPayloadHeader(message=header, signature=signature)`
 and broadcasts it on the `execution_payload_header` global gossip topic.
 
-### Constructing the `BlobSidecar`s
+### Constructing the `DataColumnSidecar`s
 
-*[Modified in EIP7732]*
+#### Modified `get_data_column_sidecars`
 
-The `BlobSidecar` container is modified indirectly because the constant
-`KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` is modified. The function
-`get_blob_sidecars` is modified because the KZG commitments are no longer
-included in the beacon block but rather in the `ExecutionPayloadEnvelope`, the
-builder has to send the commitments as parameters to this function.
+*Note*: The function `get_data_column_sidecars` is modified to use the updated
+blob KZG commitments inclusion proof type with a different length.
 
 ```python
-def get_blob_sidecars(
-    signed_block: SignedBeaconBlock,
-    blobs: Sequence[Blob],
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
-    blob_kzg_proofs: Sequence[KZGProof],
-) -> Sequence[BlobSidecar]:
-    block = signed_block.message
-    block_header = BeaconBlockHeader(
-        slot=block.slot,
-        proposer_index=block.proposer_index,
-        parent_root=block.parent_root,
-        state_root=block.state_root,
-        body_root=hash_tree_root(block.body),
-    )
-    signed_block_header = SignedBeaconBlockHeader(
-        message=block_header, signature=signed_block.signature
-    )
-    sidecars: List[BlobSidecar] = []
-    for index, blob in enumerate(blobs):
-        proof = compute_merkle_proof(
-            blob_kzg_commitments,
-            get_generalized_index(List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK], index),
-        )
-        proof += compute_merkle_proof(
-            block.body,
-            get_generalized_index(
-                BeaconBlockBody,
-                "signed_execution_payload_header",
-                "message",
-                "blob_kzg_commitments_root",
-            ),
-        )
+def get_data_column_sidecars(
+    signed_block_header: SignedBeaconBlockHeader,
+    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    # [Modified in EIP7732]
+    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_EIP7732],
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
+) -> Sequence[DataColumnSidecar]:
+    """
+    Given a signed block header and the commitments, inclusion proof, cells/proofs associated with
+    each blob in the block, assemble the sidecars which can be distributed to peers.
+    """
+    assert len(cells_and_kzg_proofs) == len(kzg_commitments)
+
+    sidecars = []
+    for column_index in range(NUMBER_OF_COLUMNS):
+        column_cells, column_proofs = [], []
+        for cells, proofs in cells_and_kzg_proofs:
+            column_cells.append(cells[column_index])
+            column_proofs.append(proofs[column_index])
         sidecars.append(
-            BlobSidecar(
-                index=index,
-                blob=blob,
-                kzg_commitment=blob_kzg_commitments[index],
-                kzg_proof=blob_kzg_proofs[index],
+            DataColumnSidecar(
+                index=column_index,
+                column=column_cells,
+                kzg_commitments=kzg_commitments,
+                kzg_proofs=column_proofs,
                 signed_block_header=signed_block_header,
-                kzg_commitment_inclusion_proof=proof,
+                kzg_commitments_inclusion_proof=kzg_commitments_inclusion_proof,
             )
         )
     return sidecars
+```
+
+#### Modified `get_data_column_sidecars_from_block`
+
+*Note*: The function `get_data_column_sidecars_from_block` is modified to
+include the list of blob KZG commitments and to compute the blob KZG commitments
+inclusion proof given that these are in the `ExecutionPayloadEnvelope` now.
+
+```python
+def get_data_column_sidecars_from_block(
+    signed_block: SignedBeaconBlock,
+    # [New in EIP7732]
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
+) -> Sequence[DataColumnSidecar]:
+    """
+    Given a signed block and the cells/proofs associated with each blob in the
+    block, assemble the sidecars which can be distributed to peers.
+    """
+    signed_block_header = compute_signed_block_header(signed_block)
+    # [Modified in EIP7732]
+    kzg_commitments_inclusion_proof = compute_merkle_proof(
+        signed_block.message.body,
+        get_generalized_index(
+            BeaconBlockBody,
+            "signed_execution_payload_header",
+            "message",
+            "blob_kzg_commitments_root",
+        ),
+    )
+    return get_data_column_sidecars(
+        signed_block_header,
+        blob_kzg_commitments,
+        kzg_commitments_inclusion_proof,
+        cells_and_kzg_proofs,
+    )
 ```
 
 ### Constructing the execution payload envelope

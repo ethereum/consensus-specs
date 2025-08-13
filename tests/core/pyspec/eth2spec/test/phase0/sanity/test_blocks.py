@@ -40,6 +40,7 @@ from eth2spec.test.helpers.forks import (
     is_post_capella,
     is_post_eip7732,
     is_post_electra,
+    is_post_fulu,
 )
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.multi_operations import (
@@ -767,6 +768,8 @@ def test_high_proposer_index(spec, state):
     # disable a good amount of validators to make the active count lower, for a faster test
     current_epoch = spec.get_current_epoch(state)
     for i in range(len(state.validators) // 3):
+        if is_post_fulu(spec) and i in state.proposer_lookahead:
+            continue
         state.validators[i].exit_epoch = current_epoch
 
     # skip forward, get brand new proposers

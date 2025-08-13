@@ -78,8 +78,8 @@
 This is the beacon chain specification of the enshrined proposer builder
 separation feature.
 
-*Note*: This specification is built upon
-[Electra](../../electra/beacon-chain.md) and is under active development.
+*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md) and
+is under active development.
 
 This feature adds new staked consensus participants called *Builders* and new
 honest validators duties called *payload timeliness attestations*. The slot is
@@ -334,6 +334,7 @@ class BeaconState(Container):
     pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
+    proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
     # [New in EIP7732]
     execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
     # [New in EIP7732]
@@ -682,6 +683,7 @@ def process_epoch(state: BeaconState) -> None:
     process_historical_summaries_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
+    process_proposer_lookahead(state)
     # [New in EIP7732]
     process_builder_pending_payments(state)
 ```
@@ -1247,7 +1249,10 @@ def process_execution_payload(
     # Verify timestamp
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
     # Verify commitments are under limit
-    assert len(envelope.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+    assert (
+        len(envelope.blob_kzg_commitments)
+        <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    )
     # Verify the execution payload is valid
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in envelope.blob_kzg_commitments
