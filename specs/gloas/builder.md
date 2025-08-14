@@ -149,7 +149,7 @@ blob KZG commitments inclusion proof type with a different length.
 def get_data_column_sidecars(
     signed_block_header: SignedBeaconBlockHeader,
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS],
     cells_and_kzg_proofs: Sequence[
         Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
@@ -189,7 +189,7 @@ inclusion proof given that these are in the `ExecutionPayloadEnvelope` now.
 ```python
 def get_data_column_sidecars_from_block(
     signed_block: SignedBeaconBlock,
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
     cells_and_kzg_proofs: Sequence[
         Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
@@ -200,7 +200,7 @@ def get_data_column_sidecars_from_block(
     block, assemble the sidecars which can be distributed to peers.
     """
     signed_block_header = compute_signed_block_header(signed_block)
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     kzg_commitments_inclusion_proof = compute_merkle_proof(
         signed_block.message.body,
         get_generalized_index(

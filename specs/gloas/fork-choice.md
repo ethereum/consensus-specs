@@ -124,9 +124,9 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     execution_payload_states: Dict[Root, BeaconState] = field(default_factory=dict)
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     ptc_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
 ```
 
@@ -153,7 +153,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
-        # [New in EIP7732]
+        # [New in Gloas:EIP7732]
         execution_payload_states={anchor_root: copy(anchor_state)},
         ptc_vote={anchor_root: Vector[boolean, PTC_SIZE]()},
     )
@@ -486,7 +486,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add proposer score boost if the block is timely
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
@@ -599,7 +599,7 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
     block_slot = store.blocks[attestation.data.beacon_block_root].slot
     assert block_slot <= attestation.data.slot
 
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     assert attestation.data.index in [0, 1]
     if block_slot == attestation.data.slot:
         assert attestation.data.index == 0

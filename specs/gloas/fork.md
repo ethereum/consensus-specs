@@ -79,7 +79,7 @@ def upgrade_to_eip7732(pre: fulu.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            # [Modified in EIP7732]
+            # [Modified in Gloas:EIP7732]
             current_version=GLOAS_FORK_VERSION,
             epoch=epoch,
         ),
@@ -103,7 +103,7 @@ def upgrade_to_eip7732(pre: fulu.BeaconState) -> BeaconState:
         inactivity_scores=pre.inactivity_scores,
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
-        # [Modified in EIP7732]
+        # [Modified in Gloas:EIP7732]
         latest_execution_payload_header=ExecutionPayloadHeader(),
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
@@ -118,15 +118,15 @@ def upgrade_to_eip7732(pre: fulu.BeaconState) -> BeaconState:
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
         proposer_lookahead=pre.proposer_lookahead,
-        # [New in EIP7732]
+        # [New in Gloas:EIP7732]
         execution_payload_availability=[0b1 for _ in range(SLOTS_PER_HISTORICAL_ROOT)],
-        # [New in EIP7732]
+        # [New in Gloas:EIP7732]
         builder_pending_payments=[BuilderPendingPayment() for _ in range(2 * SLOTS_PER_EPOCH)],
-        # [New in EIP7732]
+        # [New in Gloas:EIP7732]
         builder_pending_withdrawals=[],
-        # [New in EIP7732]
+        # [New in Gloas:EIP7732]
         latest_block_hash=pre.latest_execution_payload_header.block_hash,
-        # [New in EIP7732]
+        # [New in Gloas:EIP7732]
         latest_withdrawals_root=Root(),
     )
 

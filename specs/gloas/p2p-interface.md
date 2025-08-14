@@ -43,7 +43,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Preset
 
-*[Modified in EIP7732]*
+*[Modified in Gloas:EIP7732]*
 
 | Name                                            | Value | Description                                                 |
 | ----------------------------------------------- | ----- | ----------------------------------------------------------- |
@@ -51,7 +51,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Configuration
 
-*[New in EIP7732]*
+*[New in Gloas:EIP7732]*
 
 | Name                   | Value          | Description                                                       |
 | ---------------------- | -------------- | ----------------------------------------------------------------- |
@@ -71,7 +71,7 @@ class DataColumnSidecar(Container):
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     signed_block_header: SignedBeaconBlockHeader
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS]
 ```
 
@@ -91,9 +91,9 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
     return is_valid_merkle_branch(
         leaf=hash_tree_root(sidecar.kzg_commitments),
         branch=sidecar.kzg_commitments_inclusion_proof,
-        # [Modified in EIP7732]
+        # [Modified in Gloas:EIP7732]
         depth=KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS,
-        # [Modified in EIP7732]
+        # [Modified in Gloas:EIP7732]
         index=get_subtree_index(
             get_generalized_index(
                 BeaconBlockBody,
@@ -151,7 +151,7 @@ The following validations are removed:
 
 ###### `beacon_block`
 
-*[Modified in EIP7732]*
+*[Modified in Gloas:EIP7732]*
 
 The *type* of the payload of this topic changes to the (modified)
 `SignedBeaconBlock` found in [the Beacon Chain changes](./beacon-chain.md).
@@ -336,7 +336,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 **Protocol ID:**
 `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
 
-*[New in EIP7732]*
+*[New in Gloas:EIP7732]*
 
 Request Content:
 
