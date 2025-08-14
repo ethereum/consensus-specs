@@ -80,6 +80,35 @@ def test_process_builder_pending_payments_below_quorum(spec, state):
 
 @with_eip7732_and_later
 @spec_state_test
+def test_process_builder_pending_payments_equal_quorum(spec, state):
+    """Test payment equal to quorum threshold - should NOT be processed."""
+    # Advance past genesis epochs
+    next_epoch(spec, state)
+    next_epoch(spec, state)
+
+    builder_index = 0
+    amount = spec.MIN_ACTIVATION_BALANCE
+    quorum = spec.get_builder_payment_quorum_threshold(state)
+    weight = quorum  # Equal to threshold
+    fee_recipient = b"\x41" * 20
+
+    # Add pending payment with weight equal to quorum
+    payment = create_builder_pending_payment(spec, builder_index, amount, weight, fee_recipient)
+    state.builder_pending_payments[0] = payment
+
+    pre_builder_pending_withdrawals = len(state.builder_pending_withdrawals)
+
+    yield from run_epoch_processing_with(spec, state, "process_builder_pending_payments")
+
+    # No withdrawal should be added since weight must be > quorum, not >= quorum
+    assert len(state.builder_pending_withdrawals) == pre_builder_pending_withdrawals
+
+    # Payment should be rotated out
+    assert state.builder_pending_payments[0].weight == 0
+
+
+@with_eip7732_and_later
+@spec_state_test
 def test_process_builder_pending_payments_above_quorum(spec, state):
     """Test payment above quorum threshold - should be processed."""
     # Advance past genesis epochs
@@ -168,12 +197,13 @@ def test_process_builder_pending_payments_mixed_weights(spec, state):
 
     quorum = spec.get_builder_payment_quorum_threshold(state)
 
-    # Add payments with different weights
+    # Add payments with different weights ordered least to greatest
     payments_data = [
-        (0, spec.MIN_ACTIVATION_BALANCE, quorum + 1),  # Above threshold
-        (1, spec.MIN_ACTIVATION_BALANCE, quorum // 2),  # Below threshold
-        (2, spec.MIN_ACTIVATION_BALANCE, quorum + 100),  # Above threshold
-        (3, spec.MIN_ACTIVATION_BALANCE, quorum - 1),  # Below threshold
+        (0, spec.MIN_ACTIVATION_BALANCE, quorum // 2),  # Below threshold
+        (1, spec.MIN_ACTIVATION_BALANCE, quorum - 1),  # Below threshold
+        (2, spec.MIN_ACTIVATION_BALANCE, quorum),  # Equal to threshold
+        (3, spec.MIN_ACTIVATION_BALANCE, quorum + 1),  # Above threshold
+        (4, spec.MIN_ACTIVATION_BALANCE, quorum + 100),  # Above threshold
     ]
 
     for i, (builder_index, amount, weight) in enumerate(payments_data):
@@ -201,10 +231,11 @@ def test_process_builder_pending_payments_mixed_weights(spec, state):
     # Check the processed withdrawals
     processed_withdrawals = state.builder_pending_withdrawals[pre_builder_pending_withdrawals:]
     processed_builder_indices = [w.builder_index for w in processed_withdrawals]
-    assert 0 in processed_builder_indices
-    assert 2 in processed_builder_indices
-    assert 1 not in processed_builder_indices
-    assert 3 not in processed_builder_indices
+    assert 3 in processed_builder_indices  # Above threshold
+    assert 4 in processed_builder_indices  # Above threshold
+    assert 0 not in processed_builder_indices  # Below threshold
+    assert 1 not in processed_builder_indices  # Below threshold
+    assert 2 not in processed_builder_indices  # Equal to threshold (not processed)
 
 
 @with_eip7732_and_later
