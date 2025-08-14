@@ -13,7 +13,8 @@ from eth2spec.test.helpers.forks import is_post_electra
 from eth2spec.test.helpers.state import next_epoch, state_transition_and_sign_block
 from eth2spec.test.helpers.typing import SpecForkName
 from eth2spec.test.utils.utils import with_meta_tags
-from tests.infra.template_test import template_test_upgrades_all
+from eth2spec.test.helpers.constants import ELECTRA, PHASE0
+from tests.infra.template_test import template_test_upgrades_all, template_test_upgrades_from_to, template_test_upgrades_from
 
 
 @template_test_upgrades_all
@@ -68,8 +69,8 @@ def _template_test_at_fork_deactivate_validators(
 _template_test_at_fork_deactivate_validators()
 
 
-@template_test_upgrades_all
-def _template_test_after_fork_new_validator_active(
+@template_test_upgrades_from_to(PHASE0, ELECTRA)
+def _template_test_after_fork_new_validator_active_pre_electra(
     pre_spec: SpecForkName, post_spec: SpecForkName
 ) -> tuple[Callable, str]:
     meta_tags = {
@@ -83,42 +84,17 @@ def _template_test_after_fork_new_validator_active(
     def test_after_fork_new_validator_active(spec, phases, state):
         new_validator_index = len(state.validators)
 
-        if is_post_electra(spec):
-            amount = spec.MIN_ACTIVATION_BALANCE
-        else:
-            amount = spec.MAX_EFFECTIVE_BALANCE
+        amount = spec.MAX_EFFECTIVE_BALANCE
 
-        if is_post_electra(spec):
-            deposit_request = prepare_deposit_request(
-                spec, new_validator_index, amount, signed=True
-            )
-        else:
-            deposit = prepare_state_and_deposit(
-                spec, state, new_validator_index, amount, signed=True
-            )
+        deposit = prepare_state_and_deposit(
+            spec, state, new_validator_index, amount, signed=True
+        )
 
         # As `prepare_state_and_deposit` changes the state, we need to create the block after calling it.
         deposit_block = build_empty_block_for_next_slot(spec, state)
-
-        if is_post_electra(spec):
-            deposit_block.body.execution_requests.deposits = [deposit_request]
-            deposit_block.body.execution_payload.block_hash = compute_el_block_hash_for_block(
-                spec, deposit_block
-            )
-        else:
-            deposit_block.body.deposits = [deposit]
+        deposit_block.body.deposits = [deposit]
 
         _ = state_transition_and_sign_block(spec, state, deposit_block)
-
-        if is_post_electra(spec):
-            pending_deposit = spec.PendingDeposit(
-                pubkey=deposit_request.pubkey,
-                withdrawal_credentials=deposit_request.withdrawal_credentials,
-                amount=deposit_request.amount,
-                signature=deposit_request.signature,
-                slot=deposit_block.slot,
-            )
-            assert state.pending_deposits == [pending_deposit]
 
         next_epoch(spec, state)
         next_epoch(spec, state)
@@ -126,9 +102,6 @@ def _template_test_after_fork_new_validator_active(
         state.finalized_checkpoint.epoch = spec.get_current_epoch(state) - 1
 
         next_epoch(spec, state)
-
-        if is_post_electra(spec):
-            assert state.pending_deposits == []
 
         assert len(state.validators) == new_validator_index + 1
 
@@ -180,4 +153,104 @@ def _template_test_after_fork_new_validator_active(
     )
 
 
-_template_test_after_fork_new_validator_active()
+_template_test_after_fork_new_validator_active_pre_electra()
+
+@template_test_upgrades_from(ELECTRA)
+def _template_test_after_fork_new_validator_active_post_electra(
+    pre_spec: SpecForkName, post_spec: SpecForkName
+) -> tuple[Callable, str]:
+    meta_tags = {
+        "fork": str(post_spec).lower(),
+    }
+
+    @with_phases(phases=[pre_spec], other_phases=[post_spec])
+    @spec_test
+    @with_state
+    @with_meta_tags(meta_tags)
+    def test_after_fork_new_validator_active(spec, phases, state):
+        new_validator_index = len(state.validators)
+
+        amount = spec.MIN_ACTIVATION_BALANCE
+
+        deposit_request = prepare_deposit_request(
+            spec, new_validator_index, amount, signed=True
+        )
+
+        # As `prepare_state_and_deposit` changes the state, we need to create the block after calling it.
+        deposit_block = build_empty_block_for_next_slot(spec, state)
+
+        deposit_block.body.execution_requests.deposits = [deposit_request]
+        deposit_block.body.execution_payload.block_hash = compute_el_block_hash_for_block(
+            spec, deposit_block
+        )
+
+        _ = state_transition_and_sign_block(spec, state, deposit_block)
+
+        pending_deposit = spec.PendingDeposit(
+            pubkey=deposit_request.pubkey,
+            withdrawal_credentials=deposit_request.withdrawal_credentials,
+            amount=deposit_request.amount,
+            signature=deposit_request.signature,
+            slot=deposit_block.slot,
+        )
+        assert state.pending_deposits == [pending_deposit]
+
+        next_epoch(spec, state)
+        next_epoch(spec, state)
+
+        state.finalized_checkpoint.epoch = spec.get_current_epoch(state) - 1
+
+        next_epoch(spec, state)
+
+        assert state.pending_deposits == []
+
+        assert len(state.validators) == new_validator_index + 1
+
+        while (
+            state.validators[new_validator_index].activation_eligibility_epoch
+            == spec.FAR_FUTURE_EPOCH
+        ):
+            next_epoch(spec, state)
+
+        while (
+            spec.get_current_epoch(state)
+            <= state.validators[new_validator_index].activation_eligibility_epoch
+        ):
+            next_epoch(spec, state)
+
+        state.finalized_checkpoint.epoch = spec.get_current_epoch(state) - 1
+
+        while state.validators[new_validator_index].activation_epoch == spec.FAR_FUTURE_EPOCH:
+            next_epoch(spec, state)
+
+        fork_epoch = state.validators[new_validator_index].activation_epoch
+        assert spec.get_current_epoch(state) < fork_epoch - 1
+
+        while spec.get_current_epoch(state) < fork_epoch - 1:
+            next_epoch(spec, state)
+
+        new_validator = state.validators[new_validator_index]
+
+        assert not spec.is_active_validator(new_validator, spec.get_current_epoch(state)), (
+            f"New Validator should be inactive at epoch {spec.get_current_epoch(state)}"
+        )
+
+        spec.process_slots(
+            state, state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH) - 1
+        )
+        assert state.slot % spec.SLOTS_PER_EPOCH == spec.SLOTS_PER_EPOCH - 1
+
+        state, _ = yield from do_fork_generate(state, spec, phases[post_spec], fork_epoch)
+
+        new_validator = state.validators[new_validator_index]
+
+        assert spec.is_active_validator(new_validator, spec.get_current_epoch(state)), (
+            f"New Validator should be active at epoch {spec.get_current_epoch(state)}"
+        )
+
+    return (
+        test_after_fork_new_validator_active,
+        f"test_after_fork_new_validator_active_from_{pre_spec}_to_{post_spec}",
+    )
+
+_template_test_after_fork_new_validator_active_post_electra()
