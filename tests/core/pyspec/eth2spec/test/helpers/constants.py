@@ -56,7 +56,7 @@ PREVIOUS_FORK_OF = {
     FULU: ELECTRA,
     EIP7441: CAPELLA,
     EIP7732: FULU,
-    EIP7805: ELECTRA,
+    EIP7805: FULU,
 }
 
 # For fork transition tests
