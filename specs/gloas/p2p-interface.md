@@ -1,11 +1,11 @@
-# EIP-7732 -- Networking
+# Gloas -- Networking
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modification in EIP-7732](#modification-in-eip-7732)
+- [Modification in Gloas](#modification-in-gloas)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
@@ -39,7 +39,7 @@ This document contains the consensus-layer networking specification for EIP7732.
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modification in EIP-7732
+## Modification in Gloas
 
 ### Preset
 
@@ -79,7 +79,7 @@ class DataColumnSidecar(Container):
 
 ##### Modified `verify_data_column_sidecar_inclusion_proof`
 
-`verify_data_column_sidecar_inclusion_proof` is modified in EIP-7732 to account
+`verify_data_column_sidecar_inclusion_proof` is modified in Gloas to account
 for the fact that the KZG commitments are included in the
 `ExecutionPayloadEnvelope` and no longer in the beacon block body.
 
@@ -108,7 +108,7 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of EIP-7732 to support upgraded
+Some gossip meshes are upgraded in the fork of Gloas to support upgraded
 types.
 
 #### Topics and messages
@@ -132,7 +132,7 @@ are given in this table:
 
 ##### Global topics
 
-EIP-7732 introduces new global topics for execution header, execution payload
+Gloas introduces new global topics for execution header, execution payload
 and payload attestation.
 
 ###### `beacon_aggregate_and_proof`

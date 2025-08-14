@@ -1,4 +1,4 @@
-# EIP-7732 -- Honest Validator
+# Gloas -- Honest Validator
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -26,7 +26,7 @@
 ## Introduction
 
 This document represents the changes and additions to the Honest validator guide
-included in the EIP-7732 fork.
+included in Gloas.
 
 ## Configuration
 

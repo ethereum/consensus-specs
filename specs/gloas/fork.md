@@ -60,8 +60,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### Fork trigger
 
-The fork is triggered at epoch `GLOAS_FORK_EPOCH`. The EIP may be combined
-with other consensus-layer upgrade.
+The fork is triggered at epoch `GLOAS_FORK_EPOCH`.
 
 ### Upgrading the state
 
