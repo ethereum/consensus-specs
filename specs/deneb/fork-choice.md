@@ -94,9 +94,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # [New in Deneb:EIP4844]
     # Check if blob data is available
-    # If not, this block MAY be queued and subsequently considered when blob data becomes available
-    # *Note*: Extraneous or invalid Blobs (in addition to the expected/referenced valid blobs)
-    # received on the p2p network MUST NOT invalidate a block that is otherwise valid and available
+    # If not, this payload MAY be queued and subsequently considered when blob data becomes available
     assert is_data_available(hash_tree_root(block), block.body.blob_kzg_commitments)
 
     # Check the block is valid and compute the post-state

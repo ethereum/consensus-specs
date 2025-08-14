@@ -67,6 +67,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
     # [Modified in Fulu:EIP7594]
+    # Check if blob data is available
+    # If not, this payload MAY be queued and subsequently considered when blob data becomes available
     assert is_data_available(hash_tree_root(block))
 
     # Check the block is valid and compute the post-state

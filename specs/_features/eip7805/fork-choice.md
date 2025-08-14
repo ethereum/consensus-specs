@@ -307,10 +307,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
     # Check if blob data is available
-    # If not, this block MAY be queued and subsequently considered when blob data becomes available
-    # *Note*: Extraneous or invalid Blobs (in addition to the expected/referenced valid blobs)
-    # received on the p2p network MUST NOT invalidate a block that is otherwise valid and available
-    assert is_data_available(hash_tree_root(block), block.body.blob_kzg_commitments)
+    # If not, this payload MAY be queued and subsequently considered when blob data becomes available
+    assert is_data_available(hash_tree_root(block))
 
     # Check the block is valid and compute the post-state
     # Make a copy of the state to avoid mutability issues
