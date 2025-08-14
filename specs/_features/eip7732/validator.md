@@ -156,7 +156,7 @@ in the block. The validator will have to
 
 The blob sidecars are no longer broadcast by the validator, and thus their
 construction is not necessary. This deprecates the corresponding sections from
-the honest validator guide in the Electra fork, moving them, albeit with some
+the honest validator guide in the Fulu fork, moving them, albeit with some
 modifications, to the [honest Builder guide](./builder.md)
 
 ### Payload timeliness attestation
