@@ -1,4 +1,4 @@
-# EIP-7732 -- Fork Choice
+# Gloas -- Fork Choice
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -37,7 +37,7 @@
 
 ## Introduction
 
-This is the modification of the fork-choice accompanying the EIP-7732 upgrade.
+This is the modification of the fork-choice accompanying the Gloas upgrade.
 
 ## Custom types
 

@@ -1,4 +1,4 @@
-# EIP-7732 -- Honest Builder
+# Gloas -- Honest Builder
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -26,7 +26,7 @@
 This is an accompanying document which describes the expected actions of a
 "builder" participating in the Ethereum proof-of-stake protocol.
 
-With the EIP-7732 Fork, the protocol includes new staked participants of the
+With the Gloas fork, the protocol includes new staked participants of the
 protocol called *Builders*. While Builders are a subset of the validator set,
 they have extra attributions that are optional. Validators may opt to not be
 builders and as such we collect the set of guidelines for those validators that
@@ -38,7 +38,7 @@ want to act as builders in this document.
 
 The `withdrawal_credentials` field for builders has a specific format that
 identifies them as registered builders in the network. Builders must use the
-`BUILDER_WITHDRAWAL_PREFIX` to participate in the EIP-7732 mechanism.
+`BUILDER_WITHDRAWAL_PREFIX` to participate in the Gloas mechanism.
 
 The `withdrawal_credentials` field must be such that:
 

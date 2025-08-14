@@ -1,4 +1,4 @@
-# EIP-7732 -- The Beacon Chain
+# Gloas -- The Beacon Chain
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -637,7 +637,7 @@ def get_builder_payment_quorum_threshold(state: BeaconState) -> uint64:
 
 ## Beacon chain state transition function
 
-*Note*: state transition is fundamentally modified in EIP-7732. The full state
+*Note*: state transition is fundamentally modified in Gloas. The full state
 transition is broken in two parts, first importing a signed block and then
 importing an execution payload.
 

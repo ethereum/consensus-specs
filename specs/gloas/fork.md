@@ -1,4 +1,4 @@
-# EIP-7732 -- Fork Logic
+# Gloas -- Fork Logic
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -17,7 +17,7 @@
 
 ## Introduction
 
-This document describes the process of the EIP-7732 upgrade.
+This document describes the process of the Gloas upgrade.
 
 ## Configuration
 
@@ -56,7 +56,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-## Fork to EIP-7732
+## Fork to Gloas
 
 ### Fork trigger
 
@@ -67,10 +67,10 @@ with other consensus-layer upgrade.
 
 If `state.slot % SLOTS_PER_EPOCH == 0` and
 `compute_epoch_at_slot(state.slot) == GLOAS_FORK_EPOCH`, an irregular state
-change is made to upgrade to EIP-7732.
+change is made to upgrade to Gloas.
 
 ```python
-def upgrade_to_eip7732(pre: fulu.BeaconState) -> BeaconState:
+def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
     epoch = fulu.get_current_epoch(pre)
 
     post = BeaconState(
