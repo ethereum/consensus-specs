@@ -47,7 +47,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                            | Value | Description                                                 |
 | ----------------------------------------------- | ----- | ----------------------------------------------------------- |
-| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_EIP7732` | `9`   | Merkle proof depth for the `blob_kzg_commitments` list item |
+| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS` | `9`   | Merkle proof depth for the `blob_kzg_commitments` list item |
 
 ### Configuration
 
@@ -72,7 +72,7 @@ class DataColumnSidecar(Container):
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     signed_block_header: SignedBeaconBlockHeader
     # [Modified in EIP7732]
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_EIP7732]
+    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS]
 ```
 
 #### Helpers
@@ -92,7 +92,7 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
         leaf=hash_tree_root(sidecar.kzg_commitments),
         branch=sidecar.kzg_commitments_inclusion_proof,
         # [Modified in EIP7732]
-        depth=KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_EIP7732,
+        depth=KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS,
         # [Modified in EIP7732]
         index=get_subtree_index(
             get_generalized_index(
@@ -301,7 +301,7 @@ The following validations are removed:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
-| `EIP7732_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
+| `GLOAS_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
 
 ##### BeaconBlocksByRoot v2
 
@@ -318,7 +318,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
-| `EIP7732_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
+| `GLOAS_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
 
 ##### BlobSidecarsByRoot v1
 
@@ -329,7 +329,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `fork_version`         | Chunk SSZ type        |
 | ---------------------- | --------------------- |
 | `DENEB_FORK_VERSION`   | `deneb.BlobSidecar`   |
-| `EIP7732_FORK_VERSION` | `eip7732.BlobSidecar` |
+| `GLOAS_FORK_VERSION` | `eip7732.BlobSidecar` |
 
 ##### ExecutionPayloadEnvelopesByRange v1
 
@@ -369,7 +369,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 | `fork_version`         | Chunk SSZ type                           |
 | ---------------------- | ---------------------------------------- |
-| `EIP7732_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
+| `GLOAS_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
 
 ##### ExecutionPayloadEnvelopesByRoot v1
 
@@ -382,7 +382,7 @@ The `<context-bytes>` field is calculated as
 
 | `fork_version`         | Chunk SSZ type                           |
 | ---------------------- | ---------------------------------------- |
-| `EIP7732_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
+| `GLOAS_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
 
 Request Content:
 

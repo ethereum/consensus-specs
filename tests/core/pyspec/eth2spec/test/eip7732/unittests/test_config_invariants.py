@@ -15,4 +15,4 @@ def test_networking(spec):
         "message",
         "blob_kzg_commitments_root",
     )
-    assert spec.floorlog2(gindex) == spec.KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_EIP7732
+    assert spec.floorlog2(gindex) == spec.KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS

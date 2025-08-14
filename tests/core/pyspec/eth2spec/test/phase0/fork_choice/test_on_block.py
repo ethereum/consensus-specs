@@ -514,7 +514,7 @@ def test_proposer_boost(spec, state):
     # Round up to nearest second
     if is_post_eip7732(spec):
         late_block_cutoff_ms = spec.get_slot_component_duration_ms(
-            spec.config.ATTESTATION_DUE_BPS_EIP7732
+            spec.config.ATTESTATION_DUE_BPS_GLOAS
         )
     else:
         late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
@@ -619,7 +619,7 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
     # Round up to nearest second
     if is_post_eip7732(spec):
         late_block_cutoff_ms = spec.get_slot_component_duration_ms(
-            spec.config.ATTESTATION_DUE_BPS_EIP7732
+            spec.config.ATTESTATION_DUE_BPS_GLOAS
         )
     else:
         late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
@@ -665,7 +665,7 @@ def test_proposer_boost_is_first_block(spec, state):
     # Round up to nearest second
     if is_post_eip7732(spec):
         late_block_cutoff_ms = spec.get_slot_component_duration_ms(
-            spec.config.ATTESTATION_DUE_BPS_EIP7732
+            spec.config.ATTESTATION_DUE_BPS_GLOAS
         )
     else:
         late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)

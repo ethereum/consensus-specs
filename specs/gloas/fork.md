@@ -25,8 +25,8 @@ Warning: this configuration is not definitive.
 
 | Name                   | Value                                 |
 | ---------------------- | ------------------------------------- |
-| `EIP7732_FORK_VERSION` | `Version('0x09000000')`               |
-| `EIP7732_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+| `GLOAS_FORK_VERSION` | `Version('0x09000000')`               |
+| `GLOAS_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
 
@@ -39,8 +39,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
-    if epoch >= EIP7732_FORK_EPOCH:
-        return EIP7732_FORK_VERSION
+    if epoch >= GLOAS_FORK_EPOCH:
+        return GLOAS_FORK_VERSION
     if epoch >= FULU_FORK_EPOCH:
         return FULU_FORK_VERSION
     if epoch >= ELECTRA_FORK_EPOCH:
@@ -60,13 +60,13 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### Fork trigger
 
-The fork is triggered at epoch `EIP7732_FORK_EPOCH`. The EIP may be combined
+The fork is triggered at epoch `GLOAS_FORK_EPOCH`. The EIP may be combined
 with other consensus-layer upgrade.
 
 ### Upgrading the state
 
 If `state.slot % SLOTS_PER_EPOCH == 0` and
-`compute_epoch_at_slot(state.slot) == EIP7732_FORK_EPOCH`, an irregular state
+`compute_epoch_at_slot(state.slot) == GLOAS_FORK_EPOCH`, an irregular state
 change is made to upgrade to EIP-7732.
 
 ```python
@@ -80,7 +80,7 @@ def upgrade_to_eip7732(pre: fulu.BeaconState) -> BeaconState:
         fork=Fork(
             previous_version=pre.fork.current_version,
             # [Modified in EIP7732]
-            current_version=EIP7732_FORK_VERSION,
+            current_version=GLOAS_FORK_VERSION,
             epoch=epoch,
         ),
         latest_block_header=pre.latest_block_header,

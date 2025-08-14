@@ -34,10 +34,10 @@ included in the EIP-7732 fork.
 
 | Name                           | Value          |     Unit     |         Duration          |
 | ------------------------------ | -------------- | :----------: | :-----------------------: |
-| `ATTESTATION_DUE_BPS_EIP7732`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `AGGREGRATE_DUE_BPS_EIP7732`   | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `SYNC_MESSAGE_DUE_BPS_EIP7732` | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `CONTRIBUTION_DUE_BPS_EIP7732` | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `ATTESTATION_DUE_BPS_GLOAS`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
+| `AGGREGRATE_DUE_BPS_GLOAS`   | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `SYNC_MESSAGE_DUE_BPS_GLOAS` | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
+| `CONTRIBUTION_DUE_BPS_GLOAS` | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
 | `PAYLOAD_ATTESTATION_DUE_BPS`  | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
 
 ## Validator assignment
@@ -89,7 +89,7 @@ All validator responsibilities remain unchanged other than the following:
 
 ### Attestation
 
-The attestation deadline is changed with `ATTESTATION_DUE_BPS_EIP7732`.
+The attestation deadline is changed with `ATTESTATION_DUE_BPS_GLOAS`.
 Moreover, the `attestation.data.index` field is now used to signal the payload
 status of the block being attested to (`attestation.data.beacon_block_root`).
 With the alias `data = attestation.data`, the validator should set this field as
@@ -107,7 +107,7 @@ follows:
 ### Sync Committee participations
 
 Sync committee duties are not changed for validators, however the submission
-deadline is changed with `SYNC_MESSAGE_DUE_BPS_EIP7732`.
+deadline is changed with `SYNC_MESSAGE_DUE_BPS_GLOAS`.
 
 ### Block proposal
 
