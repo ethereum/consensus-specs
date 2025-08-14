@@ -50,8 +50,10 @@ def test_genesis_random_scores(spec, state):
 
 
 def run_inactivity_scores_test(
-    spec, state, participation_fn=None, inactivity_scores_fn=None, rng=Random(10101)
+    spec, state, participation_fn=None, inactivity_scores_fn=None, rng=None
 ):
+    if rng is None:
+        rng = Random(10101)
     while True:
         try:
             next_epoch_via_block(spec, state)
@@ -242,7 +244,9 @@ def test_random_inactivity_scores_full_participation_leaking(spec, state):
     assert spec.is_in_inactivity_leak(state)
 
 
-def slash_some_validators_for_inactivity_scores_test(spec, state, rng=Random(40404040)):
+def slash_some_validators_for_inactivity_scores_test(spec, state, rng=None):
+    if rng is None:
+        rng = Random(40404040)
     # ``run_inactivity_scores_test`` runs at the next epoch from `state`.
     # We retrieve the proposer of this future state to avoid
     # accidentally slashing that validator
@@ -377,7 +381,9 @@ def test_some_exited_full_random_leaking(spec, state):
     assert spec.is_in_inactivity_leak(state)
 
 
-def _run_randomized_state_test_for_inactivity_updates(spec, state, rng=Random(13377331)):
+def _run_randomized_state_test_for_inactivity_updates(spec, state, rng=None):
+    if rng is None:
+        rng = Random(13377331)
     randomize_inactivity_scores(spec, state, rng=rng)
     randomize_state(spec, state, rng=rng)
 

@@ -99,7 +99,6 @@ def payload_state_transition_no_store(spec, state, block):
             state.latest_block_header.state_root = previous_state_root
         # also perform the state transition as if the payload was revealed
         state.latest_block_hash = block.body.signed_execution_payload_header.message.block_hash
-        state.latest_full_slot = block.slot
     return state
 
 

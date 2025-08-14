@@ -511,20 +511,24 @@ def test_proposer_boost(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # Process block on timely arrival just before end of boost interval
-    time = (
-        store.genesis_time
-        + block.slot * spec.config.SECONDS_PER_SLOT
-        + spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT
-        - 1
-    )
+    # Round up to nearest second
+    if is_post_eip7732(spec):
+        late_block_cutoff_ms = spec.get_slot_component_duration_ms(
+            spec.config.ATTESTATION_DUE_BPS_EIP7732
+        )
+    else:
+        late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
+    late_block_cutoff = (late_block_cutoff_ms + 999) // 1000
+    time = store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT + late_block_cutoff - 1
+
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
     payload_state_transition(spec, store, signed_block.message)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
     if is_post_eip7732(spec):
-        node = spec.ChildNode(
+        node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block),
-            slot=block.slot,
+            payload_status=spec.PAYLOAD_STATUS_PENDING,
         )
         assert spec.get_weight(store, node) > 0
     else:
@@ -539,9 +543,9 @@ def test_proposer_boost(spec, state):
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
     if is_post_eip7732(spec):
-        node = spec.ChildNode(
+        node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block),
-            slot=block.slot,
+            payload_status=spec.PAYLOAD_STATUS_PENDING,
         )
         assert spec.get_weight(store, node) == 0
     else:
@@ -558,9 +562,9 @@ def test_proposer_boost(spec, state):
     payload_state_transition(spec, store, signed_block.message)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
     if is_post_eip7732(spec):
-        node = spec.ChildNode(
+        node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block),
-            slot=block.slot,
+            payload_status=spec.PAYLOAD_STATUS_PENDING,
         )
         assert spec.get_weight(store, node) > 0
     else:
@@ -575,9 +579,9 @@ def test_proposer_boost(spec, state):
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
     if is_post_eip7732(spec):
-        node = spec.ChildNode(
+        node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block),
-            slot=block.slot,
+            payload_status=spec.PAYLOAD_STATUS_PENDING,
         )
         assert spec.get_weight(store, node) == 0
     else:
@@ -612,11 +616,16 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # Process block on untimely arrival in the same slot
-    time = (
-        store.genesis_time
-        + block.slot * spec.config.SECONDS_PER_SLOT
-        + spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT
-    )
+    # Round up to nearest second
+    if is_post_eip7732(spec):
+        late_block_cutoff_ms = spec.get_slot_component_duration_ms(
+            spec.config.ATTESTATION_DUE_BPS_EIP7732
+        )
+    else:
+        late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
+    late_block_cutoff = (late_block_cutoff_ms + 999) // 1000
+    time = store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT + late_block_cutoff
+
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
     payload_state_transition(spec, store, signed_block.message)
@@ -653,21 +662,25 @@ def test_proposer_boost_is_first_block(spec, state):
     signed_block_a = state_transition_and_sign_block(spec, state, block_a)
 
     # Process block on timely arrival just before end of boost interval
-    time = (
-        store.genesis_time
-        + block_a.slot * spec.config.SECONDS_PER_SLOT
-        + spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT
-        - 1
-    )
+    # Round up to nearest second
+    if is_post_eip7732(spec):
+        late_block_cutoff_ms = spec.get_slot_component_duration_ms(
+            spec.config.ATTESTATION_DUE_BPS_EIP7732
+        )
+    else:
+        late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
+    late_block_cutoff = (late_block_cutoff_ms + 999) // 1000
+    time = store.genesis_time + block_a.slot * spec.config.SECONDS_PER_SLOT + late_block_cutoff - 1
+
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block_a, test_steps)
     payload_state_transition(spec, store, signed_block_a.message)
     # `proposer_boost_root` is now `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
     if is_post_eip7732(spec):
-        node = spec.ChildNode(
+        node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block_a),
-            slot=block_a.slot,
+            payload_status=spec.PAYLOAD_STATUS_PENDING,
         )
         assert spec.get_weight(store, node) > 0
     else:
@@ -690,9 +703,9 @@ def test_proposer_boost_is_first_block(spec, state):
     # `proposer_boost_root` is still `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
     if is_post_eip7732(spec):
-        node = spec.ChildNode(
+        node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block_b),
-            slot=block_b.slot,
+            payload_status=spec.PAYLOAD_STATUS_PENDING,
         )
         assert spec.get_weight(store, node) == 0
     else:

@@ -6,7 +6,9 @@ from eth2spec.phase0 import mainnet as spec_mainnet, minimal as spec_minimal
 from eth2spec.test.helpers.constants import ALL_PRESETS, MAINNET, MINIMAL, PHASE0
 
 
-def generate_random_bytes(rng=random.Random(5566)):
+def generate_random_bytes(rng=None):
+    if rng is None:
+        rng = random.Random(5566)
     random_bytes = bytes(rng.randint(0, 255) for _ in range(32))
     return random_bytes
 

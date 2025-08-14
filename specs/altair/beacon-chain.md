@@ -490,8 +490,10 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body)  # [Modified in Altair]
-    process_sync_aggregate(state, block.body.sync_aggregate)  # [New in Altair]
+    # [Modified in Altair]
+    process_operations(state, block.body)
+    # [New in Altair]
+    process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
 #### Modified `process_attestation`
@@ -609,18 +611,24 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
 
 ```python
 def process_epoch(state: BeaconState) -> None:
-    process_justification_and_finalization(state)  # [Modified in Altair]
-    process_inactivity_updates(state)  # [New in Altair]
-    process_rewards_and_penalties(state)  # [Modified in Altair]
+    # [Modified in Altair]
+    process_justification_and_finalization(state)
+    # [New in Altair]
+    process_inactivity_updates(state)
+    # [Modified in Altair]
+    process_rewards_and_penalties(state)
     process_registry_updates(state)
-    process_slashings(state)  # [Modified in Altair]
+    # [Modified in Altair]
+    process_slashings(state)
     process_eth1_data_reset(state)
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
     process_historical_roots_update(state)
-    process_participation_flag_updates(state)  # [New in Altair]
-    process_sync_committee_updates(state)  # [New in Altair]
+    # [New in Altair]
+    process_participation_flag_updates(state)
+    # [New in Altair]
+    process_sync_committee_updates(state)
 ```
 
 #### Justification and finalization
