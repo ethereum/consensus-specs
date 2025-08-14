@@ -61,7 +61,7 @@ def test_process_builder_pending_payments_below_quorum(spec, state):
     builder_index = 0
     amount = spec.MIN_ACTIVATION_BALANCE
     quorum = spec.get_builder_payment_quorum_threshold(state)
-    weight = quorum // 2  # Below threshold
+    weight = quorum - 1  # Below threshold
 
     # Add pending payment with weight below quorum
     payment = create_builder_pending_payment(spec, builder_index, amount, weight)
