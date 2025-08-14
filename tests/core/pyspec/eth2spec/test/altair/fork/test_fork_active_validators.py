@@ -6,15 +6,18 @@ from eth2spec.test.context import (
     with_state,
 )
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
+from eth2spec.test.helpers.constants import ELECTRA, PHASE0
 from eth2spec.test.helpers.deposits import prepare_deposit_request, prepare_state_and_deposit
 from eth2spec.test.helpers.execution_payload import compute_el_block_hash_for_block
 from eth2spec.test.helpers.fork_transition import do_fork_generate
-from eth2spec.test.helpers.forks import is_post_electra
 from eth2spec.test.helpers.state import next_epoch, state_transition_and_sign_block
 from eth2spec.test.helpers.typing import SpecForkName
 from eth2spec.test.utils.utils import with_meta_tags
-from eth2spec.test.helpers.constants import ELECTRA, PHASE0
-from tests.infra.template_test import template_test_upgrades_all, template_test_upgrades_from_to, template_test_upgrades_from
+from tests.infra.template_test import (
+    template_test_upgrades_all,
+    template_test_upgrades_from,
+    template_test_upgrades_from_to,
+)
 
 
 @template_test_upgrades_all
@@ -86,9 +89,7 @@ def _template_test_after_fork_new_validator_active_pre_electra(
 
         amount = spec.MAX_EFFECTIVE_BALANCE
 
-        deposit = prepare_state_and_deposit(
-            spec, state, new_validator_index, amount, signed=True
-        )
+        deposit = prepare_state_and_deposit(spec, state, new_validator_index, amount, signed=True)
 
         # As `prepare_state_and_deposit` changes the state, we need to create the block after calling it.
         deposit_block = build_empty_block_for_next_slot(spec, state)
@@ -155,6 +156,7 @@ def _template_test_after_fork_new_validator_active_pre_electra(
 
 _template_test_after_fork_new_validator_active_pre_electra()
 
+
 @template_test_upgrades_from(ELECTRA)
 def _template_test_after_fork_new_validator_active_post_electra(
     pre_spec: SpecForkName, post_spec: SpecForkName
@@ -172,9 +174,7 @@ def _template_test_after_fork_new_validator_active_post_electra(
 
         amount = spec.MIN_ACTIVATION_BALANCE
 
-        deposit_request = prepare_deposit_request(
-            spec, new_validator_index, amount, signed=True
-        )
+        deposit_request = prepare_deposit_request(spec, new_validator_index, amount, signed=True)
 
         # As `prepare_state_and_deposit` changes the state, we need to create the block after calling it.
         deposit_block = build_empty_block_for_next_slot(spec, state)
@@ -252,5 +252,6 @@ def _template_test_after_fork_new_validator_active_post_electra(
         test_after_fork_new_validator_active,
         f"test_after_fork_new_validator_active_from_{pre_spec}_to_{post_spec}",
     )
+
 
 _template_test_after_fork_new_validator_active_post_electra()
