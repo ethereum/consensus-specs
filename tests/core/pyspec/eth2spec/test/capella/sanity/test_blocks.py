@@ -334,7 +334,7 @@ def test_withdrawal_success_two_blocks(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     signed_block_2 = state_transition_and_sign_block(spec, state, block)
 
-    # after EIP-7732 the second block does not perform any withdrawals because
+    # After Gloas the second block does not perform any withdrawals because
     # there was no payload processed
     if is_post_gloas(spec):
         assert (

@@ -30,7 +30,7 @@ def run_execution_payload_processing(
     If ``valid == False``, run expecting ``AssertionError``
     """
 
-    # after EIP-7732 the execution payload is no longer in the body
+    # After Gloas the execution payload is no longer in the body
     if is_post_gloas(spec):
         envelope = spec.ExecutionPayloadEnvelope(
             payload=execution_payload,
