@@ -46,6 +46,7 @@
     - [New `get_attestation_participation_flag_indices`](#new-get_attestation_participation_flag_indices)
     - [New `get_ptc`](#new-get_ptc)
     - [New `get_indexed_payload_attestation`](#new-get_indexed_payload_attestation)
+    - [New `get_builder_payment_quorum_threshold`](#new-get_builder_payment_quorum_threshold)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
@@ -621,6 +622,19 @@ def get_indexed_payload_attestation(
     )
 ```
 
+#### New `get_builder_payment_quorum_threshold`
+
+```python
+def get_builder_payment_quorum_threshold(state: BeaconState) -> uint64:
+    """
+    Calculate the quorum threshold for builder payments.
+    """
+    quorum = (
+        get_total_active_balance(state) // SLOTS_PER_EPOCH * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
+    )
+    return uint64(quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR)
+```
+
 ## Beacon chain state transition function
 
 *Note*: state transition is fundamentally modified in EIP-7732. The full state
@@ -695,10 +709,7 @@ def process_builder_pending_payments(state: BeaconState) -> None:
     """
     Processes the builder pending payments from the previous epoch.
     """
-    quorum = (
-        get_total_active_balance(state) // SLOTS_PER_EPOCH * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
-    )
-    quorum //= BUILDER_PAYMENT_THRESHOLD_DENOMINATOR
+    quorum = get_builder_payment_quorum_threshold(state)
     for payment in state.builder_pending_payments[:SLOTS_PER_EPOCH]:
         if payment.weight > quorum:
             exit_queue_epoch = compute_exit_epoch_and_update_churn(state, payment.withdrawal.amount)
