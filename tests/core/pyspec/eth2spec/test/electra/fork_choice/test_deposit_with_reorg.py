@@ -7,7 +7,7 @@ from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth2spec.test.helpers.constants import (
-    EIP7732,
+    GLOAS,
     ELECTRA,
     MINIMAL,
 )
@@ -28,8 +28,8 @@ from eth2spec.test.helpers.state import (
 )
 
 
-# TODO(jtraglia): In eip7732, how do we set execution requests in the payload envelope?
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+# TODO(jtraglia): In gloas, how do we set execution requests in the payload envelope?
+@with_all_phases_from_except(ELECTRA, [GLOAS])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):

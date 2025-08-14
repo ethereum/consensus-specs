@@ -17,7 +17,7 @@ from eth2spec.test.helpers.forks import (
     is_post_capella,
     is_post_deneb,
     is_post_eip7441,
-    is_post_eip7732,
+    is_post_gloas,
     is_post_electra,
     is_post_fulu,
 )
@@ -59,7 +59,7 @@ def build_mock_validator(spec, i: int, balance: int):
     return validator
 
 
-def get_post_eip7732_genesis_execution_payload_header(spec, slot, eth1_block_hash):
+def get_post_gloas_genesis_execution_payload_header(spec, slot, eth1_block_hash):
     kzgs = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
     header = spec.ExecutionPayloadHeader(
         parent_block_hash=b"\x30" * 32,
@@ -75,8 +75,8 @@ def get_post_eip7732_genesis_execution_payload_header(spec, slot, eth1_block_has
 def get_sample_genesis_execution_payload_header(spec, slot, eth1_block_hash=None):
     if eth1_block_hash is None:
         eth1_block_hash = b"\x55" * 32
-    if is_post_eip7732(spec):
-        return get_post_eip7732_genesis_execution_payload_header(spec, slot, eth1_block_hash)
+    if is_post_gloas(spec):
+        return get_post_gloas_genesis_execution_payload_header(spec, slot, eth1_block_hash)
     payload_header = spec.ExecutionPayloadHeader(
         parent_hash=b"\x30" * 32,
         fee_recipient=b"\x42" * 20,
@@ -136,7 +136,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         current_version = getattr(spec.config, f"{spec.fork.upper()}_FORK_VERSION")
 
     genesis_block_body = spec.BeaconBlockBody()
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         genesis_block_body.signed_execution_payload_header.message.block_hash = eth1_block_hash
 
     state = spec.BeaconState(
@@ -218,7 +218,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.pending_partial_withdrawals = []
         state.pending_consolidations = []
 
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         state.execution_payload_availability = [0b1 for _ in range(spec.SLOTS_PER_HISTORICAL_ROOT)]
         withdrawals = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD]()
         state.latest_withdrawals_root = withdrawals.hash_tree_root()

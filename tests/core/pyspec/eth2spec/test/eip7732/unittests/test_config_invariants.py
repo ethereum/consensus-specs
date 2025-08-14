@@ -1,11 +1,11 @@
 from eth2spec.test.context import (
     single_phase,
     spec_test,
-    with_eip7732_and_later,
+    with_gloas_and_later,
 )
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_test
 @single_phase
 def test_networking(spec):

@@ -8,7 +8,7 @@ ELECTRA = "electra"
 FULU = "fulu"
 EIP6800 = "eip6800"
 EIP7441 = "eip7441"
-EIP7732 = "eip7732"
+GLOAS = "gloas"
 EIP7805 = "eip7805"
 
 

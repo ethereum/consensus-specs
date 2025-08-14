@@ -1,8 +1,8 @@
-from eth2spec.test.helpers.forks import is_post_eip7732, is_post_electra, is_post_fulu
+from eth2spec.test.helpers.forks import is_post_gloas, is_post_electra, is_post_fulu
 
 
 def get_expected_withdrawals(spec, state):
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         withdrawals, _, _ = spec.get_expected_withdrawals(state)
         return withdrawals
     elif is_post_electra(spec):
@@ -276,7 +276,7 @@ def run_withdrawals_processing(
 
     if not valid:
         try:
-            if is_post_eip7732(spec):
+            if is_post_gloas(spec):
                 spec.process_withdrawals(state)
             else:
                 spec.process_withdrawals(state, execution_payload)
@@ -287,7 +287,7 @@ def run_withdrawals_processing(
         yield "post", None
         return
 
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         spec.process_withdrawals(state)
     else:
         spec.process_withdrawals(state, execution_payload)

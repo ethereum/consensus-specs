@@ -8,7 +8,7 @@ from rlp.sedes import big_endian_int, Binary, binary, CountableList, List as RLP
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.execution_payload import compute_el_block_hash
 from eth2spec.test.helpers.forks import (
-    is_post_eip7732,
+    is_post_gloas,
     is_post_electra,
     is_post_fulu,
 )
@@ -144,7 +144,7 @@ def get_block_with_blob(spec, state, rng: Random | None = None, blob_count=1):
     opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs = get_sample_blob_tx(
         spec, blob_count=blob_count, rng=rng or random.Random(5566)
     )
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
             blob_kzg_commitments
         )
@@ -175,7 +175,7 @@ def get_block_with_blob_and_sidecars(spec, state, rng=None, blob_count=1):
     # We need a signed block to call `get_data_column_sidecars_from_block`
     signed_block = state_transition_and_sign_block(spec, state, block)
 
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         sidecars = spec.get_data_column_sidecars_from_block(
             signed_block, blob_kzg_commitments, cells_and_kzg_proofs
         )

@@ -15,7 +15,7 @@ ELECTRA = SpecForkName("electra")
 # Experimental phases (not included in default "ALL_PHASES"):
 FULU = SpecForkName("fulu")
 EIP7441 = SpecForkName("eip7441")
-EIP7732 = SpecForkName("eip7732")
+GLOAS = SpecForkName("gloas")
 EIP7805 = SpecForkName("eip7805")
 
 #
@@ -32,14 +32,14 @@ ALL_PHASES = (
     # Formal forks
     *MAINNET_FORKS,
     FULU,
+    GLOAS,
     # Experimental patches
-    EIP7732,
     EIP7805,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = [item for item in MAINNET_FORKS if item != PHASE0]
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (*MAINNET_FORKS, FULU, EIP7732, EIP7805)
+TESTGEN_FORKS = (*MAINNET_FORKS, FULU, GLOAS, EIP7805)
 # Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
 ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, EIP7441)
 
@@ -52,10 +52,10 @@ PREVIOUS_FORK_OF = {
     CAPELLA: BELLATRIX,
     DENEB: CAPELLA,
     ELECTRA: DENEB,
-    # Experimental patches
     FULU: ELECTRA,
+    GLOAS: FULU,
+    # Experimental patches
     EIP7441: CAPELLA,
-    EIP7732: FULU,
     EIP7805: FULU,
 }
 
@@ -68,6 +68,7 @@ POST_FORK_OF = {
     CAPELLA: DENEB,
     DENEB: ELECTRA,
     ELECTRA: FULU,
+    FULU: GLOAS,
 }
 
 ALL_PRE_POST_FORKS = POST_FORK_OF.items()

@@ -8,7 +8,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.constants import (
     CAPELLA,
-    EIP7732,
+    GLOAS,
     MAINNET,
     MINIMAL,
 )
@@ -33,7 +33,7 @@ from eth2spec.test.helpers.withdrawals import (
 )
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_success_zero_expected_withdrawals(spec, state):
     assert len(get_expected_withdrawals(spec, state)) == 0
@@ -44,7 +44,7 @@ def test_success_zero_expected_withdrawals(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_success_one_full_withdrawal(spec, state):
     fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
@@ -65,7 +65,7 @@ def test_success_one_full_withdrawal(spec, state):
     )
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_success_one_partial_withdrawal(spec, state):
     fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
@@ -88,7 +88,7 @@ def test_success_one_partial_withdrawal(spec, state):
     )
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_success_mixed_fully_and_partial_withdrawable(spec, state):
     num_full_withdrawals = spec.MAX_WITHDRAWALS_PER_PAYLOAD // 2
@@ -113,7 +113,7 @@ def test_success_mixed_fully_and_partial_withdrawable(spec, state):
     )
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @with_presets([MAINNET], reason="too few validators with minimal config")
 @spec_state_test
 def test_success_all_fully_withdrawable_in_one_sweep(spec, state):
@@ -136,7 +136,7 @@ def test_success_all_fully_withdrawable_in_one_sweep(spec, state):
     )
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @with_presets([MINIMAL], reason="too many validators with mainnet config")
 @spec_state_test
 def test_success_all_fully_withdrawable(spec, state):
@@ -159,7 +159,7 @@ def test_success_all_fully_withdrawable(spec, state):
     )
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @with_presets([MAINNET], reason="too few validators with minimal config")
 @spec_state_test
 def test_success_all_partially_withdrawable_in_one_sweep(spec, state):
@@ -182,7 +182,7 @@ def test_success_all_partially_withdrawable_in_one_sweep(spec, state):
     )
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @with_presets([MINIMAL], reason="too many validators with mainnet config")
 @spec_state_test
 def test_success_all_partially_withdrawable(spec, state):
@@ -210,7 +210,7 @@ def test_success_all_partially_withdrawable(spec, state):
 #
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_non_withdrawable_non_empty_withdrawals(spec, state):
     next_slot(spec, state)
@@ -227,7 +227,7 @@ def test_invalid_non_withdrawable_non_empty_withdrawals(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_one_expected_full_withdrawal_and_none_in_withdrawals(spec, state):
     prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_full_withdrawals=1)
@@ -240,7 +240,7 @@ def test_invalid_one_expected_full_withdrawal_and_none_in_withdrawals(spec, stat
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_one_expected_partial_withdrawal_and_none_in_withdrawals(spec, state):
     prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_partial_withdrawals=1)
@@ -253,7 +253,7 @@ def test_invalid_one_expected_partial_withdrawal_and_none_in_withdrawals(spec, s
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_one_expected_full_withdrawal_and_duplicate_in_withdrawals(spec, state):
     prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_full_withdrawals=2)
@@ -266,7 +266,7 @@ def test_invalid_one_expected_full_withdrawal_and_duplicate_in_withdrawals(spec,
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_two_expected_partial_withdrawal_and_duplicate_in_withdrawals(spec, state):
     prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_partial_withdrawals=2)
@@ -279,7 +279,7 @@ def test_invalid_two_expected_partial_withdrawal_and_duplicate_in_withdrawals(sp
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_max_per_slot_full_withdrawals_and_one_less_in_withdrawals(spec, state):
     prepare_expected_withdrawals(
@@ -294,7 +294,7 @@ def test_invalid_max_per_slot_full_withdrawals_and_one_less_in_withdrawals(spec,
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_max_per_slot_partial_withdrawals_and_one_less_in_withdrawals(spec, state):
     prepare_expected_withdrawals(
@@ -309,7 +309,7 @@ def test_invalid_max_per_slot_partial_withdrawals_and_one_less_in_withdrawals(sp
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_a_lot_fully_withdrawable_too_few_in_withdrawals(spec, state):
     prepare_expected_withdrawals(
@@ -327,7 +327,7 @@ def test_invalid_a_lot_fully_withdrawable_too_few_in_withdrawals(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_a_lot_partially_withdrawable_too_few_in_withdrawals(spec, state):
     prepare_expected_withdrawals(
@@ -345,7 +345,7 @@ def test_invalid_a_lot_partially_withdrawable_too_few_in_withdrawals(spec, state
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_a_lot_mixed_withdrawable_in_queue_too_few_in_withdrawals(spec, state):
     prepare_expected_withdrawals(
@@ -369,7 +369,7 @@ def test_invalid_a_lot_mixed_withdrawable_in_queue_too_few_in_withdrawals(spec, 
 #
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_incorrect_withdrawal_index(spec, state):
     prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_full_withdrawals=1)
@@ -382,7 +382,7 @@ def test_invalid_incorrect_withdrawal_index(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_incorrect_address_full(spec, state):
     prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_full_withdrawals=1)
@@ -395,7 +395,7 @@ def test_invalid_incorrect_address_full(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_incorrect_address_partial(spec, state):
     prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_partial_withdrawals=1)
@@ -408,7 +408,7 @@ def test_invalid_incorrect_address_partial(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_incorrect_amount_full(spec, state):
     prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_full_withdrawals=1)
@@ -421,7 +421,7 @@ def test_invalid_incorrect_amount_full(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_incorrect_amount_partial(spec, state):
     prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_full_withdrawals=1)
@@ -434,7 +434,7 @@ def test_invalid_incorrect_amount_partial(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_one_of_many_incorrectly_full(spec, state):
     prepare_expected_withdrawals(
@@ -458,7 +458,7 @@ def test_invalid_one_of_many_incorrectly_full(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_one_of_many_incorrectly_partial(spec, state):
     prepare_expected_withdrawals(
@@ -482,7 +482,7 @@ def test_invalid_one_of_many_incorrectly_partial(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_many_incorrectly_full(spec, state):
     prepare_expected_withdrawals(
@@ -506,7 +506,7 @@ def test_invalid_many_incorrectly_full(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload, valid=False)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_invalid_many_incorrectly_partial(spec, state):
     prepare_expected_withdrawals(
@@ -535,7 +535,7 @@ def test_invalid_many_incorrectly_partial(spec, state):
 #
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_withdrawable_epoch_but_0_balance(spec, state):
     current_epoch = spec.get_current_epoch(state)
@@ -551,7 +551,7 @@ def test_withdrawable_epoch_but_0_balance(spec, state):
     )
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_withdrawable_epoch_but_0_effective_balance_0_balance(spec, state):
     current_epoch = spec.get_current_epoch(state)
@@ -567,7 +567,7 @@ def test_withdrawable_epoch_but_0_effective_balance_0_balance(spec, state):
     )
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_withdrawable_epoch_but_0_effective_balance_nonzero_balance(spec, state):
     current_epoch = spec.get_current_epoch(state)
@@ -583,7 +583,7 @@ def test_withdrawable_epoch_but_0_effective_balance_nonzero_balance(spec, state)
     )
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_no_withdrawals_but_some_next_epoch(spec, state):
     current_epoch = spec.get_current_epoch(state)
@@ -599,7 +599,7 @@ def test_no_withdrawals_but_some_next_epoch(spec, state):
     )
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_all_withdrawal(spec, state):
     # Make all validators withdrawable
@@ -637,25 +637,25 @@ def run_random_full_withdrawals_test(spec, state, rng):
     yield from run_withdrawals_processing(spec, state, execution_payload)
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_random_full_withdrawals_0(spec, state):
     yield from run_random_full_withdrawals_test(spec, state, random.Random(444))
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_random_full_withdrawals_1(spec, state):
     yield from run_random_full_withdrawals_test(spec, state, random.Random(420))
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_random_full_withdrawals_2(spec, state):
     yield from run_random_full_withdrawals_test(spec, state, random.Random(200))
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_except(CAPELLA, [GLOAS])
 @spec_state_test
 def test_random_full_withdrawals_3(spec, state):
     yield from run_random_full_withdrawals_test(spec, state, random.Random(2000000))

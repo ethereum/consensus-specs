@@ -34,7 +34,7 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for EIP7732.
+This document contains the consensus-layer networking specification for GloasGloasGloasGloasGloasGloasGloasGloas.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
@@ -301,7 +301,7 @@ The following validations are removed:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
-| `GLOAS_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
+| `GLOAS_FORK_VERSION`   | `gloas.SignedBeaconBlock`   |
 
 ##### BeaconBlocksByRoot v2
 
@@ -318,7 +318,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
-| `GLOAS_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
+| `GLOAS_FORK_VERSION`   | `gloas.SignedBeaconBlock`   |
 
 ##### BlobSidecarsByRoot v1
 
@@ -329,7 +329,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `fork_version`         | Chunk SSZ type        |
 | ---------------------- | --------------------- |
 | `DENEB_FORK_VERSION`   | `deneb.BlobSidecar`   |
-| `GLOAS_FORK_VERSION` | `eip7732.BlobSidecar` |
+| `GLOAS_FORK_VERSION` | `gloas.BlobSidecar` |
 
 ##### ExecutionPayloadEnvelopesByRange v1
 
@@ -369,7 +369,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 | `fork_version`         | Chunk SSZ type                           |
 | ---------------------- | ---------------------------------------- |
-| `GLOAS_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
+| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
 
 ##### ExecutionPayloadEnvelopesByRoot v1
 
@@ -382,7 +382,7 @@ The `<context-bytes>` field is calculated as
 
 | `fork_version`         | Chunk SSZ type                           |
 | ---------------------- | ---------------------------------------- |
-| `GLOAS_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
+| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
 
 Request Content:
 

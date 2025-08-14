@@ -12,7 +12,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.constants import (
     ALTAIR,
-    EIP7732,
+    GLOAS,
 )
 from eth2spec.test.helpers.fork_choice import (
     apply_next_epoch_with_attestations,
@@ -30,7 +30,7 @@ from eth2spec.test.helpers.state import (
 )
 
 
-@with_all_phases_from_except(ALTAIR, [EIP7732])
+@with_all_phases_from_except(ALTAIR, [GLOAS])
 @spec_state_test
 def test_basic_is_head_root(spec, state):
     test_steps = []
@@ -72,7 +72,7 @@ def test_basic_is_head_root(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases_from_except(ALTAIR, [EIP7732])
+@with_all_phases_from_except(ALTAIR, [GLOAS])
 @spec_state_test
 def test_basic_is_parent_root(spec, state):
     test_steps = []
