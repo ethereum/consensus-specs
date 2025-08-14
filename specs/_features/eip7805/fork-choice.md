@@ -244,9 +244,9 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
 
     # [New in EIP7805]
     # Check that the head block is in the unsatisfied inclusion list blocks
-    inclusion_list_not_satisfied = head_root in store.unsatisfied_inclusion_list_blocks
+    inclusion_list_unsatisfied = head_root in store.unsatisfied_inclusion_list_blocks
 
-    if reorg_prerequisites and (head_late or inclusion_list_not_satisfied):
+    if reorg_prerequisites and (head_late or inclusion_list_unsatisfied):
         return parent_root
     else:
         return head_root
