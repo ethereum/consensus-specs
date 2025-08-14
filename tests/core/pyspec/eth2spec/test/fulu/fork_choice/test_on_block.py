@@ -8,8 +8,8 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.blob import get_block_with_blob_and_sidecars
 from eth2spec.test.helpers.constants import (
-    GLOAS,
     FULU,
+    GLOAS,
 )
 from eth2spec.test.helpers.fork_choice import (
     BlobData,

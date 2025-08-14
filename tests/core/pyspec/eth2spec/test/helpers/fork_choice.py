@@ -10,7 +10,7 @@ from eth2spec.test.helpers.attestations import (
     next_slots_with_attestations,
     state_transition_with_full_block,
 )
-from eth2spec.test.helpers.forks import is_post_gloas, is_post_fulu
+from eth2spec.test.helpers.forks import is_post_fulu, is_post_gloas
 from eth2spec.test.helpers.state import (
     payload_state_transition,
     payload_state_transition_no_store,

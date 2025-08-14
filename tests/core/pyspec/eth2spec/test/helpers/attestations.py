@@ -5,8 +5,8 @@ from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.forks import (
     is_post_altair,
     is_post_deneb,
-    is_post_gloas,
     is_post_electra,
+    is_post_gloas,
 )
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.state import (

@@ -1,4 +1,4 @@
-from eth2spec.test.helpers.forks import is_post_gloas, is_post_electra, is_post_fulu
+from eth2spec.test.helpers.forks import is_post_electra, is_post_fulu, is_post_gloas
 
 
 def get_expected_withdrawals(spec, state):

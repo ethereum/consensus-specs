@@ -17,9 +17,9 @@ from eth2spec.test.helpers.forks import (
     is_post_capella,
     is_post_deneb,
     is_post_eip7441,
-    is_post_gloas,
     is_post_electra,
     is_post_fulu,
+    is_post_gloas,
 )
 from eth2spec.test.helpers.keys import pubkeys
 

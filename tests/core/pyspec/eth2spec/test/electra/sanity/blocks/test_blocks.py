@@ -16,8 +16,8 @@ from eth2spec.test.helpers.bls_to_execution_changes import (
     get_signed_address_change,
 )
 from eth2spec.test.helpers.constants import (
-    GLOAS,
     ELECTRA,
+    GLOAS,
     MINIMAL,
 )
 from eth2spec.test.helpers.deposits import (

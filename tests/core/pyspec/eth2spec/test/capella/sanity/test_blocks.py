@@ -22,7 +22,7 @@ from eth2spec.test.helpers.constants import (
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
 )
-from eth2spec.test.helpers.forks import is_post_gloas, is_post_electra
+from eth2spec.test.helpers.forks import is_post_electra, is_post_gloas
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.state import (
     next_epoch_via_block,

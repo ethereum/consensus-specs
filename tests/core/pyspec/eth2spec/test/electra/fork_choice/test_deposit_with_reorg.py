@@ -7,8 +7,8 @@ from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth2spec.test.helpers.constants import (
-    GLOAS,
     ELECTRA,
+    GLOAS,
     MINIMAL,
 )
 from eth2spec.test.helpers.deposits import (

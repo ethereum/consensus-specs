@@ -4,10 +4,10 @@ from .constants import (
     CAPELLA,
     DENEB,
     EIP7441,
-    GLOAS,
     EIP7805,
     ELECTRA,
     FULU,
+    GLOAS,
     PHASE0,
     PREVIOUS_FORK_OF,
 )

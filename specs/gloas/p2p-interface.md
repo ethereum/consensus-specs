@@ -34,7 +34,8 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for GloasGloasGloasGloasGloasGloasGloasGloas.
+This document contains the consensus-layer networking specification for
+GloasGloasGloasGloasGloasGloasGloasGloas.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
@@ -45,8 +46,8 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 *[Modified in Gloas:EIP7732]*
 
-| Name                                            | Value | Description                                                 |
-| ----------------------------------------------- | ----- | ----------------------------------------------------------- |
+| Name                                          | Value | Description                                                 |
+| --------------------------------------------- | ----- | ----------------------------------------------------------- |
 | `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS` | `9`   | Merkle proof depth for the `blob_kzg_commitments` list item |
 
 ### Configuration
@@ -79,9 +80,9 @@ class DataColumnSidecar(Container):
 
 ##### Modified `verify_data_column_sidecar_inclusion_proof`
 
-`verify_data_column_sidecar_inclusion_proof` is modified in Gloas to account
-for the fact that the KZG commitments are included in the
-`ExecutionPayloadEnvelope` and no longer in the beacon block body.
+`verify_data_column_sidecar_inclusion_proof` is modified in Gloas to account for
+the fact that the KZG commitments are included in the `ExecutionPayloadEnvelope`
+and no longer in the beacon block body.
 
 ```python
 def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bool:
@@ -108,8 +109,7 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of Gloas to support upgraded
-types.
+Some gossip meshes are upgraded in the fork of Gloas to support upgraded types.
 
 #### Topics and messages
 
@@ -132,8 +132,8 @@ are given in this table:
 
 ##### Global topics
 
-Gloas introduces new global topics for execution header, execution payload
-and payload attestation.
+Gloas introduces new global topics for execution header, execution payload and
+payload attestation.
 
 ###### `beacon_aggregate_and_proof`
 
@@ -301,7 +301,7 @@ The following validations are removed:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
-| `GLOAS_FORK_VERSION`   | `gloas.SignedBeaconBlock`   |
+| `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 
 ##### BeaconBlocksByRoot v2
 
@@ -318,7 +318,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
-| `GLOAS_FORK_VERSION`   | `gloas.SignedBeaconBlock`   |
+| `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 
 ##### BlobSidecarsByRoot v1
 
@@ -326,9 +326,9 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`         | Chunk SSZ type        |
-| ---------------------- | --------------------- |
-| `DENEB_FORK_VERSION`   | `deneb.BlobSidecar`   |
+| `fork_version`       | Chunk SSZ type      |
+| -------------------- | ------------------- |
+| `DENEB_FORK_VERSION` | `deneb.BlobSidecar` |
 | `GLOAS_FORK_VERSION` | `gloas.BlobSidecar` |
 
 ##### ExecutionPayloadEnvelopesByRange v1
@@ -367,8 +367,8 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`         | Chunk SSZ type                           |
-| ---------------------- | ---------------------------------------- |
+| `fork_version`       | Chunk SSZ type                         |
+| -------------------- | -------------------------------------- |
 | `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
 
 ##### ExecutionPayloadEnvelopesByRoot v1
@@ -380,8 +380,8 @@ The `<context-bytes>` field is calculated as
 
 <!-- eth2spec: skip -->
 
-| `fork_version`         | Chunk SSZ type                           |
-| ---------------------- | ---------------------------------------- |
+| `fork_version`       | Chunk SSZ type                         |
+| -------------------- | -------------------------------------- |
 | `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
 
 Request Content:

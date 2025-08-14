@@ -34,8 +34,8 @@ from eth2spec.test.helpers.execution_payload import (
 from eth2spec.test.helpers.forks import (
     get_next_fork_transition,
     is_post_bellatrix,
-    is_post_gloas,
     is_post_electra,
+    is_post_gloas,
 )
 from eth2spec.test.helpers.proposer_slashings import (
     get_valid_proposer_slashing,

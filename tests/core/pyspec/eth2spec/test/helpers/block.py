@@ -24,8 +24,8 @@ from eth2spec.test.helpers.forks import (
     is_post_altair,
     is_post_bellatrix,
     is_post_eip7441,
-    is_post_gloas,
     is_post_electra,
+    is_post_gloas,
 )
 from eth2spec.test.helpers.keys import privkeys, whisk_ks_final, whisk_ks_initial
 from eth2spec.utils import bls

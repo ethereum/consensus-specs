@@ -8,9 +8,9 @@ from rlp.sedes import big_endian_int, Binary, binary, CountableList, List as RLP
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.execution_payload import compute_el_block_hash
 from eth2spec.test.helpers.forks import (
-    is_post_gloas,
     is_post_electra,
     is_post_fulu,
+    is_post_gloas,
 )
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.state import state_transition_and_sign_block
