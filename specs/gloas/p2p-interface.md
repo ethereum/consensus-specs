@@ -301,7 +301,7 @@ The following validations are removed:
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 | `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
-| `FULU_FORK_VERSION`      | `electra.SignedBeaconBlock`   |
+| `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 
 ##### BeaconBlocksByRoot v2
@@ -320,7 +320,7 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
 | `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
-| `FULU_FORK_VERSION`      | `electra.SignedBeaconBlock`   |
+| `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 
 ##### ExecutionPayloadEnvelopesByRange v1
