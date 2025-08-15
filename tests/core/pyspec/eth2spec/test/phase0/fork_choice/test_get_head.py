@@ -2,7 +2,7 @@ import random
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to,
     with_altair_and_later,
     with_presets,
 )
@@ -273,7 +273,7 @@ def test_filtered_block_tree(spec, state):
 
 
 # This test is skipped in Gloas because the block's slot decides first on weight ties
-@with_all_phases_from_except(ALTAIR, [GLOAS])
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @spec_state_test
 def test_proposer_boost_correct_head(spec, state):
     test_steps = []

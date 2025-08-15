@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to,
     with_presets,
 )
 from eth2spec.test.helpers.block import (
@@ -29,7 +29,7 @@ from eth2spec.test.helpers.state import (
 
 
 # TODO(jtraglia): In gloas, how do we set execution requests in the payload envelope?
-@with_all_phases_from_except(ELECTRA, [GLOAS])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
