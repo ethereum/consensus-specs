@@ -128,7 +128,6 @@ def prepare_execution_payload_envelope(
 
         post_state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] = 0b1
         post_state.latest_block_hash = execution_payload.block_hash
-        post_state.latest_full_slot = state.slot
         state_root = post_state.hash_tree_root()
 
     envelope = spec.ExecutionPayloadEnvelope(
@@ -237,7 +236,6 @@ def test_process_execution_payload_valid(spec, state):
     # Verify state updates
     assert state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] == 0b1
     assert state.latest_block_hash == execution_payload.block_hash
-    assert state.latest_full_slot == state.slot
 
     # Verify pending withdrawal was added
     assert len(state.builder_pending_withdrawals) == pre_pending_withdrawals_len + 1
@@ -278,7 +276,6 @@ def test_process_execution_payload_self_build_zero_value(spec, state):
     # Verify state updates
     assert state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] == 0b1
     assert state.latest_block_hash == execution_payload.block_hash
-    assert state.latest_full_slot == state.slot
 
 
 @with_gloas_and_later
@@ -687,9 +684,9 @@ def test_process_execution_payload_max_blob_commitments_valid(spec, state):
     execution_payload.gas_limit = state.latest_execution_payload_header.gas_limit
     execution_payload.parent_hash = state.latest_block_hash
 
-    # Create exactly MAX_BLOBS_PER_BLOCK_ELECTRA commitments (should be valid)
+    # Create exactly MAX_BLOBS_PER_BLOCK commitments (should be valid)
     max_blob_commitments = [
-        spec.KZGCommitment(b"\x42" * 48) for _ in range(spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA)
+        spec.KZGCommitment(b"\x42" * 48) for _ in range(spec.config.MAX_BLOBS_PER_BLOCK)
     ]
     blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
         max_blob_commitments
