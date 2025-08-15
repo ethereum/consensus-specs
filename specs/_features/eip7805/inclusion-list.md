@@ -96,7 +96,6 @@ def get_inclusion_list_transactions(
     inclusion_list_transactions = [
         transaction
         for inclusion_list in store.inclusion_lists[key]
-        if inclusion_list.validator_index not in store.equivocators[key]
         for transaction in inclusion_list.transactions
     ]
 

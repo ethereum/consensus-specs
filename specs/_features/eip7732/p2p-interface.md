@@ -9,9 +9,9 @@
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
-    - [`BlobSidecar`](#blobsidecar)
+    - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
     - [Helpers](#helpers)
-      - [Modified `verify_blob_sidecar_inclusion_proof`](#modified-verify_blob_sidecar_inclusion_proof)
+      - [Modified `verify_data_column_sidecar_inclusion_proof`](#modified-verify_data_column_sidecar_inclusion_proof)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -45,9 +45,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 *[Modified in EIP7732]*
 
-| Name                                           | Value        | Description                                                 |
-| ---------------------------------------------- | ------------ | ----------------------------------------------------------- |
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732` | `22` **TBD** | Merkle proof depth for the `blob_kzg_commitments` list item |
+| Name                                            | Value | Description                                                 |
+| ----------------------------------------------- | ----- | ----------------------------------------------------------- |
+| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_EIP7732` | `9`   | Merkle proof depth for the `blob_kzg_commitments` list item |
 
 ### Configuration
 
@@ -59,48 +59,50 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Containers
 
-#### `BlobSidecar`
+#### Modified `DataColumnSidecar`
 
-The `BlobSidecar` container is modified indirectly because the constant
-`KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` is modified.
+*Note*: The `DataColumnSidecar` container is modified indirectly because the
+constant `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` is modified.
 
 ```python
-class BlobSidecar(Container):
-    index: BlobIndex
-    blob: Blob
-    kzg_commitment: KZGCommitment
-    kzg_proof: KZGProof
+class DataColumnSidecar(Container):
+    index: ColumnIndex
+    column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732]
+    # [Modified in EIP7732]
+    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_EIP7732]
 ```
 
 #### Helpers
 
-##### Modified `verify_blob_sidecar_inclusion_proof`
+##### Modified `verify_data_column_sidecar_inclusion_proof`
 
-`verify_blob_sidecar_inclusion_proof` is modified in EIP-7732 to account for the
-fact that the KZG commitments are included in the `ExecutionPayloadEnvelope` and
-no longer in the beacon block body.
+`verify_data_column_sidecar_inclusion_proof` is modified in EIP-7732 to account
+for the fact that the KZG commitments are included in the
+`ExecutionPayloadEnvelope` and no longer in the beacon block body.
 
 ```python
-def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
-    inner_gindex = get_generalized_index(
-        List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK], blob_sidecar.index
-    )
-    outer_gindex = get_generalized_index(
-        BeaconBlockBody,
-        "signed_execution_payload_header",
-        "message",
-        "blob_kzg_commitments_root",
-    )
-    gindex = get_subtree_index(concat_generalized_indices(outer_gindex, inner_gindex))
-
+def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bool:
+    """
+    Verify if the given KZG commitments included in the given beacon block.
+    """
     return is_valid_merkle_branch(
-        leaf=blob_sidecar.kzg_commitment.hash_tree_root(),
-        branch=blob_sidecar.kzg_commitment_inclusion_proof,
-        depth=KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732,
-        index=gindex,
-        root=blob_sidecar.signed_block_header.message.body_root,
+        leaf=hash_tree_root(sidecar.kzg_commitments),
+        branch=sidecar.kzg_commitments_inclusion_proof,
+        # [Modified in EIP7732]
+        depth=KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_EIP7732,
+        # [Modified in EIP7732]
+        index=get_subtree_index(
+            get_generalized_index(
+                BeaconBlockBody,
+                "signed_execution_payload_header",
+                "message",
+                "blob_kzg_commitments_root",
+            )
+        ),
+        root=sidecar.signed_block_header.message.body_root,
     )
 ```
 
@@ -159,7 +161,7 @@ regards to the `ExecutionPayload` are removed:
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in Consensus Layer -- i.e. validate that
-  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK`
+  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
 - _[REJECT]_ The block's execution payload timestamp is correct with respect to
   the slot -- i.e.
   `execution_payload.timestamp == compute_time_at_slot(state, block.slot)`.
@@ -209,9 +211,8 @@ obtained from the `state.signed_execution_payload_header`)
 - _[REJECT]_ `block.slot` equals `envelope.slot`.
 - _[REJECT]_ `envelope.builder_index == header.builder_index`
 - _[REJECT]_ `payload.block_hash == header.block_hash`
-- _[REJECT]_ The builder signature,
-  `signed_execution_payload_envelope.signature`, is valid with respect to the
-  builder's public key.
+- _[REJECT]_ `signed_execution_payload_envelope.signature` is valid with respect
+  to the builder's public key.
 
 ###### `payload_attestation_message`
 
@@ -234,8 +235,8 @@ The following validations MUST pass before forwarding the
 - _[REJECT]_ The message's validator index is within the payload committee in
   `get_ptc(state, data.slot)`. The `state` is the head state corresponding to
   processing the block up to the current slot as determined by the fork choice.
-- _[REJECT]_ The message's signature of `payload_attestation_message.signature`
-  is valid with respect to the validator index.
+- _[REJECT]_ `payload_attestation_message.signature` is valid with respect to
+  the validator's public key.
 
 ###### `execution_payload_header`
 
@@ -245,24 +246,26 @@ The following validations MUST pass before forwarding the
 `signed_execution_payload_header` on the network, assuming the alias
 `header = signed_execution_payload_header.message`:
 
-- _[REJECT]_ the builder's withdrawal credentials' prefix equals
-  `BUILDER_WITHDRAWAL_PREFIX`.
+- _[REJECT]_ `header.builder_index` is a valid, active, and non-slashed builder
+  index.
+- _[REJECT]_ the builder's withdrawal credentials' prefix is
+  `BUILDER_WITHDRAWAL_PREFIX` -- i.e.
+  `is_builder_withdrawal_credential(state.validators[header.builder_index].withdrawal_credentials)`
+  returns `True`.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
-- _[IGNORE]_ this bid is the highest value bid seen for the pair of the
-  corresponding slot and the given parent block hash.
-- _[REJECT]_ The signed builder bid, `header.builder_index` is a valid, active,
-  and non-slashed builder index in state.
-- _[IGNORE]_ The signed builder bid value, `header.value`, is less or equal than
-  the builder's balance in state. i.e.
-  `MIN_BUILDER_BALANCE + header.value < state.builder_balances[header.builder_index]`.
+- _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
+  and the given parent block hash.
+- _[IGNORE]_ `header.value` is less or equal than the builder's excess balance
+  -- i.e.
+  `MIN_ACTIVATION_BALANCE + header.value <= state.balances[header.builder_index]`.
 - _[IGNORE]_ `header.parent_block_hash` is the block hash of a known execution
-  payload in fork choice. _ _[IGNORE]_ `header.parent_block_root` is the hash
-  tree root of a known beacon block in fork choice.
+  payload in fork choice.
+- _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon
+  block in fork choice.
 - _[IGNORE]_ `header.slot` is the current slot or the next slot.
-- _[REJECT]_ The builder signature,
-  `signed_execution_payload_header_envelope.signature`, is valid with respect to
-  the `header_envelope.builder_index`.
+- _[REJECT]_ `signed_execution_payload_header.signature` is valid with respect
+  to the `header.builder_index`.
 
 ##### Attestation subnets
 

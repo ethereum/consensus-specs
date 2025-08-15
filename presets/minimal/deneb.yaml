@@ -2,7 +2,7 @@
 
 # Execution
 # ---------------------------------------------------------------
-# [customized] 2**5 (= 32) blob commitments
+# [customized] 2**5 (= 32) commitments
 MAX_BLOB_COMMITMENTS_PER_BLOCK: 32
 
 # Networking

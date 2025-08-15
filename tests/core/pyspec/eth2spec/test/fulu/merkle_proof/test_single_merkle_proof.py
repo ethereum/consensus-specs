@@ -19,6 +19,9 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
+from eth2spec.test.helpers.forks import (
+    is_post_eip7732,
+)
 
 
 def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None, blob_count=1):
@@ -34,19 +37,41 @@ def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None, blob_coun
             mode=RandomizationMode,
             chaos=True,
         )
-    block.body.blob_kzg_commitments = blob_kzg_commitments
-    block.body.execution_payload.transactions = [opaque_tx]
-    block.body.execution_payload.block_hash = compute_el_block_hash(
-        spec, block.body.execution_payload, state
-    )
+    if is_post_eip7732(spec):
+        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
+            blob_kzg_commitments
+        )
+        kzg_root = blob_kzg_commitments.hash_tree_root()
+        block.body.signed_execution_payload_header.message.blob_kzg_commitments_root = kzg_root
+    else:
+        block.body.blob_kzg_commitments = blob_kzg_commitments
+        block.body.execution_payload.transactions = [opaque_tx]
+        block.body.execution_payload.block_hash = compute_el_block_hash(
+            spec, block.body.execution_payload, state
+        )
     signed_block = sign_block(spec, state, block, proposer_index=0)
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
-    column_sidcars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
+    if is_post_eip7732(spec):
+        column_sidcars = spec.get_data_column_sidecars_from_block(
+            signed_block, blob_kzg_commitments, cells_and_kzg_proofs
+        )
+    else:
+        column_sidcars = spec.get_data_column_sidecars_from_block(
+            signed_block, cells_and_kzg_proofs
+        )
     column_sidcar = column_sidcars[0]
 
     yield "object", block.body
     kzg_commitments_inclusion_proof = column_sidcar.kzg_commitments_inclusion_proof
-    gindex = spec.get_generalized_index(spec.BeaconBlockBody, "blob_kzg_commitments")
+    if is_post_eip7732(spec):
+        gindex = spec.get_generalized_index(
+            spec.BeaconBlockBody,
+            "signed_execution_payload_header",
+            "message",
+            "blob_kzg_commitments_root",
+        )
+    else:
+        gindex = spec.get_generalized_index(spec.BeaconBlockBody, "blob_kzg_commitments")
     yield (
         "proof",
         {

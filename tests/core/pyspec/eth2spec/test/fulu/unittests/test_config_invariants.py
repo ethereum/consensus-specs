@@ -14,13 +14,13 @@ from eth2spec.test.helpers.constants import (
 @single_phase
 def test_invariants(spec):
     assert spec.FIELD_ELEMENTS_PER_BLOB % spec.FIELD_ELEMENTS_PER_CELL == 0
-    assert spec.FIELD_ELEMENTS_PER_EXT_BLOB % spec.config.NUMBER_OF_COLUMNS == 0
-    assert spec.config.SAMPLES_PER_SLOT <= spec.config.NUMBER_OF_COLUMNS
+    assert spec.FIELD_ELEMENTS_PER_EXT_BLOB % spec.NUMBER_OF_COLUMNS == 0
+    assert spec.config.SAMPLES_PER_SLOT <= spec.NUMBER_OF_COLUMNS
     assert spec.config.CUSTODY_REQUIREMENT <= spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
-    assert spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT <= spec.config.NUMBER_OF_COLUMNS
-    assert spec.config.NUMBER_OF_COLUMNS % spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT == 0
+    assert spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT <= spec.NUMBER_OF_COLUMNS
+    assert spec.NUMBER_OF_COLUMNS % spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT == 0
     assert spec.config.MAX_REQUEST_DATA_COLUMN_SIDECARS == (
-        spec.config.MAX_REQUEST_BLOCKS_DENEB * spec.config.NUMBER_OF_COLUMNS
+        spec.config.MAX_REQUEST_BLOCKS_DENEB * spec.NUMBER_OF_COLUMNS
     )
 
 

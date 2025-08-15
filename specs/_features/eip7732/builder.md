@@ -5,9 +5,17 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Becoming a builder](#becoming-a-builder)
+  - [Builder withdrawal credentials](#builder-withdrawal-credentials)
+  - [Submit deposit](#submit-deposit)
+  - [Process deposit](#process-deposit)
+  - [Builder index](#builder-index)
+  - [Activation](#activation)
 - [Builders attributions](#builders-attributions)
   - [Constructing the payload bid](#constructing-the-payload-bid)
-  - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
+  - [Constructing the `DataColumnSidecar`s](#constructing-the-datacolumnsidecars)
+    - [Modified `get_data_column_sidecars`](#modified-get_data_column_sidecars)
+    - [Modified `get_data_column_sidecars_from_block`](#modified-get_data_column_sidecars_from_block)
   - [Constructing the execution payload envelope](#constructing-the-execution-payload-envelope)
   - [Honest payload withheld messages](#honest-payload-withheld-messages)
 
@@ -23,6 +31,51 @@ protocol called *Builders*. While Builders are a subset of the validator set,
 they have extra attributions that are optional. Validators may opt to not be
 builders and as such we collect the set of guidelines for those validators that
 want to act as builders in this document.
+
+## Becoming a builder
+
+### Builder withdrawal credentials
+
+The `withdrawal_credentials` field for builders has a specific format that
+identifies them as registered builders in the network. Builders must use the
+`BUILDER_WITHDRAWAL_PREFIX` to participate in the EIP-7732 mechanism.
+
+The `withdrawal_credentials` field must be such that:
+
+- `withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX` (i.e., `0x03`)
+- `withdrawal_credentials[1:12] == b'\x00' * 11`
+- `withdrawal_credentials[12:] == builder_execution_address`
+
+Where `builder_execution_address` is a 20-byte execution layer address that will
+receive:
+
+- Withdrawal rewards (similar to `ETH1_ADDRESS_WITHDRAWAL_PREFIX`)
+- Compounding rewards (builders inherit compounding functionality)
+
+### Submit deposit
+
+Builders follow the same deposit process as regular validators, but with the
+builder-specific withdrawal credentials. The deposit must include:
+
+- `pubkey`: The builder's BLS public key
+- `withdrawal_credentials`: Set with `BUILDER_WITHDRAWAL_PREFIX` (`0x03`)
+- `amount`: At least `MIN_DEPOSIT_AMOUNT`
+- `signature`: BLS signature over the deposit data
+
+### Process deposit
+
+The beacon chain processes builder deposits identically to validator deposits,
+with the withdrawal credentials using `BUILDER_WITHDRAWAL_PREFIX`.
+
+### Builder index
+
+Once the deposit is processed, the builder is assigned a unique
+`validator_index` within the validator registry. This index is used to identify
+the builder in execution payload headers and envelopes.
+
+### Activation
+
+Builder activation follows the same process as validator activation.
 
 ## Builders attributions
 
@@ -42,7 +95,7 @@ Builders can broadcast a payload bid for the current or the next slot's proposer
 to include. They produce a `SignedExecutionPayloadHeader` as follows.
 
 01. Set `header.parent_block_hash` to the current head of the execution chain
-    (this can be obtained from the beacon state as `state.last_block_hash`).
+    (this can be obtained from the beacon state as `state.latest_block_hash`).
 02. Set `header.parent_block_root` to be the head of the consensus chain (this
     can be obtained from the beacon state as
     `hash_tree_root(state.latest_block_header)`. The `parent_block_root` and
@@ -85,60 +138,84 @@ The builder assembles then
 `signed_execution_payload_header = SignedExecutionPayloadHeader(message=header, signature=signature)`
 and broadcasts it on the `execution_payload_header` global gossip topic.
 
-### Constructing the `BlobSidecar`s
+### Constructing the `DataColumnSidecar`s
 
-*[Modified in EIP7732]*
+#### Modified `get_data_column_sidecars`
 
-The `BlobSidecar` container is modified indirectly because the constant
-`KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` is modified. The function
-`get_blob_sidecars` is modified because the KZG commitments are no longer
-included in the beacon block but rather in the `ExecutionPayloadEnvelope`, the
-builder has to send the commitments as parameters to this function.
+*Note*: The function `get_data_column_sidecars` is modified to use the updated
+blob KZG commitments inclusion proof type with a different length.
 
 ```python
-def get_blob_sidecars(
-    signed_block: SignedBeaconBlock,
-    blobs: Sequence[Blob],
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
-    blob_kzg_proofs: Sequence[KZGProof],
-) -> Sequence[BlobSidecar]:
-    block = signed_block.message
-    block_header = BeaconBlockHeader(
-        slot=block.slot,
-        proposer_index=block.proposer_index,
-        parent_root=block.parent_root,
-        state_root=block.state_root,
-        body_root=hash_tree_root(block.body),
-    )
-    signed_block_header = SignedBeaconBlockHeader(
-        message=block_header, signature=signed_block.signature
-    )
-    sidecars: List[BlobSidecar] = []
-    for index, blob in enumerate(blobs):
-        proof = compute_merkle_proof(
-            blob_kzg_commitments,
-            get_generalized_index(List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK], index),
-        )
-        proof += compute_merkle_proof(
-            block.body,
-            get_generalized_index(
-                BeaconBlockBody,
-                "signed_execution_payload_header",
-                "message",
-                "blob_kzg_commitments_root",
-            ),
-        )
+def get_data_column_sidecars(
+    signed_block_header: SignedBeaconBlockHeader,
+    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    # [Modified in EIP7732]
+    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_EIP7732],
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
+) -> Sequence[DataColumnSidecar]:
+    """
+    Given a signed block header and the commitments, inclusion proof, cells/proofs associated with
+    each blob in the block, assemble the sidecars which can be distributed to peers.
+    """
+    assert len(cells_and_kzg_proofs) == len(kzg_commitments)
+
+    sidecars = []
+    for column_index in range(NUMBER_OF_COLUMNS):
+        column_cells, column_proofs = [], []
+        for cells, proofs in cells_and_kzg_proofs:
+            column_cells.append(cells[column_index])
+            column_proofs.append(proofs[column_index])
         sidecars.append(
-            BlobSidecar(
-                index=index,
-                blob=blob,
-                kzg_commitment=blob_kzg_commitments[index],
-                kzg_proof=blob_kzg_proofs[index],
+            DataColumnSidecar(
+                index=column_index,
+                column=column_cells,
+                kzg_commitments=kzg_commitments,
+                kzg_proofs=column_proofs,
                 signed_block_header=signed_block_header,
-                kzg_commitment_inclusion_proof=proof,
+                kzg_commitments_inclusion_proof=kzg_commitments_inclusion_proof,
             )
         )
     return sidecars
+```
+
+#### Modified `get_data_column_sidecars_from_block`
+
+*Note*: The function `get_data_column_sidecars_from_block` is modified to
+include the list of blob KZG commitments and to compute the blob KZG commitments
+inclusion proof given that these are in the `ExecutionPayloadEnvelope` now.
+
+```python
+def get_data_column_sidecars_from_block(
+    signed_block: SignedBeaconBlock,
+    # [New in EIP7732]
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
+) -> Sequence[DataColumnSidecar]:
+    """
+    Given a signed block and the cells/proofs associated with each blob in the
+    block, assemble the sidecars which can be distributed to peers.
+    """
+    signed_block_header = compute_signed_block_header(signed_block)
+    # [Modified in EIP7732]
+    kzg_commitments_inclusion_proof = compute_merkle_proof(
+        signed_block.message.body,
+        get_generalized_index(
+            BeaconBlockBody,
+            "signed_execution_payload_header",
+            "message",
+            "blob_kzg_commitments_root",
+        ),
+    )
+    return get_data_column_sidecars(
+        signed_block_header,
+        blob_kzg_commitments,
+        kzg_commitments_inclusion_proof,
+        cells_and_kzg_proofs,
+    )
 ```
 
 ### Constructing the execution payload envelope

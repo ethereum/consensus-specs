@@ -125,7 +125,9 @@ def test_should_override_forkchoice_update__true(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # Make the head block late
-    attesting_cutoff = spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT
+    # Round up to nearest second
+    attestation_due_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
+    attesting_cutoff = (attestation_due_ms + 999) // 1000
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time + attesting_cutoff
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time

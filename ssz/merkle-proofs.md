@@ -6,7 +6,6 @@
 - [Generalized Merkle tree index](#generalized-merkle-tree-index)
 - [SSZ object to index](#ssz-object-to-index)
   - [Helpers for generalized indices](#helpers-for-generalized-indices)
-    - [`concat_generalized_indices`](#concat_generalized_indices)
     - [`get_generalized_index_length`](#get_generalized_index_length)
     - [`get_generalized_index_bit`](#get_generalized_index_bit)
     - [`generalized_index_sibling`](#generalized_index_sibling)
@@ -31,22 +30,6 @@ def get_power_of_two_ceil(x: int) -> int:
         return 2
     else:
         return 2 * get_power_of_two_ceil((x + 1) // 2)
-```
-
-```python
-def get_power_of_two_floor(x: int) -> int:
-    """
-    Get the power of 2 for given input, or the closest lower power of 2 if the input is not a power of 2.
-    The zero case is a placeholder and not used for math with generalized indices.
-    Commonly used for "what power of two makes up the root bit of the generalized index?"
-    Example: 0->1, 1->1, 2->2, 3->2, 4->4, 5->4, 6->4, 7->4, 8->8, 9->8
-    """
-    if x <= 1:
-        return 1
-    if x == 2:
-        return x
-    else:
-        return 2 * get_power_of_two_floor(x // 2)
 ```
 
 ## Generalized Merkle tree index
@@ -215,20 +198,6 @@ _Usage note: functions outside this section should manipulate generalized
 indices using only functions inside this section. This is to make it easier for
 developers to implement generalized indices with underlying representations
 other than bigints._
-
-#### `concat_generalized_indices`
-
-```python
-def concat_generalized_indices(*indices: GeneralizedIndex) -> GeneralizedIndex:
-    """
-    Given generalized indices i1 for A -> B, i2 for B -> C .... i_n for Y -> Z, returns
-    the generalized index for A -> Z.
-    """
-    o = GeneralizedIndex(1)
-    for i in indices:
-        o = GeneralizedIndex(o * get_power_of_two_floor(i) + (i - get_power_of_two_floor(i)))
-    return o
-```
 
 #### `get_generalized_index_length`
 

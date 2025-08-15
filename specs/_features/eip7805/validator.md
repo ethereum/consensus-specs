@@ -37,8 +37,8 @@ validator" to implement EIP-7805.
 ## Prerequisites
 
 This document is an extension of the
-[Electra -- Honest Validator](../../electra/validator.md) guide. All behaviors
-and definitions defined in this document, and documents it extends, carry over
+[Fulu -- Honest Validator](../../fulu/validator.md) guide. All behaviors and
+definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the
@@ -50,10 +50,10 @@ continuing and use them as a reference throughout.
 
 ### Time parameters
 
-| Name                                 | Value                       |  Unit   |  Duration  |
-| ------------------------------------ | --------------------------- | :-----: | :--------: |
-| `INCLUSION_LIST_SUBMISSION_DEADLINE` | `SECONDS_PER_SLOT * 2 // 3` | seconds | 8 seconds  |
-| `PROPOSER_INCLUSION_LIST_CUT_OFF`    | `SECONDS_PER_SLOT - 1`      | seconds | 11 seconds |
+| Name                                 | Value          |     Unit     |          Duration          |
+| ------------------------------------ | -------------- | :----------: | :------------------------: |
+| `INCLUSION_LIST_SUBMISSION_DUE_BPS`  | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
+| `PROPOSER_INCLUSION_LIST_CUTOFF_BPS` | `uint64(9167)` | basis points | ~92% of `SLOT_DURATION_MS` |
 
 ## Helpers
 
@@ -137,8 +137,6 @@ committee slot.
 
 ##### ExecutionPayload
 
-`prepare_execution_payload` is updated from the Electra specs.
-
 *Note*: In this section, `state` is the state of the slot for the block proposal
 _without_ the block yet applied. That is, `state` is the `previous_state`
 processed through any empty slots up to the assigned slot using
@@ -150,7 +148,8 @@ processed through any empty slots up to the assigned slot using
 
 *Note*: A proposer should produce an execution payload that satisfies the
 inclusion list constraints with respect to the inclusion lists gathered up to
-`PROPOSER_INCLUSION_LIST_CUT_OFF` into the slot.
+`get_slot_component_duration_ms(PROPOSER_INCLUSION_LIST_CUTOFF_BPS)`
+milliseconds into the slot.
 
 ```python
 def prepare_execution_payload(
@@ -198,12 +197,14 @@ of any `slot` for which
 
 If a validator is in the current inclusion list committee, the validator should
 create and broadcast the `signed_inclusion_list` to the global `inclusion_list`
-subnet by `INCLUSION_LIST_SUBMISSION_DEADLINE` seconds into the slot after
-processing the block for the current slot and confirming it as the head. If no
-block is received by `INCLUSION_LIST_SUBMISSION_DEADLINE - 1` seconds into the
-slot, the validator should run `get_head` to determine the local head and
-construct and broadcast the inclusion list based on this local head by
-`INCLUSION_LIST_SUBMISSION_DEADLINE` seconds into the slot.
+subnet by `get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS)`
+milliseconds into the slot after processing the block for the current slot and
+confirming it as the head. If no block is received by
+`get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS) - 1000`
+milliseconds into the slot, the validator should run `get_head` to determine the
+local head and construct and broadcast the inclusion list based on this local
+head by `get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS)`
+milliseconds into the slot.
 
 #### Constructing the `SignedInclusionList`
 

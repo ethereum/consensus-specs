@@ -1,10 +1,16 @@
+# TODO(jtraglia): for all tests in this file, consider adding support for EIP7732 later
+
 from random import Random
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_fulu_and_later,
+    with_all_phases_from_except,
 )
 from eth2spec.test.helpers.blob import get_block_with_blob_and_sidecars
+from eth2spec.test.helpers.constants import (
+    EIP7732,
+    FULU,
+)
 from eth2spec.test.helpers.fork_choice import (
     BlobData,
     get_genesis_forkchoice_store_and_block,
@@ -38,7 +44,7 @@ def get_alt_sidecars(spec, state):
     return alt_sidecars
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__ok(spec, state):
     """
@@ -110,7 +116,7 @@ def run_on_block_peerdas_invalid_test(spec, state, fn):
     yield "steps", test_steps
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__not_available(spec, state):
     """
@@ -124,7 +130,7 @@ def test_on_block_peerdas__not_available(spec, state):
     )
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_zero_blobs(spec, state):
     """
@@ -140,7 +146,7 @@ def test_on_block_peerdas__invalid_zero_blobs(spec, state):
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_zero_blobs)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_index_1(spec, state):
     """
@@ -154,7 +160,7 @@ def test_on_block_peerdas__invalid_index_1(spec, state):
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_index)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_index_2(spec, state):
     """
@@ -168,7 +174,7 @@ def test_on_block_peerdas__invalid_index_2(spec, state):
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_index)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_mismatch_len_column_1(spec, state):
     """
@@ -182,7 +188,7 @@ def test_on_block_peerdas__invalid_mismatch_len_column_1(spec, state):
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_column)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_mismatch_len_column_2(spec, state):
     """
@@ -196,7 +202,7 @@ def test_on_block_peerdas__invalid_mismatch_len_column_2(spec, state):
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_column)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_mismatch_len_kzg_commitments_1(spec, state):
     """
@@ -210,7 +216,7 @@ def test_on_block_peerdas__invalid_mismatch_len_kzg_commitments_1(spec, state):
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_commitments)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_mismatch_len_kzg_commitments_2(spec, state):
     """
@@ -224,7 +230,7 @@ def test_on_block_peerdas__invalid_mismatch_len_kzg_commitments_2(spec, state):
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_commitments)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_mismatch_len_kzg_proofs_1(spec, state):
     """
@@ -238,7 +244,7 @@ def test_on_block_peerdas__invalid_mismatch_len_kzg_proofs_1(spec, state):
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_proofs)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_mismatch_len_kzg_proofs_2(spec, state):
     """
@@ -252,7 +258,7 @@ def test_on_block_peerdas__invalid_mismatch_len_kzg_proofs_2(spec, state):
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_mismatch_len_kzg_proofs)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_wrong_column_1(spec, state):
     """
@@ -266,7 +272,7 @@ def test_on_block_peerdas__invalid_wrong_column_1(spec, state):
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_column)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_wrong_column_2(spec, state):
     """
@@ -280,7 +286,7 @@ def test_on_block_peerdas__invalid_wrong_column_2(spec, state):
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_column)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_wrong_commitment_1(spec, state):
     """
@@ -295,7 +301,7 @@ def test_on_block_peerdas__invalid_wrong_commitment_1(spec, state):
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_commitment)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_wrong_commitment_2(spec, state):
     """
@@ -310,7 +316,7 @@ def test_on_block_peerdas__invalid_wrong_commitment_2(spec, state):
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_commitment)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_wrong_proof_1(spec, state):
     """
@@ -325,7 +331,7 @@ def test_on_block_peerdas__invalid_wrong_proof_1(spec, state):
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_proof)
 
 
-@with_fulu_and_later
+@with_all_phases_from_except(FULU, [EIP7732])
 @spec_state_test
 def test_on_block_peerdas__invalid_wrong_proof_2(spec, state):
     """

@@ -2,6 +2,13 @@ from eth2spec.utils.ssz.ssz_typing import boolean
 
 from .ssz_test_case import invalid_test_case, valid_test_case
 
+INVALID_BOOL_CASES = [
+    ("2", b"\x02"),
+    ("rev_nibble", b"\x10"),
+    ("0x80", b"\x80"),
+    ("0xff", b"\xff"),
+]
+
 
 def valid_cases():
     yield "true", valid_test_case(lambda: boolean(True))
@@ -9,7 +16,5 @@ def valid_cases():
 
 
 def invalid_cases():
-    yield "byte_2", invalid_test_case(lambda: b"\x02")
-    yield "byte_rev_nibble", invalid_test_case(lambda: b"\x10")
-    yield "byte_0x80", invalid_test_case(lambda: b"\x80")
-    yield "byte_full", invalid_test_case(lambda: b"\xff")
+    for description, data in INVALID_BOOL_CASES:
+        yield f"byte_{description}", invalid_test_case(lambda data=data: data)

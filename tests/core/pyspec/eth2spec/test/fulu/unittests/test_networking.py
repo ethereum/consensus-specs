@@ -19,13 +19,15 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
+from eth2spec.test.helpers.forks import (
+    is_post_eip7732,
+)
 
 # Helper functions
 
 
 def compute_data_column_sidecar(spec, state):
     rng = random.Random(5566)
-    opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2)
     block = get_random_ssz_object(
         rng,
         spec.BeaconBlock,
@@ -34,14 +36,26 @@ def compute_data_column_sidecar(spec, state):
         mode=RandomizationMode,
         chaos=True,
     )
-    block.body.blob_kzg_commitments = blob_kzg_commitments
-    block.body.execution_payload.transactions = [opaque_tx]
-    block.body.execution_payload.block_hash = compute_el_block_hash(
-        spec, block.body.execution_payload, state
-    )
-    signed_block = sign_block(spec, state, block, proposer_index=0)
+
+    opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2)
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
-    return spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)[0]
+
+    if is_post_eip7732(spec):
+        block.body.signed_execution_payload_header.message.blob_kzg_commitments_root = spec.List[
+            spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
+        ](blob_kzg_commitments).hash_tree_root()
+        signed_block = sign_block(spec, state, block, proposer_index=0)
+        return spec.get_data_column_sidecars_from_block(
+            signed_block, blob_kzg_commitments, cells_and_kzg_proofs
+        )[0]
+    else:
+        block.body.blob_kzg_commitments = blob_kzg_commitments
+        block.body.execution_payload.transactions = [opaque_tx]
+        block.body.execution_payload.block_hash = compute_el_block_hash(
+            spec, block.body.execution_payload, state
+        )
+        signed_block = sign_block(spec, state, block, proposer_index=0)
+        return spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)[0]
 
 
 # Tests for verify_data_column_sidecar

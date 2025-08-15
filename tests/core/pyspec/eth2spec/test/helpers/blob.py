@@ -8,9 +8,11 @@ from rlp.sedes import big_endian_int, Binary, binary, CountableList, List as RLP
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.execution_payload import compute_el_block_hash
 from eth2spec.test.helpers.forks import (
+    is_post_eip7732,
     is_post_electra,
     is_post_fulu,
 )
+from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.state import state_transition_and_sign_block
 
 
@@ -142,22 +144,43 @@ def get_block_with_blob(spec, state, rng: Random | None = None, blob_count=1):
     opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs = get_sample_blob_tx(
         spec, blob_count=blob_count, rng=rng or random.Random(5566)
     )
-    block.body.execution_payload.transactions = [opaque_tx]
-    block.body.execution_payload.block_hash = compute_el_block_hash(
-        spec, block.body.execution_payload, state
-    )
-    block.body.blob_kzg_commitments = blob_kzg_commitments
-    return block, blobs, blob_kzg_proofs
+    if is_post_eip7732(spec):
+        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
+            blob_kzg_commitments
+        )
+        kzg_root = blob_kzg_commitments.hash_tree_root()
+        block.body.signed_execution_payload_header.message.blob_kzg_commitments_root = kzg_root
+        block.body.signed_execution_payload_header.signature = (
+            spec.get_execution_payload_header_signature(
+                state,
+                block.body.signed_execution_payload_header.message,
+                privkeys[block.body.signed_execution_payload_header.message.builder_index],
+            )
+        )
+    else:
+        block.body.execution_payload.transactions = [opaque_tx]
+        block.body.execution_payload.block_hash = compute_el_block_hash(
+            spec, block.body.execution_payload, state
+        )
+        block.body.blob_kzg_commitments = blob_kzg_commitments
+    return block, blobs, blob_kzg_commitments, blob_kzg_proofs
 
 
 def get_block_with_blob_and_sidecars(spec, state, rng=None, blob_count=1):
-    block, blobs, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng, blob_count=blob_count)
+    block, blobs, blob_kzg_commitments, blob_kzg_proofs = get_block_with_blob(
+        spec, state, rng=rng, blob_count=blob_count
+    )
     cells_and_kzg_proofs = [_cached_compute_cells_and_kzg_proofs(spec, blob) for blob in blobs]
 
     # We need a signed block to call `get_data_column_sidecars_from_block`
     signed_block = state_transition_and_sign_block(spec, state, block)
 
-    sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
+    if is_post_eip7732(spec):
+        sidecars = spec.get_data_column_sidecars_from_block(
+            signed_block, blob_kzg_commitments, cells_and_kzg_proofs
+        )
+    else:
+        sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
     return block, blobs, blob_kzg_proofs, signed_block, sidecars
 
 

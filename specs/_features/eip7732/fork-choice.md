@@ -50,7 +50,6 @@ This is the modification of the fork-choice accompanying the EIP-7732 upgrade.
 | Name                       | Value                   |
 | -------------------------- | ----------------------- |
 | `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE // 2` (= 256) |
-| `INTERVALS_PER_SLOT`       | `4`                     |
 | `PAYLOAD_STATUS_PENDING`   | `PayloadStatus(0)`      |
 | `PAYLOAD_STATUS_EMPTY`     | `PayloadStatus(1)`      |
 | `PAYLOAD_STATUS_FULL`      | `PayloadStatus(2)`      |
@@ -183,42 +182,28 @@ def notify_ptc_messages(
                     validator_index=idx,
                     data=payload_attestation.data,
                     signature=BLSSignature(),
-                    is_from_block=True,
                 ),
+                is_from_block=True,
             )
 ```
 
 ### New `is_payload_timely`
 
 ```python
-def is_payload_timely(store: Store, beacon_block_root: Root) -> bool:
+def is_payload_timely(store: Store, root: Root) -> bool:
     """
-    Return whether the execution payload for the beacon block with root ``beacon_block_root``
+    Return whether the execution payload for the beacon block with root ``root``
     was voted as present by the PTC, and was locally determined to be available.
     """
     # The beacon block root must be known
-    assert beacon_block_root in store.ptc_vote
+    assert root in store.ptc_vote
+
     # If the payload is not locally available, the payload
     # is not considered available regardless of the PTC vote
-    if beacon_block_root not in store.execution_payload_states:
+    if root not in store.execution_payload_states:
         return False
 
-    checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
-    block_state = store.block_states[beacon_block_root]
-    ptc = get_ptc(block_state, block_state.slot)
-    ptc_score = Gwei(
-        sum(
-            checkpoint_state.validators[i].effective_balance
-            for i, vote in zip(ptc, store.ptc_vote[beacon_block_root])
-            if (
-                vote
-                and not block_state.validators[i].slashed
-                and i not in store.equivocating_indices
-            )
-        )
-    )
-    total_ptc_score = Gwei(sum(checkpoint_state.validators[i].effective_balance for i in ptc))
-    return ptc_score > total_ptc_score // 2
+    return sum(store.ptc_vote[root]) > PAYLOAD_TIMELY_THRESHOLD
 ```
 
 ### New `get_parent_payload_status`
@@ -499,8 +484,11 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Notify the store about the payload_attestations in the block
     notify_ptc_messages(store, state, block.body.payload_attestations)
     # Add proposer score boost if the block is timely
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    # [Modified in EIP7732]
+    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS_EIP7732)
+    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
 
@@ -534,7 +522,7 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
 
     # Check if blob data is available
     # If not, this payload MAY be queued and subsequently considered when blob data becomes available
-    assert is_data_available(envelope.beacon_block_root, envelope.blob_kzg_commitments)
+    assert is_data_available(envelope.beacon_block_root)
 
     # Make a copy of the state to avoid mutability issues
     state = copy(store.block_states[envelope.beacon_block_root])

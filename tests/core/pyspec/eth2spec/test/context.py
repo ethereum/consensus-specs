@@ -252,6 +252,16 @@ def low_single_balance(spec: Spec):
     return [1]
 
 
+def one_validator_one_gwei_balances(spec: Spec):
+    """
+    Helper method to create a single validator with 1 Gwei balance,
+    among other validators with default balances.
+    """
+    balances = default_balances(spec)
+    balances[0] = 1
+    return balances
+
+
 def large_validator_set(spec: Spec):
     """
     Helper method to create a large series of default balances.
@@ -501,6 +511,8 @@ def with_all_phases_from_to_except(earliest_phase, latest_phase, except_phases=N
                 and not is_post_fork(phase, latest_phase)
             ]
         )(fn)
+
+    return decorator
 
 
 def with_all_phases_except(exclusion_phases):
