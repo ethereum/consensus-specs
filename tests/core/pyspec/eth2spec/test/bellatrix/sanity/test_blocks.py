@@ -2,7 +2,7 @@ from random import Random
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to,
     with_phases,
 )
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
@@ -17,7 +17,7 @@ from eth2spec.test.helpers.state import (
 )
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_empty_block_transition_no_tx(spec, state):
     yield "pre", state
@@ -31,7 +31,7 @@ def test_empty_block_transition_no_tx(spec, state):
     yield "post", state
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_block_transition_randomized_payload(spec, state):
     yield "pre", state

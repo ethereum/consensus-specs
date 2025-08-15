@@ -6,9 +6,9 @@ CAPELLA = "capella"
 DENEB = "deneb"
 ELECTRA = "electra"
 FULU = "fulu"
+GLOAS = "gloas"
 EIP6800 = "eip6800"
 EIP7441 = "eip7441"
-GLOAS = "gloas"
 EIP7805 = "eip7805"
 
 

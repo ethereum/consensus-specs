@@ -20,9 +20,9 @@ spec_builders = {
         DenebSpecBuilder,
         ElectraSpecBuilder,
         FuluSpecBuilder,
+        GloasSpecBuilder,
         EIP6800SpecBuilder,
         EIP7441SpecBuilder,
-        GloasSpecBuilder,
         EIP7805SpecBuilder,
     )
 }

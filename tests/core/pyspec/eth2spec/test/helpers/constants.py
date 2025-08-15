@@ -11,11 +11,11 @@ BELLATRIX = SpecForkName("bellatrix")
 CAPELLA = SpecForkName("capella")
 DENEB = SpecForkName("deneb")
 ELECTRA = SpecForkName("electra")
+FULU = SpecForkName("fulu")
+GLOAS = SpecForkName("gloas")
 
 # Experimental phases (not included in default "ALL_PHASES"):
-FULU = SpecForkName("fulu")
 EIP7441 = SpecForkName("eip7441")
-GLOAS = SpecForkName("gloas")
 EIP7805 = SpecForkName("eip7805")
 
 #

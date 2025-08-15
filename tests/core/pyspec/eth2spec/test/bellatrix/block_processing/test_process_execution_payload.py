@@ -3,7 +3,7 @@ from random import Random
 from eth2spec.test.context import (
     expect_assertion_error,
     spec_state_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to,
     with_bellatrix_and_later,
     with_phases,
 )
@@ -109,7 +109,7 @@ def run_success_test(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_success_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
@@ -117,7 +117,7 @@ def test_success_first_payload(spec, state):
     yield from run_success_test(spec, state)
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_success_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -133,14 +133,14 @@ def run_gap_slot_test(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_success_first_payload_with_gap_slot(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_gap_slot_test(spec, state)
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_success_regular_payload_with_gap_slot(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -157,14 +157,14 @@ def run_bad_execution_test(spec, state):
     )
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_invalid_bad_execution_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_bad_execution_test(spec, state)
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_invalid_bad_execution_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -301,14 +301,14 @@ def run_non_empty_extra_data_test(spec, state):
     assert state.latest_execution_payload_header.extra_data == execution_payload.extra_data
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_non_empty_extra_data_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_non_empty_extra_data_test(spec, state)
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_non_empty_extra_data_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -332,14 +332,14 @@ def run_non_empty_transactions_test(spec, state):
     )
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_non_empty_transactions_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_non_empty_extra_data_test(spec, state)
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_non_empty_transactions_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -361,14 +361,14 @@ def run_zero_length_transaction_test(spec, state):
     )
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_zero_length_transaction_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_zero_length_transaction_test(spec, state)
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_zero_length_transaction_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -379,17 +379,16 @@ def run_randomized_non_validated_execution_fields_test(spec, state, rng, executi
     next_slot(spec, state)
     execution_payload = build_randomized_execution_payload(spec, state, rng)
 
-    if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
-        state.latest_execution_payload_header.gas_limit = execution_payload.gas_limit
-        state.latest_block_hash = execution_payload.parent_hash
+    state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+    state.latest_execution_payload_header.gas_limit = execution_payload.gas_limit
+    state.latest_block_hash = execution_payload.parent_hash
 
     yield from run_execution_payload_processing(
         spec, state, execution_payload, valid=execution_valid, execution_valid=execution_valid
     )
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_randomized_non_validated_execution_fields_first_payload__execution_valid(spec, state):
     rng = Random(1111)
@@ -397,7 +396,7 @@ def test_randomized_non_validated_execution_fields_first_payload__execution_vali
     yield from run_randomized_non_validated_execution_fields_test(spec, state, rng)
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_randomized_non_validated_execution_fields_regular_payload__execution_valid(spec, state):
     rng = Random(2222)
@@ -405,7 +404,7 @@ def test_randomized_non_validated_execution_fields_regular_payload__execution_va
     yield from run_randomized_non_validated_execution_fields_test(spec, state, rng)
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_invalid_randomized_non_validated_execution_fields_first_payload__execution_invalid(
     spec, state
@@ -417,7 +416,7 @@ def test_invalid_randomized_non_validated_execution_fields_first_payload__execut
     )
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_invalid_randomized_non_validated_execution_fields_regular_payload__execution_invalid(
     spec, state

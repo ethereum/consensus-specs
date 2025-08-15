@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to,
     with_presets,
 )
 from eth2spec.test.helpers.attestations import (
@@ -30,7 +30,7 @@ from eth2spec.test.helpers.state import (
 )
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_should_override_forkchoice_update__false(spec, state):
@@ -77,7 +77,7 @@ def test_should_override_forkchoice_update__false(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases_from_except(BELLATRIX, [GLOAS])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_should_override_forkchoice_update__true(spec, state):
     test_steps = []

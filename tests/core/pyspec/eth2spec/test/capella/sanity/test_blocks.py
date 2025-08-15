@@ -2,7 +2,7 @@ import random
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to,
     with_capella_and_later,
     with_presets,
 )
@@ -44,7 +44,7 @@ from eth2spec.test.helpers.withdrawals import (
 #
 
 
-@with_all_phases_from_except(CAPELLA, [GLOAS])
+@with_all_phases_from_to(CAPELLA, GLOAS)
 @spec_state_test
 def test_invalid_is_execution_enabled_false(spec, state):
     # Set `latest_execution_payload_header` to empty
@@ -210,7 +210,7 @@ def test_invalid_two_bls_changes_of_different_addresses_same_validator_same_bloc
 #
 
 
-@with_all_phases_from_except(CAPELLA, [GLOAS])
+@with_all_phases_from_to(CAPELLA, GLOAS)
 @spec_state_test
 def test_full_withdrawal_in_epoch_transition(spec, state):
     index = 0

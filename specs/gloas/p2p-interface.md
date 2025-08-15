@@ -26,7 +26,6 @@
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
       - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
       - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
 
@@ -301,6 +300,8 @@ The following validations are removed:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
+| `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
+| `FULU_FORK_VERSION`      | `electra.SignedBeaconBlock`   |
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 
 ##### BeaconBlocksByRoot v2
@@ -318,18 +319,9 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
+| `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
+| `FULU_FORK_VERSION`      | `electra.SignedBeaconBlock`   |
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
-
-##### BlobSidecarsByRoot v1
-
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
-
-<!-- eth2spec: skip -->
-
-| `fork_version`       | Chunk SSZ type      |
-| -------------------- | ------------------- |
-| `DENEB_FORK_VERSION` | `deneb.BlobSidecar` |
-| `GLOAS_FORK_VERSION` | `gloas.BlobSidecar` |
 
 ##### ExecutionPayloadEnvelopesByRange v1
 
