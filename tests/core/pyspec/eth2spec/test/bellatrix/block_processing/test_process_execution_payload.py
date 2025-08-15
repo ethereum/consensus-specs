@@ -379,9 +379,10 @@ def run_randomized_non_validated_execution_fields_test(spec, state, rng, executi
     next_slot(spec, state)
     execution_payload = build_randomized_execution_payload(spec, state, rng)
 
-    state.latest_execution_payload_header.block_hash = execution_payload.block_hash
-    state.latest_execution_payload_header.gas_limit = execution_payload.gas_limit
-    state.latest_block_hash = execution_payload.parent_hash
+    if is_post_gloas(spec):
+        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_execution_payload_header.gas_limit = execution_payload.gas_limit
+        state.latest_block_hash = execution_payload.parent_hash
 
     yield from run_execution_payload_processing(
         spec, state, execution_payload, valid=execution_valid, execution_valid=execution_valid
