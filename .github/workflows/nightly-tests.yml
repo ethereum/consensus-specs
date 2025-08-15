@@ -31,7 +31,7 @@ jobs:
           - deneb
           - electra
           - fulu
-          - eip7732
+          - gloas
           - eip7805
     steps:
       - name: Checkout repository

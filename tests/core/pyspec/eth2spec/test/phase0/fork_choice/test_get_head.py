@@ -2,7 +2,7 @@ import random
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to,
     with_altair_and_later,
     with_presets,
 )
@@ -13,7 +13,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.constants import (
     ALTAIR,
-    EIP7732,
+    GLOAS,
     MINIMAL,
 )
 from eth2spec.test.helpers.fork_choice import (
@@ -32,7 +32,7 @@ from eth2spec.test.helpers.fork_choice import (
 )
 from eth2spec.test.helpers.forks import (
     is_post_altair,
-    is_post_eip7732,
+    is_post_gloas,
 )
 from eth2spec.test.helpers.state import (
     next_epoch,
@@ -226,7 +226,7 @@ def test_filtered_block_tree(spec, state):
     #
 
     # build a chain without attestations off of previous justified block
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         non_viable_state = store.execution_payload_states[store.justified_checkpoint.root].copy()
     else:
         non_viable_state = store.block_states[store.justified_checkpoint.root].copy()
@@ -272,8 +272,8 @@ def test_filtered_block_tree(spec, state):
     yield "steps", test_steps
 
 
-# This test is skipped in EIP7732 because the block's slot decides first on weight ties
-@with_all_phases_from_except(ALTAIR, [EIP7732])
+# This test is skipped in Gloas because the block's slot decides first on weight ties
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @spec_state_test
 def test_proposer_boost_correct_head(spec, state):
     test_steps = []
@@ -439,7 +439,7 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
     anchor_state = state.copy()
     # Generate an anchor block with correct state root
     anchor_block = spec.BeaconBlock(state_root=anchor_state.hash_tree_root())
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         anchor_block.body.signed_execution_payload_header.message.block_hash = (
             anchor_state.latest_block_hash
         )
@@ -448,7 +448,7 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
 
     # Get a new store with the anchor state & anchor block
     store = spec.get_forkchoice_store(anchor_state, anchor_block)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         store.execution_payload_states = store.block_states.copy()
 
     # Now generate the store checks
@@ -655,7 +655,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
 
     # Store the head before adding the fork to the store
     correct_head = spec.get_head(store)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         correct_head = correct_head.root
 
     # Now add the fork to the store

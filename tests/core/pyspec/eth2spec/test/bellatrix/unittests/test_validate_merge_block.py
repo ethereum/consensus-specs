@@ -10,7 +10,7 @@ from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
     compute_el_block_hash,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732
+from eth2spec.test.helpers.forks import is_post_gloas
 from eth2spec.test.helpers.pow_block import (
     prepare_random_pow_chain,
 )
@@ -61,7 +61,7 @@ def test_validate_merge_block_success(spec, state):
     pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = build_empty_block_for_next_slot(spec, state)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
         block.body.signed_execution_payload_header.message.parent_block_hash = (
             pow_chain.head().block_hash
@@ -94,7 +94,7 @@ def test_validate_merge_block_fail_parent_block_lookup(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 1)
     pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = build_empty_block_for_next_slot(spec, state)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
         block.body.signed_execution_payload_header.message.parent_block_hash = (
             pow_chain.head().block_hash
@@ -118,7 +118,7 @@ def test_validate_merge_block_fail_after_terminal(spec, state):
     pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + uint256(1)
     block = build_empty_block_for_next_slot(spec, state)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
         block.body.signed_execution_payload_header.message.parent_block_hash = (
             pow_chain.head().block_hash
@@ -149,7 +149,7 @@ def test_validate_merge_block_tbh_override_success(spec, state):
     pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     pow_chain.head().block_hash = TERMINAL_BLOCK_HASH
     block = build_empty_block_for_next_slot(spec, state)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
         block.body.signed_execution_payload_header.message.parent_block_hash = (
             pow_chain.head().block_hash
@@ -179,7 +179,7 @@ def test_validate_merge_block_fail_parent_hash_is_not_tbh(spec, state):
     pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = build_empty_block_for_next_slot(spec, state)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
         block.body.signed_execution_payload_header.message.parent_block_hash = (
             pow_chain.head().block_hash
@@ -210,7 +210,7 @@ def test_validate_merge_block_terminal_block_hash_fail_activation_not_reached(sp
     pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     pow_chain.head().block_hash = TERMINAL_BLOCK_HASH
     block = build_empty_block_for_next_slot(spec, state)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
         block.body.signed_execution_payload_header.message.parent_block_hash = (
             pow_chain.head().block_hash
@@ -240,7 +240,7 @@ def test_validate_merge_block_fail_activation_not_reached_parent_hash_is_not_tbh
     pow_chain.head(-1).total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY - uint256(1)
     pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = build_empty_block_for_next_slot(spec, state)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
         block.body.signed_execution_payload_header.message.parent_block_hash = (
             pow_chain.head().block_hash

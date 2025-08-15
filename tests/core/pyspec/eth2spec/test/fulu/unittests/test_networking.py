@@ -20,7 +20,7 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_eip7732,
+    is_post_gloas,
 )
 
 # Helper functions
@@ -40,7 +40,7 @@ def compute_data_column_sidecar(spec, state):
     opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2)
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
 
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         block.body.signed_execution_payload_header.message.blob_kzg_commitments_root = spec.List[
             spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
         ](blob_kzg_commitments).hash_tree_root()

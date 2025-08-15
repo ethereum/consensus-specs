@@ -1,9 +1,9 @@
-from ..constants import EIP7732
+from ..constants import GLOAS
 from .base import BaseSpecBuilder
 
 
-class EIP7732SpecBuilder(BaseSpecBuilder):
-    fork: str = EIP7732
+class GloasSpecBuilder(BaseSpecBuilder):
+    fork: str = GLOAS
 
     @classmethod
     def imports(cls, preset_name: str):

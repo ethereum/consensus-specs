@@ -1,11 +1,11 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to,
     with_bellatrix_and_later,
 )
 from eth2spec.test.helpers.constants import (
     BELLATRIX,
-    EIP7732,
+    GLOAS,
 )
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
@@ -37,7 +37,7 @@ expected_results = [
 ]
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_is_merge_block_and_is_execution_enabled(spec, state):
     for result in expected_results:

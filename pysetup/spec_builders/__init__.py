@@ -4,10 +4,10 @@ from .capella import CapellaSpecBuilder
 from .deneb import DenebSpecBuilder
 from .eip6800 import EIP6800SpecBuilder
 from .eip7441 import EIP7441SpecBuilder
-from .eip7732 import EIP7732SpecBuilder
 from .eip7805 import EIP7805SpecBuilder
 from .electra import ElectraSpecBuilder
 from .fulu import FuluSpecBuilder
+from .gloas import GloasSpecBuilder
 from .phase0 import Phase0SpecBuilder
 
 spec_builders = {
@@ -20,9 +20,9 @@ spec_builders = {
         DenebSpecBuilder,
         ElectraSpecBuilder,
         FuluSpecBuilder,
+        GloasSpecBuilder,
         EIP6800SpecBuilder,
         EIP7441SpecBuilder,
-        EIP7732SpecBuilder,
         EIP7805SpecBuilder,
     )
 }

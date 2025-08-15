@@ -28,7 +28,7 @@ from eth2spec.test.helpers.fork_choice import (
     payload_state_transition_no_store,
     tick_and_add_block,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732
+from eth2spec.test.helpers.forks import is_post_gloas
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_slot,
@@ -84,7 +84,7 @@ def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         check_head_against_root(spec, store, signed_block.message.hash_tree_root())
         payload_state_transition(spec, store, signed_block.message)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         head_root = spec.get_head(store).root
         state = store.execution_payload_states[head_root].copy()
     else:
@@ -218,7 +218,7 @@ def _run_delayed_justification(spec, state, attempted_reorg, is_justifying_previ
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         payload_state_transition(spec, store, signed_block.message)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         state = store.execution_payload_states[spec.get_head(store).root].copy()
     else:
         state = store.block_states[spec.get_head(store)].copy()

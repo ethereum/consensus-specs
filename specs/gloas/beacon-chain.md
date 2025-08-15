@@ -1,4 +1,4 @@
-# EIP-7732 -- The Beacon Chain
+# Gloas -- The Beacon Chain
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -255,16 +255,16 @@ class BeaconBlockBody(Container):
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     sync_aggregate: SyncAggregate
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     # Removed `execution_payload`
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     # Removed `blob_kzg_commitments`
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     # Removed `execution_requests`
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     signed_execution_payload_header: SignedExecutionPayloadHeader
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     payload_attestations: List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]
 ```
 
@@ -336,15 +336,15 @@ class BeaconState(Container):
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
     proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     builder_pending_withdrawals: List[BuilderPendingWithdrawal, BUILDER_PENDING_WITHDRAWALS_LIMIT]
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     latest_block_hash: Hash32
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     latest_withdrawals_root: Root
 ```
 
@@ -637,7 +637,7 @@ def get_builder_payment_quorum_threshold(state: BeaconState) -> uint64:
 
 ## Beacon chain state transition function
 
-*Note*: state transition is fundamentally modified in EIP-7732. The full state
+*Note*: state transition is fundamentally modified in Gloas. The full state
 transition is broken in two parts, first importing a signed block and then
 importing an execution payload.
 
@@ -669,7 +669,7 @@ def process_slot(state: BeaconState) -> None:
     # Cache block root
     previous_block_root = hash_tree_root(state.latest_block_header)
     state.block_roots[state.slot % SLOTS_PER_HISTORICAL_ROOT] = previous_block_root
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     # Unset the next payload availability
     state.execution_payload_availability[(state.slot + 1) % SLOTS_PER_HISTORICAL_ROOT] = 0b0
 ```
@@ -698,7 +698,7 @@ def process_epoch(state: BeaconState) -> None:
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
     process_proposer_lookahead(state)
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     process_builder_pending_payments(state)
 ```
 
@@ -730,15 +730,15 @@ functions and removes the call to `process_execution_payload`.
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     process_withdrawals(state)
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     # Removed `process_execution_payload`
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     process_execution_payload_header(state, block)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
@@ -773,7 +773,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     processed_partial_withdrawals_count = 0
     processed_builder_withdrawals_count = 0
 
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     # Sweep for builder payments
     for withdrawal in state.builder_pending_withdrawals:
         if (
@@ -1027,18 +1027,18 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     for_ops(body.attestations, process_attestation)
     for_ops(body.deposits, process_deposit)
     for_ops(body.voluntary_exits, process_voluntary_exit)
     for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     # Removed `process_deposit_request`
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     # Removed `process_withdrawal_request`
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     # Removed `process_consolidation_request`
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     for_ops(body.payload_attestations, process_payload_attestation)
 ```
 
@@ -1057,7 +1057,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
 
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     assert data.index < 2
     committee_indices = get_committee_indices(attestation.committee_bits)
     committee_offset = 0
@@ -1095,7 +1095,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, attestation):
-        # [New in EIP7732]
+        # [New in Gloas:EIP7732]
         # For same-slot attestations, check if we're setting any new flags
         # If we are, this validator hasn't contributed to this slot's quorum yet
         will_set_new_flag = False
@@ -1108,7 +1108,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
                 proposer_reward_numerator += get_base_reward(state, index) * weight
                 will_set_new_flag = True
 
-        # [New in EIP7732]
+        # [New in Gloas:EIP7732]
         # Add weight for same-slot attestations when any new flag is set
         # This ensures each validator contributes exactly once per slot
         if will_set_new_flag and is_attestation_same_slot(state, data):
@@ -1186,7 +1186,7 @@ def validate_merge_block(block: BeaconBlock) -> None:
         )
         return
 
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     pow_block = get_pow_block(block.body.signed_execution_payload_header.message.parent_block_hash)
     # Check if `pow_block` is available
     assert pow_block is not None

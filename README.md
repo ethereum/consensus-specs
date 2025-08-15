@@ -29,9 +29,10 @@ ready.
 
 ### In-development Specifications
 
-| Seq. | Code Name | Fork Epoch | Links                                                              |
-| ---- | --------- | ---------- | ------------------------------------------------------------------ |
-| 6    | **Fulu**  | TBD        | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu) |
+| Seq. | Code Name | Fork Epoch | Links                                                                |
+| ---- | --------- | ---------- | -------------------------------------------------------------------- |
+| 6    | **Fulu**  | TBD        | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu)   |
+| 7    | **Gloas** | TBD        | [Specs](specs/gloas), [Tests](tests/core/pyspec/eth2spec/test/gloas) |
 
 ### Accompanying documents
 

@@ -5,8 +5,8 @@ from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.forks import (
     is_post_altair,
     is_post_deneb,
-    is_post_eip7732,
     is_post_electra,
+    is_post_gloas,
 )
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.state import (
@@ -86,7 +86,7 @@ def build_attestation_data(spec, state, slot, index, beacon_block_root=None, sha
 
     if is_post_electra(spec):
         index = 0
-        if is_post_eip7732(spec):
+        if is_post_gloas(spec):
             if slot >= 1 and beacon_block_root == spec.get_block_root_at_slot(state, slot - 1):
                 index = 1
 
