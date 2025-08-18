@@ -2,7 +2,7 @@ import random
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to,
 )
 from eth2spec.test.helpers.blob import (
     get_max_blob_count,
@@ -13,7 +13,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.constants import (
     DENEB,
-    EIP7732,
+    GLOAS,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
@@ -67,25 +67,25 @@ def run_block_with_blobs(
     yield "post", state if valid else None
 
 
-@with_all_phases_from_except(DENEB, [EIP7732])
+@with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_zero_blob(spec, state):
     yield from run_block_with_blobs(spec, state, blob_count=0)
 
 
-@with_all_phases_from_except(DENEB, [EIP7732])
+@with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_one_blob(spec, state):
     yield from run_block_with_blobs(spec, state, blob_count=1)
 
 
-@with_all_phases_from_except(DENEB, [EIP7732])
+@with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_one_blob_two_txs(spec, state):
     yield from run_block_with_blobs(spec, state, blob_count=1, tx_count=2)
 
 
-@with_all_phases_from_except(DENEB, [EIP7732])
+@with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_one_blob_max_txs(spec, state):
     yield from run_block_with_blobs(
@@ -93,7 +93,7 @@ def test_one_blob_max_txs(spec, state):
     )
 
 
-@with_all_phases_from_except(DENEB, [EIP7732])
+@with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_invalid_one_blob_max_plus_one_txs(spec, state):
     yield from run_block_with_blobs(
@@ -101,13 +101,13 @@ def test_invalid_one_blob_max_plus_one_txs(spec, state):
     )
 
 
-@with_all_phases_from_except(DENEB, [EIP7732])
+@with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_max_blobs_per_block(spec, state):
     yield from run_block_with_blobs(spec, state, blob_count=get_max_blob_count(spec, state))
 
 
-@with_all_phases_from_except(DENEB, [EIP7732])
+@with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_invalid_max_blobs_per_block_two_txs(spec, state):
     yield from run_block_with_blobs(
@@ -115,7 +115,7 @@ def test_invalid_max_blobs_per_block_two_txs(spec, state):
     )
 
 
-@with_all_phases_from_except(DENEB, [EIP7732])
+@with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_invalid_exceed_max_blobs_per_block(spec, state):
     yield from run_block_with_blobs(
@@ -123,7 +123,7 @@ def test_invalid_exceed_max_blobs_per_block(spec, state):
     )
 
 
-@with_all_phases_from_except(DENEB, [EIP7732])
+@with_all_phases_from_to(DENEB, GLOAS)
 @spec_state_test
 def test_mix_blob_tx_and_non_blob_tx(spec, state):
     yield from run_block_with_blobs(spec, state, blob_count=1, tx_count=1, non_blob_tx_count=1)

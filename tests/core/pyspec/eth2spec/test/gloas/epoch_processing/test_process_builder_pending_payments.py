@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_eip7732_and_later,
+    with_gloas_and_later,
 )
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.helpers.state import next_epoch
@@ -22,7 +22,7 @@ def create_builder_pending_payment(spec, builder_index, amount, weight=0, fee_re
     )
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_builder_pending_payments_empty_queue(spec, state):
     """Test processing with no pending payments."""
@@ -50,7 +50,7 @@ def test_process_builder_pending_payments_empty_queue(spec, state):
         assert payment.withdrawal.builder_index == 0
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_builder_pending_payments_below_quorum(spec, state):
     """Test payment below quorum threshold - should not be processed."""
@@ -78,7 +78,7 @@ def test_process_builder_pending_payments_below_quorum(spec, state):
     assert state.builder_pending_payments[0].weight == 0
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_builder_pending_payments_equal_quorum(spec, state):
     """Test payment equal to quorum threshold - should NOT be processed."""
@@ -107,7 +107,7 @@ def test_process_builder_pending_payments_equal_quorum(spec, state):
     assert state.builder_pending_payments[0].weight == 0
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_builder_pending_payments_above_quorum(spec, state):
     """Test payment above quorum threshold - should be processed."""
@@ -143,7 +143,7 @@ def test_process_builder_pending_payments_above_quorum(spec, state):
     assert state.builder_pending_payments[0].weight == 0
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_builder_pending_payments_multiple_above_quorum(spec, state):
     """Test multiple payments above quorum threshold."""
@@ -187,7 +187,7 @@ def test_process_builder_pending_payments_multiple_above_quorum(spec, state):
         assert state.builder_pending_payments[i].weight == 0
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_builder_pending_payments_mixed_weights(spec, state):
     """Test mix of payments above and below quorum."""
@@ -238,7 +238,7 @@ def test_process_builder_pending_payments_mixed_weights(spec, state):
     assert 2 not in processed_builder_indices  # Equal to threshold (not processed)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_builder_pending_payments_queue_rotation(spec, state):
     """Test that the payment queue is properly rotated after processing."""
@@ -276,7 +276,7 @@ def test_process_builder_pending_payments_queue_rotation(spec, state):
         assert payment.withdrawal.builder_index == 0
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_builder_pending_payments_large_amount_churn_impact(spec, state):
     """Test that large payment amounts impact the exit churn correctly."""

@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
     DENEB,
-    EIP7732,
+    GLOAS,
     single_phase,
     spec_test,
     with_all_phases_from_to,
@@ -15,7 +15,7 @@ def test_length(spec):
     assert spec.config.MAX_BLOBS_PER_BLOCK < spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
 
 
-@with_all_phases_from_to(DENEB, EIP7732)
+@with_all_phases_from_to(DENEB, GLOAS)
 @spec_test
 @single_phase
 def test_networking(spec):

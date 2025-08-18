@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to,
 )
 from eth2spec.test.helpers.attestations import (
     state_transition_with_full_block,
@@ -10,7 +10,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.constants import (
     BELLATRIX,
-    EIP7732,
+    GLOAS,
 )
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
@@ -32,7 +32,7 @@ from eth2spec.test.helpers.state import (
 )
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_from_syncing_to_invalid(spec, state):
     test_steps = []

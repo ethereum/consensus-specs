@@ -32,7 +32,7 @@ from eth2spec.test.helpers.fork_choice import (
 )
 from eth2spec.test.helpers.forks import (
     is_post_bellatrix,
-    is_post_eip7732,
+    is_post_gloas,
 )
 from eth2spec.test.helpers.state import (
     next_epoch,
@@ -117,7 +117,7 @@ def test_on_block_checkpoints(spec, state):
     )
 
     # Mock the finalized_checkpoint and build a block on it
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         fin_state = store.execution_payload_states[last_block_root].copy()
     else:
         fin_state = store.block_states[last_block_root].copy()
@@ -172,7 +172,7 @@ def test_on_block_bad_parent_root(spec, state):
     block.state_root = state.hash_tree_root()
 
     block.parent_root = b"\x45" * 32
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
         block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
             spec, payload, state
@@ -512,9 +512,9 @@ def test_proposer_boost(spec, state):
 
     # Process block on timely arrival just before end of boost interval
     # Round up to nearest second
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         late_block_cutoff_ms = spec.get_slot_component_duration_ms(
-            spec.config.ATTESTATION_DUE_BPS_EIP7732
+            spec.config.ATTESTATION_DUE_BPS_GLOAS
         )
     else:
         late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
@@ -525,7 +525,7 @@ def test_proposer_boost(spec, state):
     yield from add_block(spec, store, signed_block, test_steps)
     payload_state_transition(spec, store, signed_block.message)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block),
             payload_status=spec.PAYLOAD_STATUS_PENDING,
@@ -542,7 +542,7 @@ def test_proposer_boost(spec, state):
     )
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block),
             payload_status=spec.PAYLOAD_STATUS_PENDING,
@@ -561,7 +561,7 @@ def test_proposer_boost(spec, state):
     yield from add_block(spec, store, signed_block, test_steps)
     payload_state_transition(spec, store, signed_block.message)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block),
             payload_status=spec.PAYLOAD_STATUS_PENDING,
@@ -578,7 +578,7 @@ def test_proposer_boost(spec, state):
     )
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block),
             payload_status=spec.PAYLOAD_STATUS_PENDING,
@@ -617,9 +617,9 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
 
     # Process block on untimely arrival in the same slot
     # Round up to nearest second
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         late_block_cutoff_ms = spec.get_slot_component_duration_ms(
-            spec.config.ATTESTATION_DUE_BPS_EIP7732
+            spec.config.ATTESTATION_DUE_BPS_GLOAS
         )
     else:
         late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
@@ -663,9 +663,9 @@ def test_proposer_boost_is_first_block(spec, state):
 
     # Process block on timely arrival just before end of boost interval
     # Round up to nearest second
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         late_block_cutoff_ms = spec.get_slot_component_duration_ms(
-            spec.config.ATTESTATION_DUE_BPS_EIP7732
+            spec.config.ATTESTATION_DUE_BPS_GLOAS
         )
     else:
         late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
@@ -677,7 +677,7 @@ def test_proposer_boost_is_first_block(spec, state):
     payload_state_transition(spec, store, signed_block_a.message)
     # `proposer_boost_root` is now `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block_a),
             payload_status=spec.PAYLOAD_STATUS_PENDING,
@@ -702,7 +702,7 @@ def test_proposer_boost_is_first_block(spec, state):
     payload_state_transition(spec, store, signed_block_b.message)
     # `proposer_boost_root` is still `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         node = spec.ForkChoiceNode(
             root=spec.hash_tree_root(block_b),
             payload_status=spec.PAYLOAD_STATUS_PENDING,
@@ -1214,7 +1214,7 @@ def test_justified_update_not_realized_finality(spec, state):
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
 
     # We'll make the current head block the finalized block
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         finalized_root = spec.get_head(store).root
     else:
         finalized_root = spec.get_head(store)
@@ -1262,7 +1262,7 @@ def test_justified_update_not_realized_finality(spec, state):
     last_block = signed_blocks[-1]
     last_block_root = last_block.message.hash_tree_root()
     ancestor_at_finalized_slot = spec.get_ancestor(store, last_block_root, finalized_block.slot)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         ancestor_at_finalized_slot = ancestor_at_finalized_slot.root
 
     assert ancestor_at_finalized_slot == store.finalized_checkpoint.root
@@ -1305,7 +1305,7 @@ def test_justified_update_monotonic(spec, state):
     assert store.finalized_checkpoint.epoch == 2
 
     # We'll eventually make the current head block the finalized block
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         finalized_root = spec.get_head(store).root
     else:
         finalized_root = spec.get_head(store)
@@ -1344,7 +1344,7 @@ def test_justified_update_monotonic(spec, state):
     last_block = signed_blocks[-1]
     last_block_root = last_block.message.hash_tree_root()
     ancestor_at_finalized_slot = spec.get_ancestor(store, last_block_root, finalized_block.slot)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         ancestor_at_finalized_slot = ancestor_at_finalized_slot.root
     assert ancestor_at_finalized_slot == finalized_root
 
@@ -1398,7 +1398,7 @@ def test_justified_update_always_if_better(spec, state):
     assert store.finalized_checkpoint.epoch == 2
 
     # We'll eventually make the current head block the finalized block
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         finalized_root = spec.get_head(store).root
     else:
         finalized_root = spec.get_head(store)
