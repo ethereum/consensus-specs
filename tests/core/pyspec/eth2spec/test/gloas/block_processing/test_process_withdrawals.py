@@ -2,9 +2,9 @@ import random
 
 from tests.core.pyspec.eth2spec.test.context import (
     spec_state_test,
-    with_eip7732_and_later,
+    with_gloas_and_later,
 )
-from tests.core.pyspec.eth2spec.test.helpers.forks import is_post_eip7732
+from tests.core.pyspec.eth2spec.test.helpers.forks import is_post_gloas
 from tests.core.pyspec.eth2spec.test.helpers.withdrawals import (
     prepare_expected_withdrawals,
     prepare_pending_withdrawal,
@@ -14,11 +14,11 @@ from tests.core.pyspec.eth2spec.test.helpers.withdrawals import (
 )
 
 
-def run_eip7732_withdrawals_processing(
+def run_gloas_withdrawals_processing(
     spec, state, num_expected_withdrawals=None, verify_state_updates=True
 ):
     """
-    Helper function to test EIP7732 process_withdrawals.
+    Helper function to test Gloas process_withdrawals.
     Unlike previous versions, this doesn't take an execution payload.
     """
     pre_state = state.copy()
@@ -29,7 +29,7 @@ def run_eip7732_withdrawals_processing(
     pre_withdrawal_index = state.next_withdrawal_index
 
     # Get expected withdrawals before processing
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         expected_withdrawals, _, _ = spec.get_expected_withdrawals(state)
     else:
         expected_withdrawals = spec.get_expected_withdrawals(state)
@@ -37,7 +37,7 @@ def run_eip7732_withdrawals_processing(
     if num_expected_withdrawals is not None:
         assert len(expected_withdrawals) == num_expected_withdrawals
 
-    # Process withdrawals (EIP7732 version takes only state)
+    # Process withdrawals (Gloas version takes only state)
     spec.process_withdrawals(state)
 
     # Verify balances were decreased correctly
@@ -47,8 +47,8 @@ def run_eip7732_withdrawals_processing(
         post_balance = state.balances[validator_index]
         assert post_balance == pre_balance - withdrawal.amount
 
-    # Verify withdrawals root was set (only for EIP7732)
-    if is_post_eip7732(spec):
+    # Verify withdrawals root was set (only for Gloas)
+    if is_post_gloas(spec):
         withdrawals_list = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](
             expected_withdrawals
         )
@@ -79,13 +79,13 @@ def run_eip7732_withdrawals_processing(
 def prepare_builder_withdrawal(spec, state, builder_index, amount=None, withdrawable_epoch=None):
     """
     Helper to set up a builder pending withdrawal.
-    Only works for EIP7732 specs that have builder withdrawals.
+    Only works for Gloas specs that have builder withdrawals.
 
-    Note: The EIP7732 logic for is_builder_payment_withdrawable seems to have
+    Note: The Gloas logic for is_builder_payment_withdrawable seems to have
     some issues in the current implementation, so we'll work around them.
     """
-    # Skip if not EIP7732
-    if not is_post_eip7732(spec):
+    # Skip if not Gloas
+    if not is_post_gloas(spec):
         return None
 
     if amount is None:
@@ -101,7 +101,7 @@ def prepare_builder_withdrawal(spec, state, builder_index, amount=None, withdraw
     )
 
     # Make sure the builder is not slashed and has reached withdrawable epoch
-    # to work with the current EIP7732 is_builder_payment_withdrawable logic
+    # to work with the current Gloas is_builder_payment_withdrawable logic
     builder = state.validators[builder_index]
     builder.slashed = False
     builder.withdrawable_epoch = min(builder.withdrawable_epoch, withdrawable_epoch)
@@ -125,7 +125,7 @@ def set_parent_block_full(spec, state):
     """
     Helper to set state indicating parent block was full.
     """
-    # For EIP7732, set latest_block_hash to match latest_execution_payload_header.block_hash
+    # For Gloas, set latest_block_hash to match latest_execution_payload_header.block_hash
     if hasattr(state, "latest_block_hash"):
         state.latest_block_hash = state.latest_execution_payload_header.block_hash
     # For testing purposes, ensure we have a block hash
@@ -141,11 +141,11 @@ def set_parent_block_empty(spec, state):
     if hasattr(state, "latest_block_hash"):
         state.latest_block_hash = b"\x00" * 32
     else:
-        # For non-EIP7732, this test doesn't apply
+        # For non-Gloas, this test doesn't apply
         pass
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_zero_withdrawals(spec, state):
     """
@@ -157,10 +157,10 @@ def test_zero_withdrawals(spec, state):
     expected_withdrawals_result = spec.get_expected_withdrawals(state)
     assert len(expected_withdrawals_result[0]) == 0
 
-    yield from run_eip7732_withdrawals_processing(spec, state, num_expected_withdrawals=0)
+    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=0)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_single_full_withdrawal(spec, state):
     """
@@ -168,10 +168,10 @@ def test_single_full_withdrawal(spec, state):
     """
     set_parent_block_full(spec, state)
     set_validator_fully_withdrawable(spec, state, 0)
-    yield from run_eip7732_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_single_partial_withdrawal(spec, state):
     """
@@ -179,10 +179,10 @@ def test_single_partial_withdrawal(spec, state):
     """
     set_parent_block_full(spec, state)
     set_validator_partially_withdrawable(spec, state, 0)
-    yield from run_eip7732_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_mixed_full_and_partial_withdrawals(spec, state):
     """
@@ -200,12 +200,12 @@ def test_mixed_full_and_partial_withdrawals(spec, state):
         num_partial_withdrawals=num_partial,
     )
     expected_total = len(fully_withdrawable_indices) + len(partial_withdrawals_indices)
-    yield from run_eip7732_withdrawals_processing(
+    yield from run_gloas_withdrawals_processing(
         spec, state, num_expected_withdrawals=expected_total
     )
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_single_builder_withdrawal(spec, state):
     """
@@ -213,10 +213,10 @@ def test_single_builder_withdrawal(spec, state):
     """
     set_parent_block_full(spec, state)
     prepare_builder_withdrawal(spec, state, 0, spec.Gwei(1_000_000_000))
-    yield from run_eip7732_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_multiple_builder_withdrawals(spec, state):
     """
@@ -225,10 +225,10 @@ def test_multiple_builder_withdrawals(spec, state):
     set_parent_block_full(spec, state)
     for i in range(3):
         prepare_builder_withdrawal(spec, state, i, spec.Gwei(500_000_000))
-    yield from run_eip7732_withdrawals_processing(spec, state, num_expected_withdrawals=3)
+    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=3)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_builder_withdrawal_future_epoch(spec, state):
     """
@@ -238,12 +238,12 @@ def test_builder_withdrawal_future_epoch(spec, state):
     future_epoch = spec.get_current_epoch(state) + 1
     prepare_builder_withdrawal(spec, state, 0, withdrawable_epoch=future_epoch)
     pre_builder_count = len(state.builder_pending_withdrawals)
-    yield from run_eip7732_withdrawals_processing(spec, state, num_expected_withdrawals=0)
+    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=0)
     # Verify builder list unchanged (withdrawal not processed)
     assert len(state.builder_pending_withdrawals) == pre_builder_count
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_builder_withdrawal_slashed_validator(spec, state):
     """
@@ -253,10 +253,10 @@ def test_builder_withdrawal_slashed_validator(spec, state):
     state.validators[0].slashed = True
     state.validators[0].withdrawable_epoch = spec.get_current_epoch(state) + 10
     prepare_builder_withdrawal(spec, state, 0, spec.Gwei(1_000_000_000))
-    yield from run_eip7732_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_builder_withdrawal_insufficient_balance(spec, state):
     """
@@ -266,10 +266,10 @@ def test_builder_withdrawal_insufficient_balance(spec, state):
     withdrawal_amount = spec.Gwei(5_000_000_000)  # 5 ETH
     state.balances[0] = spec.MIN_ACTIVATION_BALANCE + spec.Gwei(1_000_000_000)  # Only 1 ETH excess
     prepare_builder_withdrawal(spec, state, 0, withdrawal_amount)
-    yield from run_eip7732_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_mixed_withdrawal_types_priority_ordering(spec, state):
     """
@@ -308,7 +308,7 @@ def test_mixed_withdrawal_types_priority_ordering(spec, state):
     yield "post", state
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_maximum_withdrawals_per_payload_limit(spec, state):
     """
@@ -334,12 +334,12 @@ def test_maximum_withdrawals_per_payload_limit(spec, state):
         set_validator_fully_withdrawable(spec, state, i)
 
     # Should not exceed MAX_WITHDRAWALS_PER_PAYLOAD
-    yield from run_eip7732_withdrawals_processing(
+    yield from run_gloas_withdrawals_processing(
         spec, state, num_expected_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD
     )
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_pending_withdrawals_processing(spec, state):
     """
@@ -354,12 +354,12 @@ def test_pending_withdrawals_processing(spec, state):
     # EIP-7732 limits pending withdrawals to min(MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP, MAX_WITHDRAWALS_PER_PAYLOAD - 1)
     # In minimal config: min(2, 4-1) = 2, in mainnet config: min(8, 16-1) = 8
     expected_withdrawals = spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
-    yield from run_eip7732_withdrawals_processing(
+    yield from run_gloas_withdrawals_processing(
         spec, state, num_expected_withdrawals=expected_withdrawals
     )
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_early_return_empty_parent_block(spec, state):
     """
@@ -389,7 +389,7 @@ def test_early_return_empty_parent_block(spec, state):
     yield "post", state
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_compounding_validator_partial_withdrawal(spec, state):
     """
@@ -408,10 +408,10 @@ def test_compounding_validator_partial_withdrawal(spec, state):
         state.validators[validator_index], state.balances[validator_index]
     )
 
-    yield from run_eip7732_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_validator_not_yet_active(spec, state):
     """
@@ -425,10 +425,10 @@ def test_validator_not_yet_active(spec, state):
     assert not spec.is_active_validator(
         state.validators[validator_index], spec.get_current_epoch(state)
     )
-    yield from run_eip7732_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_validator_in_exit_queue(spec, state):
     """
@@ -445,10 +445,10 @@ def test_validator_in_exit_queue(spec, state):
     assert not spec.is_active_validator(
         state.validators[validator_index], spec.get_current_epoch(state) + 1
     )
-    yield from run_eip7732_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_withdrawable_epoch_but_zero_balance(spec, state):
     """
@@ -459,10 +459,10 @@ def test_withdrawable_epoch_but_zero_balance(spec, state):
     set_validator_fully_withdrawable(spec, state, 3, current_epoch)
     state.validators[3].effective_balance = spec.MIN_ACTIVATION_BALANCE
     state.balances[3] = 0
-    yield from run_eip7732_withdrawals_processing(spec, state, num_expected_withdrawals=0)
+    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=0)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_zero_effective_balance_but_nonzero_balance(spec, state):
     """
@@ -473,10 +473,10 @@ def test_zero_effective_balance_but_nonzero_balance(spec, state):
     set_validator_fully_withdrawable(spec, state, 4, current_epoch)
     state.validators[4].effective_balance = 0
     state.balances[4] = spec.MIN_ACTIVATION_BALANCE
-    yield from run_eip7732_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
     """
@@ -505,7 +505,7 @@ def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
     pre_builder_count = len(state.builder_pending_withdrawals)
 
     # Should process builder payments up to the limit, but actual count depends on eligibility
-    yield from run_eip7732_withdrawals_processing(
+    yield from run_gloas_withdrawals_processing(
         spec,
         state,
         num_expected_withdrawals=None,  # Don't assert specific count, just verify processing works
@@ -521,7 +521,7 @@ def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
     assert processed_count <= spec.MAX_WITHDRAWALS_PER_PAYLOAD, "Should not exceed withdrawal limit"
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_no_builders_max_pending_with_sweep_spillover(spec, state):
     """
@@ -544,12 +544,12 @@ def test_no_builders_max_pending_with_sweep_spillover(spec, state):
     expected_sweep = spec.MAX_WITHDRAWALS_PER_PAYLOAD - expected_pending
     expected_total = expected_pending + expected_sweep
 
-    yield from run_eip7732_withdrawals_processing(
+    yield from run_gloas_withdrawals_processing(
         spec, state, num_expected_withdrawals=expected_total
     )
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_no_builders_no_pending_max_sweep_withdrawals(spec, state):
     """
@@ -563,6 +563,6 @@ def test_no_builders_no_pending_max_sweep_withdrawals(spec, state):
         set_validator_fully_withdrawable(spec, state, i)
 
     # All should be processed since no higher priority withdrawals exist
-    yield from run_eip7732_withdrawals_processing(
+    yield from run_gloas_withdrawals_processing(
         spec, state, num_expected_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD
     )
