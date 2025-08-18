@@ -46,6 +46,7 @@
     - [New `get_attestation_participation_flag_indices`](#new-get_attestation_participation_flag_indices)
     - [New `get_ptc`](#new-get_ptc)
     - [New `get_indexed_payload_attestation`](#new-get_indexed_payload_attestation)
+    - [New `get_builder_payment_quorum_threshold`](#new-get_builder_payment_quorum_threshold)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
@@ -78,8 +79,8 @@
 This is the beacon chain specification of the enshrined proposer builder
 separation feature.
 
-*Note*: This specification is built upon
-[Electra](../../electra/beacon-chain.md) and is under active development.
+*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md) and
+is under active development.
 
 This feature adds new staked consensus participants called *Builders* and new
 honest validators duties called *payload timeliness attestations*. The slot is
@@ -334,6 +335,7 @@ class BeaconState(Container):
     pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
+    proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
     # [New in EIP7732]
     execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
     # [New in EIP7732]
@@ -620,6 +622,19 @@ def get_indexed_payload_attestation(
     )
 ```
 
+#### New `get_builder_payment_quorum_threshold`
+
+```python
+def get_builder_payment_quorum_threshold(state: BeaconState) -> uint64:
+    """
+    Calculate the quorum threshold for builder payments.
+    """
+    quorum = (
+        get_total_active_balance(state) // SLOTS_PER_EPOCH * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
+    )
+    return uint64(quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR)
+```
+
 ## Beacon chain state transition function
 
 *Note*: state transition is fundamentally modified in EIP-7732. The full state
@@ -682,6 +697,7 @@ def process_epoch(state: BeaconState) -> None:
     process_historical_summaries_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
+    process_proposer_lookahead(state)
     # [New in EIP7732]
     process_builder_pending_payments(state)
 ```
@@ -693,10 +709,7 @@ def process_builder_pending_payments(state: BeaconState) -> None:
     """
     Processes the builder pending payments from the previous epoch.
     """
-    quorum = (
-        get_total_active_balance(state) // SLOTS_PER_EPOCH * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
-    )
-    quorum //= BUILDER_PAYMENT_THRESHOLD_DENOMINATOR
+    quorum = get_builder_payment_quorum_threshold(state)
     for payment in state.builder_pending_payments[:SLOTS_PER_EPOCH]:
         if payment.weight > quorum:
             exit_queue_epoch = compute_exit_epoch_and_update_churn(state, payment.withdrawal.amount)
@@ -1247,7 +1260,10 @@ def process_execution_payload(
     # Verify timestamp
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
     # Verify commitments are under limit
-    assert len(envelope.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
+    assert (
+        len(envelope.blob_kzg_commitments)
+        <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    )
     # Verify the execution payload is valid
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in envelope.blob_kzg_commitments

@@ -522,7 +522,7 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
 
     # Check if blob data is available
     # If not, this payload MAY be queued and subsequently considered when blob data becomes available
-    assert is_data_available(envelope.beacon_block_root, envelope.blob_kzg_commitments)
+    assert is_data_available(envelope.beacon_block_root)
 
     # Make a copy of the state to avoid mutability issues
     state = copy(store.block_states[envelope.beacon_block_root])
