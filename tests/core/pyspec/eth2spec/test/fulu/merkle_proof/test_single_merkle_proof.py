@@ -20,7 +20,7 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
 from eth2spec.test.helpers.forks import (
-    is_post_eip7732,
+    is_post_gloas,
 )
 
 
@@ -37,7 +37,7 @@ def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None, blob_coun
             mode=RandomizationMode,
             chaos=True,
         )
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
             blob_kzg_commitments
         )
@@ -51,7 +51,7 @@ def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None, blob_coun
         )
     signed_block = sign_block(spec, state, block, proposer_index=0)
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         column_sidcars = spec.get_data_column_sidecars_from_block(
             signed_block, blob_kzg_commitments, cells_and_kzg_proofs
         )
@@ -63,7 +63,7 @@ def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None, blob_coun
 
     yield "object", block.body
     kzg_commitments_inclusion_proof = column_sidcar.kzg_commitments_inclusion_proof
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         gindex = spec.get_generalized_index(
             spec.BeaconBlockBody,
             "signed_execution_payload_header",

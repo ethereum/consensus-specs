@@ -2,7 +2,7 @@ import random
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to,
     with_capella_and_later,
     with_presets,
 )
@@ -16,13 +16,13 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth2spec.test.helpers.constants import (
     CAPELLA,
-    EIP7732,
+    GLOAS,
     MINIMAL,
 )
 from eth2spec.test.helpers.deposits import (
     prepare_state_and_deposit,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732, is_post_electra
+from eth2spec.test.helpers.forks import is_post_electra, is_post_gloas
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.state import (
     next_epoch_via_block,
@@ -44,7 +44,7 @@ from eth2spec.test.helpers.withdrawals import (
 #
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_to(CAPELLA, GLOAS)
 @spec_state_test
 def test_invalid_is_execution_enabled_false(spec, state):
     # Set `latest_execution_payload_header` to empty
@@ -210,7 +210,7 @@ def test_invalid_two_bls_changes_of_different_addresses_same_validator_same_bloc
 #
 
 
-@with_all_phases_from_except(CAPELLA, [EIP7732])
+@with_all_phases_from_to(CAPELLA, GLOAS)
 @spec_state_test
 def test_full_withdrawal_in_epoch_transition(spec, state):
     index = 0
@@ -334,9 +334,9 @@ def test_withdrawal_success_two_blocks(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     signed_block_2 = state_transition_and_sign_block(spec, state, block)
 
-    # after EIP-7732 the second block does not perform any withdrawals because
+    # After Gloas the second block does not perform any withdrawals because
     # there was no payload processed
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         assert (
             state.next_withdrawal_index
             == pre_next_withdrawal_index + spec.MAX_WITHDRAWALS_PER_PAYLOAD

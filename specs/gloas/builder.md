@@ -1,4 +1,4 @@
-# EIP-7732 -- Honest Builder
+# Gloas -- Honest Builder
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -26,7 +26,7 @@
 This is an accompanying document which describes the expected actions of a
 "builder" participating in the Ethereum proof-of-stake protocol.
 
-With the EIP-7732 Fork, the protocol includes new staked participants of the
+With the Gloas fork, the protocol includes new staked participants of the
 protocol called *Builders*. While Builders are a subset of the validator set,
 they have extra attributions that are optional. Validators may opt to not be
 builders and as such we collect the set of guidelines for those validators that
@@ -38,7 +38,7 @@ want to act as builders in this document.
 
 The `withdrawal_credentials` field for builders has a specific format that
 identifies them as registered builders in the network. Builders must use the
-`BUILDER_WITHDRAWAL_PREFIX` to participate in the EIP-7732 mechanism.
+`BUILDER_WITHDRAWAL_PREFIX` to participate in the Gloas mechanism.
 
 The `withdrawal_credentials` field must be such that:
 
@@ -149,8 +149,8 @@ blob KZG commitments inclusion proof type with a different length.
 def get_data_column_sidecars(
     signed_block_header: SignedBeaconBlockHeader,
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
-    # [Modified in EIP7732]
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_EIP7732],
+    # [Modified in Gloas:EIP7732]
+    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS],
     cells_and_kzg_proofs: Sequence[
         Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
     ],
@@ -189,7 +189,7 @@ inclusion proof given that these are in the `ExecutionPayloadEnvelope` now.
 ```python
 def get_data_column_sidecars_from_block(
     signed_block: SignedBeaconBlock,
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
     cells_and_kzg_proofs: Sequence[
         Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
@@ -200,7 +200,7 @@ def get_data_column_sidecars_from_block(
     block, assemble the sidecars which can be distributed to peers.
     """
     signed_block_header = compute_signed_block_header(signed_block)
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     kzg_commitments_inclusion_proof = compute_merkle_proof(
         signed_block.message.body,
         get_generalized_index(
