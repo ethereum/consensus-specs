@@ -2,8 +2,8 @@
 
 # Execution
 # ---------------------------------------------------------------
-# [customized] 2**5 (= 32) commitments
-MAX_BLOB_COMMITMENTS_PER_BLOCK: 32
+# 2**12 (= 4,096) commitments
+MAX_BLOB_COMMITMENTS_PER_BLOCK: 4096
 
 # Networking
 # ---------------------------------------------------------------
