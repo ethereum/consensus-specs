@@ -286,7 +286,7 @@ setup(
         "sync": "sync",
     },
     packages=find_packages(where="tests/core/pyspec")
-    + ["configs", "presets", "specs", "presets", "sync"],
+    + ["configs", "presets", "specs", "sync"],
     py_modules=["eth2spec"],
     cmdclass=commands,
 )
