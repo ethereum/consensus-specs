@@ -603,7 +603,6 @@ def test_process_execution_payload_invalid_signature(spec, state):
     yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
 
 
-
 @with_gloas_and_later
 @spec_state_test
 @always_bls
