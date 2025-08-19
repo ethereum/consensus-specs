@@ -185,7 +185,7 @@ def test_verify_cell_kzg_proof_batch_invalid(spec):
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
-    
+
     assert len(cells) == len(proofs)
 
     assert not spec.verify_cell_kzg_proof_batch(
