@@ -16,7 +16,7 @@ def format_filename_as_title(filename: str) -> str:
     """Convert a filename to a human-readable title."""
     # Remove .md extension
     name = filename[:-3] if filename.endswith('.md') else filename
-    
+
     # Special case handling for common abbreviations
     replacements = {
         'p2p': 'P2P',
@@ -24,10 +24,10 @@ def format_filename_as_title(filename: str) -> str:
         'ssz': 'SSZ',
         'bls': 'BLS',
     }
-    
+
     # Replace hyphens and underscores with spaces
     name = name.replace('-', ' ').replace('_', ' ')
-    
+
     # Title case
     words = name.split()
     formatted_words = []
@@ -37,7 +37,7 @@ def format_filename_as_title(filename: str) -> str:
             formatted_words.append(replacements[lower_word])
         else:
             formatted_words.append(word.title())
-    
+
     return ' '.join(formatted_words)
 
 
@@ -45,7 +45,7 @@ def generate_spec_index(dir_path: str, fork_name: str) -> str:
     """Generate index content for a specification directory."""
     files = []
     subdirs = []
-    
+
     # Check if directory exists
     if os.path.exists(dir_path):
         for item in sorted(os.listdir(dir_path)):
@@ -54,10 +54,10 @@ def generate_spec_index(dir_path: str, fork_name: str) -> str:
                 subdirs.append(item)
             elif item.endswith('.md') and item != 'index.md':
                 files.append(item)
-    
+
     # Generate content
     content = f"# {fork_name.title()} Specifications\n\n"
-    
+
     # Add description based on fork
     descriptions = {
         'phase0': "The initial Ethereum proof-of-stake specifications, defining the core beacon chain functionality.",
@@ -69,10 +69,10 @@ def generate_spec_index(dir_path: str, fork_name: str) -> str:
         'fulu': "In-development specifications for future upgrades.",
         'gloas': "Builder API specifications for proposer-builder separation."
     }
-    
+
     if fork_name.lower() in descriptions:
         content += f"{descriptions[fork_name.lower()]}\n\n"
-    
+
     # List subdirectories first if any
     if subdirs:
         content += "## Subdirectories\n\n"
@@ -80,21 +80,21 @@ def generate_spec_index(dir_path: str, fork_name: str) -> str:
             formatted_name = format_filename_as_title(subdir)
             content += f"- [{formatted_name}](./{subdir}/)\n"
         content += "\n"
-    
+
     # List specification files
     if files:
         content += "## Specification Documents\n\n"
-        
+
         # Group files by category for better organization
         core_files = []
         other_files = []
-        
+
         for file in files:
             if file in ['beacon-chain.md', 'fork.md', 'validator.md']:
                 core_files.append(file)
             else:
                 other_files.append(file)
-        
+
         if core_files:
             content += "### Core Specifications\n\n"
             for file in core_files:
@@ -105,7 +105,7 @@ def generate_spec_index(dir_path: str, fork_name: str) -> str:
                     content += f" - {desc}"
                 content += "\n"
             content += "\n"
-        
+
         if other_files:
             content += "### Additional Specifications\n\n"
             for file in other_files:
@@ -115,10 +115,10 @@ def generate_spec_index(dir_path: str, fork_name: str) -> str:
                 if desc:
                     content += f" - {desc}"
                 content += "\n"
-    
+
     if not files and not subdirs:
         content += "*No specification files found in this directory.*\n"
-    
+
     return content
 
 
