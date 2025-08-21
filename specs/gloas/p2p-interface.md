@@ -51,8 +51,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
-    if epoch >= EIP7732_FORK_EPOCH:
-        return EIP7732_FORK_VERSION
+    if epoch >= GLOAS_FORK_EPOCH:
+        return GLOAS_FORK_VERSION
     if epoch >= ELECTRA_FORK_EPOCH:
         return ELECTRA_FORK_VERSION
     if epoch >= DENEB_FORK_EPOCH:
