@@ -31,34 +31,6 @@
 This document represents the changes and additions to the Honest validator guide
 included in Gloas.
 
-## Modifications in Gloas
-
-### Helper functions
-
-#### Modified `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= GLOAS_FORK_EPOCH:
-        return GLOAS_FORK_VERSION
-    if epoch >= FULU_FORK_EPOCH:
-        return FULU_FORK_VERSION
-    if epoch >= ELECTRA_FORK_EPOCH:
-        return ELECTRA_FORK_VERSION
-    if epoch >= DENEB_FORK_EPOCH:
-        return DENEB_FORK_VERSION
-    if epoch >= CAPELLA_FORK_EPOCH:
-        return CAPELLA_FORK_VERSION
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
-
 ## Configuration
 
 ### Time parameters
