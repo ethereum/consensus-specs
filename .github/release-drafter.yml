@@ -36,6 +36,9 @@ categories:
   # Fallback
   - title: Other
 
+commitish: master
+filter-by-commitish: true
+include-pre-releases: true
 sort-direction: ascending
 change-title-escapes: '\<*_&'
 change-template: '- $TITLE (#$NUMBER)'
