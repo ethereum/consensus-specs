@@ -1,10 +1,15 @@
-# EIP-7732 -- Honest Validator
+# Gloas -- Honest Validator
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Modifications in Gloas](#modifications-in-gloas)
+  - [Helper functions](#helper-functions)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
+- [Configuration](#configuration)
+  - [Time parameters](#time-parameters)
 - [Validator assignment](#validator-assignment)
   - [Lookahead](#lookahead)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
@@ -24,7 +29,47 @@
 ## Introduction
 
 This document represents the changes and additions to the Honest validator guide
-included in the EIP-7732 fork.
+included in Gloas.
+
+## Modifications in Gloas
+
+### Helper functions
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= GLOAS_FORK_EPOCH:
+        return GLOAS_FORK_VERSION
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
+
+## Configuration
+
+### Time parameters
+
+| Name                          | Value          |     Unit     |         Duration          |
+| ----------------------------- | -------------- | :----------: | :-----------------------: |
+| `ATTESTATION_DUE_BPS_GLOAS`   | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
+| `AGGREGRATE_DUE_BPS_GLOAS`    | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
+| `CONTRIBUTION_DUE_BPS_GLOAS`  | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_ATTESTATION_DUE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
 
 ## Validator assignment
 
@@ -55,7 +100,7 @@ def get_ptc_assignment(
 
 ### Lookahead
 
-*[New in EIP7732]*
+*[New in Gloas:EIP7732]*
 
 `get_ptc_assignment` should be called at the start of each epoch to get the
 assignment for the next epoch (`current_epoch + 1`). A validator should plan for
@@ -69,16 +114,16 @@ All validator responsibilities remain unchanged other than the following:
   becomes a builder's duty.
 - Some validators are selected per slot to become PTC members, these validators
   must broadcast `PayloadAttestationMessage` objects during the assigned slot
-  before the deadline of `3 * SECONDS_PER_SLOT // INTERVALS_PER_SLOT` seconds
+  before the deadline of
+  `get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)` milliseconds
   into the slot.
 
 ### Attestation
 
-The attestation deadline is implicitly changed by the change in
-`INTERVALS_PER_SLOT`. Moreover, the `attestation.data.index` field is now used
-to signal the payload status of the block being attested to
-(`attestation.data.beacon_block_root`). With the alias
-`data = attestation.data`, the validator should set this field as follows:
+The attestation deadline is changed with `ATTESTATION_DUE_BPS_GLOAS`. Moreover,
+the `attestation.data.index` field is now used to signal the payload status of
+the block being attested to (`attestation.data.beacon_block_root`). With the
+alias `data = attestation.data`, the validator should set this field as follows:
 
 - If `block.slot == current_slot` (i.e., `data.slot`), then always set
   `data.index = 0`.
@@ -92,7 +137,7 @@ to signal the payload status of the block being attested to
 ### Sync Committee participations
 
 Sync committee duties are not changed for validators, however the submission
-deadline is implicitly changed by the change in `INTERVALS_PER_SLOT`.
+deadline is changed with `SYNC_MESSAGE_DUE_BPS_GLOAS`.
 
 ### Block proposal
 
@@ -141,7 +186,7 @@ in the block. The validator will have to
 
 The blob sidecars are no longer broadcast by the validator, and thus their
 construction is not necessary. This deprecates the corresponding sections from
-the honest validator guide in the Electra fork, moving them, albeit with some
+the honest validator guide in the Fulu fork, moving them, albeit with some
 modifications, to the [honest Builder guide](./builder.md)
 
 ### Payload timeliness attestation
@@ -152,7 +197,8 @@ prepared to submit their PTC attestations during the next epoch.
 
 A validator should create and broadcast the `payload_attestation_message` to the
 global execution attestation subnet not after
-`SECONDS_PER_SLOT * 3 / INTERVALS_PER_SLOT` seconds since the start of `slot`
+`get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)` milliseconds since
+the start of `slot`.
 
 #### Constructing a payload attestation
 
@@ -160,8 +206,8 @@ If a validator is in the payload attestation committee for the current slot (as
 obtained from `get_ptc_assignment` above) then the validator should prepare a
 `PayloadAttestationMessage` for the current slot, according to the logic in
 `get_payload_attestation_message` below and broadcast it not after
-`SECONDS_PER_SLOT * 3 / INTERVALS_PER_SLOT` seconds since the start of the slot,
-to the global `payload_attestation_message` pubsub topic.
+`get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)` milliseconds since
+the start of the slot, to the global `payload_attestation_message` pubsub topic.
 
 The validator creates `payload_attestation_message` as follows:
 
@@ -216,7 +262,7 @@ def prepare_execution_payload(
     # Verify consistency of the parent hash with respect to the previous execution payload header
     parent_hash = state.latest_execution_payload_header.block_hash
 
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     # Set the forkchoice head and initiate the payload build process
     withdrawals, _, _ = get_expected_withdrawals(state)
 

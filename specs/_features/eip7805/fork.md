@@ -33,8 +33,8 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and
 change is made to upgrade to EIP-7805.
 
 ```python
-def upgrade_to_eip7805(pre: electra.BeaconState) -> BeaconState:
-    epoch = electra.get_current_epoch(pre)
+def upgrade_to_eip7805(pre: fulu.BeaconState) -> BeaconState:
+    epoch = fulu.get_current_epoch(pre)
 
     post = BeaconState(
         genesis_time=pre.genesis_time,
@@ -79,6 +79,7 @@ def upgrade_to_eip7805(pre: electra.BeaconState) -> BeaconState:
         pending_deposits=pre.pending_deposits,
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
+        proposer_lookahead=pre.proposer_lookahead,
     )
 
     return post

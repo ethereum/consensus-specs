@@ -22,6 +22,8 @@ into a SSZ type:
 - Bitfields
   - `bitvector`
   - `bitlist`
+- ProgressiveBitlist
+  - `progressive_bitlist`
 - Basic types
   - `boolean`
   - `uints`
@@ -144,6 +146,14 @@ Data:
 {length}: the length, in bits, of the bitvector.
 ```
 
+### `progressive_bitlist`
+
+```
+Template:
+
+progbitlist
+```
+
 ### `boolean`
 
 A boolean has no type variations. Instead, file names just plainly describe the
@@ -221,4 +231,19 @@ class BitsStruct(Container):
     C: Bitvector[1]
     D: Bitlist[6]
     E: Bitvector[8]
+
+
+class ProgressiveBitsStruct(Container):
+    A: Bitvector[256]
+    B: Bitlist[256]
+    C: ProgressiveBitlist
+    D: Bitvector[257]
+    E: Bitlist[257]
+    F: ProgressiveBitlist
+    G: Bitvector[1280]
+    H: Bitlist[1280]
+    I: ProgressiveBitlist
+    J: Bitvector[1281]
+    K: Bitlist[1281]
+    L: ProgressiveBitlist
 ```

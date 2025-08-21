@@ -6,7 +6,7 @@ from eth2spec.debug.random_value import (
 )
 from eth2spec.test.context import (
     spec_state_test,
-    with_deneb_and_later,
+    with_all_phases_from_to,
     with_test_suite_name,
 )
 from eth2spec.test.helpers.blob import (
@@ -16,10 +16,13 @@ from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block,
 )
+from eth2spec.test.helpers.constants import (
+    DENEB,
+    FULU,
+)
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732
 
 
 def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
@@ -35,45 +38,19 @@ def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
             mode=RandomizationMode,
             chaos=True,
         )
-    if is_post_eip7732(spec):
-        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
-            blob_kzg_commitments
-        )
-        kzg_root = blob_kzg_commitments.hash_tree_root()
-        block.body.signed_execution_payload_header.message.blob_kzg_commitments_root = kzg_root
-    else:
-        block.body.blob_kzg_commitments = blob_kzg_commitments
-        block.body.execution_payload.transactions = [opaque_tx]
-        block.body.execution_payload.block_hash = compute_el_block_hash(
-            spec, block.body.execution_payload, state
-        )
-
+    block.body.blob_kzg_commitments = blob_kzg_commitments
+    block.body.execution_payload.transactions = [opaque_tx]
+    block.body.execution_payload.block_hash = compute_el_block_hash(
+        spec, block.body.execution_payload, state
+    )
     signed_block = sign_block(spec, state, block, proposer_index=0)
-    if is_post_eip7732(spec):
-        blob_sidecars = spec.get_blob_sidecars(signed_block, blobs, blob_kzg_commitments, proofs)
-    else:
-        blob_sidecars = spec.get_blob_sidecars(signed_block, blobs, proofs)
+    blob_sidecars = spec.get_blob_sidecars(signed_block, blobs, proofs)
     blob_index = 0
     blob_sidecar = blob_sidecars[blob_index]
 
     yield "object", block.body
     kzg_commitment_inclusion_proof = blob_sidecar.kzg_commitment_inclusion_proof
-
-    if is_post_eip7732(spec):
-        inner_gindex = spec.get_generalized_index(
-            spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK], blob_index
-        )
-        outer_gindex = spec.get_generalized_index(
-            spec.BeaconBlockBody,
-            "signed_execution_payload_header",
-            "message",
-            "blob_kzg_commitments_root",
-        )
-        gindex = spec.concat_generalized_indices(outer_gindex, inner_gindex)
-    else:
-        gindex = spec.get_generalized_index(
-            spec.BeaconBlockBody, "blob_kzg_commitments", blob_index
-        )
+    gindex = spec.get_generalized_index(spec.BeaconBlockBody, "blob_kzg_commitments", blob_index)
 
     yield (
         "proof",
@@ -94,14 +71,14 @@ def _run_blob_kzg_commitment_merkle_proof_test(spec, state, rng=None):
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_deneb_and_later
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_blob_kzg_commitment_merkle_proof__basic(spec, state):
     yield from _run_blob_kzg_commitment_merkle_proof_test(spec, state)
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_deneb_and_later
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_blob_kzg_commitment_merkle_proof__random_block_1(spec, state):
     rng = random.Random(1111)
@@ -109,7 +86,7 @@ def test_blob_kzg_commitment_merkle_proof__random_block_1(spec, state):
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_deneb_and_later
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_blob_kzg_commitment_merkle_proof__random_block_2(spec, state):
     rng = random.Random(2222)
@@ -117,7 +94,7 @@ def test_blob_kzg_commitment_merkle_proof__random_block_2(spec, state):
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_deneb_and_later
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_blob_kzg_commitment_merkle_proof__random_block_3(spec, state):
     rng = random.Random(3333)
