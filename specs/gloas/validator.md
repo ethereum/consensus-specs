@@ -5,9 +5,6 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modifications in Gloas](#modifications-in-gloas)
-  - [Helper functions](#helper-functions)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
 - [Validator assignment](#validator-assignment)
