@@ -1,10 +1,6 @@
 
 name: Publish docs
 
-defaults:
-  run:
-    shell: zsh -e {0}
-
 on:
   push:
     branches:

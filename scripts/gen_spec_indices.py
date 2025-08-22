@@ -13,7 +13,7 @@ import mkdocs_gen_files
 
 def format_filename_as_title(filename: str) -> str:
     """Convert a filename to a human-readable title."""
-    name = filename[-3] if filename.endswith(".md") else filename
+    name = filename[:-3] if filename.endswith(".md") else filename
 
     replacements = {
         "api": "API",
@@ -78,6 +78,34 @@ def generate_spec_index(dir_path: str, level: int = 1) -> str:
     return content
 
 
+def generate_pages_file(dir_path: str) -> str:
+    """Generate .pages file content for navigation titles."""
+    files = []
+    subdirs = []
+
+    if os.path.exists(dir_path):
+        for item in sorted(os.listdir(dir_path)):
+            item_path = os.path.join(dir_path, item)
+            if os.path.isdir(item_path):
+                subdirs.append(item)
+            elif item.endswith(".md") and item != "index.md":
+                files.append(item)
+
+    if not files and not subdirs:
+        return ""
+
+    content = "nav:\n"
+    for file in files:
+        title = format_filename_as_title(file)
+        content += f"  - {title}: {file}\n"
+
+    for subdir in subdirs:
+        title = format_filename_as_title(subdir)
+        content += f"  - {title}: {subdir}\n"
+
+    return content
+
+
 print("Generating specification index pages...")
 
 spec_forks = []
@@ -87,8 +115,25 @@ if os.path.exists("specs"):
         if os.path.isdir(item_path) and item not in {"_deprecated", "_features"}:
             spec_forks.append(item)
 
+
+def generate_pages_recursively(base_path: str) -> None:
+    """Recursively generate .pages files for all directories."""
+    pages_content = generate_pages_file(base_path)
+    if pages_content:
+        print(f"  - Generating .pages for {base_path}")
+        with mkdocs_gen_files.open(f"{base_path}/.pages", "w") as f:
+            f.write(pages_content)
+
+    if os.path.exists(base_path):
+        for item in sorted(os.listdir(base_path)):
+            item_path = os.path.join(base_path, item)
+            if os.path.isdir(item_path):
+                generate_pages_recursively(item_path)
+
+
 for fork in spec_forks:
     spec_path = f"specs/{fork}"
     print(f"  - Generating index for {spec_path}")
     with mkdocs_gen_files.open(f"{spec_path}/index.md", "w") as f:
         f.write(generate_spec_index(spec_path))
+    generate_pages_recursively(spec_path)

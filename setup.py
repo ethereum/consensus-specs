@@ -149,6 +149,8 @@ class PySpecCommand(Command):
 
     def finalize_options(self) -> None:
         """Post-process options."""
+        if self.spec_fork.startswith("eip"):
+            return
         if len(self.md_doc_paths) == 0:
             self.md_doc_paths = get_md_doc_paths(self.spec_fork)
             if len(self.md_doc_paths) == 0:
