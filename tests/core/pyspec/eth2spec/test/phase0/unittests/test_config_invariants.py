@@ -78,7 +78,7 @@ def test_time(spec, state):
     check_bound(spec.MIN_ATTESTATION_INCLUSION_DELAY, 1, spec.SLOTS_PER_EPOCH)
     assert spec.config.SECONDS_PER_SLOT * 1000 == spec.config.SLOT_DURATION_MS
     assert spec.config.ATTESTATION_DUE_BPS <= spec.BASIS_POINTS
-    assert spec.config.AGGREGRATE_DUE_BPS <= spec.BASIS_POINTS
+    assert spec.config.AGGREGATE_DUE_BPS <= spec.BASIS_POINTS
 
 
 @with_all_phases
