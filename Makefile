@@ -55,6 +55,7 @@ PYTHON_VENV = $(VENV)/bin/python3
 PIP_VENV = $(VENV)/bin/pip3
 CODESPELL_VENV = $(VENV)/bin/codespell
 MDFORMAT_VENV = $(VENV)/bin/mdformat
+MKDOCS_VENV = $(VENV)/bin/mkdocs
 
 # Make a virtual environment.
 $(VENV):
@@ -164,9 +165,9 @@ _copy_docs:
 	@cp $(CURDIR)/README.md $(DOCS_DIR)/README.md
 
 # Start a local documentation server.
-serve_docs: _copy_docs
-	@mkdocs build
-	@mkdocs serve
+serve_docs: pyspec _copy_docs
+	@$(MKDOCS_VENV) build
+	@$(MKDOCS_VENV) serve
 
 ###############################################################################
 # Checks
