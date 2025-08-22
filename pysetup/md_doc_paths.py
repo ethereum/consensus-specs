@@ -60,6 +60,9 @@ def get_fork_directory(fork):
     dir1 = f"specs/{fork}"
     if os.path.exists(dir1):
         return dir1
+    dir2 = f"specs/_features/{fork}"
+    if os.path.exists(dir2):
+        return dir2
     raise FileNotFoundError(f"No directory found for fork: {fork}")
 
 
