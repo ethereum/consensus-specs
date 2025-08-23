@@ -88,7 +88,7 @@ def upgrade_to_eip7928(pre: electra.BeaconState) -> BeaconState:
         blob_gas_used=pre.latest_execution_payload_header.blob_gas_used,
         excess_blob_gas=pre.latest_execution_payload_header.excess_blob_gas,
         # [New in EIP7928]
-        block_access_list_hash=Hash32(),
+        block_access_list_root=Root(),
     )
     post = BeaconState(
         genesis_time=pre.genesis_time,

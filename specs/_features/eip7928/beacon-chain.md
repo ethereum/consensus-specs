@@ -53,7 +53,6 @@ class ExecutionPayload(Container):
     excess_blob_gas: uint64
     # [New in EIP7928]
     block_access_list: BlockAccessList
-    block_access_list_hash: Hash32
 ```
 
 ### `ExecutionPayloadHeader`
@@ -78,7 +77,7 @@ class ExecutionPayloadHeader(Container):
     blob_gas_used: uint64
     excess_blob_gas: uint64
     # [New in EIP7928]
-    block_access_list_hash: Hash32
+    block_access_list_root: Root
 ```
 
 ### `NewPayloadRequest`
@@ -140,6 +139,6 @@ def process_execution_payload(
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
         # [New in EIP7928]
-        block_access_list_hash=payload.block_access_list_hash,
+        block_access_list_root=hash_tree_root(payload.block_access_list),
     )
 ```
