@@ -808,11 +808,16 @@ def recover_cells_and_kzg_proofs(
     for cell in cells:
         assert len(cell) == BYTES_PER_CELL
 
+    # Sort cell indices and cells together to ensure proper order
+    sorted_pairs = sorted(zip(cell_indices, cells), key=lambda x: x[0])
+    sorted_cell_indices = [pair[0] for pair in sorted_pairs]
+    sorted_cells = [pair[1] for pair in sorted_pairs]
+
     # Convert cells to coset evaluations
-    cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
+    cosets_evals = [cell_to_coset_evals(cell) for cell in sorted_cells]
 
     # Given the coset evaluations, recover the polynomial in coefficient form
-    polynomial_coeff = recover_polynomialcoeff(cell_indices, cosets_evals)
+    polynomial_coeff = recover_polynomialcoeff(sorted_cell_indices, cosets_evals)
 
     # Recompute all cells/proofs
     return compute_cells_and_kzg_proofs_polynomialcoeff(polynomial_coeff)
