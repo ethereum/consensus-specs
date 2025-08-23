@@ -14,3 +14,4 @@ The KZG test suite runner has the following handlers:
 - [`compute_blob_kzg_proof`](./compute_blob_kzg_proof.md)
 - [`verify_blob_kzg_proof`](./verify_blob_kzg_proof.md)
 - [`verify_blob_kzg_proof_batch`](./verify_blob_kzg_proof_batch.md)
+- [`compute_challenge`](./compute_challenge.md)
