@@ -575,12 +575,11 @@ object (`ENRForkID`):
 
 The fields of `ENRForkID` are defined as:
 
-- `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)`
-  where:
+- `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)` where:
   - `genesis_validators_root` is the static `Root` found in
     `state.genesis_validators_root`.
-  - `epoch` is the node's current epoch defined by the wall-clock time
-    (not necessarily the epoch to which the node is sync).
+  - `epoch` is the node's current epoch defined by the wall-clock time (not
+    necessarily the epoch to which the node is sync).
 - `next_fork_version` is the fork version corresponding to the next planned fork
   at a future epoch. The fork version will only change for regular forks, _not
   BPO forks_. Note that it is possible for the blob schedule to define a change

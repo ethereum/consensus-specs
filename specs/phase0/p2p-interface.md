@@ -953,8 +953,8 @@ As seen by the client at the time of sending the message:
   (`compute_fork_digest(genesis_validators_root, epoch)`) where
   - `genesis_validators_root` is the static `Root` found in
     `state.genesis_validators_root`
-  - `epoch` is the node's current epoch defined by the wall-clock time
-    (not necessarily the epoch to which the node is sync).
+  - `epoch` is the node's current epoch defined by the wall-clock time (not
+    necessarily the epoch to which the node is sync).
 - `finalized_root`: `store.finalized_checkpoint.root` according to
   [fork choice](./fork-choice.md). (Note this defaults to `Root(b'\x00' * 32)`
   for the genesis finalized checkpoint).
@@ -1295,12 +1295,11 @@ object (`ENRForkID`)
 
 The fields of `ENRForkID` are defined as
 
-- `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)`
-  where:
+- `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)` where:
   - `genesis_validators_root` is the static `Root` found in
     `state.genesis_validators_root`.
-  - `epoch` is the node's current epoch defined by the wall-clock time
-    (not necessarily the epoch to which the node is sync).
+  - `epoch` is the node's current epoch defined by the wall-clock time (not
+    necessarily the epoch to which the node is sync).
 - `next_fork_version` is the fork version corresponding to the next planned hard
   fork at a future epoch. If no future fork is planned, set
   `next_fork_version = current_fork_version` to signal this fact
