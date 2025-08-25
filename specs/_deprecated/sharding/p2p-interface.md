@@ -57,7 +57,7 @@ The [DAS network specification](../das/das-core.md) defines additional topics.
   propagation at the appropriate slot).
 - _[IGNORE]_ The `bid` is for the current or next block i.e. validate that
   `bid.slot >= current_slot`
-- _[IGNORE]_ The `bid` is the first `bid` valid bid for `bid.slot`, or the bid
+- _[IGNORE]_ The `bid` is the first valid bid for `bid.slot`, or the bid
   is at least 1% higher than the previous known `bid`
 - _[REJECT]_ The validator defined by `bid.validator_index` exists and is
   slashable.
