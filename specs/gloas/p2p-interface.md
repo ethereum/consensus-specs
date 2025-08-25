@@ -379,7 +379,7 @@ determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
 `beacon_block` referred to by
 `signed_execution_payload_envelope.message.beacon_block_root`.
 
-Per `fork_version = compute_fork_version(context_epoch)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -396,7 +396,7 @@ determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
 `beacon_block` referred to by
 `signed_execution_payload_envelope.message.beacon_block_root`.
 
-Per `fork_version = compute_fork_version(context_epoch)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 

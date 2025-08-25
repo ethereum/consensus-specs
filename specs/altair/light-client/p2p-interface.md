@@ -90,7 +90,7 @@ message is ignored.
 The `ForkDigest` context epoch is determined by
 `compute_epoch_at_slot(finality_update.attested_header.beacon.slot)`.
 
-Per `fork_version = compute_fork_version(context_epoch)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -138,7 +138,7 @@ message is ignored.
 The `ForkDigest` context epoch is determined by
 `compute_epoch_at_slot(optimistic_update.attested_header.beacon.slot)`.
 
-Per `fork_version = compute_fork_version(context_epoch)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -186,7 +186,7 @@ root, peers SHOULD respond with error code `3: ResourceUnavailable`.
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(bootstrap.header.beacon.slot)`.
 
-Per `fork_version = compute_fork_version(context_epoch)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -233,10 +233,10 @@ contain more than `min(MAX_REQUEST_LIGHT_CLIENT_UPDATES, count)` results.
 
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(update.attested_header.beacon.slot)`. Note
-that the `context_epoch` may differ from the one used to verify the
+that the context epoch may differ from the one used to verify the
 `update.sync_aggregate`, which is based on `update.signature_slot`.
 
-Per `fork_version = compute_fork_version(context_epoch)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -270,11 +270,11 @@ error code `3: ResourceUnavailable`.
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by
 `compute_epoch_at_slot(finality_update.attested_header.beacon.slot)`. Note that
-the `context_epoch` may differ from the one used to verify the
+the context epoch may differ from the one used to verify the
 `finality_update.sync_aggregate`, which is based on
 `finality_update.signature_slot`.
 
-Per `fork_version = compute_fork_version(context_epoch)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -308,11 +308,11 @@ error code `3: ResourceUnavailable`.
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by
 `compute_epoch_at_slot(optimistic_update.attested_header.beacon.slot)`. Note
-that the `context_epoch` may differ from the one used to verify the
+that the context epoch may differ from the one used to verify the
 `optimistic_update.sync_aggregate`, which is based on
 `optimistic_update.signature_slot`.
 
-Per `fork_version = compute_fork_version(context_epoch)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 

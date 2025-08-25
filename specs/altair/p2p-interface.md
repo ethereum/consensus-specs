@@ -317,7 +317,7 @@ Starting with Altair, and in future forks, SSZ type definitions may change. For
 this common case, we define the `ForkDigest`-context:
 
 A fixed-width 4 byte `<context-bytes>`, set to the `ForkDigest` matching the
-chunk: `compute_fork_digest(genesis_validators_root, context_epoch)`.
+chunk: `compute_fork_digest(genesis_validators_root, epoch)`.
 
 #### Messages
 
@@ -331,7 +331,7 @@ the fork namespace of the Response type.
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
 
-Per `fork_version = compute_fork_version(context_epoch)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -350,7 +350,7 @@ the fork namespace of the Response type.
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
 
-Per `fork_version = compute_fork_version(context_epoch)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 

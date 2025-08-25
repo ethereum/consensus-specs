@@ -213,15 +213,15 @@ def compute_fork_version(epoch: Epoch) -> Version:
 ```python
 def compute_fork_digest(
     genesis_validators_root: Root,
-    context_epoch: Epoch,
+    epoch: Epoch,
 ) -> ForkDigest:
     """
-    Return the 4-byte fork digest for the ``genesis_validators_root`` at a given ``context_epoch``.
+    Return the 4-byte fork digest for the ``genesis_validators_root`` at a given ``epoch``.
 
     This is a digest primarily used for domain separation on the p2p layer.
     4-bytes suffices for practical separation of forks/chains.
     """
-    fork_version = compute_fork_version(context_epoch)
+    fork_version = compute_fork_version(epoch)
     base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
     return ForkDigest(base_digest[:4])
 ```
@@ -348,10 +348,10 @@ have form: `/eth2/ForkDigestValue/Name/Encoding`. This defines both the type of
 data being sent on the topic and how the data field of the message is encoded.
 
 - `ForkDigestValue` - the lowercase hex-encoded (no "0x" prefix) bytes of
-  `compute_fork_digest(genesis_validators_root, context_epoch)` where
+  `compute_fork_digest(genesis_validators_root, epoch)` where
   - `genesis_validators_root` is the static `Root` found in
     `state.genesis_validators_root`
-  - `context_epoch` is the context epoch of the message to be sent on the topic
+  - `epoch` is the context epoch of the message to be sent on the topic
 - `Name` - see table below
 - `Encoding` - the encoding strategy describes a specific representation of
   bytes that will be transmitted over the wire. See the [Encodings](#Encodings)
@@ -950,10 +950,10 @@ Request, Response Content:
 As seen by the client at the time of sending the message:
 
 - `fork_digest`: The node's `ForkDigest`
-  (`compute_fork_digest(genesis_validators_root, context_epoch)`) where
+  (`compute_fork_digest(genesis_validators_root, epoch)`) where
   - `genesis_validators_root` is the static `Root` found in
     `state.genesis_validators_root`
-  - `context_epoch` is the node's current epoch defined by the wall-clock time
+  - `epoch` is the node's current epoch defined by the wall-clock time
     (not necessarily the epoch to which the node is sync).
 - `finalized_root`: `store.finalized_checkpoint.root` according to
   [fork choice](./fork-choice.md). (Note this defaults to `Root(b'\x00' * 32)`
@@ -1295,11 +1295,11 @@ object (`ENRForkID`)
 
 The fields of `ENRForkID` are defined as
 
-- `fork_digest` is `compute_fork_digest(genesis_validators_root, context_epoch)`
+- `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)`
   where:
   - `genesis_validators_root` is the static `Root` found in
     `state.genesis_validators_root`.
-  - `context_epoch` is the node's current epoch defined by the wall-clock time
+  - `epoch` is the node's current epoch defined by the wall-clock time
     (not necessarily the epoch to which the node is sync).
 - `next_fork_version` is the fork version corresponding to the next planned hard
   fork at a future epoch. If no future fork is planned, set

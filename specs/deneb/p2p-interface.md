@@ -256,7 +256,7 @@ network, assuming the alias
 The `ForkDigest` context epoch is determined by
 `compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot)`.
 
-Per `fork_version = compute_fork_version(context_epoch)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -446,7 +446,7 @@ For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by
 `compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot)`.
 
-Per `fork_version = compute_fork_version(context_epoch)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -510,7 +510,7 @@ For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by
 `compute_epoch_at_slot(blob_sidecar.signed_block_header.message.slot)`.
 
-Per `fork_version = compute_fork_version(context_epoch)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 

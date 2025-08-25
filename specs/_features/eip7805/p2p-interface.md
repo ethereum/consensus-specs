@@ -105,7 +105,7 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(signed_inclusion_list.message.slot)`.
 
-Per `fork_version = compute_fork_version(context_epoch)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
