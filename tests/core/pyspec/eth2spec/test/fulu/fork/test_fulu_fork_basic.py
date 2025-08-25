@@ -1,3 +1,5 @@
+from random import Random
+
 from eth2spec.test.context import (
     large_validator_set,
     low_balances,
@@ -17,6 +19,7 @@ from eth2spec.test.helpers.fulu.fork import (
     FULU_FORK_TEST_META_TAGS,
     run_fork_test,
 )
+from eth2spec.test.helpers.random import randomize_state
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_epoch_via_block,
@@ -89,4 +92,13 @@ def test_fork_random_misc_balances(spec, phases, state):
 @spec_test
 @with_meta_tags(FULU_FORK_TEST_META_TAGS)
 def test_fork_random_large_validator_set(spec, phases, state):
+    yield from run_fork_test(phases[FULU], state)
+
+
+@with_phases(phases=[ELECTRA], other_phases=[FULU])
+@spec_test
+@with_state
+@with_meta_tags(FULU_FORK_TEST_META_TAGS)
+def test_fork_random_filled_state(spec, phases, state):
+    randomize_state(spec, state, rng=Random(9999))
     yield from run_fork_test(phases[FULU], state)
