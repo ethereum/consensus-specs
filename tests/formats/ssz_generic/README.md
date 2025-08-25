@@ -16,9 +16,14 @@ into a SSZ type:
 - List
   - `basic_list` *not supported yet*
   - `complex_list` *not supported yet*
+- ProgressiveList
+  - `basic_progressive_list`
+  - `complex_progressive_list` *not supported yet*
 - Bitfields
   - `bitvector`
   - `bitlist`
+- ProgressiveBitlist
+  - `progressive_bitlist`
 - Basic types
   - `boolean`
   - `uints`
@@ -105,6 +110,18 @@ Data:
 {length}: an unsigned integer
 ```
 
+### `basic_progressive_list`
+
+```
+Template:
+
+proglist_{element type}
+
+Data:
+
+{element type}: bool, uint8, uint16, uint32, uint64, uint128, uint256
+```
+
 ### `bitlist`
 
 ```
@@ -127,6 +144,14 @@ bitvec_{length}
 Data:
 
 {length}: the length, in bits, of the bitvector.
+```
+
+### `progressive_bitlist`
+
+```
+Template:
+
+progbitlist
 ```
 
 ### `boolean`
@@ -193,10 +218,32 @@ class ComplexTestStruct(Container):
     G: Vector[VarTestStruct, 2]
 
 
+class ProgressiveTestStruct(Container):
+    A: ProgressiveList[byte]
+    B: ProgressiveList[uint64]
+    C: ProgressiveList[SmallTestStruct]
+    D: ProgressiveList[ProgressiveList[VarTestStruct]]
+
+
 class BitsStruct(Container):
     A: Bitlist[5]
     B: Bitvector[2]
     C: Bitvector[1]
     D: Bitlist[6]
     E: Bitvector[8]
+
+
+class ProgressiveBitsStruct(Container):
+    A: Bitvector[256]
+    B: Bitlist[256]
+    C: ProgressiveBitlist
+    D: Bitvector[257]
+    E: Bitlist[257]
+    F: ProgressiveBitlist
+    G: Bitvector[1280]
+    H: Bitlist[1280]
+    I: ProgressiveBitlist
+    J: Bitvector[1281]
+    K: Bitlist[1281]
+    L: ProgressiveBitlist
 ```

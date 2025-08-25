@@ -22,6 +22,7 @@ from .helpers.constants import (
     EIP7805,
     ELECTRA,
     FULU,
+    GLOAS,
     LIGHT_CLIENT_TESTING_FORKS,
     MINIMAL,
     PHASE0,
@@ -511,6 +512,8 @@ def with_all_phases_from_to_except(earliest_phase, latest_phase, except_phases=N
             ]
         )(fn)
 
+    return decorator
+
 
 def with_all_phases_except(exclusion_phases):
     """
@@ -648,6 +651,7 @@ with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
 with_electra_and_later = with_all_phases_from(ELECTRA)
 with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_gloas_and_later = with_all_phases_from(GLOAS, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7441_and_later = with_all_phases_from(EIP7441, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7805_and_later = with_all_phases_from(EIP7805, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 

@@ -333,13 +333,14 @@ and other types of chain instances may use a different configuration.
 
 ### Time parameters
 
-| Name                                  | Value                     |    Unit     |  Duration  |
-| ------------------------------------- | ------------------------- | :---------: | :--------: |
-| `SECONDS_PER_SLOT`                    | `uint64(12)`              |   seconds   | 12 seconds |
-| `SECONDS_PER_ETH1_BLOCK`              | `uint64(14)`              |   seconds   | 14 seconds |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256)    |   epochs    | ~27 hours  |
-| `SHARD_COMMITTEE_PERIOD`              | `uint64(2**8)` (= 256)    |   epochs    | ~27 hours  |
-| `ETH1_FOLLOW_DISTANCE`                | `uint64(2**11)` (= 2,048) | Eth1 blocks |  ~8 hours  |
+| Name                                  | Value                     |     Unit     |  Duration  |
+| ------------------------------------- | ------------------------- | :----------: | :--------: |
+| `SECONDS_PER_SLOT` *deprecated*       | `uint64(12)`              |   seconds    | 12 seconds |
+| `SLOT_DURATION_MS`                    | `uint64(12000)`           | milliseconds | 12 seconds |
+| `SECONDS_PER_ETH1_BLOCK`              | `uint64(14)`              |   seconds    | 14 seconds |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256)    |    epochs    | ~27 hours  |
+| `SHARD_COMMITTEE_PERIOD`              | `uint64(2**8)` (= 256)    |    epochs    | ~27 hours  |
+| `ETH1_FOLLOW_DISTANCE`                | `uint64(2**11)` (= 2,048) | Eth1 blocks  |  ~8 hours  |
 
 ### Validator cycle
 

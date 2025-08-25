@@ -32,6 +32,9 @@ markdown_extensions:
 plugins:
   - search
   - awesome-pages
+  - gen-files:
+      scripts:
+        - scripts/gen_spec_indices.py
 extra_css:
   - stylesheets/extra.css
 extra:

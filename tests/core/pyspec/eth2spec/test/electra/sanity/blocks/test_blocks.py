@@ -4,7 +4,7 @@ from eth2spec.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to,
     with_custom_state,
     with_presets,
 )
@@ -16,8 +16,8 @@ from eth2spec.test.helpers.bls_to_execution_changes import (
     get_signed_address_change,
 )
 from eth2spec.test.helpers.constants import (
-    EIP7732,
     ELECTRA,
+    GLOAS,
     MINIMAL,
 )
 from eth2spec.test.helpers.deposits import (
@@ -39,7 +39,7 @@ from eth2spec.test.helpers.withdrawals import (
 )
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_basic_el_withdrawal_request(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -68,7 +68,7 @@ def test_basic_el_withdrawal_request(spec, state):
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -113,7 +113,7 @@ def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
     assert is_execution_address and is_correct_source_address
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_basic_btec_before_el_withdrawal_request(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -162,7 +162,7 @@ def test_basic_btec_before_el_withdrawal_request(spec, state):
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_cl_exit_and_el_withdrawal_request_in_same_block(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -195,7 +195,7 @@ def test_cl_exit_and_el_withdrawal_request_in_same_block(spec, state):
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_multiple_el_partial_withdrawal_requests_same_validator(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -235,7 +235,7 @@ def test_multiple_el_partial_withdrawal_requests_same_validator(spec, state):
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_multiple_el_partial_withdrawal_requests_different_validator(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -277,7 +277,7 @@ def test_multiple_el_partial_withdrawal_requests_different_validator(spec, state
         assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_withdrawal_and_withdrawal_request_same_validator(spec, state):
     # Give a validator an excess balance
@@ -321,7 +321,7 @@ def test_withdrawal_and_withdrawal_request_same_validator(spec, state):
     assert len(state.pending_partial_withdrawals) == 0
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_withdrawal_and_switch_to_compounding_request_same_validator(spec, state):
     # Give a validator an excess balance
@@ -369,7 +369,7 @@ def test_withdrawal_and_switch_to_compounding_request_same_validator(spec, state
     assert len(state.pending_deposits) == 0
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_deposit_request_with_same_pubkey_different_withdrawal_credentials(spec, state):
     # signify the eth1 bridge deprecation
@@ -427,7 +427,7 @@ def test_deposit_request_with_same_pubkey_different_withdrawal_credentials(spec,
         )
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_deposit_request_max_per_payload(spec, state):
     # signify the eth1 bridge deprecation
@@ -470,7 +470,7 @@ def test_deposit_request_max_per_payload(spec, state):
         )
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -571,7 +571,7 @@ def test_withdrawal_and_consolidation_effective_balance_updates(spec, state):
     assert state.balances[b_index] < state.validators[b_index].effective_balance
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -632,7 +632,7 @@ def test_consolidation_requests_when_pending_consolidation_queue_is_full(spec, s
     assert len(state.pending_consolidations) == spec.PENDING_CONSOLIDATIONS_LIMIT
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
@@ -712,7 +712,7 @@ def test_switch_to_compounding_requests_when_pending_consolidation_queue_is_full
     assert spec.has_compounding_withdrawal_credential(state.validators[source_index])
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_switch_to_compounding_requests_when_too_little_consolidation_churn_limit(spec, state):
     # Move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -777,7 +777,7 @@ def test_switch_to_compounding_requests_when_too_little_consolidation_churn_limi
     assert spec.has_compounding_withdrawal_credential(state.validators[source_index])
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @with_presets([MINIMAL], "Keep the size of the test reasonable")
 @spec_state_test
 def test_withdrawal_requests_when_pending_withdrawal_queue_is_full(spec, state):
@@ -836,7 +836,7 @@ def test_withdrawal_requests_when_pending_withdrawal_queue_is_full(spec, state):
     assert withdrawal_request_1.amount != withdrawal_request_2.amount
 
 
-@with_all_phases_from_except(ELECTRA, [EIP7732])
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @with_presets([MINIMAL], "need sufficient consolidation churn limit")
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,

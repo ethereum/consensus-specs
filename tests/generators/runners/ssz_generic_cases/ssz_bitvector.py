@@ -30,7 +30,7 @@ def bitvector_case_fn(
 
 def valid_cases():
     rng = Random(1234)
-    for size in [1, 2, 3, 4, 5, 8, 16, 31, 512, 513]:
+    for size in [1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16, 17, 31, 32, 33, 511, 512, 513]:
         for mode in [
             RandomizationMode.mode_random,
             RandomizationMode.mode_zero,
