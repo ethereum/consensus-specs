@@ -76,9 +76,7 @@ def setup_lc_sync_test(spec, state, s_spec=None, phases=None):
     upgraded = upgrade_lc_bootstrap_to_new_spec(d_spec, test.s_spec, data, phases)
     test.store = test.s_spec.initialize_light_client_store(trusted_block_root, upgraded)
     store_epoch = _get_store_fork_epoch(test.s_spec)
-    store_fork_digest = test.s_spec.compute_fork_digest(
-        test.genesis_validators_root, store_epoch
-    )
+    store_fork_digest = test.s_spec.compute_fork_digest(test.genesis_validators_root, store_epoch)
     yield "store_fork_digest", "meta", encode_hex(store_fork_digest)
 
     return test
@@ -189,9 +187,7 @@ def _emit_upgrade_store(test, new_s_spec, phases=None):
     test.s_spec = new_s_spec
     store_epoch = _get_store_fork_epoch(test.s_spec)
     assert store_epoch != old_epoch
-    store_fork_digest = test.s_spec.compute_fork_digest(
-        test.genesis_validators_root, store_epoch
-    )
+    store_fork_digest = test.s_spec.compute_fork_digest(test.genesis_validators_root, store_epoch)
 
     yield from []  # Consistently enable `yield from` syntax in calling tests
     test.steps.append(
