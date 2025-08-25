@@ -193,6 +193,7 @@ def get_blob_parameters(epoch: Epoch) -> BlobParameters:
     Return the blob parameters at a given epoch.
     """
     for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
+        assert entry["EPOCH"] >= FULU_FORK_EPOCH
         if epoch >= entry["EPOCH"]:
             return BlobParameters(entry["EPOCH"], entry["MAX_BLOBS_PER_BLOCK"])
     return BlobParameters(ELECTRA_FORK_EPOCH, MAX_BLOBS_PER_BLOCK_ELECTRA)
