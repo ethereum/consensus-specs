@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Modifications in Altair](#modifications-in-altair)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -40,6 +41,18 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery
 domain. Some Phase 0 features will be deprecated, but not removed immediately.
 
 ## Modifications in Altair
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ### MetaData
 
@@ -304,7 +317,7 @@ Starting with Altair, and in future forks, SSZ type definitions may change. For
 this common case, we define the `ForkDigest`-context:
 
 A fixed-width 4 byte `<context-bytes>`, set to the `ForkDigest` matching the
-chunk: `compute_fork_digest(fork_version, genesis_validators_root)`.
+chunk: `compute_fork_digest(genesis_validators_root, epoch)`.
 
 #### Messages
 
@@ -315,7 +328,10 @@ chunk: `compute_fork_digest(fork_version, genesis_validators_root)`.
 Request and Response remain unchanged. A `ForkDigest`-context is used to select
 the fork namespace of the Response type.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
+
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -331,7 +347,10 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 Request and Response remain unchanged. A `ForkDigest`-context is used to select
 the fork namespace of the Response type.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
+
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
