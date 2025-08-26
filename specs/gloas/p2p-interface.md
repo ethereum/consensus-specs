@@ -53,6 +53,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     if epoch >= GLOAS_FORK_EPOCH:
         return GLOAS_FORK_VERSION
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
     if epoch >= ELECTRA_FORK_EPOCH:
         return ELECTRA_FORK_VERSION
     if epoch >= DENEB_FORK_EPOCH:
