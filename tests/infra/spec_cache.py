@@ -1,6 +1,8 @@
 import inspect
 from functools import _make_key
 
+import pytest
+
 DISABLED_CACHE = False
 
 CACHES = {}
@@ -61,7 +63,9 @@ def spec_cache(cache_fns: list[str] | str):
         else:
             return wrapper
 
-    return decorator
+    xdist_name = "cache_" + "_".join(sorted(cache_fns))
+
+    return pytest.mark.xdist_group(name=xdist_name)(decorator)
 
 
 def spec_cache_peerdas(fn):
