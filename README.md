@@ -97,7 +97,7 @@ consensus specifications:
 
 ### Useful resources
 
-- [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
+- [Design Rationale](https://notes.ethereum.org/@vbuterin/serenity_design_rationale?type=view#)
 - [Phase0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
 - [Combining GHOST and Casper paper](https://arxiv.org/abs/2003.03052)
 - [Specifications viewer (mkdocs)](https://ethereum.github.io/consensus-specs/)
