@@ -613,7 +613,7 @@ def case_recover_cells_and_kzg_proofs():
             get_test_runner(get_inputs),
         )
 
-    # Edge case: Shuffled indices, no missing cells
+    # Edge case: Shuffled indices, no missing
     if True:
 
         def get_inputs():
@@ -642,6 +642,22 @@ def case_recover_cells_and_kzg_proofs():
 
         yield (
             "recover_cells_and_kzg_proofs_case_invalid_shuffled_one_missing",
+            get_test_runner(get_inputs),
+        )
+
+    # Edge case: Shuffled indices, half missing
+    if True:
+
+        def get_inputs():
+            cells, _ = cached_compute_cells_and_kzg_proofs(VALID_BLOBS[5])
+            cell_indices = list(range(spec.CELLS_PER_EXT_BLOB // 2))
+            random.seed(42)  # Use fixed seed for reproducibility
+            random.shuffle(cell_indices)
+            partial_cells = [cells[cell_index] for cell_index in cell_indices]
+            return cell_indices, partial_cells
+
+        yield (
+            "recover_cells_and_kzg_proofs_case_invalid_shuffled_half_missing",
             get_test_runner(get_inputs),
         )
 
