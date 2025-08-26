@@ -42,7 +42,7 @@ and is under active development.
 for a given epoch.
 
 There MUST NOT exist multiple blob schedule entries with the same epoch value.
-The maximum blobs per block limit for blob schedules entries MUST be less than
+The maximum blobs per block limit for blob schedule entries MUST be less than
 or equal to `MAX_BLOB_COMMITMENTS_PER_BLOCK`. The blob schedule entries SHOULD
 be sorted by epoch in ascending order. The blob schedule MAY be empty.
 
