@@ -581,7 +581,7 @@ regardless of whether it is a regular or a Blob-Parameters-Only fork. This new
 entry MUST be added once `FULU_FORK_EPOCH` is assigned any value other than
 `FAR_FUTURE_EPOCH`. Adding this entry prior to the Fulu fork will not impact
 peering as nodes will ignore unknown ENR entries and `nfd` mismatches do not
-cause disconnnects.
+cause disconnects.
 
 If no next fork is scheduled, the `nfd` entry contains the default value for the
 type (i.e., the SSZ representation of a zero-filled array).

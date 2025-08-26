@@ -18,7 +18,7 @@
 
 ## Introduction
 
-This document describes the process of Fulu upgrade.
+This document describes the process of the Fulu upgrade.
 
 ## Configuration
 
