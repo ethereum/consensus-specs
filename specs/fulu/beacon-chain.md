@@ -74,7 +74,8 @@ def process_execution_payload(
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
-    # [Modified in Fulu:EIP7892] Verify commitments are under limit
+    # [Modified in Fulu:EIP7892]
+    # Verify commitments are under limit
     assert (
         len(body.blob_kzg_commitments)
         <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
@@ -201,27 +202,25 @@ def get_blob_parameters(epoch: Epoch) -> BlobParameters:
 #### Modified `compute_fork_digest`
 
 *Note:* The `compute_fork_digest` helper is updated to account for
-Blob-Parameters-Only forks. Also, the `fork_version` parameter has been removed
-and is now computed for the given epoch with `compute_fork_version`.
+Blob-Parameters-Only forks.
 
 ```python
 def compute_fork_digest(
     genesis_validators_root: Root,
-    # [New in Fulu:EIP7892]
     epoch: Epoch,
 ) -> ForkDigest:
     """
-    Return the 4-byte fork digest for the ``version`` and ``genesis_validators_root``
-    XOR'd with the hash of the blob parameters for ``epoch``.
+    Return the 4-byte fork digest for the ``genesis_validators_root`` at a given ``epoch``.
 
     This is a digest primarily used for domain separation on the p2p layer.
     4-bytes suffices for practical separation of forks/chains.
     """
     fork_version = compute_fork_version(epoch)
     base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
-    blob_parameters = get_blob_parameters(epoch)
 
+    # [Modified in Fulu:EIP7892]
     # Bitmask digest with hash of blob parameters
+    blob_parameters = get_blob_parameters(epoch)
     return ForkDigest(
         bytes(
             xor(
