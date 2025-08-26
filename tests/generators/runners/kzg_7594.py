@@ -495,38 +495,6 @@ def case_recover_cells_and_kzg_proofs():
             get_test_runner(get_inputs),
         )
 
-    # Valid: Shuffled indices, no missing cells
-    if True:
-
-        def get_inputs():
-            cells, _ = cached_compute_cells_and_kzg_proofs(VALID_BLOBS[4])
-            cell_indices = list(range(spec.CELLS_PER_EXT_BLOB))
-            random.seed(42)  # Use fixed seed for reproducibility
-            random.shuffle(cell_indices)
-            partial_cells = [cells[cell_index] for cell_index in cell_indices]
-            return cell_indices, partial_cells
-
-        yield (
-            "recover_cells_and_kzg_proofs_case_valid_shuffled_no_missing",
-            get_test_runner(get_inputs),
-        )
-
-    # Valid: Shuffled indices, one missing
-    if True:
-
-        def get_inputs():
-            cells, _ = cached_compute_cells_and_kzg_proofs(VALID_BLOBS[5])
-            cell_indices = list(range(spec.CELLS_PER_EXT_BLOB - 1))
-            random.seed(42)  # Use fixed seed for reproducibility
-            random.shuffle(cell_indices)
-            partial_cells = [cells[cell_index] for cell_index in cell_indices]
-            return cell_indices, partial_cells
-
-        yield (
-            "recover_cells_and_kzg_proofs_case_valid_shuffled_one_missing",
-            get_test_runner(get_inputs),
-        )
-
     # Edge case: All cells are missing
     if True:
 
@@ -642,6 +610,38 @@ def case_recover_cells_and_kzg_proofs():
 
         yield (
             "recover_cells_and_kzg_proofs_case_invalid_duplicate_cell_index",
+            get_test_runner(get_inputs),
+        )
+
+    # Edge case: Shuffled indices, no missing cells
+    if True:
+
+        def get_inputs():
+            cells, _ = cached_compute_cells_and_kzg_proofs(VALID_BLOBS[4])
+            cell_indices = list(range(spec.CELLS_PER_EXT_BLOB))
+            random.seed(42)  # Use fixed seed for reproducibility
+            random.shuffle(cell_indices)
+            all_cells = [cells[cell_index] for cell_index in cell_indices]
+            return cell_indices, all_cells
+
+        yield (
+            "recover_cells_and_kzg_proofs_case_invalid_shuffled_no_missing",
+            get_test_runner(get_inputs),
+        )
+
+    # Edge case: Shuffled indices, one missing
+    if True:
+
+        def get_inputs():
+            cells, _ = cached_compute_cells_and_kzg_proofs(VALID_BLOBS[5])
+            cell_indices = list(range(spec.CELLS_PER_EXT_BLOB - 1))
+            random.seed(42)  # Use fixed seed for reproducibility
+            random.shuffle(cell_indices)
+            partial_cells = [cells[cell_index] for cell_index in cell_indices]
+            return cell_indices, partial_cells
+
+        yield (
+            "recover_cells_and_kzg_proofs_case_invalid_shuffled_one_missing",
             get_test_runner(get_inputs),
         )
 

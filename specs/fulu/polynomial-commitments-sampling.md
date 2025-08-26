@@ -801,6 +801,8 @@ def recover_cells_and_kzg_proofs(
     assert CELLS_PER_EXT_BLOB // 2 <= len(cell_indices) <= CELLS_PER_EXT_BLOB
     # Check for duplicates
     assert len(cell_indices) == len(set(cell_indices))
+    # Check that indices are in ascending order
+    assert cell_indices == sorted(cell_indices)
     # Check that the cell indices are within bounds
     for cell_index in cell_indices:
         assert cell_index < CELLS_PER_EXT_BLOB
@@ -808,16 +810,11 @@ def recover_cells_and_kzg_proofs(
     for cell in cells:
         assert len(cell) == BYTES_PER_CELL
 
-    # Sort cell indices and cells together to ensure proper order
-    sorted_pairs = sorted(zip(cell_indices, cells), key=lambda x: x[0])
-    sorted_cell_indices = [pair[0] for pair in sorted_pairs]
-    sorted_cells = [pair[1] for pair in sorted_pairs]
-
     # Convert cells to coset evaluations
-    cosets_evals = [cell_to_coset_evals(cell) for cell in sorted_cells]
+    cosets_evals = [cell_to_coset_evals(cell) for cell in cells]
 
     # Given the coset evaluations, recover the polynomial in coefficient form
-    polynomial_coeff = recover_polynomialcoeff(sorted_cell_indices, cosets_evals)
+    polynomial_coeff = recover_polynomialcoeff(cell_indices, cosets_evals)
 
     # Recompute all cells/proofs
     return compute_cells_and_kzg_proofs_polynomialcoeff(polynomial_coeff)
