@@ -78,6 +78,7 @@ def _template_test_at_fork_deactivate_validators_wo_block(
 
 _template_test_at_fork_deactivate_validators_wo_block()
 
+
 @template_test_upgrades_all
 def _template_test_at_fork_deactivate_validators(
     pre_spec: SpecForkName, post_spec: SpecForkName
