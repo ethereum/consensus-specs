@@ -62,8 +62,8 @@ def test_recover_matrix(spec):
     # Construct a matrix with some entries missing
     partial_matrix = []
     for blob_entries in chunks(matrix, spec.CELLS_PER_EXT_BLOB):
-        rng.shuffle(blob_entries)
-        partial_matrix.extend(blob_entries[:N_SAMPLES])
+        indices = sorted(rng.sample(range(len(blob_entries)), N_SAMPLES))
+        partial_matrix.extend([blob_entries[i] for i in indices])
 
     # Given the partial matrix, recover the missing entries
     recovered_matrix = spec.recover_matrix(partial_matrix, blob_count)
