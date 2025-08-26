@@ -21,6 +21,64 @@ from tests.infra.template_test import (
 
 
 @template_test_upgrades_all
+def _template_test_at_fork_deactivate_validators_wo_block(
+    pre_spec: SpecForkName, post_spec: SpecForkName
+) -> tuple[Callable, str]:
+    meta_tags = {
+        "fork": str(post_spec).lower(),
+    }
+
+    @with_phases(phases=[pre_spec], other_phases=[post_spec])
+    @spec_test
+    @with_state
+    @with_meta_tags(meta_tags)
+    def test_after_fork_deactivate_validators_wo_block(spec, phases, state):
+        current_epoch = spec.get_current_epoch(state)
+        fork_epoch = current_epoch + spec.MIN_SEED_LOOKAHEAD + 1
+
+        exited_validators = []
+        # Change the active validator set by exiting half of the validators in future epochs
+        # within the MIN_SEED_LOOKAHEAD range
+        for validator_index in range(len(state.validators) // 2):
+            validator = state.validators[validator_index]
+            # Set exit_epoch to a future epoch within MIN_SEED_LOOKAHEAD + 1 range
+            # This makes the validator active at current_epoch but exited in future epochs
+            validator.exit_epoch = fork_epoch
+            exited_validators.append(validator_index)
+
+        while spec.get_current_epoch(state) < fork_epoch - 1:
+            spec.process_slots(
+                state, state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
+            )
+            assert state.slot % spec.SLOTS_PER_EPOCH == 0
+
+        spec.process_slots(
+            state, state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH) - 1
+        )
+        assert state.slot % spec.SLOTS_PER_EPOCH == spec.SLOTS_PER_EPOCH - 1
+
+        state, _ = yield from do_fork_generate(
+            state, spec, phases[post_spec], fork_epoch, with_block=False
+        )
+
+        current_epoch = spec.get_current_epoch(state)
+
+        for validator_index in exited_validators:
+            validator = state.validators[validator_index]
+            # Check that the validator is no longer active
+            assert not phases[post_spec].is_active_validator(validator, current_epoch), (
+                f"Validator {validator_index} should be inactive at epoch {current_epoch}"
+            )
+
+    return (
+        test_after_fork_deactivate_validators_wo_block,
+        f"test_after_fork_deactivate_validators_wo_block_from_{pre_spec}_to_{post_spec}",
+    )
+
+
+_template_test_at_fork_deactivate_validators_wo_block()
+
+@template_test_upgrades_all
 def _template_test_at_fork_deactivate_validators(
     pre_spec: SpecForkName, post_spec: SpecForkName
 ) -> tuple[Callable, str]:
@@ -34,11 +92,7 @@ def _template_test_at_fork_deactivate_validators(
     @with_meta_tags(meta_tags)
     def test_after_fork_deactivate_validators(spec, phases, state):
         current_epoch = spec.get_current_epoch(state)
-
-        spec.process_slots(
-            state, state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH) - 1
-        )
-        assert state.slot % spec.SLOTS_PER_EPOCH == spec.SLOTS_PER_EPOCH - 1
+        fork_epoch = current_epoch + spec.MIN_SEED_LOOKAHEAD + 1
 
         exited_validators = []
         # Change the active validator set by exiting half of the validators in future epochs
@@ -47,11 +101,22 @@ def _template_test_at_fork_deactivate_validators(
             validator = state.validators[validator_index]
             # Set exit_epoch to a future epoch within MIN_SEED_LOOKAHEAD + 1 range
             # This makes the validator active at current_epoch but exited in future epochs
-            validator.exit_epoch = current_epoch + 1
+            validator.exit_epoch = fork_epoch
             exited_validators.append(validator_index)
 
+        while spec.get_current_epoch(state) < fork_epoch - 1:
+            spec.process_slots(
+                state, state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH)
+            )
+            assert state.slot % spec.SLOTS_PER_EPOCH == 0
+
+        spec.process_slots(
+            state, state.slot + spec.SLOTS_PER_EPOCH - (state.slot % spec.SLOTS_PER_EPOCH) - 1
+        )
+        assert state.slot % spec.SLOTS_PER_EPOCH == spec.SLOTS_PER_EPOCH - 1
+
         state, _ = yield from do_fork_generate(
-            state, spec, phases[post_spec], spec.get_current_epoch(state) + 1
+            state, spec, phases[post_spec], fork_epoch, with_block=True
         )
 
         current_epoch = spec.get_current_epoch(state)
