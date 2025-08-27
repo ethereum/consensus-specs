@@ -169,7 +169,7 @@ def get_block_with_blob_and_sidecars(spec, state, rng=None, blob_count=1):
     block, blobs, blob_kzg_commitments, blob_kzg_proofs = get_block_with_blob(
         spec, state, rng=rng, blob_count=blob_count
     )
-    cells_and_kzg_proofs = [_cached_compute_cells_and_kzg_proofs(spec, blob) for blob in blobs]
+    cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
 
     # We need a signed block to call `get_data_column_sidecars_from_block`
     signed_block = state_transition_and_sign_block(spec, state, block)
