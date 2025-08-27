@@ -19,8 +19,8 @@
 
 ## Introduction
 
-*Note*: This specification is built upon
-[Fulu](../../fulu/beacon-chain.md) and is under active development.
+*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md) and
+is under active development.
 
 ## Custom types
 
@@ -105,8 +105,11 @@ def process_execution_payload(
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
-    # Verify commitments are under limit
-    assert len(body.blob_kzg_commitments) <= MAX_BLOB_COMMITMENTS_PER_BLOCK
+    # [Modified in EIP7928] Verify commitments are under limit
+    assert (
+        len(body.blob_kzg_commitments)
+        <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    )
     # Verify the execution payload is valid
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments

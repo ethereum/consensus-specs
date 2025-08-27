@@ -25,7 +25,7 @@ Warning: this configuration is not definitive.
 
 | Name                   | Value                                 |
 | ---------------------- | ------------------------------------- |
-| `EIP7928_FORK_VERSION` | `Version('0x09000000')`               |
+| `EIP7928_FORK_VERSION` | `Version('0x0b000000')`               |
 | `EIP7928_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helper functions
@@ -135,7 +135,6 @@ def upgrade_to_eip7928(pre: fulu.BeaconState) -> BeaconState:
         pending_deposits=pre.pending_deposits,
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
-        # [Fulu field]
         proposer_lookahead=pre.proposer_lookahead,
     )
 

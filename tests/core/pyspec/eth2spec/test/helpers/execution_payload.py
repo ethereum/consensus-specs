@@ -9,8 +9,8 @@ from eth2spec.debug.random_value import get_random_bytes_list
 from eth2spec.test.helpers.forks import (
     is_post_capella,
     is_post_deneb,
-    is_post_electra,
     is_post_eip7928,
+    is_post_electra,
     is_post_gloas,
 )
 from eth2spec.test.helpers.keys import privkeys
@@ -51,7 +51,9 @@ def get_execution_payload_header(spec, state, execution_payload):
         payload_header.blob_gas_used = execution_payload.blob_gas_used
         payload_header.excess_blob_gas = execution_payload.excess_blob_gas
     if is_post_eip7928(spec):
-        payload_header.block_access_list_root = spec.hash_tree_root(execution_payload.block_access_list)
+        payload_header.block_access_list_root = spec.hash_tree_root(
+            execution_payload.block_access_list
+        )
     return payload_header
 
 

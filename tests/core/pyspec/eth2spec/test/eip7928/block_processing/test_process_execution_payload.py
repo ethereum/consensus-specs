@@ -4,9 +4,8 @@ Tests for EIP-7928 block access list field.
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_phases,
+    with_eip7928_and_later,
 )
-from eth2spec.test.helpers.constants import EIP7928
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
     compute_el_block_hash,
@@ -14,7 +13,7 @@ from eth2spec.test.helpers.execution_payload import (
 from eth2spec.test.helpers.state import next_slot
 
 
-@with_phases([EIP7928])
+@with_eip7928_and_later
 @spec_state_test
 def test_execution_payload_with_block_access_list(spec, state):
     """Test that execution payload correctly includes block access list field."""
