@@ -237,23 +237,15 @@ def test_verify_cell_kzg_proof_batch_invalid(spec):
 def test_recover_cells_and_kzg_proofs(spec):
     rng = random.Random(5566)
 
-    # Number of samples we will be recovering from
-    N_SAMPLES = spec.CELLS_PER_EXT_BLOB // 2
-
     # Get the data we will be working with
     blob = get_sample_blob(spec)
 
     # Extend data with Reed-Solomon and split the extended data in cells
     cells, proofs = spec.compute_cells_and_kzg_proofs(blob)
 
-    # Compute the cells we will be recovering from
-    cell_indices = []
-    # First figure out just the indices of the cells
-    for i in range(N_SAMPLES):
-        j = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
-        while j in cell_indices:
-            j = rng.randint(0, spec.CELLS_PER_EXT_BLOB - 1)
-        cell_indices.append(j)
+    # Compute the cells we will be recovering from (50% available)
+    cell_indices = sorted(rng.sample(range(spec.CELLS_PER_EXT_BLOB), spec.CELLS_PER_EXT_BLOB // 2))
+
     # Now the cells themselves
     known_cells = [cells[cell_index] for cell_index in cell_indices]
 
