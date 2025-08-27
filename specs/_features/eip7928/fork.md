@@ -98,6 +98,7 @@ def upgrade_to_eip7928(pre: fulu.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
+            # [Modified in EIP7928]
             current_version=EIP7928_FORK_VERSION,
             epoch=epoch,
         ),
