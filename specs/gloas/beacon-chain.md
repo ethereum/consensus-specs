@@ -1253,6 +1253,8 @@ def process_execution_payload(
     assert committed_header.gas_limit == payload.gas_limit
     # Verify the block hash
     assert committed_header.block_hash == payload.block_hash
+    # Verify the parent block hash
+    assert committed_header.parent_block_hash == payload.parent_hash
     # Verify consistency of the parent hash with respect to the previous execution payload
     assert payload.parent_hash == state.latest_block_hash
     # Verify prev_randao

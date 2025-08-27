@@ -937,6 +937,35 @@ def test_process_execution_payload_max_blob_commitments_valid(spec, state):
 @with_gloas_and_later
 @spec_state_test
 @always_bls
+def test_process_execution_payload_wrong_parent_block_hash(spec, state):
+    """
+    Test wrong parent block hash in committed header fails with separate builder
+    """
+    proposer_index = spec.get_beacon_proposer_index(state)
+    # Use a different validator as builder
+    builder_index = (proposer_index + 1) % len(state.validators)
+    make_validator_builder(spec, state, builder_index)
+
+    setup_state_with_payload_header(spec, state, builder_index, spec.Gwei(2000000))
+
+    # Modify the committed header to have wrong parent_block_hash
+    state.latest_execution_payload_header.parent_block_hash = spec.Hash32(b"\x99" * 32)
+
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.block_hash = state.latest_execution_payload_header.block_hash
+    execution_payload.gas_limit = state.latest_execution_payload_header.gas_limit
+    execution_payload.parent_hash = state.latest_block_hash  # Correct parent hash in payload
+
+    signed_envelope = prepare_execution_payload_envelope(
+        spec, state, builder_index=builder_index, execution_payload=execution_payload
+    )
+
+    yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
 def test_process_execution_payload_execution_engine_invalid(spec, state):
     """
     Test execution engine returns invalid with separate builder
