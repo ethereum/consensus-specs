@@ -6,6 +6,8 @@
 
 - [Introduction](#introduction)
 - [Modification in Gloas](#modification-in-gloas)
+  - [Helper functions](#helper-functions)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
@@ -33,13 +35,38 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for
-GloasGloasGloasGloasGloasGloasGloasGloas.
+This document contains the consensus-layer networking specification for Gloas.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modification in Gloas
+
+### Helper functions
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= GLOAS_FORK_EPOCH:
+        return GLOAS_FORK_VERSION
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ### Preset
 
@@ -308,8 +335,6 @@ The following validations are removed:
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
-
 <!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
@@ -351,11 +376,12 @@ Specifications of req\\response methods are equivalent to
 [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference
 being the response content type.
 
-For each `response_chunk`, a `ForkDigest`-context based on
-`compute_fork_version(compute_epoch_at_slot(signed_execution_payload_envelop.message.slot))`
-is used to select the fork namespace of the Response type.
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
+`beacon_block` referred to by
+`signed_execution_payload_envelope.message.beacon_block_root`.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -367,8 +393,12 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 **Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_root/1/`
 
-The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`:
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
+`beacon_block` referred to by
+`signed_execution_payload_envelope.message.beacon_block_root`.
+
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
