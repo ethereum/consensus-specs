@@ -41,6 +41,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     if epoch >= EIP7928_FORK_EPOCH:
         return EIP7928_FORK_VERSION
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
     if epoch >= ELECTRA_FORK_EPOCH:
         return ELECTRA_FORK_VERSION
     if epoch >= DENEB_FORK_EPOCH:
@@ -67,8 +69,8 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and
 change is made to upgrade to EIP-7928.
 
 ```python
-def upgrade_to_eip7928(pre: electra.BeaconState) -> BeaconState:
-    epoch = electra.get_current_epoch(pre)
+def upgrade_to_eip7928(pre: fulu.BeaconState) -> BeaconState:
+    epoch = fulu.get_current_epoch(pre)
     latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=pre.latest_execution_payload_header.parent_hash,
         fee_recipient=pre.latest_execution_payload_header.fee_recipient,
@@ -132,6 +134,8 @@ def upgrade_to_eip7928(pre: electra.BeaconState) -> BeaconState:
         pending_deposits=pre.pending_deposits,
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
+        # [Fulu field]
+        proposer_lookahead=pre.proposer_lookahead,
     )
 
     return post

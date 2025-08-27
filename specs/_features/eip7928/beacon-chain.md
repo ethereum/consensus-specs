@@ -20,7 +20,7 @@
 ## Introduction
 
 *Note*: This specification is built upon
-[Electra](../../electra/beacon-chain.md) and is under active development.
+[Fulu](../../fulu/beacon-chain.md) and is under active development.
 
 ## Custom types
 
