@@ -42,6 +42,12 @@
 | `SYNC_MESSAGE_DUE_BPS_EIP7782` | `uint64(3333)` | basis points | ~33% of slot |
 | `CONTRIBUTION_DUE_BPS_EIP7782` | `uint64(6667)` | basis points | ~67% of slot |
 
+### EIP-7782 sync committee parameters
+
+| Name                                           | Value          | Unit | Duration |
+| ---------------------------------------------- | -------------- | :--: | :------: |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD_EIP7782`    | `uint64(512)`  | epochs | ~27 hours |
+
 *Note*: EIP-7782 uses the blob schedule mechanism to reduce blob throughput. The
 blob schedule entry for EIP-7782 sets `MAX_BLOBS_PER_BLOCK` to 3 (half of the
 current 6 blobs) to maintain constant throughput per unit time with 6-second
@@ -50,6 +56,8 @@ slots. Transaction limits remain unchanged.
 *Note*: EIP-7782 also halves the churn limits to maintain timing constants with
 6-second slots. This ensures that validator activation/exit rates remain
 proportional to time rather than slot count.
+
+*Note*: EIP-7782 doubles the sync committee period to maintain the same time duration (~27 hours) with 6-second slots.
 
 ### EIP-7782 churn limit parameters
 
