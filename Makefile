@@ -114,8 +114,25 @@ test: pyspec
 		$(PRESET) \
 		$(BLS) \
 		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
-		$(CURDIR)/tests/infra \
 		$(PYSPEC_DIR)/eth2spec
+
+# Run test framework tests.
+#
+# To run a specific test, append k=<test>, eg:
+#   make test k=test_verify_kzg_proof
+# To run tests with a specific bls library, append bls=<bls>, eg:
+#   make test bls=arkworks
+test_infra: MAYBE_TEST := $(if $(k),-k=$(k))
+# Disable parallelism which running a specific test.
+# Parallelism makes debugging difficult (print doesn't work).
+test_infra: MAYBE_PARALLEL := $(if $(k),,-n auto)
+test_infra: pyspec
+	@mkdir -p $(TEST_REPORT_DIR)
+	@$(PYTHON_VENV) -m pytest \
+		$(MAYBE_PARALLEL) \
+		--capture=no \
+		$(MAYBE_TEST) \
+		$(CURDIR)/tests/infra
 
 ###############################################################################
 # Coverage
