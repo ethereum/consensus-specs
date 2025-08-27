@@ -8,5 +8,5 @@ class EIP7928SpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth2spec.electra import {preset_name} as electra
+from eth2spec.fulu import {preset_name} as fulu
 """

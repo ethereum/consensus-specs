@@ -82,8 +82,8 @@ class ExecutionPayloadHeader(Container):
 
 ### `NewPayloadRequest`
 
-*Note*: The `NewPayloadRequest` remains unchanged. The `block_access_list` is
-passed as part of the `execution_payload`.
+*Note*: The `NewPayloadRequest` is unchanged. The `block_access_list` is
+included in the `execution_payload` field.
 
 ## Beacon chain state transition function
 

@@ -70,7 +70,7 @@ change is made to upgrade to EIP-7928.
 
 ```python
 def upgrade_to_eip7928(pre: fulu.BeaconState) -> BeaconState:
-    epoch = fulu.get_current_epoch(pre)
+    epoch = get_current_epoch(pre)
     latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=pre.latest_execution_payload_header.parent_hash,
         fee_recipient=pre.latest_execution_payload_header.fee_recipient,
