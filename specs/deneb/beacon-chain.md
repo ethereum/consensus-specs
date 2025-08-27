@@ -255,7 +255,8 @@ def get_attestation_participation_flag_indices(
     participation_flag_indices = []
     if is_matching_source and inclusion_delay <= integer_squareroot(SLOTS_PER_EPOCH):
         participation_flag_indices.append(TIMELY_SOURCE_FLAG_INDEX)
-    if is_matching_target:  # [Modified in Deneb:EIP7045]
+    # [Modified in Deneb:EIP7045]
+    if is_matching_target:
         participation_flag_indices.append(TIMELY_TARGET_FLAG_INDEX)
     if is_matching_head and inclusion_delay == MIN_ATTESTATION_INCLUSION_DELAY:
         participation_flag_indices.append(TIMELY_HEAD_FLAG_INDEX)
@@ -380,7 +381,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
-    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot  # [Modified in Deneb:EIP7045]
+    # [Modified in Deneb:EIP7045]
+    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
     assert data.index < get_committee_count_per_slot(state, data.target.epoch)
 
     committee = get_beacon_committee(state, data.slot, data.index)
@@ -473,8 +475,10 @@ def process_execution_payload(
         block_hash=payload.block_hash,
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
-        blob_gas_used=payload.blob_gas_used,  # [New in Deneb:EIP4844]
-        excess_blob_gas=payload.excess_blob_gas,  # [New in Deneb:EIP4844]
+        # [New in Deneb:EIP4844]
+        blob_gas_used=payload.blob_gas_used,
+        # [New in Deneb:EIP4844]
+        excess_blob_gas=payload.excess_blob_gas,
     )
 ```
 

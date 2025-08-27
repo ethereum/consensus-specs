@@ -38,8 +38,9 @@ from eth2spec.test.helpers.forks import (
     is_post_altair,
     is_post_bellatrix,
     is_post_capella,
-    is_post_eip7732,
     is_post_electra,
+    is_post_fulu,
+    is_post_gloas,
 )
 from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.multi_operations import (
@@ -169,7 +170,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
         state_root=spec.Bytes32(),
         body_root=block.body.hash_tree_root(),
     )
-    if is_post_bellatrix(spec) and not is_post_eip7732(spec):
+    if is_post_bellatrix(spec) and not is_post_gloas(spec):
         if spec.is_execution_enabled(state, block.body):
             spec.process_execution_payload(state, block.body, spec.EXECUTION_ENGINE)
 
@@ -223,7 +224,7 @@ def test_invalid_parent_from_same_slot(spec, state):
     child_block = parent_block.copy()
     child_block.parent_root = state.latest_block_header.hash_tree_root()
 
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         child_block.body.signed_execution_payload_header = (
             build_empty_signed_execution_payload_header(spec, state)
         )
@@ -231,7 +232,7 @@ def test_invalid_parent_from_same_slot(spec, state):
         child_block.body.execution_payload = build_empty_execution_payload(spec, state)
 
     child_block.parent_root = state.latest_block_header.hash_tree_root()
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
         child_block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
             spec, payload, state
@@ -767,6 +768,8 @@ def test_high_proposer_index(spec, state):
     # disable a good amount of validators to make the active count lower, for a faster test
     current_epoch = spec.get_current_epoch(state)
     for i in range(len(state.validators) // 3):
+        if is_post_fulu(spec) and i in state.proposer_lookahead:
+            continue
         state.validators[i].exit_epoch = current_epoch
 
     # skip forward, get brand new proposers

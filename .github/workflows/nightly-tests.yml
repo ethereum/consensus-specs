@@ -9,7 +9,7 @@ on:
     inputs:
       ref:
         description: The branch, tag or SHA to checkout and build from
-        default: dev
+        default: master
         type: string
         required: true
   schedule:
@@ -31,7 +31,7 @@ jobs:
           - deneb
           - electra
           - fulu
-          - eip7732
+          - gloas
           - eip7805
     steps:
       - name: Checkout repository

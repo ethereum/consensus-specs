@@ -10,7 +10,7 @@
   - [Modified containers](#modified-containers)
     - [`AggregateAndProof`](#aggregateandproof)
     - [`SignedAggregateAndProof`](#signedaggregateandproof)
-- [Protocol](#protocol)
+- [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [Modified `get_payload`](#modified-get_payload)
 - [Block proposal](#block-proposal)
@@ -56,7 +56,8 @@ class GetPayloadResponse(object):
     execution_payload: ExecutionPayload
     block_value: uint256
     blobs_bundle: BlobsBundle
-    execution_requests: Sequence[bytes]  # [New in Electra]
+    # [New in Electra]
+    execution_requests: Sequence[bytes]
 ```
 
 ## Containers
@@ -82,7 +83,7 @@ class SignedAggregateAndProof(Container):
     signature: BLSSignature
 ```
 
-## Protocol
+## Protocols
 
 ### `ExecutionEngine`
 
@@ -230,8 +231,9 @@ def prepare_execution_payload(
     # Verify consistency of the parent hash with respect to the previous execution payload header
     parent_hash = state.latest_execution_payload_header.block_hash
 
+    # [Modified in EIP7251]
     # Set the forkchoice head and initiate the payload build process
-    withdrawals, _ = get_expected_withdrawals(state)  # [Modified in EIP-7251]
+    withdrawals, _ = get_expected_withdrawals(state)
 
     payload_attributes = PayloadAttributes(
         timestamp=compute_time_at_slot(state, state.slot),

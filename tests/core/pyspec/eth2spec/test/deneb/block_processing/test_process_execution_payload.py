@@ -14,7 +14,7 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
     get_execution_payload_header,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732
+from eth2spec.test.helpers.forks import is_post_gloas
 from eth2spec.test.helpers.keys import privkeys
 
 
@@ -30,25 +30,41 @@ def run_execution_payload_processing(
     If ``valid == False``, run expecting ``AssertionError``
     """
 
-    # after EIP-7732 the execution payload is no longer in the body
-    if is_post_eip7732(spec):
+    # After Gloas the execution payload is no longer in the body
+    if is_post_gloas(spec):
         envelope = spec.ExecutionPayloadEnvelope(
             payload=execution_payload,
-            payload_withheld=False,
             blob_kzg_commitments=blob_kzg_commitments,
+            slot=state.slot,
+            builder_index=spec.get_beacon_proposer_index(state),
         )
         kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
             blob_kzg_commitments
         )
         state.latest_execution_payload_header.blob_kzg_commitments_root = kzg_list.hash_tree_root()
+        state.latest_execution_payload_header.builder_index = envelope.builder_index
         post_state = state.copy()
         previous_state_root = state.hash_tree_root()
         if post_state.latest_block_header.state_root == spec.Root():
             post_state.latest_block_header.state_root = previous_state_root
         envelope.beacon_block_root = post_state.latest_block_header.hash_tree_root()
 
+        payment = post_state.builder_pending_payments[
+            spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
+        ]
+        exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(
+            post_state, payment.withdrawal.amount
+        )
+        payment.withdrawal.withdrawable_epoch = spec.Epoch(
+            exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+        )
+        post_state.builder_pending_withdrawals.append(payment.withdrawal)
+        post_state.builder_pending_payments[
+            spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
+        ] = spec.BuilderPendingPayment()
+
+        post_state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] = 0b1
         post_state.latest_block_hash = execution_payload.block_hash
-        post_state.latest_full_slot = state.slot
         envelope.state_root = post_state.hash_tree_root()
         privkey = privkeys[envelope.builder_index]
         signature = spec.get_execution_payload_envelope_signature(
@@ -81,7 +97,7 @@ def run_execution_payload_processing(
             return execution_valid
 
     if not valid:
-        if is_post_eip7732(spec):
+        if is_post_gloas(spec):
             expect_assertion_error(
                 lambda: spec.process_execution_payload(state, signed_envelope, TestEngine())
             )
@@ -92,7 +108,7 @@ def run_execution_payload_processing(
         yield "post", None
         return
 
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         spec.process_execution_payload(state, signed_envelope, TestEngine())
     else:
         spec.process_execution_payload(state, body, TestEngine())
@@ -102,9 +118,11 @@ def run_execution_payload_processing(
 
     yield "post", state
 
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
+        assert (
+            state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] == 0b1
+        )
         assert state.latest_block_hash == execution_payload.block_hash
-        assert state.latest_full_slot == state.slot
     else:
         assert state.latest_execution_payload_header == get_execution_payload_header(
             spec, state, execution_payload
@@ -132,8 +150,8 @@ def test_incorrect_blob_tx_type(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
-    if is_post_eip7732(spec):
+    # Make the first block full in Gloas
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
 
     yield from run_execution_payload_processing(
@@ -155,8 +173,8 @@ def test_incorrect_transaction_length_1_extra_byte(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
-    if is_post_eip7732(spec):
+    # Make the first block full in Gloas
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
@@ -177,8 +195,8 @@ def test_incorrect_transaction_length_1_byte_short(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
-    if is_post_eip7732(spec):
+    # Make the first block full in Gloas
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
@@ -199,8 +217,8 @@ def test_incorrect_transaction_length_empty(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
-    if is_post_eip7732(spec):
+    # Make the first block full in Gloas
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
@@ -221,8 +239,8 @@ def test_incorrect_transaction_length_32_extra_bytes(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
-    if is_post_eip7732(spec):
+    # Make the first block full in Gloas
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
@@ -242,8 +260,8 @@ def test_no_transactions_with_commitments(spec, state):
     execution_payload.transactions = []
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
-    if is_post_eip7732(spec):
+    # Make the first block full in Gloas
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
@@ -264,8 +282,8 @@ def test_incorrect_commitment(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
-    if is_post_eip7732(spec):
+    # Make the first block full in Gloas
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
@@ -286,7 +304,7 @@ def test_no_commitments_for_transactions(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
 
     yield from run_execution_payload_processing(
@@ -308,8 +326,8 @@ def test_incorrect_commitments_order(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
-    if is_post_eip7732(spec):
+    # Make the first block full in Gloas
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
@@ -332,7 +350,7 @@ def test_incorrect_transaction_no_blobs_but_with_commitments(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
 
     # the transaction doesn't contain any blob, but commitments are provided
@@ -355,8 +373,8 @@ def test_incorrect_block_hash(spec, state):
     execution_payload.block_hash = b"\x12" * 32  # incorrect block hash
 
     # CL itself doesn't verify EL block hash
-    # Make the first block full in EIP-7732
-    if is_post_eip7732(spec):
+    # Make the first block full in Gloas
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
@@ -379,8 +397,8 @@ def test_zeroed_commitment(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
-    if is_post_eip7732(spec):
+    # Make the first block full in Gloas
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
@@ -400,8 +418,8 @@ def test_invalid_correct_input__execution_invalid(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
-    if is_post_eip7732(spec):
+    # Make the first block full in Gloas
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments, valid=False, execution_valid=False
@@ -423,8 +441,8 @@ def test_invalid_exceed_max_blobs_per_block(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in EIP-7732
-    if is_post_eip7732(spec):
+    # Make the first block full in Gloas
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments, valid=False

@@ -9,7 +9,7 @@
 - [Helpers](#helpers)
   - [`BlobsBundle`](#blobsbundle)
   - [Modified `GetPayloadResponse`](#modified-getpayloadresponse)
-- [Protocol](#protocol)
+- [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [Modified `get_payload`](#modified-get_payload)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
@@ -80,11 +80,12 @@ object.
 class GetPayloadResponse(object):
     execution_payload: ExecutionPayload
     block_value: uint256
-    blobs_bundle: BlobsBundle  # [Modified in Fulu:EIP7594]
+    # [Modified in Fulu:EIP7594]
+    blobs_bundle: BlobsBundle
     execution_requests: Sequence[bytes]
 ```
 
-## Protocol
+## Protocols
 
 ### `ExecutionEngine`
 

@@ -19,8 +19,10 @@ from .helpers.constants import (
     CAPELLA,
     DENEB,
     EIP7441,
+    EIP7805,
     ELECTRA,
     FULU,
+    GLOAS,
     LIGHT_CLIENT_TESTING_FORKS,
     MINIMAL,
     PHASE0,
@@ -248,6 +250,16 @@ def low_single_balance(spec: Spec):
     Usage: `@with_custom_state(balances_fn=low_single_balance, ...)`
     """
     return [1]
+
+
+def one_validator_one_gwei_balances(spec: Spec):
+    """
+    Helper method to create a single validator with 1 Gwei balance,
+    among other validators with default balances.
+    """
+    balances = default_balances(spec)
+    balances[0] = 1
+    return balances
 
 
 def large_validator_set(spec: Spec):
@@ -500,6 +512,8 @@ def with_all_phases_from_to_except(earliest_phase, latest_phase, except_phases=N
             ]
         )(fn)
 
+    return decorator
+
 
 def with_all_phases_except(exclusion_phases):
     """
@@ -637,7 +651,9 @@ with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
 with_electra_and_later = with_all_phases_from(ELECTRA)
 with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_gloas_and_later = with_all_phases_from(GLOAS, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7441_and_later = with_all_phases_from(EIP7441, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip7805_and_later = with_all_phases_from(EIP7805, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 
 class quoted_str(str):

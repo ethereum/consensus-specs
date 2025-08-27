@@ -1,8 +1,8 @@
 from random import Random
 
 from eth2spec.test.context import (
-    low_single_balance,
     misc_balances,
+    one_validator_one_gwei_balances,
     PHASE0,
     single_phase,
     spec_state_test,
@@ -157,16 +157,18 @@ def test_full_attestations_misc_balances(spec, state):
 
 @with_all_phases
 @spec_test
-@with_custom_state(balances_fn=low_single_balance, threshold_fn=zero_activation_threshold)
+@with_custom_state(
+    balances_fn=one_validator_one_gwei_balances, threshold_fn=zero_activation_threshold
+)
 @single_phase
-def test_full_attestations_one_validator_one_gwei(spec, state):
+def test_full_attestations_default_balances_except_a_validator_with_one_gwei(spec, state):
     attestations = prepare_state_with_attestations(spec, state)
 
     yield from run_process_rewards_and_penalties(spec, state)
 
     # Few assertions. Mainly to check that this extreme case can run without exception
     attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
-    assert len(attesting_indices) == 1
+    assert len(attesting_indices) == len(state.validators)
 
 
 @with_all_phases

@@ -41,7 +41,7 @@ MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD: 2
 
 # Withdrawals processing
 # ---------------------------------------------------------------
-# 2**1 (= 2) pending withdrawals
+# [customized] 2**1 (= 2) pending withdrawals
 MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP: 2
 
 # Pending deposits processing

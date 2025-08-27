@@ -6,6 +6,7 @@
 - [Fork choice](#fork-choice)
   - [Constant](#constant)
   - [Configuration](#configuration)
+    - [Time parameters](#time-parameters)
   - [Helpers](#helpers)
     - [`LatestMessage`](#latestmessage)
     - [`Store`](#store)
@@ -25,6 +26,8 @@
     - [`get_head`](#get_head)
     - [`update_checkpoints`](#update_checkpoints)
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
+    - [`seconds_to_milliseconds`](#seconds_to_milliseconds)
+    - [`get_slot_component_duration_ms`](#get_slot_component_duration_ms)
     - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
       - [`is_head_late`](#is_head_late)
       - [`is_shuffling_stable`](#is_shuffling_stable)
@@ -97,9 +100,10 @@ handlers must not modify `store`.
 
 ### Constant
 
-| Name                 | Value       |
-| -------------------- | ----------- |
-| `INTERVALS_PER_SLOT` | `uint64(3)` |
+| Name                              | Value           |
+| --------------------------------- | --------------- |
+| `INTERVALS_PER_SLOT` *deprecated* | `uint64(3)`     |
+| `BASIS_POINTS`                    | `uint64(10000)` |
 
 ### Configuration
 
@@ -113,6 +117,12 @@ handlers must not modify `store`.
 - The proposer score boost and re-org weight threshold are percentage values
   that are measured with respect to the weight of a single committee. See
   `calculate_committee_fraction`.
+
+#### Time parameters
+
+| Name                        | Value          |     Unit     |          Duration          |
+| --------------------------- | -------------- | :----------: | :------------------------: |
+| `PROPOSER_REORG_CUTOFF_BPS` | `uint64(1667)` | basis points | ~17% of `SLOT_DURATION_MS` |
 
 ### Helpers
 
@@ -439,6 +449,29 @@ def update_unrealized_checkpoints(
         store.unrealized_finalized_checkpoint = unrealized_finalized_checkpoint
 ```
 
+#### `seconds_to_milliseconds`
+
+```python
+def seconds_to_milliseconds(seconds: uint64) -> uint64:
+    """
+    Convert seconds to milliseconds with overflow protection.
+    Returns ``UINT64_MAX`` if the result would overflow.
+    """
+    if seconds > UINT64_MAX // 1000:
+        return UINT64_MAX
+    return seconds * 1000
+```
+
+#### `get_slot_component_duration_ms`
+
+```python
+def get_slot_component_duration_ms(basis_points: uint64) -> uint64:
+    """
+    Calculate the duration of a slot component in milliseconds.
+    """
+    return basis_points * SLOT_DURATION_MS // BASIS_POINTS
+```
+
 #### Proposer head and reorg helpers
 
 _Implementing these helpers is optional_.
@@ -478,10 +511,10 @@ def is_finalization_ok(store: Store, slot: Slot) -> bool:
 
 ```python
 def is_proposing_on_time(store: Store) -> bool:
-    # Use half `SECONDS_PER_SLOT // INTERVALS_PER_SLOT` as the proposer reorg deadline
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    proposer_reorg_cutoff = SECONDS_PER_SLOT // INTERVALS_PER_SLOT // 2
-    return time_into_slot <= proposer_reorg_cutoff
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    proposer_reorg_cutoff_ms = get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
+    return time_into_slot_ms <= proposer_reorg_cutoff_ms
 ```
 
 ##### `is_head_weak`
@@ -730,8 +763,10 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     store.block_states[block_root] = state
 
     # Add block timeliness to the store
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
 

@@ -4,6 +4,7 @@ from eth2spec.test.context import (
     always_bls,
     single_phase,
     spec_state_test,
+    spec_state_test_with_matching_config,
     spec_test,
     with_all_phases,
     with_all_phases_from_to,
@@ -338,10 +339,10 @@ def test_get_block_signature(spec, state):
 
 
 @with_all_phases_from_to(from_phase=PHASE0, to_phase=FULU)
-@spec_state_test
+@spec_state_test_with_matching_config
 def test_compute_fork_digest(spec, state):
     actual_fork_digest = spec.compute_fork_digest(
-        state.fork.current_version, state.genesis_validators_root
+        state.genesis_validators_root, spec.compute_epoch_at_slot(state.slot)
     )
 
     expected_fork_data_root = spec.hash_tree_root(
@@ -515,7 +516,9 @@ def test_get_aggregate_and_proof_signature(spec, state):
     )
 
 
-def run_compute_subscribed_subnets_arguments(spec, rng=random.Random(1111)):
+def run_compute_subscribed_subnets_arguments(spec, rng=None):
+    if rng is None:
+        rng = random.Random(1111)
     node_id = rng.randint(0, 2**256 - 1)
     epoch = rng.randint(0, 2**64 - 1)
     subnets = spec.compute_subscribed_subnets(node_id, epoch)

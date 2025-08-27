@@ -27,17 +27,27 @@ jobs:
         with:
           python-version: '3.13'
 
+      # Check the tag matches the version
+      - name: Version check
+        run: |
+          tag="${{ github.ref_name }}"
+          version="v$(cat consensus-specs/tests/core/pyspec/eth2spec/VERSION.txt)"
+          if [ "$tag" != "$version" ]; then
+            echo "Tag ($tag) does not match version ($version)"
+            exit 1
+          fi
+
       # Ensure minimal tests pass
-      #- name: Run tests for minimal
-      #  run: |
-      #    cd consensus-specs
-      #    make test preset=minimal
+      - name: Run tests for minimal
+        run: |
+          cd consensus-specs
+          make test preset=minimal
 
       # Ensure mainnet tests pass
-      #- name: Run tests for mainnet
-      #  run: |
-      #    cd consensus-specs
-      #    make test preset=mainnet
+      - name: Run tests for mainnet
+        run: |
+          cd consensus-specs
+          make test preset=mainnet
 
       # Add support for large files
       - name: Install Git LFS

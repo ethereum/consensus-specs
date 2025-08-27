@@ -10,7 +10,7 @@ from eth2spec.test.helpers.attestations import (
     next_slots_with_attestations,
     state_transition_with_full_block,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732, is_post_fulu
+from eth2spec.test.helpers.forks import is_post_fulu, is_post_gloas
 from eth2spec.test.helpers.state import (
     payload_state_transition,
     payload_state_transition_no_store,
@@ -19,7 +19,7 @@ from eth2spec.test.helpers.state import (
 
 def check_head_against_root(spec, store, root):
     head = spec.get_head(store)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         assert head.root == root
     else:
         assert head == root
@@ -211,12 +211,12 @@ def get_genesis_forkchoice_store(spec, genesis_state):
 def get_genesis_forkchoice_store_and_block(spec, genesis_state):
     assert genesis_state.slot == spec.GENESIS_SLOT
     genesis_block = spec.BeaconBlock(state_root=genesis_state.hash_tree_root())
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         genesis_block.body.signed_execution_payload_header.message.block_hash = (
             genesis_state.latest_block_hash
         )
     store = spec.get_forkchoice_store(genesis_state, genesis_block)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         store.execution_payload_states = store.block_states.copy()
     return store, genesis_block
 
@@ -276,7 +276,7 @@ def run_on_block(spec, store, signed_block, valid=True):
 
 
 def get_store_full_state(spec, store, root):
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         return store.execution_payload_states[root]
     return store.block_states[root]
 
@@ -405,16 +405,14 @@ def add_attester_slashing(spec, store, attester_slashing, test_steps, valid=True
 
 def get_formatted_head_output(spec, store):
     head = spec.get_head(store)
-    if is_post_eip7732(spec):
-        return {
-            "slot": int(head.slot),
-            "root": encode_hex(head.root),
-        }
-
-    slot = store.blocks[head].slot
+    if is_post_gloas(spec):
+        head_root = head.root
+    else:
+        head_root = head
+    slot = store.blocks[head_root].slot
     return {
         "slot": int(slot),
-        "root": encode_hex(head),
+        "root": encode_hex(head_root),
     }
 
 
@@ -480,7 +478,7 @@ def apply_next_epoch_with_attestations(
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
 
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         assert (
             store.execution_payload_states[block_root].hash_tree_root()
             == post_state.hash_tree_root()
@@ -505,7 +503,7 @@ def apply_next_slots_with_attestations(
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
 
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         assert (
             store.execution_payload_states[block_root].hash_tree_root()
             == post_state.hash_tree_root()

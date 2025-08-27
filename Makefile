@@ -10,9 +10,9 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	deneb     \
 	electra   \
 	fulu      \
+	gloas     \
 	eip6800   \
 	eip7441   \
-	eip7732   \
 	eip7805
 
 # A list of fake targets.
@@ -55,6 +55,7 @@ PYTHON_VENV = $(VENV)/bin/python3
 PIP_VENV = $(VENV)/bin/pip3
 CODESPELL_VENV = $(VENV)/bin/codespell
 MDFORMAT_VENV = $(VENV)/bin/mdformat
+MKDOCS_VENV = $(VENV)/bin/mkdocs
 
 # Make a virtual environment.
 $(VENV):
@@ -158,15 +159,17 @@ SYNC_DIR = ./sync
 # Copy files to the docs directory.
 _copy_docs:
 	@cp -r $(SPEC_DIR) $(DOCS_DIR)
+	@rm -rf $(DOCS_DIR)/specs/_deprecated
+	@rm -rf $(DOCS_DIR)/specs/_features
 	@cp -r $(SYNC_DIR) $(DOCS_DIR)
 	@cp -r $(SSZ_DIR) $(DOCS_DIR)
 	@cp -r $(FORK_CHOICE_DIR) $(DOCS_DIR)
 	@cp $(CURDIR)/README.md $(DOCS_DIR)/README.md
 
 # Start a local documentation server.
-serve_docs: _copy_docs
-	@mkdocs build
-	@mkdocs serve
+serve_docs: pyspec _copy_docs
+	@$(MKDOCS_VENV) build
+	@$(MKDOCS_VENV) serve
 
 ###############################################################################
 # Checks

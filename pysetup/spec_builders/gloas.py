@@ -1,24 +1,15 @@
-from ..constants import EIP7732
+from ..constants import GLOAS
 from .base import BaseSpecBuilder
 
 
-class EIP7732SpecBuilder(BaseSpecBuilder):
-    fork: str = EIP7732
+class GloasSpecBuilder(BaseSpecBuilder):
+    fork: str = GLOAS
 
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth2spec.electra import {preset_name} as electra
+from eth2spec.fulu import {preset_name} as fulu
 """
-
-    @classmethod
-    def sundry_functions(cls) -> str:
-        return """
-def concat_generalized_indices(*indices: GeneralizedIndex) -> GeneralizedIndex:
-    o = GeneralizedIndex(1)
-    for i in indices:
-        o = GeneralizedIndex(o * bit_floor(i) + (i - bit_floor(i)))
-    return o"""
 
     @classmethod
     def deprecate_constants(cls) -> set[str]:
@@ -33,5 +24,6 @@ def concat_generalized_indices(*indices: GeneralizedIndex) -> GeneralizedIndex:
         return set(
             [
                 "KZG_COMMITMENT_INCLUSION_PROOF_DEPTH",
+                "KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH",
             ]
         )

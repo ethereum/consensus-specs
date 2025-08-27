@@ -3,7 +3,6 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
@@ -20,8 +19,6 @@ This is the modification of the fork choice according to the Capella upgrade.
 
 Unless stated explicitly, all prior functionality from
 [Bellatrix](../bellatrix/fork-choice.md) is inherited.
-
-## Custom types
 
 ## Protocols
 
@@ -58,7 +55,8 @@ class PayloadAttributes(object):
     timestamp: uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
-    withdrawals: Sequence[Withdrawal]  # [New in Capella]
+    # [New in Capella]
+    withdrawals: Sequence[Withdrawal]
 ```
 
 ## Updated fork-choice handlers
@@ -102,8 +100,10 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     store.block_states[block_root] = state
 
     # Add block timeliness to the store
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
 

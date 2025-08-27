@@ -8,8 +8,9 @@
   - [Misc](#misc)
 - [Custom types](#custom-types)
 - [Configuration](#configuration)
-  - [Data size](#data-size)
   - [Custody setting](#custody-setting)
+- [Preset](#preset)
+  - [Size parameters](#size-parameters)
   - [Containers](#containers)
     - [`DataColumnSidecar`](#datacolumnsidecar)
     - [`MatrixEntry`](#matrixentry)
@@ -54,12 +55,6 @@ specification.
 
 ## Configuration
 
-### Data size
-
-| Name                | Value                                | Description                                   |
-| ------------------- | ------------------------------------ | --------------------------------------------- |
-| `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
-
 ### Custody setting
 
 | Name                       | Value | Description                                                                       |
@@ -67,6 +62,14 @@ specification.
 | `SAMPLES_PER_SLOT`         | `8`   | Minimum number of samples for an honest node                                      |
 | `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody                           |
 | `CUSTODY_REQUIREMENT`      | `4`   | Minimum number of custody groups an honest node custodies and serves samples from |
+
+## Preset
+
+### Size parameters
+
+| Name                | Value                                | Description                                   |
+| ------------------- | ------------------------------------ | --------------------------------------------- |
+| `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
 
 ### Containers
 
@@ -99,6 +102,10 @@ class MatrixEntry(Container):
 ```python
 def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence[CustodyIndex]:
     assert custody_group_count <= NUMBER_OF_CUSTODY_GROUPS
+
+    # Skip computation if all groups are custodied
+    if custody_group_count == NUMBER_OF_CUSTODY_GROUPS:
+        return [CustodyIndex(i) for i in range(NUMBER_OF_CUSTODY_GROUPS)]
 
     current_id = uint256(node_id)
     custody_groups: List[CustodyIndex] = []
@@ -274,7 +281,7 @@ are they sent in aggregate forms.
 
 ### Why don't nodes custody rows?
 
-In the one-dimension construction, a node samples the peers by requesting the
+In the one-dimensional construction, a node samples the peers by requesting the
 whole `DataColumnSidecar`. In reconstruction, a node can reconstruct all the
 blobs by 50% of the columns. Note that nodes can still download the row via
 `blob_sidecar_{subnet_id}` subnets.

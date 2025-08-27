@@ -14,7 +14,7 @@ on:
         required: true
       ref:
         description: The branch, tag or SHA to checkout and build from
-        default: dev
+        default: master
         type: string
         required: true
   schedule:

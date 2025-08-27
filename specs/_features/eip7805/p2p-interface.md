@@ -6,6 +6,8 @@ EIP-7805.
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Modifications in EIP-7805](#modifications-in-eip-7805)
+  - [Helper functions](#helper-functions)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Configuration](#configuration)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -19,11 +21,33 @@ EIP-7805.
 
 ## Modifications in EIP-7805
 
-### Configuration
+### Helper functions
 
-| Name                   | Value                   |  Unit   | Duration  |
-| ---------------------- | ----------------------- | :-----: | :-------: |
-| `ATTESTATION_DEADLINE` | `SECONDS_PER_SLOT // 3` | seconds | 4 seconds |
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= EIP7805_FORK_EPOCH:
+        return EIP7805_FORK_VERSION
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
+
+### Configuration
 
 | Name                           | Value            | Description                                                |
 | ------------------------------ | ---------------- | ---------------------------------------------------------- |
@@ -56,7 +80,8 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
 - _[REJECT]_ The slot `message.slot` is equal to the previous or current slot.
 - _[IGNORE]_ The slot `message.slot` is equal to the current slot, or it is
   equal to the previous slot and the current time is less than
-  `ATTESTATION_DEADLINE` seconds into the slot.
+  `get_slot_component_duration_ms(ATTESTATION_DUE_BPS)` milliseconds into the
+  slot.
 - _[IGNORE]_ The `inclusion_list_committee` for slot `message.slot` on the
   current branch corresponds to `message.inclusion_list_committee_root`, as
   determined by
@@ -67,7 +92,7 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
 - _[IGNORE]_ The `message` is either the first or second valid message received
   from the validator with index `message.validator_index`.
 - _[REJECT]_ The signature of `inclusion_list.signature` is valid with respect
-  to the validator index.
+  to the validator's public key.
 
 ### The Req/Resp domain
 
@@ -77,8 +102,10 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
 
 **Protocol ID:** `/eth2/beacon_chain/req/inclusion_list_by_committee_indices/1/`
 
-The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`:
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(signed_inclusion_list.message.slot)`.
+
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
