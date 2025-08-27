@@ -4,6 +4,8 @@
 
 - [Introduction](#introduction)
 - [Modifications in Bellatrix](#modifications-in-bellatrix)
+  - [Helper functions](#helper-functions)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -35,6 +37,22 @@ understand the Phase 0 and Altair documents and use them as a basis to
 understand the changes outlined in this document.
 
 ## Modifications in Bellatrix
+
+### Helper functions
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ### The gossip domain: gossipsub
 
@@ -127,12 +145,8 @@ down-scoring or disconnection.
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
-Request and Response remain unchanged unless explicitly noted here.
-
-Bellatrix fork-digest is introduced to the `context` enum to specify Bellatrix
-block type.
-
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+Request and Response remain unchanged. Bellatrix fork-digest is introduced to
+the `context` enum to specify Bellatrix block type.
 
 <!-- eth2spec: skip -->
 
@@ -148,8 +162,6 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 Request and Response remain unchanged. Bellatrix fork-digest is introduced to
 the `context` enum to specify Bellatrix block type.
-
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 
