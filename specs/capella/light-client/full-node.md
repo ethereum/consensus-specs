@@ -45,7 +45,7 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
         )
     else:
         # Note that during fork transitions, `finalized_header` may still point to earlier forks.
-        # While Bellatrix blocks also contain an `ExecutionPayload` (minus `withdrawals_root`),
+        # While Bellatrix blocks also contain an `ExecutionPayload` (without withdrawals field),
         # it was not included in the corresponding light client data. To ensure compatibility
         # with legacy data going through `upgrade_lc_header_to_capella`, leave out execution data.
         execution_header = ExecutionPayloadHeader()
