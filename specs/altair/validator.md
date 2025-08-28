@@ -332,8 +332,8 @@ This logic is triggered upon the same conditions as when producing an
 attestation. Meaning, a sync committee member should produce and broadcast a
 `SyncCommitteeMessage` either when (a) the validator has received a valid block
 from the expected block proposer for the current `slot` or (b)
-`get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)` milliseconds has
-transpired since the start of the slot -- whichever comes first.
+`get_duration_ms(DURATION_ID_SYNC_MESSAGE_DUE)` milliseconds has transpired
+since the start of the slot -- whichever comes first.
 
 `get_sync_committee_message(state, block_root, validator_index, privkey)`
 assumes the parameter `state` is the head state corresponding to processing the
@@ -511,8 +511,7 @@ if one validator maps to multiple indices within the subcommittee.
 If the validator is selected to aggregate (`is_sync_committee_aggregator()`),
 then they broadcast their best aggregate as a `SignedContributionAndProof` to
 the global aggregate channel (`sync_committee_contribution_and_proof` topic)
-`get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS)` milliseconds into the
-slot.
+`get_duration_ms(DURATION_ID_CONTRIBUTION_DUE)` milliseconds into the slot.
 
 Selection proofs are provided in `ContributionAndProof` to prove to the gossip
 channel that the validator has been selected as an aggregator.

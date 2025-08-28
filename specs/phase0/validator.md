@@ -611,8 +611,8 @@ validator performs this role during an epoch are defined by
 A validator should create and broadcast the `attestation` to the associated
 attestation subnet when either (a) the validator has received a valid block from
 the expected block proposer for the assigned `slot` or (b)
-`get_slot_component_duration_ms(ATTESTATION_DUE_BPS)` milliseconds has
-transpired since the start of the slot -- whichever comes first.
+`get_duration_ms(DURATION_ID_ATTESTATION_DUE)` milliseconds has transpired since
+the start of the slot -- whichever comes first.
 
 *Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG
 finality, these initial attestations do give weight to the fork choice, are
@@ -777,7 +777,7 @@ def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature
 If the validator is selected to aggregate (`is_aggregator`), then they broadcast
 their best aggregate as a `SignedAggregateAndProof` to the global aggregate
 channel (`beacon_aggregate_and_proof`)
-`get_slot_component_duration_ms(AGGREGATE_DUE_BPS)` milliseconds into the slot.
+`get_duration_ms(DURATION_ID_ATTESTATION_DUE)` milliseconds into the slot.
 
 Selection proofs are provided in `AggregateAndProof` to prove to the gossip
 channel that the validator has been selected as an aggregator.

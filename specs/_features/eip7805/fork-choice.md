@@ -3,6 +3,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Constants](#constants)
+  - [Duration identifiers](#duration-identifiers)
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
 - [Protocols](#protocols)
@@ -16,6 +18,7 @@
   - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
   - [New `get_attester_head`](#new-get_attester_head)
   - [Modified `get_proposer_head`](#modified-get_proposer_head)
+  - [Modified `get_duration_ms`](#modified-get_duration_ms)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [New `on_inclusion_list`](#new-on_inclusion_list)
   - [Modified `on_block`](#modified-on_block)
@@ -25,6 +28,16 @@
 ## Introduction
 
 This is the modification of the fork choice accompanying the EIP-7805 upgrade.
+
+## Constants
+
+### Duration identifiers
+
+| Name                                         | Value           |
+| -------------------------------------------- | --------------- |
+| `DURATION_ID_VIEW_FREEZE_CUTOFF`             | `DurationId(7)` |
+| `DURATION_ID_INCLUSION_LIST_SUBMISSION_DUE`  | `DurationId(8)` |
+| `DURATION_ID_PROPOSER_INCLUSION_LIST_CUTOFF` | `DurationId(9)` |
 
 ## Configuration
 
@@ -252,6 +265,33 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
         return head_root
 ```
 
+### Modified `get_duration_ms`
+
+```python
+def get_duration_ms(duration_id: DurationId) -> uint64:
+    if duration_id == DURATION_ID_SLOT:
+        return SLOT_DURATION_MS
+    elif duration_id == DURATION_ID_PROPOSER_REORG_CUTOFF:
+        return get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
+    elif duration_id == DURATION_ID_ATTESTATION_DUE:
+        return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+    elif duration_id == DURATION_ID_AGGREGATE_DUE:
+        return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
+    elif duration_id == DURATION_ID_SYNC_MESSAGE_DUE:
+        return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)
+    elif duration_id == DURATION_ID_CONTRIBUTION_DUE:
+        return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS)
+    # [New in EIP7805]
+    elif duration_id == DURATION_ID_VIEW_FREEZE_CUTOFF:
+        return get_slot_component_duration_ms(VIEW_FREEZE_CUTOFF_BPS)
+    # [New in EIP7805]
+    elif duration_id == DURATION_ID_INCLUSION_LIST_SUBMISSION_DUE:
+        return get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS)
+    # [New in EIP7805]
+    elif duration_id == DURATION_ID_PROPOSER_INCLUSION_LIST_CUTOFF:
+        return get_slot_component_duration_ms(PROPOSER_INCLUSION_LIST_CUTOFF_BPS)
+```
+
 ## Updated fork-choice handlers
 
 ### New `on_inclusion_list`
@@ -272,7 +312,7 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    view_freeze_cutoff_ms = get_slot_component_duration_ms(VIEW_FREEZE_CUTOFF_BPS)
+    view_freeze_cutoff_ms = get_duration_ms(DURATION_ID_VIEW_FREEZE_CUTOFF)
     is_before_view_freeze_cutoff = time_into_slot_ms < view_freeze_cutoff_ms
 
     process_inclusion_list(inclusion_list_store, inclusion_list, is_before_view_freeze_cutoff)
@@ -324,7 +364,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add block timeliness to the store
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+    attestation_threshold_ms = get_duration_ms(DURATION_ID_ATTESTATION_DUE)
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely

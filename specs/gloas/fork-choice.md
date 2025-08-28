@@ -7,6 +7,9 @@
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
+  - [Misc](#misc)
+  - [Payload status](#payload-status)
+  - [Duration identifiers](#duration-identifiers)
 - [Containers](#containers)
   - [New `ForkChoiceNode`](#new-forkchoicenode)
   - [Modified `LatestMessage`](#modified-latestmessage)
@@ -25,6 +28,7 @@
   - [Modified `get_weight`](#modified-get_weight)
   - [New `get_node_children`](#new-get_node_children)
   - [Modified `get_head`](#modified-get_head)
+  - [Modified `get_duration_ms`](#modified-get_duration_ms)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [Modified `on_block`](#modified-on_block)
 - [New fork-choice handlers](#new-fork-choice-handlers)
@@ -47,12 +51,25 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 
 ## Constants
 
+### Misc
+
 | Name                       | Value                   |
 | -------------------------- | ----------------------- |
 | `PAYLOAD_TIMELY_THRESHOLD` | `PTC_SIZE // 2` (= 256) |
-| `PAYLOAD_STATUS_PENDING`   | `PayloadStatus(0)`      |
-| `PAYLOAD_STATUS_EMPTY`     | `PayloadStatus(1)`      |
-| `PAYLOAD_STATUS_FULL`      | `PayloadStatus(2)`      |
+
+### Payload status
+
+| Name                     | Value              |
+| ------------------------ | ------------------ |
+| `PAYLOAD_STATUS_PENDING` | `PayloadStatus(0)` |
+| `PAYLOAD_STATUS_EMPTY`   | `PayloadStatus(1)` |
+| `PAYLOAD_STATUS_FULL`    | `PayloadStatus(2)` |
+
+### Duration identifiers
+
+| Name                                  | Value           |
+| ------------------------------------- | --------------- |
+| `DURATION_ID_PAYLOAD_ATTESTATION_DUE` | `DurationId(6)` |
 
 ## Containers
 
@@ -425,6 +442,31 @@ def get_head(store: Store) -> ForkChoiceNode:
         )
 ```
 
+### Modified `get_duration_ms`
+
+```python
+def get_duration_ms(duration_id: DurationId) -> uint64:
+    if duration_id == DURATION_ID_SLOT:
+        return SLOT_DURATION_MS
+    elif duration_id == DURATION_ID_PROPOSER_REORG_CUTOFF:
+        return get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
+    elif duration_id == DURATION_ID_ATTESTATION_DUE:
+        # [Modified in Gloas:EIP7732]
+        return get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
+    elif duration_id == DURATION_ID_AGGREGATE_DUE:
+        # [Modified in Gloas:EIP7732]
+        return get_slot_component_duration_ms(AGGREGATE_DUE_BPS_GLOAS)
+    elif duration_id == DURATION_ID_SYNC_MESSAGE_DUE:
+        # [Modified in Gloas:EIP7732]
+        return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS_GLOAS)
+    elif duration_id == DURATION_ID_CONTRIBUTION_DUE:
+        # [Modified in Gloas:EIP7732]
+        return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS_GLOAS)
+    # [New in Gloas:EIP7732]
+    elif duration_id == DURATION_ID_PAYLOAD_ATTESTATION_DUE:
+        return get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)
+```
+
 ## Updated fork-choice handlers
 
 ### Modified `on_block`
@@ -487,7 +529,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
     # [Modified in Gloas:EIP7732]
-    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
+    attestation_threshold_ms = get_duration_ms(DURATION_ID_ATTESTATION_DUE)
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely

@@ -148,8 +148,8 @@ processed through any empty slots up to the assigned slot using
 
 *Note*: A proposer should produce an execution payload that satisfies the
 inclusion list constraints with respect to the inclusion lists gathered up to
-`get_slot_component_duration_ms(PROPOSER_INCLUSION_LIST_CUTOFF_BPS)`
-milliseconds into the slot.
+`get_duration_ms(DURATION_ID_PROPOSER_INCLUSION_LIST_CUTOFF)` milliseconds into
+the slot.
 
 ```python
 def prepare_execution_payload(
@@ -197,14 +197,14 @@ of any `slot` for which
 
 If a validator is in the current inclusion list committee, the validator should
 create and broadcast the `signed_inclusion_list` to the global `inclusion_list`
-subnet by `get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS)`
+subnet by `get_duration_ms(DURATION_ID_INCLUSION_LIST_SUBMISSION_DUE)`
 milliseconds into the slot after processing the block for the current slot and
 confirming it as the head. If no block is received by
-`get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS) - 1000`
-milliseconds into the slot, the validator should run `get_head` to determine the
-local head and construct and broadcast the inclusion list based on this local
-head by `get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS)`
-milliseconds into the slot.
+`get_duration_ms(DURATION_ID_INCLUSION_LIST_SUBMISSION_DUE) - 1000` milliseconds
+into the slot, the validator should run `get_head` to determine the local head
+and construct and broadcast the inclusion list based on this local head by
+`get_duration_ms(DURATION_ID_INCLUSION_LIST_SUBMISSION_DUE)` milliseconds into
+the slot.
 
 #### Constructing the `SignedInclusionList`
 

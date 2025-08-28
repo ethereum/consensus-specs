@@ -4,7 +4,10 @@
 
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
-  - [Constant](#constant)
+- [Custom types](#custom-types)
+  - [Constants](#constants)
+    - [Misc](#misc)
+    - [Duration identifiers](#duration-identifiers)
   - [Configuration](#configuration)
     - [Time parameters](#time-parameters)
   - [Helpers](#helpers)
@@ -28,6 +31,7 @@
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
     - [`seconds_to_milliseconds`](#seconds_to_milliseconds)
     - [`get_slot_component_duration_ms`](#get_slot_component_duration_ms)
+    - [`get_duration_ms`](#get_duration_ms)
     - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
       - [`is_head_late`](#is_head_late)
       - [`is_shuffling_stable`](#is_shuffling_stable)
@@ -98,12 +102,29 @@ handlers must not modify `store`.
    computation, space, or any other resource. A number of optimized alternatives
    can be found [here](https://github.com/protolambda/lmd-ghost).
 
-### Constant
+## Custom types
+
+| Name         | SSZ equivalent | Description                  |
+| ------------ | -------------- | ---------------------------- |
+| `DurationId` | `uint8`        | Identifier for some duration |
+
+### Constants
+
+#### Misc
 
 | Name                              | Value           |
 | --------------------------------- | --------------- |
 | `INTERVALS_PER_SLOT` *deprecated* | `uint64(3)`     |
 | `BASIS_POINTS`                    | `uint64(10000)` |
+
+#### Duration identifiers
+
+| Name                                | Value           |
+| ----------------------------------- | --------------- |
+| `DURATION_ID_SLOT`                  | `DurationId(0)` |
+| `DURATION_ID_PROPOSER_REORG_CUTOFF` | `DurationId(1)` |
+| `DURATION_ID_ATTESTATION_DUE`       | `DurationId(2)` |
+| `DURATION_ID_AGGREGATE_DUE`         | `DurationId(3)` |
 
 ### Configuration
 
@@ -472,6 +493,20 @@ def get_slot_component_duration_ms(basis_points: uint64) -> uint64:
     return basis_points * SLOT_DURATION_MS // BASIS_POINTS
 ```
 
+#### `get_duration_ms`
+
+```python
+def get_duration_ms(duration_id: DurationId) -> uint64:
+    if duration_id == DURATION_ID_SLOT:
+        return SLOT_DURATION_MS
+    elif duration_id == DURATION_ID_PROPOSER_REORG_CUTOFF:
+        return get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
+    elif duration_id == DURATION_ID_ATTESTATION_DUE:
+        return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+    elif duration_id == DURATION_ID_AGGREGATE_DUE:
+        return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
+```
+
 #### Proposer head and reorg helpers
 
 _Implementing these helpers is optional_.
@@ -513,7 +548,7 @@ def is_finalization_ok(store: Store, slot: Slot) -> bool:
 def is_proposing_on_time(store: Store) -> bool:
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    proposer_reorg_cutoff_ms = get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
+    proposer_reorg_cutoff_ms = get_duration_ms(DURATION_ID_PROPOSER_REORG_CUTOFF)
     return time_into_slot_ms <= proposer_reorg_cutoff_ms
 ```
 
@@ -765,7 +800,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add block timeliness to the store
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+    attestation_threshold_ms = get_duration_ms(DURATION_ID_ATTESTATION_DUE)
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
