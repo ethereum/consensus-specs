@@ -122,7 +122,7 @@ test: pyspec
 #   make test k=test_verify_kzg_proof
 # To run tests with a specific bls library, append bls=<bls>, eg:
 #   make test bls=arkworks
-test_infra: MAYBE_TEST := $(if $(k),-k=$(k))
+fw_test: MAYBE_TEST := $(if $(k),-k=$(k))
 # Disable parallelism which running a specific test.
 # Parallelism makes debugging difficult (print doesn't work).
 test_infra: MAYBE_PARALLEL := $(if $(k),,-n auto)
