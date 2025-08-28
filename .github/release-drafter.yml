@@ -13,9 +13,14 @@ categories:
   - title: Electra
     label: electra
   - title: Fulu
-    label: fulu
+    labels:
+      - fulu
+      - eip7594
   - title: Gloas
-    label: gloas
+    labels:
+      - gloas
+      - eip7732
+      - eip7928
 
   # Features
   - title: EIP-6110
@@ -38,6 +43,9 @@ categories:
   # Fallback
   - title: Other
 
+commitish: master
+filter-by-commitish: true
+include-pre-releases: true
 sort-direction: ascending
 change-title-escapes: '\<*_&'
 change-template: '- $TITLE (#$NUMBER)'

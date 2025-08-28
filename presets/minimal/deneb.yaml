@@ -2,13 +2,13 @@
 
 # Execution
 # ---------------------------------------------------------------
-# [customized] 2**5 (= 32) blob commitments
-MAX_BLOB_COMMITMENTS_PER_BLOCK: 32
+# 2**12 (= 4,096) commitments
+MAX_BLOB_COMMITMENTS_PER_BLOCK: 4096
 
 # Networking
 # ---------------------------------------------------------------
-# [customized] floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK) (= 4 + 1 + 5 = 10)
-KZG_COMMITMENT_INCLUSION_PROOF_DEPTH: 10
+# floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) + 1 + ceillog2(MAX_BLOB_COMMITMENTS_PER_BLOCK) (= 4 + 1 + 12 = 17)
+KZG_COMMITMENT_INCLUSION_PROOF_DEPTH: 17
 
 # Blob
 # ---------------------------------------------------------------

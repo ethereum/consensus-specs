@@ -620,6 +620,56 @@ def case_verify_blob_kzg_proof_batch():
 
 
 ###############################################################################
+# Test cases for compute_challenge
+###############################################################################
+
+
+def case_compute_challenge():
+    def get_test_runner(blob, commitment):
+        def _runner():
+            try:
+                challenge = None
+                challenge = spec.compute_challenge(blob, commitment)
+            except Exception:
+                pass
+            return [
+                (
+                    "data",
+                    "data",
+                    {
+                        "input": {
+                            "blob": encode_hex(blob),
+                            "commitment": encode_hex(commitment),
+                        },
+                        "output": encode_hex(spec.bls_field_to_bytes(challenge))
+                        if challenge is not None
+                        else None,
+                    },
+                )
+            ]
+
+        return _runner
+
+    # Valid cases
+    for index, blob in enumerate(VALID_BLOBS):
+        commitment = cached_blob_to_kzg_commitment(blob)
+        yield f"compute_challenge_case_valid_{index}", get_test_runner(blob, commitment)
+
+    # Valid: Same blob with different commitments (incorrect, but valid format)
+    if True:
+        blob = VALID_BLOBS[3]
+        # Use commitment from a different blob
+        commitment = cached_blob_to_kzg_commitment(VALID_BLOBS[4])
+        yield "compute_challenge_case_mismatched_commitment", get_test_runner(blob, commitment)
+
+    # Valid: G1_POINT_AT_INFINITY as commitment
+    if True:
+        blob = VALID_BLOBS[4]
+        commitment = spec.G1_POINT_AT_INFINITY
+        yield "compute_challenge_case_commitment_at_infinity", get_test_runner(blob, commitment)
+
+
+###############################################################################
 # Main logic
 ###############################################################################
 
@@ -632,6 +682,7 @@ def get_test_cases() -> Iterable[TestCase]:
         ("compute_blob_kzg_proof", case_compute_blob_kzg_proof),
         ("verify_blob_kzg_proof", case_verify_blob_kzg_proof),
         ("verify_blob_kzg_proof_batch", case_verify_blob_kzg_proof_batch),
+        ("compute_challenge", case_compute_challenge),
     ]
 
     test_cases = []

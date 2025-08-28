@@ -6,9 +6,6 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-- [Helper functions](#helper-functions)
-  - [Misc](#misc)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [Fork to EIP-7805](#fork-to-eip-7805)
   - [Upgrading the state](#upgrading-the-state)
 
@@ -27,32 +24,6 @@ Warning: this configuration is not definitive.
 | `EIP7805_FORK_VERSION` | `Version('0x0a000000')`               |
 | `EIP7805_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
-## Helper functions
-
-### Misc
-
-#### Modified `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= EIP7805_FORK_EPOCH:
-        return EIP7805_FORK_VERSION
-    if epoch >= ELECTRA_FORK_EPOCH:
-        return ELECTRA_FORK_VERSION
-    if epoch >= DENEB_FORK_EPOCH:
-        return DENEB_FORK_VERSION
-    if epoch >= CAPELLA_FORK_EPOCH:
-        return CAPELLA_FORK_VERSION
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
-
 ## Fork to EIP-7805
 
 ### Upgrading the state
@@ -62,8 +33,8 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and
 change is made to upgrade to EIP-7805.
 
 ```python
-def upgrade_to_eip7805(pre: electra.BeaconState) -> BeaconState:
-    epoch = electra.get_current_epoch(pre)
+def upgrade_to_eip7805(pre: fulu.BeaconState) -> BeaconState:
+    epoch = fulu.get_current_epoch(pre)
 
     post = BeaconState(
         genesis_time=pre.genesis_time,
@@ -108,6 +79,7 @@ def upgrade_to_eip7805(pre: electra.BeaconState) -> BeaconState:
         pending_deposits=pre.pending_deposits,
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
+        proposer_lookahead=pre.proposer_lookahead,
     )
 
     return post

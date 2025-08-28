@@ -281,7 +281,7 @@ are they sent in aggregate forms.
 
 ### Why don't nodes custody rows?
 
-In the one-dimension construction, a node samples the peers by requesting the
+In the one-dimensional construction, a node samples the peers by requesting the
 whole `DataColumnSidecar`. In reconstruction, a node can reconstruct all the
 blobs by 50% of the columns. Note that nodes can still download the row via
 `blob_sidecar_{subnet_id}` subnets.

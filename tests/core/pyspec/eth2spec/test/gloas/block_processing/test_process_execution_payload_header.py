@@ -1,7 +1,7 @@
 from eth2spec.test.context import (
     always_bls,
     spec_state_test,
-    with_eip7732_and_later,
+    with_gloas_and_later,
 )
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.keys import privkeys
@@ -166,7 +166,7 @@ def prepare_block_with_non_proposer_builder(spec, state):
 #
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_valid_self_build(spec, state):
     """
@@ -179,7 +179,7 @@ def test_process_execution_payload_header_valid_self_build(spec, state):
     yield from run_execution_payload_header_processing(spec, state, block)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_header_valid_builder(spec, state):
@@ -232,7 +232,7 @@ def test_process_execution_payload_header_valid_builder(spec, state):
     assert post_pending_payments_len == pre_pending_payments_len + 1
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_header_valid_builder_zero_value(spec, state):
@@ -261,7 +261,7 @@ def test_process_execution_payload_header_valid_builder_zero_value(spec, state):
 #
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_invalid_signature(spec, state):
     """
@@ -281,7 +281,7 @@ def test_process_execution_payload_header_invalid_signature(spec, state):
 #
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_inactive_builder(spec, state):
     """
@@ -312,7 +312,7 @@ def test_process_execution_payload_header_inactive_builder(spec, state):
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_slashed_builder(spec, state):
     """
@@ -343,22 +343,12 @@ def test_process_execution_payload_header_slashed_builder(spec, state):
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_self_build_non_zero_value(spec, state):
     """
     Test self-builder with non-zero value fails (builder_index == proposer_index but value > 0)
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-
-    # Make the proposer a registered builder
-    make_validator_builder(spec, state, proposer_index)
-
-    # Ensure builder has sufficient balance
-    value = spec.Gwei(1000000)  # 0.001 ETH
-    required_balance = value + spec.MIN_ACTIVATION_BALANCE
-    state.balances[proposer_index] = required_balance
-
     block = build_empty_block_for_next_slot(spec, state)
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
     blob_kzg_commitments_root = kzg_list.hash_tree_root()
@@ -369,14 +359,14 @@ def test_process_execution_payload_header_self_build_non_zero_value(spec, state)
         block_hash=spec.Hash32(),
         fee_recipient=spec.ExecutionAddress(),
         gas_limit=spec.uint64(30000000),
-        builder_index=proposer_index,  # Same as proposer (self-build)
+        builder_index=block.proposer_index,  # Same as proposer (self-build)
         slot=block.slot,
-        value=value,  # Non-zero value should fail for self-build
+        value=1,
         blob_kzg_commitments_root=blob_kzg_commitments_root,
     )
 
     # Sign the header
-    privkey = privkeys[proposer_index]
+    privkey = privkeys[block.proposer_index]
     signature = spec.get_execution_payload_header_signature(state, header, privkey)
 
     signed_header = spec.SignedExecutionPayloadHeader(
@@ -389,7 +379,7 @@ def test_process_execution_payload_header_self_build_non_zero_value(spec, state)
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_non_builder_non_zero_value(spec, state):
     """
@@ -413,7 +403,7 @@ def test_process_execution_payload_header_non_builder_non_zero_value(spec, state
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_non_builder_wrong_proposer(spec, state):
     """
@@ -435,7 +425,7 @@ def test_process_execution_payload_header_non_builder_wrong_proposer(spec, state
 #
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_insufficient_balance(spec, state):
     """
@@ -462,7 +452,7 @@ def test_process_execution_payload_header_insufficient_balance(spec, state):
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_process_execution_payload_header_excess_balance(spec, state):
@@ -524,7 +514,7 @@ def test_process_execution_payload_header_excess_balance(spec, state):
     assert post_pending_payments_len == pre_pending_payments_len + 1
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_insufficient_balance_with_pending_payments(spec, state):
     """
@@ -567,7 +557,7 @@ def test_process_execution_payload_header_insufficient_balance_with_pending_paym
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_sufficient_balance_with_pending_payments(spec, state):
     """
@@ -634,7 +624,7 @@ def test_process_execution_payload_header_sufficient_balance_with_pending_paymen
     assert post_pending_payments_len == pre_pending_payments_len + 1
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_insufficient_balance_with_pending_withdrawals(
     spec, state
@@ -677,7 +667,7 @@ def test_process_execution_payload_header_insufficient_balance_with_pending_with
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_sufficient_balance_with_pending_withdrawals(spec, state):
     """
@@ -752,7 +742,7 @@ def test_process_execution_payload_header_sufficient_balance_with_pending_withdr
 #
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_wrong_slot(spec, state):
     """
@@ -777,7 +767,7 @@ def test_process_execution_payload_header_wrong_slot(spec, state):
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_wrong_parent_block_hash(spec, state):
     """
@@ -804,7 +794,7 @@ def test_process_execution_payload_header_wrong_parent_block_hash(spec, state):
     yield from run_execution_payload_header_processing(spec, state, block, valid=False)
 
 
-@with_eip7732_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_process_execution_payload_header_wrong_parent_block_root(spec, state):
     """

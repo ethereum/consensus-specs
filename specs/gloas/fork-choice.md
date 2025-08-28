@@ -1,4 +1,4 @@
-# EIP-7732 -- Fork Choice
+# Gloas -- Fork Choice
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -37,7 +37,7 @@
 
 ## Introduction
 
-This is the modification of the fork-choice accompanying the EIP-7732 upgrade.
+This is the modification of the fork-choice accompanying the Gloas upgrade.
 
 ## Custom types
 
@@ -124,9 +124,9 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     execution_payload_states: Dict[Root, BeaconState] = field(default_factory=dict)
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     ptc_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
 ```
 
@@ -153,7 +153,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
-        # [New in EIP7732]
+        # [New in Gloas:EIP7732]
         execution_payload_states={anchor_root: copy(anchor_state)},
         ptc_vote={anchor_root: Vector[boolean, PTC_SIZE]()},
     )
@@ -486,8 +486,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add proposer score boost if the block is timely
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    # [Modified in EIP7732]
-    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS_EIP7732)
+    # [Modified in Gloas:EIP7732]
+    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
@@ -522,7 +522,7 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
 
     # Check if blob data is available
     # If not, this payload MAY be queued and subsequently considered when blob data becomes available
-    assert is_data_available(envelope.beacon_block_root, envelope.blob_kzg_commitments)
+    assert is_data_available(envelope.beacon_block_root)
 
     # Make a copy of the state to avoid mutability issues
     state = copy(store.block_states[envelope.beacon_block_root])
@@ -599,7 +599,7 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
     block_slot = store.blocks[attestation.data.beacon_block_root].slot
     assert block_slot <= attestation.data.slot
 
-    # [New in EIP7732]
+    # [New in Gloas:EIP7732]
     assert attestation.data.index in [0, 1]
     if block_slot == attestation.data.slot:
         assert attestation.data.index == 0

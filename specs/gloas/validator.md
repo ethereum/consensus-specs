@@ -1,4 +1,4 @@
-# EIP-7732 -- Honest Validator
+# Gloas -- Honest Validator
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -26,19 +26,19 @@
 ## Introduction
 
 This document represents the changes and additions to the Honest validator guide
-included in the EIP-7732 fork.
+included in Gloas.
 
 ## Configuration
 
 ### Time parameters
 
-| Name                           | Value          |     Unit     |         Duration          |
-| ------------------------------ | -------------- | :----------: | :-----------------------: |
-| `ATTESTATION_DUE_BPS_EIP7732`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `AGGREGRATE_DUE_BPS_EIP7732`   | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `SYNC_MESSAGE_DUE_BPS_EIP7732` | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `CONTRIBUTION_DUE_BPS_EIP7732` | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `PAYLOAD_ATTESTATION_DUE_BPS`  | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
+| Name                          | Value          |     Unit     |         Duration          |
+| ----------------------------- | -------------- | :----------: | :-----------------------: |
+| `ATTESTATION_DUE_BPS_GLOAS`   | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
+| `AGGREGATE_DUE_BPS_GLOAS`     | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
+| `CONTRIBUTION_DUE_BPS_GLOAS`  | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_ATTESTATION_DUE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
 
 ## Validator assignment
 
@@ -69,7 +69,7 @@ def get_ptc_assignment(
 
 ### Lookahead
 
-*[New in EIP7732]*
+*[New in Gloas:EIP7732]*
 
 `get_ptc_assignment` should be called at the start of each epoch to get the
 assignment for the next epoch (`current_epoch + 1`). A validator should plan for
@@ -89,11 +89,10 @@ All validator responsibilities remain unchanged other than the following:
 
 ### Attestation
 
-The attestation deadline is changed with `ATTESTATION_DUE_BPS_EIP7732`.
-Moreover, the `attestation.data.index` field is now used to signal the payload
-status of the block being attested to (`attestation.data.beacon_block_root`).
-With the alias `data = attestation.data`, the validator should set this field as
-follows:
+The attestation deadline is changed with `ATTESTATION_DUE_BPS_GLOAS`. Moreover,
+the `attestation.data.index` field is now used to signal the payload status of
+the block being attested to (`attestation.data.beacon_block_root`). With the
+alias `data = attestation.data`, the validator should set this field as follows:
 
 - If `block.slot == current_slot` (i.e., `data.slot`), then always set
   `data.index = 0`.
@@ -107,7 +106,7 @@ follows:
 ### Sync Committee participations
 
 Sync committee duties are not changed for validators, however the submission
-deadline is changed with `SYNC_MESSAGE_DUE_BPS_EIP7732`.
+deadline is changed with `SYNC_MESSAGE_DUE_BPS_GLOAS`.
 
 ### Block proposal
 
@@ -156,7 +155,7 @@ in the block. The validator will have to
 
 The blob sidecars are no longer broadcast by the validator, and thus their
 construction is not necessary. This deprecates the corresponding sections from
-the honest validator guide in the Electra fork, moving them, albeit with some
+the honest validator guide in the Fulu fork, moving them, albeit with some
 modifications, to the [honest Builder guide](./builder.md)
 
 ### Payload timeliness attestation
@@ -232,7 +231,7 @@ def prepare_execution_payload(
     # Verify consistency of the parent hash with respect to the previous execution payload header
     parent_hash = state.latest_execution_payload_header.block_hash
 
-    # [Modified in EIP7732]
+    # [Modified in Gloas:EIP7732]
     # Set the forkchoice head and initiate the payload build process
     withdrawals, _, _ = get_expected_withdrawals(state)
 

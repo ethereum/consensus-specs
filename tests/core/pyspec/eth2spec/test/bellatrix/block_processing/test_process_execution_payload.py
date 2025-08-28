@@ -3,13 +3,13 @@ from random import Random
 from eth2spec.test.context import (
     expect_assertion_error,
     spec_state_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to,
     with_bellatrix_and_later,
     with_phases,
 )
 from eth2spec.test.helpers.constants import (
     BELLATRIX,
-    EIP7732,
+    GLOAS,
 )
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
@@ -19,7 +19,7 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
     get_execution_payload_header,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732
+from eth2spec.test.helpers.forks import is_post_gloas
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.state import next_slot
 
@@ -36,8 +36,8 @@ def run_execution_payload_processing(
     If ``valid == False``, run expecting ``AssertionError``
     """
     # Before Deneb, only `body.execution_payload` matters. `BeaconBlockBody` is just a wrapper.
-    # after EIP-7732 the execution payload is no longer in the body
-    if is_post_eip7732(spec):
+    # After Gloas the execution payload is no longer in the body
+    if is_post_gloas(spec):
         envelope = spec.ExecutionPayloadEnvelope(
             payload=execution_payload,
             beacon_block_root=state.latest_block_header.hash_tree_root(),
@@ -60,7 +60,7 @@ def run_execution_payload_processing(
 
     yield "pre", state
     yield "execution", {"execution_valid": execution_valid}
-    if not is_post_eip7732(spec):
+    if not is_post_gloas(spec):
         yield "body", body
 
     called_new_block = False
@@ -73,7 +73,7 @@ def run_execution_payload_processing(
             return execution_valid
 
     if not valid:
-        if is_post_eip7732(spec):
+        if is_post_gloas(spec):
             expect_assertion_error(
                 lambda: spec.process_execution_payload(state, signed_envelope, TestEngine())
             )
@@ -84,7 +84,7 @@ def run_execution_payload_processing(
         yield "post", None
         return
 
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         spec.process_execution_payload(state, signed_envelope, TestEngine())
     else:
         spec.process_execution_payload(state, body, TestEngine())
@@ -94,7 +94,7 @@ def run_execution_payload_processing(
 
     yield "post", state
 
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         assert state.latest_block_hash == execution_payload.block_hash
     else:
         assert state.latest_execution_payload_header == get_execution_payload_header(
@@ -109,7 +109,7 @@ def run_success_test(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_success_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
@@ -117,7 +117,7 @@ def test_success_first_payload(spec, state):
     yield from run_success_test(spec, state)
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_success_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -133,14 +133,14 @@ def run_gap_slot_test(spec, state):
     yield from run_execution_payload_processing(spec, state, execution_payload)
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_success_first_payload_with_gap_slot(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_gap_slot_test(spec, state)
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_success_regular_payload_with_gap_slot(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -157,14 +157,14 @@ def run_bad_execution_test(spec, state):
     )
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_invalid_bad_execution_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_bad_execution_test(spec, state)
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_invalid_bad_execution_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -301,14 +301,14 @@ def run_non_empty_extra_data_test(spec, state):
     assert state.latest_execution_payload_header.extra_data == execution_payload.extra_data
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_non_empty_extra_data_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_non_empty_extra_data_test(spec, state)
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_non_empty_extra_data_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -332,14 +332,14 @@ def run_non_empty_transactions_test(spec, state):
     )
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_non_empty_transactions_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_non_empty_extra_data_test(spec, state)
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_non_empty_transactions_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -361,14 +361,14 @@ def run_zero_length_transaction_test(spec, state):
     )
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_zero_length_transaction_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     yield from run_zero_length_transaction_test(spec, state)
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_zero_length_transaction_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
@@ -379,7 +379,7 @@ def run_randomized_non_validated_execution_fields_test(spec, state, rng, executi
     next_slot(spec, state)
     execution_payload = build_randomized_execution_payload(spec, state, rng)
 
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         state.latest_execution_payload_header.block_hash = execution_payload.block_hash
         state.latest_execution_payload_header.gas_limit = execution_payload.gas_limit
         state.latest_block_hash = execution_payload.parent_hash
@@ -389,7 +389,7 @@ def run_randomized_non_validated_execution_fields_test(spec, state, rng, executi
     )
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_randomized_non_validated_execution_fields_first_payload__execution_valid(spec, state):
     rng = Random(1111)
@@ -397,7 +397,7 @@ def test_randomized_non_validated_execution_fields_first_payload__execution_vali
     yield from run_randomized_non_validated_execution_fields_test(spec, state, rng)
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_randomized_non_validated_execution_fields_regular_payload__execution_valid(spec, state):
     rng = Random(2222)
@@ -405,7 +405,7 @@ def test_randomized_non_validated_execution_fields_regular_payload__execution_va
     yield from run_randomized_non_validated_execution_fields_test(spec, state, rng)
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_invalid_randomized_non_validated_execution_fields_first_payload__execution_invalid(
     spec, state
@@ -417,7 +417,7 @@ def test_invalid_randomized_non_validated_execution_fields_first_payload__execut
     )
 
 
-@with_all_phases_from_except(BELLATRIX, [EIP7732])
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_invalid_randomized_non_validated_execution_fields_regular_payload__execution_invalid(
     spec, state

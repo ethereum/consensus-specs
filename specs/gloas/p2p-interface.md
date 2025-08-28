@@ -1,17 +1,19 @@
-# EIP-7732 -- Networking
+# Gloas -- Networking
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modification in EIP-7732](#modification-in-eip-7732)
+- [Modification in Gloas](#modification-in-gloas)
+  - [Helper functions](#helper-functions)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
-    - [`BlobSidecar`](#blobsidecar)
+    - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
     - [Helpers](#helpers)
-      - [Modified `verify_blob_sidecar_inclusion_proof`](#modified-verify_blob_sidecar_inclusion_proof)
+      - [Modified `verify_data_column_sidecar_inclusion_proof`](#modified-verify_data_column_sidecar_inclusion_proof)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -26,7 +28,6 @@
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-      - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
       - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
       - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
 
@@ -34,24 +35,50 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for EIP7732.
+This document contains the consensus-layer networking specification for Gloas.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
-## Modification in EIP-7732
+## Modification in Gloas
+
+### Helper functions
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= GLOAS_FORK_EPOCH:
+        return GLOAS_FORK_VERSION
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ### Preset
 
-*[Modified in EIP7732]*
+*[Modified in Gloas:EIP7732]*
 
-| Name                                           | Value        | Description                                                 |
-| ---------------------------------------------- | ------------ | ----------------------------------------------------------- |
-| `KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732` | `22` **TBD** | Merkle proof depth for the `blob_kzg_commitments` list item |
+| Name                                          | Value | Description                                                 |
+| --------------------------------------------- | ----- | ----------------------------------------------------------- |
+| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS` | `9`   | Merkle proof depth for the `blob_kzg_commitments` list item |
 
 ### Configuration
 
-*[New in EIP7732]*
+*[New in Gloas:EIP7732]*
 
 | Name                   | Value          | Description                                                       |
 | ---------------------- | -------------- | ----------------------------------------------------------------- |
@@ -59,55 +86,56 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Containers
 
-#### `BlobSidecar`
+#### Modified `DataColumnSidecar`
 
-The `BlobSidecar` container is modified indirectly because the constant
-`KZG_COMMITMENT_INCLUSION_PROOF_DEPTH` is modified.
+*Note*: The `DataColumnSidecar` container is modified indirectly because the
+constant `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` is modified.
 
 ```python
-class BlobSidecar(Container):
-    index: BlobIndex
-    blob: Blob
-    kzg_commitment: KZGCommitment
-    kzg_proof: KZGProof
+class DataColumnSidecar(Container):
+    index: ColumnIndex
+    column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     signed_block_header: SignedBeaconBlockHeader
-    kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732]
+    # [Modified in Gloas:EIP7732]
+    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS]
 ```
 
 #### Helpers
 
-##### Modified `verify_blob_sidecar_inclusion_proof`
+##### Modified `verify_data_column_sidecar_inclusion_proof`
 
-`verify_blob_sidecar_inclusion_proof` is modified in EIP-7732 to account for the
-fact that the KZG commitments are included in the `ExecutionPayloadEnvelope` and
-no longer in the beacon block body.
+`verify_data_column_sidecar_inclusion_proof` is modified in Gloas to account for
+the fact that the KZG commitments are included in the `ExecutionPayloadEnvelope`
+and no longer in the beacon block body.
 
 ```python
-def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
-    inner_gindex = get_generalized_index(
-        List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK], blob_sidecar.index
-    )
-    outer_gindex = get_generalized_index(
-        BeaconBlockBody,
-        "signed_execution_payload_header",
-        "message",
-        "blob_kzg_commitments_root",
-    )
-    gindex = get_subtree_index(concat_generalized_indices(outer_gindex, inner_gindex))
-
+def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bool:
+    """
+    Verify if the given KZG commitments included in the given beacon block.
+    """
     return is_valid_merkle_branch(
-        leaf=blob_sidecar.kzg_commitment.hash_tree_root(),
-        branch=blob_sidecar.kzg_commitment_inclusion_proof,
-        depth=KZG_COMMITMENT_INCLUSION_PROOF_DEPTH_EIP7732,
-        index=gindex,
-        root=blob_sidecar.signed_block_header.message.body_root,
+        leaf=hash_tree_root(sidecar.kzg_commitments),
+        branch=sidecar.kzg_commitments_inclusion_proof,
+        # [Modified in Gloas:EIP7732]
+        depth=KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS,
+        # [Modified in Gloas:EIP7732]
+        index=get_subtree_index(
+            get_generalized_index(
+                BeaconBlockBody,
+                "signed_execution_payload_header",
+                "message",
+                "blob_kzg_commitments_root",
+            )
+        ),
+        root=sidecar.signed_block_header.message.body_root,
     )
 ```
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of EIP-7732 to support upgraded
-types.
+Some gossip meshes are upgraded in the fork of Gloas to support upgraded types.
 
 #### Topics and messages
 
@@ -130,8 +158,8 @@ are given in this table:
 
 ##### Global topics
 
-EIP-7732 introduces new global topics for execution header, execution payload
-and payload attestation.
+Gloas introduces new global topics for execution header, execution payload and
+payload attestation.
 
 ###### `beacon_aggregate_and_proof`
 
@@ -149,7 +177,7 @@ The following validations are removed:
 
 ###### `beacon_block`
 
-*[Modified in EIP7732]*
+*[Modified in Gloas:EIP7732]*
 
 The *type* of the payload of this topic changes to the (modified)
 `SignedBeaconBlock` found in [the Beacon Chain changes](./beacon-chain.md).
@@ -159,7 +187,7 @@ regards to the `ExecutionPayload` are removed:
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in Consensus Layer -- i.e. validate that
-  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK`
+  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
 - _[REJECT]_ The block's execution payload timestamp is correct with respect to
   the slot -- i.e.
   `execution_payload.timestamp == compute_time_at_slot(state, block.slot)`.
@@ -299,13 +327,13 @@ The following validations are removed:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
-| `EIP7732_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
+| `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
+| `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
+| `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 
 ##### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
-
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 
@@ -316,25 +344,16 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 | `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
 | `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
 | `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
-| `EIP7732_FORK_VERSION`   | `eip7732.SignedBeaconBlock`   |
-
-##### BlobSidecarsByRoot v1
-
-**Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_root/1/`
-
-<!-- eth2spec: skip -->
-
-| `fork_version`         | Chunk SSZ type        |
-| ---------------------- | --------------------- |
-| `DENEB_FORK_VERSION`   | `deneb.BlobSidecar`   |
-| `EIP7732_FORK_VERSION` | `eip7732.BlobSidecar` |
+| `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
+| `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
+| `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 
 ##### ExecutionPayloadEnvelopesByRange v1
 
 **Protocol ID:**
 `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
 
-*[New in EIP7732]*
+*[New in Gloas:EIP7732]*
 
 Request Content:
 
@@ -357,30 +376,35 @@ Specifications of req\\response methods are equivalent to
 [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference
 being the response content type.
 
-For each `response_chunk`, a `ForkDigest`-context based on
-`compute_fork_version(compute_epoch_at_slot(signed_execution_payload_envelop.message.slot))`
-is used to select the fork namespace of the Response type.
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
+`beacon_block` referred to by
+`signed_execution_payload_envelope.message.beacon_block_root`.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`         | Chunk SSZ type                           |
-| ---------------------- | ---------------------------------------- |
-| `EIP7732_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
+| `fork_version`       | Chunk SSZ type                         |
+| -------------------- | -------------------------------------- |
+| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
 
 ##### ExecutionPayloadEnvelopesByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_root/1/`
 
-The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`:
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
+`beacon_block` referred to by
+`signed_execution_payload_envelope.message.beacon_block_root`.
+
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
-| `fork_version`         | Chunk SSZ type                           |
-| ---------------------- | ---------------------------------------- |
-| `EIP7732_FORK_VERSION` | `eip7732.SignedExecutionPayloadEnvelope` |
+| `fork_version`       | Chunk SSZ type                         |
+| -------------------- | -------------------------------------- |
+| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
 
 Request Content:
 
