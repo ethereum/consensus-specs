@@ -246,7 +246,7 @@ class TestTemplateTestDecorator:
 
             return test_func, f"test_kwargs_{param1}_{param2}_{param3}"
 
-        _test_template("pos", param2="kw", param3="arg")
+        _test_template("pos1", param2="kwarg1", param3="kwarg2")
 
         test_name = "test_kwargs_pos_kw_arg"
         assert hasattr(test_module, test_name)
