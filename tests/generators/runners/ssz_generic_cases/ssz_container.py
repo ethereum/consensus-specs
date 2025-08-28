@@ -172,83 +172,71 @@ def invalid_container_cases(rng: Random, name: str, typ: type[View], offsets: Se
         ),
     )
 
-    if len(offsets) != 0:
-        # Note: there are many more ways to have invalid offsets,
-        # these are just example to get clients started looking into hardening ssz.
-        for mode in [
-            RandomizationMode.mode_random,
-            RandomizationMode.mode_nil_count,
-            RandomizationMode.mode_one_count,
-            RandomizationMode.mode_max_count,
-        ]:
-            for offset_index in offsets:
-                for description, change in [
-                    ("plus_one", lambda x: x + 1),
-                    ("zeroed", lambda x: 0),
-                    ("minus_one", lambda x: x - 1),
-                ]:
+        if len(offsets) != 0:
+            # Note: there are many more ways to have invalid offsets,
+            # these are just example to get clients started looking into hardening ssz.
+            for mode in [
+                RandomizationMode.mode_random,
+                RandomizationMode.mode_nil_count,
+                RandomizationMode.mode_one_count,
+                RandomizationMode.mode_max_count,
+            ]:
+                for offset_index in offsets:
+                    for description, change in [
+                        ("plus_one", lambda x: x + 1),
+                        ("zeroed", lambda x: 0),
+                        ("minus_one", lambda x: x - 1),
+                    ]:
 
-                    def the_test(
-                        rng=rng, mode=mode, typ=typ, offset_index=offset_index, change=change
-                    ):
-                        serialized = mod_offset(
-                            b=serialize(container_case_fn(rng, mode, typ)),
-                            offset_index=offset_index,
-                            change=change,
+                        def the_test(
+                            rng=rng, mode=mode, typ=typ, offset_index=offset_index, change=change
+                        ):
+                            serialized = mod_offset(
+                                b=serialize(container_case_fn(rng, mode, typ)),
+                                offset_index=offset_index,
+                                change=change,
+                            )
+                            try:
+                                _ = deserialize(typ, serialized)
+                            except Exception:
+                                return serialized
+                            assert False  # should throw
+
+                        yield (
+                            f"{name}_{mode.to_name()}_offset_{offset_index}_{description}",
+                            invalid_test_case(the_test),
                         )
-                        try:
-                            _ = deserialize(typ, serialized)
-                        except Exception:
-                            return serialized
-                        raise SkippedTest(
-                            "The serialized data still parses fine, it's not invalid data"
+                    if mode == RandomizationMode.mode_max_count:
+
+                        def the_test(
+                            rng=rng, mode=mode, typ=typ, offset_index=offset_index, change=change
+                        ):
+                            serialized = serialize(container_case_fn(rng, mode, typ))
+                            serialized = serialized + serialized[:3]
+                            try:
+                                _ = deserialize(typ, serialized)
+                            except Exception:
+                                return serialized
+                            assert False  # should throw
+
+                        yield (
+                            f"{name}_{mode.to_name()}_last_offset_{offset_index}_overflow",
+                            invalid_test_case(the_test),
                         )
+                    if mode == RandomizationMode.mode_one_count:
 
-                    yield (
-                        f"{name}_{mode.to_name()}_offset_{offset_index}_{description}",
-                        invalid_test_case(the_test),
-                    )
-                if mode == RandomizationMode.mode_max_count:
+                        def the_test(
+                            rng=rng, mode=mode, typ=typ, offset_index=offset_index, change=change
+                        ):
+                            serialized = serialize(container_case_fn(rng, mode, typ))
+                            serialized = serialized + serialized[:1]
+                            try:
+                                _ = deserialize(typ, serialized)
+                            except Exception:
+                                return serialized
+                            assert False  # should throw
 
-                    def the_test(
-                        rng=rng, mode=mode, typ=typ, offset_index=offset_index, change=change
-                    ):
-                        serialized = serialize(container_case_fn(rng, mode, typ))
-                        serialized = serialized + serialized[:3]
-                        try:
-                            _ = deserialize(typ, serialized)
-                        except Exception:
-                            return serialized
-                        raise SkippedTest(
-                            "The serialized data still parses fine, it's not invalid data"
+                        yield (
+                            f"{name}_{mode.to_name()}_last_offset_{offset_index}_wrong_byte_length",
+                            invalid_test_case(the_test),
                         )
-
-                    yield (
-                        f"{name}_{mode.to_name()}_last_offset_{offset_index}_overflow",
-                        invalid_test_case(the_test),
-                    )
-                if mode == RandomizationMode.mode_one_count:
-
-                    def the_test(
-                        rng=rng, mode=mode, typ=typ, offset_index=offset_index, change=change
-                    ):
-                        serialized = serialize(container_case_fn(rng, mode, typ))
-                        serialized = serialized + serialized[:1]
-                        try:
-                            _ = deserialize(typ, serialized)
-                        except Exception:
-                            return serialized
-                        raise SkippedTest(
-                            "The serialized data still parses fine, it's not invalid data"
-                        )
-
-                    yield (
-                        f"{name}_{mode.to_name()}_last_offset_{offset_index}_wrong_byte_length",
-                        invalid_test_case(the_test),
-                    )
-
-
-def invalid_cases():
-    rng = Random(1234)
-    for name, (typ, offsets) in PRESET_CONTAINERS.items():
-        yield from invalid_container_cases(rng, name, typ, offsets)
