@@ -7,10 +7,15 @@
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters-1)
   - [EIP-7782 timing parameters](#eip-7782-timing-parameters)
+  - [EIP-7782 sync committee parameters](#eip-7782-sync-committee-parameters)
   - [EIP-7782 churn limit parameters](#eip-7782-churn-limit-parameters)
   - [Modified churn limit functions](#modified-churn-limit-functions)
     - [Modified `get_balance_churn_limit`](#modified-get_balance_churn_limit)
     - [Modified `get_activation_exit_churn_limit`](#modified-get_activation_exit_churn_limit)
+    - [Modified `get_activation_exit_churn_limit`](#modified-get_activation_exit_churn_limit-1)
+  - [Modified sync committee functions](#modified-sync-committee-functions)
+    - [Modified `get_sync_committee_period`](#modified-get_sync_committee_period)
+    - [Modified `get_sync_committee_period_at_slot`](#modified-get_sync_committee_period_at_slot)
 - [Rewards and penalties](#rewards-and-penalties-1)
   - [Helpers](#helpers)
     - [`get_base_reward_per_increment`](#get_base_reward_per_increment)
@@ -21,7 +26,7 @@
 
 ### Rewards and penalties
 
-| Name                         | Value                 |
+| Name | Value |
 | ---------------------------- | --------------------- |
 | `BASE_REWARD_FACTOR_EIP7782` | `uint64(2**5)` (= 32) |
 
@@ -29,24 +34,24 @@
 
 ### Time parameters
 
-| Name                       | Value          |     Unit     | Duration  |
+| Name | Value | Unit | Duration |
 | -------------------------- | -------------- | :----------: | :-------: |
 | `SLOT_DURATION_MS_EIP7782` | `uint64(6000)` | milliseconds | 6 seconds |
 
 ### EIP-7782 timing parameters
 
-| Name                           | Value          |     Unit     |   Duration   |
+| Name | Value | Unit | Duration |
 | ------------------------------ | -------------- | :----------: | :----------: |
-| `ATTESTATION_DUE_BPS_EIP7782`  | `uint64(5000)` | basis points | ~50% of slot |
-| `AGGREGRATE_DUE_BPS_EIP7782`   | `uint64(7500)` | basis points | ~75% of slot |
+| `ATTESTATION_DUE_BPS_EIP7782` | `uint64(5000)` | basis points | ~50% of slot |
+| `AGGREGRATE_DUE_BPS_EIP7782` | `uint64(7500)` | basis points | ~75% of slot |
 | `SYNC_MESSAGE_DUE_BPS_EIP7782` | `uint64(3333)` | basis points | ~33% of slot |
 | `CONTRIBUTION_DUE_BPS_EIP7782` | `uint64(6667)` | basis points | ~67% of slot |
 
 ### EIP-7782 sync committee parameters
 
-| Name                                           | Value          | Unit | Duration |
+| Name | Value | Unit | Duration |
 | ---------------------------------------------- | -------------- | :--: | :------: |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD_EIP7782`    | `uint64(512)`  | epochs | ~27 hours |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD_EIP7782` | `uint64(512)` | epochs | ~27 hours |
 
 *Note*: EIP-7782 uses the blob schedule mechanism to reduce blob throughput. The
 blob schedule entry for EIP-7782 sets `MAX_BLOBS_PER_BLOCK` to 3 (half of the
@@ -61,9 +66,9 @@ proportional to time rather than slot count.
 
 ### EIP-7782 churn limit parameters
 
-| Name                                                | Value                | Unit |           Description           |
+| Name | Value | Unit | Description |
 | --------------------------------------------------- | -------------------- | :--: | :-----------------------------: |
-| `MIN_PER_EPOCH_CHURN_LIMIT_EIP7782`                 | `Gwei(64000000000)`  | Gwei |    Minimum balance per epoch    |
+| `MIN_PER_EPOCH_CHURN_LIMIT_EIP7782` | `Gwei(64000000000)` | Gwei | Minimum balance per epoch |
 | `MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT_EIP7782` | `Gwei(128000000000)` | Gwei | Maximum activation/exit balance |
 
 ### Modified churn limit functions
@@ -90,6 +95,42 @@ def get_activation_exit_churn_limit(state: BeaconState) -> Gwei:
     Return the churn limit for the current epoch dedicated to activations and exits.
     """
     return min(MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT_EIP7782, get_balance_churn_limit(state))
+```
+
+#### Modified `get_activation_exit_churn_limit`
+
+```python
+def get_activation_exit_churn_limit(state: BeaconState) -> Gwei:
+    """
+    Return the churn limit for the current epoch dedicated to activations and exits.
+    """
+    return min(MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT_EIP7782, get_balance_churn_limit(state))
+```
+
+### Modified sync committee functions
+
+#### Modified `get_sync_committee_period`
+
+```python
+def get_sync_committee_period(epoch: Epoch) -> uint64:
+    """
+    Return the sync committee period at ``epoch``.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD_EIP7782
+    else:
+        return epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+```
+
+#### Modified `get_sync_committee_period_at_slot`
+
+```python
+def get_sync_committee_period_at_slot(slot: Slot) -> uint64:
+    """
+    Return the sync committee period at ``slot``.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    return get_sync_committee_period(epoch)
 ```
 
 ## Rewards and penalties
