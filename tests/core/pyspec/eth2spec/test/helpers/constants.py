@@ -17,6 +17,7 @@ GLOAS = SpecForkName("gloas")
 # Experimental phases (not included in default "ALL_PHASES"):
 EIP7441 = SpecForkName("eip7441")
 EIP7805 = SpecForkName("eip7805")
+EIP7928 = SpecForkName("eip7928")
 
 #
 # SpecFork settings
@@ -35,6 +36,7 @@ ALL_PHASES = (
     GLOAS,
     # Experimental patches
     EIP7805,
+    EIP7928,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = [item for item in MAINNET_FORKS if item != PHASE0]
@@ -57,6 +59,7 @@ PREVIOUS_FORK_OF = {
     # Experimental patches
     EIP7441: CAPELLA,
     EIP7805: FULU,
+    EIP7928: FULU,
 }
 
 # For fork transition tests
