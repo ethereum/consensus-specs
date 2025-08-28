@@ -10,6 +10,7 @@
   - [New `get_slots_since_genesis_ms`](#new-get_slots_since_genesis_ms)
 - [Handlers](#handlers)
   - [`on_tick`](#on_tick)
+  - [`on_tick_per_slot`](#on_tick_per_slot)
 
 <!-- mdformat-toc end -->
 
@@ -138,3 +139,90 @@ def get_slots_since_genesis_ms(store: Store) -> int:
 ### Handlers
 
 #### `on_tick`
+
+```python
+def on_tick(store: Store, time: uint64) -> None:
+    """
+    Run ``on_tick`` upon receiving a new time tick.
+    Uses millisecond-based calculations for better precision and future fractional slot support.
+    """
+    # Convert time to milliseconds for precise calculations
+    time_ms = time * 1000
+    genesis_time_ms = store.genesis_time * 1000
+    
+    # Calculate the current slot using the appropriate slot duration
+    if EIP7782_FORK_EPOCH == FAR_FUTURE_EPOCH:
+        # If EIP-7782 is not scheduled, use standard slot duration
+        tick_slot = (time_ms - genesis_time_ms) // SLOT_DURATION_MS
+    else:
+        # Use the new helper function that handles the fork transition
+        tick_slot = get_slots_since_genesis_ms(Store(
+            time=time,
+            genesis_time=store.genesis_time,
+            justified_checkpoint=store.justified_checkpoint,
+            finalized_checkpoint=store.finalized_checkpoint,
+            unrealized_justified_checkpoint=store.unrealized_justified_checkpoint,
+            unrealized_finalized_checkpoint=store.unrealized_finalized_checkpoint,
+            proposer_boost_root=store.proposer_boost_root,
+            equivocating_indices=store.equivocating_indices,
+            blocks=store.blocks,
+            block_states=store.block_states,
+            checkpoint_states=store.checkpoint_states,
+            unrealized_justifications=store.unrealized_justifications,
+        ))
+    
+    # Process each slot up to the current tick slot
+    while get_current_slot(store) < tick_slot:
+        current_slot = get_current_slot(store)
+        
+        # Calculate the time for the next slot using the correct slot duration for that specific slot
+        if EIP7782_FORK_EPOCH == FAR_FUTURE_EPOCH:
+            # If EIP-7782 is not scheduled, use standard slot duration
+            previous_time = store.genesis_time + (current_slot + 1) * SLOT_DURATION_MS // 1000
+        else:
+            # Calculate the time using the correct slot duration for each slot
+            eip7782_fork_slot = EIP7782_FORK_EPOCH * SLOTS_PER_EPOCH
+            
+            if current_slot < eip7782_fork_slot:
+                # Before EIP-7782 fork, use standard slot duration
+                previous_time = store.genesis_time + (current_slot + 1) * SLOT_DURATION_MS // 1000
+            else:
+                # After EIP-7782 fork, calculate time using both slot durations
+                # Time for slots before the fork
+                time_before_fork = eip7782_fork_slot * SLOT_DURATION_MS // 1000
+                # Time for slots after the fork (including the current slot)
+                slots_after_fork = current_slot - eip7782_fork_slot + 1
+                time_after_fork = slots_after_fork * SLOT_DURATION_MS_EIP7782 // 1000
+                # Total time
+                previous_time = store.genesis_time + time_before_fork + time_after_fork
+        
+        on_tick_per_slot(store, previous_time)
+    
+    on_tick_per_slot(store, time)
+```
+
+#### `on_tick_per_slot`
+
+```python
+def on_tick_per_slot(store: Store, time: uint64) -> None:
+    """
+    Run ``on_tick_per_slot`` for a specific time.
+    Uses millisecond-based calculations for better precision and future fractional slot support.
+    """
+    previous_slot = get_current_slot(store)
+
+    # Update store time
+    store.time = time
+
+    current_slot = get_current_slot(store)
+
+    # If this is a new slot, reset store.proposer_boost_root
+    if current_slot > previous_slot:
+        store.proposer_boost_root = Root()
+
+    # If a new epoch, pull-up justification and finalization from previous epoch
+    if current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0:
+        update_checkpoints(
+            store, store.unrealized_justified_checkpoint, store.unrealized_finalized_checkpoint
+        )
+```
