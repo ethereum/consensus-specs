@@ -116,10 +116,7 @@ def get_sync_committee_period(epoch: Epoch) -> uint64:
     """
     Return the sync committee period at ``epoch``.
     """
-    if epoch >= EIP7782_FORK_EPOCH:
-        return epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD_EIP7782
-    else:
-        return epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD
+     return epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD_EIP7782
 ```
 
 #### Modified `get_sync_committee_period_at_slot`
