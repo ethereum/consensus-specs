@@ -290,11 +290,8 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon
   block in fork choice.
 - _[IGNORE]_ `header.slot` is the current slot or the next slot.
-- _[REJECT]_ `signed_execution_payload_header.signature` validation fails:
-  - For self-builds (when `header.builder_index == proposer_index`): signature
-    is not `bls.G2_POINT_AT_INFINITY`
-  - For external builds: signature is not valid with respect to the
-    `header.builder_index`
+- _[REJECT]_ `signed_execution_payload_header.signature` is valid with respect
+  to the `header.builder_index`.
 
 ##### Attestation subnets
 
