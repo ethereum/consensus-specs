@@ -953,8 +953,7 @@ def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> 
     header = signed_header.message
     builder_index = header.builder_index
     builder = state.validators[builder_index]
-    assert is_active_validator(builder, get_current_epoch(state))
-    assert not builder.slashed
+
     amount = header.value
     # For self-builds, amount must be zero regardless of withdrawal credential prefix
     if builder_index == block.proposer_index:
@@ -964,6 +963,9 @@ def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> 
         # Non-self builds require builder withdrawal credential
         assert has_builder_withdrawal_credential(builder)
         assert verify_execution_payload_header_signature(state, signed_header)
+
+    assert is_active_validator(builder, get_current_epoch(state))
+    assert not builder.slashed
 
     # Check that the builder is active, non-slashed, and has funds to cover the bid
     pending_payments = sum(
