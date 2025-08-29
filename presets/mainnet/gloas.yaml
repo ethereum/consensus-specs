@@ -2,7 +2,7 @@
 
 # Networking
 # ---------------------------------------------------------------
-# floorlog2(get_generalized_index(BeaconBlockBody, "signed_execution_payload_header", "message", "blob_kzg_commitments_root")) (= 9)
+# floorlog2(get_generalized_index(BeaconBlockBody, "signed_execution_payload_bid", "message", "blob_kzg_commitments_root")) (= 9)
 KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS: 9
 
 # Execution

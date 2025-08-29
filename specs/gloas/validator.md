@@ -13,7 +13,7 @@
   - [Attestation](#attestation)
   - [Sync Committee participations](#sync-committee-participations)
   - [Block proposal](#block-proposal)
-    - [Constructing the new `signed_execution_payload_header` field in `BeaconBlockBody`](#constructing-the-new-signed_execution_payload_header-field-in-beaconblockbody)
+    - [Constructing the new `signed_execution_payload_bid` field in `BeaconBlockBody`](#constructing-the-new-signed_execution_payload_bid-field-in-beaconblockbody)
     - [Constructing the new `payload_attestations` field in `BeaconBlockBody`](#constructing-the-new-payload_attestations-field-in-beaconblockbody)
     - [Blob sidecars](#blob-sidecars)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
@@ -115,23 +115,23 @@ any slot during which `is_proposer(state, validator_index)` returns `true`. The
 mechanism to prepare this beacon block and related sidecars differs from
 previous forks as follows
 
-#### Constructing the new `signed_execution_payload_header` field in `BeaconBlockBody`
+#### Constructing the new `signed_execution_payload_bid` field in `BeaconBlockBody`
 
-To obtain `signed_execution_payload_header`, a block proposer building a block
-on top of a `state` must take the following actions:
+To obtain `signed_execution_payload_bid`, a block proposer building a block on
+top of a `state` must take the following actions:
 
-- Listen to the `execution_payload_header` gossip global topic and save an
-  accepted `signed_execution_payload_header` from a builder. Proposer MAY obtain
-  these signed messages by other off-protocol means.
-- The `signed_execution_payload_header` must satisfy the verification conditions
-  found in `process_execution_payload_header`, that is
-  - The header signature must be valid
-  - The builder balance can cover the header value
-  - The header slot is for the proposal block slot
-  - The header parent block hash equals the state's `latest_block_hash`.
-  - The header parent block root equals the current block's `parent_root`.
+- Listen to the `execution_payload_bid` gossip global topic and save an accepted
+  `signed_execution_payload_bid` from a builder. Proposer MAY obtain these
+  signed messages by other off-protocol means.
+- The `signed_execution_payload_bid` must satisfy the verification conditions
+  found in `process_execution_payload_bid`, that is
+  - The bid signature must be valid
+  - The builder balance can cover the bid value
+  - The bid slot is for the proposal block slot
+  - The bid parent block hash equals the state's `latest_block_hash`.
+  - The bid parent block root equals the current block's `parent_root`.
 - Select one bid and set
-  `body.signed_execution_payload_header = signed_execution_payload_header`
+  `body.signed_execution_payload_bid = signed_execution_payload_bid`
 
 #### Constructing the new `payload_attestations` field in `BeaconBlockBody`
 
@@ -228,8 +228,8 @@ def prepare_execution_payload(
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
-    # Verify consistency of the parent hash with respect to the previous execution payload header
-    parent_hash = state.latest_execution_payload_header.block_hash
+    # Verify consistency of the parent hash with respect to the previous execution payload bid
+    parent_hash = state.latest_execution_payload_bid.block_hash
 
     # [Modified in Gloas:EIP7732]
     # Set the forkchoice head and initiate the payload build process

@@ -41,8 +41,9 @@ def run_execution_payload_processing(
         kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
             blob_kzg_commitments
         )
-        state.latest_execution_payload_header.blob_kzg_commitments_root = kzg_list.hash_tree_root()
-        state.latest_execution_payload_header.builder_index = envelope.builder_index
+        # In Gloas, blob_kzg_commitments_root is stored in latest_execution_payload_bid, not latest_execution_payload_header
+        state.latest_execution_payload_bid.blob_kzg_commitments_root = kzg_list.hash_tree_root()
+        state.latest_execution_payload_bid.builder_index = envelope.builder_index
         post_state = state.copy()
         previous_state_root = state.hash_tree_root()
         if post_state.latest_block_header.state_root == spec.Root():
