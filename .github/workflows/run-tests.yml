@@ -64,7 +64,7 @@ jobs:
           python-version: '3.13'
           cache: 'pip'
       - name: Run framework tests
-        run: make test fw=true
+        run: make test component=fw
 
   tests:
     needs: [lint, whitespace, comments, framework]
@@ -91,4 +91,4 @@ jobs:
           python-version: '3.13'
           cache: 'pip'
       - name: Run pyspec tests for ${{ matrix.fork }}
-        run: make test preset=minimal fork=${{ matrix.fork }}
+        run: make test component=pyspec preset=minimal fork=${{ matrix.fork }}
