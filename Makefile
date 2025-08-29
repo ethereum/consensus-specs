@@ -21,9 +21,7 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	clean         \
 	coverage      \
 	help          \
-	kzg_setups    \
 	lint          \
-	pyspec        \
 	reftests      \
 	serve_docs    \
 	test
@@ -48,9 +46,7 @@ help-nonverbose:
 	@echo "make $(BOLD)clean$(NORM)      -- delete all untracked files"
 	@echo "make $(BOLD)comptests$(NORM)  -- generate compliance tests"
 	@echo "make $(BOLD)coverage$(NORM)   -- run pyspec tests with coverage"
-	@echo "make $(BOLD)kzg_setups$(NORM) -- generate trusted setups"
 	@echo "make $(BOLD)lint$(NORM)       -- run the linters"
-	@echo "make $(BOLD)pyspec$(NORM)     -- build python specifications"
 	@echo "make $(BOLD)reftests$(NORM)   -- generate reference tests"
 	@echo "make $(BOLD)serve_docs$(NORM) -- start a local docs web server"
 	@echo "make $(BOLD)test$(NORM)       -- run pyspec tests"
@@ -60,16 +56,6 @@ help-nonverbose:
 
 # Print verbose help output.
 help-verbose:
-	@echo ""
-	@echo "$(BOLD)BUILDING$(NORM)"
-	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
-	@echo ""
-	@echo "$(BOLD)make pyspec$(NORM)"
-	@echo ""
-	@echo "  Builds Python specifications for all consensus phases. This command installs"
-	@echo "  the eth2spec package and copies mainnet/minimal configs to the test directory."
-	@echo ""
-	@echo "  Example: make pyspec"
 	@echo ""
 	@echo "$(BOLD)TESTING$(NORM)"
 	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
@@ -167,13 +153,6 @@ help-verbose:
 	@echo "    make comptests fc_gen_config=standard"
 	@echo "    make comptests fc_gen_config=standard fork=deneb preset=mainnet threads=8"
 	@echo ""
-	@echo "$(BOLD)make kzg_setups$(NORM)"
-	@echo ""
-	@echo "  Generates KZG trusted setup files for testing. Creates trusted setups for"
-	@echo "  both minimal and mainnet presets with predefined parameters."
-	@echo ""
-	@echo "  Example: make kzg_setups"
-	@echo ""
 	@echo "$(BOLD)DOCUMENTATION$(NORM)"
 	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
 	@echo ""
@@ -226,7 +205,7 @@ TEST_LIBS_DIR = $(CURDIR)/tests/core
 PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 
 # Create the pyspec for all phases.
-pyspec: $(VENV) setup.py pyproject.toml
+_pyspec: $(VENV) setup.py pyproject.toml
 	@$(PYTHON_VENV) -m uv pip install --reinstall-package=eth2spec .[docs,lint,test,generator]
 	@for dir in $(ALL_EXECUTABLE_SPEC_NAMES); do \
 	    mkdir -p "./tests/core/pyspec/eth2spec/$$dir"; \
@@ -248,7 +227,7 @@ test: MAYBE_PARALLEL := $(if $(k),,-n auto)
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
 test: PRESET := --preset=$(if $(preset),$(preset),minimal)
 test: BLS := --bls-type=$(if $(bls),$(bls),fastest)
-test: pyspec
+test: _pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(PYTHON_VENV) -m pytest \
 		$(MAYBE_PARALLEL) \
@@ -273,7 +252,7 @@ COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth2spec.$S.$(
 # Run pytest with coverage tracking
 _test_with_coverage: MAYBE_TEST := $(if $(k),-k=$(k))
 _test_with_coverage: MAYBE_FORK := $(if $(fork),--fork=$(fork))
-_test_with_coverage: pyspec
+_test_with_coverage: _pyspec
 	@$(PYTHON_VENV) -m pytest \
 		-n auto \
 		$(MAYBE_TEST) \
@@ -311,7 +290,7 @@ _copy_docs:
 	@cp $(CURDIR)/README.md $(DOCS_DIR)/README.md
 
 # Start a local documentation server.
-serve_docs: pyspec _copy_docs
+serve_docs: _pyspec _copy_docs
 	@$(MKDOCS_VENV) build
 	@$(MKDOCS_VENV) serve
 
@@ -327,7 +306,7 @@ MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p eth2spec.$S)
 MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md')
 
 # Check for mistakes.
-lint: pyspec
+lint: _pyspec
 	@$(MDFORMAT_VENV) --number --wrap=80 $(MARKDOWN_FILES)
 	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
 	@$(PYTHON_VENV) -m ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
@@ -340,6 +319,7 @@ lint: pyspec
 
 COMMA:= ,
 TEST_VECTOR_DIR = $(CURDIR)/../consensus-spec-tests/tests
+COMP_TEST_VECTOR_DIR = $(CURDIR)/../compliance-spec-tests/tests
 
 # Generate reference tests.
 reftests: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
@@ -348,7 +328,7 @@ reftests: MAYBE_RUNNERS := $(if $(runner),--runners $(subst ${COMMA}, ,$(runner)
 reftests: MAYBE_TESTS := $(if $(k),--cases $(subst ${COMMA}, ,$(k)))
 reftests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
 reftests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
-reftests: pyspec
+reftests: _pyspec
 	@$(PYTHON_VENV) -m tests.generators.main \
 		--output $(TEST_VECTOR_DIR) \
 		$(MAYBE_VERBOSE) \
@@ -358,24 +338,12 @@ reftests: pyspec
 		$(MAYBE_FORKS) \
 		$(MAYBE_PRESETS)
 
-# Generate KZG trusted setups for testing.
-kzg_setups: pyspec
-	@for preset in minimal mainnet; do \
-		$(PYTHON_VENV) $(CURDIR)/scripts/gen_kzg_trusted_setups.py \
-			--secret=1337 \
-			--g1-length=4096 \
-			--g2-length=65 \
-			--output-dir $(CURDIR)/presets/$$preset/trusted_setups; \
-	done
-
-COMP_TEST_VECTOR_DIR = $(CURDIR)/../compliance-spec-tests/tests
-
 # Generate compliance tests (fork choice).
 comptests: FC_GEN_CONFIG := $(if $(fc_gen_config),$(fc_gen_config),tiny)
 comptests: MAYBE_THREADS := $(if $(threads),--threads=$(threads),--fc-gen-multi-processing)
 comptests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
 comptests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
-comptests: pyspec
+comptests: _pyspec
 	@$(PYTHON_VENV) -m tests.generators.compliance_runners.fork_choice.test_gen \
 		--output $(COMP_TEST_VECTOR_DIR) \
 		--fc-gen-config $(FC_GEN_CONFIG) \
