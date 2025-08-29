@@ -3,7 +3,7 @@ from eth2spec.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
-from eth2spec.test.gloas.block_processing.test_process_execution_payload_header import (
+from eth2spec.test.gloas.block_processing.test_process_execution_payload_bid import (
     make_validator_builder,
 )
 from eth2spec.test.helpers.execution_payload import (
