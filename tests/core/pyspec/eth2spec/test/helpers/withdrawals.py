@@ -295,26 +295,63 @@ def run_withdrawals_processing(
     yield "post", state
 
     # Check withdrawal indices
-    assert state.next_withdrawal_index == pre_state.next_withdrawal_index + len(
-        expected_withdrawals
-    )
-    for index, withdrawal in enumerate(execution_payload.withdrawals):
-        assert withdrawal.index == pre_state.next_withdrawal_index + index
+    if is_post_gloas(spec):
+        # In Gloas, withdrawals only happen if the parent block was full
+        if not spec.is_parent_block_full(pre_state):
+            # If parent block was not full, no withdrawals processed, indices unchanged
+            assert state.next_withdrawal_index == pre_state.next_withdrawal_index
+            assert (
+                state.next_withdrawal_validator_index == pre_state.next_withdrawal_validator_index
+            )
+        else:
+            # Parent block was full, process withdrawals normally
+            if len(expected_withdrawals) > 0:
+                latest_withdrawal = expected_withdrawals[-1]
+                assert state.next_withdrawal_index == latest_withdrawal.index + 1
+            else:
+                # No withdrawals means no index update
+                assert state.next_withdrawal_index == pre_state.next_withdrawal_index
+            # For Gloas, check against expected withdrawals instead of execution payload
+            for index, withdrawal in enumerate(expected_withdrawals):
+                assert withdrawal.index == pre_state.next_withdrawal_index + index
 
-    if len(expected_withdrawals) == 0:
-        next_withdrawal_validator_index = (
-            pre_state.next_withdrawal_validator_index + spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
+            # Handle next_withdrawal_validator_index for Gloas
+            if len(expected_withdrawals) == spec.MAX_WITHDRAWALS_PER_PAYLOAD:
+                # Next sweep starts after the latest withdrawal's validator index
+                next_validator_index = (expected_withdrawals[-1].validator_index + 1) % len(
+                    state.validators
+                )
+                assert state.next_withdrawal_validator_index == next_validator_index
+            else:
+                # Advance sweep by the max length if there was not a full set of withdrawals
+                next_index = (
+                    pre_state.next_withdrawal_validator_index
+                    + spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
+                )
+                next_validator_index = next_index % len(state.validators)
+                assert state.next_withdrawal_validator_index == next_validator_index
+    else:
+        assert state.next_withdrawal_index == pre_state.next_withdrawal_index + len(
+            expected_withdrawals
         )
-        assert state.next_withdrawal_validator_index == next_withdrawal_validator_index % len(
-            state.validators
-        )
-    elif len(expected_withdrawals) <= spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-        bound = min(spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
-        assert len(get_expected_withdrawals(spec, state)) <= bound
-    elif len(expected_withdrawals) > spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-        raise ValueError(
-            "len(expected_withdrawals) should not be greater than MAX_WITHDRAWALS_PER_PAYLOAD"
-        )
+        for index, withdrawal in enumerate(execution_payload.withdrawals):
+            assert withdrawal.index == pre_state.next_withdrawal_index + index
+
+        if len(expected_withdrawals) == 0:
+            next_withdrawal_validator_index = (
+                pre_state.next_withdrawal_validator_index
+                + spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
+            )
+            assert state.next_withdrawal_validator_index == next_withdrawal_validator_index % len(
+                state.validators
+            )
+        elif len(expected_withdrawals) <= spec.MAX_WITHDRAWALS_PER_PAYLOAD:
+            bound = min(spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
+            assert len(get_expected_withdrawals(spec, state)) <= bound
+        elif len(expected_withdrawals) > spec.MAX_WITHDRAWALS_PER_PAYLOAD:
+            raise ValueError(
+                "len(expected_withdrawals) should not be greater than MAX_WITHDRAWALS_PER_PAYLOAD"
+            )
 
     if fully_withdrawable_indices is not None or partial_withdrawals_indices is not None:
         verify_post_state(

@@ -11,7 +11,7 @@ from eth2spec.test.context import (
 def test_networking(spec):
     gindex = spec.get_generalized_index(
         spec.BeaconBlockBody,
-        "signed_execution_payload_header",
+        "signed_execution_payload_bid",
         "message",
         "blob_kzg_commitments_root",
     )

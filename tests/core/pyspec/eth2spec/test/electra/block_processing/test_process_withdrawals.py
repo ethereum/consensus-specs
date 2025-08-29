@@ -7,6 +7,7 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
 )
+from eth2spec.test.helpers.forks import is_post_gloas
 from eth2spec.test.helpers.state import (
     next_slot,
 )
@@ -281,6 +282,14 @@ def test_pending_withdrawals_no_excess_balance(spec, state):
     state.balances[pending_withdrawal.validator_index] = spec.MIN_ACTIVATION_BALANCE
 
     execution_payload = build_empty_execution_payload(spec, state)
+
+    # Make parent block full in Gloas so withdrawals are processed
+    if is_post_gloas(spec):
+        state.latest_block_hash = state.latest_execution_payload_header.block_hash
+        state.latest_execution_payload_bid.block_hash = (
+            state.latest_execution_payload_header.block_hash
+        )
+
     yield from run_withdrawals_processing(
         spec, state, execution_payload, num_expected_withdrawals=0
     )
@@ -305,10 +314,19 @@ def test_full_pending_withdrawals_but_first_skipped_no_excess_balance(spec, stat
     # For the first pending withdrawal, set the validator to have no excess balance
     state.balances[0] = spec.MIN_ACTIVATION_BALANCE
 
+    execution_payload = build_empty_execution_payload(spec, state)
+
+    # Make parent block full in Gloas so withdrawals are processed
+    if is_post_gloas(spec):
+        state.latest_block_hash = state.latest_execution_payload_header.block_hash
+        state.latest_execution_payload_bid.block_hash = (
+            state.latest_execution_payload_header.block_hash
+        )
+
     yield from run_withdrawals_processing(
         spec,
         state,
-        build_empty_execution_payload(spec, state),
+        execution_payload,
         # We expect the first pending withdrawal to be skipped
         num_expected_withdrawals=spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
     )
