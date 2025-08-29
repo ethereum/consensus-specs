@@ -20,6 +20,7 @@ categories:
     labels:
       - gloas
       - eip7732
+      - eip7928
 
   # Features
   - title: EIP-6110
