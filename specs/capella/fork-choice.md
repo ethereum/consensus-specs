@@ -102,7 +102,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add block timeliness to the store
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+    attestation_threshold_ms = get_duration_ms(DURATION_ID_ATTESTATION_DUE)
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
