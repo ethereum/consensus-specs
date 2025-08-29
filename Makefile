@@ -35,14 +35,13 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 BOLD = $(shell tput bold)
 NORM = $(shell tput sgr0)
 
-# Print target descriptions.
-help: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),true)
+# Print help.
 help:
-	@if [ "$(MAYBE_VERBOSE)" = "true" ]; then \
-		$(MAKE) -s help-verbose; \
-	else \
-		$(MAKE) -s help-nonverbose; \
-	fi
+ifeq ($(verbose),true)
+	@$(MAKE) -s help-verbose
+else
+	@$(MAKE) -s help-nonverbose
+endif
 
 # Print basic help output.
 help-nonverbose:
@@ -56,7 +55,8 @@ help-nonverbose:
 	@echo "make $(BOLD)serve_docs$(NORM) -- start a local docs web server"
 	@echo "make $(BOLD)test$(NORM)       -- run pyspec tests"
 	@echo ""
-	@echo "Run $(BOLD)make help verbose=true$(NORM) for detailed usage/examples"
+	@echo "Run 'make $(BOLD)help verbose=true$(NORM)' to print detailed usage/examples."
+	@echo ""
 
 # Print verbose help output.
 help-verbose:
@@ -68,7 +68,6 @@ help-verbose:
 	@echo ""
 	@echo "  Builds Python specifications for all consensus phases. This command installs"
 	@echo "  the eth2spec package and copies mainnet/minimal configs to the test directory."
-	@echo "  Must be run before testing or linting."
 	@echo ""
 	@echo "  Example: make pyspec"
 	@echo ""
@@ -82,9 +81,9 @@ help-verbose:
 	@echo ""
 	@echo "  Parameters:"
 	@echo "    k=<test>        Run specific test by name"
-	@echo "    fork=<fork>     Test specific fork (phase0, altair, bellatrix, capella, deneb, etc.)"
-	@echo "    preset=<preset> Use specific preset (mainnet or minimal, default: minimal)"
-	@echo "    bls=<type>      BLS library type (fastest, arkworks, default: fastest)"
+	@echo "    fork=<fork>     Test specific fork (phase0, altair, bellatrix, capella, etc.)"
+	@echo "    preset=<preset> Use specific preset (mainnet or minimal; default: minimal)"
+	@echo "    bls=<type>      BLS library type (py_ecc, milagro, arkworks, fastest; default: fastest)"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make test"
@@ -114,7 +113,7 @@ help-verbose:
 	@echo "$(BOLD)make lint$(NORM)"
 	@echo ""
 	@echo "  Runs all linters and formatters to check code quality:"
-	@echo "    - mdformat: Formats markdown files (80 char wrap, numbered lists)"
+	@echo "    - mdformat: Formats markdown files"
 	@echo "    - codespell: Checks for spelling mistakes"
 	@echo "    - ruff: Python linter and formatter"
 	@echo "    - mypy: Static type checker for Python"
@@ -127,7 +126,8 @@ help-verbose:
 	@echo "$(BOLD)make reftests$(NORM)"
 	@echo ""
 	@echo "  Generates reference test vectors for consensus spec tests. These tests are"
-	@echo "  used by client implementations to verify correctness."
+	@echo "  used by client implementations to verify correctness. This command will write"
+	@echo "  reference tests to the ../consensus-spec-tests/ directory."
 	@echo ""
 	@echo "  Parameters:"
 	@echo "    runner=<runner>   Generate tests for specific runner (bls, operations, etc.)"
@@ -147,13 +147,17 @@ help-verbose:
 	@echo "    make reftests runner=operations preset=mainnet fork=fulu k=invalid_committee_index"
 	@echo "    make reftests runner=bls threads=1 verbose=true"
 	@echo ""
+	@echo "  Tip:"
+	@echo "    Use the following command to list available runners:"
+	@echo "    ls -1 tests/generators/runners | grep -v '/$$' | sed 's/\.py$$//'"
+	@echo ""
 	@echo "$(BOLD)make comptests$(NORM)"
 	@echo ""
 	@echo "  Generates compliance tests for fork choice. These tests verify that"
 	@echo "  implementations correctly handle fork choice scenarios."
 	@echo ""
 	@echo "  Parameters:"
-	@echo "    fc_gen_config=<config> Configuration size (tiny, small, standard, default: tiny)"
+	@echo "    fc_gen_config=<config> Configuration size (tiny, small, standard; default: tiny)"
 	@echo "    fork=<fork>            Generate for specific fork (comma-separated)"
 	@echo "    preset=<preset>        Generate for specific preset (comma-separated)"
 	@echo "    threads=N              Number of threads to use"
@@ -186,11 +190,10 @@ help-verbose:
 	@echo ""
 	@echo "$(BOLD)make clean$(NORM)"
 	@echo ""
-	@echo "  Removes all untracked files using 'git clean -fdx'. This includes:"
+	@echo "  Removes all untracked files. This includes:"
 	@echo "    - Virtual environment (venv/)"
 	@echo "    - Build artifacts"
 	@echo "    - Cache files"
-	@echo "    - Generated test files"
 	@echo ""
 	@echo "  $(BOLD)WARNING:$(NORM) This will delete ALL untracked files. Make sure to commit or"
 	@echo "           stash any important changes first."
