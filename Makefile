@@ -241,17 +241,6 @@ pyspec: $(VENV) setup.py pyproject.toml
 TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 
 # Run pyspec tests.
-#
-# To run a specific test, append k=<test>, eg:
-#   make test k=test_verify_kzg_proof
-# To run tests for a specific fork, append fork=<fork>, eg:
-#   make test fork=deneb
-# To run tests for a specific preset, append preset=<preset>, eg:
-#   make test preset=mainnet
-# Or all at the same time, eg:
-#   make test preset=mainnet fork=deneb k=test_verify_kzg_proof
-# To run tests with a specific bls library, append bls=<bls>, eg:
-#   make test bls=arkworks
 test: MAYBE_TEST := $(if $(k),-k=$(k))
 # Disable parallelism which running a specific test.
 # Parallelism makes debugging difficult (print doesn't work).
@@ -353,23 +342,6 @@ COMMA:= ,
 TEST_VECTOR_DIR = $(CURDIR)/../consensus-spec-tests/tests
 
 # Generate reference tests.
-# This will forcibly rebuild pyspec just in case.
-# To generate reference tests for a single runner, append runner=<runner>, eg:
-#   make reftests runner=bls
-# To generate reference tests with more details, append verbose=true, eg:
-#   make reftests runner=bls verbose=true
-# To generate reference tests with fewer threads, append threads=N, eg:
-#   make reftests runner=bls threads=1
-# To generate reference tests for a specific test, append k=<test>, eg:
-#   make reftests runner=operations k=invalid_committee_index
-# To generate reference tests for a specific fork, append fork=<fork>, eg:
-#   make reftests runner=operations fork=fulu
-# To generate reference tests for a specific preset, append preset=<preset>, eg:
-#   make reftests runner=operations preset=mainnet
-# To generate reference tests for a list of tests, forks, and/or presets, append them as comma-separated lists, eg:
-#   make reftests runner=operations k=invalid_committee_index,invalid_too_many_committee_bits
-# Or all at the same time, eg:
-#   make reftests runner=operations preset=mainnet fork=fulu k=invalid_committee_index
 reftests: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 reftests: MAYBE_THREADS := $(if $(threads),--threads=$(threads))
 reftests: MAYBE_RUNNERS := $(if $(runner),--runners $(subst ${COMMA}, ,$(runner)))
@@ -399,12 +371,6 @@ kzg_setups: pyspec
 COMP_TEST_VECTOR_DIR = $(CURDIR)/../compliance-spec-tests/tests
 
 # Generate compliance tests (fork choice).
-# This will forcibly rebuild pyspec just in case.
-# To generate compliance tests with a particular configuration, append fc_gen_config=<config>,
-# where <config> can be either tiny, small or standard, eg:
-#   make comptests fc_gen_config=standard
-# One can specify threads=N, fork=<fork> or preset=<preset> as with reftests, eg:
-#   make comptests fc_gen_config=standard fork=deneb preset=mainnet threads=8
 comptests: FC_GEN_CONFIG := $(if $(fc_gen_config),$(fc_gen_config),tiny)
 comptests: MAYBE_THREADS := $(if $(threads),--threads=$(threads),--fc-gen-multi-processing)
 comptests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
