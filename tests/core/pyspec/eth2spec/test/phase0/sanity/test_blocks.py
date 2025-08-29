@@ -225,8 +225,8 @@ def test_invalid_parent_from_same_slot(spec, state):
     child_block.parent_root = state.latest_block_header.hash_tree_root()
 
     if is_post_gloas(spec):
-        child_block.body.signed_execution_payload_header = (
-            build_empty_signed_execution_payload_header(spec, state)
+        child_block.body.signed_execution_payload_bid = build_empty_signed_execution_payload_header(
+            spec, state
         )
     elif is_post_bellatrix(spec):
         child_block.body.execution_payload = build_empty_execution_payload(spec, state)
@@ -234,7 +234,7 @@ def test_invalid_parent_from_same_slot(spec, state):
     child_block.parent_root = state.latest_block_header.hash_tree_root()
     if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        child_block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        child_block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     elif is_post_bellatrix(spec):

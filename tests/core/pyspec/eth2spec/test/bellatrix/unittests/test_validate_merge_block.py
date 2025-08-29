@@ -63,10 +63,10 @@ def test_validate_merge_block_success(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.parent_block_hash = (
+        block.body.signed_execution_payload_bid.message.parent_block_hash = (
             pow_chain.head().block_hash
         )
-        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     else:
@@ -96,10 +96,10 @@ def test_validate_merge_block_fail_parent_block_lookup(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.parent_block_hash = (
+        block.body.signed_execution_payload_bid.message.parent_block_hash = (
             pow_chain.head().block_hash
         )
-        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     else:
@@ -120,10 +120,10 @@ def test_validate_merge_block_fail_after_terminal(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.parent_block_hash = (
+        block.body.signed_execution_payload_bid.message.parent_block_hash = (
             pow_chain.head().block_hash
         )
-        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     else:
@@ -151,10 +151,10 @@ def test_validate_merge_block_tbh_override_success(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.parent_block_hash = (
+        block.body.signed_execution_payload_bid.message.parent_block_hash = (
             pow_chain.head().block_hash
         )
-        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     else:
@@ -181,10 +181,10 @@ def test_validate_merge_block_fail_parent_hash_is_not_tbh(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.parent_block_hash = (
+        block.body.signed_execution_payload_bid.message.parent_block_hash = (
             pow_chain.head().block_hash
         )
-        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     else:
@@ -212,10 +212,10 @@ def test_validate_merge_block_terminal_block_hash_fail_activation_not_reached(sp
     block = build_empty_block_for_next_slot(spec, state)
     if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.parent_block_hash = (
+        block.body.signed_execution_payload_bid.message.parent_block_hash = (
             pow_chain.head().block_hash
         )
-        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     else:
@@ -242,10 +242,10 @@ def test_validate_merge_block_fail_activation_not_reached_parent_hash_is_not_tbh
     block = build_empty_block_for_next_slot(spec, state)
     if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.parent_block_hash = (
+        block.body.signed_execution_payload_bid.message.parent_block_hash = (
             pow_chain.head().block_hash
         )
-        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     else:
