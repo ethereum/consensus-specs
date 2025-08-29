@@ -35,8 +35,16 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 BOLD = $(shell tput bold)
 NORM = $(shell tput sgr0)
 
-# Print target descriptions.
+# Print help.
 help:
+ifeq ($(verbose),true)
+	@$(MAKE) -s help-verbose
+else
+	@$(MAKE) -s help-nonverbose
+endif
+
+# Print basic help output.
+help-nonverbose:
 	@echo "make $(BOLD)clean$(NORM)      -- delete all untracked files"
 	@echo "make $(BOLD)comptests$(NORM)  -- generate compliance tests"
 	@echo "make $(BOLD)coverage$(NORM)   -- run pyspec tests with coverage"
@@ -46,6 +54,152 @@ help:
 	@echo "make $(BOLD)reftests$(NORM)   -- generate reference tests"
 	@echo "make $(BOLD)serve_docs$(NORM) -- start a local docs web server"
 	@echo "make $(BOLD)test$(NORM)       -- run pyspec tests"
+	@echo ""
+	@echo "Run 'make $(BOLD)help verbose=true$(NORM)' to print detailed usage/examples."
+	@echo ""
+
+# Print verbose help output.
+help-verbose:
+	@echo ""
+	@echo "$(BOLD)BUILDING$(NORM)"
+	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
+	@echo ""
+	@echo "$(BOLD)make pyspec$(NORM)"
+	@echo ""
+	@echo "  Builds Python specifications for all consensus phases. This command installs"
+	@echo "  the eth2spec package and copies mainnet/minimal configs to the test directory."
+	@echo ""
+	@echo "  Example: make pyspec"
+	@echo ""
+	@echo "$(BOLD)TESTING$(NORM)"
+	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
+	@echo ""
+	@echo "$(BOLD)make test$(NORM)"
+	@echo ""
+	@echo "  Runs pyspec tests with various configuration options. Tests run in parallel"
+	@echo "  by default using pytest with the minimal preset and fastest BLS library."
+	@echo ""
+	@echo "  Parameters:"
+	@echo "    k=<test>        Run specific test by name"
+	@echo "    fork=<fork>     Test specific fork (phase0, altair, bellatrix, capella, etc.)"
+	@echo "    preset=<preset> Use specific preset (mainnet or minimal; default: minimal)"
+	@echo "    bls=<type>      BLS library type (py_ecc, milagro, arkworks, fastest; default: fastest)"
+	@echo ""
+	@echo "  Examples:"
+	@echo "    make test"
+	@echo "    make test k=test_verify_kzg_proof"
+	@echo "    make test fork=deneb"
+	@echo "    make test preset=mainnet"
+	@echo "    make test preset=mainnet fork=deneb k=test_verify_kzg_proof"
+	@echo "    make test bls=arkworks"
+	@echo ""
+	@echo "$(BOLD)make coverage$(NORM)"
+	@echo ""
+	@echo "  Runs tests with code coverage tracking and generates an HTML report."
+	@echo "  Automatically opens the coverage report in your browser after completion."
+	@echo ""
+	@echo "  Parameters:"
+	@echo "    k=<test>    Run specific test by name"
+	@echo "    fork=<fork> Test specific fork"
+	@echo ""
+	@echo "  Examples:"
+	@echo "    make coverage"
+	@echo "    make coverage k=test_process_attestation"
+	@echo "    make coverage fork=electra"
+	@echo ""
+	@echo "$(BOLD)CODE QUALITY$(NORM)"
+	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
+	@echo ""
+	@echo "$(BOLD)make lint$(NORM)"
+	@echo ""
+	@echo "  Runs all linters and formatters to check code quality:"
+	@echo "    - mdformat: Formats markdown files"
+	@echo "    - codespell: Checks for spelling mistakes"
+	@echo "    - ruff: Python linter and formatter"
+	@echo "    - mypy: Static type checker for Python"
+	@echo ""
+	@echo "  Example: make lint"
+	@echo ""
+	@echo "$(BOLD)TEST GENERATION$(NORM)"
+	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
+	@echo ""
+	@echo "$(BOLD)make reftests$(NORM)"
+	@echo ""
+	@echo "  Generates reference test vectors for consensus spec tests. These tests are"
+	@echo "  used by client implementations to verify correctness. This command will write"
+	@echo "  reference tests to the ../consensus-spec-tests/ directory."
+	@echo ""
+	@echo "  Parameters:"
+	@echo "    runner=<runner>   Generate tests for specific runner (bls, operations, etc.)"
+	@echo "    k=<test>          Generate specific test cases (comma-separated)"
+	@echo "    fork=<fork>       Generate for specific fork (comma-separated)"
+	@echo "    preset=<preset>   Generate for specific preset (comma-separated)"
+	@echo "    threads=N         Number of threads to use (default: auto)"
+	@echo "    verbose=true      Enable verbose output"
+	@echo ""
+	@echo "  Examples:"
+	@echo "    make reftests"
+	@echo "    make reftests runner=bls"
+	@echo "    make reftests runner=operations k=invalid_committee_index"
+	@echo "    make reftests runner=operations fork=fulu"
+	@echo "    make reftests runner=operations preset=mainnet"
+	@echo "    make reftests runner=operations k=invalid_committee_index,invalid_too_many_committee_bits"
+	@echo "    make reftests runner=operations preset=mainnet fork=fulu k=invalid_committee_index"
+	@echo "    make reftests runner=bls threads=1 verbose=true"
+	@echo ""
+	@echo "  Tip:"
+	@echo "    Use the following command to list available runners:"
+	@echo "    ls -1 tests/generators/runners | grep -v '/$$' | sed 's/\.py$$//'"
+	@echo ""
+	@echo "$(BOLD)make comptests$(NORM)"
+	@echo ""
+	@echo "  Generates compliance tests for fork choice. These tests verify that"
+	@echo "  implementations correctly handle fork choice scenarios."
+	@echo ""
+	@echo "  Parameters:"
+	@echo "    fc_gen_config=<config> Configuration size (tiny, small, standard; default: tiny)"
+	@echo "    fork=<fork>            Generate for specific fork (comma-separated)"
+	@echo "    preset=<preset>        Generate for specific preset (comma-separated)"
+	@echo "    threads=N              Number of threads to use"
+	@echo ""
+	@echo "  Examples:"
+	@echo "    make comptests"
+	@echo "    make comptests fc_gen_config=standard"
+	@echo "    make comptests fc_gen_config=standard fork=deneb preset=mainnet threads=8"
+	@echo ""
+	@echo "$(BOLD)make kzg_setups$(NORM)"
+	@echo ""
+	@echo "  Generates KZG trusted setup files for testing. Creates trusted setups for"
+	@echo "  both minimal and mainnet presets with predefined parameters."
+	@echo ""
+	@echo "  Example: make kzg_setups"
+	@echo ""
+	@echo "$(BOLD)DOCUMENTATION$(NORM)"
+	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
+	@echo ""
+	@echo "$(BOLD)make serve_docs$(NORM)"
+	@echo ""
+	@echo "  Builds and serves the documentation locally using MkDocs. Copies spec files,"
+	@echo "  removes deprecated content, and starts a local web server for viewing docs."
+	@echo ""
+	@echo "  Example: make serve_docs"
+	@echo "  Then open: http://127.0.0.1:8000"
+	@echo ""
+	@echo "$(BOLD)MAINTENANCE$(NORM)"
+	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
+	@echo ""
+	@echo "$(BOLD)make clean$(NORM)"
+	@echo ""
+	@echo "  Removes all untracked files. This includes:"
+	@echo "    - Virtual environment (venv/)"
+	@echo "    - Build artifacts"
+	@echo "    - Cache files"
+	@echo ""
+	@echo "  $(BOLD)WARNING:$(NORM) This will delete ALL untracked files. Make sure to commit or"
+	@echo "           stash any important changes first."
+	@echo ""
+	@echo "  Example: make clean"
+	@echo ""
 
 ###############################################################################
 # Virtual Environment
@@ -87,17 +241,6 @@ pyspec: $(VENV) setup.py pyproject.toml
 TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 
 # Run pyspec tests.
-#
-# To run a specific test, append k=<test>, eg:
-#   make test k=test_verify_kzg_proof
-# To run tests for a specific fork, append fork=<fork>, eg:
-#   make test fork=deneb
-# To run tests for a specific preset, append preset=<preset>, eg:
-#   make test preset=mainnet
-# Or all at the same time, eg:
-#   make test preset=mainnet fork=deneb k=test_verify_kzg_proof
-# To run tests with a specific bls library, append bls=<bls>, eg:
-#   make test bls=arkworks
 test: MAYBE_TEST := $(if $(k),-k=$(k))
 # Disable parallelism which running a specific test.
 # Parallelism makes debugging difficult (print doesn't work).
@@ -199,23 +342,6 @@ COMMA:= ,
 TEST_VECTOR_DIR = $(CURDIR)/../consensus-spec-tests/tests
 
 # Generate reference tests.
-# This will forcibly rebuild pyspec just in case.
-# To generate reference tests for a single runner, append runner=<runner>, eg:
-#   make reftests runner=bls
-# To generate reference tests with more details, append verbose=true, eg:
-#   make reftests runner=bls verbose=true
-# To generate reference tests with fewer threads, append threads=N, eg:
-#   make reftests runner=bls threads=1
-# To generate reference tests for a specific test, append k=<test>, eg:
-#   make reftests runner=operations k=invalid_committee_index
-# To generate reference tests for a specific fork, append fork=<fork>, eg:
-#   make reftests runner=operations fork=fulu
-# To generate reference tests for a specific preset, append preset=<preset>, eg:
-#   make reftests runner=operations preset=mainnet
-# To generate reference tests for a list of tests, forks, and/or presets, append them as comma-separated lists, eg:
-#   make reftests runner=operations k=invalid_committee_index,invalid_too_many_committee_bits
-# Or all at the same time, eg:
-#   make reftests runner=operations preset=mainnet fork=fulu k=invalid_committee_index
 reftests: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 reftests: MAYBE_THREADS := $(if $(threads),--threads=$(threads))
 reftests: MAYBE_RUNNERS := $(if $(runner),--runners $(subst ${COMMA}, ,$(runner)))
@@ -245,12 +371,6 @@ kzg_setups: pyspec
 COMP_TEST_VECTOR_DIR = $(CURDIR)/../compliance-spec-tests/tests
 
 # Generate compliance tests (fork choice).
-# This will forcibly rebuild pyspec just in case.
-# To generate compliance tests with a particular configuration, append fc_gen_config=<config>,
-# where <config> can be either tiny, small or standard, eg:
-#   make comptests fc_gen_config=standard
-# One can specify threads=N, fork=<fork> or preset=<preset> as with reftests, eg:
-#   make comptests fc_gen_config=standard fork=deneb preset=mainnet threads=8
 comptests: FC_GEN_CONFIG := $(if $(fc_gen_config),$(fc_gen_config),tiny)
 comptests: MAYBE_THREADS := $(if $(threads),--threads=$(threads),--fc-gen-multi-processing)
 comptests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
