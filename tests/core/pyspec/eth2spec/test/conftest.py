@@ -62,6 +62,12 @@ def pytest_addoption(parser):
             "fastest: use milagro for signatures and arkworks for everything else (e.g. KZG)"
         ),
     )
+    parser.addoption(
+        "--disable-spec-cache",
+        action="store_true",
+        default=False,
+        help="disable-spec-cache: disable the spec cache",
+    )
 
 
 def _validate_fork_name(forks):
@@ -76,6 +82,15 @@ def _validate_fork_name(forks):
 @fixture(autouse=True)
 def preset(request):
     context.DEFAULT_TEST_PRESET = request.config.getoption("--preset")
+
+
+@fixture(autouse=True)
+def spec_cache(request):
+    disable_spec_cache = request.config.getoption("--disable-spec-cache")
+    if disable_spec_cache:
+        spec_cache.DISABLED_CACHE = True
+    else:
+        spec_cache.DISABLED_CACHE = False
 
 
 @fixture(autouse=True)
