@@ -39,7 +39,6 @@ jobs:
 
       # Ensure framework tests pass
       - name: Run tests for test framework
-      - continue-on-error: true
         run: |
           cd consensus-specs
           make test component=fw
