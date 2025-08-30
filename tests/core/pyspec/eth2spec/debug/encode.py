@@ -6,6 +6,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     Container,
     List,
     ProgressiveBitlist,
+    ProgressiveContainer,
     ProgressiveList,
     uint,
     Union,
@@ -29,7 +30,7 @@ def encode(value, include_hash_tree_roots=False):
         return [encode(element, include_hash_tree_roots) for element in value]
     elif isinstance(value, bytes):  # bytes, ByteList, ByteVector
         return "0x" + value.hex()
-    elif isinstance(value, Container):
+    elif isinstance(value, Container | ProgressiveContainer):
         ret = {}
         for field_name in value.fields().keys():
             field_value = getattr(value, field_name)
