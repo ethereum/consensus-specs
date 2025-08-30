@@ -71,6 +71,9 @@
   - [Execution payload processing](#execution-payload-processing)
     - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
     - [New `process_execution_payload`](#new-process_execution_payload)
+      - [New `is_valid_switch_to_builder_request`](#new-is_valid_switch_to_builder_request)
+    - [New `switch_to_builder``](#new-switch_to_builder)
+    - [Modified `process_consolidation_request`](#modified-process_consolidation_request)
 
 <!-- mdformat-toc end -->
 
@@ -115,10 +118,12 @@ At any given slot, the status of the blockchain's head may be either
 
 ### Misc
 
-| Name                                    | Value        |
-| --------------------------------------- | ------------ |
-| `BUILDER_PAYMENT_THRESHOLD_NUMERATOR`   | `uint64(6)`  |
-| `BUILDER_PAYMENT_THRESHOLD_DENOMINATOR` | `uint64(10)` |
+| Name                                     | Value                |
+| ---------------------------------------- | -------------------- |
+| `BUILDER_PAYMENT_THRESHOLD_NUMERATOR`    | `uint64(6)`          |
+| `BUILDER_PAYMENT_THRESHOLD_DENOMINATOR`  | `uint64(10)`         |
+| `GENERALIZED_CONSOLIDATION_MAGIC_PREFIX` | `Bytes4(0xEF0A1100)` |
+| `BUILDER_CONSOLIDATION_CALL_NUMBER`      | `uint64(3)`          |
 
 ## Preset
 
@@ -1304,4 +1309,139 @@ def process_execution_payload(
     # Verify the state root
     if verify:
         assert envelope.state_root == hash_tree_root(state)
+```
+
+###### New `is_valid_switch_to_builder_request`
+
+```python
+def is_valid_switch_to_builder_request(
+    state: BeaconState, consolidation_request: ConsolidationRequest
+) -> bool:
+    source_pubkey = consolidation_request.source_pubkey
+    ### Validator is known to exist
+    source_validator = [v for v in state.validators if v.pubkey == source_pubkey][0]
+
+    # Verify request has been authorized
+    if source_validator.withdrawal_credentials[12:] != consolidation_request.source_address:
+        return False
+
+    # Verify source withdrawal credentials
+    if not has_execution_withdrawal_credential(source_validator):
+        return False
+
+    # Verify the source is active
+    current_epoch = get_current_epoch(state)
+    if not is_active_validator(source_validator, current_epoch):
+        return False
+
+    # Verify exit for source has not been initiated
+    if source_validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return False
+
+    # Verify the magic prefix
+    target_pubkey = consolidation_request.target_pubkey
+    if target_pubkey[:3] != GENERALIZED_CONSOLIDATION_MAGIC_PREFIX:
+        return False
+    if bytes_to_uint64(target_pubkey[3:7]) != BUILDER_CONSOLIDATION_CALL_NUMBER:
+        return False
+    if target_pubkey[8:] != [0b0] * 41:
+        return False
+    return True
+```
+
+#### New \`switch_to_builder\`\`
+
+```python
+def switch_to_builder(state: BeaconState, index: ValidatorIndex) -> None:
+    validator = state.validators[index]
+    is_compounding = has_compounding_withdrawal_credential(validator)
+    validator.withdrawal_credentials = (
+        BUILDER_WITHDRAWAL_PREFIX + validator.withdrawal_credentials[1:]
+    )
+    if not is_compounding:
+        queue_excess_active_balance(state, index)
+```
+
+#### Modified `process_consolidation_request`
+
+*Note:* `process_consolidation_request` is modified to process builder
+consolidations.
+
+```python
+def process_consolidation_request(
+    state: BeaconState, consolidation_request: ConsolidationRequest
+) -> None:
+    if is_valid_switch_to_compounding_request(state, consolidation_request):
+        validator_pubkeys = [v.pubkey for v in state.validators]
+        request_source_pubkey = consolidation_request.source_pubkey
+        source_index = ValidatorIndex(validator_pubkeys.index(request_source_pubkey))
+        switch_to_compounding_validator(state, source_index)
+        return
+
+    # Verify that source != target, so a consolidation cannot be used as an exit
+    if consolidation_request.source_pubkey == consolidation_request.target_pubkey:
+        return
+    # If the pending consolidations queue is full, consolidation requests are ignored
+    if len(state.pending_consolidations) == PENDING_CONSOLIDATIONS_LIMIT:
+        return
+    # If there is too little available consolidation churn limit, consolidation requests are ignored
+    if get_consolidation_churn_limit(state) <= MIN_ACTIVATION_BALANCE:
+        return
+
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    # Verify pubkeys exists
+    request_source_pubkey = consolidation_request.source_pubkey
+    if request_source_pubkey not in validator_pubkeys:
+        return
+    source_index = ValidatorIndex(validator_pubkeys.index(request_source_pubkey))
+    request_target_pubkey = consolidation_request.target_pubkey
+    if request_target_pubkey not in validator_pubkeys:
+        if is_valid_switch_to_builder_request(state, consolidation_request):
+            switch_to_builder(state, source_index)
+        return
+
+    target_index = ValidatorIndex(validator_pubkeys.index(request_target_pubkey))
+    source_validator = state.validators[source_index]
+    target_validator = state.validators[target_index]
+
+    # Verify source withdrawal credentials
+    has_correct_credential = has_execution_withdrawal_credential(source_validator)
+    is_correct_source_address = (
+        source_validator.withdrawal_credentials[12:] == consolidation_request.source_address
+    )
+    if not (has_correct_credential and is_correct_source_address):
+        return
+
+    # Verify that target has compounding withdrawal credentials
+    if not has_compounding_withdrawal_credential(target_validator):
+        return
+
+    # Verify the source and the target are active
+    current_epoch = get_current_epoch(state)
+    if not is_active_validator(source_validator, current_epoch):
+        return
+    if not is_active_validator(target_validator, current_epoch):
+        return
+    # Verify exits for source and target have not been initiated
+    if source_validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
+    if target_validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
+    # Verify the source has been active long enough
+    if current_epoch < source_validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
+        return
+    # Verify the source has no pending withdrawals in the queue
+    if get_pending_balance_to_withdraw(state, source_index) > 0:
+        return
+
+    # Initiate source validator exit and append pending consolidation
+    source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(
+        state, source_validator.effective_balance
+    )
+    source_validator.withdrawable_epoch = Epoch(
+        source_validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+    )
+    state.pending_consolidations.append(
+        PendingConsolidation(source_index=source_index, target_index=target_index)
+    )
 ```
