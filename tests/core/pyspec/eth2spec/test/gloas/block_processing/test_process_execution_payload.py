@@ -124,17 +124,17 @@ def prepare_execution_payload_envelope(
             for consolidation in execution_requests.consolidations:
                 spec.process_consolidation_request(post_state, consolidation)
 
-        # Process builder payment (always, regardless of amount)
+        # Process builder payment (only if amount > 0)
         payment = post_state.builder_pending_payments[
             spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
         ]
-        exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(
-            post_state, payment.withdrawal.amount
-        )
-        payment.withdrawal.withdrawable_epoch = spec.Epoch(
-            exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-        )
-        post_state.builder_pending_withdrawals.append(payment.withdrawal)
+        amount = payment.withdrawal.amount
+        if amount > 0:
+            exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(post_state, amount)
+            payment.withdrawal.withdrawable_epoch = spec.Epoch(
+                exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+            )
+            post_state.builder_pending_withdrawals.append(payment.withdrawal)
 
         # Clear the pending payment
         post_state.builder_pending_payments[
@@ -303,9 +303,6 @@ def test_process_execution_payload_self_build_zero_value(spec, state):
 
     # Capture pre-state for verification
     pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
-    pre_payment = state.builder_pending_payments[
-        spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
-    ]
 
     yield from run_execution_payload_processing(spec, state, signed_envelope)
 
@@ -313,12 +310,8 @@ def test_process_execution_payload_self_build_zero_value(spec, state):
     assert state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] == 0b1
     assert state.latest_block_hash == execution_payload.block_hash
 
-    # In self-build with zero value, processing still happens but with zero amount
-    assert len(state.builder_pending_withdrawals) == pre_pending_withdrawals_len + 1
-    new_withdrawal = state.builder_pending_withdrawals[pre_pending_withdrawals_len]
-    assert new_withdrawal.amount == spec.Gwei(0)  # Zero amount for self-build zero value
-    assert new_withdrawal.builder_index == pre_payment.withdrawal.builder_index
-    assert new_withdrawal.fee_recipient == pre_payment.withdrawal.fee_recipient
+    # In self-build with zero value, no withdrawal is added since amount is zero
+    assert len(state.builder_pending_withdrawals) == pre_pending_withdrawals_len
 
     # Verify pending payment remains cleared (it was already empty)
     cleared_payment = state.builder_pending_payments[
