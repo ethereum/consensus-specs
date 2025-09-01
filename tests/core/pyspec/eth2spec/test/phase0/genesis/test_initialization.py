@@ -147,7 +147,7 @@ def test_initialize_beacon_state_one_topup_activation(spec):
         deposit_data_list=deposit_data_list,
     )
 
-    # Top up thelast pubkey deposit as MIN_DEPOSIT_AMOUNT to complete the deposit
+    # Top up the last pubkey deposit as MIN_DEPOSIT_AMOUNT to complete the deposit
     top_up_deposits, _, _ = prepare_full_genesis_deposits(
         spec,
         spec.MIN_DEPOSIT_AMOUNT,
