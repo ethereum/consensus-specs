@@ -289,7 +289,7 @@ blobs by 50% of the columns. Note that nodes can still download the row via
 The potential benefits of having row custody could include:
 
 1. Allow for more "natural" distribution of data to consumers -- e.g., roll-ups
-   -- but honestly, they won't know a priori which row their blob is going to be
+   -- but realistically, they won't know a priori which row their blob is going to be
    included in the block, so they would either need to listen to all rows or
    download a particular row after seeing the block. The former looks just like
    listening to column \[0, N) and the latter is req/resp instead of gossiping.
