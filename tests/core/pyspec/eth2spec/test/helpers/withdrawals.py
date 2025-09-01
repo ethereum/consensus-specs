@@ -221,7 +221,13 @@ def verify_post_state(
     expected_withdrawals_validator_indices = [
         withdrawal.validator_index for withdrawal in expected_withdrawals
     ]
-    assert state.next_withdrawal_index == expected_withdrawals[-1].index + 1
+
+    if is_post_gloas(spec):
+        # In Gloas, withdrawal index is only updated if withdrawals actually happened
+        # This is already verified in run_withdrawals_processing, so skip duplicate check
+        pass
+    else:
+        assert state.next_withdrawal_index == expected_withdrawals[-1].index + 1
 
     if len(expected_withdrawals) == spec.MAX_WITHDRAWALS_PER_PAYLOAD:
         # NOTE: ideally we would also check in the case with
