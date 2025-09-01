@@ -323,7 +323,7 @@ def test_no_commitments_for_transactions(spec, state):
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     if is_post_gloas(spec):
-        state.latest_block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
 
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
@@ -371,7 +371,7 @@ def test_incorrect_transaction_no_blobs_but_with_commitments(spec, state):
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     if is_post_gloas(spec):
-        state.latest_block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
 
     # the transaction doesn't contain any blob, but commitments are provided
     yield from run_execution_payload_processing(
