@@ -292,6 +292,111 @@ gossip. In particular, clients MUST:
 - Update gossip rule related data structures (i.e. update the anti-equivocation
   cache).
 
+#### Partial Columns
+
+Gossipsub's [Partial Message
+Extension](https://github.com/libp2p/specs/pull/685) enables exchanging
+selective parts of a message rather than the whole. The specification here
+describes how Consensus Clients use Partial Messages to disseminate cells.
+
+*Editor's Note*: This change MUST NOT be merged before the linked libp2p/specs.
+
+##### `PartialDataColumnSidecar`
+
+The `PartialDataColumnSidecar` is similar to the `DataColumnSidecar `container,
+except that only the cells and proofs identified by the bitmap are present.
+
+```python
+class PartialDataColumnSidecar(Container):
+    cells_present_bitmap: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    partial_column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+```
+
+##### Parts Metadata
+
+Peers communicate the cells available with a bitmap. A set bit (`1`) at index `i`
+means that the peer has cell the cell at index `i`. The bitmap is encoded as a
+Bitlist.
+
+##### Encoding and Decoding Responses
+
+All responses should be encoded and decoded with the PartialDataColumnSidecar
+container.
+
+##### Validation
+
+TODO add full validation rules
+
+######  `verify_partial_data_column_sidecar_kzg_proofs`
+
+```python
+def verify_partial_data_column_sidecar_kzg_proofs(sidecar: PartialDataColumnSidecar, all_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]) -> bool:
+    """
+    Verify if the KZG proofs are correct.
+    """
+    # The column index also represents the cell index
+    cell_indices = [i for i, b in enumerate(bin(bitmap)[:1:-1]) if b == '1']
+
+    # Batch verify that the cells match the corresponding commitments and proofs
+    return verify_cell_kzg_proof_batch(
+        commitments_bytes=[all_commitments[i] for i in cell_indices],
+        cell_indices=cell_indices,
+        cells=sidecar.column,
+        proofs_bytes=sidecar.kzg_proofs,
+    )
+```
+
+##### Eager Pushing
+
+In contrast to standard Gossipsub, A client explicitly requests missing parts
+from a peer. A client can send its request before receiving a peer's parts metadata.
+This registers interest in certain parts, even if the peer doesn't have these
+parts yet.
+
+This request can introduce extra latency compared to a peer unconditionally
+pushing messages, especially in the first hop of dissemination.
+
+To address this tradeoff a client may choose to eagerly push some (or all) of
+the cells it has. clients SHOULD only do this when they are reasonably confident
+that a peer does not have the provided cells. For example, a proposer including
+private blobs SHOULD eagerly push the cells corresponding to the private blobs.
+
+##### Interaction with standard Gossipsub
+
+###### Requesting Partial messages
+
+A peer requests partial messages for a topic by setting the `partial` field in
+Gossipsub's `SubOpts` RPC message to true.
+
+###### Mesh
+
+The Partial Message Extension uses the same mesh peers for a given topic
+as the standard Gossipsub topics for DataColumnSidecars.
+
+###### Fanout
+
+The Partial Message Extension uses the same fanout peers for a given topic
+as the standard Gossipsub topics for DataColumnSidecars.
+
+###### Scoring
+
+On receiving useful novel data from a peer, the client should report to
+Gossipsub a positive first message delivery.
+
+On receiving invalid data, the client should report to Gossipsub an invalid
+message delivery.
+
+###### Forwarding
+
+Once Clients can construct the full DataColumnSidecar after receiving missing
+cells, they should forward the full DataColumnSidecar over standard Gossipsub to
+peers that do not support partial messages. This provides backwards
+compatibility with nodes that do not yet support partial messages
+
+Avoid forwarding the full DataColumnSidecar message to peers that requested
+partial messages for that given topic. It is purely redundant information.
+
 ### The Req/Resp domain
 
 #### Messages
