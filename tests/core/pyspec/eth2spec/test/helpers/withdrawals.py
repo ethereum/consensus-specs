@@ -1,4 +1,7 @@
+import pytest
+
 from eth2spec.test.helpers.forks import is_post_electra, is_post_fulu, is_post_gloas
+from tests.infra.helpers.withdrawals import verify_withdrawals_post_state
 
 
 def get_expected_withdrawals(spec, state):
@@ -211,49 +214,6 @@ def prepare_withdrawal_request(spec, state, validator_index, address=None, amoun
 #
 
 
-def verify_post_state(
-    state, spec, expected_withdrawals, fully_withdrawable_indices, partial_withdrawals_indices
-):
-    # Consider verifying also the condition when no withdrawals are expected.
-    if len(expected_withdrawals) == 0:
-        return
-
-    expected_withdrawals_validator_indices = [
-        withdrawal.validator_index for withdrawal in expected_withdrawals
-    ]
-
-    if is_post_gloas(spec):
-        # In Gloas, withdrawal index is only updated if withdrawals actually happened
-        # This is already verified in run_withdrawals_processing, so skip duplicate check
-        pass
-    else:
-        assert state.next_withdrawal_index == expected_withdrawals[-1].index + 1
-
-    if len(expected_withdrawals) == spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-        # NOTE: ideally we would also check in the case with
-        # fewer than maximum withdrawals but that requires the pre-state info
-        next_withdrawal_validator_index = (expected_withdrawals_validator_indices[-1] + 1) % len(
-            state.validators
-        )
-        assert state.next_withdrawal_validator_index == next_withdrawal_validator_index
-
-    for index in fully_withdrawable_indices:
-        if index in expected_withdrawals_validator_indices:
-            assert state.balances[index] == 0
-        else:
-            assert state.balances[index] > 0
-    for index in partial_withdrawals_indices:
-        if is_post_electra(spec):
-            max_effective_balance = spec.get_max_effective_balance(state.validators[index])
-        else:
-            max_effective_balance = spec.MAX_EFFECTIVE_BALANCE
-
-        if index in expected_withdrawals_validator_indices:
-            assert state.balances[index] == max_effective_balance
-        else:
-            assert state.balances[index] > max_effective_balance
-
-
 def run_withdrawals_processing(
     spec,
     state,
@@ -281,15 +241,11 @@ def run_withdrawals_processing(
     yield "execution_payload", execution_payload
 
     if not valid:
-        try:
+        with pytest.raises(AssertionError):
             if is_post_gloas(spec):
                 spec.process_withdrawals(state)
             else:
                 spec.process_withdrawals(state, execution_payload)
-            raise AssertionError("expected an assertion error, but got none.")
-        except AssertionError:
-            pass
-
         yield "post", None
         return
 
@@ -300,81 +256,16 @@ def run_withdrawals_processing(
 
     yield "post", state
 
-    # Check withdrawal indices
-    if is_post_gloas(spec):
-        # In Gloas, withdrawals only happen if the parent block was full
-        if not spec.is_parent_block_full(pre_state):
-            # If parent block was not full, no withdrawals processed, indices unchanged
-            assert state.next_withdrawal_index == pre_state.next_withdrawal_index
-            assert (
-                state.next_withdrawal_validator_index == pre_state.next_withdrawal_validator_index
-            )
-        else:
-            # Parent block was full, process withdrawals normally
-            if len(expected_withdrawals) > 0:
-                latest_withdrawal = expected_withdrawals[-1]
-                assert state.next_withdrawal_index == latest_withdrawal.index + 1
-            else:
-                # No withdrawals means no index update
-                assert state.next_withdrawal_index == pre_state.next_withdrawal_index
-            # For Gloas, check against expected withdrawals instead of execution payload
-            for index, withdrawal in enumerate(expected_withdrawals):
-                assert withdrawal.index == pre_state.next_withdrawal_index + index
-
-            # Handle next_withdrawal_validator_index for Gloas
-            if len(expected_withdrawals) == spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-                # Next sweep starts after the latest withdrawal's validator index
-                next_validator_index = (expected_withdrawals[-1].validator_index + 1) % len(
-                    state.validators
-                )
-                assert state.next_withdrawal_validator_index == next_validator_index
-            else:
-                # Advance sweep by the max length if there was not a full set of withdrawals
-                next_index = (
-                    pre_state.next_withdrawal_validator_index
-                    + spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
-                )
-                next_validator_index = next_index % len(state.validators)
-                assert state.next_withdrawal_validator_index == next_validator_index
-    else:
-        assert state.next_withdrawal_index == pre_state.next_withdrawal_index + len(
-            expected_withdrawals
-        )
-        for index, withdrawal in enumerate(execution_payload.withdrawals):
-            assert withdrawal.index == pre_state.next_withdrawal_index + index
-
-        if len(expected_withdrawals) == 0:
-            next_withdrawal_validator_index = (
-                pre_state.next_withdrawal_validator_index
-                + spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
-            )
-            assert state.next_withdrawal_validator_index == next_withdrawal_validator_index % len(
-                state.validators
-            )
-        elif len(expected_withdrawals) <= spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-            bound = min(spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
-            assert len(get_expected_withdrawals(spec, state)) <= bound
-        elif len(expected_withdrawals) > spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-            raise ValueError(
-                "len(expected_withdrawals) should not be greater than MAX_WITHDRAWALS_PER_PAYLOAD"
-            )
-
-    if fully_withdrawable_indices is not None or partial_withdrawals_indices is not None:
-        verify_post_state(
-            state,
-            spec,
-            expected_withdrawals,
-            fully_withdrawable_indices,
-            partial_withdrawals_indices,
-        )
-
-    # Check withdrawal requests
-    if pending_withdrawal_requests is not None:
-        assert len(pending_withdrawal_requests) <= len(execution_payload.withdrawals)
-        for index, request in enumerate(pending_withdrawal_requests):
-            withdrawal = execution_payload.withdrawals[index]
-            assert withdrawal.validator_index == request.validator_index
-            assert withdrawal.amount == request.amount
+    verify_withdrawals_post_state(
+        spec,
+        pre_state,
+        state,
+        execution_payload,
+        expected_withdrawals,
+        fully_withdrawable_indices,
+        partial_withdrawals_indices,
+        pending_withdrawal_requests,
+    )
 
     return expected_withdrawals
 
