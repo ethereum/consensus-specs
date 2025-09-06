@@ -331,7 +331,7 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
 
 *Note*: External calls to `filter_block_tree` (i.e., any calls that are not made
 by the recursive logic in this function) MUST set `block_root` to
-`store.justified_checkpoint`.
+`store.justified_checkpoint.root`.
 
 ```python
 def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconBlock]) -> bool:
