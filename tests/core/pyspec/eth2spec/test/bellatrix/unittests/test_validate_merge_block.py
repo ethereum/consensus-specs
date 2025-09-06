@@ -7,7 +7,6 @@ from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth2spec.test.helpers.execution_payload import (
-    build_empty_execution_payload,
     compute_el_block_hash,
 )
 from eth2spec.test.helpers.pow_block import (

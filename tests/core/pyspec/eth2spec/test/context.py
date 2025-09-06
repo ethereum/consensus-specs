@@ -659,6 +659,7 @@ with_eip7928_and_later = with_all_phases_from(EIP7928, all_phases=ALLOWED_TEST_R
 
 with_bellatrix_only = with_phases([BELLATRIX])
 
+
 class quoted_str(str):
     pass
 

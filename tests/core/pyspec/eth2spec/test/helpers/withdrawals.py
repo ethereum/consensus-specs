@@ -1,7 +1,7 @@
 import pytest
 
 from eth2spec.test.helpers.forks import is_post_electra, is_post_fulu, is_post_gloas
-from tests.infra.helpers.withdrawals import verify_withdrawals_post_state, get_expected_withdrawals
+from tests.infra.helpers.withdrawals import get_expected_withdrawals, verify_withdrawals_post_state
 
 
 def set_validator_fully_withdrawable(spec, state, index, withdrawable_epoch=None):

@@ -1,5 +1,6 @@
 from tests.core.pyspec.eth2spec.test.helpers.forks import is_post_electra, is_post_gloas
 
+
 def get_expected_withdrawals(spec, state):
     if is_post_gloas(spec):
         withdrawals, _, _ = spec.get_expected_withdrawals(state)
@@ -9,6 +10,7 @@ def get_expected_withdrawals(spec, state):
         return withdrawals
     else:
         return spec.get_expected_withdrawals(state)
+
 
 def verify_withdrawals_post_state(
     spec,
