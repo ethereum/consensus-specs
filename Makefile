@@ -13,6 +13,8 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	gloas     \
 	eip6800   \
 	eip7441   \
+	eip7732   \
+	eip7782   \
 	eip7805   \
 	eip7928
 
