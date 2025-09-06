@@ -7,6 +7,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth2spec.test.helpers.deposits import build_deposit, deposit_from_context
+from eth2spec.test.helpers.forks import is_post_electra
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth2spec.test.helpers.state import (
@@ -173,7 +174,11 @@ def _eligible_for_exit(spec, state, index):
 
     not_exited = validator.exit_epoch == spec.FAR_FUTURE_EPOCH
 
-    return not_slashed and active_for_long_enough and not_exited
+    no_pending_withdrawals = True
+    if is_post_electra(spec):
+        no_pending_withdrawals = spec.get_pending_balance_to_withdraw(state, index) == 0
+
+    return not_slashed and active_for_long_enough and not_exited and no_pending_withdrawals
 
 
 def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):

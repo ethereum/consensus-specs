@@ -135,6 +135,10 @@ on top of a `state` must take the following actions:
 - Select one bid and set
   `body.signed_execution_payload_header = signed_execution_payload_header`
 
+*Note:* The execution address encoded in the field `fee_recipient` in the
+`signed_execution_payload_header.message` is the recipient of the builder
+payment.
+
 #### Constructing the new `payload_attestations` field in `BeaconBlockBody`
 
 Up to `MAX_PAYLOAD_ATTESTATIONS`, aggregate payload attestations can be included
