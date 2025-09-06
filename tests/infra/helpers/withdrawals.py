@@ -1,6 +1,14 @@
 from tests.core.pyspec.eth2spec.test.helpers.forks import is_post_electra, is_post_gloas
-from tests.core.pyspec.eth2spec.test.helpers.withdrawals import get_expected_withdrawals
 
+def get_expected_withdrawals(spec, state):
+    if is_post_gloas(spec):
+        withdrawals, _, _ = spec.get_expected_withdrawals(state)
+        return withdrawals
+    elif is_post_electra(spec):
+        withdrawals, _ = spec.get_expected_withdrawals(state)
+        return withdrawals
+    else:
+        return spec.get_expected_withdrawals(state)
 
 def verify_withdrawals_post_state(
     spec,
