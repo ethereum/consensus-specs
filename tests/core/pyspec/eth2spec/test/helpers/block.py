@@ -132,7 +132,7 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
 
     if is_post_gloas(spec):
         signed_header = build_empty_signed_execution_payload_header(spec, state)
-        empty_block.body.signed_execution_payload_header = signed_header
+        empty_block.body.signed_execution_payload_bid = signed_header
         return empty_block
 
     if is_post_bellatrix(spec):
