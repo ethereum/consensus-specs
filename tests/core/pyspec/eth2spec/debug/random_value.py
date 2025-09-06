@@ -11,6 +11,7 @@ from eth2spec.utils.ssz.ssz_typing import (
     Container,
     List,
     ProgressiveBitlist,
+    ProgressiveContainer,
     ProgressiveList,
     uint,
     Union,
@@ -124,7 +125,7 @@ def get_random_ssz_object(
             get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)
             for _ in range(length)
         )
-    elif issubclass(typ, Container):
+    elif issubclass(typ, Container | ProgressiveContainer):
         fields = typ.fields()
         # Container
         return typ(
