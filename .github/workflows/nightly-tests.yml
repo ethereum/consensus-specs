@@ -42,4 +42,4 @@ jobs:
         with:
           python-version: '3.13'
       - name: test-${{ matrix.fork }}
-        run: make test preset=mainnet fork=${{ matrix.fork }}
+        run: make test component=pyspec preset=mainnet fork=${{ matrix.fork }}
