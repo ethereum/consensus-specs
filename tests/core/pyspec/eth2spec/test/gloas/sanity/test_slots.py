@@ -26,10 +26,7 @@ def test_execution_payload_availability_reset_from_set(spec, state):
 
     yield "post", state
 
-    # Verify the slot we just processed had its availability reset to 0
-    # We advanced from slot N to slot N+1, so check slot N+1's availability
-    current_slot_index = state.slot % spec.SLOTS_PER_HISTORICAL_ROOT
-    assert state.execution_payload_availability[current_slot_index] == 0b0
+    assert state.execution_payload_availability[next_slot_index] == 0b0
 
 
 @with_gloas_and_later
@@ -54,7 +51,4 @@ def test_execution_payload_availability_reset_from_unset(spec, state):
 
     yield "post", state
 
-    # Verify the slot we just processed had its availability reset to 0
-    # We advanced from slot N to slot N+1, so check slot N+1's availability
-    current_slot_index = state.slot % spec.SLOTS_PER_HISTORICAL_ROOT
-    assert state.execution_payload_availability[current_slot_index] == 0b0
+    assert state.execution_payload_availability[next_slot_index] == 0b0
