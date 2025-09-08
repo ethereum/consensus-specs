@@ -134,8 +134,7 @@ top of a `state` must take the following actions:
   `body.signed_execution_payload_bid = signed_execution_payload_bid`
 
 *Note:* The execution address encoded in the field `fee_recipient` in the
-`signed_execution_payload_header.message` is the recipient of the builder
-payment.
+`signed_execution_payload_bid.message` is the recipient of the builder payment.
 
 #### Constructing the new `payload_attestations` field in `BeaconBlockBody`
 

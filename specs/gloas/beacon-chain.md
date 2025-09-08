@@ -883,7 +883,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
 deterministic given the beacon state, any execution payload that has the
 corresponding block as parent beacon block is required to honor these
 withdrawals in the execution layer. This function must be called before
-`process_execution_payload_header` as this latter function affects validator
+`process_execution_payload_bid` as this latter function affects validator
 balances.
 
 ```python

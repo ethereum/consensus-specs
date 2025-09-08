@@ -172,7 +172,7 @@ def prepare_execution_payload_envelope(
 def setup_state_with_payload_bid(spec, state, builder_index=None, value=None):
     """
     Helper to setup state with a committed execution payload bid.
-    This simulates the state after process_execution_payload_header has run.
+    This simulates the state after process_execution_payload_bid has run.
     """
     if builder_index is None:
         builder_index = spec.get_beacon_proposer_index(state)

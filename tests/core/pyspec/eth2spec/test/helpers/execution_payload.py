@@ -291,7 +291,7 @@ def compute_el_block_hash_for_block(spec, block):
     )
 
 
-def build_empty_post_gloas_execution_payload_header(spec, state):
+def build_empty_post_gloas_execution_payload_bid(spec, state):
     if not is_post_gloas(spec):
         return
     parent_block_root = hash_tree_root(state.latest_block_header)
@@ -314,7 +314,7 @@ def build_empty_post_gloas_execution_payload_header(spec, state):
 def build_empty_signed_execution_payload_header(spec, state):
     if not is_post_gloas(spec):
         return
-    message = build_empty_post_gloas_execution_payload_header(spec, state)
+    message = build_empty_post_gloas_execution_payload_bid(spec, state)
     privkey = privkeys[message.builder_index]
     signature = spec.get_execution_payload_bid_signature(state, message, privkey)
     return spec.SignedExecutionPayloadBid(
