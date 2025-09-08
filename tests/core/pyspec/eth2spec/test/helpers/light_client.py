@@ -1,5 +1,7 @@
 from math import floor
 
+from frozendict import frozendict
+
 from eth2spec.test.helpers.constants import (
     CAPELLA,
     DENEB,
@@ -13,6 +15,16 @@ from eth2spec.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
     compute_committee_indices,
 )
+
+
+def sample_blob_schedule(initial_epoch=5, interval=5):
+    max_blobs_per_block = [9, 100, 175, 200, 275, 300]
+    return tuple(
+        frozendict(
+            {"EPOCH": initial_epoch + i * interval, "MAX_BLOBS_PER_BLOCK": max_blobs_per_block}
+        )
+        for i, max_blobs_per_block in enumerate(max_blobs_per_block)
+    )
 
 
 def latest_finalized_root_gindex(spec):

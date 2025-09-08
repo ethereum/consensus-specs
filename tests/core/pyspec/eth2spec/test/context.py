@@ -6,6 +6,7 @@ from random import Random
 from typing import Any
 
 import pytest
+from frozendict import frozendict
 from lru import LRU
 
 from eth2spec.utils import bls
@@ -662,20 +663,24 @@ class quoted_str(str):
     pass
 
 
+def _get_basic_value(v: Any) -> Any:
+    if isinstance(v, int):
+        return int(v)
+    elif isinstance(v, bytes):
+        return bytes(bytearray(v))
+    elif isinstance(v, list | tuple):
+        return list(_get_basic_value(v) for v in v)
+    elif isinstance(v, dict | frozendict):
+        return dict({k: _get_basic_value(v) for k, v in dict(v).items()})
+    else:
+        return quoted_str(v)
+
+
 def _get_basic_dict(ssz_dict: dict[str, Any]) -> dict[str, Any]:
     """
     Get dict of basic types from a dict of SSZ objects.
     """
-    result = {}
-    for k, v in ssz_dict.items():
-        if isinstance(v, int):
-            value = int(v)
-        elif isinstance(v, bytes):
-            value = bytes(bytearray(v))
-        else:
-            value = quoted_str(v)
-        result[k] = value
-    return result
+    return _get_basic_value(ssz_dict)
 
 
 def get_copy_of_spec(spec):
