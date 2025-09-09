@@ -23,7 +23,7 @@ jobs:
           cache: 'pip'
 
       - name: Install dependencies to venv
-        run: make pyspec
+        run: make _pyspec
 
       - name: Build docs
         run: make _copy_docs

@@ -625,8 +625,9 @@ def case_verify_blob_kzg_proof_batch():
 
 
 def case_compute_challenge():
-    def get_test_runner(blob, commitment):
+    def get_test_runner(input_getter):
         def _runner():
+            blob, commitment = input_getter()
             try:
                 challenge = None
                 challenge = spec.compute_challenge(blob, commitment)
@@ -652,21 +653,31 @@ def case_compute_challenge():
 
     # Valid cases
     for index, blob in enumerate(VALID_BLOBS):
-        commitment = cached_blob_to_kzg_commitment(blob)
-        yield f"compute_challenge_case_valid_{index}", get_test_runner(blob, commitment)
+
+        def get_inputs(blob=blob):
+            commitment = cached_blob_to_kzg_commitment(blob)
+            return blob, commitment
+
+        yield f"compute_challenge_case_valid_{index}", get_test_runner(get_inputs)
 
     # Valid: Same blob with different commitments (incorrect, but valid format)
     if True:
-        blob = VALID_BLOBS[3]
-        # Use commitment from a different blob
-        commitment = cached_blob_to_kzg_commitment(VALID_BLOBS[4])
-        yield "compute_challenge_case_mismatched_commitment", get_test_runner(blob, commitment)
+
+        def get_inputs():
+            # Use commitment from a different blob
+            commitment = cached_blob_to_kzg_commitment(VALID_BLOBS[4])
+            return VALID_BLOBS[3], commitment
+
+        yield "compute_challenge_case_mismatched_commitment", get_test_runner(get_inputs)
 
     # Valid: G1_POINT_AT_INFINITY as commitment
     if True:
-        blob = VALID_BLOBS[4]
-        commitment = spec.G1_POINT_AT_INFINITY
-        yield "compute_challenge_case_commitment_at_infinity", get_test_runner(blob, commitment)
+
+        def get_inputs():
+            commitment = spec.G1_POINT_AT_INFINITY
+            return VALID_BLOBS[4], commitment
+
+        yield "compute_challenge_case_commitment_at_infinity", get_test_runner(get_inputs)
 
 
 ###############################################################################

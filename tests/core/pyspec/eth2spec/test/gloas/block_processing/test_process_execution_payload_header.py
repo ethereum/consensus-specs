@@ -349,16 +349,6 @@ def test_process_execution_payload_header_self_build_non_zero_value(spec, state)
     """
     Test self-builder with non-zero value fails (builder_index == proposer_index but value > 0)
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-
-    # Make the proposer a registered builder
-    make_validator_builder(spec, state, proposer_index)
-
-    # Ensure builder has sufficient balance
-    value = spec.Gwei(1000000)  # 0.001 ETH
-    required_balance = value + spec.MIN_ACTIVATION_BALANCE
-    state.balances[proposer_index] = required_balance
-
     block = build_empty_block_for_next_slot(spec, state)
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
     blob_kzg_commitments_root = kzg_list.hash_tree_root()
@@ -369,14 +359,14 @@ def test_process_execution_payload_header_self_build_non_zero_value(spec, state)
         block_hash=spec.Hash32(),
         fee_recipient=spec.ExecutionAddress(),
         gas_limit=spec.uint64(30000000),
-        builder_index=proposer_index,  # Same as proposer (self-build)
+        builder_index=block.proposer_index,  # Same as proposer (self-build)
         slot=block.slot,
-        value=value,  # Non-zero value should fail for self-build
+        value=1,
         blob_kzg_commitments_root=blob_kzg_commitments_root,
     )
 
     # Sign the header
-    privkey = privkeys[proposer_index]
+    privkey = privkeys[block.proposer_index]
     signature = spec.get_execution_payload_header_signature(state, header, privkey)
 
     signed_header = spec.SignedExecutionPayloadHeader(
