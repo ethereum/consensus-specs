@@ -8,7 +8,6 @@
 - [Modification in Gloas](#modification-in-gloas)
   - [Helper functions](#helper-functions)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-  - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
@@ -67,10 +66,6 @@ def compute_fork_version(epoch: Epoch) -> Version:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
 ```
-
-### Preset
-
-*No changes in Gloas.*
 
 ### Configuration
 
