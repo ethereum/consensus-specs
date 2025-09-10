@@ -1178,12 +1178,11 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         signing_root = compute_signing_root(signed_header.message, domain)
         assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
 
-    # [Modified in Gloas:EIP7732]
+    # [New in Gloas:EIP7732]
     # Remove the BuilderPendingPayment corresponding to
     # this proposal if it is still in the 2-epoch window.
     slot = header_1.slot
     proposal_epoch = compute_epoch_at_slot(slot)
-
     if proposal_epoch == get_current_epoch(state):
         state.builder_pending_payments[SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH] = (
             BuilderPendingPayment()
