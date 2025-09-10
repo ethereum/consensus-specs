@@ -186,35 +186,56 @@ def invalid_cases():
                         ("zeroed", lambda x: 0),
                         ("minus_one", lambda x: x - 1),
                     ]:
-                        serialized = mod_offset(
-                            b=serialize(container_case_fn(rng, mode, typ)),
-                            offset_index=offset_index,
-                            change=change,
+
+                        def the_test(
+                            rng=rng, mode=mode, typ=typ, offset_index=offset_index, change=change
+                        ):
+                            serialized = mod_offset(
+                                b=serialize(container_case_fn(rng, mode, typ)),
+                                offset_index=offset_index,
+                                change=change,
+                            )
+                            try:
+                                _ = deserialize(typ, serialized)
+                            except Exception:
+                                return serialized
+                            assert False  # should throw
+
+                        yield (
+                            f"{name}_{mode.to_name()}_offset_{offset_index}_{description}",
+                            invalid_test_case(the_test),
                         )
-                        try:
-                            _ = deserialize(typ, serialized)
-                        except Exception:
-                            yield (
-                                f"{name}_{mode.to_name()}_offset_{offset_index}_{description}",
-                                invalid_test_case(lambda serialized=serialized: serialized),
-                            )
                     if mode == RandomizationMode.mode_max_count:
-                        serialized = serialize(container_case_fn(rng, mode, typ))
-                        serialized = serialized + serialized[:3]
-                        try:
-                            _ = deserialize(typ, serialized)
-                        except Exception:
-                            yield (
-                                f"{name}_{mode.to_name()}_last_offset_{offset_index}_overflow",
-                                invalid_test_case(lambda serialized=serialized: serialized),
-                            )
+
+                        def the_test(
+                            rng=rng, mode=mode, typ=typ, offset_index=offset_index, change=change
+                        ):
+                            serialized = serialize(container_case_fn(rng, mode, typ))
+                            serialized = serialized + serialized[:3]
+                            try:
+                                _ = deserialize(typ, serialized)
+                            except Exception:
+                                return serialized
+                            assert False  # should throw
+
+                        yield (
+                            f"{name}_{mode.to_name()}_last_offset_{offset_index}_overflow",
+                            invalid_test_case(the_test),
+                        )
                     if mode == RandomizationMode.mode_one_count:
-                        serialized = serialize(container_case_fn(rng, mode, typ))
-                        serialized = serialized + serialized[:1]
-                        try:
-                            _ = deserialize(typ, serialized)
-                        except Exception:
-                            yield (
-                                f"{name}_{mode.to_name()}_last_offset_{offset_index}_wrong_byte_length",
-                                invalid_test_case(lambda serialized=serialized: serialized),
-                            )
+
+                        def the_test(
+                            rng=rng, mode=mode, typ=typ, offset_index=offset_index, change=change
+                        ):
+                            serialized = serialize(container_case_fn(rng, mode, typ))
+                            serialized = serialized + serialized[:1]
+                            try:
+                                _ = deserialize(typ, serialized)
+                            except Exception:
+                                return serialized
+                            assert False  # should throw
+
+                        yield (
+                            f"{name}_{mode.to_name()}_last_offset_{offset_index}_wrong_byte_length",
+                            invalid_test_case(the_test),
+                        )
