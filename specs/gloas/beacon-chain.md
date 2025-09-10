@@ -1184,11 +1184,11 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     slot = header_1.slot
     proposal_epoch = compute_epoch_at_slot(slot)
     if proposal_epoch == get_current_epoch(state):
-        state.builder_pending_payments[SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH] = (
-            BuilderPendingPayment()
-        )
+        payment_index = SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH
+        state.builder_pending_payments[payment_index] = BuilderPendingPayment()
     elif proposal_epoch == get_previous_epoch(state):
-        state.builder_pending_payments[slot % SLOTS_PER_EPOCH] = BuilderPendingPayment()
+        payment_index = slot % SLOTS_PER_EPOCH
+        state.builder_pending_payments[payment_index] = BuilderPendingPayment()
 
     slash_validator(state, header_1.proposer_index)
 ```
