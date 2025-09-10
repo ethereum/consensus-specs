@@ -664,6 +664,9 @@ class quoted_str(str):
 
 
 def _get_basic_value(v: Any) -> Any:
+    """
+    Deeply convert a value to a form consisting of Python built-in types.
+    """
     if isinstance(v, int):
         return int(v)
     elif isinstance(v, bytes):
@@ -674,13 +677,6 @@ def _get_basic_value(v: Any) -> Any:
         return dict({k: _get_basic_value(v) for k, v in dict(v).items()})
     else:
         return quoted_str(v)
-
-
-def _get_basic_dict(ssz_dict: dict[str, Any]) -> dict[str, Any]:
-    """
-    Get dict of basic types from a dict of SSZ objects.
-    """
-    return _get_basic_value(ssz_dict)
 
 
 def get_copy_of_spec(spec):
@@ -708,7 +704,7 @@ def spec_with_config_overrides(spec, config_overrides):
 
     # To output the changed config in a format compatible with yaml test vectors,
     # the dict SSZ objects have to be converted into Python built-in types.
-    output_config = _get_basic_dict(modified_config)
+    output_config = _get_basic_value(modified_config)
 
     return spec, output_config
 
