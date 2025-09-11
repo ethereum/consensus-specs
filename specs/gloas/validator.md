@@ -124,8 +124,10 @@ on top of a `state` must take the following actions:
   accepted `signed_execution_payload_header` from a builder. Proposer MAY obtain
   these signed messages by other off-protocol means.
 - The `signed_execution_payload_header` must satisfy the verification conditions
-  found in `process_execution_payload_header`, that is
-  - The header signature must be valid
+  found in `process_execution_payload_header`, that is:
+  - For external builders: The header signature must be valid
+  - For self-builds: The signature must be `bls.G2_POINT_AT_INFINITY` and the
+    bid amount must be zero
   - The builder balance can cover the header value
   - The header slot is for the proposal block slot
   - The header parent block hash equals the state's `latest_block_hash`.
