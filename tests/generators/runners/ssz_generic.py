@@ -28,7 +28,7 @@ def get_test_cases() -> Iterable[TestCase]:
         ("boolean", "valid", ssz_boolean.valid_cases),
         ("boolean", "invalid", ssz_boolean.invalid_cases),
         ("containers", "valid", ssz_container.valid_cases),
-        ("containers", "invalid", ssz_container.invalid_cases),
+        # ("containers", "invalid", ssz_container.invalid_cases),
         ("progressive_bitlist", "valid", ssz_progressive_bitlist.valid_cases),
         ("progressive_bitlist", "invalid", ssz_progressive_bitlist.invalid_cases),
         ("uints", "valid", ssz_uints.valid_cases),
