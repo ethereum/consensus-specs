@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from random import Random
 
 from eth2spec.debug.random_value import RandomizationMode
+from eth2spec.test.exceptions import SkippedTest
 from eth2spec.utils.ssz.ssz_impl import deserialize, serialize
 from eth2spec.utils.ssz.ssz_typing import (
     byte,
@@ -162,11 +163,18 @@ def invalid_cases():
             RandomizationMode.mode_max_count,
         ]:
             for i, modded_typ in enumerate(MODIFIED_PROGRESSIVE_CONTIANERS):
-                serialized = serialize(container_case_fn(rng, mode, modded_typ))
-                try:
-                    _ = deserialize(typ, serialized)
-                except Exception:
-                    yield (
-                        f"{name}_{mode.to_name()}_modded_{i}",
-                        invalid_test_case(lambda serialized=serialized: serialized),
+
+                def the_test(rng=rng, mode=mode, typ=typ, modded_typ=modded_typ):
+                    serialized = serialize(container_case_fn(rng, mode, modded_typ))
+                    try:
+                        _ = deserialize(typ, serialized)
+                    except Exception:
+                        return serialized
+                    raise SkippedTest(
+                        "The serialized data still parses fine, it's not invalid data"
                     )
+
+                yield (
+                    f"{name}_{mode.to_name()}_modded_{i}",
+                    invalid_test_case(the_test),
+                )
