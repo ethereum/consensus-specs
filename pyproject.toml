@@ -24,7 +24,7 @@ dependencies = [
   "py_arkworks_bls12381==0.3.8",
   "py_ecc==8.0.0",
   "pycryptodome==3.23.0",
-  "remerkleable @ git+https://github.com/ethereum/remerkleable@d671c7584f12ab70aaa8abdc792827645ef0bee0",
+  "remerkleable @ git+https://github.com/ethereum/remerkleable@2a964d3873567021f5f09423c3cd302c621276b1",
   "ruamel.yaml==0.18.15",
   "setuptools==80.9.0",
   "trie==3.1.0",
