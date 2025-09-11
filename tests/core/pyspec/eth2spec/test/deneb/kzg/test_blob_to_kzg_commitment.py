@@ -12,12 +12,14 @@ from eth2spec.test.utils.kzg_tests import (
 from tests.core.pyspec.eth2spec.test.helpers.constants import DENEB
 from tests.infra.spec_cache import spec_cache
 from tests.infra.template_test import template_test
+from tests.infra.manifest import manifest
 
 
 @template_test
 def _blob_to_kzg_commitment_case_valid_blob(index):
     blob = VALID_BLOBS[index]
 
+    @manifest(preset_name="general", suite_name="kzg-mainnet")
     @with_phases([DENEB])
     @spec_test
     @single_phase
@@ -46,6 +48,7 @@ for index in range(0, len(VALID_BLOBS)):
 def _blob_to_kzg_commitment_case_invalid_blob(index):
     blob = INVALID_BLOBS[index]
 
+    @manifest(preset_name="general", suite_name="kzg-mainnet")
     @with_phases([DENEB])
     @spec_test
     @single_phase

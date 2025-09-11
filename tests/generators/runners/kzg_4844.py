@@ -5,4 +5,4 @@ from eth2spec.gen_helpers.gen_from_tests.gen import get_test_cases_for
 
 
 def get_test_cases() -> Iterable[TestCase]:
-    return get_test_cases_for("kzg_4844")
+    return get_test_cases_for("kzg")
