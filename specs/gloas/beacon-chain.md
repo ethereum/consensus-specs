@@ -37,6 +37,7 @@
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
     - [New `is_parent_block_full`](#new-is_parent_block_full)
   - [Misc](#misc-2)
+    - [Modified `get_pending_balance_to_withdraw`](#modified-get_pending_balance_to_withdraw)
     - [New `remove_flag`](#new-remove_flag)
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
     - [New `compute_balance_weighted_acceptance`](#new-compute_balance_weighted_acceptance)
@@ -437,6 +438,32 @@ def is_parent_block_full(state: BeaconState) -> bool:
 ```
 
 ### Misc
+
+#### Modified `get_pending_balance_to_withdraw`
+
+*Note*: `get_pending_balance_to_withdraw` is modified to account for pending
+builder payments.
+
+```python
+def get_pending_balance_to_withdraw(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
+    return (
+        sum(
+            withdrawal.amount
+            for withdrawal in state.pending_partial_withdrawals
+            if withdrawal.validator_index == validator_index
+        )
+        + sum(
+            withdrawal.amount
+            for withdrawal in state.builder_pending_withdrawals
+            if withdrawal.builder_index == validator_index
+        )
+        + sum(
+            payment.withdrawal.amount
+            for payment in state.builder_pending_payments
+            if payment.withdrawal.builder_index == validator_index
+        )
+    )
+```
 
 #### New `remove_flag`
 
