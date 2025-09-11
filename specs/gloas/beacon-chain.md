@@ -1333,11 +1333,13 @@ def process_execution_payload(
 
     # Queue the builder payment
     payment = state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH]
-    exit_queue_epoch = compute_exit_epoch_and_update_churn(state, payment.withdrawal.amount)
-    payment.withdrawal.withdrawable_epoch = Epoch(
-        exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-    )
-    state.builder_pending_withdrawals.append(payment.withdrawal)
+    amount = payment.withdrawal.amount
+    if amount > 0:
+        exit_queue_epoch = compute_exit_epoch_and_update_churn(state, amount)
+        payment.withdrawal.withdrawable_epoch = Epoch(
+            exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+        )
+        state.builder_pending_withdrawals.append(payment.withdrawal)
     state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH] = (
         BuilderPendingPayment()
     )
