@@ -187,10 +187,18 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
 
         # Map each test case to a thread worker
         inputs = [(t, active_tests) for t in test_cases]
-        for result in Pool(processes=args.threads).uimap(worker_function, inputs):
-            if result == "skipped":
-                skipped.value += 1
-            completed.value += 1
+
+        if args.threads == 1:
+            for input in inputs:
+                result = worker_function(input)
+                if result == "skipped":
+                    skipped.value += 1
+                completed.value += 1
+        else:
+            for result in Pool(processes=args.threads).uimap(worker_function, inputs):
+                if result == "skipped":
+                    skipped.value += 1
+                completed.value += 1
 
         if not args.verbose:
             display_thread.join()

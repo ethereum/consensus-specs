@@ -7,6 +7,7 @@ from typing import Any
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
 from eth2spec.test.helpers.constants import ALL_PRESETS, TESTGEN_FORKS
 from eth2spec.test.helpers.typing import PresetBaseName, SpecForkName
+from tests.infra.manifest import Manifest
 
 
 def generate_case_fn(tfn, generator_mode, phase, preset, bls_active):
@@ -50,14 +51,20 @@ def generate_from_tests(
         if case_name.startswith("test_"):
             case_name = case_name[5:]
 
-        yield TestCase(
+        manifest = Manifest(
             fork_name=fork_name,
             preset_name=preset_name,
             runner_name=runner_name,
             handler_name=handler_name,
             suite_name=getattr(tfn, "suite_name", "pyspec_tests"),
             case_name=case_name,
-            # TODO: with_all_phases and other per-phase tooling, should be replaced with per-fork equivalent.
+        )
+
+        if hasattr(tfn, "manifest") and tfn.manifest is not None:
+            manifest = tfn.manifest.override(manifest)
+
+        yield TestCase.from_manifest(
+            manifest,
             case_fn=generate_case_fn(
                 tfn, generator_mode=True, phase=phase, preset=preset_name, bls_active=bls_active
             ),
