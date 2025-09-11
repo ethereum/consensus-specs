@@ -29,6 +29,8 @@ into a SSZ type:
   - `uints`
 - Containers
   - `containers`
+- ProgressiveContainer
+  - `progressive_containers`
 
 ## Format
 
@@ -174,16 +176,16 @@ Data:
 ### `containers`
 
 Containers are more complicated than the other types. Instead, a set of
-pre-defined container structures is referenced:
+pre-defined container structures is referenced.
 
 ```
 Template:
 
-{container name}
+{structure name}
 
 Data:
 
-{container name}: Any of the container names listed below (excluding the `(Container)` python super type)
+{structure name}: Any of the structure names listed below (excluding the `(Container)` python super type)
 ```
 
 ```python
@@ -246,4 +248,50 @@ class ProgressiveBitsStruct(Container):
     J: Bitvector[1281]
     K: Bitlist[1281]
     L: ProgressiveBitlist
+```
+
+### `progressive_containers`
+
+A set of pre-defined progressive container structures is referenced.
+`SmallTestStruct` and `VarTestStruct` follow the definitions from the
+[`containers`](#containers) section.
+
+```
+Template:
+
+{structure name}
+
+Data:
+
+{structure name}: Any of the structure names listed below (excluding the `(ProgressiveContainer)` python super type)
+```
+
+```python
+class ProgressiveSingleFieldContainerTestStruct(ProgressiveContainer(active_fields=[1])):
+    A: byte
+
+
+class ProgressiveSingleListContainerTestStruct(ProgressiveContainer(active_fields=[0, 0, 0, 0, 1])):
+    C: ProgressiveBitlist
+
+
+class ProgressiveVarTestStruct(ProgressiveContainer(active_fields=[1, 0, 1, 0, 1])):
+    A: byte
+    B: List[uint16, 123]
+    C: ProgressiveBitlist
+
+
+class ProgressiveComplexTestStruct(
+    ProgressiveContainer(
+        active_fields=[1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1]
+    )
+):
+    A: byte
+    B: List[uint16, 123]
+    C: ProgressiveBitlist
+    D: ProgressiveList[uint64]
+    E: ProgressiveList[SmallTestStruct]
+    F: ProgressiveList[ProgressiveList[VarTestStruct]]
+    G: List[ProgressiveSingleFieldContainerTestStruct, 10]
+    H: ProgressiveList[ProgressiveVarTestStruct]
 ```
