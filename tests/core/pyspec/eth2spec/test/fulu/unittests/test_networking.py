@@ -161,6 +161,9 @@ def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_proof(spec, state)
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__valid(spec, state):
+    if is_post_gloas(spec):
+        # Skip for Gloas as inclusion proof fields were removed
+        return
     sidecar = compute_data_column_sidecar(spec, state)
     assert spec.verify_data_column_sidecar_inclusion_proof(sidecar)
 
@@ -169,6 +172,9 @@ def test_verify_data_column_sidecar_inclusion_proof__valid(spec, state):
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__invalid_missing_commitment(spec, state):
+    if is_post_gloas(spec):
+        # Skip for Gloas as inclusion proof fields were removed
+        return
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
     assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
@@ -178,6 +184,9 @@ def test_verify_data_column_sidecar_inclusion_proof__invalid_missing_commitment(
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__invalid_duplicate_commitment(spec, state):
+    if is_post_gloas(spec):
+        # Skip for Gloas as inclusion proof fields were removed
+        return
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_commitments = sidecar.kzg_commitments + [sidecar.kzg_commitments[0]]
     assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)

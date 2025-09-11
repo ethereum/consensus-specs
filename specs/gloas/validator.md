@@ -20,6 +20,8 @@
     - [Constructing a payload attestation](#constructing-a-payload-attestation)
 - [Modified functions](#modified-functions)
   - [Modified `prepare_execution_payload`](#modified-prepare_execution_payload)
+- [Data column sidecars](#data-column-sidecars)
+  - [Modified `get_data_column_sidecars_from_column_sidecar`](#modified-get_data_column_sidecars_from_column_sidecar)
 
 <!-- mdformat-toc end -->
 
@@ -253,5 +255,31 @@ def prepare_execution_payload(
         safe_block_hash=safe_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
+    )
+```
+
+## Data column sidecars
+
+*[Modified in Gloas]*
+
+### Modified `get_data_column_sidecars_from_column_sidecar`
+
+```python
+def get_data_column_sidecars_from_column_sidecar(
+    sidecar: DataColumnSidecar,
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
+) -> Sequence[DataColumnSidecar]:
+    """
+    Given a DataColumnSidecar and the cells/proofs associated with each blob corresponding
+    to the commitments it contains, assemble all sidecars for distribution to peers.
+    """
+    assert len(cells_and_kzg_proofs) == len(sidecar.kzg_commitments)
+
+    return get_data_column_sidecars(
+        sidecar.signed_block_header.message.body_root,
+        sidecar.kzg_commitments,
+        cells_and_kzg_proofs,
     )
 ```
