@@ -9,7 +9,8 @@ from eth2spec.test.utils.kzg_tests import (
     INVALID_BLOBS,
     VALID_BLOBS,
 )
-from tests.core.pyspec.eth2spec.test.helpers.constants import DENEB
+from eth2spec.test.context import only_generator
+from eth2spec.test.helpers.constants import DENEB
 from tests.infra.spec_cache import spec_cache
 from tests.infra.template_test import template_test
 from tests.infra.manifest import manifest
@@ -20,6 +21,7 @@ def _blob_to_kzg_commitment_case_valid_blob(index):
     blob = VALID_BLOBS[index]
 
     @manifest(preset_name="general", suite_name="kzg-mainnet")
+    @only_generator("randomized test for broad coverage, not point-to-point CI")
     @with_phases([DENEB])
     @spec_test
     @single_phase
@@ -49,6 +51,7 @@ def _blob_to_kzg_commitment_case_invalid_blob(index):
     blob = INVALID_BLOBS[index]
 
     @manifest(preset_name="general", suite_name="kzg-mainnet")
+    @only_generator("randomized test for broad coverage, not point-to-point CI")
     @with_phases([DENEB])
     @spec_test
     @single_phase
