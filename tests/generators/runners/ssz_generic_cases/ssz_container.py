@@ -2,6 +2,7 @@ from collections.abc import Callable, Sequence
 from random import Random
 
 from eth2spec.debug.random_value import get_random_ssz_object, RandomizationMode
+from eth2spec.test.exceptions import SkippedTest
 from eth2spec.utils.ssz.ssz_impl import deserialize, serialize
 from eth2spec.utils.ssz.ssz_typing import (
     Bitlist,
@@ -199,7 +200,9 @@ def invalid_cases():
                                 _ = deserialize(typ, serialized)
                             except Exception:
                                 return serialized
-                            assert False  # should throw
+                            raise SkippedTest(
+                                "The serialized data still parses fine, it's not invalid data"
+                            )
 
                         yield (
                             f"{name}_{mode.to_name()}_offset_{offset_index}_{description}",
@@ -216,7 +219,9 @@ def invalid_cases():
                                 _ = deserialize(typ, serialized)
                             except Exception:
                                 return serialized
-                            assert False  # should throw
+                            raise SkippedTest(
+                                "The serialized data still parses fine, it's not invalid data"
+                            )
 
                         yield (
                             f"{name}_{mode.to_name()}_last_offset_{offset_index}_overflow",
@@ -233,7 +238,9 @@ def invalid_cases():
                                 _ = deserialize(typ, serialized)
                             except Exception:
                                 return serialized
-                            assert False  # should throw
+                            raise SkippedTest(
+                                "The serialized data still parses fine, it's not invalid data"
+                            )
 
                         yield (
                             f"{name}_{mode.to_name()}_last_offset_{offset_index}_wrong_byte_length",
