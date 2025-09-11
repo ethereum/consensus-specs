@@ -1,7 +1,7 @@
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from importlib import import_module
 from inspect import getmembers, isfunction
-from pkgutil import walk_packages
+from pkgutil import ModuleInfo, walk_packages
 from typing import Any
 
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
@@ -71,21 +71,38 @@ def generate_from_tests(
         )
 
 
-def get_expected_modules(package, absolute=False):
+CACHED_WALK_PACKAGES: Iterator[ModuleInfo] | None = None
+
+
+def get_expected_modules(module, absolute=False):
     """
     Return all modules (which are not packages) inside the given package.
     """
+
+    def _cached_walk_packages() -> Iterator[ModuleInfo]:
+        """Walk the packages in the eth2spec module. Cache the result for future calls."""
+        global CACHED_WALK_PACKAGES
+
+        if CACHED_WALK_PACKAGES is None:
+            eth2spec = import_module("eth2spec")
+            path = eth2spec.__path__
+            prefix = eth2spec.__name__ + "."
+            CACHED_WALK_PACKAGES = walk_packages(path, prefix)
+
+        return CACHED_WALK_PACKAGES
+
     modules = []
-    eth2spec = import_module("eth2spec")
-    prefix = eth2spec.__name__ + "."
-    for _, modname, ispkg in walk_packages(eth2spec.__path__, prefix):
-        s = package if absolute else f".{package}."
+    find_mod_name = module if absolute else f".{module}."
+    for _, cur_mod_name, is_pkg in _cached_walk_packages():
+        # Skip packages.
+        if is_pkg:
+            continue
         # Skip modules in the unittests package.
         # These are not associated with generators.
-        if ".unittests." in modname:
+        if ".unittests." in cur_mod_name:
             continue
-        if s in modname and not ispkg:
-            modules.append(modname)
+        if find_mod_name in cur_mod_name:
+            modules.append(cur_mod_name)
     return modules
 
 
