@@ -15,49 +15,34 @@ with a minor exception (new check added).
 
 This work was supported by a grant from the Ethereum Foundation.
 
-# Pre-requisites
-
-Install pyspec using the top-level Makefile, this will install necessary
-pre-requiesites.
-
-```
-> make pyspec
-```
-
 # Generating tests
 
 From the root directory:
 
 ```
-> python -m tests.generators.compliance_runners.fork_choice.test_gen -o ${test_dir} --fc-gen-config ${config}
+make comptests fc_gen_config=<config>
 ```
 
-where `config` can be either: `tiny`, `small` or \`standard.
-
-Or specify path to the configuration file directly:
-
-```
-> python -m tests.generators.compliance_runners.fork_choice.test_gen -o ${test_dir} --fc-gen-config-path ${config_path}
-```
-
-There are three configurations in the repo: [tiny](tiny/), [small](small/) and
-[standard](standard/).
+where `config` can be either: [`tiny`](tiny/), [`small`](small/) or
+[`standard`](standard/).
 
 # Running tests
 
 From the root directory:
 
 ```
-> python -m tests.generators.compliance_runners.fork_choice.test_run -i ${test_dir}
+make _pyspec  # Initialize virtual environment
+python -m tests.generators.compliance_runners.fork_choice.test_run -i ${test_dir}
 ```
 
 # Generating configurations
 
-Files in [tiny](tiny/), [small](small/) and [standard](standard/) are generated
-with [generate_test_instances.py](generate_test_instances.py), e.g.
+Files in [`tiny`](tiny/), [`small`](small/) and [`standard`](standard/) are
+generated with [`generate_test_instances.py`](generate_test_instances.py), e.g.
 
 ```
-> python -m tests.generators.compliance_runners.fork_choice.generate_test_instances
+make _pyspec  # Initialize virtual environment
+python -m tests.generators.compliance_runners.fork_choice.generate_test_instances
 ```
 
 But one normally doesn't need to generate them.
