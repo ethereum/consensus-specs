@@ -188,7 +188,7 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
         # Map each test case to a thread worker
         inputs = [(t, active_tests) for t in test_cases]
 
-        if args.threads <= 1:
+        if args.threads == 1:
             for input in inputs:
                 result = worker_function(input)
                 if result == "skipped":
