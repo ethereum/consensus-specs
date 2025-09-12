@@ -141,21 +141,20 @@ and broadcasts it on the `execution_payload_bid` global gossip topic.
 
 #### Modified `get_data_column_sidecars`
 
-*Note*: The function `get_data_column_sidecars` is modified to use the updated
-blob KZG commitments inclusion proof type with a different length.
+*Note*: The function `get_data_column_sidecars` is modified to remove
+`signed_block_header` and `kzg_commitments_inclusion_proof` parameters as header
+and inclusion proof verifications are no longer required in ePBS.
 
 ```python
 def get_data_column_sidecars(
-    signed_block_header: SignedBeaconBlockHeader,
+    beacon_block_root: Root,
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
-    # [Modified in Gloas:EIP7732]
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS],
     cells_and_kzg_proofs: Sequence[
         Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
     ],
 ) -> Sequence[DataColumnSidecar]:
     """
-    Given a signed block header and the commitments, inclusion proof, cells/proofs associated with
+    Given a beacon block root and the commitments, cells/proofs associated with
     each blob in the block, assemble the sidecars which can be distributed to peers.
     """
     assert len(cells_and_kzg_proofs) == len(kzg_commitments)
@@ -172,8 +171,7 @@ def get_data_column_sidecars(
                 column=column_cells,
                 kzg_commitments=kzg_commitments,
                 kzg_proofs=column_proofs,
-                signed_block_header=signed_block_header,
-                kzg_commitments_inclusion_proof=kzg_commitments_inclusion_proof,
+                beacon_block_root=beacon_block_root,
             )
         )
     return sidecars
@@ -182,8 +180,8 @@ def get_data_column_sidecars(
 #### Modified `get_data_column_sidecars_from_block`
 
 *Note*: The function `get_data_column_sidecars_from_block` is modified to
-include the list of blob KZG commitments and to compute the blob KZG commitments
-inclusion proof given that these are in the `ExecutionPayloadEnvelope` now.
+include the list of blob KZG commitments and to use `beacon_block_root` instead
+of header and inclusion proof computations.
 
 ```python
 def get_data_column_sidecars_from_block(
@@ -198,21 +196,10 @@ def get_data_column_sidecars_from_block(
     Given a signed block and the cells/proofs associated with each blob in the
     block, assemble the sidecars which can be distributed to peers.
     """
-    signed_block_header = compute_signed_block_header(signed_block)
-    # [Modified in Gloas:EIP7732]
-    kzg_commitments_inclusion_proof = compute_merkle_proof(
-        signed_block.message.body,
-        get_generalized_index(
-            BeaconBlockBody,
-            "signed_execution_payload_bid",
-            "message",
-            "blob_kzg_commitments_root",
-        ),
-    )
+    beacon_block_root = hash_tree_root(signed_block.message)
     return get_data_column_sidecars(
-        signed_block_header,
+        beacon_block_root,
         blob_kzg_commitments,
-        kzg_commitments_inclusion_proof,
         cells_and_kzg_proofs,
     )
 ```

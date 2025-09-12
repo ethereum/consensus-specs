@@ -56,13 +56,13 @@ def run_execution_payload_processing(
         payment = post_state.builder_pending_payments[
             spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
         ]
-        exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(
-            post_state, payment.withdrawal.amount
-        )
-        payment.withdrawal.withdrawable_epoch = spec.Epoch(
-            exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-        )
-        post_state.builder_pending_withdrawals.append(payment.withdrawal)
+        amount = payment.withdrawal.amount
+        if amount > 0:
+            exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(post_state, amount)
+            payment.withdrawal.withdrawable_epoch = spec.Epoch(
+                exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+            )
+            post_state.builder_pending_withdrawals.append(payment.withdrawal)
         post_state.builder_pending_payments[
             spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
         ] = spec.BuilderPendingPayment()

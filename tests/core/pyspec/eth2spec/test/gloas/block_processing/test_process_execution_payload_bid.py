@@ -101,8 +101,15 @@ def prepare_signed_execution_payload_bid(
     )
 
     if valid_signature:
-        privkey = privkeys[builder_index]
-        signature = spec.get_execution_payload_bid_signature(state, bid, privkey)
+        # Check if this is a self-build case
+        proposer_index = spec.get_beacon_proposer_index(state)
+        if builder_index == proposer_index:
+            # Self-builds must use G2_POINT_AT_INFINITY
+            signature = spec.bls.G2_POINT_AT_INFINITY
+        else:
+            # External builders use real signatures
+            privkey = privkeys[builder_index]
+            signature = spec.get_execution_payload_bid_signature(state, header, privkey)
     else:
         # Invalid signature
         signature = spec.BLSSignature()

@@ -315,9 +315,16 @@ def build_empty_signed_execution_payload_header(spec, state):
     if not is_post_gloas(spec):
         return
     message = build_empty_post_gloas_execution_payload_bid(spec, state)
-    privkey = privkeys[message.builder_index]
-    signature = spec.get_execution_payload_bid_signature(state, message, privkey)
-    return spec.SignedExecutionPayloadBid(
+    proposer_index = spec.get_beacon_proposer_index(state)
+
+    # For self-builds, use point at infinity signature as per spec
+    if message.builder_index == proposer_index:
+        signature = spec.G2_POINT_AT_INFINITY
+    else:
+        privkey = privkeys[message.builder_index]
+        signature = spec.get_execution_payload_header_signature(state, message, privkey)
+
+    return spec.SignedExecutionPayloadHeader(
         message=message,
         signature=signature,
     )

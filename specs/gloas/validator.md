@@ -20,6 +20,8 @@
     - [Constructing a payload attestation](#constructing-a-payload-attestation)
 - [Modified functions](#modified-functions)
   - [Modified `prepare_execution_payload`](#modified-prepare_execution_payload)
+- [Data column sidecars](#data-column-sidecars)
+  - [Modified `get_data_column_sidecars_from_column_sidecar`](#modified-get_data_column_sidecars_from_column_sidecar)
 
 <!-- mdformat-toc end -->
 
@@ -120,16 +122,18 @@ previous forks as follows
 To obtain `signed_execution_payload_bid`, a block proposer building a block on
 top of a `state` must take the following actions:
 
-- Listen to the `execution_payload_bid` gossip global topic and save an accepted
-  `signed_execution_payload_bid` from a builder. Proposer MAY obtain these
-  signed messages by other off-protocol means.
+- Listen to the `execution_payload_bid` gossip global topic and save an
+  accepted `signed_execution_payload_bid` from a builder. Proposer MAY obtain
+  these signed messages by other off-protocol means.
 - The `signed_execution_payload_bid` must satisfy the verification conditions
-  found in `process_execution_payload_bid`, that is
-  - The bid signature must be valid
-  - The builder balance can cover the bid value
-  - The bid slot is for the proposal block slot
-  - The bid parent block hash equals the state's `latest_block_hash`.
-  - The bid parent block root equals the current block's `parent_root`.
+  found in `process_execution_payload_bid`, that is:
+  - For external builders: The header signature must be valid
+  - For self-builds: The signature must be `bls.G2_POINT_AT_INFINITY` and the
+    bid amount must be zero
+  - The builder balance can cover the header value
+  - The header slot is for the proposal block slot
+  - The header parent block hash equals the state's `latest_block_hash`.
+  - The header parent block root equals the current block's `parent_root`.
 - Select one bid and set
   `body.signed_execution_payload_bid = signed_execution_payload_bid`
 
@@ -250,5 +254,31 @@ def prepare_execution_payload(
         safe_block_hash=safe_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
+    )
+```
+
+## Data column sidecars
+
+*[Modified in Gloas]*
+
+### Modified `get_data_column_sidecars_from_column_sidecar`
+
+```python
+def get_data_column_sidecars_from_column_sidecar(
+    sidecar: DataColumnSidecar,
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
+) -> Sequence[DataColumnSidecar]:
+    """
+    Given a DataColumnSidecar and the cells/proofs associated with each blob corresponding
+    to the commitments it contains, assemble all sidecars for distribution to peers.
+    """
+    assert len(cells_and_kzg_proofs) == len(sidecar.kzg_commitments)
+
+    return get_data_column_sidecars(
+        sidecar.signed_block_header.message.body_root,
+        sidecar.kzg_commitments,
+        cells_and_kzg_proofs,
     )
 ```
