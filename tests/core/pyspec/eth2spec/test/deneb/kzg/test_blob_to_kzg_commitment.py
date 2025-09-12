@@ -20,7 +20,7 @@ def _blob_to_kzg_commitment_case_valid_blob(index):
     blob = VALID_BLOBS[index]
 
     @manifest(preset_name="general", suite_name="kzg-mainnet")
-    @only_generator("randomized test for broad coverage, not point-to-point CI")
+    @only_generator("too slow")
     @with_phases([DENEB])
     @spec_test
     @single_phase
