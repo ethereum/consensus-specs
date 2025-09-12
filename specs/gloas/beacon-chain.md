@@ -21,12 +21,12 @@
     - [`PayloadAttestation`](#payloadattestation)
     - [`PayloadAttestationMessage`](#payloadattestationmessage)
     - [`IndexedPayloadAttestation`](#indexedpayloadattestation)
+    - [`ExecutionPayloadBid`](#executionpayloadbid)
     - [`SignedExecutionPayloadBid`](#signedexecutionpayloadbid)
     - [`ExecutionPayloadEnvelope`](#executionpayloadenvelope)
     - [`SignedExecutionPayloadEnvelope`](#signedexecutionpayloadenvelope)
   - [Modified containers](#modified-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
-    - [`ExecutionPayloadBid`](#executionpayloadbid)
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
   - [Predicates](#predicates)
@@ -208,6 +208,21 @@ class IndexedPayloadAttestation(Container):
     signature: BLSSignature
 ```
 
+#### `ExecutionPayloadBid`
+
+```python
+class ExecutionPayloadBid(Container):
+    parent_block_hash: Hash32
+    parent_block_root: Root
+    block_hash: Hash32
+    fee_recipient: ExecutionAddress
+    gas_limit: uint64
+    builder_index: ValidatorIndex
+    slot: Slot
+    value: Gwei
+    blob_kzg_commitments_root: Root
+```
+
 #### `SignedExecutionPayloadBid`
 
 ```python
@@ -269,25 +284,6 @@ class BeaconBlockBody(Container):
     signed_execution_payload_bid: SignedExecutionPayloadBid
     # [New in Gloas:EIP7732]
     payload_attestations: List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]
-```
-
-#### `ExecutionPayloadBid`
-
-*Note*: The `ExecutionPayloadBid` is modified to only contain the block hash of
-the committed `ExecutionPayload` in addition to the builder's payment
-information, gas limit and KZG commitments root to verify the inclusion proofs.
-
-```python
-class ExecutionPayloadBid(Container):
-    parent_block_hash: Hash32
-    parent_block_root: Root
-    block_hash: Hash32
-    fee_recipient: ExecutionAddress
-    gas_limit: uint64
-    builder_index: ValidatorIndex
-    slot: Slot
-    value: Gwei
-    blob_kzg_commitments_root: Root
 ```
 
 #### `BeaconState`
