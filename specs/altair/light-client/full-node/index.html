@@ -1,0 +1,3730 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ethereum.github.io/consensus-specs/specs/altair/light-client/full-node/">
+      
+      
+        <link rel="prev" href="../../validator/">
+      
+      
+        <link rel="next" href="../light-client/">
+      
+      
+      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.19">
+    
+    
+      
+        <title>Full Node - Ethereum Consensus Specs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.7e37652d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#altair-light-client-full-node" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../.." title="Ethereum Consensus Specs" class="md-header__button md-logo" aria-label="Ethereum Consensus Specs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ethereum Consensus Specs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Full Node
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../.." class="md-tabs__link">
+          
+  
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../../phase0/beacon-chain/" class="md-tabs__link">
+          
+  
+  
+  Specs
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../../docs/new-feature/" class="md-tabs__link">
+          
+  
+  
+  Docs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../../fork_choice/safe-block/" class="md-tabs__link">
+          
+  
+  
+  Fork choice
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../../light-client/" class="md-tabs__link">
+          
+  
+  
+  Light client
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../../ssz/merkle-proofs/" class="md-tabs__link">
+          
+  
+  
+  Ssz
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../../sync/optimistic/" class="md-tabs__link">
+          
+  
+  
+  Sync
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../.." title="Ethereum Consensus Specs" class="md-nav__button md-logo" aria-label="Ethereum Consensus Specs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Ethereum Consensus Specs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Home
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Ethereum Proof-of-Stake Consensus Specifications
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Specs
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Specs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Phase0
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            Phase0
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../phase0/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../phase0/deposit-contract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Deposit Contract
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../phase0/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../phase0/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../phase0/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../phase0/weak-subjectivity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Weak Subjectivity
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Altair
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            Altair
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    BLS
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_6" id="__nav_2_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            Light Client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Full Node
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Full Node
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#helper-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Helper functions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Helper functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compute_merkle_proof" class="md-nav__link">
+    <span class="md-ellipsis">
+      compute_merkle_proof
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#block_to_light_client_header" class="md-nav__link">
+    <span class="md-ellipsis">
+      block_to_light_client_header
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deriving-light-client-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deriving light client data
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deriving light client data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create_light_client_bootstrap" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_light_client_bootstrap
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create_light_client_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_light_client_update
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create_light_client_finality_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_light_client_finality_update
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create_light_client_optimistic_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_light_client_optimistic_update
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../light-client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sync Protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Bellatrix
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            Bellatrix
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../bellatrix/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../bellatrix/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../bellatrix/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../bellatrix/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../bellatrix/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Capella
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            Capella
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4_6" id="__nav_2_4_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            Light Client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/light-client/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/light-client/full-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Full Node
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sync Protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Deneb
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            Deneb
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/polynomial-commitments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Polynomial Commitments
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5_7" id="__nav_2_5_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            Light Client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/light-client/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/light-client/full-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Full Node
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sync Protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Electra
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            Electra
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/weak-subjectivity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Weak Subjectivity
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6_6" id="__nav_2_6_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_6_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6_6">
+            <span class="md-nav__icon md-icon"></span>
+            Light Client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/light-client/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../electra/light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sync Protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Fulu
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            Fulu
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/das-core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DAS Core
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/polynomial-commitments-sampling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Polynomial Commitments Sampling
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fulu/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_8" id="__nav_2_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Gloas
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            Gloas
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../gloas/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../gloas/builder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Builder
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../gloas/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../gloas/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../gloas/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../gloas/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Docs
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Docs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../docs/new-feature/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    How to add a new feature proposal in consensus-specs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../docs/release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Release Procedure
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Fork choice
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Fork choice
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../fork_choice/safe-block/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice -- Safe Block
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice -- Core
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            Fork Choice -- Core
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../phase0/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    phase0
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../bellatrix/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    bellatrix
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    capella
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    deneb
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Light client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../light-client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Index
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sync-protocol" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Altair
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../capella/light-client/sync-protocol" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Capella
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../deneb/light-client/sync-protocol" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Deneb
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Ssz
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Ssz
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ssz/merkle-proofs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Merkle proof formats
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ssz/simple-serialize/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    SimpleSerialize (SSZ)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Sync
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Sync
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../sync/optimistic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Optimistic Sync
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#helper-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Helper functions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Helper functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compute_merkle_proof" class="md-nav__link">
+    <span class="md-ellipsis">
+      compute_merkle_proof
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#block_to_light_client_header" class="md-nav__link">
+    <span class="md-ellipsis">
+      block_to_light_client_header
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deriving-light-client-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deriving light client data
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deriving light client data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create_light_client_bootstrap" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_light_client_bootstrap
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create_light_client_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_light_client_update
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create_light_client_finality_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_light_client_finality_update
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#create_light_client_optimistic_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_light_client_optimistic_update
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="altair-light-client-full-node">Altair Light Client -- Full Node<a class="headerlink" href="#altair-light-client-full-node" title="Permanent link">&para;</a></h1>
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
+
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#helper-functions">Helper functions</a></li>
+<li><a href="#compute_merkle_proof"><code>compute_merkle_proof</code></a></li>
+<li><a href="#block_to_light_client_header"><code>block_to_light_client_header</code></a></li>
+<li><a href="#deriving-light-client-data">Deriving light client data</a></li>
+<li><a href="#create_light_client_bootstrap"><code>create_light_client_bootstrap</code></a></li>
+<li><a href="#create_light_client_update"><code>create_light_client_update</code></a></li>
+<li><a href="#create_light_client_finality_update"><code>create_light_client_finality_update</code></a></li>
+<li><a href="#create_light_client_optimistic_update"><code>create_light_client_optimistic_update</code></a></li>
+</ul>
+<!-- mdformat-toc end -->
+
+<h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h2>
+<p>This document provides helper functions to enable full nodes to serve light
+client data. Full nodes SHOULD implement the described functionality to enable
+light clients to sync with the network.</p>
+<h2 id="helper-functions">Helper functions<a class="headerlink" href="#helper-functions" title="Permanent link">&para;</a></h2>
+<h3 id="compute_merkle_proof"><code>compute_merkle_proof</code><a class="headerlink" href="#compute_merkle_proof" title="Permanent link">&para;</a></h3>
+<p>This function return the Merkle proof of the given SSZ object <code>object</code> at
+generalized index <code>index</code>.</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-1">1</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">compute_merkle_proof</span><span style="color: #F8F8F2">(object:</span> <span style="color: #F8F8F2">SSZObject,</span> <span style="color: #F8F8F2">index:</span> <span style="color: #F8F8F2">GeneralizedIndex)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">Sequence[Bytes32]:</span> <span style="color: #FF4689">...</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="block_to_light_client_header"><code>block_to_light_client_header</code><a class="headerlink" href="#block_to_light_client_header" title="Permanent link">&para;</a></h3>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-10">10</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">block_to_light_client_header</span><span style="color: #F8F8F2">(block:</span> <span style="color: #F8F8F2">SignedBeaconBlock)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">LightClientHeader:</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">LightClientHeader(</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3"></a>        <span style="color: #F8F8F2">beacon</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">BeaconBlockHeader(</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4"></a>            <span style="color: #F8F8F2">slot</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5"></a>            <span style="color: #F8F8F2">proposer_index</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">proposer_index,</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6"></a>            <span style="color: #F8F8F2">parent_root</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">parent_root,</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7"></a>            <span style="color: #F8F8F2">state_root</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">state_root,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8"></a>            <span style="color: #F8F8F2">body_root</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">hash_tree_root(block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">body),</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9"></a>        <span style="color: #F8F8F2">),</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10"></a>    <span style="color: #F8F8F2">)</span>
+</code></pre></div></td></tr></table></div>
+<h2 id="deriving-light-client-data">Deriving light client data<a class="headerlink" href="#deriving-light-client-data" title="Permanent link">&para;</a></h2>
+<p>Full nodes are expected to derive light client data from historic blocks and
+states and provide it to other clients.</p>
+<h3 id="create_light_client_bootstrap"><code>create_light_client_bootstrap</code><a class="headerlink" href="#create_light_client_bootstrap" title="Permanent link">&para;</a></h3>
+<p>To form a <code>LightClientBootstrap</code>, the following objects are needed:</p>
+<ul>
+<li><code>state</code>: the post state of any post-Altair block</li>
+<li><code>block</code>: the corresponding block</li>
+</ul>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-14">14</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-15">15</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-16">16</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-17">17</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">create_light_client_bootstrap</span><span style="color: #F8F8F2">(</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2"></a>    <span style="color: #F8F8F2">state:</span> <span style="color: #F8F8F2">BeaconState,</span> <span style="color: #F8F8F2">block:</span> <span style="color: #F8F8F2">SignedBeaconBlock</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3"></a><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">LightClientBootstrap:</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">compute_epoch_at_slot(state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot)</span> <span style="color: #FF4689">&gt;=</span> <span style="color: #F8F8F2">ALTAIR_FORK_EPOCH</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">latest_block_header</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7"></a>    <span style="color: #F8F8F2">header</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">latest_block_header</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">copy()</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8"></a>    <span style="color: #F8F8F2">header</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">state_root</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">hash_tree_root(state)</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">hash_tree_root(header)</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">hash_tree_root(block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message)</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10"></a>
+<a id="__codelineno-2-11" name="__codelineno-2-11"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">LightClientBootstrap(</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12"></a>        <span style="color: #F8F8F2">header</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">block_to_light_client_header(block),</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13"></a>        <span style="color: #F8F8F2">current_sync_committee</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">current_sync_committee,</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14"></a>        <span style="color: #F8F8F2">current_sync_committee_branch</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">CurrentSyncCommitteeBranch(</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15"></a>            <span style="color: #F8F8F2">compute_merkle_proof(state,</span> <span style="color: #F8F8F2">current_sync_committee_gindex_at_slot(state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot))</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16"></a>        <span style="color: #F8F8F2">),</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17"></a>    <span style="color: #F8F8F2">)</span>
+</code></pre></div></td></tr></table></div>
+<p>Full nodes SHOULD provide <code>LightClientBootstrap</code> for all finalized epoch
+boundary blocks in the epoch range
+<code>[max(ALTAIR_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]</code>
+where <code>current_epoch</code> is defined by the current wall-clock time. Full nodes MAY
+also provide <code>LightClientBootstrap</code> for other blocks.</p>
+<p>Blocks are considered to be epoch boundary blocks if their block root can occur
+as part of a valid <code>Checkpoint</code>, i.e., if their slot is the initial slot of an
+epoch, or if all following slots through the initial slot of the next epoch are
+empty (no block proposed / orphaned).</p>
+<p><code>LightClientBootstrap</code> is computed from the block's immediate post state
+(without applying empty slots).</p>
+<h3 id="create_light_client_update"><code>create_light_client_update</code><a class="headerlink" href="#create_light_client_update" title="Permanent link">&para;</a></h3>
+<p>To form a <code>LightClientUpdate</code>, the following historical states and blocks are
+needed:</p>
+<ul>
+<li><code>state</code>: the post state of any block with a post-Altair parent block</li>
+<li><code>block</code>: the corresponding block</li>
+<li><code>attested_state</code>: the post state of <code>attested_block</code></li>
+<li><code>attested_block</code>: the block referred to by <code>block.parent_root</code></li>
+<li><code>finalized_block</code>: the block referred to by
+  <code>attested_state.finalized_checkpoint.root</code>, if locally available (may be
+  unavailable, e.g., when using checkpoint sync, or if it was pruned locally)</li>
+</ul>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-14">14</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-15">15</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-16">16</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-17">17</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-18">18</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-19">19</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-20">20</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-21">21</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-22">22</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-23">23</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-24">24</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-25">25</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-26">26</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-27">27</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-28">28</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-29">29</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-30">30</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-31">31</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-32">32</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-33">33</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-34">34</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-35">35</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-36">36</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-37">37</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-38">38</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-39">39</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-40">40</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-41">41</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-42">42</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-43">43</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-44">44</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-45">45</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-46">46</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-47">47</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-48">48</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-49">49</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-50">50</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-51">51</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-52">52</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-53">53</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-54">54</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-55">55</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-56">56</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-57">57</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-58">58</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-59">59</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-60">60</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">create_light_client_update</span><span style="color: #F8F8F2">(</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2"></a>    <span style="color: #F8F8F2">state:</span> <span style="color: #F8F8F2">BeaconState,</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3"></a>    <span style="color: #F8F8F2">block:</span> <span style="color: #F8F8F2">SignedBeaconBlock,</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4"></a>    <span style="color: #F8F8F2">attested_state:</span> <span style="color: #F8F8F2">BeaconState,</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5"></a>    <span style="color: #F8F8F2">attested_block:</span> <span style="color: #F8F8F2">SignedBeaconBlock,</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6"></a>    <span style="color: #F8F8F2">finalized_block:</span> <span style="color: #F8F8F2">Optional[SignedBeaconBlock],</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7"></a><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">LightClientUpdate:</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">compute_epoch_at_slot(attested_state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot)</span> <span style="color: #FF4689">&gt;=</span> <span style="color: #F8F8F2">ALTAIR_FORK_EPOCH</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">(</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10"></a>        <span style="color: #F8F8F2">sum(block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">body</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">sync_aggregate</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">sync_committee_bits)</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11"></a>        <span style="color: #FF4689">&gt;=</span> <span style="color: #F8F8F2">MIN_SYNC_COMMITTEE_PARTICIPANTS</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12"></a>    <span style="color: #F8F8F2">)</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13"></a>
+<a id="__codelineno-3-14" name="__codelineno-3-14"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">latest_block_header</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15"></a>    <span style="color: #F8F8F2">header</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">latest_block_header</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">copy()</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16"></a>    <span style="color: #F8F8F2">header</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">state_root</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">hash_tree_root(state)</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">hash_tree_root(header)</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">hash_tree_root(block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message)</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18"></a>    <span style="color: #F8F8F2">update_signature_period</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">compute_sync_committee_period_at_slot(block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot)</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19"></a>
+<a id="__codelineno-3-20" name="__codelineno-3-20"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">attested_state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">attested_state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">latest_block_header</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span>
+<a id="__codelineno-3-21" name="__codelineno-3-21"></a>    <span style="color: #F8F8F2">attested_header</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">attested_state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">latest_block_header</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">copy()</span>
+<a id="__codelineno-3-22" name="__codelineno-3-22"></a>    <span style="color: #F8F8F2">attested_header</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">state_root</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">hash_tree_root(attested_state)</span>
+<a id="__codelineno-3-23" name="__codelineno-3-23"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">(</span>
+<a id="__codelineno-3-24" name="__codelineno-3-24"></a>        <span style="color: #F8F8F2">hash_tree_root(attested_header)</span>
+<a id="__codelineno-3-25" name="__codelineno-3-25"></a>        <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">hash_tree_root(attested_block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message)</span>
+<a id="__codelineno-3-26" name="__codelineno-3-26"></a>        <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">parent_root</span>
+<a id="__codelineno-3-27" name="__codelineno-3-27"></a>    <span style="color: #F8F8F2">)</span>
+<a id="__codelineno-3-28" name="__codelineno-3-28"></a>    <span style="color: #F8F8F2">update_attested_period</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">compute_sync_committee_period_at_slot(attested_block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot)</span>
+<a id="__codelineno-3-29" name="__codelineno-3-29"></a>
+<a id="__codelineno-3-30" name="__codelineno-3-30"></a>    <span style="color: #F8F8F2">update</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">LightClientUpdate()</span>
+<a id="__codelineno-3-31" name="__codelineno-3-31"></a>
+<a id="__codelineno-3-32" name="__codelineno-3-32"></a>    <span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">attested_header</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">block_to_light_client_header(attested_block)</span>
+<a id="__codelineno-3-33" name="__codelineno-3-33"></a>
+<a id="__codelineno-3-34" name="__codelineno-3-34"></a>    <span style="color: #959077"># `next_sync_committee` is only useful if the message is signed by the current sync committee</span>
+<a id="__codelineno-3-35" name="__codelineno-3-35"></a>    <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">update_attested_period</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">update_signature_period:</span>
+<a id="__codelineno-3-36" name="__codelineno-3-36"></a>        <span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">next_sync_committee</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">attested_state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">next_sync_committee</span>
+<a id="__codelineno-3-37" name="__codelineno-3-37"></a>        <span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">next_sync_committee_branch</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">NextSyncCommitteeBranch(</span>
+<a id="__codelineno-3-38" name="__codelineno-3-38"></a>            <span style="color: #F8F8F2">compute_merkle_proof(</span>
+<a id="__codelineno-3-39" name="__codelineno-3-39"></a>                <span style="color: #F8F8F2">attested_state,</span> <span style="color: #F8F8F2">next_sync_committee_gindex_at_slot(attested_state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot)</span>
+<a id="__codelineno-3-40" name="__codelineno-3-40"></a>            <span style="color: #F8F8F2">)</span>
+<a id="__codelineno-3-41" name="__codelineno-3-41"></a>        <span style="color: #F8F8F2">)</span>
+<a id="__codelineno-3-42" name="__codelineno-3-42"></a>
+<a id="__codelineno-3-43" name="__codelineno-3-43"></a>    <span style="color: #959077"># Indicate finality whenever possible</span>
+<a id="__codelineno-3-44" name="__codelineno-3-44"></a>    <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">finalized_block</span> <span style="color: #FF4689">is</span> <span style="color: #FF4689">not</span> <span style="color: #66D9EF">None</span><span style="color: #F8F8F2">:</span>
+<a id="__codelineno-3-45" name="__codelineno-3-45"></a>        <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">finalized_block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span> <span style="color: #FF4689">!=</span> <span style="color: #F8F8F2">GENESIS_SLOT:</span>
+<a id="__codelineno-3-46" name="__codelineno-3-46"></a>            <span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">finalized_header</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">block_to_light_client_header(finalized_block)</span>
+<a id="__codelineno-3-47" name="__codelineno-3-47"></a>            <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">(</span>
+<a id="__codelineno-3-48" name="__codelineno-3-48"></a>                <span style="color: #F8F8F2">hash_tree_root(update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">finalized_header</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">beacon)</span>
+<a id="__codelineno-3-49" name="__codelineno-3-49"></a>                <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">attested_state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">finalized_checkpoint</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">root</span>
+<a id="__codelineno-3-50" name="__codelineno-3-50"></a>            <span style="color: #F8F8F2">)</span>
+<a id="__codelineno-3-51" name="__codelineno-3-51"></a>        <span style="color: #66D9EF">else</span><span style="color: #F8F8F2">:</span>
+<a id="__codelineno-3-52" name="__codelineno-3-52"></a>            <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">attested_state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">finalized_checkpoint</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">root</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">Bytes32()</span>
+<a id="__codelineno-3-53" name="__codelineno-3-53"></a>        <span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">finality_branch</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">FinalityBranch(</span>
+<a id="__codelineno-3-54" name="__codelineno-3-54"></a>            <span style="color: #F8F8F2">compute_merkle_proof(attested_state,</span> <span style="color: #F8F8F2">finalized_root_gindex_at_slot(attested_state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot))</span>
+<a id="__codelineno-3-55" name="__codelineno-3-55"></a>        <span style="color: #F8F8F2">)</span>
+<a id="__codelineno-3-56" name="__codelineno-3-56"></a>
+<a id="__codelineno-3-57" name="__codelineno-3-57"></a>    <span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">sync_aggregate</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">body</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">sync_aggregate</span>
+<a id="__codelineno-3-58" name="__codelineno-3-58"></a>    <span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">signature_slot</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span>
+<a id="__codelineno-3-59" name="__codelineno-3-59"></a>
+<a id="__codelineno-3-60" name="__codelineno-3-60"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">update</span>
+</code></pre></div></td></tr></table></div>
+<p>Full nodes SHOULD provide the best derivable <code>LightClientUpdate</code> (according to
+<code>is_better_update</code>) for each sync committee period covering any epochs in range
+<code>[max(ALTAIR_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]</code>
+where <code>current_epoch</code> is defined by the current wall-clock time. Full nodes MAY
+also provide <code>LightClientUpdate</code> for other sync committee periods.</p>
+<ul>
+<li><code>LightClientUpdate</code> are assigned to sync committee periods based on their
+  <code>attested_header.beacon.slot</code></li>
+<li><code>LightClientUpdate</code> are only considered if
+  <code>compute_sync_committee_period_at_slot(update.attested_header.beacon.slot) == compute_sync_committee_period_at_slot(update.signature_slot)</code></li>
+<li>Only <code>LightClientUpdate</code> with <code>sync_aggregate</code> from blocks on the canonical
+  chain as selected by fork choice are considered, regardless of ranking by
+  <code>is_better_update</code>. <code>LightClientUpdate</code> referring to orphaned blocks SHOULD
+  NOT be provided.</li>
+</ul>
+<h3 id="create_light_client_finality_update"><code>create_light_client_finality_update</code><a class="headerlink" href="#create_light_client_finality_update" title="Permanent link">&para;</a></h3>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-6">6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-7">7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-8">8</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">create_light_client_finality_update</span><span style="color: #F8F8F2">(update:</span> <span style="color: #F8F8F2">LightClientUpdate)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">LightClientFinalityUpdate:</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">LightClientFinalityUpdate(</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3"></a>        <span style="color: #F8F8F2">attested_header</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">attested_header,</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4"></a>        <span style="color: #F8F8F2">finalized_header</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">finalized_header,</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5"></a>        <span style="color: #F8F8F2">finality_branch</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">finality_branch,</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6"></a>        <span style="color: #F8F8F2">sync_aggregate</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">sync_aggregate,</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7"></a>        <span style="color: #F8F8F2">signature_slot</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">signature_slot,</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8"></a>    <span style="color: #F8F8F2">)</span>
+</code></pre></div></td></tr></table></div>
+<p>Full nodes SHOULD provide the <code>LightClientFinalityUpdate</code> with the highest
+<code>attested_header.beacon.slot</code> (if multiple, highest <code>signature_slot</code>) as
+selected by fork choice, and SHOULD support a push mechanism to deliver new
+<code>LightClientFinalityUpdate</code> whenever <code>finalized_header</code> changes. If that
+<code>LightClientFinalityUpdate</code> does not have supermajority (&gt; 2/3) sync committee
+participation, a second <code>LightClientFinalityUpdate</code> SHOULD be delivered for the
+same <code>finalized_header</code> once supermajority participation is obtained.</p>
+<h3 id="create_light_client_optimistic_update"><code>create_light_client_optimistic_update</code><a class="headerlink" href="#create_light_client_optimistic_update" title="Permanent link">&para;</a></h3>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-6">6</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">create_light_client_optimistic_update</span><span style="color: #F8F8F2">(update:</span> <span style="color: #F8F8F2">LightClientUpdate)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">LightClientOptimisticUpdate:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">LightClientOptimisticUpdate(</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3"></a>        <span style="color: #F8F8F2">attested_header</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">attested_header,</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4"></a>        <span style="color: #F8F8F2">sync_aggregate</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">sync_aggregate,</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5"></a>        <span style="color: #F8F8F2">signature_slot</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">update</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">signature_slot,</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6"></a>    <span style="color: #F8F8F2">)</span>
+</code></pre></div></td></tr></table></div>
+<p>Full nodes SHOULD provide the <code>LightClientOptimisticUpdate</code> with the highest
+<code>attested_header.beacon.slot</code> (if multiple, highest <code>signature_slot</code>) as
+selected by fork choice, and SHOULD support a push mechanism to deliver new
+<code>LightClientOptimisticUpdate</code> whenever <code>attested_header</code> changes.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/ethereum/consensus-specs" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../../../..", "features": ["navigation.tabs", "search"], "search": "../../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../../assets/javascripts/bundle.92b07e13.min.js"></script>
+      
+    
+  </body>
+</html>
