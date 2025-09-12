@@ -4,6 +4,7 @@ from random import Random
 
 from eth2spec.debug import encode, random_value
 from eth2spec.test.context import (
+    only_generator,
     single_phase,
     spec_targets,
     spec_test,
@@ -42,6 +43,7 @@ def _template_ssz_static_tests(
         return int.from_bytes(m.digest()[:8], "little")
 
     @manifest(_manifest)
+    @only_generator("too slow")
     @with_phases(phases)
     @with_presets([_manifest.preset_name])
     @spec_test
