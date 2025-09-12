@@ -980,20 +980,20 @@ def verify_execution_payload_bid_signature(
 
 ```python
 def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> None:
-    signed_header = block.body.signed_execution_payload_header
-    header = signed_header.message
-    builder_index = header.builder_index
+    signed_bid = block.body.signed_execution_payload_bid
+    bid = signed_bid.message
+    builder_index = bid.builder_index
     builder = state.validators[builder_index]
 
-    amount = header.value
+    amount = bid.value
     # For self-builds, amount must be zero regardless of withdrawal credential prefix
     if builder_index == block.proposer_index:
         assert amount == 0
-        assert signed_header.signature == bls.G2_POINT_AT_INFINITY
+        assert signed_bid.signature == bls.G2_POINT_AT_INFINITY
     else:
         # Non-self builds require builder withdrawal credential
         assert has_builder_withdrawal_credential(builder)
-        assert verify_execution_payload_bid_signature(state, signed_header)
+        assert verify_execution_payload_bid_signature(state, signed_bid)
 
     assert is_active_validator(builder, get_current_epoch(state))
     assert not builder.slashed

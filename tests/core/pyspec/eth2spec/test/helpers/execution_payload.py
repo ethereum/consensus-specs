@@ -324,7 +324,7 @@ def build_empty_signed_execution_payload_header(spec, state):
         privkey = privkeys[message.builder_index]
         signature = spec.get_execution_payload_header_signature(state, message, privkey)
 
-    return spec.SignedExecutionPayloadHeader(
+    return spec.SignedExecutionPayloadBid(
         message=message,
         signature=signature,
     )

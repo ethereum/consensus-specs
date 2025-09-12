@@ -122,9 +122,9 @@ previous forks as follows
 To obtain `signed_execution_payload_bid`, a block proposer building a block on
 top of a `state` must take the following actions:
 
-- Listen to the `execution_payload_bid` gossip global topic and save an
-  accepted `signed_execution_payload_bid` from a builder. Proposer MAY obtain
-  these signed messages by other off-protocol means.
+- Listen to the `execution_payload_bid` gossip global topic and save an accepted
+  `signed_execution_payload_bid` from a builder. Proposer MAY obtain these
+  signed messages by other off-protocol means.
 - The `signed_execution_payload_bid` must satisfy the verification conditions
   found in `process_execution_payload_bid`, that is:
   - For external builders: The header signature must be valid

@@ -109,7 +109,7 @@ def prepare_signed_execution_payload_bid(
         else:
             # External builders use real signatures
             privkey = privkeys[builder_index]
-            signature = spec.get_execution_payload_bid_signature(state, header, privkey)
+            signature = spec.get_execution_payload_bid_signature(state, bid, privkey)
     else:
         # Invalid signature
         signature = spec.BLSSignature()
