@@ -44,7 +44,7 @@
     - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
   - [Beacon State accessors](#beacon-state-accessors)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
-    - [New `get_attestation_participation_flag_indices`](#new-get_attestation_participation_flag_indices)
+    - [Modified `get_attestation_participation_flag_indices`](#new-get_attestation_participation_flag_indices)
     - [New `get_ptc`](#new-get_ptc)
     - [New `get_indexed_payload_attestation`](#new-get_indexed_payload_attestation)
     - [New `get_builder_payment_quorum_threshold`](#new-get_builder_payment_quorum_threshold)
