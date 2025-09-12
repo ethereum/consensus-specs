@@ -37,6 +37,7 @@
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
     - [New `is_parent_block_full`](#new-is_parent_block_full)
   - [Misc](#misc-2)
+    - [Modified `get_pending_balance_to_withdraw`](#modified-get_pending_balance_to_withdraw)
     - [New `remove_flag`](#new-remove_flag)
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
     - [New `compute_balance_weighted_acceptance`](#new-compute_balance_weighted_acceptance)
@@ -66,6 +67,8 @@
         - [Modified `process_attestation`](#modified-process_attestation)
       - [Payload Attestations](#payload-attestations)
         - [New `process_payload_attestation`](#new-process_payload_attestation)
+      - [Proposer Slashing](#proposer-slashing)
+        - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
     - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete)
     - [Modified `validate_merge_block`](#modified-validate_merge_block)
   - [Execution payload processing](#execution-payload-processing)
@@ -435,6 +438,32 @@ def is_parent_block_full(state: BeaconState) -> bool:
 ```
 
 ### Misc
+
+#### Modified `get_pending_balance_to_withdraw`
+
+*Note*: `get_pending_balance_to_withdraw` is modified to account for pending
+builder payments.
+
+```python
+def get_pending_balance_to_withdraw(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
+    return (
+        sum(
+            withdrawal.amount
+            for withdrawal in state.pending_partial_withdrawals
+            if withdrawal.validator_index == validator_index
+        )
+        + sum(
+            withdrawal.amount
+            for withdrawal in state.builder_pending_withdrawals
+            if withdrawal.builder_index == validator_index
+        )
+        + sum(
+            payment.withdrawal.amount
+            for payment in state.builder_pending_payments
+            if payment.withdrawal.builder_index == validator_index
+        )
+    )
+```
 
 #### New `remove_flag`
 
@@ -949,22 +978,23 @@ def verify_execution_payload_header_signature(
 
 ```python
 def process_execution_payload_header(state: BeaconState, block: BeaconBlock) -> None:
-    # Verify the header signature
     signed_header = block.body.signed_execution_payload_header
-    assert verify_execution_payload_header_signature(state, signed_header)
-
     header = signed_header.message
     builder_index = header.builder_index
     builder = state.validators[builder_index]
-    assert is_active_validator(builder, get_current_epoch(state))
-    assert not builder.slashed
+
     amount = header.value
     # For self-builds, amount must be zero regardless of withdrawal credential prefix
     if builder_index == block.proposer_index:
         assert amount == 0
+        assert signed_header.signature == bls.G2_POINT_AT_INFINITY
     else:
         # Non-self builds require builder withdrawal credential
         assert has_builder_withdrawal_credential(builder)
+        assert verify_execution_payload_header_signature(state, signed_header)
+
+    assert is_active_validator(builder, get_current_epoch(state))
+    assert not builder.slashed
 
     # Check that the builder is active, non-slashed, and has funds to cover the bid
     pending_payments = sum(
@@ -1025,6 +1055,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
         for operation in operations:
             fn(state, operation)
 
+    # [Modified in Gloas:EIP7732]
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
     # [Modified in Gloas:EIP7732]
@@ -1147,6 +1178,47 @@ def process_payload_attestation(
         state, data.slot, payload_attestation
     )
     assert is_valid_indexed_payload_attestation(state, indexed_payload_attestation)
+```
+
+##### Proposer Slashing
+
+###### Modified `process_proposer_slashing`
+
+```python
+def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSlashing) -> None:
+    header_1 = proposer_slashing.signed_header_1.message
+    header_2 = proposer_slashing.signed_header_2.message
+
+    # Verify header slots match
+    assert header_1.slot == header_2.slot
+    # Verify header proposer indices match
+    assert header_1.proposer_index == header_2.proposer_index
+    # Verify the headers are different
+    assert header_1 != header_2
+    # Verify the proposer is slashable
+    proposer = state.validators[header_1.proposer_index]
+    assert is_slashable_validator(proposer, get_current_epoch(state))
+    # Verify signatures
+    for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
+        domain = get_domain(
+            state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot)
+        )
+        signing_root = compute_signing_root(signed_header.message, domain)
+        assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
+
+    # [New in Gloas:EIP7732]
+    # Remove the BuilderPendingPayment corresponding to
+    # this proposal if it is still in the 2-epoch window.
+    slot = header_1.slot
+    proposal_epoch = compute_epoch_at_slot(slot)
+    if proposal_epoch == get_current_epoch(state):
+        payment_index = SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH
+        state.builder_pending_payments[payment_index] = BuilderPendingPayment()
+    elif proposal_epoch == get_previous_epoch(state):
+        payment_index = slot % SLOTS_PER_EPOCH
+        state.builder_pending_payments[payment_index] = BuilderPendingPayment()
+
+    slash_validator(state, header_1.proposer_index)
 ```
 
 #### Modified `is_merge_transition_complete`
@@ -1288,11 +1360,13 @@ def process_execution_payload(
 
     # Queue the builder payment
     payment = state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH]
-    exit_queue_epoch = compute_exit_epoch_and_update_churn(state, payment.withdrawal.amount)
-    payment.withdrawal.withdrawable_epoch = Epoch(
-        exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-    )
-    state.builder_pending_withdrawals.append(payment.withdrawal)
+    amount = payment.withdrawal.amount
+    if amount > 0:
+        exit_queue_epoch = compute_exit_epoch_and_update_churn(state, amount)
+        payment.withdrawal.withdrawable_epoch = Epoch(
+            exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+        )
+        state.builder_pending_withdrawals.append(payment.withdrawal)
     state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH] = (
         BuilderPendingPayment()
     )

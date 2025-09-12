@@ -8,12 +8,9 @@
 - [Modification in Gloas](#modification-in-gloas)
   - [Helper functions](#helper-functions)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-  - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
-    - [Helpers](#helpers)
-      - [Modified `verify_data_column_sidecar_inclusion_proof`](#modified-verify_data_column_sidecar_inclusion_proof)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -22,6 +19,8 @@
         - [`execution_payload`](#execution_payload)
         - [`payload_attestation_message`](#payload_attestation_message)
         - [`execution_payload_header`](#execution_payload_header)
+      - [Blob subnets](#blob-subnets)
+        - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
       - [Attestation subnets](#attestation-subnets)
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
@@ -68,14 +67,6 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-### Preset
-
-*[Modified in Gloas:EIP7732]*
-
-| Name                                          | Value | Description                                                 |
-| --------------------------------------------- | ----- | ----------------------------------------------------------- |
-| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS` | `9`   | Merkle proof depth for the `blob_kzg_commitments` list item |
-
 ### Configuration
 
 *[New in Gloas:EIP7732]*
@@ -88,8 +79,11 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 #### Modified `DataColumnSidecar`
 
-*Note*: The `DataColumnSidecar` container is modified indirectly because the
-constant `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` is modified.
+*Note*: The `signed_block_header` and `kzg_commitments_inclusion_proof` fields
+have been removed from `DataColumnSidecar` in Gloas as header and inclusion
+proof verifications are no longer required in ePBS. Instead, sidecars are
+validated by checking that the hash of `kzg_commitments` matches what's
+committed in the builder's bid for the corresponding `beacon_block_root`.
 
 ```python
 class DataColumnSidecar(Container):
@@ -97,40 +91,7 @@ class DataColumnSidecar(Container):
     column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    signed_block_header: SignedBeaconBlockHeader
-    # [Modified in Gloas:EIP7732]
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS]
-```
-
-#### Helpers
-
-##### Modified `verify_data_column_sidecar_inclusion_proof`
-
-`verify_data_column_sidecar_inclusion_proof` is modified in Gloas to account for
-the fact that the KZG commitments are included in the `ExecutionPayloadEnvelope`
-and no longer in the beacon block body.
-
-```python
-def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bool:
-    """
-    Verify if the given KZG commitments included in the given beacon block.
-    """
-    return is_valid_merkle_branch(
-        leaf=hash_tree_root(sidecar.kzg_commitments),
-        branch=sidecar.kzg_commitments_inclusion_proof,
-        # [Modified in Gloas:EIP7732]
-        depth=KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS,
-        # [Modified in Gloas:EIP7732]
-        index=get_subtree_index(
-            get_generalized_index(
-                BeaconBlockBody,
-                "signed_execution_payload_header",
-                "message",
-                "blob_kzg_commitments_root",
-            )
-        ),
-        root=sidecar.signed_block_header.message.body_root,
-    )
+    beacon_block_root: Root
 ```
 
 ### The gossip domain: gossipsub
@@ -292,6 +253,64 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ `header.slot` is the current slot or the next slot.
 - _[REJECT]_ `signed_execution_payload_header.signature` is valid with respect
   to the `header.builder_index`.
+
+##### Blob subnets
+
+###### `data_column_sidecar_{subnet_id}`
+
+*[Modified in Gloas:EIP7732]*
+
+This topic is used to propagate column sidecars, where each column maps to some
+`subnet_id`.
+
+The *type* of the payload of this topic is `DataColumnSidecar`.
+
+The following validations MUST pass before forwarding the
+`sidecar: DataColumnSidecar` on the network:
+
+**Modified from Fulu:**
+
+- _[IGNORE]_ The sidecar is the first sidecar for the tuple
+  `(sidecar.beacon_block_root, sidecar.index)` with valid kzg proof.
+
+**Added in Gloas:**
+
+- _[IGNORE]_ The sidecar's `beacon_block_root` has been seen via a valid signed
+  execution payload header (builder's bid).
+- _[REJECT]_ The hash of the sidecar's `kzg_commitments` matches the
+  `blob_kzg_commitments_root` in the corresponding builder's bid for
+  `sidecar.beacon_block_root`.
+
+**Removed from Fulu:**
+
+- _[IGNORE]_ The sidecar is not from a future slot (with a
+  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
+  `block_header.slot <= current_slot` (a client MAY queue future sidecars for
+  processing at the appropriate slot).
+- _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot
+  -- i.e. validate that
+  `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
+- _[REJECT]_ The proposer signature of `sidecar.signed_block_header`, is valid
+  with respect to the `block_header.proposer_index` pubkey.
+- _[IGNORE]_ The sidecar's block's parent (defined by
+  `block_header.parent_root`) has been seen (via gossip or non-gossip sources)
+  (a client MAY queue sidecars for processing once the parent block is
+  retrieved).
+- _[REJECT]_ The sidecar's block's parent (defined by
+  `block_header.parent_root`) passes validation.
+- _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent
+  (defined by `block_header.parent_root`).
+- _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's
+  block -- i.e.
+  `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
+- _[REJECT]_ The sidecar's `kzg_commitments` field inclusion proof is valid as
+  verified by `verify_data_column_sidecar_inclusion_proof(sidecar)`.
+- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the
+  block's slot in the context of the current shuffling (defined by
+  `block_header.parent_root`/`block_header.slot`). If the `proposer_index`
+  cannot immediately be verified against the expected shuffling, the sidecar MAY
+  be queued for later processing while proposers for the block's branch are
+  calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
 ##### Attestation subnets
 

@@ -62,33 +62,26 @@ def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None, blob_coun
     column_sidcar = column_sidcars[0]
 
     yield "object", block.body
-    kzg_commitments_inclusion_proof = column_sidcar.kzg_commitments_inclusion_proof
-    if is_post_gloas(spec):
-        gindex = spec.get_generalized_index(
-            spec.BeaconBlockBody,
-            "signed_execution_payload_header",
-            "message",
-            "blob_kzg_commitments_root",
-        )
-    else:
+    if not is_post_gloas(spec):
+        kzg_commitments_inclusion_proof = column_sidcar.kzg_commitments_inclusion_proof
         gindex = spec.get_generalized_index(spec.BeaconBlockBody, "blob_kzg_commitments")
-    yield (
-        "proof",
-        {
-            "leaf": "0x" + column_sidcar.kzg_commitments.hash_tree_root().hex(),
-            "leaf_index": gindex,
-            "branch": ["0x" + root.hex() for root in kzg_commitments_inclusion_proof],
-        },
-    )
-    assert spec.is_valid_merkle_branch(
-        leaf=column_sidcar.kzg_commitments.hash_tree_root(),
-        branch=column_sidcar.kzg_commitments_inclusion_proof,
-        depth=spec.floorlog2(gindex),
-        index=spec.get_subtree_index(gindex),
-        root=column_sidcar.signed_block_header.message.body_root,
-    )
+        yield (
+            "proof",
+            {
+                "leaf": "0x" + column_sidcar.kzg_commitments.hash_tree_root().hex(),
+                "leaf_index": gindex,
+                "branch": ["0x" + root.hex() for root in kzg_commitments_inclusion_proof],
+            },
+        )
+        assert spec.is_valid_merkle_branch(
+            leaf=column_sidcar.kzg_commitments.hash_tree_root(),
+            branch=column_sidcar.kzg_commitments_inclusion_proof,
+            depth=spec.floorlog2(gindex),
+            index=spec.get_subtree_index(gindex),
+            root=column_sidcar.signed_block_header.message.body_root,
+        )
+        assert spec.verify_data_column_sidecar_inclusion_proof(column_sidcar)
     assert spec.verify_data_column_sidecar_kzg_proofs(column_sidcar)
-    assert spec.verify_data_column_sidecar_inclusion_proof(column_sidcar)
 
 
 @with_test_suite_name("BeaconBlockBody")

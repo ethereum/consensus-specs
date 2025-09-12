@@ -20,6 +20,8 @@
     - [Constructing a payload attestation](#constructing-a-payload-attestation)
 - [Modified functions](#modified-functions)
   - [Modified `prepare_execution_payload`](#modified-prepare_execution_payload)
+- [Data column sidecars](#data-column-sidecars)
+  - [Modified `get_data_column_sidecars_from_column_sidecar`](#modified-get_data_column_sidecars_from_column_sidecar)
 
 <!-- mdformat-toc end -->
 
@@ -124,8 +126,10 @@ on top of a `state` must take the following actions:
   accepted `signed_execution_payload_header` from a builder. Proposer MAY obtain
   these signed messages by other off-protocol means.
 - The `signed_execution_payload_header` must satisfy the verification conditions
-  found in `process_execution_payload_header`, that is
-  - The header signature must be valid
+  found in `process_execution_payload_header`, that is:
+  - For external builders: The header signature must be valid
+  - For self-builds: The signature must be `bls.G2_POINT_AT_INFINITY` and the
+    bid amount must be zero
   - The builder balance can cover the header value
   - The header slot is for the proposal block slot
   - The header parent block hash equals the state's `latest_block_hash`.
@@ -251,5 +255,31 @@ def prepare_execution_payload(
         safe_block_hash=safe_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
+    )
+```
+
+## Data column sidecars
+
+*[Modified in Gloas]*
+
+### Modified `get_data_column_sidecars_from_column_sidecar`
+
+```python
+def get_data_column_sidecars_from_column_sidecar(
+    sidecar: DataColumnSidecar,
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
+) -> Sequence[DataColumnSidecar]:
+    """
+    Given a DataColumnSidecar and the cells/proofs associated with each blob corresponding
+    to the commitments it contains, assemble all sidecars for distribution to peers.
+    """
+    assert len(cells_and_kzg_proofs) == len(sidecar.kzg_commitments)
+
+    return get_data_column_sidecars(
+        sidecar.signed_block_header.message.body_root,
+        sidecar.kzg_commitments,
+        cells_and_kzg_proofs,
     )
 ```
