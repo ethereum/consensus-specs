@@ -8,12 +8,14 @@ from eth2spec.utils.ssz.ssz_typing import (
     boolean,
     ByteList,
     ByteVector,
+    CompatibleUnion,
     Container,
     List,
     ProgressiveBitlist,
     ProgressiveContainer,
     ProgressiveList,
     uint,
+    uint8,
     Union,
     Vector,
     View,
@@ -154,6 +156,22 @@ def get_random_ssz_object(
                 rng, elem_type, max_bytes_length, max_list_length, mode, chaos
             )
         return typ(selector=selector, value=elem)
+    elif issubclass(typ, CompatibleUnion):
+        options = typ.options()
+        selector: uint8
+        if mode == RandomizationMode.mode_zero:
+            selector = min(options.keys())
+        elif mode == RandomizationMode.mode_max:
+            selector = max(options.keys())
+        else:
+            selector = rng.choice(list(options.keys()))
+        elem_type = options[selector]
+        return typ(
+            selector=selector,
+            data=get_random_ssz_object(
+                rng, elem_type, max_bytes_length, max_list_length, mode, chaos
+            ),
+        )
     else:
         raise Exception(f"Type not recognized: typ={typ}")
 

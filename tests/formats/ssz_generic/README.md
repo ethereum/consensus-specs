@@ -11,26 +11,28 @@ The `ssz_generic` tests are split up into different handler, each specialized
 into a SSZ type:
 
 - Vectors
-  - `basic_vector`
+  - [`basic_vector`](#basic_vector)
   - `complex_vector` *not supported yet*
 - List
   - `basic_list` *not supported yet*
   - `complex_list` *not supported yet*
 - ProgressiveList
-  - `basic_progressive_list`
+  - [`basic_progressive_list`](#basic_progressive_list)
   - `complex_progressive_list` *not supported yet*
 - Bitfields
-  - `bitvector`
-  - `bitlist`
+  - [`bitvector`](#bitvector)
+  - [`bitlist`](#bitlist)
 - ProgressiveBitlist
-  - `progressive_bitlist`
+  - [`progressive_bitlist`](#progressive_bitlist)
 - Basic types
-  - `boolean`
-  - `uints`
+  - [`boolean`](#boolean)
+  - [`uints`](#uints)
 - Containers
-  - `containers`
+  - [`containers`](#uints)
 - ProgressiveContainer
-  - `progressive_containers`
+  - [`progressive_containers`](#progressive_containers)
+- CompatibleUnion
+  - [`compatible_unions`](#compatible_uniosn)
 
 ## Format
 
@@ -294,4 +296,36 @@ class ProgressiveComplexTestStruct(
     F: ProgressiveList[ProgressiveList[VarTestStruct]]
     G: List[ProgressiveSingleFieldContainerTestStruct, 10]
     H: ProgressiveList[ProgressiveVarTestStruct]
+```
+
+### `compatible_unions`
+
+A set of pre-defined compatible union structures is referenced, combining
+definitions from the other sections.
+
+```
+Template:
+
+{structure name}
+
+Data:
+
+{structure name}: Any of the structure names listed below (excluding the `= CompatibleUnion` definition)
+```
+
+```python
+CompatibleUnionA = CompatibleUnion({1: ProgressiveSingleFieldContainerTestStruct})
+
+CompatibleUnionBC = CompatibleUnion(
+    {2: ProgressiveSingleListContainerTestStruct, 3: ProgressiveVarTestStruct}
+)
+
+CompatibleUnionABCA = CompatibleUnion(
+    {
+        1: ProgressiveSingleFieldContainerTestStruct,
+        2: ProgressiveSingleListContainerTestStruct,
+        3: ProgressiveVarTestStruct,
+        4: ProgressiveSingleFieldContainerTestStruct,
+    }
+)
 ```
