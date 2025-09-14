@@ -191,8 +191,12 @@ CODESPELL_VENV = $(VENV)/bin/codespell
 MDFORMAT_VENV = $(VENV)/bin/mdformat
 MKDOCS_VENV = $(VENV)/bin/mkdocs
 
+# Check that the Python version meets requirements from pyproject.toml
+_python_version_check:
+	@python3 scripts/check_python_version.py
+
 # Make a virtual environment.
-$(VENV):
+$(VENV): _python_version_check
 	@echo "Creating virtual environment"
 	@python3 -m venv $(VENV)
 	@$(PIP_VENV) install --quiet --upgrade uv
