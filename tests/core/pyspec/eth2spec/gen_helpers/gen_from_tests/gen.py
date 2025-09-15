@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable
 from importlib import import_module
 from inspect import getmembers, isfunction
 from pkgutil import ModuleInfo, walk_packages
@@ -71,7 +71,7 @@ def generate_from_tests(
         )
 
 
-CACHED_WALK_PACKAGES: Iterator[ModuleInfo] | None = None
+CACHED_WALK_PACKAGES: list[ModuleInfo] | None = None
 
 
 def get_expected_modules(module, absolute=False):
@@ -79,7 +79,7 @@ def get_expected_modules(module, absolute=False):
     Return all modules (which are not packages) inside the given package.
     """
 
-    def _cached_walk_packages() -> Iterator[ModuleInfo]:
+    def _cached_walk_packages() -> list[ModuleInfo]:
         """Walk the packages in the eth2spec module. Cache the result for future calls."""
         global CACHED_WALK_PACKAGES
 
@@ -87,12 +87,13 @@ def get_expected_modules(module, absolute=False):
             eth2spec = import_module("eth2spec")
             path = eth2spec.__path__
             prefix = eth2spec.__name__ + "."
-            CACHED_WALK_PACKAGES = walk_packages(path, prefix)
+            CACHED_WALK_PACKAGES = list(walk_packages(path, prefix))
 
         return CACHED_WALK_PACKAGES
 
     modules = []
     find_mod_name = module if absolute else f".{module}."
+
     for _, cur_mod_name, is_pkg in _cached_walk_packages():
         # Skip packages.
         if is_pkg:
