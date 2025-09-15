@@ -25,6 +25,8 @@
   - [Modified `get_weight`](#modified-get_weight)
   - [New `get_node_children`](#new-get_node_children)
   - [Modified `get_head`](#modified-get_head)
+- [Updated fork-choice helpers](#updated-fork-choice-helpers)
+  - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [Modified `on_block`](#modified-on_block)
 - [New fork-choice handlers](#new-fork-choice-handlers)
@@ -425,6 +427,18 @@ def get_head(store: Store) -> ForkChoiceNode:
         )
 ```
 
+## Updated fork-choice helpers
+
+### Modified `get_attestation_due_ms`
+
+```python
+def get_attestation_due_ms(epoch: Epoch) -> uint64:
+    # [New in Gloas]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
+    return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+```
+
 ## Updated fork-choice handlers
 
 ### Modified `on_block`
@@ -486,8 +500,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add proposer score boost if the block is timely
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    # [Modified in Gloas:EIP7732]
-    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
+    epoch = get_current_store_epoch(store)
+    attestation_threshold_ms = get_attestation_due_ms(epoch)
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely

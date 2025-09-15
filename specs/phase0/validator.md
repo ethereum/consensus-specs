@@ -611,8 +611,8 @@ validator performs this role during an epoch are defined by
 A validator should create and broadcast the `attestation` to the associated
 attestation subnet when either (a) the validator has received a valid block from
 the expected block proposer for the assigned `slot` or (b)
-`get_slot_component_duration_ms(ATTESTATION_DUE_BPS)` milliseconds has
-transpired since the start of the slot -- whichever comes first.
+`get_attestation_due_ms(epoch)` milliseconds has transpired since the start of
+the slot -- whichever comes first.
 
 *Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG
 finality, these initial attestations do give weight to the fork choice, are
