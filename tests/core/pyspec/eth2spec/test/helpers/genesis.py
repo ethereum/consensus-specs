@@ -60,16 +60,27 @@ def build_mock_validator(spec, i: int, balance: int):
 
 
 def get_post_gloas_genesis_execution_payload_header(spec, slot, eth1_block_hash):
-    kzgs = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
-    header = spec.ExecutionPayloadHeader(
-        parent_block_hash=b"\x30" * 32,
-        parent_block_root=b"\x00" * 32,
-        block_hash=eth1_block_hash,
+    # For Gloas, use the standard ExecutionPayloadHeader from the parent fork
+    payload_header = spec.ExecutionPayloadHeader(
+        parent_hash=b"\x30" * 32,
+        fee_recipient=b"\x42" * 20,
+        state_root=b"\x20" * 32,
+        receipts_root=b"\x20" * 32,
+        logs_bloom=b"\x35" * spec.BYTES_PER_LOGS_BLOOM,
+        prev_randao=eth1_block_hash,
+        block_number=0,
         gas_limit=30000000,
-        slot=slot,
-        blob_kzg_commitments_root=kzgs.hash_tree_root(),
+        gas_used=0,
+        timestamp=0,
+        extra_data=b"",
+        base_fee_per_gas=1000000000,
+        block_hash=eth1_block_hash,
+        transactions_root=spec.Root(b"\x56" * 32),
+        withdrawals_root=spec.Root(b"\x56" * 32),
+        blob_gas_used=0,
+        excess_blob_gas=0,
     )
-    return header
+    return payload_header
 
 
 def get_sample_genesis_execution_payload_header(spec, slot, eth1_block_hash=None):
@@ -137,7 +148,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     genesis_block_body = spec.BeaconBlockBody()
     if is_post_gloas(spec):
-        genesis_block_body.signed_execution_payload_header.message.block_hash = eth1_block_hash
+        genesis_block_body.signed_execution_payload_bid.message.block_hash = eth1_block_hash
 
     state = spec.BeaconState(
         genesis_time=0,

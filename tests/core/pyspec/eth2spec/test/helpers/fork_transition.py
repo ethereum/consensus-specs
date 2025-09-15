@@ -74,7 +74,7 @@ def _set_operations_by_dict(spec, block, operation_dict, state):
         setattr(obj, key.split(".")[-1], value)
     if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     elif is_post_bellatrix(spec):
