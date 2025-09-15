@@ -31,18 +31,62 @@ def test_invalid_attestation_data_index_too_high(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_valid_attestation_data_index_one_previous_slot(spec, state):
+def test_valid_attestation_data_index_one_previous_slot_matching_blockroot(spec, state):
     """
-    Test that attestation with index = 1 is valid in Gloas for previous slot attestations
+    Test that attestation with index = 1 is valid when is_matching_blockroot=True, is_current_blockroot=False
+    (attestation for slot 4 with slot 4's block root)
     """
     # Apply empty blocks to create proper block progression with different block roots
     transition_to_slot_via_block(spec, state, 5)  # Creates blocks for slots 1-5
 
-    attestation = get_valid_attestation(spec, state, slot=4)
+    # Use slot 4's block root to make is_matching_blockroot = True
+    slot_4_block_root = spec.get_block_root_at_slot(state, 4)
+    attestation = get_valid_attestation(spec, state, slot=4, beacon_block_root=slot_4_block_root)
 
     attestation.data.index = 1
 
     sign_attestation(spec, state, attestation)
+
+    # Verify the intended blockroot conditions
+    is_matching_blockroot = attestation.data.beacon_block_root == spec.get_block_root_at_slot(
+        state, spec.Slot(attestation.data.slot)
+    )
+    is_current_blockroot = attestation.data.beacon_block_root != spec.get_block_root_at_slot(
+        state, spec.Slot(attestation.data.slot - 1)
+    )
+    assert is_matching_blockroot is True, "Expected is_matching_blockroot = True"
+    assert is_current_blockroot is False, "Expected is_current_blockroot = False"
+
+    assert spec.is_attestation_same_slot(state, attestation.data) is False
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_valid_attestation_data_index_one_previous_slot_current_blockroot(spec, state):
+    """
+    Test that attestation with index = 1 is valid when is_matching_blockroot=False, is_current_blockroot=True
+    """
+    # Apply empty blocks to create proper block progression with different block roots
+    transition_to_slot_via_block(spec, state, 5)  # Creates blocks for slots 1-5
+
+    # Create a custom arbitrary block root that's guaranteed to be different
+    custom_block_root = spec.Root(b"\x01" * 32)  # Different from any real block root
+    attestation = get_valid_attestation(spec, state, slot=4, beacon_block_root=custom_block_root)
+
+    attestation.data.index = 1
+
+    sign_attestation(spec, state, attestation)
+
+    # Verify the intended blockroot conditions
+    is_matching_blockroot = attestation.data.beacon_block_root == spec.get_block_root_at_slot(
+        state, spec.Slot(attestation.data.slot)
+    )
+    is_current_blockroot = attestation.data.beacon_block_root != spec.get_block_root_at_slot(
+        state, spec.Slot(attestation.data.slot - 1)
+    )
+    assert is_matching_blockroot is False, "Expected is_matching_blockroot = False"
+    assert is_current_blockroot is True, "Expected is_current_blockroot = True"
 
     assert spec.is_attestation_same_slot(state, attestation.data) is False
     yield from run_attestation_processing(spec, state, attestation, valid=True)
@@ -80,7 +124,8 @@ def test_valid_attestation_data_index_zero_previous_slot(spec, state):
     """
     transition_to_slot_via_block(spec, state, 5)  # Creates blocks for slots 1-5
 
-    attestation = get_valid_attestation(spec, state, slot=4)
+    slot_3_block_root = spec.get_block_root_at_slot(state, 3)
+    attestation = get_valid_attestation(spec, state, slot=4, beacon_block_root=slot_3_block_root)
 
     attestation.data.index = 0
 
@@ -123,7 +168,9 @@ def test_previous_epoch_attestation_with_payload_signaling(spec, state):
     # Move to next epoch
     transition_to_slot_via_block(spec, state, spec.SLOTS_PER_EPOCH)
 
-    attestation = get_valid_attestation(spec, state, slot=1)
+    attestation = get_valid_attestation(
+        spec, state, slot=1, beacon_block_root=spec.get_block_root_at_slot(state, 0)
+    )
 
     attestation.data.index = 1
 
