@@ -248,10 +248,10 @@ class TestTemplateTestDecorator:
 
         _test_template("pos1", param2="kwarg1", param3="kwarg2")
 
-        test_name = "test_kwargs_pos_kw_arg"
+        test_name = "test_kwargs_pos1_kwarg1_kwarg2"
         assert hasattr(test_module, test_name)
         test_func = getattr(test_module, test_name)
-        assert test_func() == "test_pos_kw_arg"
+        assert test_func() == "test_pos1_kwarg1_kwarg2"
 
     def test_frame_inspection_error_no_current_frame(self):
         """Test error handling when currentframe returns None."""
