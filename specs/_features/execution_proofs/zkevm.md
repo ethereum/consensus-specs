@@ -286,25 +286,27 @@ def generate_verification_key(program_bytecode: ProgramBytecode, proof_id: Proof
 ```python
 def verify_zkevm_proof(
     zk_proof: ZKProof,
-    execution_payload_header: ExecutionPayloadHeader,
+    parent_hash: Hash32,
+    block_hash: Hash32,
     el_program: EL_PROGRAM
 ) -> bool:
     """
-    Public method to verify a zkEVM execution proof against a payload header.
+    Public method to verify a zkEVM execution proof against block hashes.
 
     Args:
         zk_proof: The zkEVM proof to verify
-        execution_payload_header: The execution payload header
+        parent_hash: Parent block hash from execution payload
+        block_hash: Block hash from execution payload
         el_program: Execution layer program
     """
     # Validate proof system ID
     if zk_proof.proof_type >= MAX_PROOF_SYSTEMS:
         return False
 
-    # Validate that public inputs match the payload header
-    if zk_proof.public_inputs.block_hash != execution_payload_header.block_hash:
+    # Validate that public inputs match the provided parent and current block hash
+    if zk_proof.public_inputs.block_hash != block_hash:
         return False
-    if zk_proof.public_inputs.parent_hash != execution_payload_header.parent_hash:
+    if zk_proof.public_inputs.parent_hash != parent_hash:
         return False
 
     proving_key, verification_key = compile_execution_layer(el_program, zk_proof.proof_type)
