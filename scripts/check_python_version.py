@@ -37,8 +37,6 @@ def main():
     min_version = tuple(map(int, min_match.group(1).split(".")))
     current_version = sys.version_info[:2]
 
-    print(f"Required: {required_version}, Current: {current_version[0]}.{current_version[1]}")
-
     # Check minimum version
     if current_version < min_version:
         print(
@@ -54,9 +52,6 @@ def main():
                 f"Error: Python {current_version[0]}.{current_version[1]} is not supported. Required: {required_version}"
             )
             sys.exit(1)
-
-    print(f"✓ Python {current_version[0]}.{current_version[1]} meets requirements")
-
 
 if __name__ == "__main__":
     main()
