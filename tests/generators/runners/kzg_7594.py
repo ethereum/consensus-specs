@@ -239,6 +239,7 @@ def case_verify_cell_kzg_proof_batch():
     if True:
 
         def get_inputs():
+            # fmt: off
             commitments = []
             commitments.append(bytes.fromhex("b854f381e18109d9ab6df98769a21e7242184b9751b38d1abc132e5a5434418a4b0ad9e06ad29f9c71fa6aab93e9423b"))
             commitments.append(bytes.fromhex("c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"))
@@ -277,6 +278,7 @@ def case_verify_cell_kzg_proof_batch():
             proofs.append(bytes.fromhex("b36f5457ef6700a1802a33f70b5c1e4d8edb79130533255ab39d379a34580528e3a82895a788c5a6731117e32c37a266"))
             proofs.append(bytes.fromhex("b363a0b7f79f5d5f976f42f89d6b8d49a93163c42a236039116cadadbd260fc4f9832218d55480ca6ca3efc9da9f25d0"))
             proofs.append(bytes.fromhex("98c9663a80a003f7e97e5bb13f3b37af7a5f08a76cfe170b099e62bddc2cf9dd0d46755a34e6eb99bd58cc11dcec6618"))
+            # fmt: on
 
             return commitments, cell_indices, cells, proofs
 
