@@ -33,8 +33,8 @@ This document specifies the cryptographic operations for zkEVM based execution p
 
 For public API consumers, this document provides the following **public methods**:
 
-- [`verify_execution_proof`](#verify_execution_proof)
-- [`generate_execution_proof`](#generate_execution_proof)
+- [`verify_zkevm_proof`](#verify_zkevm_proof)
+- [`generate_zkevm_proof`](#generate_zkevm_proof)
 
 ## Custom types
 
@@ -281,10 +281,10 @@ def generate_verification_key(program_bytecode: ProgramBytecode, proof_id: Proof
 
 ## Public Methods
 
-### `verify_execution_proof`
+### `verify_zkevm_proof`
 
 ```python
-def verify_execution_proof(
+def verify_zkevm_proof(
     zk_proof: ZKProof,
     execution_payload_header: ExecutionPayloadHeader,
     el_program: EL_PROGRAM
@@ -312,10 +312,10 @@ def verify_execution_proof(
     return verify_execution_proof_impl(zk_proof, verification_key)
 ```
 
-### `generate_execution_proof`
+### `generate_zkevm_proof`
 
 ```python
-def generate_execution_proof(
+def generate_zkevm_proof(
     execution_payload: ExecutionPayload,
     execution_witness: ExecutionWitness,
     el_program: EL_PROGRAM,
