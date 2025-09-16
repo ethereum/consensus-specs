@@ -34,7 +34,7 @@ This document contains the consensus specs for Execution Proofs. This enables
 stateless validation of execution payloads through cryptographic proofs.
 
 *Note*: This specification assumes the reader is familiar with the
-[zkEVM cryptographic operations](./zkevm.md).
+[public zkEVM methods exposed](./zkevm.md).
 
 ## Constants
 
@@ -53,7 +53,7 @@ stateless validation of execution payloads through cryptographic proofs.
 
 | Name                     | Value                      |
 | ------------------------ | -------------------------- |
-| `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0A000000')` |
+| `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0B000000')` |
 
 ## Configuration
 
