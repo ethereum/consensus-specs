@@ -172,8 +172,7 @@ prepared to submit their PTC attestations during the next epoch.
 
 A validator should create and broadcast the `payload_attestation_message` to the
 global execution attestation subnet not after
-`get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)` milliseconds since
-the start of `slot`.
+`get_payload_attestation_due_ms(epoch)` milliseconds since the start of `slot`.
 
 #### Constructing a payload attestation
 
@@ -181,8 +180,8 @@ If a validator is in the payload attestation committee for the current slot (as
 obtained from `get_ptc_assignment` above) then the validator should prepare a
 `PayloadAttestationMessage` for the current slot, according to the logic in
 `get_payload_attestation_message` below and broadcast it not after
-`get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)` milliseconds since
-the start of the slot, to the global `payload_attestation_message` pubsub topic.
+`get_payload_attestation_due_ms(epoch)` milliseconds since the start of the
+slot, to the global `payload_attestation_message` pubsub topic.
 
 The validator creates `payload_attestation_message` as follows:
 
