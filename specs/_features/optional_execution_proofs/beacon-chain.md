@@ -42,7 +42,7 @@ stateless validation of execution payloads through cryptographic proofs.
 
 | Name                               | Value                                        |
 | ---------------------------------- | -------------------------------------------- |
-| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(8)`                                  |
+| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)`                                  |
 | `PROGRAM`                          | `ProgramBytecode(b"PROG_V1" + b"\x00" * 57)` |
 
 ### Domain types
