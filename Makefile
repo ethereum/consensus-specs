@@ -284,7 +284,6 @@ SYNC_DIR = ./sync
 _copy_docs:
 	@cp -r $(SPEC_DIR) $(DOCS_DIR)
 	@rm -rf $(DOCS_DIR)/specs/_deprecated
-	@rm -rf $(DOCS_DIR)/specs/_features
 	@cp -r $(SYNC_DIR) $(DOCS_DIR)
 	@cp -r $(SSZ_DIR) $(DOCS_DIR)
 	@cp -r $(FORK_CHOICE_DIR) $(DOCS_DIR)

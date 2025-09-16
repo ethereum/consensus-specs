@@ -112,7 +112,7 @@ spec_forks = []
 if os.path.exists("specs"):
     for item in sorted(os.listdir("specs")):
         item_path = os.path.join("specs", item)
-        if os.path.isdir(item_path) and item not in {"_deprecated", "_features"}:
+        if os.path.isdir(item_path) and item not in {"_deprecated"}:
             spec_forks.append(item)
 
 
