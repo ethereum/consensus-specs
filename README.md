@@ -29,9 +29,10 @@ ready.
 
 ### In-development Specifications
 
-| Seq. | Code Name | Fork Epoch | Links                                                              |
-| ---- | --------- | ---------- | ------------------------------------------------------------------ |
-| 6    | **Fulu**  | TBD        | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu) |
+| Seq. | Code Name | Fork Epoch | Links                                                                |
+| ---- | --------- | ---------- | -------------------------------------------------------------------- |
+| 6    | **Fulu**  | TBD        | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu)   |
+| 7    | **Gloas** | TBD        | [Specs](specs/gloas), [Tests](tests/core/pyspec/eth2spec/test/gloas) |
 
 ### Accompanying documents
 
@@ -103,4 +104,3 @@ consensus specifications:
 - [Specifications viewer (jtraglia)](https://jtraglia.github.io/eth-spec-viewer/)
 - [The Eth2 Book](https://eth2book.info)
 - [PySpec Tests](tests/core/pyspec/README.md)
-- [Reference Tests Generators](tests/generators/README.md)

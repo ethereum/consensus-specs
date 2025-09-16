@@ -1,28 +1,46 @@
-# EIP-7732 -- Honest Validator
+# Gloas -- Honest Validator
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Configuration](#configuration)
+  - [Time parameters](#time-parameters)
 - [Validator assignment](#validator-assignment)
   - [Lookahead](#lookahead)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Attestation](#attestation)
   - [Sync Committee participations](#sync-committee-participations)
   - [Block proposal](#block-proposal)
-    - [Constructing the new `signed_execution_payload_header` field in `BeaconBlockBody`](#constructing-the-new-signed_execution_payload_header-field-in-beaconblockbody)
+    - [Constructing the new `signed_execution_payload_bid` field in `BeaconBlockBody`](#constructing-the-new-signed_execution_payload_bid-field-in-beaconblockbody)
     - [Constructing the new `payload_attestations` field in `BeaconBlockBody`](#constructing-the-new-payload_attestations-field-in-beaconblockbody)
     - [Blob sidecars](#blob-sidecars)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing a payload attestation](#constructing-a-payload-attestation)
+- [Modified functions](#modified-functions)
+  - [Modified `prepare_execution_payload`](#modified-prepare_execution_payload)
+- [Data column sidecars](#data-column-sidecars)
+  - [Modified `get_data_column_sidecars_from_column_sidecar`](#modified-get_data_column_sidecars_from_column_sidecar)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
 This document represents the changes and additions to the Honest validator guide
-included in the EIP-7732 fork.
+included in Gloas.
+
+## Configuration
+
+### Time parameters
+
+| Name                          | Value          |     Unit     |         Duration          |
+| ----------------------------- | -------------- | :----------: | :-----------------------: |
+| `ATTESTATION_DUE_BPS_GLOAS`   | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
+| `AGGREGATE_DUE_BPS_GLOAS`     | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
+| `CONTRIBUTION_DUE_BPS_GLOAS`  | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_ATTESTATION_DUE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
 
 ## Validator assignment
 
@@ -53,7 +71,7 @@ def get_ptc_assignment(
 
 ### Lookahead
 
-[New in EIP-7732]
+*[New in Gloas:EIP7732]*
 
 `get_ptc_assignment` should be called at the start of each epoch to get the
 assignment for the next epoch (`current_epoch + 1`). A validator should plan for
@@ -67,18 +85,30 @@ All validator responsibilities remain unchanged other than the following:
   becomes a builder's duty.
 - Some validators are selected per slot to become PTC members, these validators
   must broadcast `PayloadAttestationMessage` objects during the assigned slot
-  before the deadline of `3 * SECONDS_PER_SLOT // INTERVALS_PER_SLOT` seconds
+  before the deadline of
+  `get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)` milliseconds
   into the slot.
 
 ### Attestation
 
-Attestation duties are not changed for validators, however the attestation
-deadline is implicitly changed by the change in `INTERVALS_PER_SLOT`.
+The attestation deadline is changed with `ATTESTATION_DUE_BPS_GLOAS`. Moreover,
+the `attestation.data.index` field is now used to signal the payload status of
+the block being attested to (`attestation.data.beacon_block_root`). With the
+alias `data = attestation.data`, the validator should set this field as follows:
+
+- If `block.slot == current_slot` (i.e., `data.slot`), then always set
+  `data.index = 0`.
+- Otherwise, set `data.index` based on the payload status in the validator's
+  fork-choice:
+  - Set `data.index = 0` to signal that the payload is not present in the
+    canonical chain (payload status is `EMPTY` in the fork-choice).
+  - Set `data.index = 1` to signal that the payload is present in the canonical
+    chain (payload status is `FULL` in the fork-choice).
 
 ### Sync Committee participations
 
 Sync committee duties are not changed for validators, however the submission
-deadline is implicitly changed by the change in `INTERVALS_PER_SLOT`.
+deadline is changed with `SYNC_MESSAGE_DUE_BPS_GLOAS`.
 
 ### Block proposal
 
@@ -87,23 +117,28 @@ any slot during which `is_proposer(state, validator_index)` returns `true`. The
 mechanism to prepare this beacon block and related sidecars differs from
 previous forks as follows
 
-#### Constructing the new `signed_execution_payload_header` field in `BeaconBlockBody`
+#### Constructing the new `signed_execution_payload_bid` field in `BeaconBlockBody`
 
-To obtain `signed_execution_payload_header`, a block proposer building a block
-on top of a `state` must take the following actions:
+To obtain `signed_execution_payload_bid`, a block proposer building a block on
+top of a `state` must take the following actions:
 
-- Listen to the `execution_payload_header` gossip global topic and save an
-  accepted `signed_execution_payload_header` from a builder. Proposer MAY obtain
-  these signed messages by other off-protocol means.
-- The `signed_execution_payload_header` must satisfy the verification conditions
-  found in `process_execution_payload_header`, that is
-  - The header signature must be valid
+- Listen to the `execution_payload_bid` gossip global topic and save an accepted
+  `signed_execution_payload_bid` from a builder. Proposer MAY obtain these
+  signed messages by other off-protocol means.
+- The `signed_execution_payload_bid` must satisfy the verification conditions
+  found in `process_execution_payload_bid`, that is:
+  - For external builders: The header signature must be valid
+  - For self-builds: The signature must be `bls.G2_POINT_AT_INFINITY` and the
+    bid amount must be zero
   - The builder balance can cover the header value
   - The header slot is for the proposal block slot
   - The header parent block hash equals the state's `latest_block_hash`.
   - The header parent block root equals the current block's `parent_root`.
 - Select one bid and set
-  `body.signed_execution_payload_header = signed_execution_payload_header`
+  `body.signed_execution_payload_bid = signed_execution_payload_bid`
+
+*Note:* The execution address encoded in the field `fee_recipient` in the
+`signed_execution_payload_bid.message` is the recipient of the builder payment.
 
 #### Constructing the new `payload_attestations` field in `BeaconBlockBody`
 
@@ -122,17 +157,12 @@ in the block. The validator will have to
   `aggregation_bits` field by using the relative position of the validator
   indices with respect to the PTC that is obtained from
   `get_ptc(state, block_slot - 1)`.
-- The proposer should only include payload attestations that are consistent with
-  the current block they are proposing. That is, if the previous block had a
-  payload, they should only include attestations with
-  `payload_status = PAYLOAD_PRESENT`. Proposers are penalized for attestations
-  that are not-consistent with their view.
 
 #### Blob sidecars
 
 The blob sidecars are no longer broadcast by the validator, and thus their
 construction is not necessary. This deprecates the corresponding sections from
-the honest validator guide in the Electra fork, moving them, albeit with some
+the honest validator guide in the Fulu fork, moving them, albeit with some
 modifications, to the [honest Builder guide](./builder.md)
 
 ### Payload timeliness attestation
@@ -143,7 +173,8 @@ prepared to submit their PTC attestations during the next epoch.
 
 A validator should create and broadcast the `payload_attestation_message` to the
 global execution attestation subnet not after
-`SECONDS_PER_SLOT * 3 / INTERVALS_PER_SLOT` seconds since the start of `slot`
+`get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)` milliseconds since
+the start of `slot`.
 
 #### Constructing a payload attestation
 
@@ -151,8 +182,8 @@ If a validator is in the payload attestation committee for the current slot (as
 obtained from `get_ptc_assignment` above) then the validator should prepare a
 `PayloadAttestationMessage` for the current slot, according to the logic in
 `get_payload_attestation_message` below and broadcast it not after
-`SECONDS_PER_SLOT * 3 / INTERVALS_PER_SLOT` seconds since the start of the slot,
-to the global `payload_attestation_message` pubsub topic.
+`get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)` milliseconds since
+the start of the slot, to the global `payload_attestation_message` pubsub topic.
 
 The validator creates `payload_attestation_message` as follows:
 
@@ -161,15 +192,9 @@ The validator creates `payload_attestation_message` as follows:
 - Set `data.beacon_block_root` be the HTR of the beacon block seen for the
   assigned slot
 - Set `data.slot` to be the assigned slot.
-- Set `data.payload_status` as follows
-  - If a `SignedExecutionPayloadEnvelope` has been seen referencing the block
-    `data.beacon_block_root` and the envelope has `payload_withheld = False`,
-    set to `PAYLOAD_PRESENT`.
-  - If a `SignedExecutionPayloadEnvelope` has been seen referencing the block
-    `data.beacon_block_root` and the envelope has `payload_withheld = True`, set
-    to `PAYLOAD_WITHHELD`.
-  - If no `SignedExecutionPayloadEnvelope` has been seen referencing the block
-    `data.beacon_block_root` set to `PAYLOAD_ABSENT`.
+- If a `SignedExecutionPayloadEnvelope` has been seen referencing the block
+  `data.beacon_block_root` set `data.payload_present = True`. Otherwise set it
+  to `False`.
 - Set `payload_attestation_message.validator_index = validator_index` where
   `validator_index` is the validator chosen to submit. The private key mapping
   to `state.validators[validator_index].pubkey` is used to sign the payload
@@ -194,3 +219,66 @@ def get_payload_attestation_message_signature(
 `ExecutionPayload` contained in within the envelope, but the checks in the
 [P2P guide](./p2p-interface.md) should pass for the
 `SignedExecutionPayloadEnvelope`.
+
+## Modified functions
+
+### Modified `prepare_execution_payload`
+
+*Note*: The function `prepare_execution_payload` is modified to handle the
+updated `get_expected_withdrawals` return signature.
+
+```python
+def prepare_execution_payload(
+    state: BeaconState,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    suggested_fee_recipient: ExecutionAddress,
+    execution_engine: ExecutionEngine,
+) -> Optional[PayloadId]:
+    # Verify consistency of the parent hash with respect to the previous execution payload bid
+    parent_hash = state.latest_execution_payload_bid.block_hash
+
+    # [Modified in Gloas:EIP7732]
+    # Set the forkchoice head and initiate the payload build process
+    withdrawals, _, _ = get_expected_withdrawals(state)
+
+    payload_attributes = PayloadAttributes(
+        timestamp=compute_time_at_slot(state, state.slot),
+        prev_randao=get_randao_mix(state, get_current_epoch(state)),
+        suggested_fee_recipient=suggested_fee_recipient,
+        withdrawals=withdrawals,
+        parent_beacon_block_root=hash_tree_root(state.latest_block_header),
+    )
+    return execution_engine.notify_forkchoice_updated(
+        head_block_hash=parent_hash,
+        safe_block_hash=safe_block_hash,
+        finalized_block_hash=finalized_block_hash,
+        payload_attributes=payload_attributes,
+    )
+```
+
+## Data column sidecars
+
+*[Modified in Gloas]*
+
+### Modified `get_data_column_sidecars_from_column_sidecar`
+
+```python
+def get_data_column_sidecars_from_column_sidecar(
+    sidecar: DataColumnSidecar,
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
+) -> Sequence[DataColumnSidecar]:
+    """
+    Given a DataColumnSidecar and the cells/proofs associated with each blob corresponding
+    to the commitments it contains, assemble all sidecars for distribution to peers.
+    """
+    assert len(cells_and_kzg_proofs) == len(sidecar.kzg_commitments)
+
+    return get_data_column_sidecars(
+        sidecar.signed_block_header.message.body_root,
+        sidecar.kzg_commitments,
+        cells_and_kzg_proofs,
+    )
+```

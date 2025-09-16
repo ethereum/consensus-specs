@@ -10,6 +10,9 @@ from eth2spec.utils.ssz.ssz_typing import (
     ByteVector,
     Container,
     List,
+    ProgressiveBitlist,
+    ProgressiveContainer,
+    ProgressiveList,
     uint,
     Union,
     Vector,
@@ -102,24 +105,27 @@ def get_random_ssz_object(
             get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)
             for _ in range(typ.vector_length())
         )
-    elif issubclass(typ, List) or issubclass(typ, Bitlist):
-        length = rng.randint(0, min(typ.limit(), max_list_length))
+    elif issubclass(typ, List | ProgressiveList | Bitlist | ProgressiveBitlist):
+        limit = max_list_length
+        # SSZ imposes a hard limit on lists, we can't put in more than that
+        if not issubclass(typ, ProgressiveList | ProgressiveBitlist) and typ.limit() < limit:
+            limit = typ.limit()
+
+        length = rng.randint(0, limit)
         if mode == RandomizationMode.mode_one_count:
             length = 1
         elif mode == RandomizationMode.mode_max_count:
-            length = max_list_length
+            length = limit
         elif mode == RandomizationMode.mode_nil_count:
             length = 0
 
-        # SSZ imposes a hard limit on lists, we can't put in more than that
-        length = min(length, typ.limit())
-
-        elem_type = typ.element_cls() if issubclass(typ, List) else boolean
+        elem_type = boolean if issubclass(typ, Bitlist | ProgressiveBitlist) else typ.element_cls()
+        max_list_length = 1 << (max_list_length.bit_length() >> 1)
         return typ(
             get_random_ssz_object(rng, elem_type, max_bytes_length, max_list_length, mode, chaos)
             for _ in range(length)
         )
-    elif issubclass(typ, Container):
+    elif issubclass(typ, Container | ProgressiveContainer):
         fields = typ.fields()
         # Container
         return typ(

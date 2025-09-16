@@ -52,7 +52,7 @@ s..                                                                             
 
 One of the `test_empty_block_transition` tests is implemented by a function with
 the same name located in
-[`~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`](https://github.com/ethereum/consensus-specs/blob/dev/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py).
+[`~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`](https://github.com/ethereum/consensus-specs/blob/master/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py).
 To learn how consensus spec tests are written, let's go over the code:
 
 ```
@@ -382,8 +382,7 @@ processes the attestation and returns the result.
 
 Attestations can't happen in the same block as the one about which they are
 attesting, or in a block that is after the block is finalized. This is specified
-as part of the specs, in the `process_attestation` function (which is created
-from the spec by the `make pyspec` command you ran earlier). Here is the
+as part of the specs, in the `process_attestation` function. Here is the
 relevant code fragment:
 
 ```python
@@ -452,7 +451,7 @@ chain clients. The way these tests get applied by clients is that every few
 weeks
 [new test specifications are released](https://github.com/ethereum/consensus-spec-tests/releases),
 in a format
-[documented here](https://github.com/ethereum/consensus-specs/tree/dev/tests/formats).
+[documented here](https://github.com/ethereum/consensus-specs/tree/master/tests/formats).
 All the consensus layer clients implement test-runners that consume the test
 vectors in this standard format.
 

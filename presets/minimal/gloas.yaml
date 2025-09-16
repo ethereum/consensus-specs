@@ -1,0 +1,13 @@
+# Minimal preset - Gloas
+
+# Networking
+# ---------------------------------------------------------------
+# floorlog2(get_generalized_index(BeaconBlockBody, "signed_execution_payload_bid", "message", "blob_kzg_commitments_root")) (= 9)
+KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS: 9
+
+# Execution
+# ---------------------------------------------------------------
+# [customized] 2**1 (= 2) validators
+PTC_SIZE: 2
+# 2**2 (= 4) attestations
+MAX_PAYLOAD_ATTESTATIONS: 4

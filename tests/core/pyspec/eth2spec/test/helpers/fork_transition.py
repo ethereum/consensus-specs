@@ -34,8 +34,8 @@ from eth2spec.test.helpers.execution_payload import (
 from eth2spec.test.helpers.forks import (
     get_next_fork_transition,
     is_post_bellatrix,
-    is_post_eip7732,
     is_post_electra,
+    is_post_gloas,
 )
 from eth2spec.test.helpers.proposer_slashings import (
     get_valid_proposer_slashing,
@@ -64,7 +64,7 @@ class OperationType(Enum):
     CONSOLIDATION_REQUEST = auto()
 
 
-# TODO(jtraglia): Pretty sure this doesn't play well with eip7732. Needs some work.
+# TODO(jtraglia): Pretty sure this doesn't play well with Gloas. Needs some work.
 def _set_operations_by_dict(spec, block, operation_dict, state):
     for key, value in operation_dict.items():
         # to handle e.g. `execution_requests.deposits` and `deposits`
@@ -72,9 +72,9 @@ def _set_operations_by_dict(spec, block, operation_dict, state):
         for attr in key.split(".")[:-1]:
             obj = getattr(obj, attr)
         setattr(obj, key.split(".")[-1], value)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     elif is_post_bellatrix(spec):

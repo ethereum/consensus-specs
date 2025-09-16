@@ -5,7 +5,7 @@ from remerkleable.byte_arrays import Bytes32
 
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.block import apply_empty_block, sign_block, transition_unsigned_block
-from eth2spec.test.helpers.forks import is_post_altair, is_post_eip7732
+from eth2spec.test.helpers.forks import is_post_altair, is_post_gloas
 from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
 from eth2spec.utils.hash_function import hash
 from eth2spec.utils.ssz.ssz_impl import uint_to_bytes
@@ -92,21 +92,20 @@ def get_state_root(spec, state, slot) -> bytes:
 
 
 def payload_state_transition_no_store(spec, state, block):
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         # cache the latest block header
         previous_state_root = state.hash_tree_root()
         if state.latest_block_header.state_root == spec.Root():
             state.latest_block_header.state_root = previous_state_root
         # also perform the state transition as if the payload was revealed
-        state.latest_block_hash = block.body.signed_execution_payload_header.message.block_hash
-        state.latest_full_slot = block.slot
+        state.latest_block_hash = block.body.signed_execution_payload_bid.message.block_hash
     return state
 
 
 def payload_state_transition(spec, store, block):
     root = block.hash_tree_root()
     state = store.block_states[root].copy()
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         payload_state_transition_no_store(spec, state, block)
         store.execution_payload_states[root] = state
     return state

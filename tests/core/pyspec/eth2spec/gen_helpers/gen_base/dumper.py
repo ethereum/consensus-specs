@@ -31,16 +31,17 @@ def get_cfg_yaml():
     cfg_yaml = YAML(pure=True)
     cfg_yaml.default_flow_style = False  # Emit separate line for each key
     cfg_yaml.width = 1024  # Do not wrap long lines
+    cfg_yaml.indent(mapping=2, sequence=4, offset=2)  # Indent BLOB_SCHEDULE
 
     def cfg_represent_bytes(self, data):
         return self.represent_int(encode_hex(data))
 
-    cfg_yaml.representer.add_representer(bytes, cfg_represent_bytes)
-
     def cfg_represent_quoted_str(self, data):
         return self.represent_scalar("tag:yaml.org,2002:str", data, style="'")
 
+    cfg_yaml.representer.add_representer(bytes, cfg_represent_bytes)
     cfg_yaml.representer.add_representer(context.quoted_str, cfg_represent_quoted_str)
+
     return cfg_yaml
 
 

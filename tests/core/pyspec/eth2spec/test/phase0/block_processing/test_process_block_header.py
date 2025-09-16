@@ -7,7 +7,7 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
     compute_el_block_hash_for_block,
 )
-from eth2spec.test.helpers.forks import is_post_bellatrix, is_post_eip7732
+from eth2spec.test.helpers.forks import is_post_bellatrix, is_post_gloas
 from eth2spec.test.helpers.state import next_slot
 
 
@@ -71,9 +71,9 @@ def test_invalid_proposer_index(spec, state):
 def test_invalid_parent_root(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     block.parent_root = b"\12" * 32  # invalid prev root
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     elif is_post_bellatrix(spec):
@@ -94,9 +94,9 @@ def test_invalid_multiple_blocks_single_slot(spec, state):
 
     child_block = block.copy()
     child_block.parent_root = block.hash_tree_root()
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        child_block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        child_block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     elif is_post_bellatrix(spec):

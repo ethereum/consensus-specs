@@ -650,7 +650,9 @@ def verify_cell_kzg_proof_batch(
 
     # Create the list of deduplicated commitments we are dealing with
     deduplicated_commitments = [
-        bytes_to_kzg_commitment(commitment_bytes) for commitment_bytes in set(commitments_bytes)
+        bytes_to_kzg_commitment(commitment_bytes)
+        for index, commitment_bytes in enumerate(commitments_bytes)
+        if commitments_bytes.index(commitment_bytes) == index
     ]
     # Create indices list mapping initial commitments (that may contain duplicates) to the deduplicated commitments
     commitment_indices = [
@@ -799,6 +801,8 @@ def recover_cells_and_kzg_proofs(
     assert CELLS_PER_EXT_BLOB // 2 <= len(cell_indices) <= CELLS_PER_EXT_BLOB
     # Check for duplicates
     assert len(cell_indices) == len(set(cell_indices))
+    # Check that indices are in ascending order
+    assert cell_indices == sorted(cell_indices)
     # Check that the cell indices are within bounds
     for cell_index in cell_indices:
         assert cell_index < CELLS_PER_EXT_BLOB

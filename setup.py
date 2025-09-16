@@ -262,14 +262,6 @@ commands = {
 with open("README.md", encoding="utf8") as f:
     readme = f.read()
 
-# How to use "VERSION.txt" file:
-# - dev branch contains "X.Y.Z.dev", where "X.Y.Z" is the target version to release dev into.
-#    -> Changed as part of 'master' backport to 'dev'
-# - master branch contains "X.Y.Z", where "X.Y.Z" is the current version.
-#    -> Changed as part of 'dev' release (or other branch) into 'master'
-#    -> In case of a commit on master without git tag, target the next version
-#        with ".postN" (release candidate, numbered) suffixed.
-# See https://www.python.org/dev/peps/pep-0440/#public-version-identifiers
 with open(os.path.join("tests", "core", "pyspec", "eth2spec", "VERSION.txt")) as f:
     spec_version = f.read().strip()
 
@@ -293,8 +285,7 @@ setup(
         "specs": "specs",
         "sync": "sync",
     },
-    packages=find_packages(where="tests/core/pyspec")
-    + ["configs", "presets", "specs", "presets", "sync"],
+    packages=find_packages(where="tests/core/pyspec") + ["configs", "presets", "specs", "sync"],
     py_modules=["eth2spec"],
     cmdclass=commands,
 )

@@ -28,28 +28,28 @@ EFFECTIVE_BALANCE_INCREMENT: 1000000000
 
 # Time parameters
 # ---------------------------------------------------------------
-# 2**0 (= 1) slots, 12 seconds
+# 2**0 (= 1) slots
 MIN_ATTESTATION_INCLUSION_DELAY: 1
-# 2**5 (= 32) slots, 6.4 minutes
+# 2**5 (= 32) slots
 SLOTS_PER_EPOCH: 32
-# 2**0 (= 1) epochs, 6.4 minutes
+# 2**0 (= 1) epochs
 MIN_SEED_LOOKAHEAD: 1
-# 2**2 (= 4) epochs, 25.6 minutes
+# 2**2 (= 4) epochs
 MAX_SEED_LOOKAHEAD: 4
-# 2**6 (= 64) epochs, ~6.8 hours
+# 2**6 (= 64) epochs
 EPOCHS_PER_ETH1_VOTING_PERIOD: 64
-# 2**13 (= 8,192) slots, ~27 hours
+# 2**13 (= 8,192) slots
 SLOTS_PER_HISTORICAL_ROOT: 8192
-# 2**2 (= 4) epochs, 25.6 minutes
+# 2**2 (= 4) epochs
 MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
 
 # State list lengths
 # ---------------------------------------------------------------
-# 2**16 (= 65,536) epochs, ~0.8 years
+# 2**16 (= 65,536) epochs
 EPOCHS_PER_HISTORICAL_VECTOR: 65536
-# 2**13 (= 8,192) epochs, ~36 days
+# 2**13 (= 8,192) epochs
 EPOCHS_PER_SLASHINGS_VECTOR: 8192
-# 2**24 (= 16,777,216) historical roots, ~52,262 years
+# 2**24 (= 16,777,216) historical roots
 HISTORICAL_ROOTS_LIMIT: 16777216
 # 2**40 (= 1,099,511,627,776) validator spots
 VALIDATOR_REGISTRY_LIMIT: 1099511627776
