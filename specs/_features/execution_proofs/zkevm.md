@@ -5,7 +5,6 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Public Methods](#public-methods)
 - [Custom types](#custom-types)
 - [Cryptographic types](#cryptographic-types)
 - [Constants](#constants)
@@ -29,13 +28,6 @@ This document specifies the cryptographic operations for zkEVM based execution p
 
 *Note*: This specification provides placeholder implementations. Production implementations should use established zkEVM systems.
 
-## Public Methods
-
-For public API consumers, this document provides the following **public methods**:
-
-- [`verify_zkevm_proof`](#verify_zkevm_proof)
-- [`generate_zkevm_proof`](#generate_zkevm_proof)
-
 ## Custom types
 
 | Name | SSZ equivalent | Description |
@@ -46,6 +38,7 @@ For public API consumers, this document provides the following **public methods*
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
+| `ProgramSource` | `ByteList[32]` | Execution layer program identifier |
 | `ProgramBytecode` | `ByteList[64]` | Execution layer program bytecode with proof ID |
 | `ProofID` | `uint8` | Identifier for proof system |
 | `ProvingKey` | `ByteList[MAX_PROVING_KEY_SIZE]` | Key used for proof generation |
@@ -135,18 +128,7 @@ def verify_execution_proof_impl(
     if len(proof.proof_data) > MAX_PROOF_SIZE:
         return False
 
-    # Placeholder verification logic
-    # In practice, this would use a zkSNARK verifier with the verification key
-    proof_hash = hash(
-        proof.proof_data +
-        verification_key +
-        proof.proof_type.to_bytes(1, 'big') +
-        proof.public_inputs.block_hash +
-        proof.public_inputs.parent_hash
-    )
-
-    # Simple deterministic check (placeholder)
-    return proof_hash[0] % 2 == 0
+    return True
 ```
 
 #### `generate_verification_key`
@@ -174,7 +156,7 @@ def generate_execution_proof_impl(
     public_inputs: PublicInput
 ) -> ZKProof:
     """
-    Generate a zkEVM execution proof using the proving key and private inputs.
+    Generate a zkEVM execution proof using the proving key, private inputs and public inputs
     """
 
     proof_data = hash(
@@ -201,8 +183,6 @@ def generate_proving_key(program_bytecode: ProgramBytecode, proof_id: ProofID) -
     return ProvingKey(program_bytecode)
 ```
 
-## Public Methods
-
 ### `verify_zkevm_proof`
 
 ```python
@@ -210,7 +190,7 @@ def verify_zkevm_proof(
     zk_proof: ZKProof,
     parent_hash: Hash32,
     block_hash: Hash32,
-    ProgramSource: ProgramSource
+    program_bytecode: ProgramBytecode
 ) -> bool:
     """
     Public method to verify a zkEVM execution proof against block hashes.
@@ -222,7 +202,7 @@ def verify_zkevm_proof(
     if zk_proof.public_inputs.parent_hash != parent_hash:
         return False
 
-    proving_key, verification_key = compile_execution_layer(ProgramSource, zk_proof.proof_type)
+    proving_key, verification_key = compile_execution_layer(program_bytecode, zk_proof.proof_type)
 
     return verify_execution_proof_impl(zk_proof, verification_key)
 ```
@@ -233,14 +213,14 @@ def verify_zkevm_proof(
 def generate_zkevm_proof(
     execution_payload: ExecutionPayload,
     execution_witness: ZKExecutionWitness,
-    ProgramSource: ProgramSource,
+    program_bytecode: ProgramBytecode,
     proof_id: ProofID
 ) -> Optional[ZKProof]:
     """
     Public method to generate an execution proof for a payload.
     """
 
-    proving_key, verification_key = compile_execution_layer(ProgramSource, proof_id)
+    proving_key, verification_key = compile_execution_layer(program_bytecode, proof_id)
 
     public_inputs = PublicInput(
         block_hash=execution_payload.block_hash,
