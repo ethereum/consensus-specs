@@ -30,6 +30,7 @@
     - [`get_slot_component_duration_ms`](#get_slot_component_duration_ms)
     - [`get_attestation_due_ms`](#get_attestation_due_ms)
     - [`get_proposer_reorg_cutoff_ms`](#get_proposer_reorg_cutoff_ms)
+    - [`get_aggregate_due_ms`](#get_aggregate_due_ms)
     - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
       - [`is_head_late`](#is_head_late)
       - [`is_shuffling_stable`](#is_shuffling_stable)
@@ -486,6 +487,13 @@ def get_attestation_due_ms(epoch: Epoch) -> uint64:
 ```python
 def get_proposer_reorg_cutoff_ms(epoch: Epoch) -> uint64:
     return get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
+```
+
+#### `get_aggregate_due_ms`
+
+```python
+def get_aggregate_due_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
 ```
 
 #### Proposer head and reorg helpers

@@ -776,8 +776,8 @@ def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature
 
 If the validator is selected to aggregate (`is_aggregator`), then they broadcast
 their best aggregate as a `SignedAggregateAndProof` to the global aggregate
-channel (`beacon_aggregate_and_proof`)
-`get_slot_component_duration_ms(AGGREGATE_DUE_BPS)` milliseconds into the slot.
+channel (`beacon_aggregate_and_proof`) `get_aggregate_due_ms(epoch)`
+milliseconds into the slot.
 
 Selection proofs are provided in `AggregateAndProof` to prove to the gossip
 channel that the validator has been selected as an aggregator.

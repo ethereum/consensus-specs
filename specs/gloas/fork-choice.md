@@ -27,6 +27,7 @@
   - [Modified `get_head`](#modified-get_head)
 - [Updated fork-choice helpers](#updated-fork-choice-helpers)
   - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
+  - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [Modified `on_block`](#modified-on_block)
 - [New fork-choice handlers](#new-fork-choice-handlers)
@@ -437,6 +438,16 @@ def get_attestation_due_ms(epoch: Epoch) -> uint64:
     if epoch >= GLOAS_FORK_EPOCH:
         return get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
     return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+```
+
+### Modified `get_aggregate_due_ms`
+
+```python
+def get_aggregate_due_ms(epoch: Epoch) -> uint64:
+    # [New in Gloas]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return get_slot_component_duration_ms(AGGREGATE_DUE_BPS_GLOAS)
+    return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
 ```
 
 ## Updated fork-choice handlers
