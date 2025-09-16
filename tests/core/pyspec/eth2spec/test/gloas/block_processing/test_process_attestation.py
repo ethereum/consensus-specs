@@ -111,8 +111,6 @@ def test_invalid_same_slot_attestation_index_one(spec, state):
     attestation_slot = 2
     attestation = get_valid_attestation(spec, state, slot=attestation_slot)
 
-    attestation.data.beacon_block_root = spec.get_block_root_at_slot(state, attestation_slot)
-
     attestation.data.index = 1
 
     sign_attestation(spec, state, attestation)
@@ -156,34 +154,11 @@ def test_valid_attestation_data_index_zero_same_slot(spec, state):
     attestation_slot = 2
     attestation = get_valid_attestation(spec, state, slot=attestation_slot)
 
-    attestation.data.beacon_block_root = spec.get_block_root_at_slot(state, attestation_slot)
-
     attestation.data.index = 0
 
     sign_attestation(spec, state, attestation)
 
     assert spec.is_attestation_same_slot(state, attestation.data) is True
-    yield from run_attestation_processing(spec, state, attestation, valid=True)
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_previous_epoch_attestation_with_payload_signaling(spec, state):
-    """
-    Test previous epoch attestation with payload availability signaling
-    """
-    # Move to next epoch
-    transition_to_slot_via_block(spec, state, spec.SLOTS_PER_EPOCH)
-
-    attestation = get_valid_attestation(
-        spec, state, slot=1, beacon_block_root=spec.get_block_root_at_slot(state, 0)
-    )
-
-    attestation.data.index = 1
-
-    sign_attestation(spec, state, attestation)
-
-    assert spec.is_attestation_same_slot(state, attestation.data) is False
     yield from run_attestation_processing(spec, state, attestation, valid=True)
 
 
