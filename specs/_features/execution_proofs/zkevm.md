@@ -36,6 +36,11 @@ implementations should use established zkEVM systems.
 
 ## Constants
 
+All of the constants below are subject to change and one should not overindex on
+them. `MAX_PROOF_SIZE`, `MAX_PROVING_KEY_SIZE` and `MAX_VERIFICATION_KEY_SIZE`
+are all arbitrary. `MAX_WITNESS_SIZE` is the worse case witness for the MPT for
+a payload with a maximum gas limit of 30M gas.
+
 | Name                        | Value                  |
 | --------------------------- | ---------------------- |
 | `MAX_PROOF_SIZE`            | `307200` (= 300KiB)    |
@@ -50,6 +55,10 @@ implementations should use established zkEVM systems.
 | `ZKEVMProof` | `Container`    | Proof of execution of a program |
 
 ## Cryptographic types
+
+We note that `ProgramBytecode` represents the bytecode for a particular
+execution layer client. The size depends on the client. We use `64` as a
+placeholder.
 
 | Name                 | SSZ equivalent                        | Description                                                   |
 | -------------------- | ------------------------------------- | ------------------------------------------------------------- |
