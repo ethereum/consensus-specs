@@ -63,8 +63,9 @@ The following validations MUST pass before forwarding the
   non-empty.
 - _[REJECT]_ The proof system ID matches the subnet:
   `signed_execution_proof.message.zk_proof.proof_type == subnet_id`.
-- _[REJECT]_ The execution proof is valid as verified by `verify_execution_proof()`
-  with the appropriate parent and block hashes from the execution layer.
+- _[REJECT]_ The execution proof is valid as verified by
+  `verify_execution_proof()` with the appropriate parent and block hashes from
+  the execution layer.
 
 Subnet topics follow the pattern: `/eth2/execution_proof_{subnet_id}/ssz_snappy`
 
