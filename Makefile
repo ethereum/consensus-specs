@@ -231,6 +231,7 @@ test: _pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(PYTHON_VENV) -m pytest \
 		$(MAYBE_PARALLEL) \
+		--durations=20 \
 		--capture=no \
 		$(MAYBE_TEST) \
 		$(MAYBE_FORK) \
