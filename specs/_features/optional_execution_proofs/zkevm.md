@@ -57,12 +57,12 @@ a payload with a maximum gas limit of 30M gas.
 ## Cryptographic types
 
 We note that `ProgramBytecode` represents the bytecode for a particular
-execution layer client. The size depends on the client. We use `64` as a
+execution layer client. The size depends on the client. We use `16` as a
 placeholder.
 
 | Name                 | SSZ equivalent                        | Description                                                   |
 | -------------------- | ------------------------------------- | ------------------------------------------------------------- |
-| `ProgramBytecode`    | `ByteList[64]`                        | Execution layer program bytecode                              |
+| `ProgramBytecode`    | `ByteList[16]`                        | Execution layer program bytecode                              |
 | `ProofID`            | `uint8`                               | Identifier for proof system                                   |
 | `ProvingKey`         | `ByteList[MAX_PROVING_KEY_SIZE]`      | Key used for proof generation                                 |
 | `VerificationKey`    | `ByteList[MAX_VERIFICATION_KEY_SIZE]` | Key used for proof verification                               |

@@ -40,10 +40,10 @@ stateless validation of execution payloads through cryptographic proofs.
 
 ### Execution
 
-| Name                               | Value                                        |
-| ---------------------------------- | -------------------------------------------- |
-| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)`                                  |
-| `PROGRAM`                          | `ProgramBytecode(b"PROG_V1" + b"\x00" * 57)` |
+| Name                               | Value                                  |
+| ---------------------------------- | -------------------------------------- |
+| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)`                            |
+| `PROGRAM`                          | `ProgramBytecode(b"DEFAULT__PROGRAM")` |
 
 ### Domain types
 
