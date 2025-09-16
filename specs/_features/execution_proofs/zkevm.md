@@ -201,17 +201,6 @@ def generate_proving_key(program_bytecode: ProgramBytecode, proof_id: ProofID) -
     return ProvingKey(program_bytecode)
 ```
 
-#### `generate_verification_key`
-
-```python
-def generate_verification_key(program_bytecode: ProgramBytecode, proof_id: ProofID) -> VerificationKey:
-    """
-    Generate a verification key for the given program bytecode and proof system.
-    """
-
-    return VerificationKey(program_bytecode)
-```
-
 ## Public Methods
 
 ### `verify_zkevm_proof`
