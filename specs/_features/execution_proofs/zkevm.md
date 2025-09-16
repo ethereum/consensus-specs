@@ -55,7 +55,7 @@ implementations should use established zkEVM systems.
 
 | Name                 | SSZ equivalent                        | Description                                                   |
 | -------------------- | ------------------------------------- | ------------------------------------------------------------- |
-| `ProgramBytecode`    | `ByteList[64]`                        | Execution layer program bytecode with proof ID                |
+| `ProgramBytecode`    | `ByteList[64]`                        | Execution layer program bytecode                              |
 | `ProofID`            | `uint8`                               | Identifier for proof system                                   |
 | `ProvingKey`         | `ByteList[MAX_PROVING_KEY_SIZE]`      | Key used for proof generation                                 |
 | `VerificationKey`    | `ByteList[MAX_VERIFICATION_KEY_SIZE]` | Key used for proof verification                               |
@@ -148,7 +148,7 @@ def generate_verification_key(
     Generate a verification key for the given program bytecode and proof system.
     """
 
-    verification_key = VerificationKey(program_bytecode)
+    verification_key = VerificationKey(program_bytecode + proof_id.to_bytes(1, "little"))
 
     return verification_key
 ```
@@ -185,7 +185,7 @@ def generate_proving_key(program_bytecode: ProgramBytecode, proof_id: ProofID) -
     Generate a proving key for the given program bytecode and proof system.
     """
 
-    return ProvingKey(program_bytecode)
+    return ProvingKey(program_bytecode + proof_id.to_bytes(1, "little"))
 ```
 
 ### `verify_zkevm_proof`
