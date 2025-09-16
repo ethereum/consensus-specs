@@ -15,6 +15,7 @@
   - [Containers](#containers)
     - [New containers](#new-containers)
       - [`ExecutionProof`](#executionproof)
+      - [`SignedExecutionProof`](#signedexecutionproof)
     - [Extended Containers](#extended-containers)
   - [Helper functions](#helper-functions)
     - [Execution proof functions](#execution-proof-functions)
@@ -64,6 +65,13 @@ class ExecutionProof(Container):
     beacon_root: Root
     zk_proof: ZKProof
     validator_index: ValidatorIndex
+```
+
+#### `SignedExecutionProof`
+
+```python
+class SignedExecutionProof(Container):
+    message: ExecutionProof
     signature: BLSSignature
 ```
 
