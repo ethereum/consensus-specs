@@ -8,15 +8,14 @@
   - [Misc](#misc)
 - [Custom types](#custom-types)
 - [Configuration](#configuration)
-  - [Data size](#data-size)
   - [Custody setting](#custody-setting)
-  - [Blob schedule](#blob-schedule)
+- [Preset](#preset)
+  - [Size parameters](#size-parameters)
   - [Containers](#containers)
     - [`DataColumnSidecar`](#datacolumnsidecar)
     - [`MatrixEntry`](#matrixentry)
 - [Helper functions](#helper-functions)
   - [`get_custody_groups`](#get_custody_groups)
-  - [`get_max_blobs_per_block`](#get_max_blobs_per_block)
   - [`compute_columns_for_custody_group`](#compute_columns_for_custody_group)
   - [`compute_matrix`](#compute_matrix)
   - [`recover_matrix`](#recover_matrix)
@@ -56,12 +55,6 @@ specification.
 
 ## Configuration
 
-### Data size
-
-| Name                | Value                                | Description                                   |
-| ------------------- | ------------------------------------ | --------------------------------------------- |
-| `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
-
 ### Custody setting
 
 | Name                       | Value | Description                                                                       |
@@ -70,17 +63,13 @@ specification.
 | `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody                           |
 | `CUSTODY_REQUIREMENT`      | `4`   | Minimum number of custody groups an honest node custodies and serves samples from |
 
-### Blob schedule
+## Preset
 
-*[New in EIP7892]* This schedule defines the maximum blobs per block limit for a
-given epoch.
+### Size parameters
 
-*Note*: The blob schedule is to be determined.
-
-<!-- list-of-records:blob_schedule -->
-
-| Epoch | Max Blobs Per Block | Description |
-| ----- | ------------------- | ----------- |
+| Name                | Value                                | Description                                   |
+| ------------------- | ------------------------------------ | --------------------------------------------- |
+| `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
 
 ### Containers
 
@@ -88,7 +77,7 @@ given epoch.
 
 ```python
 class DataColumnSidecar(Container):
-    index: ColumnIndex  # Index of column in extended matrix
+    index: ColumnIndex
     column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
@@ -114,12 +103,15 @@ class MatrixEntry(Container):
 def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence[CustodyIndex]:
     assert custody_group_count <= NUMBER_OF_CUSTODY_GROUPS
 
+    # Skip computation if all groups are custodied
+    if custody_group_count == NUMBER_OF_CUSTODY_GROUPS:
+        return [CustodyIndex(i) for i in range(NUMBER_OF_CUSTODY_GROUPS)]
+
     current_id = uint256(node_id)
     custody_groups: List[CustodyIndex] = []
     while len(custody_groups) < custody_group_count:
         custody_group = CustodyIndex(
-            bytes_to_uint64(hash(uint_to_bytes(current_id))[0:8])
-            % NUMBER_OF_CUSTODY_GROUPS
+            bytes_to_uint64(hash(uint_to_bytes(current_id))[0:8]) % NUMBER_OF_CUSTODY_GROUPS
         )
         if custody_group not in custody_groups:
             custody_groups.append(custody_group)
@@ -133,19 +125,6 @@ def get_custody_groups(node_id: NodeID, custody_group_count: uint64) -> Sequence
     return sorted(custody_groups)
 ```
 
-### `get_max_blobs_per_block`
-
-```python
-def get_max_blobs_per_block(epoch: Epoch) -> uint64:
-    """
-    Return the maximum number of blobs that can be included in a block for a given epoch.
-    """
-    for entry in sorted(BLOB_SCHEDULE, key=lambda e: e["EPOCH"], reverse=True):
-        if epoch >= entry["EPOCH"]:
-            return entry["MAX_BLOBS_PER_BLOCK"]
-    return MAX_BLOBS_PER_BLOCK_ELECTRA
-```
-
 ### `compute_columns_for_custody_group`
 
 ```python
@@ -153,8 +132,7 @@ def compute_columns_for_custody_group(custody_group: CustodyIndex) -> Sequence[C
     assert custody_group < NUMBER_OF_CUSTODY_GROUPS
     columns_per_group = NUMBER_OF_COLUMNS // NUMBER_OF_CUSTODY_GROUPS
     return [
-        ColumnIndex(NUMBER_OF_CUSTODY_GROUPS * i + custody_group)
-        for i in range(columns_per_group)
+        ColumnIndex(NUMBER_OF_CUSTODY_GROUPS * i + custody_group) for i in range(columns_per_group)
     ]
 ```
 
@@ -172,19 +150,23 @@ def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
     for blob_index, blob in enumerate(blobs):
         cells, proofs = compute_cells_and_kzg_proofs(blob)
         for cell_index, (cell, proof) in enumerate(zip(cells, proofs)):
-            matrix.append(MatrixEntry(
-                cell=cell,
-                kzg_proof=proof,
-                row_index=blob_index,
-                column_index=cell_index,
-            ))
+            matrix.append(
+                MatrixEntry(
+                    cell=cell,
+                    kzg_proof=proof,
+                    row_index=blob_index,
+                    column_index=cell_index,
+                )
+            )
     return matrix
 ```
 
 ### `recover_matrix`
 
 ```python
-def recover_matrix(partial_matrix: Sequence[MatrixEntry], blob_count: uint64) -> Sequence[MatrixEntry]:
+def recover_matrix(
+    partial_matrix: Sequence[MatrixEntry], blob_count: uint64
+) -> Sequence[MatrixEntry]:
     """
     Recover the full, flattened sequence of matrix entries.
 
@@ -197,12 +179,14 @@ def recover_matrix(partial_matrix: Sequence[MatrixEntry], blob_count: uint64) ->
         cells = [e.cell for e in partial_matrix if e.row_index == blob_index]
         recovered_cells, recovered_proofs = recover_cells_and_kzg_proofs(cell_indices, cells)
         for cell_index, (cell, proof) in enumerate(zip(recovered_cells, recovered_proofs)):
-            matrix.append(MatrixEntry(
-                cell=cell,
-                kzg_proof=proof,
-                row_index=blob_index,
-                column_index=cell_index,
-            ))
+            matrix.append(
+                MatrixEntry(
+                    cell=cell,
+                    kzg_proof=proof,
+                    row_index=blob_index,
+                    column_index=cell_index,
+                )
+            )
     return matrix
 ```
 
@@ -297,7 +281,7 @@ are they sent in aggregate forms.
 
 ### Why don't nodes custody rows?
 
-In the one-dimension construction, a node samples the peers by requesting the
+In the one-dimensional construction, a node samples the peers by requesting the
 whole `DataColumnSidecar`. In reconstruction, a node can reconstruct all the
 blobs by 50% of the columns. Note that nodes can still download the row via
 `blob_sidecar_{subnet_id}` subnets.
@@ -305,10 +289,11 @@ blobs by 50% of the columns. Note that nodes can still download the row via
 The potential benefits of having row custody could include:
 
 1. Allow for more "natural" distribution of data to consumers -- e.g., roll-ups
-   -- but honestly, they won't know a priori which row their blob is going to be
-   included in the block, so they would either need to listen to all rows or
-   download a particular row after seeing the block. The former looks just like
-   listening to column \[0, N) and the latter is req/resp instead of gossiping.
+   -- but realistically, they won't know a priori which row their blob is going
+   to be included in the block, so they would either need to listen to all rows
+   or download a particular row after seeing the block. The former looks just
+   like listening to column \[0, N) and the latter is req/resp instead of
+   gossiping.
 2. Help with some sort of distributed reconstruction. Those with full rows can
    compute extensions and seed missing samples to the network. This would either
    need to be able to send individual points on the gossip or would need some

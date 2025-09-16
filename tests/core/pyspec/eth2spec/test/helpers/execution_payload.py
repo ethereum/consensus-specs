@@ -9,8 +9,9 @@ from eth2spec.debug.random_value import get_random_bytes_list
 from eth2spec.test.helpers.forks import (
     is_post_capella,
     is_post_deneb,
-    is_post_eip7732,
+    is_post_eip7928,
     is_post_electra,
+    is_post_gloas,
 )
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.withdrawals import get_expected_withdrawals
@@ -18,15 +19,32 @@ from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
 
 def get_execution_payload_header(spec, state, execution_payload):
-    if is_post_eip7732(spec):
-        return spec.ExecutionPayloadHeader(
-            parent_block_hash=execution_payload.parent_hash,
-            parent_block_root=state.latest_block_header.hash_tree_root(),
-            block_hash=execution_payload.block_hash,
+    if is_post_gloas(spec):
+        # For Gloas, create a standard ExecutionPayloadHeader
+        payload_header = spec.ExecutionPayloadHeader(
+            parent_hash=execution_payload.parent_hash,
+            fee_recipient=execution_payload.fee_recipient,
+            state_root=execution_payload.state_root,
+            receipts_root=execution_payload.receipts_root,
+            logs_bloom=execution_payload.logs_bloom,
+            prev_randao=execution_payload.prev_randao,
+            block_number=execution_payload.block_number,
             gas_limit=execution_payload.gas_limit,
-            slot=state.slot,
-            blob_kzg_commitments_root=state.latest_execution_payload_header.blob_kzg_commitments_root,
+            gas_used=execution_payload.gas_used,
+            timestamp=execution_payload.timestamp,
+            extra_data=execution_payload.extra_data,
+            base_fee_per_gas=execution_payload.base_fee_per_gas,
+            block_hash=execution_payload.block_hash,
+            transactions_root=execution_payload.transactions.hash_tree_root(),
         )
+        # Add version-specific fields
+        if hasattr(execution_payload, "withdrawals"):
+            payload_header.withdrawals_root = execution_payload.withdrawals.hash_tree_root()
+        if hasattr(execution_payload, "blob_gas_used"):
+            payload_header.blob_gas_used = execution_payload.blob_gas_used
+        if hasattr(execution_payload, "excess_blob_gas"):
+            payload_header.excess_blob_gas = execution_payload.excess_blob_gas
+        return payload_header
 
     payload_header = spec.ExecutionPayloadHeader(
         parent_hash=execution_payload.parent_hash,
@@ -49,6 +67,10 @@ def get_execution_payload_header(spec, state, execution_payload):
     if is_post_deneb(spec):
         payload_header.blob_gas_used = execution_payload.blob_gas_used
         payload_header.excess_blob_gas = execution_payload.excess_blob_gas
+    if is_post_eip7928(spec):
+        payload_header.block_access_list_root = spec.hash_tree_root(
+            execution_payload.block_access_list
+        )
     return payload_header
 
 
@@ -86,7 +108,7 @@ def compute_el_header_block_hash(
     """
     Computes the RLP execution block hash described by an `ExecutionPayloadHeader`.
     """
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         return spec.Hash32()
 
     execution_payload_header_rlp = [
@@ -269,21 +291,18 @@ def compute_el_block_hash_for_block(spec, block):
     )
 
 
-def build_empty_post_eip7732_execution_payload_header(spec, state):
-    if not is_post_eip7732(spec):
+def build_empty_post_gloas_execution_payload_bid(spec, state):
+    if not is_post_gloas(spec):
         return
     parent_block_root = hash_tree_root(state.latest_block_header)
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
-    epoch = spec.get_current_epoch(state)
-    builder_index = None
-    for index in spec.get_active_validator_indices(state, epoch):
-        if not state.validators[index].slashed:
-            builder_index = index
-    assert builder_index is not None
-    return spec.ExecutionPayloadHeader(
+    # Use self-build: builder_index is the same as the beacon proposer index
+    builder_index = spec.get_beacon_proposer_index(state)
+    return spec.ExecutionPayloadBid(
         parent_block_hash=state.latest_block_hash,
         parent_block_root=parent_block_root,
         block_hash=spec.Hash32(),
+        fee_recipient=spec.ExecutionAddress(),
         gas_limit=spec.uint64(0),
         builder_index=builder_index,
         slot=state.slot,
@@ -293,12 +312,19 @@ def build_empty_post_eip7732_execution_payload_header(spec, state):
 
 
 def build_empty_signed_execution_payload_header(spec, state):
-    if not is_post_eip7732(spec):
+    if not is_post_gloas(spec):
         return
-    message = build_empty_post_eip7732_execution_payload_header(spec, state)
-    privkey = privkeys[message.builder_index]
-    signature = spec.get_execution_payload_header_signature(state, message, privkey)
-    return spec.SignedExecutionPayloadHeader(
+    message = build_empty_post_gloas_execution_payload_bid(spec, state)
+    proposer_index = spec.get_beacon_proposer_index(state)
+
+    # For self-builds, use point at infinity signature as per spec
+    if message.builder_index == proposer_index:
+        signature = spec.G2_POINT_AT_INFINITY
+    else:
+        privkey = privkeys[message.builder_index]
+        signature = spec.get_execution_payload_header_signature(state, message, privkey)
+
+    return spec.SignedExecutionPayloadBid(
         message=message,
         signature=signature,
     )
@@ -309,7 +335,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
     """
     latest = state.latest_execution_payload_header
-    timestamp = spec.compute_timestamp_at_slot(state, state.slot)
+    timestamp = spec.compute_time_at_slot(state, state.slot)
     empty_txs = spec.List[spec.Transaction, spec.MAX_TRANSACTIONS_PER_PAYLOAD]()
 
     if randao_mix is None:
@@ -331,7 +357,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
         transactions=empty_txs,
     )
-    if not is_post_eip7732(spec):
+    if not is_post_gloas(spec):
         payload.state_root = latest.state_root  # no changes to the state
         payload.block_number = latest.block_number + 1
         payload.gas_limit = latest.gas_limit  # retain same limit
@@ -341,6 +367,9 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     if is_post_deneb(spec):
         payload.blob_gas_used = 0
         payload.excess_blob_gas = 0
+    if is_post_eip7928(spec):
+        # Add empty block access list for EIP7928
+        payload.block_access_list = spec.ByteList[spec.MAX_BYTES_PER_TRANSACTION]()
 
     payload.block_hash = compute_el_block_hash(spec, payload, state)
 
@@ -374,11 +403,18 @@ def build_randomized_execution_payload(spec, state, rng):
 
 def build_state_with_incomplete_transition(spec, state):
     header = spec.ExecutionPayloadHeader()
-    if is_post_eip7732(spec):
-        kzgs = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
-        header.blob_kzg_commitments_root = kzgs.hash_tree_root()
-
     state = build_state_with_execution_payload_header(spec, state, header)
+
+    if is_post_gloas(spec):
+        # In Gloas, we need to set up the execution payload bid instead
+        kzgs = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+        bid = spec.ExecutionPayloadBid(
+            slot=state.slot,
+            value=spec.Gwei(0),
+            blob_kzg_commitments_root=kzgs.hash_tree_root(),
+        )
+        state.latest_execution_payload_bid = bid
+
     assert not spec.is_merge_transition_complete(state)
 
     return state

@@ -1,12 +1,19 @@
 import random
+from functools import cache
+from random import Random
 
 from rlp import encode, Serializable
 from rlp.sedes import big_endian_int, Binary, binary, CountableList, List as RLPList
 
+from eth2spec.test.helpers.block import build_empty_block_for_next_slot
+from eth2spec.test.helpers.execution_payload import compute_el_block_hash
 from eth2spec.test.helpers.forks import (
     is_post_electra,
     is_post_fulu,
+    is_post_gloas,
 )
+from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.state import state_transition_and_sign_block
 
 
 class Eip4844RlpTransaction(Serializable):
@@ -38,7 +45,9 @@ class Eip4844RlpTransaction(Serializable):
     )
 
 
-def get_sample_blob(spec, rng=random.Random(5566), is_valid_blob=True):
+def get_sample_blob(spec, rng=None, is_valid_blob=True):
+    if rng is None:
+        rng = random.Random(5566)
     values = [
         rng.randint(0, spec.BLS_MODULUS - 1) if is_valid_blob else spec.BLS_MODULUS
         for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
@@ -80,7 +89,9 @@ def get_poly_in_both_forms(spec, rng=None):
     return coeffs, evals
 
 
-def get_sample_blob_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_blob=True):
+def get_sample_blob_tx(spec, blob_count=1, rng=None, is_valid_blob=True):
+    if rng is None:
+        rng = random.Random(5566)
     blobs = []
     blob_kzg_commitments = []
     blob_kzg_proofs = []
@@ -121,8 +132,63 @@ def get_sample_blob_tx(spec, blob_count=1, rng=random.Random(5566), is_valid_blo
 
 def get_max_blob_count(spec, state):
     if is_post_fulu(spec):
-        return spec.get_max_blobs_per_block(spec.get_current_epoch(state))
+        return spec.get_blob_parameters(spec.get_current_epoch(state)).max_blobs_per_block
     elif is_post_electra(spec):
         return spec.config.MAX_BLOBS_PER_BLOCK_ELECTRA
     else:
         return spec.config.MAX_BLOBS_PER_BLOCK
+
+
+def get_block_with_blob(spec, state, rng: Random | None = None, blob_count=1):
+    block = build_empty_block_for_next_slot(spec, state)
+    opaque_tx, blobs, blob_kzg_commitments, blob_kzg_proofs = get_sample_blob_tx(
+        spec, blob_count=blob_count, rng=rng or random.Random(5566)
+    )
+    if is_post_gloas(spec):
+        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
+            blob_kzg_commitments
+        )
+        kzg_root = blob_kzg_commitments.hash_tree_root()
+        block.body.signed_execution_payload_bid.message.blob_kzg_commitments_root = kzg_root
+        # For self-builds, use point at infinity signature as per spec
+        if block.body.signed_execution_payload_bid.message.builder_index == block.proposer_index:
+            block.body.signed_execution_payload_bid.signature = spec.G2_POINT_AT_INFINITY
+        else:
+            block.body.signed_execution_payload_bid.signature = (
+                spec.get_execution_payload_header_signature(
+                    state,
+                    block.body.signed_execution_payload_bid.message,
+                    privkeys[block.body.signed_execution_payload_bid.message.builder_index],
+                )
+            )
+    else:
+        block.body.execution_payload.transactions = [opaque_tx]
+        block.body.execution_payload.block_hash = compute_el_block_hash(
+            spec, block.body.execution_payload, state
+        )
+        block.body.blob_kzg_commitments = blob_kzg_commitments
+    return block, blobs, blob_kzg_commitments, blob_kzg_proofs
+
+
+def get_block_with_blob_and_sidecars(spec, state, rng=None, blob_count=1):
+    block, blobs, blob_kzg_commitments, blob_kzg_proofs = get_block_with_blob(
+        spec, state, rng=rng, blob_count=blob_count
+    )
+    cells_and_kzg_proofs = [_cached_compute_cells_and_kzg_proofs(spec, blob) for blob in blobs]
+
+    # We need a signed block to call `get_data_column_sidecars_from_block`
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    if is_post_gloas(spec):
+        sidecars = spec.get_data_column_sidecars_from_block(
+            signed_block, blob_kzg_commitments, cells_and_kzg_proofs
+        )
+    else:
+        # For Fulu and earlier, use 2-parameter version
+        sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
+    return block, blobs, blob_kzg_proofs, signed_block, sidecars
+
+
+@cache
+def _cached_compute_cells_and_kzg_proofs(spec, blob):
+    return spec.compute_cells_and_kzg_proofs(blob)

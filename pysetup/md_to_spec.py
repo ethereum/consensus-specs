@@ -122,7 +122,19 @@ class MarkdownToSpec:
 
         # AST element for each top level definition of the module
         for element in module.body:
-            element_source = ast.unparse(element)
+            # Extract source preserving decorators and comments
+            lines = source.split("\n")
+
+            # Determine start line - include decorators if present
+            if hasattr(element, "decorator_list") and element.decorator_list:
+                start_line = element.decorator_list[0].lineno - 1
+            else:
+                start_line = element.lineno - 1
+
+            # Extract the source
+            end_line = element.end_lineno
+            element_source = "\n".join(lines[start_line:end_line])
+
             clean_source = "\n".join(line.rstrip() for line in element_source.splitlines())
 
             if isinstance(element, ast.FunctionDef):
@@ -300,7 +312,12 @@ class MarkdownToSpec:
             )
 
         # Set the config variable
-        self.spec["config_vars"][list_of_records_name] = list_of_records_config_file
+        self.spec["config_vars"][list_of_records_name] = VariableDefinition(
+            "tuple[frozendict[str, Any], ...]",
+            self._format_frozen_records(list_of_records_config_file),
+            None,
+            None,
+        )
 
     @staticmethod
     def _make_list_of_records_type_map(list_of_records: list[dict[str, str]]) -> dict[str, str]:
@@ -341,6 +358,17 @@ class MarkdownToSpec:
         ]
 
         return list_of_records_spec
+
+    @staticmethod
+    def _format_frozen_records(records: list[dict[str, str]]) -> str:
+        lines = ["("]
+        for record in records:
+            lines.append("    frozendict({")
+            for key, value in record.items():
+                lines.append(f'        "{str(key)}": {str(value)},')
+            lines.append("    }),")
+        lines.append(")")
+        return "\n".join(lines)
 
     def _extract_typed_records_config(
         self, list_of_records_name: str, type_map: dict[str, str]

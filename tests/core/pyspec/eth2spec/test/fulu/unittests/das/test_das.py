@@ -1,14 +1,20 @@
 import random
 
+from deepdiff import DeepDiff
+
 from eth2spec.test.context import (
-    expect_assertion_error,
     single_phase,
+    spec_state_test,
     spec_test,
-    with_config_overrides,
     with_fulu_and_later,
 )
 from eth2spec.test.helpers.blob import (
+    get_block_with_blob_and_sidecars,
     get_sample_blob,
+)
+from eth2spec.test.helpers.fork_choice import BlobData, with_blob_data
+from eth2spec.test.helpers.forks import (
+    is_post_gloas,
 )
 
 
@@ -59,8 +65,8 @@ def test_recover_matrix(spec):
     # Construct a matrix with some entries missing
     partial_matrix = []
     for blob_entries in chunks(matrix, spec.CELLS_PER_EXT_BLOB):
-        rng.shuffle(blob_entries)
-        partial_matrix.extend(blob_entries[:N_SAMPLES])
+        indices = sorted(rng.sample(range(len(blob_entries)), N_SAMPLES))
+        partial_matrix.extend([blob_entries[i] for i in indices])
 
     # Given the partial matrix, recover the missing entries
     recovered_matrix = spec.recover_matrix(partial_matrix, blob_count)
@@ -69,83 +75,72 @@ def test_recover_matrix(spec):
     assert recovered_matrix == matrix
 
 
-@with_fulu_and_later
-@spec_test
-@single_phase
-def test_get_extended_sample_count__1(spec):
-    rng = random.Random(1111)
-    allowed_failures = rng.randint(0, spec.config.NUMBER_OF_COLUMNS // 2)
-    spec.get_extended_sample_count(allowed_failures)
+def run_is_data_available_peerdas_test(spec, blob_data):
+    def callback():
+        yield spec.is_data_available(spec.Root(b"\x00" * 32))
+
+    return next(with_blob_data(spec, blob_data, callback))
 
 
 @with_fulu_and_later
-@spec_test
-@single_phase
-def test_get_extended_sample_count__2(spec):
-    rng = random.Random(2222)
-    allowed_failures = rng.randint(0, spec.config.NUMBER_OF_COLUMNS // 2)
-    spec.get_extended_sample_count(allowed_failures)
-
-
-@with_fulu_and_later
-@spec_test
-@single_phase
-def test_get_extended_sample_count__3(spec):
-    rng = random.Random(3333)
-    allowed_failures = rng.randint(0, spec.config.NUMBER_OF_COLUMNS // 2)
-    spec.get_extended_sample_count(allowed_failures)
-
-
-@with_fulu_and_later
-@spec_test
-@single_phase
-def test_get_extended_sample_count__lower_bound(spec):
-    allowed_failures = 0
-    spec.get_extended_sample_count(allowed_failures)
-
-
-@with_fulu_and_later
-@spec_test
-@single_phase
-def test_get_extended_sample_count__upper_bound(spec):
-    allowed_failures = spec.config.NUMBER_OF_COLUMNS // 2
-    spec.get_extended_sample_count(allowed_failures)
-
-
-@with_fulu_and_later
-@spec_test
-@single_phase
-def test_get_extended_sample_count__upper_bound_exceed(spec):
-    allowed_failures = spec.config.NUMBER_OF_COLUMNS // 2 + 1
-    expect_assertion_error(lambda: spec.get_extended_sample_count(allowed_failures))
-
-
-@with_fulu_and_later
-@spec_test
-@with_config_overrides(
-    {
-        "NUMBER_OF_COLUMNS": 128,
-        "SAMPLES_PER_SLOT": 16,
-    }
-)
-@single_phase
-def test_get_extended_sample_count__table_in_spec(spec):
-    table = dict(
-        # (allowed_failures, expected_extended_sample_count)
-        {
-            0: 16,
-            1: 20,
-            2: 24,
-            3: 27,
-            4: 29,
-            5: 32,
-            6: 35,
-            7: 37,
-            8: 40,
-        }
+@spec_state_test
+def test_is_data_available_peerdas(spec, state):
+    rng = random.Random(1234)
+    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(
+        spec, state, rng=rng, blob_count=2
     )
-    for allowed_failures, expected_extended_sample_count in table.items():
-        assert (
-            spec.get_extended_sample_count(allowed_failures=allowed_failures)
-            == expected_extended_sample_count
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+
+    result = run_is_data_available_peerdas_test(spec, blob_data)
+
+    assert result is True, "Data should be available for the block with blob data"
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_get_data_column_sidecars(spec, state):
+    rng = random.Random(1234)
+    _, blobs, _, signed_block, sidecars = get_block_with_blob_and_sidecars(
+        spec, state, rng=rng, blob_count=2
+    )
+
+    if is_post_gloas(spec):
+        sidecars_result = spec.get_data_column_sidecars_from_block(
+            signed_block,
+            sidecars[0].kzg_commitments,
+            [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs],
         )
+    else:
+        sidecars_result = spec.get_data_column_sidecars(
+            signed_block_header=spec.compute_signed_block_header(signed_block),
+            kzg_commitments=sidecars[0].kzg_commitments,
+            kzg_commitments_inclusion_proof=sidecars[0].kzg_commitments_inclusion_proof,
+            cells_and_kzg_proofs=[spec.compute_cells_and_kzg_proofs(blob) for blob in blobs],
+        )
+
+    assert len(sidecars_result) == len(sidecars), (
+        "Should return the same number of sidecars as input"
+    )
+    assert DeepDiff(sidecars, sidecars_result) == {}, "Sidecars should match the expected sidecars"
+
+
+@with_fulu_and_later
+@spec_state_test
+def test_get_data_column_sidecars_from_column_sidecar(spec, state):
+    if is_post_gloas(spec):
+        # Skip this test for Gloas as the function hasn't been updated yet
+        # to work without signed_block_header and kzg_commitments_inclusion_proof
+        return
+
+    rng = random.Random(1234)
+    _, blobs, _, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+
+    sidecars_result = spec.get_data_column_sidecars_from_column_sidecar(
+        sidecar=sidecars[0],
+        cells_and_kzg_proofs=[spec.compute_cells_and_kzg_proofs(blob) for blob in blobs],
+    )
+
+    assert len(sidecars_result) == len(sidecars), (
+        "Should return the same number of sidecars as input"
+    )
+    assert DeepDiff(sidecars, sidecars_result) == {}, "Sidecars should match the expected sidecars"

@@ -4,6 +4,8 @@
 
 - [Introduction](#introduction)
 - [Modifications in Bellatrix](#modifications-in-bellatrix)
+  - [Helper functions](#helper-functions)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -35,6 +37,22 @@ understand the Phase 0 and Altair documents and use them as a basis to
 understand the changes outlined in this document.
 
 ## Modifications in Bellatrix
+
+### Helper functions
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ### The gossip domain: gossipsub
 
@@ -75,7 +93,7 @@ details.
 
 Blocks with execution enabled will be permitted to propagate regardless of the
 validity of the execution payload. This prevents network segregation between
-[optimistic](/sync/optimistic.md) and non-optimistic nodes.
+[optimistic](../../sync/optimistic.md) and non-optimistic nodes.
 
 In addition to the gossip validations for this topic from prior specifications,
 the following validations MUST pass before forwarding the `signed_beacon_block`
@@ -87,7 +105,7 @@ If the execution is enabled for the block -- i.e.
 
 - _[REJECT]_ The block's execution payload timestamp is correct with respect to
   the slot -- i.e.
-  `execution_payload.timestamp == compute_timestamp_at_slot(state, block.slot)`.
+  `execution_payload.timestamp == compute_time_at_slot(state, block.slot)`.
 - If `execution_payload` verification of block's parent by an execution node is
   *not* complete:
   - _[REJECT]_ The block's parent (defined by `block.parent_root`) passes all
@@ -113,10 +131,10 @@ details on how to handle transitioning gossip topics.
 
 ### The Req/Resp domain
 
-Non-faulty, [optimistic](/sync/optimistic.md) nodes may send blocks which result
-in an INVALID response from an execution engine. To prevent network segregation
-between optimistic and non-optimistic nodes, transmission of an INVALID
-execution payload via the Req/Resp domain SHOULD NOT cause a node to be
+Non-faulty, [optimistic](../../sync/optimistic.md) nodes may send blocks which
+result in an INVALID response from an execution engine. To prevent network
+segregation between optimistic and non-optimistic nodes, transmission of an
+INVALID execution payload via the Req/Resp domain SHOULD NOT cause a node to be
 down-scored or disconnected. Transmission of a block which is invalid due to any
 consensus layer rules (i.e., *not* execution layer rules) MAY result in
 down-scoring or disconnection.
@@ -127,12 +145,8 @@ down-scoring or disconnection.
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
-Request and Response remain unchanged unless explicitly noted here.
-
-Bellatrix fork-digest is introduced to the `context` enum to specify Bellatrix
-block type.
-
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+Request and Response remain unchanged. Bellatrix fork-digest is introduced to
+the `context` enum to specify Bellatrix block type.
 
 <!-- eth2spec: skip -->
 
@@ -148,8 +162,6 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 Request and Response remain unchanged. Bellatrix fork-digest is introduced to
 the `context` enum to specify Bellatrix block type.
-
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 

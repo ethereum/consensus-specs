@@ -28,9 +28,7 @@ This function return the Merkle proof of the given SSZ object `object` at
 generalized index `index`.
 
 ```python
-def compute_merkle_proof(object: SSZObject,
-                         index: GeneralizedIndex) -> Sequence[Bytes32]:
-    ...
+def compute_merkle_proof(object: SSZObject, index: GeneralizedIndex) -> Sequence[Bytes32]: ...
 ```
 
 ### `block_to_light_client_header`
@@ -61,8 +59,9 @@ To form a `LightClientBootstrap`, the following objects are needed:
 - `block`: the corresponding block
 
 ```python
-def create_light_client_bootstrap(state: BeaconState,
-                                  block: SignedBeaconBlock) -> LightClientBootstrap:
+def create_light_client_bootstrap(
+    state: BeaconState, block: SignedBeaconBlock
+) -> LightClientBootstrap:
     assert compute_epoch_at_slot(state.slot) >= ALTAIR_FORK_EPOCH
 
     assert state.slot == state.latest_block_header.slot
@@ -74,7 +73,8 @@ def create_light_client_bootstrap(state: BeaconState,
         header=block_to_light_client_header(block),
         current_sync_committee=state.current_sync_committee,
         current_sync_committee_branch=CurrentSyncCommitteeBranch(
-            compute_merkle_proof(state, current_sync_committee_gindex_at_slot(state.slot))),
+            compute_merkle_proof(state, current_sync_committee_gindex_at_slot(state.slot))
+        ),
     )
 ```
 
@@ -106,13 +106,18 @@ needed:
   unavailable, e.g., when using checkpoint sync, or if it was pruned locally)
 
 ```python
-def create_light_client_update(state: BeaconState,
-                               block: SignedBeaconBlock,
-                               attested_state: BeaconState,
-                               attested_block: SignedBeaconBlock,
-                               finalized_block: Optional[SignedBeaconBlock]) -> LightClientUpdate:
+def create_light_client_update(
+    state: BeaconState,
+    block: SignedBeaconBlock,
+    attested_state: BeaconState,
+    attested_block: SignedBeaconBlock,
+    finalized_block: Optional[SignedBeaconBlock],
+) -> LightClientUpdate:
     assert compute_epoch_at_slot(attested_state.slot) >= ALTAIR_FORK_EPOCH
-    assert sum(block.message.body.sync_aggregate.sync_committee_bits) >= MIN_SYNC_COMMITTEE_PARTICIPANTS
+    assert (
+        sum(block.message.body.sync_aggregate.sync_committee_bits)
+        >= MIN_SYNC_COMMITTEE_PARTICIPANTS
+    )
 
     assert state.slot == state.latest_block_header.slot
     header = state.latest_block_header.copy()
@@ -123,7 +128,11 @@ def create_light_client_update(state: BeaconState,
     assert attested_state.slot == attested_state.latest_block_header.slot
     attested_header = attested_state.latest_block_header.copy()
     attested_header.state_root = hash_tree_root(attested_state)
-    assert hash_tree_root(attested_header) == hash_tree_root(attested_block.message) == block.message.parent_root
+    assert (
+        hash_tree_root(attested_header)
+        == hash_tree_root(attested_block.message)
+        == block.message.parent_root
+    )
     update_attested_period = compute_sync_committee_period_at_slot(attested_block.message.slot)
 
     update = LightClientUpdate()
@@ -134,17 +143,24 @@ def create_light_client_update(state: BeaconState,
     if update_attested_period == update_signature_period:
         update.next_sync_committee = attested_state.next_sync_committee
         update.next_sync_committee_branch = NextSyncCommitteeBranch(
-            compute_merkle_proof(attested_state, next_sync_committee_gindex_at_slot(attested_state.slot)))
+            compute_merkle_proof(
+                attested_state, next_sync_committee_gindex_at_slot(attested_state.slot)
+            )
+        )
 
     # Indicate finality whenever possible
     if finalized_block is not None:
         if finalized_block.message.slot != GENESIS_SLOT:
             update.finalized_header = block_to_light_client_header(finalized_block)
-            assert hash_tree_root(update.finalized_header.beacon) == attested_state.finalized_checkpoint.root
+            assert (
+                hash_tree_root(update.finalized_header.beacon)
+                == attested_state.finalized_checkpoint.root
+            )
         else:
             assert attested_state.finalized_checkpoint.root == Bytes32()
         update.finality_branch = FinalityBranch(
-            compute_merkle_proof(attested_state, finalized_root_gindex_at_slot(attested_state.slot)))
+            compute_merkle_proof(attested_state, finalized_root_gindex_at_slot(attested_state.slot))
+        )
 
     update.sync_aggregate = block.message.body.sync_aggregate
     update.signature_slot = block.message.slot

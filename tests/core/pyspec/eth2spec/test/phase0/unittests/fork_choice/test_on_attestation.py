@@ -1,9 +1,8 @@
 from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
-from eth2spec.test.helpers.constants import ALL_PHASES
 from eth2spec.test.helpers.fork_choice import get_genesis_forkchoice_store
-from eth2spec.test.helpers.forks import is_post_eip7732, is_post_electra
+from eth2spec.test.helpers.forks import is_post_electra, is_post_gloas
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_slot,
@@ -25,12 +24,14 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
     spec.on_attestation(store, attestation)
 
     sample_index = indexed_attestation.attesting_indices[0]
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
+        assert attestation.data.index < 2
         latest_message = spec.LatestMessage(
             slot=attestation.data.slot,
             root=attestation.data.beacon_block_root,
+            payload_present=attestation.data.index == 1,
         )
-    elif spec.fork in ALL_PHASES:
+    else:
         latest_message = spec.LatestMessage(
             epoch=attestation.data.target.epoch,
             root=attestation.data.beacon_block_root,

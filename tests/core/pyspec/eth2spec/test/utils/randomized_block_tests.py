@@ -142,7 +142,9 @@ def last_slot_in_epoch(spec):
     return spec.SLOTS_PER_EPOCH - 1
 
 
-def random_slot_in_epoch(spec, rng=Random(1336)):
+def random_slot_in_epoch(spec, rng=None):
+    if rng is None:
+        rng = Random(1336)
     return rng.randrange(1, spec.SLOTS_PER_EPOCH - 2)
 
 
@@ -243,7 +245,9 @@ def random_block_altair_with_cycling_sync_committee_participation(
     return block
 
 
-def random_block_bellatrix(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
+def random_block_bellatrix(spec, state, signed_blocks, scenario_state, rng=None):
+    if rng is None:
+        rng = Random(3456)
     block = random_block_altair_with_cycling_sync_committee_participation(
         spec, state, signed_blocks, scenario_state
     )
@@ -254,7 +258,9 @@ def random_block_bellatrix(spec, state, signed_blocks, scenario_state, rng=Rando
     return block
 
 
-def random_block_capella(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
+def random_block_capella(spec, state, signed_blocks, scenario_state, rng=None):
+    if rng is None:
+        rng = Random(3456)
     block = random_block_bellatrix(spec, state, signed_blocks, scenario_state, rng=rng)
     block.body.bls_to_execution_changes = get_random_bls_to_execution_changes(
         spec, state, num_address_changes=rng.randint(1, spec.MAX_BLS_TO_EXECUTION_CHANGES)
@@ -262,7 +268,9 @@ def random_block_capella(spec, state, signed_blocks, scenario_state, rng=Random(
     return block
 
 
-def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
+def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=None):
+    if rng is None:
+        rng = Random(3456)
     block = random_block_capella(spec, state, signed_blocks, scenario_state, rng=rng)
     # TODO: more commitments. blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
     # TODO: add MAX_BLOBS_PER_BLOCK_FULU at fulu
@@ -276,7 +284,9 @@ def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=Random(34
     return block
 
 
-def random_block_electra(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
+def random_block_electra(spec, state, signed_blocks, scenario_state, rng=None):
+    if rng is None:
+        rng = Random(3456)
     block = random_block_deneb(spec, state, signed_blocks, scenario_state, rng=rng)
     block.body.execution_requests = get_random_execution_requests(spec, state, rng=rng)
     block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
@@ -284,7 +294,9 @@ def random_block_electra(spec, state, signed_blocks, scenario_state, rng=Random(
     return block
 
 
-def random_block_fulu(spec, state, signed_blocks, scenario_state, rng=Random(3456)):
+def random_block_fulu(spec, state, signed_blocks, scenario_state, rng=None):
+    if rng is None:
+        rng = Random(3456)
     block = random_block_electra(spec, state, signed_blocks, scenario_state, rng=rng)
 
     return block

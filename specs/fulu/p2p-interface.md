@@ -6,6 +6,8 @@
 
 - [Introduction](#introduction)
 - [Modifications in Fulu](#modifications-in-fulu)
+  - [Helper functions](#helper-functions)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
@@ -26,6 +28,7 @@
         - [Distributed Blob Publishing using blobs retrieved from local execution layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
+      - [Status v2](#status-v2)
       - [BlobSidecarsByRange v1](#blobsidecarsbyrange-v1)
       - [BlobSidecarsByRoot v1](#blobsidecarsbyroot-v1)
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
@@ -33,7 +36,11 @@
       - [GetMetaData v3](#getmetadata-v3)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
+      - [`eth2` field](#eth2-field)
       - [Custody group count](#custody-group-count)
+      - [Next fork digest](#next-fork-digest)
+- [Peer Scoring](#peer-scoring)
+- [Supernodes](#supernodes)
 
 <!-- mdformat-toc end -->
 
@@ -45,6 +52,30 @@ The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Fulu
+
+### Helper functions
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ### Preset
 
@@ -90,7 +121,9 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
         return False
 
     # The column length must be equal to the number of commitments/proofs
-    if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(sidecar.kzg_proofs):
+    if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(
+        sidecar.kzg_proofs
+    ):
         return False
 
     return True
@@ -122,12 +155,11 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
     """
     Verify if the given KZG commitments included in the given beacon block.
     """
-    gindex = get_subtree_index(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments'))
     return is_valid_merkle_branch(
         leaf=hash_tree_root(sidecar.kzg_commitments),
         branch=sidecar.kzg_commitments_inclusion_proof,
         depth=KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH,
-        index=gindex,
+        index=get_subtree_index(get_generalized_index(BeaconBlockBody, "blob_kzg_commitments")),
         root=sidecar.signed_block_header.message.body_root,
     )
 ```
@@ -142,7 +174,7 @@ def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetI
 ### MetaData
 
 The `MetaData` stored locally by clients is updated with an additional field to
-communicate the custody subnet count.
+communicate the custody group count.
 
 ```
 (
@@ -174,7 +206,7 @@ Some gossip meshes are upgraded in the Fulu fork to support upgraded types.
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in Consensus Layer -- i.e. validate that
-  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_max_blobs_per_block(get_current_epoch(state))`
+  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
 
 ##### Blob subnets
 
@@ -264,6 +296,29 @@ gossip. In particular, clients MUST:
 
 #### Messages
 
+##### Status v2
+
+**Protocol ID:** `/eth2/beacon_chain/req/status/2/`
+
+Request, Response Content:
+
+```
+(
+  fork_digest: ForkDigest
+  finalized_root: Root
+  finalized_epoch: Epoch
+  head_root: Root
+  head_slot: Slot
+  # [New in Fulu:EIP7594]
+  earliest_available_slot: Slot
+)
+```
+
+As seen by the client at the time of sending the message:
+
+- `earliest_available_slot`: The slot of earliest available block
+  (`SignedBeaconBlock`).
+
 ##### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
@@ -300,15 +355,6 @@ During the deprecation transition period:
 ##### DataColumnSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_range/1/`
-
-The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`:
-
-<!-- eth2spec: skip -->
-
-| `fork_version`      | Chunk SSZ type           |
-| ------------------- | ------------------------ |
-| `FULU_FORK_VERSION` | `fulu.DataColumnSidecar` |
 
 Request Content:
 
@@ -400,20 +446,23 @@ After the initial data column sidecar, clients MAY stop in the process of
 responding if their fork choice changes the view of the chain in the context of
 the request.
 
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by
+`compute_epoch_at_slot(data_column_sidecar.signed_block_header.message.slot)`.
+
+Per `fork_version = compute_fork_version(epoch)`:
+
+<!-- eth2spec: skip -->
+
+| `epoch`                     | Chunk SSZ type           |
+| --------------------------- | ------------------------ |
+| `FULU_FORK_EPOCH` and later | `fulu.DataColumnSidecar` |
+
 ##### DataColumnSidecarsByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_root/1/`
 
 *[New in Fulu:EIP7594]*
-
-The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`:
-
-<!-- eth2spec: skip -->
-
-| `fork_version`      | Chunk SSZ type           |
-| ------------------- | ------------------------ |
-| `FULU_FORK_VERSION` | `fulu.DataColumnSidecar` |
 
 Request Content:
 
@@ -449,7 +498,7 @@ The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `DataColumnSidecar` payload.
 
 Clients MUST support requesting sidecars since `minimum_request_epoch`, where
-`minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS, FULU_FORK_EPOCH)`.
+`minimum_request_epoch = max(current_epoch - MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS, FULU_FORK_EPOCH)`.
 If any root in the request content references a block earlier than
 `minimum_request_epoch`, peers MAY respond with error code
 `3: ResourceUnavailable` or not include the data column sidecar in the response.
@@ -461,6 +510,18 @@ Clients SHOULD include a sidecar in the response as soon as it passes the gossip
 validation rules. Clients SHOULD NOT respond with sidecars related to blocks
 that fail gossip validation rules. Clients SHOULD NOT respond with sidecars
 related to blocks that fail the beacon chain state transition
+
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by
+`compute_epoch_at_slot(data_column_sidecar.signed_block_header.message.slot)`.
+
+Per `fork_version = compute_fork_version(epoch)`:
+
+<!-- eth2spec: skip -->
+
+| `epoch`                     | Chunk SSZ type           |
+| --------------------------- | ------------------------ |
+| `FULU_FORK_EPOCH` and later | `fulu.DataColumnSidecar` |
 
 ##### GetMetaData v3
 
@@ -484,11 +545,107 @@ are unchanged from the Altair p2p networking document.
 
 #### ENR structure
 
+##### `eth2` field
+
+*[Modified in Fulu:EIP7892]*
+
+*Note*: The structure of `ENRForkID` has not changed but the field value
+computations have changed. Unless explicitly mentioned here, all specifications
+from [phase0/p2p-interface.md#eth2-field](../phase0/p2p-interface.md#eth2-field)
+carry over.
+
+ENRs MUST carry a generic `eth2` key with an 16-byte value of the node's current
+fork digest, next fork version, and next fork epoch to ensure connections are
+made with peers on the intended Ethereum network.
+
+| Key    | Value           |
+| :----- | :-------------- |
+| `eth2` | SSZ `ENRForkID` |
+
+Specifically, the value of the `eth2` key MUST be the following SSZ encoded
+object (`ENRForkID`):
+
+```
+(
+  fork_digest: ForkDigest
+  next_fork_version: Version
+  next_fork_epoch: Epoch
+)
+```
+
+The fields of `ENRForkID` are defined as:
+
+- `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)` where:
+  - `genesis_validators_root` is the static `Root` found in
+    `state.genesis_validators_root`.
+  - `epoch` is the node's current epoch defined by the wall-clock time (not
+    necessarily the epoch to which the node is sync).
+- `next_fork_version` is the fork version corresponding to the next planned fork
+  at a future epoch. The fork version will only change for regular forks, _not
+  BPO forks_. Note that it is possible for the blob schedule to define a change
+  at the same epoch as a regular fork; this situation would be considered a
+  regular fork. If no future fork is planned, set
+  `next_fork_version = current_fork_version` to signal this fact.
+- `next_fork_epoch` is the epoch at which the next fork (whether a regular fork
+  _or a BPO fork_) is planned. If no future fork is planned, set
+  `next_fork_epoch = FAR_FUTURE_EPOCH` to signal this fact.
+
 ##### Custody group count
 
 A new field is added to the ENR under the key `cgc` to facilitate custody data
-column discovery.
+column discovery. This new field MUST be added once `FULU_FORK_EPOCH` is
+assigned any value other than `FAR_FUTURE_EPOCH`.
 
 | Key   | Value                                                                                                             |
 | ----- | ----------------------------------------------------------------------------------------------------------------- |
 | `cgc` | Custody group count, `uint64` big endian integer with no leading zero bytes (`0` is encoded as empty byte string) |
+
+##### Next fork digest
+
+A new entry is added to the ENR under the key `nfd`, short for _next fork
+digest_. This entry communicates the digest of the next scheduled fork,
+regardless of whether it is a regular or a Blob-Parameters-Only fork. This new
+entry MUST be added once `FULU_FORK_EPOCH` is assigned any value other than
+`FAR_FUTURE_EPOCH`. Adding this entry prior to the Fulu fork will not impact
+peering as nodes will ignore unknown ENR entries and `nfd` mismatches do not
+cause disconnects.
+
+If no next fork is scheduled, the `nfd` entry contains the default value for the
+type (i.e., the SSZ representation of a zero-filled array).
+
+| Key   | Value                   |
+| :---- | :---------------------- |
+| `nfd` | SSZ Bytes4 `ForkDigest` |
+
+When discovering and interfacing with peers, nodes MUST evaluate `nfd` alongside
+their existing consideration of the `ENRForkID::next_*` fields under the `eth2`
+key, to form a more accurate view of the peer's intended next fork for the
+purposes of sustained peering. If there is a mismatch, the node MUST NOT
+disconnect before the fork boundary, but it MAY disconnect at/after the fork
+boundary.
+
+Nodes unprepared to follow the Fulu fork will be unaware of `nfd` entries.
+However, their existing comparison of `eth2` entries (concretely
+`next_fork_epoch`) is sufficient to detect upcoming divergence.
+
+## Peer Scoring
+
+Due to the deterministic custody functions, a node knows exactly what a peer
+should be able to respond to. In the event that a peer does not respond to
+samples of their custodied rows/columns, a node may downscore or disconnect from
+a peer.
+
+## Supernodes
+
+A supernode is a node which subscribes to all data column sidecar subnets,
+custodies all data column sidecars, and performs
+[reconstruction and cross-seeding](./das-core.md#reconstruction-and-cross-seeding).
+Being a supernode requires considerably higher bandwidth, storage, and
+computation resources. In order to reconstruct missing data, there must be at
+least one supernode on the network. Due to
+[validator custody requirements](./validator.md#validator-custody), a node which
+is connected to validator(s) with a combined balance greater than or equal to
+4096 ETH must be a supernode. Moreover, any node with the necessary resources
+may altruistically be a supernode. Therefore, there are expected to be many
+(hundreds) of supernodes on mainnet and it is likely (though not necessary) for
+a node to be connected to several of these by chance.

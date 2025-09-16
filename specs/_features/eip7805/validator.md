@@ -6,19 +6,26 @@
 - [Prerequisites](#prerequisites)
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
-- [Protocol](#protocol)
+- [Helpers](#helpers)
+  - [New `GetInclusionListResponse`](#new-getinclusionlistresponse)
+- [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
-- [New inclusion list committee assignment](#new-inclusion-list-committee-assignment)
-  - [Lookahead](#lookahead)
-- [New proposer duty](#new-proposer-duty)
-  - [Block proposal](#block-proposal)
-    - [Update execution client with inclusion lists](#update-execution-client-with-inclusion-lists)
-- [New inclusion list committee duty](#new-inclusion-list-committee-duty)
-  - [Constructing a signed inclusion list](#constructing-a-signed-inclusion-list)
-- [Modified attester duty](#modified-attester-duty)
-  - [Modified LMD GHOST vote](#modified-lmd-ghost-vote)
-- [Modified sync committee duty](#modified-sync-committee-duty)
-  - [Modified beacon block root](#modified-beacon-block-root)
+    - [New `get_inclusion_list`](#new-get_inclusion_list)
+- [Beacon chain responsibilities](#beacon-chain-responsibilities)
+  - [Validator assignments](#validator-assignments)
+    - [Inclusion list committee](#inclusion-list-committee)
+    - [Lookahead](#lookahead)
+  - [Block and sidecar proposal](#block-and-sidecar-proposal)
+    - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [ExecutionPayload](#executionpayload)
+  - [Inclusion list proposal](#inclusion-list-proposal)
+    - [Constructing the `SignedInclusionList`](#constructing-the-signedinclusionlist)
+  - [Attesting](#attesting)
+    - [Attestation data](#attestation-data)
+      - [Modified LMD GHOST vote](#modified-lmd-ghost-vote)
+  - [Sync committee](#sync-committee)
+    - [`get_sync_committee_message`](#get_sync_committee_message)
+      - [Modified `beacon_block_root`](#modified-beacon_block_root)
 
 <!-- mdformat-toc end -->
 
@@ -30,8 +37,8 @@ validator" to implement EIP-7805.
 ## Prerequisites
 
 This document is an extension of the
-[Electra -- Honest Validator](../../electra/validator.md) guide. All behaviors
-and definitions defined in this document, and documents it extends, carry over
+[Fulu -- Honest Validator](../../fulu/validator.md) guide. All behaviors and
+definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the
@@ -43,24 +50,56 @@ continuing and use them as a reference throughout.
 
 ### Time parameters
 
-| Name                              | Value                  |  Unit   |  Duration  |
-| --------------------------------- | ---------------------- | :-----: | :--------: |
-| `PROPOSER_INCLUSION_LIST_CUT_OFF` | `SECONDS_PER_SLOT - 1` | seconds | 11 seconds |
+| Name                                 | Value          |     Unit     |          Duration          |
+| ------------------------------------ | -------------- | :----------: | :------------------------: |
+| `INCLUSION_LIST_SUBMISSION_DUE_BPS`  | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
+| `PROPOSER_INCLUSION_LIST_CUTOFF_BPS` | `uint64(9167)` | basis points | ~92% of `SLOT_DURATION_MS` |
 
-## Protocol
+## Helpers
+
+### New `GetInclusionListResponse`
+
+```python
+@dataclass
+class GetInclusionListResponse(object):
+    inclusion_list_transactions: Sequence[Transaction]
+```
+
+## Protocols
 
 ### `ExecutionEngine`
 
-*Note*: `engine_getInclusionListV1` and `engine_updateBlockWithInclusionListV1`
-functions are added to the `ExecutionEngine` protocol for use as a validator.
+*Note*: `get_inclusion_list` function is added to the `ExecutionEngine` protocol
+for use as an inclusion list committee member.
 
-The body of these function is implementation dependent. The Engine API may be
+The body of this function is implementation dependent. The Engine API may be
 used to implement it with an external execution engine.
 
-## New inclusion list committee assignment
+#### New `get_inclusion_list`
 
-A validator may be a member of the new Inclusion List Committee (ILC) for a
-given slot. To check for ILC assignments the validator uses the helper
+`get_inclusion_list` returns `GetInclusionListResponse` with the most recent
+inclusion list transactions that has been built based on the latest view of the
+public mempool.
+
+```python
+def get_inclusion_list(self: ExecutionEngine) -> GetInclusionListResponse:
+    """
+    Return ``GetInclusionListResponse`` object.
+    """
+    ...
+```
+
+## Beacon chain responsibilities
+
+All validator responsibilities remain unchanged other than those noted below.
+
+### Validator assignments
+
+#### Inclusion list committee
+
+A validator may be a member of the new inclusion list committee for a given
+slot. To determine inclusion list committee assignments, the validator can run
+the following function:
 `get_inclusion_committee_assignment(state, epoch, validator_index)` where
 `epoch <= next_epoch`.
 
@@ -69,12 +108,11 @@ current and next epoch.
 
 ```python
 def get_inclusion_committee_assignment(
-        state: BeaconState,
-        epoch: Epoch,
-        validator_index: ValidatorIndex) -> Optional[Slot]:
+    state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
+) -> Optional[Slot]:
     """
     Returns the slot during the requested epoch in which the validator with index ``validator_index``
-    is a member of the ILC. Returns None if no assignment is found.
+    is a member of the inclusion list committee. Returns None if no assignment is found.
     """
     next_epoch = Epoch(get_current_epoch(state) + 1)
     assert epoch <= next_epoch
@@ -86,39 +124,89 @@ def get_inclusion_committee_assignment(
     return None
 ```
 
-### Lookahead
+#### Lookahead
 
 `get_inclusion_committee_assignment` should be called at the start of each epoch
 to get the assignment for the next epoch (`current_epoch + 1`). A validator
-should plan for future assignments by noting their assigned ILC slot.
+should plan for future assignments by noting their assigned inclusion list
+committee slot.
 
-## New proposer duty
+### Block and sidecar proposal
 
-### Block proposal
+#### Constructing the `BeaconBlockBody`
 
-Proposers are still expected to propose `SignedBeaconBlock` at the beginning of
-any slot during which `is_proposer(state, validator_index)` returns true. The
-mechanism to prepare this beacon block and related sidecars differs from
-previous forks as follows:
+##### ExecutionPayload
 
-#### Update execution client with inclusion lists
+*Note*: In this section, `state` is the state of the slot for the block proposal
+_without_ the block yet applied. That is, `state` is the `previous_state`
+processed through any empty slots up to the assigned slot using
+`process_slots(previous_state, slot)`.
 
-The proposer should call `engine_updateInclusionListV1` at
-`PROPOSER_INCLUSION_LIST_CUT_OFF` into the slot with the list of the inclusion
-lists that gathered up to `PROPOSER_INCLUSION_LIST_CUT_OFF`.
+*Note*: The only change to `prepare_execution_payload` is to call
+`get_inclusion_list_store` and `get_inclusion_list_transactions` to set the new
+`inclusion_list_transactions` field of `PayloadAttributes`.
 
-## New inclusion list committee duty
+*Note*: A proposer should produce an execution payload that satisfies the
+inclusion list constraints with respect to the inclusion lists gathered up to
+`get_slot_component_duration_ms(PROPOSER_INCLUSION_LIST_CUTOFF_BPS)`
+milliseconds into the slot.
 
-Some validators are selected to submit signed inclusion list. Validators should
-call `get_inclusion_committee_assignment` at the beginning of an epoch to be
-prepared to submit their inclusion list during the next epoch.
+```python
+def prepare_execution_payload(
+    state: BeaconState,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    suggested_fee_recipient: ExecutionAddress,
+    execution_engine: ExecutionEngine,
+) -> Optional[PayloadId]:
+    # Verify consistency of the parent hash with respect to the previous execution payload header
+    parent_hash = state.latest_execution_payload_header.block_hash
 
-A validator should create and broadcast the `signed_inclusion_list` to the
-global `inclusion_list` subnet by `PROPOSER_INCLUSION_LIST_CUT_OFF` seconds into
-the slot, unless a block for the current slot has been processed and is the head
-of the chain and broadcast to the network.
+    # Set the forkchoice head and initiate the payload build process
+    withdrawals, _ = get_expected_withdrawals(state)
 
-#### Constructing a signed inclusion list
+    # [New in EIP7805]
+    # Get the inclusion list store
+    inclusion_list_store = get_inclusion_list_store()
+
+    payload_attributes = PayloadAttributes(
+        timestamp=compute_time_at_slot(state, state.slot),
+        prev_randao=get_randao_mix(state, get_current_epoch(state)),
+        suggested_fee_recipient=suggested_fee_recipient,
+        withdrawals=withdrawals,
+        parent_beacon_block_root=hash_tree_root(state.latest_block_header),
+        # [New in EIP7805]
+        inclusion_list_transactions=get_inclusion_list_transactions(
+            inclusion_list_store, state, Slot(state.slot - 1)
+        ),
+    )
+    return execution_engine.notify_forkchoice_updated(
+        head_block_hash=parent_hash,
+        safe_block_hash=safe_block_hash,
+        finalized_block_hash=finalized_block_hash,
+        payload_attributes=payload_attributes,
+    )
+```
+
+### Inclusion list proposal
+
+A validator is expected to propose a
+[`SignedInclusionList`](./beacon-chain.md#signedinclusionlist) at the beginning
+of any `slot` for which
+`get_inclusion_committee_assignment(state, epoch, validator_index)` returns.
+
+If a validator is in the current inclusion list committee, the validator should
+create and broadcast the `signed_inclusion_list` to the global `inclusion_list`
+subnet by `get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS)`
+milliseconds into the slot after processing the block for the current slot and
+confirming it as the head. If no block is received by
+`get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS) - 1000`
+milliseconds into the slot, the validator should run `get_head` to determine the
+local head and construct and broadcast the inclusion list based on this local
+head by `get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS)`
+milliseconds into the slot.
+
+#### Constructing the `SignedInclusionList`
 
 The validator creates the `signed_inclusion_list` as follows:
 
@@ -128,8 +216,8 @@ The validator creates the `signed_inclusion_list` as follows:
 - Set `inclusion_list.validator_index` to the validator's index.
 - Set `inclusion_list.inclusion_list_committee_root` to the hash tree root of
   the committee that the validator is a member of.
-- Set `inclusion_list.transactions` using the response from
-  `engine_getInclusionListV1` from the execution layer client.
+- Set `inclusion_list.transactions` using the response from `ExecutionEngine`
+  via `get_inclusion_list`.
 - Sign the `inclusion_list` using the helper `get_inclusion_list_signature` and
   obtain the `signature`.
 - Set `signed_inclusion_list.message` to `inclusion_list`.
@@ -137,37 +225,37 @@ The validator creates the `signed_inclusion_list` as follows:
 
 ```python
 def get_inclusion_list_signature(
-        state: BeaconState, inclusion_list: InclusionList, privkey: int) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_INCLUSION_LIST_COMMITTEE, compute_epoch_at_slot(inclusion_list.slot))
+    state: BeaconState, inclusion_list: InclusionList, privkey: int
+) -> BLSSignature:
+    domain = get_domain(
+        state, DOMAIN_INCLUSION_LIST_COMMITTEE, compute_epoch_at_slot(inclusion_list.slot)
+    )
     signing_root = compute_signing_root(inclusion_list, domain)
     return bls.Sign(privkey, signing_root)
 ```
 
-## Modified attester duty
+### Attesting
 
-#### Modified LMD GHOST vote
+#### Attestation data
+
+*Note*: The only change to `attestation_data` is to call
+`get_attester_head(store, head_root)` to set the `beacon_block_root` field of
+`attestation_data`.
+
+##### Modified LMD GHOST vote
 
 Set `attestation_data.beacon_block_root = get_attester_head(store, head_root)`.
 
-## Modified sync committee duty
+### Sync committee
 
-#### Modified beacon block root
+*Note*: The only change to `get_sync_committee_message` is to call
+`get_attester_head(store, head_root)` to set the `beacon_block_root` parameter
+of `get_sync_committee_message`.
 
-```python
-def get_sync_committee_message(state: BeaconState,
-                               block_root: Root,
-                               validator_index: ValidatorIndex,
-                               privkey: int,
-                               store: Store) -> SyncCommitteeMessage:
-    epoch = get_current_epoch(state)
-    domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, epoch)
-    signing_root = compute_signing_root(block_root, domain)
-    signature = bls.Sign(privkey, signing_root)
+#### `get_sync_committee_message`
 
-    return SyncCommitteeMessage(
-        slot=state.slot,
-        beacon_block_root=get_attester_head(store, block_root),
-        validator_index=validator_index,
-        signature=signature,
-    )
-```
+##### Modified `beacon_block_root`
+
+The `beacon_block_root` parameter MUST be set to return value of
+[`get_attester_head(store: Store, head_root: Root)`](./fork-choice.md#new-get_attester_head)
+function.

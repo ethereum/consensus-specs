@@ -34,8 +34,8 @@ from eth2spec.test.helpers.execution_payload import (
 from eth2spec.test.helpers.forks import (
     get_next_fork_transition,
     is_post_bellatrix,
-    is_post_eip7732,
     is_post_electra,
+    is_post_gloas,
 )
 from eth2spec.test.helpers.proposer_slashings import (
     get_valid_proposer_slashing,
@@ -64,7 +64,7 @@ class OperationType(Enum):
     CONSOLIDATION_REQUEST = auto()
 
 
-# TODO(jtraglia): Pretty sure this doesn't play well with eip7732. Needs some work.
+# TODO(jtraglia): Pretty sure this doesn't play well with Gloas. Needs some work.
 def _set_operations_by_dict(spec, block, operation_dict, state):
     for key, value in operation_dict.items():
         # to handle e.g. `execution_requests.deposits` and `deposits`
@@ -72,9 +72,9 @@ def _set_operations_by_dict(spec, block, operation_dict, state):
         for attr in key.split(".")[:-1]:
             obj = getattr(obj, attr)
         setattr(obj, key.split(".")[-1], value)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     elif is_post_bellatrix(spec):
@@ -200,6 +200,43 @@ def do_fork(
     assert spec.get_current_epoch(state) == fork_epoch
 
     state = get_upgrade_fn(post_spec, post_spec.fork)(state)
+
+    assert state.fork.epoch == fork_epoch
+
+    previous_fork = PREVIOUS_FORK_OF[post_spec.fork]
+    if previous_fork == PHASE0:
+        previous_version = spec.config.GENESIS_FORK_VERSION
+    else:
+        previous_version = getattr(post_spec.config, f"{previous_fork.upper()}_FORK_VERSION")
+    current_version = getattr(post_spec.config, f"{post_spec.fork.upper()}_FORK_VERSION")
+
+    assert state.fork.previous_version == previous_version
+    assert state.fork.current_version == current_version
+
+    if with_block:
+        return state, _state_transition_and_sign_block_at_slot(
+            post_spec,
+            state,
+            sync_aggregate=sync_aggregate,
+            operation_dict=operation_dict,
+        )
+    else:
+        return state, None
+
+
+def do_fork_generate(
+    state, spec, post_spec, fork_epoch, with_block=True, sync_aggregate=None, operation_dict=None
+):
+    spec.process_slots(state, state.slot + 1)
+
+    assert state.slot % spec.SLOTS_PER_EPOCH == 0
+    assert spec.get_current_epoch(state) == fork_epoch
+
+    yield "pre", state
+
+    state = get_upgrade_fn(post_spec, post_spec.fork)(state)
+
+    yield "post", state
 
     assert state.fork.epoch == fork_epoch
 

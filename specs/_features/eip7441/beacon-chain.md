@@ -103,9 +103,11 @@ all related data structures and verifier code (along with tests) is specified in
 repository.
 
 ```python
-def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
-                             post_shuffle_trackers: Sequence[WhiskTracker],
-                             shuffle_proof: WhiskShuffleProof) -> bool:
+def IsValidWhiskShuffleProof(
+    pre_shuffle_trackers: Sequence[WhiskTracker],
+    post_shuffle_trackers: Sequence[WhiskTracker],
+    shuffle_proof: WhiskShuffleProof,
+) -> bool:
     """
     Verify `post_shuffle_trackers` is a permutation of `pre_shuffle_trackers`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/dev/curdleproofs/curdleproofs/whisk_interface.py.
@@ -119,9 +121,9 @@ def IsValidWhiskShuffleProof(pre_shuffle_trackers: Sequence[WhiskTracker],
 ```
 
 ```python
-def IsValidWhiskOpeningProof(tracker: WhiskTracker,
-                             k_commitment: BLSG1Point,
-                             tracker_proof: WhiskTrackerProof) -> bool:
+def IsValidWhiskOpeningProof(
+    tracker: WhiskTracker, k_commitment: BLSG1Point, tracker_proof: WhiskTrackerProof
+) -> bool:
     """
     Verify knowledge of `k` such that `tracker.k_r_G == k * tracker.r_G` and `k_commitment == k * BLS_G1_GENERATOR`.
     Defined in https://github.com/nalinbhardwaj/curdleproofs.pie/blob/dev/curdleproofs/curdleproofs/whisk_interface.py.
@@ -135,72 +137,62 @@ def IsValidWhiskOpeningProof(tracker: WhiskTracker,
 
 ```python
 class WhiskTracker(Container):
-    r_G: BLSG1Point  # r * G
-    k_r_G: BLSG1Point  # k * r * G
+    r_G: BLSG1Point
+    k_r_G: BLSG1Point
 ```
 
 ### `BeaconState`
 
 ```python
 class BeaconState(Container):
-    # Versioning
     genesis_time: uint64
     genesis_validators_root: Root
     slot: Slot
     fork: Fork
-    # History
     latest_block_header: BeaconBlockHeader
     block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
     state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]  # Frozen in Capella, replaced by historical_summaries
-    # Eth1
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
     eth1_deposit_index: uint64
-    # Registry
     validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
     balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    # Randomness
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    # Slashings
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]  # Per-epoch sums of slashed effective balances
-    # Participation
+    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
     previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
     current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    # Finality
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]  # Bit set for every recent justified epoch
+    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    # Inactivity
     inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
-    # Sync
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
-    # Execution
     latest_execution_payload_header: ExecutionPayloadHeader
-    # Withdrawals
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
-    # Deep history valid from Capella onwards
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
-    # Whisk
-    whisk_candidate_trackers: Vector[WhiskTracker, CANDIDATE_TRACKERS_COUNT]  # [New in EIP7441]
-    whisk_proposer_trackers: Vector[WhiskTracker, PROPOSER_TRACKERS_COUNT]  # [New in EIP7441]
-    whisk_trackers: List[WhiskTracker, VALIDATOR_REGISTRY_LIMIT]  # [New in EIP7441]
-    whisk_k_commitments: List[BLSG1Point, VALIDATOR_REGISTRY_LIMIT]  # [New in EIP7441]
+    # [New in EIP7441]
+    whisk_candidate_trackers: Vector[WhiskTracker, CANDIDATE_TRACKERS_COUNT]
+    # [New in EIP7441]
+    whisk_proposer_trackers: Vector[WhiskTracker, PROPOSER_TRACKERS_COUNT]
+    # [New in EIP7441]
+    whisk_trackers: List[WhiskTracker, VALIDATOR_REGISTRY_LIMIT]
+    # [New in EIP7441]
+    whisk_k_commitments: List[BLSG1Point, VALIDATOR_REGISTRY_LIMIT]
 ```
 
 ```python
 def select_whisk_proposer_trackers(state: BeaconState, epoch: Epoch) -> None:
     # Select proposer trackers from candidate trackers
     proposer_seed = get_seed(
-        state,
-        Epoch(saturating_sub(epoch, PROPOSER_SELECTION_GAP)),
-        DOMAIN_PROPOSER_SELECTION
+        state, Epoch(saturating_sub(epoch, PROPOSER_SELECTION_GAP)), DOMAIN_PROPOSER_SELECTION
     )
     for i in range(PROPOSER_TRACKERS_COUNT):
-        index = compute_shuffled_index(uint64(i), uint64(len(state.whisk_candidate_trackers)), proposer_seed)
+        index = compute_shuffled_index(
+            uint64(i), uint64(len(state.whisk_candidate_trackers)), proposer_seed
+        )
         state.whisk_proposer_trackers[i] = state.whisk_candidate_trackers[index]
 ```
 
@@ -210,14 +202,18 @@ def select_whisk_candidate_trackers(state: BeaconState, epoch: Epoch) -> None:
     active_validator_indices = get_active_validator_indices(state, epoch)
     for i in range(CANDIDATE_TRACKERS_COUNT):
         seed = hash(get_seed(state, epoch, DOMAIN_CANDIDATE_SELECTION) + uint_to_bytes(uint64(i)))
-        candidate_index = compute_proposer_index(state, active_validator_indices, seed)  # sample by effective balance
+        candidate_index = compute_proposer_index(
+            state, active_validator_indices, seed
+        )  # sample by effective balance
         state.whisk_candidate_trackers[i] = state.whisk_trackers[candidate_index]
 ```
 
 ```python
 def process_whisk_updates(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
-    if next_epoch % EPOCHS_PER_SHUFFLING_PHASE == 0:  # select trackers at the start of shuffling phases
+    if (
+        next_epoch % EPOCHS_PER_SHUFFLING_PHASE == 0
+    ):  # select trackers at the start of shuffling phases
         select_whisk_proposer_trackers(state, next_epoch)
         select_whisk_candidate_trackers(state, next_epoch)
 ```
@@ -236,7 +232,8 @@ def process_epoch(state: BeaconState) -> None:
     process_historical_summaries_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
-    process_whisk_updates(state)  # [New in EIP7441]
+    # [New in EIP7441]
+    process_whisk_updates(state)
 ```
 
 ## Block processing
@@ -277,7 +274,8 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
     # Verify proposer is not slashed
     proposer = state.validators[block.proposer_index]
     assert not proposer.slashed
-    process_whisk_opening_proof(state, block)   # [New in EIP7441]
+    # [New in EIP7441]
+    process_whisk_opening_proof(state, block)
 ```
 
 ### Whisk
@@ -287,25 +285,28 @@ def process_block_header(state: BeaconState, block: BeaconBlock) -> None:
 ```python
 class BeaconBlockBody(Container):
     randao_reveal: BLSSignature
-    eth1_data: Eth1Data  # Eth1 data vote
-    graffiti: Bytes32  # Arbitrary data
-    # Operations
+    eth1_data: Eth1Data
+    graffiti: Bytes32
     proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
     attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS]
     attestations: List[Attestation, MAX_ATTESTATIONS]
     deposits: List[Deposit, MAX_DEPOSITS]
     voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
     sync_aggregate: SyncAggregate
-    # Execution
     execution_payload: ExecutionPayload
     bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
-    # Whisk
-    whisk_opening_proof: WhiskTrackerProof  # [New in EIP7441]
-    whisk_post_shuffle_trackers: Vector[WhiskTracker, VALIDATORS_PER_SHUFFLE]  # [New in EIP7441]
-    whisk_shuffle_proof: WhiskShuffleProof  # [New in EIP7441]
-    whisk_registration_proof: WhiskTrackerProof  # [New in EIP7441]
-    whisk_tracker: WhiskTracker  # [New in EIP7441]
-    whisk_k_commitment: BLSG1Point  # k * BLS_G1_GENERATOR [New in EIP7441]
+    # [New in EIP7441]
+    whisk_opening_proof: WhiskTrackerProof
+    # [New in EIP7441]
+    whisk_post_shuffle_trackers: Vector[WhiskTracker, VALIDATORS_PER_SHUFFLE]
+    # [New in EIP7441]
+    whisk_shuffle_proof: WhiskShuffleProof
+    # [New in EIP7441]
+    whisk_registration_proof: WhiskTrackerProof
+    # [New in EIP7441]
+    whisk_tracker: WhiskTracker
+    # [New in EIP7441]
+    whisk_k_commitment: BLSG1Point
 ```
 
 ```python
@@ -346,7 +347,9 @@ def process_shuffled_trackers(state: BeaconState, body: BeaconBlockBody) -> None
 
 ```python
 def is_k_commitment_unique(state: BeaconState, k_commitment: BLSG1Point) -> bool:
-    return all([whisk_k_commitment != k_commitment for whisk_k_commitment in state.whisk_k_commitments])
+    return all(
+        [whisk_k_commitment != k_commitment for whisk_k_commitment in state.whisk_k_commitments]
+    )
 ```
 
 ```python
@@ -377,8 +380,10 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_eth1_data(state, block.body)
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
-    process_shuffled_trackers(state, block.body)  # [New in EIP7441]
-    process_whisk_registration(state, block.body)  # [New in EIP7441]
+    # [New in EIP7441]
+    process_shuffled_trackers(state, block.body)
+    # [New in EIP7441]
+    process_whisk_registration(state, block.body)
 ```
 
 ### Deposits
@@ -386,7 +391,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ```python
 def get_initial_whisk_k(validator_index: ValidatorIndex, counter: int) -> BLSFieldElement:
     # hash `validator_index || counter`
-    return BLSFieldElement(bytes_to_bls_field(hash(uint_to_bytes(validator_index) + uint_to_bytes(uint64(counter)))))
+    return BLSFieldElement(
+        bytes_to_bls_field(hash(uint_to_bytes(validator_index) + uint_to_bytes(uint64(counter))))
+    )
 ```
 
 ```python
@@ -410,10 +417,9 @@ def get_initial_tracker(k: BLSFieldElement) -> WhiskTracker:
 ```
 
 ```python
-def add_validator_to_registry(state: BeaconState,
-                              pubkey: BLSPubkey,
-                              withdrawal_credentials: Bytes32,
-                              amount: uint64) -> None:
+def add_validator_to_registry(
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
+) -> None:
     index = get_index_for_new_validator(state)
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
     set_or_append_list(state.validators, index, validator)
@@ -434,6 +440,8 @@ def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:
     """
     Return the beacon proposer index at the current slot.
     """
-    assert state.latest_block_header.slot == state.slot  # sanity check `process_block_header` has been called
+    assert (
+        state.latest_block_header.slot == state.slot
+    )  # sanity check `process_block_header` has been called
     return state.latest_block_header.proposer_index
 ```

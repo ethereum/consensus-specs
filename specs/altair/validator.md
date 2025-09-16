@@ -10,6 +10,8 @@ actions of a "validator" participating in the Ethereum proof-of-stake protocol.
 - [Prerequisites](#prerequisites)
 - [Constants](#constants)
   - [Misc](#misc)
+- [Configuration](#configuration)
+  - [Time parameters](#time-parameters)
 - [Containers](#containers)
   - [`SyncCommitteeMessage`](#synccommitteemessage)
   - [`SyncCommitteeContribution`](#synccommitteecontribution)
@@ -77,19 +79,24 @@ as a reference throughout.
 | `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `2**4` (= 16) |                                    validators                                    |
 | `SYNC_COMMITTEE_SUBNET_COUNT`              | `4`           | The number of sync committee subnets used in the gossipsub aggregation protocol. |
 
+## Configuration
+
+### Time parameters
+
+| Name                   | Value          |     Unit     |          Duration          |
+| ---------------------- | -------------- | :----------: | :------------------------: |
+| `SYNC_MESSAGE_DUE_BPS` | `uint64(3333)` | basis points | ~33% of `SLOT_DURATION_MS` |
+| `CONTRIBUTION_DUE_BPS` | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
+
 ## Containers
 
 ### `SyncCommitteeMessage`
 
 ```python
 class SyncCommitteeMessage(Container):
-    # Slot to which this contribution pertains
     slot: Slot
-    # Block root for this signature
     beacon_block_root: Root
-    # Index of the validator that produced this signature
     validator_index: ValidatorIndex
-    # Signature by the validator over the block root of `slot`
     signature: BLSSignature
 ```
 
@@ -97,16 +104,10 @@ class SyncCommitteeMessage(Container):
 
 ```python
 class SyncCommitteeContribution(Container):
-    # Slot to which this contribution pertains
     slot: Slot
-    # Block root for this contribution
     beacon_block_root: Root
-    # The subcommittee this contribution pertains to out of the broader sync committee
     subcommittee_index: uint64
-    # A bit is set if a signature from the validator at the corresponding
-    # index in the subcommittee is present in the aggregate `signature`.
     aggregation_bits: Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]
-    # Signature by the validator(s) over the block root of `slot`
     signature: BLSSignature
 ```
 
@@ -164,9 +165,9 @@ def compute_sync_committee_period(epoch: Epoch) -> uint64:
 ```
 
 ```python
-def is_assigned_to_sync_committee(state: BeaconState,
-                                  epoch: Epoch,
-                                  validator_index: ValidatorIndex) -> bool:
+def is_assigned_to_sync_committee(
+    state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
+) -> bool:
     sync_committee_period = compute_sync_committee_period(epoch)
     current_epoch = get_current_epoch(state)
     current_sync_committee_period = compute_sync_committee_period(current_epoch)
@@ -267,8 +268,9 @@ Given a collection of the best seen `contributions` (with no repeating
 proposer processes them as follows:
 
 ```python
-def process_sync_committee_contributions(block: BeaconBlock,
-                                         contributions: Set[SyncCommitteeContribution]) -> None:
+def process_sync_committee_contributions(
+    block: BeaconBlock, contributions: Set[SyncCommitteeContribution]
+) -> None:
     sync_aggregate = SyncAggregate()
     signatures = []
     sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
@@ -329,9 +331,9 @@ is prepared and broadcast in `slot-1 ` instead of `slot`.
 This logic is triggered upon the same conditions as when producing an
 attestation. Meaning, a sync committee member should produce and broadcast a
 `SyncCommitteeMessage` either when (a) the validator has received a valid block
-from the expected block proposer for the current `slot` or (b) one-third of the
-slot has transpired (`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the
-start of the slot) -- whichever comes first.
+from the expected block proposer for the current `slot` or (b)
+`get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)` milliseconds has
+transpired since the start of the slot -- whichever comes first.
 
 `get_sync_committee_message(state, block_root, validator_index, privkey)`
 assumes the parameter `state` is the head state corresponding to processing the
@@ -342,10 +344,9 @@ the index of the validator in the registry `state.validators` controlled by
 `privkey`, and `privkey` is the BLS private key for the validator.
 
 ```python
-def get_sync_committee_message(state: BeaconState,
-                               block_root: Root,
-                               validator_index: ValidatorIndex,
-                               privkey: int) -> SyncCommitteeMessage:
+def get_sync_committee_message(
+    state: BeaconState, block_root: Root, validator_index: ValidatorIndex, privkey: int
+) -> SyncCommitteeMessage:
     epoch = get_current_epoch(state)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, epoch)
     signing_root = compute_signing_root(block_root, domain)
@@ -374,19 +375,27 @@ index is included multiple times in a given sync committee across multiple
 subcommittees.
 
 ```python
-def compute_subnets_for_sync_committee(state: BeaconState, validator_index: ValidatorIndex) -> Set[SubnetID]:
+def compute_subnets_for_sync_committee(
+    state: BeaconState, validator_index: ValidatorIndex
+) -> Set[SubnetID]:
     next_slot_epoch = compute_epoch_at_slot(Slot(state.slot + 1))
-    if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(next_slot_epoch):
+    if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(
+        next_slot_epoch
+    ):
         sync_committee = state.current_sync_committee
     else:
         sync_committee = state.next_sync_committee
 
     target_pubkey = state.validators[validator_index].pubkey
-    sync_committee_indices = [index for index, pubkey in enumerate(sync_committee.pubkeys) if pubkey == target_pubkey]
-    return set([
-        SubnetID(index // (SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT))
-        for index in sync_committee_indices
-    ])
+    sync_committee_indices = [
+        index for index, pubkey in enumerate(sync_committee.pubkeys) if pubkey == target_pubkey
+    ]
+    return set(
+        [
+            SubnetID(index // (SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT))
+            for index in sync_committee_indices
+        ]
+    )
 ```
 
 *Note*: Subnet assignment does not change during the duration of a validator's
@@ -413,10 +422,9 @@ period), the `subcommittee_index` equal to the `subnet_id`, and the `privkey` is
 the BLS private key associated with the validator.
 
 ```python
-def get_sync_committee_selection_proof(state: BeaconState,
-                                       slot: Slot,
-                                       subcommittee_index: uint64,
-                                       privkey: int) -> BLSSignature:
+def get_sync_committee_selection_proof(
+    state: BeaconState, slot: Slot, subcommittee_index: uint64, privkey: int
+) -> BLSSignature:
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF, compute_epoch_at_slot(slot))
     signing_data = SyncAggregatorSelectionData(
         slot=slot,
@@ -428,7 +436,12 @@ def get_sync_committee_selection_proof(state: BeaconState,
 
 ```python
 def is_sync_committee_aggregator(signature: BLSSignature) -> bool:
-    modulo = max(1, SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT // TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE)
+    modulo = max(
+        1,
+        SYNC_COMMITTEE_SIZE
+        // SYNC_COMMITTEE_SUBNET_COUNT
+        // TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE,
+    )
     return bytes_to_uint64(hash(signature)[0:8]) % modulo == 0
 ```
 
@@ -498,8 +511,8 @@ if one validator maps to multiple indices within the subcommittee.
 If the validator is selected to aggregate (`is_sync_committee_aggregator()`),
 then they broadcast their best aggregate as a `SignedContributionAndProof` to
 the global aggregate channel (`sync_committee_contribution_and_proof` topic)
-two-thirds of the way through the `slot`-that is,
-`SECONDS_PER_SLOT * 2 / INTERVALS_PER_SLOT` seconds after the start of `slot`.
+`get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS)` milliseconds into the
+slot.
 
 Selection proofs are provided in `ContributionAndProof` to prove to the gossip
 channel that the validator has been selected as an aggregator.
@@ -513,10 +526,12 @@ First,
 is constructed.
 
 ```python
-def get_contribution_and_proof(state: BeaconState,
-                               aggregator_index: ValidatorIndex,
-                               contribution: SyncCommitteeContribution,
-                               privkey: int) -> ContributionAndProof:
+def get_contribution_and_proof(
+    state: BeaconState,
+    aggregator_index: ValidatorIndex,
+    contribution: SyncCommitteeContribution,
+    privkey: int,
+) -> ContributionAndProof:
     selection_proof = get_sync_committee_selection_proof(
         state,
         contribution.slot,
@@ -535,11 +550,13 @@ Then
 is constructed and broadcast. Where `signature` is obtained from:
 
 ```python
-def get_contribution_and_proof_signature(state: BeaconState,
-                                         contribution_and_proof: ContributionAndProof,
-                                         privkey: int) -> BLSSignature:
+def get_contribution_and_proof_signature(
+    state: BeaconState, contribution_and_proof: ContributionAndProof, privkey: int
+) -> BLSSignature:
     contribution = contribution_and_proof.contribution
-    domain = get_domain(state, DOMAIN_CONTRIBUTION_AND_PROOF, compute_epoch_at_slot(contribution.slot))
+    domain = get_domain(
+        state, DOMAIN_CONTRIBUTION_AND_PROOF, compute_epoch_at_slot(contribution.slot)
+    )
     signing_root = compute_signing_root(contribution_and_proof, domain)
     return bls.Sign(privkey, signing_root)
 ```

@@ -112,14 +112,10 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
         epochs_for_validator_set_churn = (
             N * (t * (200 + 12 * D) - T * (200 + 3 * D)) // (600 * delta * (2 * t + T))
         )
-        epochs_for_balance_top_ups = (
-            N * (200 + 3 * D) // (600 * Delta)
-        )
+        epochs_for_balance_top_ups = N * (200 + 3 * D) // (600 * Delta)
         ws_period += max(epochs_for_validator_set_churn, epochs_for_balance_top_ups)
     else:
-        ws_period += (
-            3 * N * D * t // (200 * Delta * (T - t))
-        )
+        ws_period += 3 * N * D * t // (200 * Delta * (T - t))
 
     return ws_period
 ```
@@ -182,7 +178,9 @@ source). The check can be implemented in the following way:
 #### `is_within_weak_subjectivity_period`
 
 ```python
-def is_within_weak_subjectivity_period(store: Store, ws_state: BeaconState, ws_checkpoint: Checkpoint) -> bool:
+def is_within_weak_subjectivity_period(
+    store: Store, ws_state: BeaconState, ws_checkpoint: Checkpoint
+) -> bool:
     # Clients may choose to validate the input state against the input Weak Subjectivity Checkpoint
     assert ws_state.latest_block_header.state_root == ws_checkpoint.root
     assert compute_epoch_at_slot(ws_state.slot) == ws_checkpoint.epoch

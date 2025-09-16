@@ -48,7 +48,9 @@ class GetPayloadResponse(object):
 ### `get_pow_block_at_terminal_total_difficulty`
 
 ```python
-def get_pow_block_at_terminal_total_difficulty(pow_chain: Dict[Hash32, PowBlock]) -> Optional[PowBlock]:
+def get_pow_block_at_terminal_total_difficulty(
+    pow_chain: Dict[Hash32, PowBlock],
+) -> Optional[PowBlock]:
     # `pow_chain` abstractly represents all blocks in the PoW chain
     for block in pow_chain.values():
         block_reached_ttd = block.total_difficulty >= TERMINAL_TOTAL_DIFFICULTY
@@ -140,16 +142,20 @@ To obtain an execution payload, a block proposer building a block on top of a
      `fee_recipient` field of the execution payload
 
 ```python
-def prepare_execution_payload(state: BeaconState,
-                              safe_block_hash: Hash32,
-                              finalized_block_hash: Hash32,
-                              suggested_fee_recipient: ExecutionAddress,
-                              execution_engine: ExecutionEngine,
-                              pow_chain: Optional[Dict[Hash32, PowBlock]]=None) -> Optional[PayloadId]:
+def prepare_execution_payload(
+    state: BeaconState,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    suggested_fee_recipient: ExecutionAddress,
+    execution_engine: ExecutionEngine,
+    pow_chain: Optional[Dict[Hash32, PowBlock]] = None,
+) -> Optional[PayloadId]:
     if not is_merge_transition_complete(state):
         assert pow_chain is not None
         is_terminal_block_hash_set = TERMINAL_BLOCK_HASH != Hash32()
-        is_activation_epoch_reached = get_current_epoch(state) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
+        is_activation_epoch_reached = (
+            get_current_epoch(state) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
+        )
         if is_terminal_block_hash_set and not is_activation_epoch_reached:
             # Terminal block hash is set but activation epoch is not yet reached, no prepare payload call is needed
             return None
@@ -166,7 +172,7 @@ def prepare_execution_payload(state: BeaconState,
 
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
-        timestamp=compute_timestamp_at_slot(state, state.slot),
+        timestamp=compute_time_at_slot(state, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
     )
@@ -183,7 +189,9 @@ def prepare_execution_payload(state: BeaconState,
    where:
 
 ```python
-def get_execution_payload(payload_id: Optional[PayloadId], execution_engine: ExecutionEngine) -> ExecutionPayload:
+def get_execution_payload(
+    payload_id: Optional[PayloadId], execution_engine: ExecutionEngine
+) -> ExecutionPayload:
     if payload_id is None:
         # Pre-merge, empty payload
         return ExecutionPayload()

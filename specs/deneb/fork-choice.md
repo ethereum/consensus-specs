@@ -3,7 +3,6 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Containers](#containers)
 - [Helpers](#helpers)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [`is_data_available`](#is_data_available)
@@ -15,8 +14,6 @@
 ## Introduction
 
 This is the modification of the fork choice accompanying the Deneb upgrade.
-
-## Containers
 
 ## Helpers
 
@@ -31,7 +28,8 @@ class PayloadAttributes(object):
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
     withdrawals: Sequence[Withdrawal]
-    parent_beacon_block_root: Root  # [New in Deneb:EIP4788]
+    # [New in Deneb:EIP4788]
+    parent_beacon_block_root: Root
 ```
 
 ### `is_data_available`
@@ -53,7 +51,9 @@ valid blobs) received on the p2p network MUST NOT invalidate a block that is
 otherwise valid and available.
 
 ```python
-def is_data_available(beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]) -> bool:
+def is_data_available(
+    beacon_block_root: Root, blob_kzg_commitments: Sequence[KZGCommitment]
+) -> bool:
     # `retrieve_blobs_and_proofs` is implementation and context dependent
     # It returns all the blobs for the given block root, and raises an exception if not available
     # Note: the p2p network does not guarantee sidecar retrieval outside of
@@ -94,9 +94,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # [New in Deneb:EIP4844]
     # Check if blob data is available
-    # If not, this block MAY be queued and subsequently considered when blob data becomes available
-    # *Note*: Extraneous or invalid Blobs (in addition to the expected/referenced valid blobs)
-    # received on the p2p network MUST NOT invalidate a block that is otherwise valid and available
+    # If not, this payload MAY be queued and subsequently considered when blob data becomes available
     assert is_data_available(hash_tree_root(block), block.body.blob_kzg_commitments)
 
     # Check the block is valid and compute the post-state
@@ -111,8 +109,10 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     store.block_states[block_root] = state
 
     # Add block timeliness to the store
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
 

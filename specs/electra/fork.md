@@ -4,9 +4,6 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-- [Helper functions](#helper-functions)
-  - [Misc](#misc)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [Fork to Electra](#fork-to-electra)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -25,30 +22,6 @@ Warning: this configuration is not definitive.
 | ---------------------- | --------------------------------------------- |
 | `ELECTRA_FORK_VERSION` | `Version('0x05000000')`                       |
 | `ELECTRA_FORK_EPOCH`   | `Epoch(364032)` (May 7, 2025, 10:05:11am UTC) |
-
-## Helper functions
-
-### Misc
-
-#### Modified `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= ELECTRA_FORK_EPOCH:
-        return ELECTRA_FORK_VERSION
-    if epoch >= DENEB_FORK_EPOCH:
-        return DENEB_FORK_VERSION
-    if epoch >= CAPELLA_FORK_EPOCH:
-        return CAPELLA_FORK_VERSION
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
 
 ## Fork to Electra
 
@@ -77,61 +50,56 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
     earliest_exit_epoch += Epoch(1)
 
     post = BeaconState(
-        # Versioning
         genesis_time=pre.genesis_time,
         genesis_validators_root=pre.genesis_validators_root,
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            current_version=ELECTRA_FORK_VERSION,  # [Modified in Electra:EIP6110]
+            # [Modified in Electra]
+            current_version=ELECTRA_FORK_VERSION,
             epoch=epoch,
         ),
-        # History
         latest_block_header=pre.latest_block_header,
         block_roots=pre.block_roots,
         state_roots=pre.state_roots,
         historical_roots=pre.historical_roots,
-        # Eth1
         eth1_data=pre.eth1_data,
         eth1_data_votes=pre.eth1_data_votes,
         eth1_deposit_index=pre.eth1_deposit_index,
-        # Registry
         validators=pre.validators,
         balances=pre.balances,
-        # Randomness
         randao_mixes=pre.randao_mixes,
-        # Slashings
         slashings=pre.slashings,
-        # Participation
         previous_epoch_participation=pre.previous_epoch_participation,
         current_epoch_participation=pre.current_epoch_participation,
-        # Finality
         justification_bits=pre.justification_bits,
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
-        # Inactivity
         inactivity_scores=pre.inactivity_scores,
-        # Sync
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
-        # Execution-layer
         latest_execution_payload_header=pre.latest_execution_payload_header,
-        # Withdrawals
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
-        # Deep history valid from Capella onwards
         historical_summaries=pre.historical_summaries,
         # [New in Electra:EIP6110]
         deposit_requests_start_index=UNSET_DEPOSIT_REQUESTS_START_INDEX,
         # [New in Electra:EIP7251]
         deposit_balance_to_consume=0,
+        # [New in Electra:EIP7251]
         exit_balance_to_consume=0,
+        # [New in Electra:EIP7251]
         earliest_exit_epoch=earliest_exit_epoch,
+        # [New in Electra:EIP7251]
         consolidation_balance_to_consume=0,
+        # [New in Electra:EIP7251]
         earliest_consolidation_epoch=compute_activation_exit_epoch(get_current_epoch(pre)),
+        # [New in Electra:EIP7251]
         pending_deposits=[],
+        # [New in Electra:EIP7251]
         pending_partial_withdrawals=[],
+        # [New in Electra:EIP7251]
         pending_consolidations=[],
     )
 
@@ -140,13 +108,14 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
 
     # [New in Electra:EIP7251]
     # add validators that are not yet active to pending balance deposits
-    pre_activation = sorted([
-        index for index, validator in enumerate(post.validators)
-        if validator.activation_epoch == FAR_FUTURE_EPOCH
-    ], key=lambda index: (
-        post.validators[index].activation_eligibility_epoch,
-        index
-    ))
+    pre_activation = sorted(
+        [
+            index
+            for index, validator in enumerate(post.validators)
+            if validator.activation_epoch == FAR_FUTURE_EPOCH
+        ],
+        key=lambda index: (post.validators[index].activation_eligibility_epoch, index),
+    )
 
     for index in pre_activation:
         balance = post.balances[index]
@@ -156,13 +125,15 @@ def upgrade_to_electra(pre: deneb.BeaconState) -> BeaconState:
         validator.activation_eligibility_epoch = FAR_FUTURE_EPOCH
         # Use bls.G2_POINT_AT_INFINITY as a signature field placeholder
         # and GENESIS_SLOT to distinguish from a pending deposit request
-        post.pending_deposits.append(PendingDeposit(
-            pubkey=validator.pubkey,
-            withdrawal_credentials=validator.withdrawal_credentials,
-            amount=balance,
-            signature=bls.G2_POINT_AT_INFINITY,
-            slot=GENESIS_SLOT,
-        ))
+        post.pending_deposits.append(
+            PendingDeposit(
+                pubkey=validator.pubkey,
+                withdrawal_credentials=validator.withdrawal_credentials,
+                amount=balance,
+                signature=bls.G2_POINT_AT_INFINITY,
+                slot=GENESIS_SLOT,
+            )
+        )
 
     # Ensure early adopters of compounding credentials go through the activation churn
     for index, validator in enumerate(post.validators):

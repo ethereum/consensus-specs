@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Modifications in Altair](#modifications-in-altair)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -40,6 +41,18 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery
 domain. Some Phase 0 features will be deprecated, but not removed immediately.
 
 ## Modifications in Altair
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ### MetaData
 
@@ -145,11 +158,15 @@ The following validations MUST pass before forwarding the
 `get_sync_subcommittee_pubkeys` for convenience:
 
 ```python
-def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64) -> Sequence[BLSPubkey]:
+def get_sync_subcommittee_pubkeys(
+    state: BeaconState, subcommittee_index: uint64
+) -> Sequence[BLSPubkey]:
     # Committees assigned to `slot` sign for `slot - 1`
     # This creates the exceptional logic below when transitioning between sync committee periods
     next_slot_epoch = compute_epoch_at_slot(Slot(state.slot + 1))
-    if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(next_slot_epoch):
+    if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(
+        next_slot_epoch
+    ):
         sync_committee = state.current_sync_committee
     else:
         sync_committee = state.next_sync_committee
@@ -157,7 +174,7 @@ def get_sync_subcommittee_pubkeys(state: BeaconState, subcommittee_index: uint64
     # Return pubkeys for the subcommittee index
     sync_subcommittee_size = SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT
     i = subcommittee_index * sync_subcommittee_size
-    return sync_committee.pubkeys[i:i + sync_subcommittee_size]
+    return sync_committee.pubkeys[i : i + sync_subcommittee_size]
 ```
 
 - _[IGNORE]_ The contribution's slot is for the current slot (with a
@@ -314,7 +331,7 @@ Starting with Altair, and in future forks, SSZ type definitions may change. For
 this common case, we define the `ForkDigest`-context:
 
 A fixed-width 4 byte `<context-bytes>`, set to the `ForkDigest` matching the
-chunk: `compute_fork_digest(fork_version, genesis_validators_root)`.
+chunk: `compute_fork_digest(genesis_validators_root, epoch)`.
 
 #### Messages
 
@@ -325,7 +342,10 @@ chunk: `compute_fork_digest(fork_version, genesis_validators_root)`.
 Request and Response remain unchanged. A `ForkDigest`-context is used to select
 the fork namespace of the Response type.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
+
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -341,7 +361,10 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 Request and Response remain unchanged. A `ForkDigest`-context is used to select
 the fork namespace of the Response type.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
+
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 

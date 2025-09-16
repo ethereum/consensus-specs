@@ -122,13 +122,15 @@ class BuilderBlockBid(Container):
 
     execution_payload_root: Root
 
-    sharded_data_commitment_root: Root # Root of the sharded data (only data, not beacon/builder block commitments)
+    sharded_data_commitment_root: (
+        Root  # Root of the sharded data (only data, not beacon/builder block commitments)
+    )
 
-    sharded_data_commitment_count: uint64 # Count of sharded data commitments
+    sharded_data_commitment_count: uint64  # Count of sharded data commitments
 
-    bid: Gwei # Block builder bid paid to proposer
+    bid: Gwei  # Block builder bid paid to proposer
 
-    validator_index: ValidatorIndex # Validator index for this bid
+    validator_index: ValidatorIndex  # Validator index for this bid
 
     # Block builders use an Eth1 address -- need signature as
     # block bid and data gas base fees will be charged to this address
@@ -142,7 +144,7 @@ class BuilderBlockBid(Container):
 ```python
 class BuilderBlockBidWithRecipientAddress(Container):
     builder_block_bid: Union[None, BuilderBlockBid]
-    recipient_address: ExecutionAddress # Address to receive the block builder bid
+    recipient_address: ExecutionAddress  # Address to receive the block builder bid
 ```
 
 #### `ShardedCommitmentsContainer`
@@ -284,18 +286,31 @@ def verify_builder_block_bid(state: BeaconState, block: BeaconBlock) -> None:
     if is_builder_block_slot(block.slot):
         # Get last builder block bid
         assert state.blocks_since_builder_block[-1].body.payload_data.selector == 0
-        builder_block_bid = state.blocks_since_builder_block[-1].body.payload_data.value.builder_block_bid
+        builder_block_bid = state.blocks_since_builder_block[
+            -1
+        ].body.payload_data.value.builder_block_bid
         assert builder_block_bid.slot + 1 == block.slot
 
-        assert block.body.payload_data.selector == 1 # Verify that builder block does not contain bid
+        assert (
+            block.body.payload_data.selector == 1
+        )  # Verify that builder block does not contain bid
 
         builder_block_data = block.body.payload_data.value
 
-        assert builder_block_bid.execution_payload_root == hash_tree_root(builder_block_data.execution_payload)
+        assert builder_block_bid.execution_payload_root == hash_tree_root(
+            builder_block_data.execution_payload
+        )
 
-        assert builder_block_bid.sharded_data_commitment_count == builder_block_data.included_sharded_data_commitments
+        assert (
+            builder_block_bid.sharded_data_commitment_count
+            == builder_block_data.included_sharded_data_commitments
+        )
 
-        assert builder_block_bid.sharded_data_commitment_root == hash_tree_root(builder_block_data.sharded_commitments[-builder_block_bid.included_sharded_data_commitments:])
+        assert builder_block_bid.sharded_data_commitment_root == hash_tree_root(
+            builder_block_data.sharded_commitments[
+                -builder_block_bid.included_sharded_data_commitments :
+            ]
+        )
 
         assert builder_block_bid.validator_index == block.proposer_index
 
@@ -324,47 +339,70 @@ def process_sharded_data(state: BeaconState, block: BeaconBlock) -> None:
         sharded_commitments_container = block.body.payload_data.value.sharded_commitments_container
 
         # Verify not too many commitments
-        assert len(sharded_commitments_container.sharded_commitments) // 2 <= get_active_shard_count(state, get_current_epoch(state))
+        assert len(
+            sharded_commitments_container.sharded_commitments
+        ) // 2 <= get_active_shard_count(state, get_current_epoch(state))
 
         # Verify the degree proof
         r = hash_to_bls_field(sharded_commitments_container.sharded_commitments, 0)
         r_powers = compute_powers(r, len(sharded_commitments_container.sharded_commitments))
-        combined_commitment = elliptic_curve_lincomb(sharded_commitments_container.sharded_commitments, r_powers)
+        combined_commitment = elliptic_curve_lincomb(
+            sharded_commitments_container.sharded_commitments, r_powers
+        )
 
         payload_field_elements_per_blob = SAMPLES_PER_BLOB * FIELD_ELEMENTS_PER_SAMPLE // 2
 
-        verify_degree_proof(combined_commitment, payload_field_elements_per_blob, sharded_commitments_container.degree_proof)
+        verify_degree_proof(
+            combined_commitment,
+            payload_field_elements_per_blob,
+            sharded_commitments_container.degree_proof,
+        )
 
         # Verify that the 2*N commitments lie on a degree < N polynomial
         low_degree_check(sharded_commitments_container.sharded_commitments)
 
         # Verify that blocks since the last builder block have been included
-        blocks_chunked = [bytes_to_field_elements(ssz_serialize(block)) for block in state.blocks_since_builder_block]
+        blocks_chunked = [
+            bytes_to_field_elements(ssz_serialize(block))
+            for block in state.blocks_since_builder_block
+        ]
         block_vectors = []
 
         for block_chunked in blocks_chunked:
             for i in range(0, len(block_chunked), payload_field_elements_per_blob):
-                block_vectors.append(block_chunked[i:i + payload_field_elements_per_blob])
+                block_vectors.append(block_chunked[i : i + payload_field_elements_per_blob])
 
         number_of_blobs = len(block_vectors)
-        r = hash_to_bls_field(sharded_commitments_container.sharded_commitments[:number_of_blobs], 0)
-        x = hash_to_bls_field(sharded_commitments_container.sharded_commitments[:number_of_blobs], 1)
+        r = hash_to_bls_field(
+            sharded_commitments_container.sharded_commitments[:number_of_blobs], 0
+        )
+        x = hash_to_bls_field(
+            sharded_commitments_container.sharded_commitments[:number_of_blobs], 1
+        )
 
         r_powers = compute_powers(r, number_of_blobs)
         combined_vector = vector_lincomb(block_vectors, r_powers)
-        combined_commitment = elliptic_curve_lincomb(sharded_commitments_container.sharded_commitments[:number_of_blobs], r_powers)
+        combined_commitment = elliptic_curve_lincomb(
+            sharded_commitments_container.sharded_commitments[:number_of_blobs], r_powers
+        )
         y = evaluate_polynomial_in_evaluation_form(combined_vector, x)
 
-        verify_kzg_proof(combined_commitment, x, y, sharded_commitments_container.block_verification_kzg_proof)
+        verify_kzg_proof(
+            combined_commitment, x, y, sharded_commitments_container.block_verification_kzg_proof
+        )
 
         # Verify that number of sharded data commitments is correctly indicated
-        assert 2 * (number_of_blobs + included_sharded_data_commitments) == len(sharded_commitments_container.sharded_commitments)
+        assert 2 * (number_of_blobs + included_sharded_data_commitments) == len(
+            sharded_commitments_container.sharded_commitments
+        )
 ```
 
 #### Execution payload
 
 ```python
-def process_execution_payload(state: BeaconState, block: BeaconBlock, execution_engine: ExecutionEngine) -> None:
+def process_execution_payload(
+    state: BeaconState, block: BeaconBlock, execution_engine: ExecutionEngine
+) -> None:
     if is_builder_block_slot(block.slot):
         assert block.body.payload_data.selector == 1
         payload = block.body.payload_data.value.execution_payload
@@ -374,25 +412,31 @@ def process_execution_payload(state: BeaconState, block: BeaconBlock, execution_
         # Verify random
         assert payload.random == get_randao_mix(state, get_current_epoch(state))
         # Verify timestamp
-        assert payload.timestamp == compute_timestamp_at_slot(state, state.slot)
+        assert payload.timestamp == compute_time_at_slot(state, state.slot)
 
         # Get sharded data commitments
         sharded_commitments_container = block.body.sharded_commitments_container
-        sharded_data_commitments = sharded_commitments_container.sharded_commitments[-sharded_commitments_container.included_sharded_data_commitments:]
+        sharded_data_commitments = sharded_commitments_container.sharded_commitments[
+            -sharded_commitments_container.included_sharded_data_commitments :
+        ]
 
         # Get all unprocessed builder block bids
         unprocessed_builder_block_bid_with_recipient_addresses = []
         for block in state.blocks_since_builder_block[1:]:
-            unprocessed_builder_block_bid_with_recipient_addresses.append(block.body.builder_block_bid_with_recipient_address.value)
+            unprocessed_builder_block_bid_with_recipient_addresses.append(
+                block.body.builder_block_bid_with_recipient_address.value
+            )
 
         # Verify the execution payload is valid
         # The execution engine gets two extra payloads: One for the sharded data commitments (these are needed to verify type 3 transactions)
         # and one for all so far unprocessed builder block bids:
         # * The execution engine needs to transfer the balance from the bidder to the proposer.
         # * The execution engine needs to deduct data gas fees from the bidder balances
-        assert execution_engine.execute_payload(payload,
-                                                sharded_data_commitments,
-                                                unprocessed_builder_block_bid_with_recipient_addresses)
+        assert execution_engine.execute_payload(
+            payload,
+            sharded_data_commitments,
+            unprocessed_builder_block_bid_with_recipient_addresses,
+        )
 
         # Cache execution payload header
         state.latest_execution_payload_header = ExecutionPayloadHeader(

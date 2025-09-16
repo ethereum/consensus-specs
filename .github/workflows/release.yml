@@ -1,0 +1,139 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    timeout-minutes: 1440  # 24 hours
+    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: read
+
+    steps:
+      # Clone specs
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          path: 'consensus-specs'
+
+      # Setup python
+      - name: Setup Python
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          python-version: '3.13'
+
+      # Check the tag matches the version
+      - name: Version check
+        run: |
+          tag="${{ github.ref_name }}"
+          version="v$(cat consensus-specs/tests/core/pyspec/eth2spec/VERSION.txt)"
+          if [ "$tag" != "$version" ]; then
+            echo "Tag ($tag) does not match version ($version)"
+            exit 1
+          fi
+
+      # Ensure framework tests pass
+      - name: Run tests for test framework
+        run: |
+          cd consensus-specs
+          make test component=fw
+
+      # Ensure minimal tests pass
+      - name: Run tests for minimal
+        run: |
+          cd consensus-specs
+          make test component=pyspec preset=minimal
+
+      # Ensure mainnet tests pass
+      - name: Run tests for mainnet
+        run: |
+          cd consensus-specs
+          make test component=pyspec preset=mainnet
+
+      # Add support for large files
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
+          git lfs install
+
+      # Clone the repo with our PAT and delete old files
+      - name: Clone spec tests repo
+        run: |
+          git clone https://x-access-token:${{ secrets.CONSENSUS_SPEC_TESTS_PAT }}@github.com/ethereum/consensus-spec-tests.git --depth=1
+          cd consensus-spec-tests
+          rm -rf configs presets tests
+
+      # Write presets/configs to the spec tests repo
+      - name: Copy presets/configs
+        run: |
+          cd consensus-specs
+          cp -r presets/ ../consensus-spec-tests/presets
+          cp -r configs/ ../consensus-spec-tests/configs
+
+      # Write reference tests to the spec tests repo
+      - name: Generate reference tests
+        run: |
+          cd consensus-specs
+          make reftests verbose=true
+
+      # Make tarballs
+      - name: Archive configurations
+        run: |
+          cd consensus-spec-tests
+          tar -czvf general.tar.gz tests/general
+          tar -czvf minimal.tar.gz tests/minimal
+          tar -czvf mainnet.tar.gz tests/mainnet
+
+      # Commit the tests to the spec tests repo
+      # Cloned with PAT, so don't need to specify it here
+      - name: Push spec tests
+        run: |
+          cd consensus-spec-tests
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          if ! git diff --cached --quiet; then
+            git commit -m "release ${{ github.ref_name }} tests"
+            git push
+          else
+            echo "No changes to commit"
+          fi
+
+      # Publish the specs release. We use release-drafter to
+      # organize PRs into the appropriate section based on PR labels
+      - name: Publish specs release
+        uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5 # v6.1.0
+        with:
+          name: ${{ github.ref_name }}
+          tag: ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          publish: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Finally, publish the spec tests release
+      # Requires a personal access token (PAT) with contents:read-write
+      - name: Publish spec tests release
+        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Spec tests for ${{ github.ref_name }}"
+          body: |
+            Spec tests for `${{ github.ref_name }}`.
+
+            Detailed changelog can be found in [`${{ github.ref_name }}` specs release](https://github.com/ethereum/consensus-specs/releases/tag/${{ github.ref_name }}).
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          draft: false
+          repository: ethereum/consensus-spec-tests
+          files: |
+            consensus-spec-tests/general.tar.gz
+            consensus-spec-tests/minimal.tar.gz
+            consensus-spec-tests/mainnet.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.CONSENSUS_SPEC_TESTS_PAT }}

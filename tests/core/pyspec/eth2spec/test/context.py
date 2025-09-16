@@ -6,6 +6,7 @@ from random import Random
 from typing import Any
 
 import pytest
+from frozendict import frozendict
 from lru import LRU
 
 from eth2spec.utils import bls
@@ -19,8 +20,11 @@ from .helpers.constants import (
     CAPELLA,
     DENEB,
     EIP7441,
+    EIP7805,
+    EIP7928,
     ELECTRA,
     FULU,
+    GLOAS,
     LIGHT_CLIENT_TESTING_FORKS,
     MINIMAL,
     PHASE0,
@@ -248,6 +252,16 @@ def low_single_balance(spec: Spec):
     Usage: `@with_custom_state(balances_fn=low_single_balance, ...)`
     """
     return [1]
+
+
+def one_validator_one_gwei_balances(spec: Spec):
+    """
+    Helper method to create a single validator with 1 Gwei balance,
+    among other validators with default balances.
+    """
+    balances = default_balances(spec)
+    balances[0] = 1
+    return balances
 
 
 def large_validator_set(spec: Spec):
@@ -500,6 +514,8 @@ def with_all_phases_from_to_except(earliest_phase, latest_phase, except_phases=N
             ]
         )(fn)
 
+    return decorator
+
 
 def with_all_phases_except(exclusion_phases):
     """
@@ -637,27 +653,32 @@ with_capella_and_later = with_all_phases_from(CAPELLA)
 with_deneb_and_later = with_all_phases_from(DENEB)
 with_electra_and_later = with_all_phases_from(ELECTRA)
 with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_gloas_and_later = with_all_phases_from(GLOAS, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7441_and_later = with_all_phases_from(EIP7441, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip7805_and_later = with_all_phases_from(EIP7805, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip7928_and_later = with_all_phases_from(EIP7928, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+
+with_bellatrix_only = with_phases([BELLATRIX])
 
 
 class quoted_str(str):
     pass
 
 
-def _get_basic_dict(ssz_dict: dict[str, Any]) -> dict[str, Any]:
+def _get_basic_value(v: Any) -> Any:
     """
-    Get dict of basic types from a dict of SSZ objects.
+    Deeply convert a value to a form consisting of Python built-in types.
     """
-    result = {}
-    for k, v in ssz_dict.items():
-        if isinstance(v, int):
-            value = int(v)
-        elif isinstance(v, bytes):
-            value = bytes(bytearray(v))
-        else:
-            value = quoted_str(v)
-        result[k] = value
-    return result
+    if isinstance(v, int):
+        return int(v)
+    elif isinstance(v, bytes):
+        return bytes(bytearray(v))
+    elif isinstance(v, list | tuple):
+        return list(_get_basic_value(v) for v in v)
+    elif isinstance(v, dict | frozendict):
+        return dict({k: _get_basic_value(v) for k, v in dict(v).items()})
+    else:
+        return quoted_str(v)
 
 
 def get_copy_of_spec(spec):
@@ -685,7 +706,7 @@ def spec_with_config_overrides(spec, config_overrides):
 
     # To output the changed config in a format compatible with yaml test vectors,
     # the dict SSZ objects have to be converted into Python built-in types.
-    output_config = _get_basic_dict(modified_config)
+    output_config = _get_basic_value(modified_config)
 
     return spec, output_config
 

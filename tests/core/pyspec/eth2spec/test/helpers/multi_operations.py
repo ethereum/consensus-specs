@@ -7,6 +7,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth2spec.test.helpers.deposits import build_deposit, deposit_from_context
+from eth2spec.test.helpers.forks import is_post_electra
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth2spec.test.helpers.state import (
@@ -173,7 +174,11 @@ def _eligible_for_exit(spec, state, index):
 
     not_exited = validator.exit_epoch == spec.FAR_FUTURE_EPOCH
 
-    return not_slashed and active_for_long_enough and not_exited
+    no_pending_withdrawals = True
+    if is_post_electra(spec):
+        no_pending_withdrawals = spec.get_pending_balance_to_withdraw(state, index) == 0
+
+    return not_slashed and active_for_long_enough and not_exited and no_pending_withdrawals
 
 
 def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
@@ -189,8 +194,10 @@ def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
 
 
 def get_random_sync_aggregate(
-    spec, state, slot, block_root=None, fraction_participated=1.0, rng=Random(2099)
+    spec, state, slot, block_root=None, fraction_participated=1.0, rng=None
 ):
+    if rng is None:
+        rng = Random(2099)
     committee_indices = compute_committee_indices(state, state.current_sync_committee)
     participant_count = int(len(committee_indices) * fraction_participated)
     participant_indices = rng.sample(range(len(committee_indices)), participant_count)
@@ -210,7 +217,9 @@ def get_random_sync_aggregate(
     )
 
 
-def get_random_bls_to_execution_changes(spec, state, rng=Random(2188), num_address_changes=0):
+def get_random_bls_to_execution_changes(spec, state, rng=None, num_address_changes=0):
+    if rng is None:
+        rng = Random(2188)
     bls_indices = [
         index
         for index, validator in enumerate(state.validators)
@@ -224,7 +233,9 @@ def get_random_bls_to_execution_changes(spec, state, rng=Random(2188), num_addre
     ]
 
 
-def build_random_block_from_state_for_next_slot(spec, state, rng=Random(2188), deposits=None):
+def build_random_block_from_state_for_next_slot(spec, state, rng=None, deposits=None):
+    if rng is None:
+        rng = Random(2188)
     block = build_empty_block_for_next_slot(spec, state)
     proposer_slashings = get_random_proposer_slashings(spec, state, rng)
     block.body.proposer_slashings = proposer_slashings
@@ -251,7 +262,9 @@ def build_random_block_from_state_for_next_slot(spec, state, rng=Random(2188), d
     return block
 
 
-def run_test_full_random_operations(spec, state, rng=Random(2080)):
+def run_test_full_random_operations(spec, state, rng=None):
+    if rng is None:
+        rng = Random(2080)
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 

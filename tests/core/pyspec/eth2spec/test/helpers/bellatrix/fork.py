@@ -13,33 +13,24 @@ def run_fork_test(post_spec, pre_state):
         "genesis_time",
         "genesis_validators_root",
         "slot",
-        # History
         "latest_block_header",
         "block_roots",
         "state_roots",
         "historical_roots",
-        # Eth1
         "eth1_data",
         "eth1_data_votes",
         "eth1_deposit_index",
-        # Registry
         "validators",
         "balances",
-        # Randomness
         "randao_mixes",
-        # Slashings
         "slashings",
-        # Participation
         "previous_epoch_participation",
         "current_epoch_participation",
-        # Finality
         "justification_bits",
         "previous_justified_checkpoint",
         "current_justified_checkpoint",
         "finalized_checkpoint",
-        # Inactivity
         "inactivity_scores",
-        # Sync
         "current_sync_committee",
         "next_sync_committee",
     ]

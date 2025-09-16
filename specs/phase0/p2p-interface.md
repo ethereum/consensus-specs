@@ -9,6 +9,9 @@
   - [Protocol Negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
+  - [Helper functions](#helper-functions)
+    - [`compute_fork_version`](#compute_fork_version)
+    - [`compute_fork_digest`](#compute_fork_digest)
   - [Custom types](#custom-types)
   - [Constants](#constants)
   - [Configuration](#configuration)
@@ -193,6 +196,36 @@ the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
 ## Consensus-layer network interaction domains
 
+### Helper functions
+
+#### `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    return GENESIS_FORK_VERSION
+```
+
+#### `compute_fork_digest`
+
+```python
+def compute_fork_digest(
+    genesis_validators_root: Root,
+    epoch: Epoch,
+) -> ForkDigest:
+    """
+    Return the 4-byte fork digest for the ``genesis_validators_root`` at a given ``epoch``.
+
+    This is a digest primarily used for domain separation on the p2p layer.
+    4-bytes suffices for practical separation of forks/chains.
+    """
+    fork_version = compute_fork_version(epoch)
+    base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
+    return ForkDigest(base_digest[:4])
+```
+
 ### Custom types
 
 We define the following Python custom types for type hinting and readability:
@@ -315,11 +348,10 @@ have form: `/eth2/ForkDigestValue/Name/Encoding`. This defines both the type of
 data being sent on the topic and how the data field of the message is encoded.
 
 - `ForkDigestValue` - the lowercase hex-encoded (no "0x" prefix) bytes of
-  `compute_fork_digest(current_fork_version, genesis_validators_root)` where
-  - `current_fork_version` is the fork version of the epoch of the message to be
-    sent on the topic
+  `compute_fork_digest(genesis_validators_root, epoch)` where
   - `genesis_validators_root` is the static `Root` found in
     `state.genesis_validators_root`
+  - `epoch` is the context epoch of the message to be sent on the topic
 - `Name` - see table below
 - `Encoding` - the encoding strategy describes a specific representation of
   bytes that will be transmitted over the wire. See the [Encodings](#Encodings)
@@ -915,15 +947,14 @@ Request, Response Content:
 )
 ```
 
-The fields are, as seen by the client at the time of sending the message:
+As seen by the client at the time of sending the message:
 
 - `fork_digest`: The node's `ForkDigest`
-  (`compute_fork_digest(current_fork_version, genesis_validators_root)`) where
-  - `current_fork_version` is the fork version at the node's current epoch
-    defined by the wall-clock time (not necessarily the epoch to which the node
-    is sync)
+  (`compute_fork_digest(genesis_validators_root, epoch)`) where
   - `genesis_validators_root` is the static `Root` found in
     `state.genesis_validators_root`
+  - `epoch` is the node's current epoch defined by the wall-clock time (not
+    necessarily the epoch to which the node is sync).
 - `finalized_root`: `store.finalized_checkpoint.root` according to
   [fork choice](./fork-choice.md). (Note this defaults to `Root(b'\x00' * 32)`
   for the genesis finalized checkpoint).
@@ -1262,15 +1293,13 @@ object (`ENRForkID`)
 )
 ```
 
-where the fields of `ENRForkID` are defined as
+The fields of `ENRForkID` are defined as
 
-- `fork_digest` is
-  `compute_fork_digest(current_fork_version, genesis_validators_root)` where
-  - `current_fork_version` is the fork version at the node's current epoch
-    defined by the wall-clock time (not necessarily the epoch to which the node
-    is sync)
+- `fork_digest` is `compute_fork_digest(genesis_validators_root, epoch)` where:
   - `genesis_validators_root` is the static `Root` found in
-    `state.genesis_validators_root`
+    `state.genesis_validators_root`.
+  - `epoch` is the node's current epoch defined by the wall-clock time (not
+    necessarily the epoch to which the node is sync).
 - `next_fork_version` is the fork version corresponding to the next planned hard
   fork at a future epoch. If no future fork is planned, set
   `next_fork_version = current_fork_version` to signal this fact
@@ -1283,7 +1312,7 @@ block/state are available. Due to this, clients SHOULD NOT form ENRs and begin
 peer discovery until genesis values are known. One notable exception to this
 rule is the distribution of bootnode ENRs prior to genesis. In this case,
 bootnode ENRs SHOULD be initially distributed with `eth2` field set as
-`ENRForkID(fork_digest=compute_fork_digest(GENESIS_FORK_VERSION, b'\x00'*32), next_fork_version=GENESIS_FORK_VERSION, next_fork_epoch=FAR_FUTURE_EPOCH)`.
+`ENRForkID(fork_digest=compute_fork_digest(b'\x00'*32, GENESIS_EPOCH), next_fork_version=GENESIS_FORK_VERSION, next_fork_epoch=FAR_FUTURE_EPOCH)`.
 After genesis values are known, the bootnodes SHOULD update ENRs to participate
 in normal discovery operations.
 
@@ -1315,7 +1344,9 @@ should:
 def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
     node_id_prefix = node_id >> (NODE_ID_BITS - ATTESTATION_SUBNET_PREFIX_BITS)
     node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
-    permutation_seed = hash(uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION)))
+    permutation_seed = hash(
+        uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
+    )
     permutated_prefix = compute_shuffled_index(
         node_id_prefix,
         1 << ATTESTATION_SUBNET_PREFIX_BITS,
@@ -1966,8 +1997,7 @@ epoch range, we use the worst case event of a very large validator size
 
 ```python
 MIN_EPOCHS_FOR_BLOCK_REQUESTS = (
-    MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-    + MAX_SAFETY_DECAY * CHURN_LIMIT_QUOTIENT // (2 * 100)
+    MIN_VALIDATOR_WITHDRAWABILITY_DELAY + MAX_SAFETY_DECAY * CHURN_LIMIT_QUOTIENT // (2 * 100)
 )
 ```
 

@@ -2,5 +2,5 @@
 
 # Inclusion list committee
 # ---------------------------------------------------------------
-# 2**4 (= 16)
+# 2**4 (= 16) validators
 INCLUSION_LIST_COMMITTEE_SIZE: 16

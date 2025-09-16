@@ -1,17 +1,18 @@
 # Executable Python Spec (PySpec)
 
 The executable Python spec is built from the consensus specifications,
- complemented with the necessary helper functions for hashing, BLS, and more.
+complemented with the necessary helper functions for hashing, BLS, and more.
 
-With this executable spec,
- test-generators can easily create test-vectors for client implementations,
- and the spec itself can be verified to be consistent and coherent through sanity tests implemented with pytest.
+With this executable spec, test-generators can easily create test-vectors for
+client implementations, and the spec itself can be verified to be consistent and
+coherent through sanity tests implemented with pytest.
 
 ## Py-tests
 
-These tests are not intended for client-consumption.
-These tests are testing the spec itself, to verify consistency and provide feedback on modifications of the spec.
-However, most of the tests can be run in generator-mode, to output test vectors for client-consumption.
+These tests are not intended for client-consumption. These tests are testing the
+spec itself, to verify consistency and provide feedback on modifications of the
+spec. However, most of the tests can be run in generator-mode, to output test
+vectors for client-consumption.
 
 ### How to run tests
 
@@ -33,7 +34,7 @@ Or, to run a specific test function specify `k=<test-name>`:
 make test k=test_verify_kzg_proof
 ```
 
-Or, to run a specific test function under a single fork specify `k=<test-name>`:
+Or, to run all tests under a single fork specify `fork=<name>`:
 
 ```shell
 make test fork=phase0
@@ -51,9 +52,10 @@ Run `make coverage` to run all tests and open the html code coverage report.
 
 ## Contributing
 
-Contributions are welcome, but consider implementing your idea as part of the spec itself first.
-The pyspec is not a replacement.
+Contributions are welcome, but consider implementing your idea as part of the
+spec itself first. The pyspec is not a replacement.
 
 ## License
 
-Same as the spec itself; see [LICENSE](../../../LICENSE) file in the specs repository root.
+Same as the spec itself; see [LICENSE](../../../LICENSE) file in the specs
+repository root.

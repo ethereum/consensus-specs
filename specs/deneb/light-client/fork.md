@@ -42,8 +42,10 @@ def upgrade_lc_header_to_deneb(pre: capella.LightClientHeader) -> LightClientHea
             block_hash=pre.execution.block_hash,
             transactions_root=pre.execution.transactions_root,
             withdrawals_root=pre.execution.withdrawals_root,
-            blob_gas_used=uint64(0),  # [New in Deneb:EIP4844]
-            excess_blob_gas=uint64(0),  # [New in Deneb:EIP4844]
+            # [New in Deneb:EIP4844]
+            blob_gas_used=uint64(0),
+            # [New in Deneb:EIP4844]
+            excess_blob_gas=uint64(0),
         ),
         execution_branch=pre.execution_branch,
     )
@@ -72,7 +74,9 @@ def upgrade_lc_update_to_deneb(pre: capella.LightClientUpdate) -> LightClientUpd
 ```
 
 ```python
-def upgrade_lc_finality_update_to_deneb(pre: capella.LightClientFinalityUpdate) -> LightClientFinalityUpdate:
+def upgrade_lc_finality_update_to_deneb(
+    pre: capella.LightClientFinalityUpdate,
+) -> LightClientFinalityUpdate:
     return LightClientFinalityUpdate(
         attested_header=upgrade_lc_header_to_deneb(pre.attested_header),
         finalized_header=upgrade_lc_header_to_deneb(pre.finalized_header),
@@ -83,7 +87,9 @@ def upgrade_lc_finality_update_to_deneb(pre: capella.LightClientFinalityUpdate) 
 ```
 
 ```python
-def upgrade_lc_optimistic_update_to_deneb(pre: capella.LightClientOptimisticUpdate) -> LightClientOptimisticUpdate:
+def upgrade_lc_optimistic_update_to_deneb(
+    pre: capella.LightClientOptimisticUpdate,
+) -> LightClientOptimisticUpdate:
     return LightClientOptimisticUpdate(
         attested_header=upgrade_lc_header_to_deneb(pre.attested_header),
         sync_aggregate=pre.sync_aggregate,
