@@ -47,9 +47,9 @@ implementations should use established zkEVM systems.
 
 ## Custom types
 
-| Name      | SSZ equivalent | Description                       |
-| --------- | -------------- | --------------------------------- |
-| `ZKProof` | `Container`    | Zero-knowledge proof of execution |
+| Name      | SSZ equivalent | Description                                    |
+| --------- | -------------- | ---------------------------------------------- |
+| `ZKProof` | `Container`    | Zero-knowledge proof of execution of a program |
 
 ## Cryptographic types
 
