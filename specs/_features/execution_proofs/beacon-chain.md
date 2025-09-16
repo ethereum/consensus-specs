@@ -40,14 +40,14 @@ stateless validation of execution payloads through cryptographic proofs.
 
 ### Execution
 
-| Name                               | Value                                      |
-| ---------------------------------- | ------------------------------------------ |
-| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(8)`                                |
+| Name                               | Value                                        |
+| ---------------------------------- | -------------------------------------------- |
+| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(8)`                                  |
 | `PROGRAM`                          | `ProgramBytecode(b"PROG_V1" + b"\x00" * 57)` |
-| `MAX_PROOF_SIZE`                   | `307200` (= 300KiB)                        |
-| `MAX_PROVING_KEY_SIZE`             | `2**28` (= 256MiB)                         |
-| `MAX_VERIFICATION_KEY_SIZE`        | `2**20` (= 1MiB)                           |
-| `MAX_WITNESS_SIZE`                 | `314572800` (= 300MiB)                     |
+| `MAX_PROOF_SIZE`                   | `307200` (= 300KiB)                          |
+| `MAX_PROVING_KEY_SIZE`             | `2**28` (= 256MiB)                           |
+| `MAX_VERIFICATION_KEY_SIZE`        | `2**20` (= 1MiB)                             |
+| `MAX_WITNESS_SIZE`                 | `314572800` (= 300MiB)                       |
 
 ### Domain types
 
