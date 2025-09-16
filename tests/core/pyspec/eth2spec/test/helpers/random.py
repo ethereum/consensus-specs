@@ -4,6 +4,7 @@ from eth2spec.test.helpers.attestations import cached_prepare_state_with_attesta
 from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.forks import (
     is_post_altair,
+    is_post_capella,
     is_post_electra,
 )
 from eth2spec.test.helpers.state import next_epoch
@@ -296,17 +297,99 @@ def set_some_pending_consolidations(spec, state, rng):
     return consolidation_pairs
 
 
+def set_electra_churn_fields(spec, state, rng):
+    """Set Electra churn-related fields to realistic non-default values if post-Electra."""
+    current_epoch = spec.get_current_epoch(state)
+
+    state.earliest_exit_epoch = current_epoch + rng.randint(0, 4)
+    state.earliest_consolidation_epoch = current_epoch + rng.randint(0, 3)
+
+    # Set realistic churn balances
+    max_churn = spec.EFFECTIVE_BALANCE_INCREMENT * 10
+    state.deposit_balance_to_consume = rng.randint(0, max_churn)
+    state.exit_balance_to_consume = rng.randint(0, max_churn)
+    state.consolidation_balance_to_consume = rng.randint(0, max_churn)
+
+
+def set_withdrawal_fields(spec, state, rng):
+    """Set withdrawal-related fields to realistic non-default values if post-Capella."""
+    state.next_withdrawal_index = rng.randint(1, 1000)
+    # Ensure next_withdrawal_validator_index is non-zero and valid
+    if len(state.validators) > 1:
+        state.next_withdrawal_validator_index = rng.randint(1, len(state.validators) - 1)
+    else:
+        state.next_withdrawal_validator_index = 0
+
+
+def set_deposit_request_fields(spec, state, rng):
+    """Set deposit request fields to realistic non-default values if post-Electra."""
+    if state.deposit_requests_start_index == spec.FAR_FUTURE_EPOCH:
+        state.deposit_requests_start_index = rng.randint(100, 10000)
+
+
+def set_finality_fields(spec, state, rng):
+    """Set finality fields to realistic non-default values safely."""
+    current_epoch = spec.get_current_epoch(state)
+
+    # Only modify if they're still at genesis defaults
+    if (
+        state.finalized_checkpoint.epoch == 0
+        and state.current_justified_checkpoint.epoch == 0
+        and state.previous_justified_checkpoint.epoch == 0
+    ):
+        # Set realistic but valid finality progression
+        if current_epoch > 3:
+            finalized_epoch = max(0, current_epoch - 3)
+            prev_justified_epoch = max(finalized_epoch, current_epoch - 2)
+            curr_justified_epoch = max(prev_justified_epoch, current_epoch - 1)
+
+            # Create realistic checkpoint progression
+            state.finalized_checkpoint = spec.Checkpoint(
+                epoch=finalized_epoch,
+                root=spec.get_block_root(state, finalized_epoch)
+                if finalized_epoch > 0
+                else b"\x01" * 32,
+            )
+            state.previous_justified_checkpoint = spec.Checkpoint(
+                epoch=prev_justified_epoch,
+                root=spec.get_block_root(state, prev_justified_epoch)
+                if prev_justified_epoch > 0
+                else b"\x02" * 32,
+            )
+            state.current_justified_checkpoint = spec.Checkpoint(
+                epoch=curr_justified_epoch,
+                root=spec.get_block_root(state, curr_justified_epoch)
+                if curr_justified_epoch > 0
+                else b"\x03" * 32,
+            )
+
+
 def randomize_state(spec, state, rng=None, exit_fraction=0.5, slash_fraction=0.5):
+    """
+    Core randomization function that provides common field randomization across all forks.
+    Fork-specific randomization is handled by the fork-specific variants in randomized_block_tests.py
+    which call this function as their foundation.
+    """
     if rng is None:
         rng = Random(8020)
+
+    # Core validator lifecycle randomization (applies to all forks)
     set_some_new_deposits(spec, state, rng)
     exit_random_validators(spec, state, rng, fraction=exit_fraction)
     slash_random_validators(spec, state, rng, fraction=slash_fraction)
     randomize_attestation_participation(spec, state, rng)
+
+    # Fork-specific field randomization
     if is_post_electra(spec):
         set_some_pending_deposits(spec, state, rng)
         set_some_pending_partial_withdrawals(spec, state, rng)
         set_some_pending_consolidations(spec, state, rng)
+        set_electra_churn_fields(spec, state, rng)
+        set_deposit_request_fields(spec, state, rng)
+
+    # Apply withdrawal fields for Capella+
+    if is_post_capella(spec):
+        set_withdrawal_fields(spec, state, rng)
 
 
 def patch_state_to_non_leaking(spec, state):

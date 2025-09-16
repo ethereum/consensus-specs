@@ -7,16 +7,18 @@ import warnings
 from collections.abc import Callable
 from random import Random
 
-from eth2spec.test.helpers.blob import (
-    get_sample_blob_tx,
-)
+from eth2spec.test.helpers.blob import get_sample_blob_tx
 from eth2spec.test.helpers.execution_payload import (
     build_randomized_execution_payload,
     compute_el_block_hash_for_block,
 )
-from eth2spec.test.helpers.inactivity_scores import (
-    randomize_inactivity_scores,
+from eth2spec.test.helpers.forks import (
+    is_post_altair,
+    is_post_bellatrix,
+    is_post_capella,
+    is_post_deneb,
 )
+from eth2spec.test.helpers.inactivity_scores import randomize_inactivity_scores
 from eth2spec.test.helpers.multi_operations import (
     build_random_block_from_state_for_next_slot,
     get_random_bls_to_execution_changes,
@@ -34,6 +36,7 @@ from eth2spec.test.helpers.state import (
     next_slot,
     state_transition_and_sign_block,
 )
+from eth2spec.utils import bls
 
 # primitives:
 # state
@@ -60,6 +63,143 @@ def _randomize_deposit_state(spec, state, stats):
     }
 
 
+def _randomize_phase0_fields(spec, state):
+    """Set Phase0-specific fields to realistic non-default values."""
+
+    rng = Random(8020)  # same seed as other randomization functions
+    current_epoch = spec.get_current_epoch(state)
+
+    # Randomize ETH1 data votes (simulate realistic ETH1 voting)
+    if len(state.eth1_data_votes) == 0:
+        num_votes = rng.randint(1, min(10, spec.EPOCHS_PER_ETH1_VOTING_PERIOD))
+        for i in range(num_votes):
+            eth1_data = spec.Eth1Data(
+                deposit_root=rng.randbytes(32),
+                deposit_count=rng.randint(1, 1000),
+                block_hash=rng.randbytes(32),
+            )
+            state.eth1_data_votes.append(eth1_data)
+
+    # Randomize historical roots
+    if current_epoch > 0 and len(state.historical_roots) == 0:
+        num_historical = rng.randint(0, min(3, current_epoch))
+        for i in range(num_historical):
+            state.historical_roots.append(rng.randbytes(32))
+
+    # Randomize RANDAO mixes
+    for i in range(min(len(state.randao_mixes), spec.EPOCHS_PER_HISTORICAL_VECTOR)):
+        if state.randao_mixes[i] == b"\x00" * 32:  # Only modify empty ones
+            state.randao_mixes[i] = rng.randbytes(32)
+
+    # Add some slashing penalties
+    current_epoch_index = current_epoch % spec.EPOCHS_PER_SLASHINGS_VECTOR
+    if state.slashings[current_epoch_index] == 0:
+        penalty = spec.EFFECTIVE_BALANCE_INCREMENT * rng.randint(0, 10)
+        state.slashings[current_epoch_index] = penalty
+
+
+def _randomize_altair_fields(spec, state):
+    """Set Altair-specific fields to realistic non-default values."""
+    if not is_post_altair(spec):
+        return
+
+    rng = Random(4242)  # consistent seed with inactivity scores
+
+    # Simulate sync committee rotation to catch transition bugs
+    if hasattr(state, "current_sync_committee") and hasattr(state, "next_sync_committee"):
+        current_epoch = spec.get_current_epoch(state)
+        active_validators = spec.get_active_validator_indices(state, current_epoch)
+
+        if len(active_validators) >= spec.SYNC_COMMITTEE_SIZE:
+            shuffled_validators = list(active_validators)
+            rng.shuffle(shuffled_validators)
+            next_committee_indices = shuffled_validators[: spec.SYNC_COMMITTEE_SIZE]
+            next_pubkeys = [state.validators[i].pubkey for i in next_committee_indices]
+            state.next_sync_committee.pubkeys = next_pubkeys
+
+            if next_pubkeys:
+                state.next_sync_committee.aggregate_pubkey = bls.AggregatePKs(next_pubkeys)
+
+
+def _randomize_bellatrix_fields(spec, state):
+    """Set Bellatrix-specific fields to realistic non-default values."""
+    if not is_post_bellatrix(spec):
+        return
+
+    rng = Random(3456)  # consistent seed with block randomization
+
+    if hasattr(state, "latest_execution_payload_header"):
+        empty_header = spec.ExecutionPayloadHeader()
+        if state.latest_execution_payload_header == empty_header:
+            state.latest_execution_payload_header = spec.ExecutionPayloadHeader(
+                parent_hash=rng.randbytes(32),
+                fee_recipient=rng.randbytes(20),
+                state_root=rng.randbytes(32),
+                receipts_root=rng.randbytes(32),
+                logs_bloom=rng.randbytes(spec.BYTES_PER_LOGS_BLOOM),
+                prev_randao=rng.randbytes(32),
+                block_number=rng.randint(1, 1000000),
+                gas_limit=rng.randint(8000000, 30000000),
+                gas_used=rng.randint(100000, 15000000),
+                timestamp=rng.randint(1609459200, 2000000000),
+                extra_data=rng.randbytes(rng.randint(0, 32)),
+                base_fee_per_gas=rng.randint(1, 100000000000),
+                block_hash=rng.randbytes(32),
+                transactions_root=rng.randbytes(32),
+            )
+
+
+def _randomize_capella_fields(spec, state):
+    """Set Capella-specific fields to realistic non-default values."""
+    if not is_post_capella(spec):
+        return
+
+    rng = Random(7890)
+
+    # Randomize withdrawal credentials to simulate realistic validator states
+    if hasattr(state, "validators"):
+        num_validators = len(state.validators)
+
+        # Set some validators to have ETH1 withdrawal credentials (0x01 prefix)
+        # to simulate realistic pre-Capella state where some validators haven't
+        # updated their credentials yet
+        for i in range(min(num_validators, 20)):
+            validator = state.validators[i]
+
+            # ~30% chance to set ETH1 withdrawal credentials
+            if rng.random() < 0.3:
+                eth1_address = rng.randbytes(20)
+                validator.withdrawal_credentials = b"\x01" + b"\x00" * 11 + eth1_address
+
+
+def _randomize_deneb_fields(spec, state):
+    """Set Deneb-specific fields to realistic non-default values."""
+    if not is_post_deneb(spec):
+        return
+
+    rng = Random(9999)
+
+    if hasattr(state, "historical_summaries") and len(state.historical_summaries) == 0:
+        current_epoch = spec.get_current_epoch(state)
+        num_summaries = rng.randint(0, min(3, current_epoch // 100))
+
+        for i in range(num_summaries):
+            historical_summary = spec.HistoricalSummary(
+                block_summary_root=rng.randbytes(32),
+                state_summary_root=rng.randbytes(32),
+            )
+            state.historical_summaries.append(historical_summary)
+
+
+def randomize_state_phase0(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state(
+        spec, state, stats, exit_fraction=exit_fraction, slash_fraction=slash_fraction
+    )
+
+    _randomize_phase0_fields(spec, state)
+    return scenario_state
+
+
 def randomize_state(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
     randomize_state_helper(spec, state, exit_fraction=exit_fraction, slash_fraction=slash_fraction)
     scenario_state = _randomize_deposit_state(spec, state, stats)
@@ -67,10 +207,11 @@ def randomize_state(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
 
 
 def randomize_state_altair(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
-    scenario_state = randomize_state(
+    scenario_state = randomize_state_phase0(
         spec, state, stats, exit_fraction=exit_fraction, slash_fraction=slash_fraction
     )
     randomize_inactivity_scores(spec, state)
+    _randomize_altair_fields(spec, state)
     return scenario_state
 
 
@@ -78,7 +219,7 @@ def randomize_state_bellatrix(spec, state, stats, exit_fraction=0.1, slash_fract
     scenario_state = randomize_state_altair(
         spec, state, stats, exit_fraction=exit_fraction, slash_fraction=slash_fraction
     )
-    # TODO: randomize execution payload, merge status, etc.
+    _randomize_bellatrix_fields(spec, state)
     return scenario_state
 
 
@@ -86,7 +227,7 @@ def randomize_state_capella(spec, state, stats, exit_fraction=0.1, slash_fractio
     scenario_state = randomize_state_bellatrix(
         spec, state, stats, exit_fraction=exit_fraction, slash_fraction=slash_fraction
     )
-    # TODO: randomize withdrawals
+    _randomize_capella_fields(spec, state)
     return scenario_state
 
 
@@ -94,7 +235,7 @@ def randomize_state_deneb(spec, state, stats, exit_fraction=0.1, slash_fraction=
     scenario_state = randomize_state_capella(
         spec, state, stats, exit_fraction=exit_fraction, slash_fraction=slash_fraction
     )
-    # TODO: randomize execution payload
+    _randomize_deneb_fields(spec, state)
     return scenario_state
 
 
