@@ -1,6 +1,7 @@
 # Execution Proofs -- Validator
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
+**Notice**: This document is a work-in-progress for researchers and
+implementers.
 
 ## Table of contents
 
@@ -19,26 +20,31 @@
 
 ## Introduction
 
-This document represents optional execution proof generation capabilities that validators may choose to implement.
+This document represents optional execution proof generation capabilities that
+validators may choose to implement.
 
 ## Prerequisites
 
-This document is an extension of the [Fulu -- Validator](../../fulu/validator.md) guide.
+This document is an extension of the
+[Fulu -- Validator](../../fulu/validator.md) guide.
 
 ## Configuration
 
-| Name                                    | Value             |
-| --------------------------------------- | ----------------- |
-| `EXECUTION_PROOF_GENERATION_ENABLED`   | `False`           |
+| Name                                 | Value   |
+| ------------------------------------ | ------- |
+| `EXECUTION_PROOF_GENERATION_ENABLED` | `False` |
 
 ## Optional execution proof generation
 
-Validators MAY choose to generate execution proofs for payloads they propose or receive.
+Validators MAY choose to generate execution proofs for payloads they propose or
+receive.
 
 ### `generate_execution_proof`
 
 ```python
-def generate_execution_proof(payload: ExecutionPayload, execution_witness: ZKExecutionWitness, proof_id: ProofID) -> Optional[SignedExecutionProof]:
+def generate_execution_proof(
+    payload: ExecutionPayload, execution_witness: ZKExecutionWitness, proof_id: ProofID
+) -> Optional[SignedExecutionProof]:
     """
     Generate an execution proof for the given payload
     """
@@ -59,7 +65,9 @@ def generate_execution_proof(payload: ExecutionPayload, execution_witness: ZKExe
         validator_index=validator_index,
     )
 
-    signing_root = compute_signing_root(execution_proof_message, get_domain(get_current_state(), DOMAIN_EXECUTION_PROOF))
+    signing_root = compute_signing_root(
+        execution_proof_message, get_domain(get_current_state(), DOMAIN_EXECUTION_PROOF)
+    )
     signature = bls.Sign(get_validator_private_key(), signing_root)
 
     return SignedExecutionProof(

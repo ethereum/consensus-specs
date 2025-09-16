@@ -30,32 +30,38 @@
 
 ## Introduction
 
-This document contains the consensus specs for Execution Proofs. This enables stateless validation of execution payloads through cryptographic proofs.
+This document contains the consensus specs for Execution Proofs. This enables
+stateless validation of execution payloads through cryptographic proofs.
 
-*Note*: This specification assumes the reader is familiar with the [zkEVM cryptographic operations](./zkevm.md).
+*Note*: This specification assumes the reader is familiar with the
+[zkEVM cryptographic operations](./zkevm.md).
 
 ## Constants
 
 ### Execution
 
-| Name                                    | Value             |
-| --------------------------------------- | ----------------- |
-| `MAX_EXECUTION_PROOFS_PER_PAYLOAD`     | `uint64(8)`       |
-| `PROGRAM`                      | `ProgramSource(b"PROG_V1" + b"\x00" * 25)` |
+| Name                               | Value                                      |
+| ---------------------------------- | ------------------------------------------ |
+| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(8)`                                |
+| `PROGRAM`                          | `ProgramBytecode(b"PROG_V1" + b"\x00" * 57)` |
+| `MAX_PROOF_SIZE`                   | `307200` (= 300KiB)                        |
+| `MAX_PROVING_KEY_SIZE`             | `2**28` (= 256MiB)                         |
+| `MAX_VERIFICATION_KEY_SIZE`        | `2**20` (= 1MiB)                           |
+| `MAX_WITNESS_SIZE`                 | `314572800` (= 300MiB)                     |
 
 ### Domain types
 
-| Name                       | Value                      |
-| -------------------------- | -------------------------- |
-| `DOMAIN_EXECUTION_PROOF`   | `DomainType('0x0A000000')` |
+| Name                     | Value                      |
+| ------------------------ | -------------------------- |
+| `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0A000000')` |
 
 ## Configuration
 
 *Note*: The configuration values are not definitive.
 
-| Name                             | Value                           |
-| -------------------------------- | ------------------------------- |
-| `MIN_REQUIRED_EXECUTION_PROOFS`  | `uint64(1)`                     |
+| Name                            | Value       |
+| ------------------------------- | ----------- |
+| `MIN_REQUIRED_EXECUTION_PROOFS` | `uint64(1)` |
 
 ## Containers
 
@@ -80,7 +86,9 @@ class SignedExecutionProof(Container):
 
 ### Extended Containers
 
-*Note*: `BeaconState` and `BeaconBlockBody` remain the same as Fulu. No modifications are required for execution proofs since they are handled externally.
+*Note*: `BeaconState` and `BeaconBlockBody` remain the same as Fulu. No
+modifications are required for execution proofs since they are handled
+externally.
 
 ## Helper functions
 
@@ -89,7 +97,13 @@ class SignedExecutionProof(Container):
 #### `verify_execution_proof`
 
 ```python
-def verify_execution_proof(signed_proof: SignedExecutionProof, parent_hash: Hash32, block_hash: Hash32, state: BeaconState, el_program: ProgramSource) -> bool:
+def verify_execution_proof(
+    signed_proof: SignedExecutionProof,
+    parent_hash: Hash32,
+    block_hash: Hash32,
+    state: BeaconState,
+    el_program: ProgramBytecode,
+) -> bool:
     """
     Verify an execution proof against a payload header using zkEVM verification.
     """
@@ -104,7 +118,9 @@ def verify_execution_proof(signed_proof: SignedExecutionProof, parent_hash: Hash
         return False
 
     # Derive program bytecode from the EL program identifier and proof type
-    program_bytecode = ProgramBytecode(el_program + proof_message.zk_proof.proof_type.to_bytes(1, 'little'))
+    program_bytecode = ProgramBytecode(
+        el_program + proof_message.zk_proof.proof_type.to_bytes(1, "little")
+    )
 
     return verify_zkevm_proof(proof_message.zk_proof, parent_hash, block_hash, program_bytecode)
 ```
@@ -140,7 +156,10 @@ def verify_execution_proofs(parent_hash: Hash32, block_hash: Hash32, state: Beac
 
 ```python
 def process_execution_payload(
-    state: BeaconState, body: BeaconBlockBody, execution_engine: ExecutionEngine, stateless_validation: bool = False
+    state: BeaconState,
+    body: BeaconBlockBody,
+    execution_engine: ExecutionEngine,
+    stateless_validation: bool = False,
 ) -> None:
     """
     Note: This function is modified to support optional stateless validation with execution proofs.
