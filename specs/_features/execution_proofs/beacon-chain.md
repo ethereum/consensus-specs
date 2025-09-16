@@ -51,8 +51,6 @@ This document contains the consensus specs for Execution Proofs. This enables st
 
 | Name                             | Value                           |
 | -------------------------------- | ------------------------------- |
-| `EXECUTION_PROOFS_FORK_EPOCH`    | `Epoch(18446744073709551615)`   |
-| `EXECUTION_PROOFS_FORK_VERSION`  | `Version('0x0A000000')`         |
 | `MIN_REQUIRED_EXECUTION_PROOFS`  | `uint64(1)`                     |
 
 ## Containers
