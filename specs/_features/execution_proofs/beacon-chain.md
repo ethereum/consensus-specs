@@ -99,7 +99,7 @@ def get_el_program(proof_id: ProofID) -> EL_PROGRAM:
     elif proof_id == ProofID(3):
         return BESU_EL_PROGRAM
 
-    assert proof_id < ProofID(4)
+    raise Exception(f"Unsupported proof_id: {proof_id}") 
 ```
 
 #### `verify_execution_proof`
