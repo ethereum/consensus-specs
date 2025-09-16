@@ -25,6 +25,9 @@
 This is the modification of the fork choice according to the executable beacon
 chain proposal.
 
+Unless stated explicitly, all prior functionality from
+[Altair](../altair/fork-choice.md) is inherited.
+
 *Note*: It introduces the process of transition from the last PoW block to the
 first PoS block.
 
