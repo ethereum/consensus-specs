@@ -63,7 +63,6 @@ For public API consumers, this document provides the following **public methods*
 | `MAX_PROVING_KEY_SIZE` | `2**28` (= 256MB) | <!-- placeholder value -->
 | `MAX_VERIFICATION_KEY_SIZE` | `2**20` (= 1MB) | <!-- placeholder value -->
 | `MAX_WITNESS_SIZE` | `314572800` (= 300MB) |
-| `MAX_PROOF_SYSTEMS` | `uint64(8)` |
 
 ## Preset
 
@@ -116,10 +115,6 @@ def compile_execution_layer(el_program: EL_PROGRAM, proof_id: ProofID) -> tuple[
     Returns:
         Tuple of (proving_key, verification_key) for the EL program and proof system
     """
-
-    # Validate proof system ID
-    # Creating proofs is computationally heavy for the builder, so we limit it with `MAX_PROOF_SYSTEMS`
-    assert proof_id < MAX_PROOF_SYSTEMS
 
     # Combine program bytes with proof ID
     combined_data = el_program + proof_id.to_bytes(1, 'little')
@@ -181,7 +176,6 @@ def generate_verification_key(program_bytecode: ProgramBytecode, proof_id: Proof
     Returns:
         Verification key for verifying proofs
     """
-    assert proof_id < MAX_PROOF_SYSTEMS
 
     verification_key = VerificationKey(program_bytecode)
 
@@ -231,7 +225,6 @@ def compile_execution_layer(el_program: EL_PROGRAM, proof_id: ProofID) -> tuple[
         Tuple of (proving_key, verification_key) for the EL program and proof system
     """
 
-    assert proof_id < MAX_PROOF_SYSTEMS
 
     program_bytecode = ProgramBytecode(el_program + proof_id.to_bytes(1, 'little'))
 
@@ -255,7 +248,6 @@ def generate_proving_key(program_bytecode: ProgramBytecode, proof_id: ProofID) -
     Returns:
         Proving key for generating proofs
     """
-    assert proof_id < MAX_PROOF_SYSTEMS
 
     return ProvingKey(program_bytecode)
 ```
@@ -274,7 +266,6 @@ def generate_verification_key(program_bytecode: ProgramBytecode, proof_id: Proof
     Returns:
         Verification key for verifying proofs
     """
-    assert proof_id < MAX_PROOF_SYSTEMS
 
     return VerificationKey(program_bytecode)
 ```
@@ -299,9 +290,6 @@ def verify_zkevm_proof(
         block_hash: Block hash from execution payload
         el_program: Execution layer program
     """
-    # Validate proof system ID
-    if zk_proof.proof_type >= MAX_PROOF_SYSTEMS:
-        return False
 
     # Validate that public inputs match the provided parent and current block hash
     if zk_proof.public_inputs.block_hash != block_hash:
@@ -332,9 +320,6 @@ def generate_zkevm_proof(
         el_program: Execution layer program
         proof_id: Proof system identifier
     """
-    # Validate proof system ID
-    if proof_id >= MAX_PROOF_SYSTEMS:
-        return None
 
     proving_key, verification_key = compile_execution_layer(el_program, proof_id)
 
