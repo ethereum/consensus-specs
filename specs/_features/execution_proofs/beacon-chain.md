@@ -72,7 +72,7 @@ stateless validation of execution payloads through cryptographic proofs.
 ```python
 class ExecutionProof(Container):
     beacon_root: Root
-    zk_proof: ZKProof
+    zk_proof: ZKEVMProof
     validator_index: ValidatorIndex
 ```
 
