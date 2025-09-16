@@ -59,7 +59,7 @@ implementations should use established zkEVM systems.
 | `ProofID`            | `uint8`                               | Identifier for proof system                                   |
 | `ProvingKey`         | `ByteList[MAX_PROVING_KEY_SIZE]`      | Key used for proof generation                                 |
 | `VerificationKey`    | `ByteList[MAX_VERIFICATION_KEY_SIZE]` | Key used for proof verification                               |
-| `ZKExecutionWitness` | `ByteList[MAX_WITNESS_SIZE]`          | zkEVM execution witness data for proof generation             |
+| `ZKExecutionWitness` | `ByteList[MAX_WITNESS_SIZE]`          | zkEVM execution witness data for stateless program execution  |
 | `PrivateInput`       | `Container`                           | Private inputs for execution proof generation                 |
 | `PublicInput`        | `Container`                           | Public inputs for execution proof generation and verification |
 
