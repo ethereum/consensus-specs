@@ -54,7 +54,7 @@ The following validations MUST pass before forwarding the
 `signed_execution_proof` on the network:
 
 - _[IGNORE]_ The proof is the first valid proof received for the tuple
-  `(signed_execution_proof.message.beacon_root, signed_execution_proof.message.validator_index)`.
+  `(signed_execution_proof.message.zk_proof.public_inputs.block_hash, subnet_id)`.
 - _[REJECT]_ The `signed_execution_proof.message.validator_index` is within the
   known validator registry.
 - _[REJECT]_ The `signed_execution_proof.signature` is valid with respect to the
@@ -63,6 +63,8 @@ The following validations MUST pass before forwarding the
   non-empty.
 - _[REJECT]_ The proof system ID matches the subnet:
   `signed_execution_proof.message.zk_proof.proof_type == subnet_id`.
+- _[REJECT]_ The execution proof is valid as verified by `verify_execution_proof()`
+  with the appropriate parent and block hashes from the execution layer.
 
 Subnet topics follow the pattern: `/eth2/execution_proof_{subnet_id}/ssz_snappy`
 
