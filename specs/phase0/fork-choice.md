@@ -29,6 +29,7 @@
     - [`seconds_to_milliseconds`](#seconds_to_milliseconds)
     - [`get_slot_component_duration_ms`](#get_slot_component_duration_ms)
     - [`get_attestation_due_ms`](#get_attestation_due_ms)
+    - [`get_proposer_reorg_cutoff_ms`](#get_proposer_reorg_cutoff_ms)
     - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
       - [`is_head_late`](#is_head_late)
       - [`is_shuffling_stable`](#is_shuffling_stable)
@@ -477,10 +478,14 @@ def get_slot_component_duration_ms(basis_points: uint64) -> uint64:
 
 ```python
 def get_attestation_due_ms(epoch: Epoch) -> uint64:
-    """
-    Calculate the duration until the attestation is due in milliseconds.
-    """
     return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+```
+
+#### `get_proposer_reorg_cutoff_ms`
+
+```python
+def get_proposer_reorg_cutoff_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
 ```
 
 #### Proposer head and reorg helpers
@@ -524,7 +529,8 @@ def is_finalization_ok(store: Store, slot: Slot) -> bool:
 def is_proposing_on_time(store: Store) -> bool:
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    proposer_reorg_cutoff_ms = get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
+    epoch = get_current_store_epoch(store)
+    proposer_reorg_cutoff_ms = get_proposer_reorg_cutoff_ms(epoch)
     return time_into_slot_ms <= proposer_reorg_cutoff_ms
 ```
 
