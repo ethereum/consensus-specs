@@ -11,6 +11,7 @@
   - [Introduction](#introduction)
   - [Constants](#constants)
     - [Execution](#execution)
+    - [Domain types](#domain-types)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [New containers](#new-containers)
@@ -45,6 +46,12 @@ This document contains the consensus specs for Execution Proofs. This enables st
 | `GETH_EL_PROGRAM`                      | `EL_PROGRAM(b"GETH_V1" + b"\x00" * 25)` |
 | `NETHERMIND_EL_PROGRAM`                | `EL_PROGRAM(b"NETHERMIND_V1" + b"\x00" * 20)` |
 | `BESU_EL_PROGRAM`                      | `EL_PROGRAM(b"BESU_V1" + b"\x00" * 25)` |
+
+### Domain types
+
+| Name                       | Value                      |
+| -------------------------- | -------------------------- |
+| `DOMAIN_EXECUTION_PROOF`   | `DomainType('0x0A000000')` |
 
 ## Configuration
 
@@ -105,20 +112,21 @@ def get_el_program(proof_id: ProofID) -> EL_PROGRAM:
 #### `verify_execution_proof`
 
 ```python
-def verify_execution_proof(proof: ExecutionProof, parent_hash: Hash32, block_hash: Hash32, state: BeaconState, el_program: EL_PROGRAM) -> bool:
+def verify_execution_proof(signed_proof: SignedExecutionProof, parent_hash: Hash32, block_hash: Hash32, state: BeaconState, el_program: EL_PROGRAM) -> bool:
     """
     Verify an execution proof against a payload header using zkEVM verification.
     """
 
-    # Note: proof.beacon_root verification would be done at a higher level
+    # Note: signed_proof.message.beacon_root verification would be done at a higher level
 
     # Verify the validator signature
-    validator = state.validators[proof.validator_index]
-    signing_root = compute_signing_root(proof, get_domain(state, DOMAIN_EXECUTION_PROOF))
-    if not bls.Verify(validator.pubkey, signing_root, proof.signature):
+    proof_message = signed_proof.message
+    validator = state.validators[proof_message.validator_index]
+    signing_root = compute_signing_root(proof_message, get_domain(state, DOMAIN_EXECUTION_PROOF))
+    if not bls.Verify(validator.pubkey, signing_root, signed_proof.signature):
         return False
 
-    return verify_zkevm_proof(proof.zk_proof, parent_hash, block_hash, el_program)
+    return verify_zkevm_proof(proof_message.zk_proof, parent_hash, block_hash, el_program)
 ```
 
 #### `verify_execution_proofs`
@@ -130,18 +138,18 @@ def verify_execution_proofs(parent_hash: Hash32, block_hash: Hash32, state: Beac
     """
     # `retrieve_execution_proofs` is implementation and context dependent
     # It returns all the execution proofs for the given payload block hash
-    execution_proofs = retrieve_execution_proofs(block_hash)
+    signed_execution_proofs = retrieve_execution_proofs(block_hash)
 
     # Verify we have sufficient proofs
-    if len(execution_proofs) < MIN_REQUIRED_EXECUTION_PROOFS:
+    if len(signed_execution_proofs) < MIN_REQUIRED_EXECUTION_PROOFS:
         return False
 
     # Verify all execution proofs
-    for proof in execution_proofs:
+    for signed_proof in signed_execution_proofs:
         # Get EL program from proof system ID
         # TODO: The proof system ID is really an ID for a proof system and EL combination
-        el_program = get_el_program(proof.zk_proof.proof_type)
-        if not verify_execution_proof(proof, parent_hash, block_hash, state, el_program):
+        el_program = get_el_program(signed_proof.message.zk_proof.proof_type)
+        if not verify_execution_proof(signed_proof, parent_hash, block_hash, state, el_program):
             return False
 
     return True
