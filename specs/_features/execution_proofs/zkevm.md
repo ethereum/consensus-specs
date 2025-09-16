@@ -59,10 +59,10 @@ For public API consumers, this document provides the following **public methods*
 
 | Name | Value |
 | - | - |
-| `MAX_PROOF_SIZE` | `307200` (= 300KB) |
-| `MAX_PROVING_KEY_SIZE` | `2**28` (= 256MB) | <!-- placeholder value -->
-| `MAX_VERIFICATION_KEY_SIZE` | `2**20` (= 1MB) | <!-- placeholder value -->
-| `MAX_WITNESS_SIZE` | `314572800` (= 300MB) |
+| `MAX_PROOF_SIZE` | `307200` (= 300KiB) |
+| `MAX_PROVING_KEY_SIZE` | `2**28` (= 256MiB) | <!-- placeholder value -->
+| `MAX_VERIFICATION_KEY_SIZE` | `2**20` (= 1MiB) | <!-- placeholder value -->
+| `MAX_WITNESS_SIZE` | `314572800` (= 300MiB) |
 
 ## Preset
 
@@ -109,13 +109,6 @@ def compile_execution_layer(el_program: EL_PROGRAM, proof_id: ProofID) -> tuple[
     Compile an execution layer program with proof ID to produce proving and verification keys for a specific proof system.
 
     Note: This function is unsafe. In production, we will use a well-established compiler.
-
-    Args:
-        el_program: Execution layer program
-        proof_id: Proof system identifier
-
-    Returns:
-        Tuple of (proving_key, verification_key) for the EL program and proof system
     """
 
     # Combine program bytes with proof ID
@@ -170,13 +163,6 @@ def verify_execution_proof_impl(
 def generate_verification_key(program_bytecode: ProgramBytecode, proof_id: ProofID) -> VerificationKey:
     """
     Generate a verification key for the given program bytecode and proof system.
-
-    Args:
-        program_bytecode: Execution layer program bytecode
-        proof_id: Proof system identifier
-
-    Returns:
-        Verification key for verifying proofs
     """
 
     verification_key = VerificationKey(program_bytecode)
@@ -218,13 +204,6 @@ def generate_execution_proof_impl(
 def generate_proving_key(program_bytecode: ProgramBytecode, proof_id: ProofID) -> ProvingKey:
     """
     Generate a proving key for the given program bytecode and proof system.
-
-    Args:
-        program_bytecode: Execution layer program bytecode
-        proof_id: Proof system identifier
-
-    Returns:
-        Proving key for generating proofs
     """
 
     return ProvingKey(program_bytecode)
@@ -236,13 +215,6 @@ def generate_proving_key(program_bytecode: ProgramBytecode, proof_id: ProofID) -
 def generate_verification_key(program_bytecode: ProgramBytecode, proof_id: ProofID) -> VerificationKey:
     """
     Generate a verification key for the given program bytecode and proof system.
-
-    Args:
-        program_bytecode: Execution layer program bytecode
-        proof_id: Proof system identifier
-
-    Returns:
-        Verification key for verifying proofs
     """
 
     return VerificationKey(program_bytecode)
@@ -261,12 +233,6 @@ def verify_zkevm_proof(
 ) -> bool:
     """
     Public method to verify a zkEVM execution proof against block hashes.
-
-    Args:
-        zk_proof: The zkEVM proof to verify
-        parent_hash: Parent block hash from execution payload
-        block_hash: Block hash from execution payload
-        el_program: Execution layer program
     """
 
     # Validate that public inputs match the provided parent and current block hash
@@ -291,12 +257,6 @@ def generate_zkevm_proof(
 ) -> Optional[ZKProof]:
     """
     Public method to generate an execution proof for a payload.
-
-    Args:
-        execution_payload: The execution payload to prove
-        execution_witness: Execution witness data containing the pre-state + MPT proofs
-        el_program: Execution layer program
-        proof_id: Proof system identifier
     """
 
     proving_key, verification_key = compile_execution_layer(el_program, proof_id)
