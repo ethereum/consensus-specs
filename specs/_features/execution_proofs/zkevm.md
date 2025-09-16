@@ -51,7 +51,7 @@ For public API consumers, this document provides the following **public methods*
 | `ProofID` | `uint8` | Identifier for proof system |
 | `ProvingKey` | `ByteList[MAX_PROVING_KEY_SIZE]` | Key used for proof generation |
 | `VerificationKey` | `ByteList[MAX_VERIFICATION_KEY_SIZE]` | Key used for proof verification |
-| `ExecutionWitness` | `ByteList[MAX_WITNESS_SIZE]` | Execution witness data for proof generation |
+| `ZKExecutionWitness` | `ByteList[MAX_WITNESS_SIZE]` | zkEVM execution witness data for proof generation |
 | `PrivateInput` | `Container` | Private inputs for execution proof generation |
 | `PublicInput` | `Container` | Public inputs for execution proof generation and verification |
 
@@ -86,7 +86,7 @@ class ZKProof(Container):
 ```python
 class PrivateInput(Container):
     execution_payload: ExecutionPayload
-    execution_witness: ExecutionWitness
+    execution_witness: ZKExecutionWitness
 ```
 
 ### `PublicInput`
@@ -100,6 +100,8 @@ class PublicInput(Container):
 ## Helper functions
 
 ### Compilation
+
+#### `compile_execution_layer`
 
 ```python
 def compile_execution_layer(el_program: EL_PROGRAM, proof_id: ProofID) -> tuple[ProvingKey, VerificationKey]:
@@ -210,30 +212,6 @@ def generate_execution_proof_impl(
     )
 ```
 
-#### `compile_execution_layer`
-
-```python
-def compile_execution_layer(el_program: EL_PROGRAM, proof_id: ProofID) -> tuple[ProvingKey, VerificationKey]:
-    """
-    Compile an execution layer program identifier with proof ID to produce proving and verification keys.
-
-    Args:
-        el_program: Execution layer program identifier (e.g., "RETH_V1")
-        proof_id: Proof system identifier
-
-    Returns:
-        Tuple of (proving_key, verification_key) for the EL program and proof system
-    """
-
-
-    program_bytecode = ProgramBytecode(el_program + proof_id.to_bytes(1, 'little'))
-
-    proving_key = generate_proving_key(program_bytecode, proof_id)
-    verification_key = generate_verification_key(program_bytecode, proof_id)
-
-    return (proving_key, verification_key)
-```
-
 #### `generate_proving_key`
 
 ```python
@@ -307,7 +285,7 @@ def verify_zkevm_proof(
 ```python
 def generate_zkevm_proof(
     execution_payload: ExecutionPayload,
-    execution_witness: ExecutionWitness,
+    execution_witness: ZKExecutionWitness,
     el_program: EL_PROGRAM,
     proof_id: ProofID
 ) -> Optional[ZKProof]:
