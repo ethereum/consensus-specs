@@ -45,11 +45,7 @@ def generate_execution_proof(payload: ExecutionPayload, execution_witness: ZKExe
     if not EXECUTION_PROOF_GENERATION_ENABLED:
         return None
 
-    # Get EL program for the proof system (from beacon-chain.md)
-    el_program = get_el_program(proof_id)
-
-    # Generate zkEVM proof
-    zk_proof = generate_zkevm_proof(payload, execution_witness, el_program, proof_id)
+    zk_proof = generate_zkevm_proof(payload, execution_witness, PROGRAM, proof_id)
 
     if zk_proof is None:
         return None

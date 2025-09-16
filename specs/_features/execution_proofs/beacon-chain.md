@@ -20,7 +20,6 @@
     - [Extended Containers](#extended-containers)
   - [Helper functions](#helper-functions)
     - [Execution proof functions](#execution-proof-functions)
-      - [`get_el_program`](#get_el_program)
       - [`verify_execution_proof`](#verify_execution_proof)
       - [`verify_execution_proofs`](#verify_execution_proofs)
   - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -42,10 +41,7 @@ This document contains the consensus specs for Execution Proofs. This enables st
 | Name                                    | Value             |
 | --------------------------------------- | ----------------- |
 | `MAX_EXECUTION_PROOFS_PER_PAYLOAD`     | `uint64(8)`       |
-| `RETH_PROGRAM`                      | `ProgramSource(b"RETH_V1" + b"\x00" * 25)` |
-| `GETH_PROGRAM`                      | `ProgramSource(b"GETH_V1" + b"\x00" * 25)` |
-| `NETHERMIND_PROGRAM`                | `ProgramSource(b"NETHERMIND_V1" + b"\x00" * 20)` |
-| `BESU_PROGRAM`                      | `ProgramSource(b"BESU_V1" + b"\x00" * 25)` |
+| `PROGRAM`                      | `ProgramSource(b"PROG_V1" + b"\x00" * 25)` |
 
 ### Domain types
 
@@ -90,25 +86,6 @@ class SignedExecutionProof(Container):
 
 ### Execution proof functions
 
-#### `get_el_program`
-
-```python
-def get_el_program(proof_id: ProofID) -> ProgramSource:
-    """
-    Get the EL program for a given proof system ID.
-    """
-    if proof_id == ProofID(0):
-        return RETH_PROGRAM
-    elif proof_id == ProofID(1):
-        return GETH_PROGRAM
-    elif proof_id == ProofID(2):
-        return NETHERMIND_PROGRAM
-    elif proof_id == ProofID(3):
-        return BESU_PROGRAM
-
-    raise Exception(f"Unsupported proof_id: {proof_id}") 
-```
-
 #### `verify_execution_proof`
 
 ```python
@@ -126,7 +103,10 @@ def verify_execution_proof(signed_proof: SignedExecutionProof, parent_hash: Hash
     if not bls.Verify(validator.pubkey, signing_root, signed_proof.signature):
         return False
 
-    return verify_zkevm_proof(proof_message.zk_proof, parent_hash, block_hash, el_program)
+    # Derive program bytecode from the EL program identifier and proof type
+    program_bytecode = ProgramBytecode(el_program + proof_message.zk_proof.proof_type.to_bytes(1, 'little'))
+
+    return verify_zkevm_proof(proof_message.zk_proof, parent_hash, block_hash, program_bytecode)
 ```
 
 #### `verify_execution_proofs`
@@ -146,10 +126,7 @@ def verify_execution_proofs(parent_hash: Hash32, block_hash: Hash32, state: Beac
 
     # Verify all execution proofs
     for signed_proof in signed_execution_proofs:
-        # Get EL program from proof system ID
-        # TODO: The proof system ID is really an ID for a proof system and EL combination
-        el_program = get_el_program(signed_proof.message.zk_proof.proof_type)
-        if not verify_execution_proof(signed_proof, parent_hash, block_hash, state, el_program):
+        if not verify_execution_proof(signed_proof, parent_hash, block_hash, state, PROGRAM):
             return False
 
     return True
