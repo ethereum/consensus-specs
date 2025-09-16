@@ -5,6 +5,7 @@
 - [Introduction](#introduction)
 - [New fork-choice helpers](#new-fork-choice-helpers)
   - [New `get_sync_message_due_ms`](#new-get_sync_message_due_ms)
+  - [New `get_contribution_due_ms`](#new-get_contribution_due_ms)
 
 <!-- mdformat-toc end -->
 
@@ -22,4 +23,11 @@ Unless stated explicitly, all prior functionality from
 ```python
 def get_sync_message_due_ms(epoch: Epoch) -> uint64:
     return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)
+```
+
+#### New `get_contribution_due_ms`
+
+```python
+def get_contribution_due_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS)
 ```
