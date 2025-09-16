@@ -16,6 +16,10 @@
   - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
   - [New `get_attester_head`](#new-get_attester_head)
   - [Modified `get_proposer_head`](#modified-get_proposer_head)
+- [New fork-choice helpers](#new-fork-choice-helpers)
+  - [New `get_view_freeze_cutoff_ms`](#new-get_view_freeze_cutoff_ms)
+  - [New `get_inclusion_list_submission_due_ms`](#new-get_inclusion_list_submission_due_ms)
+  - [New `get_proposer_inclusion_list_cutoff_ms`](#new-get_proposer_inclusion_list_cutoff_ms)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [New `on_inclusion_list`](#new-on_inclusion_list)
   - [Modified `on_block`](#modified-on_block)
@@ -252,6 +256,29 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
         return head_root
 ```
 
+## New fork-choice helpers
+
+### New `get_view_freeze_cutoff_ms`
+
+```python
+def get_view_freeze_cutoff_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(VIEW_FREEZE_CUTOFF_BPS)
+```
+
+### New `get_inclusion_list_submission_due_ms`
+
+```python
+def get_inclusion_list_submission_due_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS)
+```
+
+### New `get_proposer_inclusion_list_cutoff_ms`
+
+```python
+def get_proposer_inclusion_list_cutoff_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(PROPOSER_INCLUSION_LIST_CUTOFF_BPS)
+```
+
 ## Updated fork-choice handlers
 
 ### New `on_inclusion_list`
@@ -272,7 +299,8 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    view_freeze_cutoff_ms = get_slot_component_duration_ms(VIEW_FREEZE_CUTOFF_BPS)
+    epoch = get_current_store_epoch(store)
+    view_freeze_cutoff_ms = get_view_freeze_cutoff_ms(epoch)
     is_before_view_freeze_cutoff = time_into_slot_ms < view_freeze_cutoff_ms
 
     process_inclusion_list(inclusion_list_store, inclusion_list, is_before_view_freeze_cutoff)
