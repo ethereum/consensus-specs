@@ -86,14 +86,3 @@ def broadcast_execution_proof(signed_proof: SignedExecutionProof) -> None:
     broadcast_to_topic(topic, signed_proof)
 ```
 
-### Helper functions
-
-```python
-def compute_subnet_for_execution_proof(proof_id: ProofID) -> SubnetID:
-    """
-    Compute the subnet for an execution proof based on proof system.
-    This is a 1-to-1 mapping.
-    """
-    assert proof_id < EXECUTION_PROOF_SUBNET_COUNT
-    return SubnetID(proof_id)
-```
