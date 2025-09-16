@@ -42,10 +42,10 @@ This document contains the consensus specs for Execution Proofs. This enables st
 | Name                                    | Value             |
 | --------------------------------------- | ----------------- |
 | `MAX_EXECUTION_PROOFS_PER_PAYLOAD`     | `uint64(8)`       |
-| `RETH_EL_PROGRAM`                      | `EL_PROGRAM(b"RETH_V1" + b"\x00" * 25)` |
-| `GETH_EL_PROGRAM`                      | `EL_PROGRAM(b"GETH_V1" + b"\x00" * 25)` |
-| `NETHERMIND_EL_PROGRAM`                | `EL_PROGRAM(b"NETHERMIND_V1" + b"\x00" * 20)` |
-| `BESU_EL_PROGRAM`                      | `EL_PROGRAM(b"BESU_V1" + b"\x00" * 25)` |
+| `RETH_PROGRAM`                      | `ProgramSource(b"RETH_V1" + b"\x00" * 25)` |
+| `GETH_PROGRAM`                      | `ProgramSource(b"GETH_V1" + b"\x00" * 25)` |
+| `NETHERMIND_PROGRAM`                | `ProgramSource(b"NETHERMIND_V1" + b"\x00" * 20)` |
+| `BESU_PROGRAM`                      | `ProgramSource(b"BESU_V1" + b"\x00" * 25)` |
 
 ### Domain types
 
@@ -93,18 +93,18 @@ class SignedExecutionProof(Container):
 #### `get_el_program`
 
 ```python
-def get_el_program(proof_id: ProofID) -> EL_PROGRAM:
+def get_el_program(proof_id: ProofID) -> ProgramSource:
     """
     Get the EL program for a given proof system ID.
     """
     if proof_id == ProofID(0):
-        return RETH_EL_PROGRAM
+        return RETH_PROGRAM
     elif proof_id == ProofID(1):
-        return GETH_EL_PROGRAM
+        return GETH_PROGRAM
     elif proof_id == ProofID(2):
-        return NETHERMIND_EL_PROGRAM
+        return NETHERMIND_PROGRAM
     elif proof_id == ProofID(3):
-        return BESU_EL_PROGRAM
+        return BESU_PROGRAM
 
     raise Exception(f"Unsupported proof_id: {proof_id}") 
 ```
@@ -112,7 +112,7 @@ def get_el_program(proof_id: ProofID) -> EL_PROGRAM:
 #### `verify_execution_proof`
 
 ```python
-def verify_execution_proof(signed_proof: SignedExecutionProof, parent_hash: Hash32, block_hash: Hash32, state: BeaconState, el_program: EL_PROGRAM) -> bool:
+def verify_execution_proof(signed_proof: SignedExecutionProof, parent_hash: Hash32, block_hash: Hash32, state: BeaconState, el_program: ProgramSource) -> bool:
     """
     Verify an execution proof against a payload header using zkEVM verification.
     """

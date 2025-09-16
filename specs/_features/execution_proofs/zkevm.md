@@ -46,7 +46,7 @@ For public API consumers, this document provides the following **public methods*
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `EL_PROGRAM` | `ByteList[32]` | Execution layer program |
+| `ProgramSource` | `ByteList[32]` | Execution layer program |
 | `ProgramBytecode` | `ByteList[64]` | Execution layer program bytecode with proof ID |
 | `ProofID` | `uint8` | Identifier for proof system |
 | `ProvingKey` | `ByteList[MAX_PROVING_KEY_SIZE]` | Key used for proof generation |
@@ -104,7 +104,7 @@ class PublicInput(Container):
 #### `compile_execution_layer`
 
 ```python
-def compile_execution_layer(el_program: EL_PROGRAM, proof_id: ProofID) -> tuple[ProvingKey, VerificationKey]:
+def compile_execution_layer(ProgramSource: ProgramSource, proof_id: ProofID) -> tuple[ProvingKey, VerificationKey]:
     """
     Compile an execution layer program with proof ID to produce proving and verification keys for a specific proof system.
 
@@ -112,7 +112,7 @@ def compile_execution_layer(el_program: EL_PROGRAM, proof_id: ProofID) -> tuple[
     """
 
     # Combine program bytes with proof ID
-    combined_data = el_program + proof_id.to_bytes(1, 'little')
+    combined_data = ProgramSource + proof_id.to_bytes(1, 'little')
 
     # Create program bytecode (no hashing)
     program_bytecode = ProgramBytecode(combined_data)
@@ -229,7 +229,7 @@ def verify_zkevm_proof(
     zk_proof: ZKProof,
     parent_hash: Hash32,
     block_hash: Hash32,
-    el_program: EL_PROGRAM
+    ProgramSource: ProgramSource
 ) -> bool:
     """
     Public method to verify a zkEVM execution proof against block hashes.
@@ -241,7 +241,7 @@ def verify_zkevm_proof(
     if zk_proof.public_inputs.parent_hash != parent_hash:
         return False
 
-    proving_key, verification_key = compile_execution_layer(el_program, zk_proof.proof_type)
+    proving_key, verification_key = compile_execution_layer(ProgramSource, zk_proof.proof_type)
 
     return verify_execution_proof_impl(zk_proof, verification_key)
 ```
@@ -252,14 +252,14 @@ def verify_zkevm_proof(
 def generate_zkevm_proof(
     execution_payload: ExecutionPayload,
     execution_witness: ZKExecutionWitness,
-    el_program: EL_PROGRAM,
+    ProgramSource: ProgramSource,
     proof_id: ProofID
 ) -> Optional[ZKProof]:
     """
     Public method to generate an execution proof for a payload.
     """
 
-    proving_key, verification_key = compile_execution_layer(el_program, proof_id)
+    proving_key, verification_key = compile_execution_layer(ProgramSource, proof_id)
 
     public_inputs = PublicInput(
         block_hash=execution_payload.block_hash,
