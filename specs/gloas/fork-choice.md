@@ -30,6 +30,7 @@
   - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
   - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
   - [Modified `get_contribution_due_ms`](#modified-get_contribution_due_ms)
+- [New fork-choice helpers](#new-fork-choice-helpers)
   - [New `get_payload_attestation_due_ms`](#new-get_payload_attestation_due_ms)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [Modified `on_block`](#modified-on_block)
@@ -472,6 +473,8 @@ def get_contribution_due_ms(epoch: Epoch) -> uint64:
         return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS_GLOAS)
     return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS)
 ```
+
+## New fork-choice helpers
 
 ### New `get_payload_attestation_due_ms`
 
