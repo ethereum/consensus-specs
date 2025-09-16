@@ -46,7 +46,6 @@ For public API consumers, this document provides the following **public methods*
 
 | Name | SSZ equivalent | Description |
 | - | - | - |
-| `ProgramSource` | `ByteList[32]` | Execution layer program |
 | `ProgramBytecode` | `ByteList[64]` | Execution layer program bytecode with proof ID |
 | `ProofID` | `uint8` | Identifier for proof system |
 | `ProvingKey` | `ByteList[MAX_PROVING_KEY_SIZE]` | Key used for proof generation |
@@ -104,20 +103,13 @@ class PublicInput(Container):
 #### `compile_execution_layer`
 
 ```python
-def compile_execution_layer(ProgramSource: ProgramSource, proof_id: ProofID) -> tuple[ProvingKey, VerificationKey]:
+def compile_execution_layer(program_bytecode: ProgramBytecode, proof_id: ProofID) -> tuple[ProvingKey, VerificationKey]:
     """
     Compile an execution layer program with proof ID to produce proving and verification keys for a specific proof system.
 
     Note: This function is unsafe. In production, we will use a well-established compiler.
     """
 
-    # Combine program bytes with proof ID
-    combined_data = ProgramSource + proof_id.to_bytes(1, 'little')
-
-    # Create program bytecode (no hashing)
-    program_bytecode = ProgramBytecode(combined_data)
-
-    # Generate both keys from the program bytecode
     proving_key = generate_proving_key(program_bytecode, proof_id)
     verification_key = generate_verification_key(program_bytecode, proof_id)
 
