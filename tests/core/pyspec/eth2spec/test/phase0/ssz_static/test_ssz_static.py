@@ -23,6 +23,12 @@ from tests.infra.template_test import template_test
 MAX_BYTES_LENGTH = 1000
 MAX_LIST_LENGTH = 10
 
+def _deterministic_seed(**kwargs) -> int:
+    """Need this since hash() is not deterministic between runs."""
+    m = hashlib.sha256()
+    for k, v in sorted(kwargs.items()):
+        m.update(f"{k}={v}".encode())
+    return int.from_bytes(m.digest()[:8], "little")
 
 @template_test
 def _template_ssz_static_tests(
@@ -35,13 +41,6 @@ def _template_ssz_static_tests(
     count: int,
     i: int,
 ):
-    def _deterministic_seed(**kwargs) -> int:
-        """Need this since hash() is not deterministic between runs."""
-        m = hashlib.sha256()
-        for k, v in sorted(kwargs.items()):
-            m.update(f"{k}={v}".encode())
-        return int.from_bytes(m.digest()[:8], "little")
-
     @manifest(_manifest)
     @only_generator("too slow")
     @with_phases(phases)

@@ -757,15 +757,12 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
 
 def only_generator(reason):
     def _decorator(inner):
-        def _wrapper(*args, **kwargs):
-            if is_pytest:
-                dump_skipping_message(reason)
-                return None
-            return inner(*args, **kwargs)
+        return inner
 
-        return _wrapper
-
-    return _decorator
+    if is_pytest:
+        return pytest.mark.skip(reason)
+    else:
+        return _decorator
 
 
 def with_test_suite_name(suite_name: str):
