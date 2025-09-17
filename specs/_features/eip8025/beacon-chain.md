@@ -1,30 +1,29 @@
-# Execution Proofs -- The Beacon Chain
+# EIP-8025 -- The Beacon Chain
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
 ## Table of contents
 
-<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=1 -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
-- [Execution Proofs -- The Beacon Chain](#execution-proofs----the-beacon-chain)
-  - [Table of contents](#table-of-contents)
-  - [Introduction](#introduction)
-  - [Constants](#constants)
-    - [Execution](#execution)
-    - [Domain types](#domain-types)
-  - [Configuration](#configuration)
-  - [Containers](#containers)
-    - [New containers](#new-containers)
-      - [`ExecutionProof`](#executionproof)
-      - [`SignedExecutionProof`](#signedexecutionproof)
-    - [Extended Containers](#extended-containers)
-  - [Helper functions](#helper-functions)
-    - [Execution proof functions](#execution-proof-functions)
-      - [`verify_execution_proof`](#verify_execution_proof)
-      - [`verify_execution_proofs`](#verify_execution_proofs)
-  - [Beacon chain state transition function](#beacon-chain-state-transition-function)
-    - [Execution payload processing](#execution-payload-processing)
-      - [Modified `process_execution_payload`](#modified-process_execution_payload)
+- [Table of contents](#table-of-contents)
+- [Introduction](#introduction)
+- [Constants](#constants)
+  - [Execution](#execution)
+  - [Domain types](#domain-types)
+- [Configuration](#configuration)
+- [Containers](#containers)
+  - [New containers](#new-containers)
+    - [`ExecutionProof`](#executionproof)
+    - [`SignedExecutionProof`](#signedexecutionproof)
+  - [Extended Containers](#extended-containers)
+- [Helper functions](#helper-functions)
+  - [Execution proof functions](#execution-proof-functions)
+    - [`verify_execution_proof`](#verify_execution_proof)
+    - [`verify_execution_proofs`](#verify_execution_proofs)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Execution payload processing](#execution-payload-processing)
+    - [Modified `process_execution_payload`](#modified-process_execution_payload)
 
 <!-- mdformat-toc end -->
 

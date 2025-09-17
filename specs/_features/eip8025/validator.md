@@ -1,20 +1,19 @@
-# Execution Proofs -- Validator
+# EIP-8025 -- Honest Validator
 
 **Notice**: This document is a work-in-progress for researchers and
 implementers.
 
 ## Table of contents
 
-<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=1 -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
-- [Execution Proofs -- Validator](#execution-proofs----validator)
-  - [Table of contents](#table-of-contents)
-  - [Introduction](#introduction)
-  - [Prerequisites](#prerequisites)
-  - [Configuration](#configuration)
-  - [Optional execution proof generation](#optional-execution-proof-generation)
-    - [`generate_execution_proof`](#generate_execution_proof)
-    - [`broadcast_execution_proof`](#broadcast_execution_proof)
+- [Table of contents](#table-of-contents)
+- [Introduction](#introduction)
+- [Prerequisites](#prerequisites)
+- [Configuration](#configuration)
+- [Optional execution proof generation](#optional-execution-proof-generation)
+  - [`generate_execution_proof`](#generate_execution_proof)
+  - [`broadcast_execution_proof`](#broadcast_execution_proof)
 
 <!-- mdformat-toc end -->
 

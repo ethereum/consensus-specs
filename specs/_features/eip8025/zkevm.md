@@ -1,4 +1,4 @@
-# Execution Proofs -- zkEVM
+# EIP-8025 -- zkEVM
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 

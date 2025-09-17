@@ -1,22 +1,21 @@
-# Execution Proofs -- Networking
+# EIP-8025 -- Networking
 
 This document contains the networking specification for Execution Proofs.
 
 ## Table of contents
 
-<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=1 -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
-- [Execution Proofs -- Networking](#execution-proofs----networking)
-  - [Table of contents](#table-of-contents)
-  - [Constants](#constants)
-  - [Containers](#containers)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Topics and messages](#topics-and-messages)
-      - [Global topics](#global-topics)
-        - [`execution_proof_{subnet_id}`](#execution_proof_subnet_id)
-  - [The Req/Resp domain](#the-reqresp-domain)
-    - [Messages](#messages)
-      - [ExecutionProofsByHash](#executionproofsbyhash)
+- [Table of contents](#table-of-contents)
+- [Constants](#constants)
+- [Containers](#containers)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Topics and messages](#topics-and-messages)
+    - [Global topics](#global-topics)
+      - [`execution_proof_{subnet_id}`](#execution_proof_subnet_id)
+- [The Req/Resp domain](#the-reqresp-domain)
+  - [Messages](#messages)
+    - [ExecutionProofsByHash](#executionproofsbyhash)
 
 <!-- mdformat-toc end -->
 
