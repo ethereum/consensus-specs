@@ -25,7 +25,9 @@ validators may choose to implement.
 ## Prerequisites
 
 This document is an extension of the
-[Fulu -- Validator](../../fulu/validator.md) guide.
+[Fulu -- Honest Validator](../../fulu/validator.md) guide. All behaviors and
+definitions defined in this document, and documents it extends, carry over
+unless explicitly noted or overridden.
 
 ## Configuration
 
