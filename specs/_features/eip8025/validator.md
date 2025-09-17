@@ -45,7 +45,7 @@ def generate_execution_proof(
     payload: ExecutionPayload, execution_witness: ZKExecutionWitness, proof_id: ProofID
 ) -> Optional[SignedExecutionProof]:
     """
-    Generate an execution proof for the given payload
+    Generate an execution proof for the given payload.
     """
     if not EXECUTION_PROOF_GENERATION_ENABLED:
         return None

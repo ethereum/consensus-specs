@@ -29,8 +29,11 @@
 
 ## Introduction
 
-This document contains the consensus specs for Execution Proofs. This enables
-stateless validation of execution payloads through cryptographic proofs.
+This document contains the consensus specs for EIP-8025. This enables stateless
+validation of execution payloads through cryptographic proofs.
+
+*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md) and
+is under active development.
 
 *Note*: This specification assumes the reader is familiar with the
 [public zkEVM methods exposed](./zkevm.md).
@@ -81,9 +84,8 @@ class SignedExecutionProof(Container):
 
 ### Extended Containers
 
-*Note*: `BeaconState` and `BeaconBlockBody` remain the same as Fulu. No
-modifications are required for execution proofs since they are handled
-externally.
+*Note*: `BeaconState` and `BeaconBlockBody` remain the same. No modifications
+are required for execution proofs since they are handled externally.
 
 ## Helper functions
 
@@ -103,7 +105,7 @@ def verify_execution_proof(
     Verify an execution proof against a payload header using zkEVM verification.
     """
 
-    # Note: signed_proof.message.beacon_root verification would be done at a higher level
+    # Note: signed_proof.message.beacon_root verification will be done at a higher level
 
     # Verify the validator signature
     proof_message = signed_proof.message
@@ -127,11 +129,11 @@ def verify_execution_proofs(parent_hash: Hash32, block_hash: Hash32, state: Beac
     """
     Verify that execution proofs are available and valid for an execution payload.
     """
-    # `retrieve_execution_proofs` is implementation and context dependent
-    # It returns all the execution proofs for the given payload block hash
+    # `retrieve_execution_proofs` is implementation and context dependent.
+    # It returns all execution proofs for the given payload block hash.
     signed_execution_proofs = retrieve_execution_proofs(block_hash)
 
-    # Verify we have sufficient proofs
+    # Verify there are sufficient proofs
     if len(signed_execution_proofs) < MIN_REQUIRED_EXECUTION_PROOFS:
         return False
 

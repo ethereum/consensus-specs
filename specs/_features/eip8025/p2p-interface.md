@@ -1,6 +1,6 @@
 # EIP-8025 -- Networking
 
-This document contains the networking specification for Execution Proofs.
+This document contains the networking specification for EIP-8025.
 
 ## Table of contents
 
@@ -21,9 +21,9 @@ This document contains the networking specification for Execution Proofs.
 
 ## Constants
 
-*Note*: Execution proof subnets use `MAX_EXECUTION_PROOFS_PER_PAYLOAD` (from
-[beacon-chain.md](./beacon-chain.md)) to provide 1-to-1 mapping with proof
-systems. Each proof system gets its own dedicated subnet.
+*Note*: There are `MAX_EXECUTION_PROOFS_PER_PAYLOAD` (from
+[beacon-chain.md](./beacon-chain.md)) execution proof subnets to provide 1-to-1
+mapping with proof systems. Each proof system gets its own dedicated subnet.
 
 ## Containers
 
@@ -66,8 +66,6 @@ The following validations MUST pass before forwarding the
   `verify_execution_proof()` with the appropriate parent and block hashes from
   the execution layer.
 
-Subnet topics follow the pattern: `/eth2/execution_proof_{subnet_id}/ssz_snappy`
-
 ## The Req/Resp domain
 
 ### Messages
@@ -105,6 +103,6 @@ The following validations MUST pass:
 
 The response MUST contain:
 
-- All available execution proofs for the requested block hash
+- All available execution proofs for the requested block hash.
 - The response MUST NOT contain more than `MAX_EXECUTION_PROOFS_PER_PAYLOAD`
-  proofs
+  proofs.

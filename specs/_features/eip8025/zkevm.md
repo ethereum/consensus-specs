@@ -37,9 +37,9 @@ implementations should use established zkEVM systems.
 ## Constants
 
 All of the constants below are subject to change and one should not overindex on
-them. `MAX_PROOF_SIZE`, `MAX_PROVING_KEY_SIZE` and `MAX_VERIFICATION_KEY_SIZE`
-are all arbitrary. `MAX_WITNESS_SIZE` is the worse case witness for the MPT for
-a payload with a maximum gas limit of 30M gas.
+them. `MAX_PROOF_SIZE`, `MAX_PROVING_KEY_SIZE`, and `MAX_VERIFICATION_KEY_SIZE`
+are all arbitrary. `MAX_WITNESS_SIZE` is the worst case witness size for the MPT
+for a payload with a maximum gas limit of 30M gas.
 
 | Name                        | Value                  |
 | --------------------------- | ---------------------- |
@@ -56,9 +56,8 @@ a payload with a maximum gas limit of 30M gas.
 
 ## Cryptographic types
 
-We note that `ProgramBytecode` represents the bytecode for a particular
-execution layer client. The size depends on the client. We use `16` as a
-placeholder.
+*Note*: `ProgramBytecode` represents the bytecode for a particular execution
+layer client. The size depends on the client; `16` is a placeholder.
 
 | Name                 | SSZ equivalent                        | Description                                                   |
 | -------------------- | ------------------------------------- | ------------------------------------------------------------- |
@@ -110,7 +109,6 @@ def generate_keys(
     """
     Generate proving and verification keys for the given program bytecode and proof system.
     """
-
     proving_key = generate_proving_key(program_bytecode, proof_id)
     verification_key = generate_verification_key(program_bytecode, proof_id)
 
@@ -141,9 +139,7 @@ def generate_verification_key(
     """
     Generate a verification key for the given program bytecode and proof system.
     """
-
     verification_key = VerificationKey(program_bytecode + proof_id.to_bytes(1, "little"))
-
     return verification_key
 ```
 
@@ -161,7 +157,6 @@ def generate_execution_proof_impl(
     """
     Generate a zkEVM execution proof using the proving key, private inputs and public inputs
     """
-
     proof_data = hash(
         public_inputs.block_hash + public_inputs.parent_hash + proof_id.to_bytes(1, "little")
     )
@@ -178,7 +173,6 @@ def generate_proving_key(program_bytecode: ProgramBytecode, proof_id: ProofID) -
     """
     Generate a proving key for the given program bytecode and proof system.
     """
-
     return ProvingKey(program_bytecode + proof_id.to_bytes(1, "little"))
 ```
 
@@ -191,14 +185,13 @@ def verify_zkevm_proof(
     """
     Public method to verify a zkEVM execution proof against block hashes.
     """
-
     # Validate that public inputs match the provided parent and current block hash
     if zk_proof.public_inputs.block_hash != block_hash:
         return False
     if zk_proof.public_inputs.parent_hash != parent_hash:
         return False
 
-    proving_key, verification_key = generate_keys(program_bytecode, zk_proof.proof_type)
+    _, verification_key = generate_keys(program_bytecode, zk_proof.proof_type)
 
     return verify_execution_proof_impl(zk_proof, verification_key)
 ```
@@ -215,13 +208,11 @@ def generate_zkevm_proof(
     """
     Public method to generate an execution proof for a payload.
     """
-
-    proving_key, verification_key = generate_keys(program_bytecode, proof_id)
+    proving_key, _ = generate_keys(program_bytecode, proof_id)
 
     public_inputs = PublicInput(
         block_hash=execution_payload.block_hash, parent_hash=execution_payload.parent_hash
     )
-
     private_input = PrivateInput(
         execution_payload=execution_payload, execution_witness=execution_witness
     )
