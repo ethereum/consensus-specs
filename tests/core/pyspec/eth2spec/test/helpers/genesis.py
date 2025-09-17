@@ -147,8 +147,6 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         current_version = getattr(spec.config, f"{spec.fork.upper()}_FORK_VERSION")
 
     genesis_block_body = spec.BeaconBlockBody()
-    if is_post_gloas(spec):
-        genesis_block_body.signed_execution_payload_bid.message.block_hash = eth1_block_hash
 
     state = spec.BeaconState(
         genesis_time=0,
@@ -196,7 +194,10 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.current_sync_committee = spec.get_next_sync_committee(state)
         state.next_sync_committee = spec.get_next_sync_committee(state)
 
-    if is_post_bellatrix(spec):
+    if is_post_gloas(spec):
+        # Initialize the latest_execution_payload_bid
+        genesis_block_body.signed_execution_payload_bid.message.block_hash = eth1_block_hash
+    elif is_post_bellatrix(spec): 
         # Initialize the execution payload header (with block number and genesis time set to 0)
         state.latest_execution_payload_header = get_sample_genesis_execution_payload_header(
             spec,
@@ -233,9 +234,6 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.execution_payload_availability = [0b1 for _ in range(spec.SLOTS_PER_HISTORICAL_ROOT)]
         withdrawals = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD]()
         state.latest_withdrawals_root = withdrawals.hash_tree_root()
-        state.latest_block_hash = (
-            state.latest_execution_payload_header.block_hash
-        )  # last block is full
         state.builder_pending_payments = [
             spec.BuilderPendingPayment() for _ in range(2 * spec.SLOTS_PER_EPOCH)
         ]

@@ -244,11 +244,8 @@ def test_partial_withdrawal_in_epoch_transition(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         # For Gloas, we need the parent block to be full to process withdrawals
-        # Set latest_block_hash to match latest_execution_payload_header.block_hash
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
-        state.latest_execution_payload_bid.block_hash = (
-            state.latest_execution_payload_header.block_hash
-        )
+        # Set latest_block_hash to match latest_execution_payload_bid.block_hash
+        state.latest_block_hash = state.latest_execution_payload_bid.block_hash
 
     yield "pre", state
 
