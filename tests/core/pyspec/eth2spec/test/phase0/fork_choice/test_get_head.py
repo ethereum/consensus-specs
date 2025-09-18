@@ -86,15 +86,16 @@ def test_chain_no_attestations(spec, state):
     check_head_against_root(spec, store, anchor_root)
     output_head_check(spec, store, test_steps)
 
+
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block_1 = build_empty_block_for_next_slot(spec, state)
-    signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
+    signed_block_1 = state_transition_and_sign_block(spec, state.copy(), block_1)
     yield from tick_and_add_block(spec, store, signed_block_1, test_steps)
-    payload_state_transition(spec, store, signed_block_1.message)
+    state = payload_state_transition(spec, store, signed_block_1.message)
 
     # On receiving a block of next epoch
     block_2 = build_empty_block_for_next_slot(spec, state)
-    signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
+    signed_block_2 = state_transition_and_sign_block(spec, state.copy(), block_2)
     yield from tick_and_add_block(spec, store, signed_block_2, test_steps)
     check_head_against_root(spec, store, spec.hash_tree_root(block_2))
     payload_state_transition(spec, store, signed_block_2.message)
@@ -162,17 +163,17 @@ def test_shorter_chain_but_heavier_weight(spec, state):
     long_state = genesis_state.copy()
     for _ in range(3):
         long_block = build_empty_block_for_next_slot(spec, long_state)
-        signed_long_block = state_transition_and_sign_block(spec, long_state, long_block)
+        signed_long_block = state_transition_and_sign_block(spec, long_state.copy(), long_block)
         yield from tick_and_add_block(spec, store, signed_long_block, test_steps)
-        payload_state_transition(spec, store, signed_long_block.message)
+        long_state = payload_state_transition(spec, store, signed_long_block.message)
 
     # build short tree
     short_state = genesis_state.copy()
     short_block = build_empty_block_for_next_slot(spec, short_state)
     short_block.body.graffiti = b"\x42" * 32
-    signed_short_block = state_transition_and_sign_block(spec, short_state, short_block)
+    signed_short_block = state_transition_and_sign_block(spec, short_state.copy(), short_block)
     yield from tick_and_add_block(spec, store, signed_short_block, test_steps)
-    payload_state_transition(spec, store, signed_short_block.message)
+    short_state = payload_state_transition(spec, store, signed_short_block.message)
 
     # Since the long chain has higher proposer_score at slot 1, the latest long block is the head
     check_head_against_root(spec, store, spec.hash_tree_root(long_block))

@@ -67,15 +67,15 @@ def test_basic(spec, state):
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block = build_empty_block_for_next_slot(spec, state)
-    signed_block = state_transition_and_sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(spec, state.copy(), block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     check_head_against_root(spec, store, signed_block.message.hash_tree_root())
-    payload_state_transition(spec, store, signed_block.message)
+    state = payload_state_transition(spec, store, signed_block.message)
 
     # On receiving a block of next epoch
     store.time = current_time + spec.config.SECONDS_PER_SLOT * spec.SLOTS_PER_EPOCH
     block = build_empty_block(spec, state, state.slot + spec.SLOTS_PER_EPOCH)
-    signed_block = state_transition_and_sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(spec, state.copy(), block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     check_head_against_root(spec, store, signed_block.message.hash_tree_root())
     payload_state_transition(spec, store, signed_block.message)
@@ -508,7 +508,7 @@ def test_proposer_boost(spec, state):
     state = genesis_state.copy()
     next_slots(spec, state, 3)
     block = build_empty_block_for_next_slot(spec, state)
-    signed_block = state_transition_and_sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(spec, state.copy(), block)
 
     # Process block on timely arrival just before end of boost interval
     # Round up to nearest second
@@ -549,7 +549,7 @@ def test_proposer_boost(spec, state):
 
     next_slots(spec, state, 3)
     block = build_empty_block_for_next_slot(spec, state)
-    signed_block = state_transition_and_sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(spec, state.copy(), block)
 
     # Process block on timely arrival at start of boost interval
     time = store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT
