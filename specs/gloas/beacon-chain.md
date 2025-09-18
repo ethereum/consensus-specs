@@ -44,7 +44,7 @@
     - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
   - [Beacon State accessors](#beacon-state-accessors)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
-    - [Modified `get_attestation_participation_flag_indices`](#new-get_attestation_participation_flag_indices)
+    - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
     - [New `get_ptc`](#new-get_ptc)
     - [New `get_indexed_payload_attestation`](#new-get_indexed_payload_attestation)
     - [New `get_builder_payment_quorum_threshold`](#new-get_builder_payment_quorum_threshold)
@@ -564,7 +564,7 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
     )
 ```
 
-#### New `get_attestation_participation_flag_indices`
+#### Modified `get_attestation_participation_flag_indices`
 
 ```python
 def get_attestation_participation_flag_indices(
@@ -583,6 +583,8 @@ def get_attestation_participation_flag_indices(
     is_matching_target = is_matching_source and data.target.root == get_block_root(
         state, data.target.epoch
     )
+
+    # [New in Gloas:EIP7732]
     is_matching_blockroot = is_matching_target and data.beacon_block_root == get_block_root_at_slot(
         state, Slot(data.slot)
     )
@@ -595,6 +597,8 @@ def get_attestation_participation_flag_indices(
             data.index
             == state.execution_payload_availability[data.slot % SLOTS_PER_HISTORICAL_ROOT]
         )
+
+    # [Modified in Gloas:EIP7732]
     is_matching_head = is_matching_blockroot and is_matching_payload
 
     assert is_matching_source
@@ -602,7 +606,7 @@ def get_attestation_participation_flag_indices(
     participation_flag_indices = []
     if is_matching_source and inclusion_delay <= integer_squareroot(SLOTS_PER_EPOCH):
         participation_flag_indices.append(TIMELY_SOURCE_FLAG_INDEX)
-    if is_matching_target and inclusion_delay <= SLOTS_PER_EPOCH:
+    if is_matching_target:
         participation_flag_indices.append(TIMELY_TARGET_FLAG_INDEX)
     if is_matching_head and inclusion_delay == MIN_ATTESTATION_INCLUSION_DELAY:
         participation_flag_indices.append(TIMELY_HEAD_FLAG_INDEX)
