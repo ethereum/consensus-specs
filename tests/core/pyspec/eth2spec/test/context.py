@@ -307,7 +307,7 @@ is_pytest = True
 def dump_skipping_message(reason: str) -> None:
     message = f"[Skipped test] {reason}"
     if is_pytest:
-        pytest.skip(message)
+        pytest.skip(message, allow_module_level=True)
     else:
         raise SkippedTest(message)
 

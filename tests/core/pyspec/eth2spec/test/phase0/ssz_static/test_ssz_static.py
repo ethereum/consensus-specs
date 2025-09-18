@@ -4,6 +4,7 @@ from random import Random
 
 from eth2spec.debug import encode, random_value
 from eth2spec.test.context import (
+    only_generator,
     single_phase,
     spec_targets,
     spec_test,
@@ -73,6 +74,7 @@ def _template_ssz_static_tests(
     return (the_test, f"test_{unique_name}")
 
 
+@only_generator("too slow")
 def _create_test_cases():
     """
     Create test cases for all SSZ types in all forks and both presets.

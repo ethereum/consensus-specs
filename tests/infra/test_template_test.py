@@ -1,9 +1,9 @@
 import inspect
 import sys
 import types
-import unittest
 from collections.abc import Callable
-from unittest import TestCase
+
+import pytest
 
 from eth2spec.test.helpers.constants import BELLATRIX, CAPELLA, DENEB, PHASE0
 from eth2spec.test.helpers.typing import SpecForkName
@@ -185,39 +185,37 @@ class MockDecoratorUtility:
 ### @template_test decorators family tests
 
 
-class TestTemplateTestDecorator(TestCase):
+@pytest.fixture
+def test_module():
+    """Create a mock module for testing."""
+    module = types.ModuleType("test_module")
+    sys.modules["test_module"] = module
+    yield module
+    # Cleanup
+    if "test_module" in sys.modules:
+        del sys.modules["test_module"]
+
+
+@pytest.fixture
+def mock_utility(test_module):
+    """Create mock framework utility."""
+    utility = MockFrameworkUtility(test_module)
+    yield utility
+    # Cleanup
+    utility.restore()
+
+
+class TestTemplateTestDecorator:
     """Test suite for the template_test decorator."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        # Create a mock module for testing
-        self.test_module = types.ModuleType("test_module")
-        sys.modules["test_module"] = self.test_module
-
-        # Store original functions for restoration
-        self.original_currentframe = inspect.currentframe
-        self.original_getmodule = inspect.getmodule
-
-        # Create mock framework utility
-        self.mock_utility = MockFrameworkUtility(self.test_module)
-
-    def tearDown(self):
-        """Clean up after tests."""
-        # Remove test module from sys.modules
-        if "test_module" in sys.modules:
-            del sys.modules["test_module"]
-
-        # Restore original functions
-        self.mock_utility.restore()
-
-    def _mock_currentframe(self, module_name="test_module"):
+    def _mock_currentframe(self, mock_utility, module_name="test_module"):
         """Create a mock frame that simulates being called from a specific module."""
-        return self.mock_utility.create_mock_currentframe(module_name)
+        return mock_utility.create_mock_currentframe(module_name)
 
-    def test_basic_functionality(self):
+    def test_basic_functionality(self, test_module, mock_utility):
         """Test basic template_test decorator functionality."""
         # Mock the frame to simulate being called from test_module
-        inspect.currentframe = self._mock_currentframe("test_module")
+        inspect.currentframe = self._mock_currentframe(mock_utility, "test_module")
 
         @template_test
         def _test_template(param1, param2):
@@ -228,18 +226,18 @@ class TestTemplateTestDecorator(TestCase):
 
         # Call the template function - it returns None
         result = _test_template("foo", "bar")
-        self.assertIsNone(result)
+        assert result is None
 
         # Verify the test was registered in the module
         test_name = "test_generated_foo_bar"
-        self.assertTrue(hasattr(self.test_module, test_name))
-        registered_func = getattr(self.test_module, test_name)
-        self.assertTrue(callable(registered_func))
-        self.assertEqual(registered_func(), "test_foo_bar")
+        assert hasattr(test_module, test_name)
+        registered_func = getattr(test_module, test_name)
+        assert callable(registered_func)
+        assert registered_func() == "test_foo_bar"
 
-    def test_template_with_kwargs(self):
+    def test_template_with_kwargs(self, test_module, mock_utility):
         """Test template function with keyword arguments."""
-        inspect.currentframe = self._mock_currentframe("test_module")
+        inspect.currentframe = self._mock_currentframe(mock_utility, "test_module")
 
         @template_test
         def _test_template(param1, param2=None, param3="default"):
@@ -248,12 +246,12 @@ class TestTemplateTestDecorator(TestCase):
 
             return test_func, f"test_kwargs_{param1}_{param2}_{param3}"
 
-        _test_template("pos", param2="kw", param3="arg")
+        _test_template("pos1", param2="kwarg1", param3="kwarg2")
 
-        test_name = "test_kwargs_pos_kw_arg"
-        self.assertTrue(hasattr(self.test_module, test_name))
-        test_func = getattr(self.test_module, test_name)
-        self.assertEqual(test_func(), "test_pos_kw_arg")
+        test_name = "test_kwargs_pos1_kwarg1_kwarg2"
+        assert hasattr(test_module, test_name)
+        test_func = getattr(test_module, test_name)
+        assert test_func() == "test_pos1_kwarg1_kwarg2"
 
     def test_frame_inspection_error_no_current_frame(self):
         """Test error handling when currentframe returns None."""
@@ -268,21 +266,19 @@ class TestTemplateTestDecorator(TestCase):
             return test_func, "test_name"
 
         # The error should happen when calling the decorated function
-        with self.assertRaises(RuntimeError) as context:
+        with pytest.raises(RuntimeError) as excinfo:
             _test_template()
 
-        self.assertEqual(
-            str(context.exception), "Could not determine target module for test registration"
-        )
+        assert str(excinfo.value) == "Could not determine target module for test registration"
 
-    def test_instantiate_module_parameter(self):
+    def test_instantiate_module_parameter(self, test_module, mock_utility):
         """Test that the _instantiate_module parameter allows registering tests in a specific module."""
         # Create a separate module for instantiation
         target_module = types.ModuleType("target_module")
         sys.modules["target_module"] = target_module
 
         try:
-            inspect.currentframe = self._mock_currentframe("test_module")
+            inspect.currentframe = self._mock_currentframe(mock_utility, "test_module")
 
             @template_test
             def _test_template(param):
@@ -294,47 +290,57 @@ class TestTemplateTestDecorator(TestCase):
             # Call without _instantiate_module - should register in caller's module
             _test_template("default")
             test_name1 = "test_instantiate_default"
-            self.assertTrue(hasattr(self.test_module, test_name1))
-            self.assertFalse(hasattr(target_module, test_name1))
+            assert hasattr(test_module, test_name1)
+            assert not hasattr(target_module, test_name1)
 
             # Call with _instantiate_module - should register in target module
             _test_template("target", _instantiate_module=target_module)
             test_name2 = "test_instantiate_target"
-            self.assertFalse(hasattr(self.test_module, test_name2))
-            self.assertTrue(hasattr(target_module, test_name2))
+            assert not hasattr(test_module, test_name2)
+            assert hasattr(target_module, test_name2)
 
             # Verify they are registered and callable from their modules
-            self.assertEqual(getattr(self.test_module, test_name1)(), "test_default")
-            self.assertEqual(getattr(target_module, test_name2)(), "test_target")
+            assert getattr(test_module, test_name1)() == "test_default"
+            assert getattr(target_module, test_name2)() == "test_target"
 
         finally:
             del sys.modules["target_module"]
 
 
-class TestTemplateTestIntegration(TestCase):
+@pytest.fixture
+def integration_test_module():
+    """Create a mock module for integration testing."""
+    module = types.ModuleType("integration_test_module")
+    sys.modules["integration_test_module"] = module
+    yield module
+    # Cleanup
+    if "integration_test_module" in sys.modules:
+        del sys.modules["integration_test_module"]
+
+
+@pytest.fixture
+def integration_mock_utility(integration_test_module):
+    """Create mock framework utility for integration tests."""
+    utility = MockFrameworkUtility(integration_test_module)
+    yield utility
+    # Cleanup
+    utility.restore()
+
+
+class TestTemplateTestIntegration:
     """Integration tests for template_test decorator with existing test infrastructure."""
 
-    def setUp(self):
-        """Set up test fixtures for integration tests."""
-        self.test_module = types.ModuleType("integration_test_module")
-        sys.modules["integration_test_module"] = self.test_module
-        self.original_currentframe = inspect.currentframe
-        self.original_getmodule = inspect.getmodule
-        self.mock_utility = MockFrameworkUtility(self.test_module)
-
-    def tearDown(self):
-        """Clean up after integration tests."""
-        if "integration_test_module" in sys.modules:
-            del sys.modules["integration_test_module"]
-        self.mock_utility.restore()
-
-    def _mock_currentframe(self, module_name="integration_test_module"):
+    def _mock_currentframe(self, integration_mock_utility, module_name="integration_test_module"):
         """Create a mock frame for integration tests."""
-        return self.mock_utility.create_mock_currentframe(module_name)
+        return integration_mock_utility.create_mock_currentframe(module_name)
 
-    def test_integration_with_mock_spec_decorators(self):
+    def test_integration_with_mock_spec_decorators(
+        self, integration_test_module, integration_mock_utility
+    ):
         """Test template_test integration with mock spec-style decorators."""
-        inspect.currentframe = self._mock_currentframe("integration_test_module")
+        inspect.currentframe = self._mock_currentframe(
+            integration_mock_utility, "integration_test_module"
+        )
 
         # Mock some spec-style decorators
         mock_spec_test = MockDecoratorUtility.create_mock_spec_test()
@@ -354,16 +360,20 @@ class TestTemplateTestIntegration(TestCase):
 
         # Verify the integration works
         test_name = "test_fork_transition_phase0_to_altair"
-        self.assertTrue(hasattr(self.test_module, test_name))
+        assert hasattr(integration_test_module, test_name)
 
         # Test the decorated function
-        test_func = getattr(self.test_module, test_name)
+        test_func = getattr(integration_test_module, test_name)
         result = test_func(spec="mock_spec", phases=["phase0", "altair"])
-        self.assertEqual(result, "transition_phase0_to_altair")
+        assert result == "transition_phase0_to_altair"
 
-    def test_template_with_generator_functions(self):
+    def test_template_with_generator_functions(
+        self, integration_test_module, integration_mock_utility
+    ):
         """Test template_test with generator functions (common in spec tests)."""
-        inspect.currentframe = self._mock_currentframe("integration_test_module")
+        inspect.currentframe = self._mock_currentframe(
+            integration_mock_utility, "integration_test_module"
+        )
 
         @template_test
         def _test_template(test_case):
@@ -380,29 +390,36 @@ class TestTemplateTestIntegration(TestCase):
 
         # Verify registration
         test_name = "test_generator_block_processing"
-        self.assertTrue(hasattr(self.test_module, test_name))
+        assert hasattr(integration_test_module, test_name)
 
         # Test the generator function
-        test_func = getattr(self.test_module, test_name)
+        test_func = getattr(integration_test_module, test_name)
         gen = test_func(spec="mock_spec", state="mock_state")
         pre_result = next(gen)
         post_result = next(gen)
 
-        self.assertEqual(pre_result[0], "pre")
-        self.assertEqual(pre_result[1]["case"], "block_processing")
-        self.assertEqual(post_result[0], "post")
-        self.assertEqual(post_result[1]["result"], "processed_block_processing")
+        assert pre_result[0] == "pre"
+        assert pre_result[1]["case"] == "block_processing"
+        assert post_result[0] == "post"
+        assert post_result[1]["result"] == "processed_block_processing"
 
     def _mock_currentframe_with_function_call(
-        self, module_name="integration_test_module", function_name="test_function"
+        self,
+        integration_mock_utility,
+        module_name="integration_test_module",
+        function_name="test_function",
     ):
         """Create a mock frame that simulates being called from within a function."""
-        return self.mock_utility.create_mock_currentframe_with_function(module_name, function_name)
+        return integration_mock_utility.create_mock_currentframe_with_function(
+            module_name, function_name
+        )
 
-    def test_template_called_from_within_function(self):
+    def test_template_called_from_within_function(
+        self, integration_test_module, integration_mock_utility
+    ):
         """Test template_test decorator when called from within a function (non-module-level)."""
         inspect.currentframe = self._mock_currentframe_with_function_call(
-            "integration_test_module", "function_that_calls_template"
+            integration_mock_utility, "integration_test_module", "function_that_calls_template"
         )
 
         @template_test
@@ -421,43 +438,43 @@ class TestTemplateTestIntegration(TestCase):
 
         # The template should still register in the module, not the function's local scope
         test_name = "test_function_scoped_example"
-        self.assertTrue(hasattr(self.test_module, test_name))
+        assert hasattr(integration_test_module, test_name)
 
         # The registered function should work correctly
-        registered_func = getattr(self.test_module, test_name)
-        self.assertEqual(registered_func(), "function_scoped_test_example")
+        registered_func = getattr(integration_test_module, test_name)
+        assert registered_func() == "function_scoped_test_example"
 
 
-class TestTemplateUpgradeDecorators(TestCase):
+@pytest.fixture
+def upgrade_test_module():
+    """Create a mock module for upgrade testing."""
+    module = types.ModuleType("upgrade_test_module")
+    sys.modules["upgrade_test_module"] = module
+    yield module
+    # Cleanup
+    if "upgrade_test_module" in sys.modules:
+        del sys.modules["upgrade_test_module"]
+
+
+@pytest.fixture
+def upgrade_mock_utility(upgrade_test_module):
+    """Create mock framework utility for upgrade tests."""
+    utility = MockFrameworkUtility(upgrade_test_module)
+    yield utility
+    # Cleanup
+    utility.restore()
+
+
+class TestTemplateUpgradeDecorators:
     """Test suite for template_test_upgrades_from and template_test_upgrades_from_to decorators."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        # Create a mock module for testing
-        self.test_module = types.ModuleType("upgrade_test_module")
-        sys.modules["upgrade_test_module"] = self.test_module
-
-        # Store original functions for restoration
-        self.original_currentframe = inspect.currentframe
-        self.original_getmodule = inspect.getmodule
-        self.mock_utility = MockFrameworkUtility(self.test_module)
-
-    def tearDown(self):
-        """Clean up after tests."""
-        # Remove test module from sys.modules
-        if "upgrade_test_module" in sys.modules:
-            del sys.modules["upgrade_test_module"]
-
-        # Restore original functions
-        self.mock_utility.restore()
-
-    def _mock_currentframe(self, module_name="upgrade_test_module"):
+    def _mock_currentframe(self, upgrade_mock_utility, module_name="upgrade_test_module"):
         """Create a mock frame that simulates being called from a specific module."""
-        return self.mock_utility.create_mock_currentframe(module_name)
+        return upgrade_mock_utility.create_mock_currentframe(module_name)
 
-    def test_template_test_upgrades_from_basic(self):
+    def test_template_test_upgrades_from_basic(self, upgrade_test_module, upgrade_mock_utility):
         """Test basic functionality of template_test_upgrades_from decorator."""
-        inspect.currentframe = self._mock_currentframe("upgrade_test_module")
+        inspect.currentframe = self._mock_currentframe(upgrade_mock_utility, "upgrade_test_module")
 
         @template_test_upgrades_from(CAPELLA)
         def _template_upgrade(pre_spec: SpecForkName, post_spec: SpecForkName):
@@ -471,27 +488,27 @@ class TestTemplateUpgradeDecorators(TestCase):
 
         # The decorator should have registered tests for CAPELLA->DENEB, DENEB->ELECTRA, ELECTRA->FULU
         # Check that tests were registered for the expected upgrades
-        self.assertTrue(hasattr(self.test_module, "test_upgrade_capella_to_deneb"))
-        self.assertTrue(hasattr(self.test_module, "test_upgrade_deneb_to_electra"))
-        self.assertTrue(hasattr(self.test_module, "test_upgrade_electra_to_fulu"))
+        assert hasattr(upgrade_test_module, "test_upgrade_capella_to_deneb")
+        assert hasattr(upgrade_test_module, "test_upgrade_deneb_to_electra")
+        assert hasattr(upgrade_test_module, "test_upgrade_electra_to_fulu")
 
         # Should NOT have registered for earlier forks
-        self.assertFalse(hasattr(self.test_module, "test_upgrade_phase0_to_altair"))
-        self.assertFalse(hasattr(self.test_module, "test_upgrade_altair_to_bellatrix"))
+        assert not hasattr(upgrade_test_module, "test_upgrade_phase0_to_altair")
+        assert not hasattr(upgrade_test_module, "test_upgrade_altair_to_bellatrix")
 
         # Execute the registered tests to verify they work
-        test_capella_deneb = getattr(self.test_module, "test_upgrade_capella_to_deneb")
-        self.assertEqual(test_capella_deneb(), "upgrade_capella_to_deneb")
+        test_capella_deneb = getattr(upgrade_test_module, "test_upgrade_capella_to_deneb")
+        assert test_capella_deneb() == "upgrade_capella_to_deneb"
 
-        test_deneb_electra = getattr(self.test_module, "test_upgrade_deneb_to_electra")
-        self.assertEqual(test_deneb_electra(), "upgrade_deneb_to_electra")
+        test_deneb_electra = getattr(upgrade_test_module, "test_upgrade_deneb_to_electra")
+        assert test_deneb_electra() == "upgrade_deneb_to_electra"
 
-        test_electra_fulu = getattr(self.test_module, "test_upgrade_electra_to_fulu")
-        self.assertEqual(test_electra_fulu(), "upgrade_electra_to_fulu")
+        test_electra_fulu = getattr(upgrade_test_module, "test_upgrade_electra_to_fulu")
+        assert test_electra_fulu() == "upgrade_electra_to_fulu"
 
-    def test_template_test_upgrades_from_to_basic(self):
+    def test_template_test_upgrades_from_to_basic(self, upgrade_test_module, upgrade_mock_utility):
         """Test basic functionality of template_test_upgrades_from_to decorator."""
-        inspect.currentframe = self._mock_currentframe("upgrade_test_module")
+        inspect.currentframe = self._mock_currentframe(upgrade_mock_utility, "upgrade_test_module")
 
         @template_test_upgrades_from_to(PHASE0, BELLATRIX)
         def _template_range_upgrade(pre_spec: SpecForkName, post_spec: SpecForkName):
@@ -504,26 +521,28 @@ class TestTemplateUpgradeDecorators(TestCase):
         _template_range_upgrade()
 
         # Should have registered tests for PHASE0->ALTAIR, ALTAIR->BELLATRIX, and BELLATRIX->CAPELLA
-        self.assertTrue(hasattr(self.test_module, "test_range_phase0_to_altair"))
-        self.assertTrue(hasattr(self.test_module, "test_range_altair_to_bellatrix"))
-        self.assertTrue(hasattr(self.test_module, "test_range_bellatrix_to_capella"))
+        assert hasattr(upgrade_test_module, "test_range_phase0_to_altair")
+        assert hasattr(upgrade_test_module, "test_range_altair_to_bellatrix")
+        assert hasattr(upgrade_test_module, "test_range_bellatrix_to_capella")
 
         # Should NOT have registered beyond CAPELLA
-        self.assertFalse(hasattr(self.test_module, "test_range_capella_to_deneb"))
+        assert not hasattr(upgrade_test_module, "test_range_capella_to_deneb")
 
         # Execute the registered tests
-        test_phase0_altair = getattr(self.test_module, "test_range_phase0_to_altair")
-        self.assertEqual(test_phase0_altair(), "range_phase0_to_altair")
+        test_phase0_altair = getattr(upgrade_test_module, "test_range_phase0_to_altair")
+        assert test_phase0_altair() == "range_phase0_to_altair"
 
-        test_altair_bellatrix = getattr(self.test_module, "test_range_altair_to_bellatrix")
-        self.assertEqual(test_altair_bellatrix(), "range_altair_to_bellatrix")
+        test_altair_bellatrix = getattr(upgrade_test_module, "test_range_altair_to_bellatrix")
+        assert test_altair_bellatrix() == "range_altair_to_bellatrix"
 
-        test_bellatrix_capella = getattr(self.test_module, "test_range_bellatrix_to_capella")
-        self.assertEqual(test_bellatrix_capella(), "range_bellatrix_to_capella")
+        test_bellatrix_capella = getattr(upgrade_test_module, "test_range_bellatrix_to_capella")
+        assert test_bellatrix_capella() == "range_bellatrix_to_capella"
 
-    def test_template_test_upgrades_from_to_single_upgrade(self):
+    def test_template_test_upgrades_from_to_single_upgrade(
+        self, upgrade_test_module, upgrade_mock_utility
+    ):
         """Test template_test_upgrades_from_to with a single upgrade."""
-        inspect.currentframe = self._mock_currentframe("upgrade_test_module")
+        inspect.currentframe = self._mock_currentframe(upgrade_mock_utility, "upgrade_test_module")
 
         @template_test_upgrades_from_to(DENEB, DENEB)
         def _template_single(pre_spec: SpecForkName, post_spec: SpecForkName):
@@ -536,12 +555,8 @@ class TestTemplateUpgradeDecorators(TestCase):
         _template_single()
 
         # Should only register the upgrade from DENEB to ELECTRA
-        self.assertTrue(hasattr(self.test_module, "test_single_deneb_to_electra"))
+        assert hasattr(upgrade_test_module, "test_single_deneb_to_electra")
 
         # Should NOT register others
-        self.assertFalse(hasattr(self.test_module, "test_single_capella_to_deneb"))
-        self.assertFalse(hasattr(self.test_module, "test_single_electra_to_fulu"))
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert not hasattr(upgrade_test_module, "test_single_capella_to_deneb")
+        assert not hasattr(upgrade_test_module, "test_single_electra_to_fulu")
