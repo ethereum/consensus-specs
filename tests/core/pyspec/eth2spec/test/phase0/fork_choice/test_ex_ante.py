@@ -34,7 +34,7 @@ from eth2spec.test.helpers.state import (
 def _apply_base_block_a(spec, state, store, test_steps):
     # On receiving block A at slot `N`
     block = build_empty_block(spec, state, slot=state.slot + 1)
-    signed_block_a = state_transition_and_sign_block(spec, state, block)
+    signed_block_a = state_transition_and_sign_block(spec, state.copy(), block)
     yield from tick_and_add_block(spec, store, signed_block_a, test_steps)
     payload_state_transition(spec, store, signed_block_a.message)
     head = spec.get_head(store)
@@ -76,13 +76,14 @@ def test_ex_ante_vanilla(spec, state):
 
     # Block B at slot `N + 1`, parent is A
     state_b = state_a.copy()
-    block = build_empty_block(spec, state_a, slot=state_a.slot + 1)
-    signed_block_b = state_transition_and_sign_block(spec, state_b, block)
+    block = build_empty_block(spec, state_b, slot=state_b.slot + 1)
+    post_state_b = state_b.copy()
+    signed_block_b = state_transition_and_sign_block(spec, post_state_b, block)
 
     # Block C at slot `N + 2`, parent is A
     state_c = state_a.copy()
-    block = build_empty_block(spec, state_c, slot=state_a.slot + 2)
-    signed_block_c = state_transition_and_sign_block(spec, state_c, block)
+    block = build_empty_block(spec, state_c, slot=state_c.slot + 2)
+    signed_block_c = state_transition_and_sign_block(spec, state_c.copy(), block)
 
     # Attestation_1 at slot `N + 1` voting for block B
     def _filter_participant_set(participants):
@@ -90,17 +91,17 @@ def test_ex_ante_vanilla(spec, state):
 
     attestation = get_valid_attestation(
         spec,
-        state_b,
-        slot=state_b.slot,
+        post_state_b,
+        slot=signed_block_b.message.slot,
         signed=False,
         filter_participant_set=_filter_participant_set,
     )
     attestation.data.beacon_block_root = signed_block_b.message.hash_tree_root()
     assert len([i for i in attestation.aggregation_bits if i == 1]) == 1
-    sign_attestation(spec, state_b, attestation)
+    sign_attestation(spec, post_state_b, attestation)
 
     # Block C received at N+2 — C is head
-    time = state_c.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    time = signed_block_c.message.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block_c, test_steps)
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())
@@ -254,20 +255,20 @@ def test_ex_ante_sandwich_without_attestations(spec, state):
     # Block B at slot `N + 1`, parent is A
     state_b = state_a.copy()
     block = build_empty_block(spec, state_a, slot=state_a.slot + 1)
-    signed_block_b = state_transition_and_sign_block(spec, state_b, block)
+    signed_block_b = state_transition_and_sign_block(spec, state_b.copy(), block)
 
     # Block C at slot `N + 2`, parent is A
     state_c = state_a.copy()
     block = build_empty_block(spec, state_c, slot=state_a.slot + 2)
-    signed_block_c = state_transition_and_sign_block(spec, state_c, block)
+    signed_block_c = state_transition_and_sign_block(spec, state_c.copy(), block)
 
     # Block D at slot `N + 3`, parent is B
     state_d = state_b.copy()
     block = build_empty_block(spec, state_d, slot=state_a.slot + 3)
-    signed_block_d = state_transition_and_sign_block(spec, state_d, block)
+    signed_block_d = state_transition_and_sign_block(spec, state_d.copy(), block)
 
     # Block C received at N+2 — C is head
-    time = state_c.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    time = signed_block_c.message.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block_c, test_steps)
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())
@@ -279,7 +280,7 @@ def test_ex_ante_sandwich_without_attestations(spec, state):
     payload_state_transition(spec, store, signed_block_b.message)
 
     # Block D received at N+3 - D is head, it has proposer score boost
-    time = state_d.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    time = signed_block_d.message.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block_d, test_steps)
     check_head_against_root(spec, store, signed_block_d.message.hash_tree_root())
@@ -323,12 +324,13 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     # Block B at slot `N + 1`, parent is A
     state_b = state_a.copy()
     block = build_empty_block(spec, state_a, slot=state_a.slot + 1)
-    signed_block_b = state_transition_and_sign_block(spec, state_b, block)
+    signed_block_b = state_transition_and_sign_block(spec, state_b.copy(), block)
 
     # Block C at slot `N + 2`, parent is A
     state_c = state_a.copy()
     block = build_empty_block(spec, state_c, slot=state_a.slot + 2)
-    signed_block_c = state_transition_and_sign_block(spec, state_c, block)
+    post_state_c = state_c.copy()
+    signed_block_c = state_transition_and_sign_block(spec, post_state_c, block)
 
     # Attestation_1 at N+2 voting for block C
     def _filter_participant_set(participants):
@@ -336,22 +338,22 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
 
     attestation = get_valid_attestation(
         spec,
-        state_c,
-        slot=state_c.slot,
+        post_state_c,
+        slot=signed_block_c.message.slot,
         signed=False,
         filter_participant_set=_filter_participant_set,
     )
     attestation.data.beacon_block_root = signed_block_c.message.hash_tree_root()
     assert len([i for i in attestation.aggregation_bits if i == 1]) == 1
-    sign_attestation(spec, state_c, attestation)
+    sign_attestation(spec, post_state_c, attestation)
 
     # Block D at slot `N + 3`, parent is B
     state_d = state_b.copy()
     block = build_empty_block(spec, state_d, slot=state_a.slot + 3)
-    signed_block_d = state_transition_and_sign_block(spec, state_d, block)
+    signed_block_d = state_transition_and_sign_block(spec, state_d.copy(), block)
 
     # Block C received at N+2 — C is head
-    time = state_c.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    time = signed_block_c.message.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block_c, test_steps)
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())
@@ -363,7 +365,7 @@ def test_ex_ante_sandwich_with_honest_attestation(spec, state):
     payload_state_transition(spec, store, signed_block_b.message)
 
     # Attestation_1 received at N+3 — C is head
-    time = state_d.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    time = signed_block_d.message.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_attestation(spec, store, attestation, test_steps)
     check_head_against_root(spec, store, signed_block_c.message.hash_tree_root())

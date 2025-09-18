@@ -86,7 +86,6 @@ def test_chain_no_attestations(spec, state):
     check_head_against_root(spec, store, anchor_root)
     output_head_check(spec, store, test_steps)
 
-
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block_1 = build_empty_block_for_next_slot(spec, state)
     signed_block_1 = state_transition_and_sign_block(spec, state.copy(), block_1)
