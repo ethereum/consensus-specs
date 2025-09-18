@@ -291,7 +291,7 @@ class BeaconBlockBody(Container):
 *Note*: The `BeaconState` is modified to track the last withdrawals honored in
 the CL. A new field `latest_execution_payload_bid` is added to track the state's
 slot builder's bid and replaces the old `latest_execution_payload_header` which
-no longer is tracked in the beacon state. Another addition is to track the last
+is no longer tracked in the beacon state. Another addition is to track the last
 committed block hash and the last slot that was full, that is in which there
 were both consensus and execution blocks included.
 
@@ -321,8 +321,8 @@ class BeaconState(Container):
     inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
-    # Removed `latest_execution_payload_header`
     # [New in Gloas:EIP7732]
+    # Removed `latest_execution_payload_header`
     latest_execution_payload_bid: ExecutionPayloadBid
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
