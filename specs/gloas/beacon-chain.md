@@ -321,8 +321,7 @@ class BeaconState(Container):
     inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
-    # [Removed in Gloas:EIP7732]
-    #  latest_execution_payload_header: ExecutionPayloadHeader
+    # Removed `latest_execution_payload_header`
     # [New in Gloas:EIP7732]
     latest_execution_payload_bid: ExecutionPayloadBid
     next_withdrawal_index: WithdrawalIndex
