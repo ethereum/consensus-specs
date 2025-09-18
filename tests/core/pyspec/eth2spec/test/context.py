@@ -307,7 +307,7 @@ is_pytest = True
 def dump_skipping_message(reason: str) -> None:
     message = f"[Skipped test] {reason}"
     if is_pytest:
-        pytest.skip(message)
+        pytest.skip(message, allow_module_level=True)
     else:
         raise SkippedTest(message)
 
@@ -657,6 +657,8 @@ with_gloas_and_later = with_all_phases_from(GLOAS, all_phases=ALLOWED_TEST_RUNNE
 with_eip7441_and_later = with_all_phases_from(EIP7441, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7805_and_later = with_all_phases_from(EIP7805, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7928_and_later = with_all_phases_from(EIP7928, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+
+with_bellatrix_only = with_phases([BELLATRIX])
 
 
 class quoted_str(str):
