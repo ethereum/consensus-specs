@@ -1,3 +1,4 @@
+import functools
 import importlib
 from collections.abc import Callable, Sequence
 from copy import deepcopy
@@ -302,6 +303,7 @@ DEFAULT_BLS_ACTIVE = True
 
 
 is_pytest = True
+is_generator_mode = False
 
 
 def dump_skipping_message(reason: str) -> None:
@@ -756,13 +758,13 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
 
 
 def only_generator(reason):
-    def _decorator(inner):
+    def _passthrough(inner):
         return inner
 
-    if is_pytest:
-        return pytest.mark.skip(reason)
+    if is_generator_mode:
+        return _passthrough
     else:
-        return _decorator
+        return pytest.mark.skip(reason)
 
 
 def with_test_suite_name(suite_name: str):

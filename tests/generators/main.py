@@ -2,8 +2,13 @@ import importlib
 import os
 
 from eth2spec.gen_helpers.gen_base import gen_runner
+from eth2spec.test import context
 
 if __name__ == "__main__":
+    # Flag that the runner does NOT run test via pytest
+    context.is_pytest = False
+    context.is_generator_mode = True
+
     current_dir = os.path.dirname(__file__)
     runners_dir = os.path.join(current_dir, "runners")
 

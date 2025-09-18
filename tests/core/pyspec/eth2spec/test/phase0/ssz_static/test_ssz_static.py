@@ -4,6 +4,7 @@ from random import Random
 
 from eth2spec.debug import encode, random_value
 from eth2spec.test.context import (
+    is_generator_mode,
     only_generator,
     single_phase,
     spec_targets,
@@ -43,8 +44,8 @@ def _template_ssz_static_tests(
     count: int,
     i: int,
 ):
-    @manifest(_manifest)
     @only_generator("too slow")
+    @manifest(_manifest)
     @with_phases(phases)
     @with_presets([_manifest.preset_name])
     @spec_test
@@ -150,5 +151,5 @@ def _create_test_cases():
                 ssz_type_to_specs[ssz_type_name], preset, ssz_type_name, mode, chaos, count
             )
 
-
-_create_test_cases()
+if is_generator_mode:
+    _create_test_cases()
