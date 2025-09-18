@@ -428,9 +428,6 @@ def build_randomized_execution_payload(spec, state, rng):
 
 
 def build_state_with_incomplete_transition(spec, state):
-    header = spec.ExecutionPayloadHeader()
-    state = build_state_with_execution_payload_header(spec, state, header)
-
     if is_post_gloas(spec):
         # In Gloas, we need to set up the execution payload bid instead
         kzgs = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
@@ -439,7 +436,10 @@ def build_state_with_incomplete_transition(spec, state):
             value=spec.Gwei(0),
             blob_kzg_commitments_root=kzgs.hash_tree_root(),
         )
-        state.latest_execution_payload_bid = bid
+        state = build_state_with_execution_payload_bid(spec, state, bid)
+    else:
+        header = spec.ExecutionPayloadHeader()
+        state = build_state_with_execution_payload_header(spec, state, header)
 
     assert not spec.is_merge_transition_complete(state)
 
