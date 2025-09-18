@@ -37,8 +37,6 @@ def test_success_mixed_fully_and_partial_withdrawable_compounding(spec, state):
 
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -66,8 +64,6 @@ def test_success_no_max_effective_balance_compounding(spec, state):
 
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec, state, execution_payload, num_expected_withdrawals=0
@@ -91,8 +87,6 @@ def test_success_no_excess_balance_compounding(spec, state):
 
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec, state, execution_payload, num_expected_withdrawals=0
@@ -117,8 +111,6 @@ def test_success_excess_balance_but_no_max_effective_balance_compounding(spec, s
 
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec, state, execution_payload, num_expected_withdrawals=0
@@ -141,8 +133,6 @@ def test_pending_withdrawals_one_skipped_one_effective(spec, state):
 
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     assert state.pending_partial_withdrawals == [pending_withdrawal_0, pending_withdrawal_1]
     yield from run_withdrawals_processing(
@@ -171,8 +161,6 @@ def test_pending_withdrawals_next_epoch(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec, state, execution_payload, num_expected_withdrawals=0
@@ -200,8 +188,6 @@ def test_pending_withdrawals_at_max(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -232,8 +218,6 @@ def test_pending_withdrawals_exiting_validator(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec, state, execution_payload, num_expected_withdrawals=0
@@ -264,8 +248,6 @@ def test_full_pending_withdrawals_but_first_skipped_exiting_validator(spec, stat
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -294,8 +276,6 @@ def test_pending_withdrawals_low_effective_balance(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec, state, execution_payload, num_expected_withdrawals=0
@@ -327,8 +307,6 @@ def test_full_pending_withdrawals_but_first_skipped_low_effective_balance(spec, 
 
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -355,8 +333,6 @@ def test_pending_withdrawals_no_excess_balance(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec, state, execution_payload, num_expected_withdrawals=0
@@ -387,8 +363,6 @@ def test_full_pending_withdrawals_but_first_skipped_no_excess_balance(spec, stat
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -431,8 +405,6 @@ def test_pending_withdrawals_with_ineffective_sweep_on_top(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -489,8 +461,6 @@ def test_pending_withdrawals_with_ineffective_sweep_on_top_2(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -543,8 +513,6 @@ def test_pending_withdrawals_with_effective_sweep_on_top(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -596,8 +564,6 @@ def test_pending_withdrawals_with_sweep_different_validator(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -647,8 +613,6 @@ def test_pending_withdrawals_mixed_with_sweep_and_fully_withdrawable(spec, state
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -698,8 +662,6 @@ def test_pending_withdrawals_at_max_mixed_with_sweep_and_fully_withdrawable(spec
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -737,8 +699,6 @@ def test_partially_withdrawable_validator_compounding_max_plus_one(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -766,8 +726,6 @@ def test_partially_withdrawable_validator_compounding_exact_max(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -801,8 +759,6 @@ def test_partially_withdrawable_validator_compounding_max_minus_one(spec, state)
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -836,8 +792,6 @@ def test_partially_withdrawable_validator_compounding_min_plus_one(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -871,8 +825,6 @@ def test_partially_withdrawable_validator_compounding_exact_min(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -906,8 +858,6 @@ def test_partially_withdrawable_validator_compounding_min_minus_one(spec, state)
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -948,8 +898,6 @@ def test_pending_withdrawals_two_partial_withdrawals_same_validator_1(spec, stat
 
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
@@ -993,8 +941,6 @@ def test_pending_withdrawals_two_partial_withdrawals_same_validator_2(spec, stat
 
     if is_post_gloas(spec):
         state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    else:
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
 
     yield from run_withdrawals_processing(
         spec,
