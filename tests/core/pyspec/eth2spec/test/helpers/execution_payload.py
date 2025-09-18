@@ -319,10 +319,14 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
     # Use self-build: builder_index is the same as the beacon proposer index
     builder_index = spec.get_beacon_proposer_index(state)
+    # Set block_hash to a different value than spec.Hash32(),
+    # to distinguish it from the genesis block hash and have
+    # is_parent_node_full correctly return False
+    empty_payload_hash = spec.Hash32(b'\x01' + b'\x00' * 31)
     return spec.ExecutionPayloadBid(
         parent_block_hash=state.latest_block_hash,
         parent_block_root=parent_block_root,
-        block_hash=spec.Hash32(),
+        block_hash=empty_payload_hash,
         fee_recipient=spec.ExecutionAddress(),
         gas_limit=spec.uint64(0),
         builder_index=builder_index,
@@ -332,7 +336,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
     )
 
 
-def build_empty_signed_execution_payload_header(spec, state):
+def build_empty_signed_execution_payload_bid(spec, state):
     if not is_post_gloas(spec):
         return
     message = build_empty_post_gloas_execution_payload_bid(spec, state)
@@ -343,7 +347,7 @@ def build_empty_signed_execution_payload_header(spec, state):
         signature = spec.G2_POINT_AT_INFINITY
     else:
         privkey = privkeys[message.builder_index]
-        signature = spec.get_execution_payload_header_signature(state, message, privkey)
+        signature = spec.get_execution_payload_bid_signature(state, message, privkey)
 
     return spec.SignedExecutionPayloadBid(
         message=message,

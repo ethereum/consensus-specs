@@ -90,27 +90,6 @@ def get_state_root(spec, state, slot) -> bytes:
     assert slot < state.slot <= slot + spec.SLOTS_PER_HISTORICAL_ROOT
     return state.state_roots[slot % spec.SLOTS_PER_HISTORICAL_ROOT]
 
-
-def payload_state_transition_no_store(spec, state, block):
-    if is_post_gloas(spec):
-        # cache the latest block header
-        previous_state_root = state.hash_tree_root()
-        if state.latest_block_header.state_root == spec.Root():
-            state.latest_block_header.state_root = previous_state_root
-        # also perform the state transition as if the payload was revealed
-        state.latest_block_hash = block.body.signed_execution_payload_bid.message.block_hash
-    return state
-
-
-def payload_state_transition(spec, store, block):
-    root = block.hash_tree_root()
-    state = store.block_states[root].copy()
-    if is_post_gloas(spec):
-        payload_state_transition_no_store(spec, state, block)
-        store.execution_payload_states[root] = state
-    return state
-
-
 def state_transition_and_sign_block(spec, state, block, expect_fail=False):
     """
     State transition via the provided ``block``
