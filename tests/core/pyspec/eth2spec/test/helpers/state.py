@@ -5,7 +5,7 @@ from remerkleable.byte_arrays import Bytes32
 
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.block import apply_empty_block, sign_block, transition_unsigned_block
-from eth2spec.test.helpers.forks import is_post_altair, is_post_gloas
+from eth2spec.test.helpers.forks import is_post_altair
 from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
 from eth2spec.utils.hash_function import hash
 from eth2spec.utils.ssz.ssz_impl import uint_to_bytes
@@ -89,6 +89,7 @@ def get_state_root(spec, state, slot) -> bytes:
     """
     assert slot < state.slot <= slot + spec.SLOTS_PER_HISTORICAL_ROOT
     return state.state_roots[slot % spec.SLOTS_PER_HISTORICAL_ROOT]
+
 
 def state_transition_and_sign_block(spec, state, block, expect_fail=False):
     """

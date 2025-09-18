@@ -12,6 +12,7 @@ from eth2spec.test.helpers.attestations import (
 )
 from eth2spec.test.helpers.forks import is_post_fulu, is_post_gloas
 
+
 def check_head_against_root(spec, store, root):
     head = spec.get_head(store)
     if is_post_gloas(spec):
@@ -266,6 +267,7 @@ def run_on_block(spec, store, signed_block, valid=True):
     spec.on_block(store, signed_block)
     root = signed_block.message.hash_tree_root()
     assert store.blocks[root] == signed_block.message
+
 
 def add_block(
     spec,

@@ -322,7 +322,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
     # Set block_hash to a different value than spec.Hash32(),
     # to distinguish it from the genesis block hash and have
     # is_parent_node_full correctly return False
-    empty_payload_hash = spec.Hash32(b'\x01' + b'\x00' * 31)
+    empty_payload_hash = spec.Hash32(b"\x01" + b"\x00" * 31)
     return spec.ExecutionPayloadBid(
         parent_block_hash=state.latest_block_hash,
         parent_block_root=parent_block_root,

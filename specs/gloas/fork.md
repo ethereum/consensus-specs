@@ -71,6 +71,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         inactivity_scores=pre.inactivity_scores,
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
+        # [Modified in Gloas:EIP7732]
         # Removed `latest_execution_payload_header`
         # [New in Gloas:EIP7732]
         latest_execution_payload_bid=ExecutionPayloadBid(),
