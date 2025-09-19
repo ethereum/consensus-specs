@@ -332,8 +332,8 @@ This logic is triggered upon the same conditions as when producing an
 attestation. Meaning, a sync committee member should produce and broadcast a
 `SyncCommitteeMessage` either when (a) the validator has received a valid block
 from the expected block proposer for the current `slot` or (b)
-`get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)` milliseconds has
-transpired since the start of the slot -- whichever comes first.
+`get_sync_message_due_ms(epoch)` milliseconds has transpired since the start of
+the slot -- whichever comes first.
 
 `get_sync_committee_message(state, block_root, validator_index, privkey)`
 assumes the parameter `state` is the head state corresponding to processing the

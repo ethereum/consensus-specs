@@ -25,6 +25,9 @@
 This is the modification of the fork choice according to the executable beacon
 chain proposal.
 
+Unless stated explicitly, all prior functionality from
+[Altair](../altair/fork-choice.md) is inherited.
+
 *Note*: It introduces the process of transition from the last PoW block to the
 first PoS block.
 
@@ -308,7 +311,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add block timeliness to the store
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+    epoch = get_current_store_epoch(store)
+    attestation_threshold_ms = get_attestation_due_ms(epoch)
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely

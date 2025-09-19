@@ -6,11 +6,11 @@ from eth_utils import (
 from renderers import (
     render_test_case,
 )
-
-import ssz
 from ssz.sedes import (
     UInt,
 )
+
+import ssz
 
 random.seed(0)
 

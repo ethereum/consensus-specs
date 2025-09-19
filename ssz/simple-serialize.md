@@ -17,7 +17,7 @@
   - [`boolean`](#boolean)
   - [`Bitvector[N]`](#bitvectorn)
   - [`Bitlist[N]`, `ProgressiveBitlist`](#bitlistn-progressivebitlist)
-  - [Vectors, containers, lists, progressive lists](#vectors-containers-lists-progressive-lists)
+  - [Vectors, containers, progressive containers, lists, progressive lists](#vectors-containers-progressive-containers-lists-progressive-lists)
   - [Union](#union)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
@@ -52,6 +52,19 @@
   class ContainerExample(Container):
       foo: uint64
       bar: boolean
+  ```
+- **progressive container** _[EIP-7495, currently unused]_: ordered
+  heterogeneous collection of values with stable Merkleization
+  - python dataclass notation with key-type pairs, e.g.
+  ```python
+  class Square(ProgressiveContainer(active_fields=[1, 0, 1])):
+      side: uint16  # Merkleized at field index #0 (location of first 1 in `active_fields`)
+      color: uint8  # Merkleized at field index #2 (location of second 1 in `active_fields`)
+
+
+  class Circle(ProgressiveContainer(active_fields=[0, 1, 1])):
+      radius: uint16  # Merkleized at field index #1 (location of first 1 in `active_fields`)
+      color: uint8  # Merkleized at field index #2 (location of second 1 in `active_fields`)
   ```
 - **vector**: ordered fixed-length homogeneous collection, with `N` values
   - notation `Vector[type, N]`, e.g. `Vector[uint64, N]`
@@ -107,18 +120,19 @@ canonical representations both in SSZ and in related formats.
 Assuming a helper function `default(type)` which returns the default value for
 `type`, we can recursively define the default value for all types.
 
-| Type                         | Default Value                           |
-| ---------------------------- | --------------------------------------- |
-| `uintN`                      | `0`                                     |
-| `boolean`                    | `False`                                 |
-| `Container`                  | `[default(type) for type in container]` |
-| `Vector[type, N]`            | `[default(type)] * N`                   |
-| `Bitvector[N]`               | `[False] * N`                           |
-| `List[type, N]`              | `[]`                                    |
-| `ProgressiveList[type]`      | `[]`                                    |
-| `Bitlist[N]`                 | `[]`                                    |
-| `ProgressiveBitlist`         | `[]`                                    |
-| `Union[type_0, type_1, ...]` | `default(type_0)`                       |
+| Type                                  | Default Value                                       |
+| ------------------------------------- | --------------------------------------------------- |
+| `uintN`                               | `0`                                                 |
+| `boolean`                             | `False`                                             |
+| `Container`                           | `[default(type) for type in container]`             |
+| `ProgressiveContainer(active_fields)` | `[default(type) for type in progressive_container]` |
+| `Vector[type, N]`                     | `[default(type)] * N`                               |
+| `Bitvector[N]`                        | `[False] * N`                                       |
+| `List[type, N]`                       | `[]`                                                |
+| `ProgressiveList[type]`               | `[]`                                                |
+| `Bitlist[N]`                          | `[]`                                                |
+| `ProgressiveBitlist`                  | `[]`                                                |
+| `Union[type_0, type_1, ...]`          | `default(type_0)`                                   |
 
 #### `is_zero`
 
@@ -129,6 +143,13 @@ is equal to the default value for that type.
 
 - Empty vector types (`Vector[type, 0]`, `Bitvector[0]`) are illegal.
 - Containers with no fields are illegal.
+- `ProgressiveContainer` with no fields are illegal.
+- `ProgressiveContainer` with an `active_fields` configuration of more than 256
+  entries are illegal.
+- `ProgressiveContainer` with an `active_fields` configuration ending in `0` are
+  illegal.
+- `ProgressiveContainer` with an `active_fields` configuration with a different
+  count of `1` than fields are illegal.
 - The `None` type option in a `Union` type is only legal as the first option
   (i.e. with index zero).
 
@@ -177,7 +198,7 @@ array[len(value) // 8] |= 1 << (len(value) % 8)
 return bytes(array)
 ```
 
-### Vectors, containers, lists, progressive lists
+### Vectors, containers, progressive containers, lists, progressive lists
 
 ```python
 # Recursively serialize
@@ -246,9 +267,10 @@ have to do one of the following depending on what kind of object it is:
     from the difference of two offsets. To get the size of the last object, the
     total number of bytes has to be known (it is not generally possible to
     deserialize an SSZ object of unknown length)
-- Containers follow the same principles as vectors, with the difference that
-  there may be fixed-size objects in a container as well. This means the
-  `fixed_parts` data will contain offsets as well as fixed-size objects.
+- Containers/progressive containers follow the same principles as vectors, with
+  the difference that there may be fixed-size objects in a container/progressive
+  container as well. This means the `fixed_parts` data will contain offsets as
+  well as fixed-size objects.
 - In the case of bitlists/progressive bitlists, the length in bits cannot be
   uniquely inferred from the number of bytes in the object. Because of this,
   they have a bit at the end that is always set. This bit has to be used to
@@ -283,6 +305,8 @@ We first define helper functions:
     `(N * size_of(B) + 31) // 32` (dividing by chunk size, rounding up)
   - `List[C, N]` and `Vector[C, N]`, where `C` is a composite type: `N`
   - containers: `len(fields)`
+- `get_active_fields(value)`, where `value` is of type
+  `ProgressiveContainer(active_fields)`: return `active_fields`.
 - `pack(values)`: Given ordered objects of the same basic type:
   1. Serialize `values` into bytes.
   2. If not aligned to a multiple of `BYTES_PER_CHUNK` bytes, right-pad with
@@ -319,6 +343,9 @@ We first define helper functions:
         `merkleize_progressive(chunks[num_leaves:], num_leaves * 4)`.
       - `b`: Merkleize the first up to `num_leaves` chunks as a binary tree
         using `merkleize(chunks[:num_leaves], num_leaves)`.
+- `mix_in_active_fields`: Given a Merkle root `root` and an `active_fields`
+  configuration return `hash(root, pack_bits(active_fields))`. Note that
+  `active_fields` is restricted to ≤ 256 bits.
 - `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"`
   little-endian serialization) return `hash(root + length)`.
 - `mix_in_selector`: Given a Merkle root `root` and a type selector `selector`
@@ -341,6 +368,8 @@ recursively:
   `value` is a progressive bitlist.
 - `merkleize([hash_tree_root(element) for element in value])` if `value` is a
   vector of composite objects or a container.
+- `mix_in_active_fields(merkleize_progressive([hash_tree_root(element) for element in value]), get_active_fields(value))`
+  if `value` is a progressive container.
 - `mix_in_length(merkleize([hash_tree_root(element) for element in value], limit=chunk_count(type)), len(value))`
   if `value` is a list of composite objects.
 - `mix_in_length(merkleize_progressive([hash_tree_root(element) for element in value]), len(value))`
@@ -377,22 +406,23 @@ encoding, enabling an SSZ schema to also define the JSON encoding.
 When decoding JSON data, all fields in the SSZ schema must be present with a
 value. Parsers may ignore additional JSON fields.
 
-| SSZ                          | JSON            | Example                                  |
-| ---------------------------- | --------------- | ---------------------------------------- |
-| `uintN`                      | string          | `"0"`                                    |
-| `byte`                       | hex-byte-string | `"0x00"`                                 |
-| `boolean`                    | bool            | `false`                                  |
-| `Container`                  | object          | `{ "field": ... }`                       |
-| `Vector[type, N]`            | array           | `[element, ...]`                         |
-| `Vector[byte, N]`            | hex-byte-string | `"0x1122"`                               |
-| `Bitvector[N]`               | hex-byte-string | `"0x1122"`                               |
-| `List[type, N]`              | array           | `[element, ...]`                         |
-| `List[byte, N]`              | hex-byte-string | `"0x1122"`                               |
-| `ProgressiveList[type]`      | array           | `[element, ...]`                         |
-| `ProgressiveList[byte]`      | hex-byte-string | `"0x1122"`                               |
-| `Bitlist[N]`                 | hex-byte-string | `"0x1122"`                               |
-| `ProgressiveBitlist`         | hex-byte-string | `"0x1122"`                               |
-| `Union[type_0, type_1, ...]` | selector-object | `{ "selector": number, "data": type_N }` |
+| SSZ                                   | JSON            | Example                                  |
+| ------------------------------------- | --------------- | ---------------------------------------- |
+| `uintN`                               | string          | `"0"`                                    |
+| `byte`                                | hex-byte-string | `"0x00"`                                 |
+| `boolean`                             | bool            | `false`                                  |
+| `Container`                           | object          | `{ "field": ... }`                       |
+| `ProgressiveContainer(active_fields)` | object          | `{ "field": ... }`                       |
+| `Vector[type, N]`                     | array           | `[element, ...]`                         |
+| `Vector[byte, N]`                     | hex-byte-string | `"0x1122"`                               |
+| `Bitvector[N]`                        | hex-byte-string | `"0x1122"`                               |
+| `List[type, N]`                       | array           | `[element, ...]`                         |
+| `List[byte, N]`                       | hex-byte-string | `"0x1122"`                               |
+| `ProgressiveList[type]`               | array           | `[element, ...]`                         |
+| `ProgressiveList[byte]`               | hex-byte-string | `"0x1122"`                               |
+| `Bitlist[N]`                          | hex-byte-string | `"0x1122"`                               |
+| `ProgressiveBitlist`                  | hex-byte-string | `"0x1122"`                               |
+| `Union[type_0, type_1, ...]`          | selector-object | `{ "selector": number, "data": type_N }` |
 
 Integers are encoded as strings to avoid loss of precision in 64-bit values.
 

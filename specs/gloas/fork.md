@@ -73,6 +73,8 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         next_sync_committee=pre.next_sync_committee,
         # [Modified in Gloas:EIP7732]
         latest_execution_payload_header=ExecutionPayloadHeader(),
+        # [New in Gloas:EIP7732]
+        latest_execution_payload_bid=ExecutionPayloadBid(),
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         historical_summaries=pre.historical_summaries,

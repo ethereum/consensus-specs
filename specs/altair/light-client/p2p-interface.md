@@ -64,9 +64,9 @@ the network.
   `finality_update` for that slot did not indicate supermajority
 - _[IGNORE]_ The `finality_update` is received after the block at
   `signature_slot` was given enough time to propagate through the network --
-  i.e. validatate that `get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)`
-  milliseconds (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) has
-  transpired since the start of `signature_slot`.
+  i.e. validatate that `get_sync_message_due_ms(epoch)` milliseconds (with a
+  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) has transpired since the start of
+  `signature_slot`.
 
 For full nodes, the following validations MUST additionally pass before
 forwarding the `finality_update` on the network.
@@ -111,9 +111,9 @@ the network.
   previously forwarded `optimistic_update`s
 - _[IGNORE]_ The `optimistic_update` is received after the block at
   `signature_slot` was given enough time to propagate through the network --
-  i.e. validatate that `get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)`
-  milliseconds (with a `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) has
-  transpired since the start of `optimistic_update.signature_slot`.
+  i.e. validatate that `get_sync_message_due_ms(epoch)` milliseconds (with a
+  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) has transpired since the start of
+  `optimistic_update.signature_slot`.
 
 For full nodes, the following validations MUST additionally pass before
 forwarding the `optimistic_update` on the network.
@@ -369,9 +369,8 @@ follows:
   SHOULD be broadcasted to the pubsub topic `light_client_optimistic_update` if
   no matching message has not yet been forwarded as part of gossip validation.
 
-These messages SHOULD be broadcasted
-`get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)` milliseconds after the
-start of the slot. To ensure that the corresponding block was given enough time
-to propagate through the network, they SHOULD NOT be sent earlier. Note that
-this is different from how other messages are handled, e.g., attestations, which
-may be sent early.
+These messages SHOULD be broadcasted `get_sync_message_due_ms(epoch)`
+milliseconds after the start of the slot. To ensure that the corresponding block
+was given enough time to propagate through the network, they SHOULD NOT be sent
+earlier. Note that this is different from how other messages are handled, e.g.,
+attestations, which may be sent early.

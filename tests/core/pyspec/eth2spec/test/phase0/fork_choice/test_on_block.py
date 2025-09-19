@@ -174,7 +174,7 @@ def test_on_block_bad_parent_root(spec, state):
     block.parent_root = b"\x45" * 32
     if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     elif is_post_bellatrix(spec):
@@ -512,12 +512,8 @@ def test_proposer_boost(spec, state):
 
     # Process block on timely arrival just before end of boost interval
     # Round up to nearest second
-    if is_post_gloas(spec):
-        late_block_cutoff_ms = spec.get_slot_component_duration_ms(
-            spec.config.ATTESTATION_DUE_BPS_GLOAS
-        )
-    else:
-        late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
+    epoch = spec.get_current_store_epoch(store)
+    late_block_cutoff_ms = spec.get_attestation_due_ms(epoch)
     late_block_cutoff = (late_block_cutoff_ms + 999) // 1000
     time = store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT + late_block_cutoff - 1
 
@@ -617,12 +613,8 @@ def test_proposer_boost_root_same_slot_untimely_block(spec, state):
 
     # Process block on untimely arrival in the same slot
     # Round up to nearest second
-    if is_post_gloas(spec):
-        late_block_cutoff_ms = spec.get_slot_component_duration_ms(
-            spec.config.ATTESTATION_DUE_BPS_GLOAS
-        )
-    else:
-        late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
+    epoch = spec.get_current_store_epoch(store)
+    late_block_cutoff_ms = spec.get_attestation_due_ms(epoch)
     late_block_cutoff = (late_block_cutoff_ms + 999) // 1000
     time = store.genesis_time + block.slot * spec.config.SECONDS_PER_SLOT + late_block_cutoff
 
@@ -663,12 +655,8 @@ def test_proposer_boost_is_first_block(spec, state):
 
     # Process block on timely arrival just before end of boost interval
     # Round up to nearest second
-    if is_post_gloas(spec):
-        late_block_cutoff_ms = spec.get_slot_component_duration_ms(
-            spec.config.ATTESTATION_DUE_BPS_GLOAS
-        )
-    else:
-        late_block_cutoff_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
+    epoch = spec.get_current_store_epoch(store)
+    late_block_cutoff_ms = spec.get_attestation_due_ms(epoch)
     late_block_cutoff = (late_block_cutoff_ms + 999) // 1000
     time = store.genesis_time + block_a.slot * spec.config.SECONDS_PER_SLOT + late_block_cutoff - 1
 

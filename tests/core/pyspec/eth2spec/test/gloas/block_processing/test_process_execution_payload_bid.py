@@ -11,9 +11,9 @@ from eth2spec.test.helpers.withdrawals import (
 )
 
 
-def run_execution_payload_header_processing(spec, state, block, valid=True):
+def run_execution_payload_bid_processing(spec, state, block, valid=True):
     """
-    Run ``process_execution_payload_header``, yielding:
+    Run ``process_execution_payload_bid``, yielding:
     - pre-state ('pre')
     - block ('block')
     - post-state ('post').
@@ -24,18 +24,18 @@ def run_execution_payload_header_processing(spec, state, block, valid=True):
 
     if not valid:
         try:
-            spec.process_execution_payload_header(state, block)
+            spec.process_execution_payload_bid(state, block)
             assert False, "Expected AssertionError but none was raised"
         except AssertionError:
             pass
         yield "post", None
         return
 
-    spec.process_execution_payload_header(state, block)
+    spec.process_execution_payload_bid(state, block)
     yield "post", state
 
 
-def prepare_signed_execution_payload_header(
+def prepare_signed_execution_payload_bid(
     spec,
     state,
     builder_index=None,
@@ -50,7 +50,7 @@ def prepare_signed_execution_payload_header(
     valid_signature=True,
 ):
     """
-    Helper to create a signed execution payload header with customizable parameters.
+    Helper to create a signed execution payload bid with customizable parameters.
     If slot is None, the current state slot will be used.
     """
     if slot is None:
@@ -88,7 +88,7 @@ def prepare_signed_execution_payload_header(
         kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
         blob_kzg_commitments_root = kzg_list.hash_tree_root()
 
-    header = spec.ExecutionPayloadHeader(
+    bid = spec.ExecutionPayloadBid(
         parent_block_hash=parent_block_hash,
         parent_block_root=parent_block_root,
         block_hash=block_hash,
@@ -101,14 +101,21 @@ def prepare_signed_execution_payload_header(
     )
 
     if valid_signature:
-        privkey = privkeys[builder_index]
-        signature = spec.get_execution_payload_header_signature(state, header, privkey)
+        # Check if this is a self-build case
+        proposer_index = spec.get_beacon_proposer_index(state)
+        if builder_index == proposer_index:
+            # Self-builds must use G2_POINT_AT_INFINITY
+            signature = spec.bls.G2_POINT_AT_INFINITY
+        else:
+            # External builders use real signatures
+            privkey = privkeys[builder_index]
+            signature = spec.get_execution_payload_bid_signature(state, bid, privkey)
     else:
         # Invalid signature
         signature = spec.BLSSignature()
 
-    return spec.SignedExecutionPayloadHeader(
-        message=header,
+    return spec.SignedExecutionPayloadBid(
+        message=bid,
         signature=signature,
     )
 
@@ -120,27 +127,27 @@ def make_validator_builder(spec, state, validator_index):
     set_builder_withdrawal_credential(spec, state, validator_index)
 
 
-def prepare_block_with_execution_payload_header(spec, state, **header_kwargs):
+def prepare_block_with_execution_payload_bid(spec, state, **bid_kwargs):
     """
-    Helper that properly creates a block with execution payload header,
+    Helper that properly creates a block with execution payload bid,
     handling the slot advancement correctly.
     """
     # Create block first (this advances state.slot)
     block = build_empty_block_for_next_slot(spec, state)
 
-    # Ensure the header matches the block's context
-    header_kwargs["slot"] = block.slot
-    header_kwargs["parent_block_root"] = block.parent_root
+    # Ensure the bid matches the block's context
+    bid_kwargs["slot"] = block.slot
+    bid_kwargs["parent_block_root"] = block.parent_root
 
     # Default builder_index to the block's proposer_index if not specified
-    if "builder_index" not in header_kwargs:
-        header_kwargs["builder_index"] = block.proposer_index
+    if "builder_index" not in bid_kwargs:
+        bid_kwargs["builder_index"] = block.proposer_index
 
-    # Now create header with the correct slot and parent root
-    signed_header = prepare_signed_execution_payload_header(spec, state, **header_kwargs)
-    block.body.signed_execution_payload_header = signed_header
+    # Now create bid with the correct slot and parent root
+    signed_bid = prepare_signed_execution_payload_bid(spec, state, **bid_kwargs)
+    block.body.signed_execution_payload_bid = signed_bid
 
-    return block, signed_header
+    return block, signed_bid
 
 
 def prepare_block_with_non_proposer_builder(spec, state):
@@ -168,21 +175,19 @@ def prepare_block_with_non_proposer_builder(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_valid_self_build(spec, state):
+def test_process_execution_payload_bid_valid_self_build(spec, state):
     """
     Test valid self-building scenario (proposer building their own block with zero value)
     """
-    block, signed_header = prepare_block_with_execution_payload_header(
-        spec, state, value=spec.Gwei(0)
-    )
+    block, signed_bid = prepare_block_with_execution_payload_bid(spec, state, value=spec.Gwei(0))
 
-    yield from run_execution_payload_header_processing(spec, state, block)
+    yield from run_execution_payload_bid_processing(spec, state, block)
 
 
 @with_gloas_and_later
 @spec_state_test
 @always_bls
-def test_process_execution_payload_header_valid_builder(spec, state):
+def test_process_execution_payload_bid_valid_builder(spec, state):
     """
     Test valid builder scenario with registered builder and non-zero value
     """
@@ -198,8 +203,8 @@ def test_process_execution_payload_header_valid_builder(spec, state):
         [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
     )
 
-    # Create header with this non-proposer builder
-    signed_header = prepare_signed_execution_payload_header(
+    # Create bid with this non-proposer builder
+    signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
         builder_index=builder_index,
@@ -208,18 +213,18 @@ def test_process_execution_payload_header_valid_builder(spec, state):
         parent_block_root=block.parent_root,
     )
 
-    block.body.signed_execution_payload_header = signed_header
+    block.body.signed_execution_payload_bid = signed_bid
 
-    yield from run_execution_payload_header_processing(spec, state, block)
+    yield from run_execution_payload_bid_processing(spec, state, block)
 
     # Verify state updates
-    assert state.latest_execution_payload_header == signed_header.message
+    assert state.latest_execution_payload_bid == signed_bid.message
 
     # Verify builder balance is still the same
     assert state.balances[builder_index] == pre_balance
 
     # Verify pending payment was recorded
-    slot_index = spec.SLOTS_PER_EPOCH + (signed_header.message.slot % spec.SLOTS_PER_EPOCH)
+    slot_index = spec.SLOTS_PER_EPOCH + (signed_bid.message.slot % spec.SLOTS_PER_EPOCH)
     pending_payment = state.builder_pending_payments[slot_index]
     assert pending_payment.withdrawal.amount == value
     assert pending_payment.withdrawal.builder_index == builder_index
@@ -235,14 +240,14 @@ def test_process_execution_payload_header_valid_builder(spec, state):
 @with_gloas_and_later
 @spec_state_test
 @always_bls
-def test_process_execution_payload_header_valid_builder_zero_value(spec, state):
+def test_process_execution_payload_bid_valid_builder_zero_value(spec, state):
     """
     Test valid builder scenario with registered builder and zero value
     """
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
-    # Create header with this non-proposer builder
-    signed_header = prepare_signed_execution_payload_header(
+    # Create bid with this non-proposer builder
+    signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
         builder_index=builder_index,
@@ -251,9 +256,9 @@ def test_process_execution_payload_header_valid_builder_zero_value(spec, state):
         parent_block_root=block.parent_root,
     )
 
-    block.body.signed_execution_payload_header = signed_header
+    block.body.signed_execution_payload_bid = signed_bid
 
-    yield from run_execution_payload_header_processing(spec, state, block)
+    yield from run_execution_payload_bid_processing(spec, state, block)
 
 
 #
@@ -263,17 +268,17 @@ def test_process_execution_payload_header_valid_builder_zero_value(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_invalid_signature(spec, state):
+def test_process_execution_payload_bid_invalid_signature(spec, state):
     """
     Test invalid signature fails
     """
     proposer_index = spec.get_beacon_proposer_index(state)
 
-    block, signed_header = prepare_block_with_execution_payload_header(
+    block, signed_bid = prepare_block_with_execution_payload_bid(
         spec, state, builder_index=proposer_index, valid_signature=False
     )
 
-    yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
 
 
 #
@@ -283,7 +288,7 @@ def test_process_execution_payload_header_invalid_signature(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_inactive_builder(spec, state):
+def test_process_execution_payload_bid_inactive_builder(spec, state):
     """
     Test inactive builder fails
     """
@@ -297,8 +302,8 @@ def test_process_execution_payload_header_inactive_builder(spec, state):
     required_balance = value + spec.MIN_ACTIVATION_BALANCE
     state.balances[builder_index] = required_balance
 
-    # Create header with this non-proposer builder
-    signed_header = prepare_signed_execution_payload_header(
+    # Create bid with this non-proposer builder
+    signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
         builder_index=builder_index,
@@ -307,14 +312,14 @@ def test_process_execution_payload_header_inactive_builder(spec, state):
         parent_block_root=block.parent_root,
     )
 
-    block.body.signed_execution_payload_header = signed_header
+    block.body.signed_execution_payload_bid = signed_bid
 
-    yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
 
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_slashed_builder(spec, state):
+def test_process_execution_payload_bid_slashed_builder(spec, state):
     """
     Test slashed builder fails
     """
@@ -328,8 +333,8 @@ def test_process_execution_payload_header_slashed_builder(spec, state):
     required_balance = value + spec.MIN_ACTIVATION_BALANCE
     state.balances[builder_index] = required_balance
 
-    # Create header with this non-proposer builder
-    signed_header = prepare_signed_execution_payload_header(
+    # Create bid with this non-proposer builder
+    signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
         builder_index=builder_index,
@@ -338,14 +343,14 @@ def test_process_execution_payload_header_slashed_builder(spec, state):
         parent_block_root=block.parent_root,
     )
 
-    block.body.signed_execution_payload_header = signed_header
+    block.body.signed_execution_payload_bid = signed_bid
 
-    yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
 
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_self_build_non_zero_value(spec, state):
+def test_process_execution_payload_bid_self_build_non_zero_value(spec, state):
     """
     Test self-builder with non-zero value fails (builder_index == proposer_index but value > 0)
     """
@@ -353,7 +358,7 @@ def test_process_execution_payload_header_self_build_non_zero_value(spec, state)
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
     blob_kzg_commitments_root = kzg_list.hash_tree_root()
 
-    header = spec.ExecutionPayloadHeader(
+    bid = spec.ExecutionPayloadBid(
         parent_block_hash=state.latest_block_hash,
         parent_block_root=block.parent_root,
         block_hash=spec.Hash32(),
@@ -365,23 +370,23 @@ def test_process_execution_payload_header_self_build_non_zero_value(spec, state)
         blob_kzg_commitments_root=blob_kzg_commitments_root,
     )
 
-    # Sign the header
+    # Sign the bid
     privkey = privkeys[block.proposer_index]
-    signature = spec.get_execution_payload_header_signature(state, header, privkey)
+    signature = spec.get_execution_payload_bid_signature(state, bid, privkey)
 
-    signed_header = spec.SignedExecutionPayloadHeader(
-        message=header,
+    signed_bid = spec.SignedExecutionPayloadBid(
+        message=bid,
         signature=signature,
     )
 
-    block.body.signed_execution_payload_header = signed_header
+    block.body.signed_execution_payload_bid = signed_bid
 
-    yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
 
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_non_builder_non_zero_value(spec, state):
+def test_process_execution_payload_bid_non_builder_non_zero_value(spec, state):
     """
     Test non-builder attempting non-zero value fails
     """
@@ -393,19 +398,19 @@ def test_process_execution_payload_header_non_builder_non_zero_value(spec, state
     state.balances[proposer_index] = required_balance
 
     # Don't make proposer a builder, but try non-zero value
-    block, signed_header = prepare_block_with_execution_payload_header(
+    block, signed_bid = prepare_block_with_execution_payload_bid(
         spec,
         state,
         builder_index=proposer_index,
         value=value,  # Non-zero value should fail for non-builder
     )
 
-    yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
 
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_non_builder_wrong_proposer(spec, state):
+def test_process_execution_payload_bid_non_builder_wrong_proposer(spec, state):
     """
     Test non-builder with wrong proposer index fails
     """
@@ -413,11 +418,11 @@ def test_process_execution_payload_header_non_builder_wrong_proposer(spec, state
     other_index = (proposer_index + 1) % len(state.validators)
 
     # Non-builder but not the proposer
-    block, signed_header = prepare_block_with_execution_payload_header(
+    block, signed_bid = prepare_block_with_execution_payload_bid(
         spec, state, builder_index=other_index, value=spec.Gwei(0)
     )
 
-    yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
 
 
 #
@@ -427,7 +432,7 @@ def test_process_execution_payload_header_non_builder_wrong_proposer(spec, state
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_insufficient_balance(spec, state):
+def test_process_execution_payload_bid_insufficient_balance(spec, state):
     """
     Test insufficient balance for bid fails
     """
@@ -437,8 +442,8 @@ def test_process_execution_payload_header_insufficient_balance(spec, state):
     # Set balance too low
     state.balances[builder_index] = value - 1
 
-    # Create header with this non-proposer builder
-    signed_header = prepare_signed_execution_payload_header(
+    # Create bid with this non-proposer builder
+    signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
         builder_index=builder_index,
@@ -447,15 +452,15 @@ def test_process_execution_payload_header_insufficient_balance(spec, state):
         parent_block_root=block.parent_root,
     )
 
-    block.body.signed_execution_payload_header = signed_header
+    block.body.signed_execution_payload_bid = signed_bid
 
-    yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
 
 
 @with_gloas_and_later
 @spec_state_test
 @always_bls
-def test_process_execution_payload_header_excess_balance(spec, state):
+def test_process_execution_payload_bid_excess_balance(spec, state):
     """
     Test builder with excess balance (2048.25 ETH) can submit bid for 2016.25 ETH
     Edge case where bid limit depends on builder's balance, not effective balance
@@ -480,8 +485,8 @@ def test_process_execution_payload_header_excess_balance(spec, state):
         [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
     )
 
-    # Create header with this non-proposer builder
-    signed_header = prepare_signed_execution_payload_header(
+    # Create bid with this non-proposer builder
+    signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
         builder_index=builder_index,
@@ -490,18 +495,18 @@ def test_process_execution_payload_header_excess_balance(spec, state):
         parent_block_root=block.parent_root,
     )
 
-    block.body.signed_execution_payload_header = signed_header
+    block.body.signed_execution_payload_bid = signed_bid
 
-    yield from run_execution_payload_header_processing(spec, state, block)
+    yield from run_execution_payload_bid_processing(spec, state, block)
 
     # Verify state updates
-    assert state.latest_execution_payload_header == signed_header.message
+    assert state.latest_execution_payload_bid == signed_bid.message
 
     # Verify builder balance is still the same (payment is pending)
     assert state.balances[builder_index] == pre_balance
 
     # Verify pending payment was recorded
-    slot_index = spec.SLOTS_PER_EPOCH + (signed_header.message.slot % spec.SLOTS_PER_EPOCH)
+    slot_index = spec.SLOTS_PER_EPOCH + (signed_bid.message.slot % spec.SLOTS_PER_EPOCH)
     pending_payment = state.builder_pending_payments[slot_index]
     assert pending_payment.withdrawal.amount == bid_value
     assert pending_payment.withdrawal.builder_index == builder_index
@@ -516,7 +521,7 @@ def test_process_execution_payload_header_excess_balance(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_insufficient_balance_with_pending_payments(spec, state):
+def test_process_execution_payload_bid_insufficient_balance_with_pending_payments(spec, state):
     """
     Test builder with sufficient balance for bid alone but insufficient when considering pending payments and min activation balance
     """
@@ -542,8 +547,8 @@ def test_process_execution_payload_header_insufficient_balance_with_pending_paym
         ),
     )
 
-    # Create header with this non-proposer builder
-    signed_header = prepare_signed_execution_payload_header(
+    # Create bid with this non-proposer builder
+    signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
         builder_index=builder_index,
@@ -552,14 +557,14 @@ def test_process_execution_payload_header_insufficient_balance_with_pending_paym
         parent_block_root=block.parent_root,
     )
 
-    block.body.signed_execution_payload_header = signed_header
+    block.body.signed_execution_payload_bid = signed_bid
 
-    yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
 
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_sufficient_balance_with_pending_payments(spec, state):
+def test_process_execution_payload_bid_sufficient_balance_with_pending_payments(spec, state):
     """
     Test builder with sufficient balance for both bid and existing pending payments
     """
@@ -590,8 +595,8 @@ def test_process_execution_payload_header_sufficient_balance_with_pending_paymen
         [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
     )
 
-    # Create header with this non-proposer builder
-    signed_header = prepare_signed_execution_payload_header(
+    # Create bid with this non-proposer builder
+    signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
         builder_index=builder_index,
@@ -600,18 +605,18 @@ def test_process_execution_payload_header_sufficient_balance_with_pending_paymen
         parent_block_root=block.parent_root,
     )
 
-    block.body.signed_execution_payload_header = signed_header
+    block.body.signed_execution_payload_bid = signed_bid
 
-    yield from run_execution_payload_header_processing(spec, state, block)
+    yield from run_execution_payload_bid_processing(spec, state, block)
 
     # Verify state updates
-    assert state.latest_execution_payload_header == signed_header.message
+    assert state.latest_execution_payload_bid == signed_bid.message
 
     # Verify builder balance is still the same (payment is pending)
     assert state.balances[builder_index] == pre_balance
 
     # Verify new pending payment was recorded
-    slot_index_new = spec.SLOTS_PER_EPOCH + (signed_header.message.slot % spec.SLOTS_PER_EPOCH)
+    slot_index_new = spec.SLOTS_PER_EPOCH + (signed_bid.message.slot % spec.SLOTS_PER_EPOCH)
     pending_payment = state.builder_pending_payments[slot_index_new]
     assert pending_payment.withdrawal.amount == bid_amount
     assert pending_payment.withdrawal.builder_index == builder_index
@@ -626,9 +631,7 @@ def test_process_execution_payload_header_sufficient_balance_with_pending_paymen
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_insufficient_balance_with_pending_withdrawals(
-    spec, state
-):
+def test_process_execution_payload_bid_insufficient_balance_with_pending_withdrawals(spec, state):
     """
     Test builder with sufficient balance for bid alone but insufficient when considering pending withdrawals and min activation balance
     """
@@ -652,8 +655,8 @@ def test_process_execution_payload_header_insufficient_balance_with_pending_with
         )
     )
 
-    # Create header with this non-proposer builder
-    signed_header = prepare_signed_execution_payload_header(
+    # Create bid with this non-proposer builder
+    signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
         builder_index=builder_index,
@@ -662,14 +665,14 @@ def test_process_execution_payload_header_insufficient_balance_with_pending_with
         parent_block_root=block.parent_root,
     )
 
-    block.body.signed_execution_payload_header = signed_header
+    block.body.signed_execution_payload_bid = signed_bid
 
-    yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
 
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_sufficient_balance_with_pending_withdrawals(spec, state):
+def test_process_execution_payload_bid_sufficient_balance_with_pending_withdrawals(spec, state):
     """
     Test builder with sufficient balance for both bid and existing pending withdrawals
     """
@@ -699,8 +702,8 @@ def test_process_execution_payload_header_sufficient_balance_with_pending_withdr
     )
     pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
 
-    # Create header with this non-proposer builder
-    signed_header = prepare_signed_execution_payload_header(
+    # Create bid with this non-proposer builder
+    signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
         builder_index=builder_index,
@@ -709,18 +712,18 @@ def test_process_execution_payload_header_sufficient_balance_with_pending_withdr
         parent_block_root=block.parent_root,
     )
 
-    block.body.signed_execution_payload_header = signed_header
+    block.body.signed_execution_payload_bid = signed_bid
 
-    yield from run_execution_payload_header_processing(spec, state, block)
+    yield from run_execution_payload_bid_processing(spec, state, block)
 
     # Verify state updates
-    assert state.latest_execution_payload_header == signed_header.message
+    assert state.latest_execution_payload_bid == signed_bid.message
 
     # Verify builder balance is still the same (payment is pending)
     assert state.balances[builder_index] == pre_balance
 
     # Verify new pending payment was recorded
-    slot_index_new = spec.SLOTS_PER_EPOCH + (signed_header.message.slot % spec.SLOTS_PER_EPOCH)
+    slot_index_new = spec.SLOTS_PER_EPOCH + (signed_bid.message.slot % spec.SLOTS_PER_EPOCH)
     pending_payment = state.builder_pending_payments[slot_index_new]
     assert pending_payment.withdrawal.amount == bid_amount
     assert pending_payment.withdrawal.builder_index == builder_index
@@ -738,23 +741,23 @@ def test_process_execution_payload_header_sufficient_balance_with_pending_withdr
 
 
 #
-# Header field validation tests
+# Bid field validation tests
 #
 
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_wrong_slot(spec, state):
+def test_process_execution_payload_bid_wrong_slot(spec, state):
     """
-    Test wrong slot in header fails
+    Test wrong slot in bid fails
     """
     proposer_index = spec.get_beacon_proposer_index(state)
 
     # Create block first to advance slot
     block = build_empty_block_for_next_slot(spec, state)
 
-    # Create header with wrong slot
-    signed_header = prepare_signed_execution_payload_header(
+    # Create bid with wrong slot
+    signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
         builder_index=proposer_index,
@@ -762,14 +765,14 @@ def test_process_execution_payload_header_wrong_slot(spec, state):
         parent_block_root=block.parent_root,
     )
 
-    block.body.signed_execution_payload_header = signed_header
+    block.body.signed_execution_payload_bid = signed_bid
 
-    yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
 
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_wrong_parent_block_hash(spec, state):
+def test_process_execution_payload_bid_wrong_parent_block_hash(spec, state):
     """
     Test wrong parent block hash fails
     """
@@ -778,9 +781,9 @@ def test_process_execution_payload_header_wrong_parent_block_hash(spec, state):
     # Create block first to advance slot
     block = build_empty_block_for_next_slot(spec, state)
 
-    # Create header with wrong parent block hash
+    # Create bid with wrong parent block hash
     wrong_hash = spec.Hash32(b"\x42" * 32)
-    signed_header = prepare_signed_execution_payload_header(
+    signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
         builder_index=proposer_index,
@@ -789,14 +792,14 @@ def test_process_execution_payload_header_wrong_parent_block_hash(spec, state):
         parent_block_hash=wrong_hash,
     )
 
-    block.body.signed_execution_payload_header = signed_header
+    block.body.signed_execution_payload_bid = signed_bid
 
-    yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
 
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_header_wrong_parent_block_root(spec, state):
+def test_process_execution_payload_bid_wrong_parent_block_root(spec, state):
     """
     Test wrong parent block root fails
     """
@@ -805,12 +808,12 @@ def test_process_execution_payload_header_wrong_parent_block_root(spec, state):
     # Create block first to advance slot
     block = build_empty_block_for_next_slot(spec, state)
 
-    # Create header with wrong parent block root
+    # Create bid with wrong parent block root
     wrong_root = spec.Root(b"\x42" * 32)
-    signed_header = prepare_signed_execution_payload_header(
+    signed_bid = prepare_signed_execution_payload_bid(
         spec, state, builder_index=proposer_index, slot=block.slot, parent_block_root=wrong_root
     )
 
-    block.body.signed_execution_payload_header = signed_header
+    block.body.signed_execution_payload_bid = signed_bid
 
-    yield from run_execution_payload_header_processing(spec, state, block, valid=False)
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
