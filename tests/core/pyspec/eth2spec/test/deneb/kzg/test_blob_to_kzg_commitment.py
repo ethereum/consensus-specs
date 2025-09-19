@@ -3,7 +3,6 @@
 ###############################################################################
 
 from eth_utils import encode_hex
-from tests.infra.spec_cache import spec_cache
 
 from eth2spec.test.context import only_generator, single_phase, spec_test, with_phases
 from eth2spec.test.helpers.constants import DENEB
@@ -24,7 +23,6 @@ def _blob_to_kzg_commitment_case_valid_blob(index):
     @with_phases([DENEB])
     @spec_test
     @single_phase
-    @spec_cache(["blob_to_kzg_commitment"])
     def the_test(spec):
         commitment = spec.blob_to_kzg_commitment(blob)
         # assert exception is not thrown with valid blob
@@ -50,11 +48,10 @@ def _blob_to_kzg_commitment_case_invalid_blob(index):
     blob = INVALID_BLOBS[index]
 
     @manifest(preset_name="general", suite_name="kzg-mainnet")
-    @only_generator("randomized test for broad coverage, not point-to-point CI")
+    @only_generator("too slow")
     @with_phases([DENEB])
     @spec_test
     @single_phase
-    @spec_cache(["blob_to_kzg_commitment"])
     def the_test(spec):
         commitment = None
         try:
