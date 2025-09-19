@@ -12,6 +12,7 @@
   - [Default values](#default-values)
     - [`is_zero`](#is_zero)
   - [Illegal types](#illegal-types)
+    - [Compatible Merkleization](#compatible-merkleization)
 - [Serialization](#serialization)
   - [`uintN`](#uintn)
   - [`boolean`](#boolean)
@@ -19,6 +20,7 @@
   - [`Bitlist[N]`, `ProgressiveBitlist`](#bitlistn-progressivebitlist)
   - [Vectors, containers, progressive containers, lists, progressive lists](#vectors-containers-progressive-containers-lists-progressive-lists)
   - [Union](#union)
+  - [Compatible unions](#compatible-unions)
 - [Deserialization](#deserialization)
 - [Merkleization](#merkleization)
 - [Summaries and expansions](#summaries-and-expansions)
@@ -85,6 +87,10 @@
   - notation `ProgressiveBitlist`
 - **union**: union type containing one of the given subtypes
   - notation `Union[type_0, type_1, ...]`, e.g. `union[None, uint64, uint32]`
+- **compatible union** _[EIP-8016, currently unused]_: union type containing one
+  of the given subtypes with compatible Merkleization
+  - notation `CompatibleUnion({selector: type})`, e.g.
+    `CompatibleUnion({1: Square, 2: Circle})`
 
 *Note*: Both `Vector[boolean, N]` and `Bitvector[N]` are valid, yet distinct due
 to their different serialization requirements. Similarly, both
@@ -95,8 +101,9 @@ efficiencies.
 ### Variable-size and fixed-size
 
 We recursively define "variable-size" types to be lists, progressive lists,
-unions, bitlists, progressive bitlists, and all composite types that contain a
-variable-size type. All other types are said to be "fixed-size".
+unions, compatible unions, bitlists, progressive bitlists, and all composite
+types that contain a variable-size type. All other types are said to be
+"fixed-size".
 
 ### Byte
 
@@ -133,6 +140,7 @@ Assuming a helper function `default(type)` which returns the default value for
 | `Bitlist[N]`                          | `[]`                                                |
 | `ProgressiveBitlist`                  | `[]`                                                |
 | `Union[type_0, type_1, ...]`          | `default(type_0)`                                   |
+| `CompatibleUnion({selector: type})`   | n/a (error)                                         |
 
 #### `is_zero`
 
@@ -152,6 +160,31 @@ is equal to the default value for that type.
   count of `1` than fields are illegal.
 - The `None` type option in a `Union` type is only legal as the first option
   (i.e. with index zero).
+- `CompatibleUnion({})` without any type options are illegal.
+- `CompatibleUnion({selector: type})` with a selector outside `uint8(1)` through
+  `uint8(127)` are illegal.
+- `CompatibleUnion({selector: type})` with a type option that has incompatible
+  Merkleization with another type option are illegal.
+
+#### Compatible Merkleization
+
+- Types are compatible with themselves.
+- `byte` is compatible with `uint8` and vice versa.
+- `Bitlist[N]` are compatible if they share the same capacity `N`.
+- `Bitvector[N]` are compatible if they share the same capacity `N`.
+- `List[type, N]` are compatible if `type` is compatible and they share the same
+  capacity `N`.
+- `Vector[type, N]` are compatible if `type` is compatible and they share the
+  same capacity `N`.
+- `ProgressiveList[type]` are compatible if `type` is compatible.
+- `Container` are compatible if they share the same field names in the same
+  order, and all field types are compatible.
+- `ProgressiveContainer(active_fields)` are compatible if all `1` entries in
+  both type's `active_fields` correspond to fields with shared names and
+  compatible types, and no other field name is shared across both types.
+- `CompatibleUnion` are compatible with each other if all type options across
+  both `CompatibleUnion` are compatible.
+- All other types are incompatible.
 
 ## Serialization
 
@@ -246,6 +279,16 @@ else:
     return serialized_selector_index + serialized_bytes
 ```
 
+### Compatible unions
+
+A `value` as `CompatibleUnion({selector: type})` has properties `value.data`
+with the contained value, and `value.selector` which indexes the selected type
+option.
+
+```python
+return value.selector.to_bytes(1, "little") + serialize(value.data)
+```
+
 ## Deserialization
 
 Because serialization is an injective function (i.e. two distinct objects of the
@@ -275,9 +318,9 @@ have to do one of the following depending on what kind of object it is:
   uniquely inferred from the number of bytes in the object. Because of this,
   they have a bit at the end that is always set. This bit has to be used to
   infer the size of the bitlist in bits.
-- In the case of unions, the first byte of the deserialization scope is
-  deserialized as type selector, the remainder of the scope is deserialized as
-  the selected type.
+- In the case of unions/compatible unions, the first byte of the deserialization
+  scope is deserialized as type selector, the remainder of the scope is
+  deserialized as the selected type.
 
 Note that deserialization requires hardening against invalid inputs. A
 non-exhaustive list:
@@ -286,6 +329,7 @@ non-exhaustive list:
 - Scope: Extra unused bytes, not aligned with element size.
 - More elements than a list limit allows. Part of enforcing consensus.
 - An out-of-bounds selected index in an `Union`
+- An out-of-bounds type selector in a `CompatibleUnion`
 
 Efficient algorithms for computing this object can be found in
 [the implementations](#implementations).
@@ -347,9 +391,9 @@ We first define helper functions:
   configuration return `hash(root, pack_bits(active_fields))`. Note that
   `active_fields` is restricted to ≤ 256 bits.
 - `mix_in_length`: Given a Merkle root `root` and a length `length` (`"uint256"`
-  little-endian serialization) return `hash(root + length)`.
+  little-endian serialization) return `hash(root, length)`.
 - `mix_in_selector`: Given a Merkle root `root` and a type selector `selector`
-  (`"uint256"` little-endian serialization) return `hash(root + selector)`.
+  (`"uint8"` serialization) return `hash(root, selector)`.
 
 We now define Merkleization `hash_tree_root(value)` of an object `value`
 recursively:
@@ -378,6 +422,8 @@ recursively:
   of union type, and `value.value` is not `None`
 - `mix_in_selector(Bytes32(), 0)` if `value` is of union type, and `value.value`
   is `None`
+- `mix_in_selector(hash_tree_root(value.data), value.selector)` if `value` is of
+  compatible union type.
 
 ## Summaries and expansions
 
@@ -423,6 +469,7 @@ value. Parsers may ignore additional JSON fields.
 | `Bitlist[N]`                          | hex-byte-string | `"0x1122"`                               |
 | `ProgressiveBitlist`                  | hex-byte-string | `"0x1122"`                               |
 | `Union[type_0, type_1, ...]`          | selector-object | `{ "selector": number, "data": type_N }` |
+| `CompatibleUnion({selector: type})`   | selector-object | `{ "selector": string, "data": type }`   |
 
 Integers are encoded as strings to avoid loss of precision in 64-bit values.
 
@@ -435,5 +482,5 @@ appear in an SSZ stream.
 encoded as `hex-byte-string`. `Bitlist`, `ProgressiveBitlist`, and `Bitvector`
 similarly map their SSZ-byte encodings to a `hex-byte-string`.
 
-`Union` is encoded as an object with a `selector` and `data` field, where the
-contents of `data` change according to the selector.
+`Union`, and `CompatibleUnion` are encoded as an object with a `selector` and
+`data` field, where the contents of `data` change according to the selector.
