@@ -48,6 +48,32 @@ def get_shared_prefix(test_cases, min_segments=3):
     return "::".join(prefix)
 
 
+def display_test_summary(console: Console, total_found: int, total_selected: int, total_completed: int, total_skipped: int, elapsed_time: float):
+    """Display a rich formatted summary table of test generation results."""
+    summary_table = Table(title="Test Generation Summary", box=box.ROUNDED, title_style="bold blue")
+    summary_table.add_column("Metric", style="cyan", justify="left")
+    summary_table.add_column("Count", style="green", justify="right")
+    summary_table.add_column("Percentage", style="yellow", justify="right")
+
+    # Calculate counts and percentages
+    total_filtered = total_found - total_selected
+    filtered_pct = (total_filtered / total_found * 100) if total_found > 0 else 0
+    selected_pct = (total_selected / total_found * 100) if total_found > 0 else 0
+    completed_pct = (total_completed / total_selected * 100) if total_selected > 0 else 0
+    skipped_pct = (total_skipped / total_selected * 100) if total_selected > 0 else 0
+
+    summary_table.add_row("Found Tests", str(total_found), "100.0%")
+    summary_table.add_row("Filtered Tests", str(total_filtered), f"{filtered_pct:.1f}%")
+    summary_table.add_row("Selected Tests", str(total_selected), f"{selected_pct:.1f}%")
+    summary_table.add_row("Completed Tests", str(total_completed), f"{completed_pct:.1f}%")
+    summary_table.add_row("Skipped Tests", str(total_skipped), f"{skipped_pct:.1f}%")
+    summary_table.add_row("Total Execution Time", f"{elapsed_time:.2f}s", "")
+
+    console.print()
+    console.print(summary_table)
+    console.print()
+
+
 def execute_test(test_case: TestCase, dumper: Dumper):
     """Execute a test and write the outputs to storage."""
     meta: dict[str, Any] = {}
@@ -94,8 +120,10 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
     # Gracefully handle Ctrl+C
     install_sigint_handler(console)
 
-    test_cases = []
+    total_found = 0
+    selected_test_cases = []
     for test_case in input_test_cases:
+        total_found += 1
         # Check if the test case should be filtered out
         if len(args.runners) != 0 and test_case.runner_name not in args.runners:
             debug_print(f"Filtered: {test_case.get_identifier()}")
@@ -114,13 +142,16 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
         test_case.set_output_dir(args.output_dir)
         if test_case.dir.exists():
             shutil.rmtree(test_case.dir)
-        test_cases.append(test_case)
+        selected_test_cases.append(test_case)
 
-    if len(test_cases) == 0:
+    if len(selected_test_cases) == 0:
+        # Show summary even when all tests are filtered out
+        elapsed = round(time.time() - start_time, 2)
+        display_test_summary(console, total_found, 0, 0, 0, elapsed)
         return
 
     debug_print(f"Generating tests into {args.output_dir}")
-    tests_prefix = get_shared_prefix(test_cases)
+    tests_prefix = get_shared_prefix(selected_test_cases)
 
     def worker_function(data):
         """Execute a test case and update active tests."""
@@ -175,18 +206,18 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
         active_tests = manager.dict()
         completed = manager.Value("i", 0)
         skipped = manager.Value("i", 0)
-        width = max([len(t.get_identifier()) for t in test_cases])
+        width = max([len(t.get_identifier()) for t in selected_test_cases])
 
         if not args.verbose:
             display_thread = threading.Thread(
                 target=display_active_tests,
-                args=(active_tests, len(test_cases), completed, skipped, width),
+                args=(active_tests, len(selected_test_cases), completed, skipped, width),
                 daemon=True,
             )
             display_thread.start()
 
         # Map each test case to a thread worker
-        inputs = [(t, active_tests) for t in test_cases]
+        inputs = [(t, active_tests) for t in selected_test_cases]
 
         if args.threads == 1:
             for input in inputs:
@@ -203,5 +234,13 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
         if not args.verbose:
             display_thread.join()
 
-    elapsed = round(time.time() - start_time, 2)
+        elapsed = round(time.time() - start_time, 2)
+
+        # Display final summary using rich
+        total_selected = len(selected_test_cases)
+        total_completed = completed.value - skipped.value
+        total_skipped = skipped.value
+
+    display_test_summary(console, total_found, total_selected, total_completed, total_skipped, elapsed)
+
     debug_print(f"Completed generation of {tests_prefix} in {elapsed} seconds")
