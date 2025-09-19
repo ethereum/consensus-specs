@@ -48,7 +48,14 @@ def get_shared_prefix(test_cases, min_segments=3):
     return "::".join(prefix)
 
 
-def display_test_summary(console: Console, total_found: int, total_selected: int, total_completed: int, total_skipped: int, elapsed_time: float):
+def display_test_summary(
+    console: Console,
+    total_found: int,
+    total_selected: int,
+    total_completed: int,
+    total_skipped: int,
+    elapsed_time: float,
+):
     """Display a rich formatted summary table of test generation results."""
     summary_table = Table(title="Test Generation Summary", box=box.ROUNDED, title_style="bold blue")
     summary_table.add_column("Metric", style="cyan", justify="left")
@@ -241,6 +248,8 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
         total_completed = completed.value - skipped.value
         total_skipped = skipped.value
 
-    display_test_summary(console, total_found, total_selected, total_completed, total_skipped, elapsed)
+    display_test_summary(
+        console, total_found, total_selected, total_completed, total_skipped, elapsed
+    )
 
     debug_print(f"Completed generation of {tests_prefix} in {elapsed} seconds")
