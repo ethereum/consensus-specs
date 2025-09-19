@@ -206,7 +206,7 @@ def main():
 
     # validate file exists
     if not args.test_result_path.exists():
-        print(f"Error: File '{args.test_result_path}' does not exist.")
+        print(f"Error: File '{args.test_result_path}' does not exist. Run 'make test' first.")
         sys.exit(1)
 
     # parse the XML file
