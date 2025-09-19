@@ -25,7 +25,6 @@ def _blob_to_kzg_commitment_case_valid_blob(index):
     @single_phase
     def the_test(spec):
         commitment = spec.blob_to_kzg_commitment(blob)
-        # assert exception is not thrown with valid blob
 
         yield (
             "data",
