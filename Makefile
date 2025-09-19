@@ -66,10 +66,11 @@ help-verbose:
 	@echo "  by default using pytest with the minimal preset and fastest BLS library."
 	@echo ""
 	@echo "  Parameters:"
-	@echo "    k=<test>        Run specific test by name"
-	@echo "    fork=<fork>     Test specific fork (phase0, altair, bellatrix, capella, etc.)"
-	@echo "    preset=<preset> Use specific preset (mainnet or minimal; default: minimal)"
-	@echo "    bls=<type>      BLS library type (py_ecc, milagro, arkworks, fastest; default: fastest)"
+	@echo "    k=<test>          Run specific test by name"
+	@echo "    fork=<fork>       Test specific fork (phase0, altair, bellatrix, capella, etc.)"
+	@echo "    preset=<preset>   Use specific preset (mainnet or minimal; default: minimal)"
+	@echo "    bls=<type>        BLS library type (py_ecc, milagro, arkworks, fastest; default: fastest)"
+	@echo "    component=<value> Test component: (all, pyspec, fw; default: all)"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make test"
@@ -78,6 +79,7 @@ help-verbose:
 	@echo "    make test preset=mainnet"
 	@echo "    make test preset=mainnet fork=deneb k=test_verify_kzg_proof"
 	@echo "    make test bls=arkworks"
+	@echo "    make test component=fw"
 	@echo ""
 	@echo "$(BOLD)make coverage$(NORM)"
 	@echo ""
@@ -205,8 +207,9 @@ TEST_LIBS_DIR = $(CURDIR)/tests/core
 PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 
 # Create the pyspec for all phases.
+_pyspec: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 _pyspec: $(VENV) setup.py pyproject.toml
-	@$(PYTHON_VENV) -m uv pip install --reinstall-package=eth2spec .[docs,lint,test,generator]
+	@$(PYTHON_VENV) -m uv pip install $(MAYBE_VERBOSE) --reinstall-package=eth2spec .[docs,lint,test,generator]
 	@for dir in $(ALL_EXECUTABLE_SPEC_NAMES); do \
 	    mkdir -p "./tests/core/pyspec/eth2spec/$$dir"; \
 	    cp "./build/lib/eth2spec/$$dir/mainnet.py" "./tests/core/pyspec/eth2spec/$$dir/mainnet.py"; \
@@ -225,8 +228,10 @@ test: MAYBE_TEST := $(if $(k),-k=$(k))
 # Parallelism makes debugging difficult (print doesn't work).
 test: MAYBE_PARALLEL := $(if $(k),,-n auto)
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
-test: PRESET := --preset=$(if $(preset),$(preset),minimal)
-test: BLS := --bls-type=$(if $(bls),$(bls),fastest)
+test: PRESET := $(if $(filter fw,$(component)),,--preset=$(if $(preset),$(preset),minimal))
+test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),fastest))
+test: MAYBE_ETH2SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth2spec)
+test: MAYBE_INFRA := $(if $(filter pyspec,$(component)),,$(CURDIR)/tests/infra)
 test: _pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(PYTHON_VENV) -m pytest \
@@ -237,8 +242,8 @@ test: _pyspec
 		$(PRESET) \
 		$(BLS) \
 		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
-		$(CURDIR)/tests/infra \
-		$(PYSPEC_DIR)/eth2spec
+		$(MAYBE_INFRA) \
+		$(MAYBE_ETH2SPEC)
 
 ###############################################################################
 # Coverage
