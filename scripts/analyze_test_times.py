@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Analyze pytest JUnit XML output to find the slowest tests.
 
