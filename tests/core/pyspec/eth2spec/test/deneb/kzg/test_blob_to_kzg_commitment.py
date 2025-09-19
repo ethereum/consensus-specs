@@ -3,6 +3,7 @@
 ###############################################################################
 
 from eth_utils import encode_hex
+from tests.infra.spec_cache import spec_cache
 
 from eth2spec.test.context import only_generator, single_phase, spec_test, with_phases
 from eth2spec.test.helpers.constants import DENEB
@@ -11,7 +12,6 @@ from eth2spec.test.utils.kzg_tests import (
     VALID_BLOBS,
 )
 from tests.infra.manifest import manifest
-from tests.infra.spec_cache import spec_cache
 from tests.infra.template_test import template_test
 
 
