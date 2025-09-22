@@ -73,7 +73,7 @@ def test_invalid_parent_root(spec, state):
     block.parent_root = b"\12" * 32  # invalid prev root
     if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     elif is_post_bellatrix(spec):
@@ -96,7 +96,7 @@ def test_invalid_multiple_blocks_single_slot(spec, state):
     child_block.parent_root = block.hash_tree_root()
     if is_post_gloas(spec):
         payload = build_empty_execution_payload(spec, state)
-        child_block.body.signed_execution_payload_header.message.block_hash = compute_el_block_hash(
+        child_block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
             spec, payload, state
         )
     elif is_post_bellatrix(spec):

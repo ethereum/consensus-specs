@@ -35,6 +35,8 @@ categories:
     label: eip7782
   - title: EIP-7805
     label: eip7805
+  - title: EIP-8025
+    label: eip8025
 
   # Testing
   - title: Testing

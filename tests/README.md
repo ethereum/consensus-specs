@@ -382,8 +382,7 @@ processes the attestation and returns the result.
 
 Attestations can't happen in the same block as the one about which they are
 attesting, or in a block that is after the block is finalized. This is specified
-as part of the specs, in the `process_attestation` function (which is created
-from the spec by the `make pyspec` command you ran earlier). Here is the
+as part of the specs, in the `process_attestation` function. Here is the
 relevant code fragment:
 
 ```python
