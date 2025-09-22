@@ -8,11 +8,11 @@
 - [Constants](#constants)
   - [Domain types](#domain-types)
   - [Misc](#misc)
+  - [Withdrawal prefixes](#withdrawal-prefixes)
 - [Preset](#preset)
   - [Misc](#misc-1)
   - [Max operations per block](#max-operations-per-block)
   - [State list lengths](#state-list-lengths)
-  - [Withdrawal prefixes](#withdrawal-prefixes)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`BuilderPendingPayment`](#builderpendingpayment)
@@ -123,6 +123,12 @@ At any given slot, the status of the blockchain's head may be either
 | `BUILDER_PAYMENT_THRESHOLD_NUMERATOR`   | `uint64(6)`  |
 | `BUILDER_PAYMENT_THRESHOLD_DENOMINATOR` | `uint64(10)` |
 
+### Withdrawal prefixes
+
+| Name                        | Value            | Description                                |
+| --------------------------- | ---------------- | ------------------------------------------ |
+| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` | Withdrawal credential prefix for a builder |
+
 ## Preset
 
 ### Misc
@@ -142,12 +148,6 @@ At any given slot, the status of the blockchain's head may be either
 | Name                                | Value                         | Unit                        |
 | ----------------------------------- | ----------------------------- | --------------------------- |
 | `BUILDER_PENDING_WITHDRAWALS_LIMIT` | `uint64(2**20)` (= 1,048,576) | Builder pending withdrawals |
-
-### Withdrawal prefixes
-
-| Name                        | Value            | Description                                |
-| --------------------------- | ---------------- | ------------------------------------------ |
-| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` | Withdrawal credential prefix for a builder |
 
 ## Containers
 
