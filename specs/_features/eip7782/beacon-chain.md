@@ -19,6 +19,16 @@
 - [Rewards and penalties](#rewards-and-penalties-1)
   - [Helpers](#helpers)
     - [`get_base_reward_per_increment`](#get_base_reward_per_increment)
+  - [Modified timing functions](#modified-timing-functions)
+    - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
+    - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
+    - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
+    - [Modified `get_contribution_due_ms`](#modified-get_contribution_due_ms)
+    - [Modified `get_proposer_reorg_cutoff_ms`](#modified-get_proposer_reorg_cutoff_ms)
+    - [Modified `get_payload_attestation_due_ms`](#modified-get_payload_attestation_due_ms)
+    - [Modified `get_view_freeze_cutoff_ms`](#modified-get_view_freeze_cutoff_ms)
+    - [Modified `get_inclusion_list_submission_due_ms`](#modified-get_inclusion_list_submission_due_ms)
+    - [Modified `get_proposer_inclusion_list_cutoff_ms`](#modified-get_proposer_inclusion_list_cutoff_ms)
 
 <!-- mdformat-toc end -->
 
@@ -46,6 +56,11 @@
 | `AGGREGRATE_DUE_BPS_EIP7782` | `uint64(7500)` | basis points | ~75% of slot |
 | `SYNC_MESSAGE_DUE_BPS_EIP7782` | `uint64(3333)` | basis points | ~33% of slot |
 | `CONTRIBUTION_DUE_BPS_EIP7782` | `uint64(6667)` | basis points | ~67% of slot |
+| `PROPOSER_REORG_CUTOFF_BPS_EIP7782` | `uint64(1667)` | basis points | ~17% of slot |
+| `PAYLOAD_ATTESTATION_DUE_BPS_EIP7782` | `uint64(7500)` | basis points | ~75% of slot |
+| `VIEW_FREEZE_CUTOFF_BPS_EIP7782` | `uint64(7500)` | basis points | ~75% of slot |
+| `INCLUSION_LIST_SUBMISSION_DUE_BPS_EIP7782` | `uint64(6667)` | basis points | ~67% of slot |
+| `PROPOSER_INCLUSION_LIST_CUTOFF_BPS_EIP7782` | `uint64(9167)` | basis points | ~92% of slot |
 
 ### EIP-7782 sync committee parameters
 
@@ -143,4 +158,123 @@ def get_base_reward_per_increment(state: BeaconState) -> Gwei:
         * BASE_REWARD_FACTOR_EIP7782
         // integer_squareroot(get_total_active_balance(state))
     )
+```
+
+### Modified timing functions
+
+#### Modified `get_attestation_due_ms`
+
+```python
+def get_attestation_due_ms(epoch: Epoch) -> uint64:
+    """
+    Return the attestation due time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return ATTESTATION_DUE_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return ATTESTATION_DUE_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_aggregate_due_ms`
+
+```python
+def get_aggregate_due_ms(epoch: Epoch) -> uint64:
+    """
+    Return the aggregate due time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return AGGREGRATE_DUE_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return AGGREGATE_DUE_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_sync_message_due_ms`
+
+```python
+def get_sync_message_due_ms(epoch: Epoch) -> uint64:
+    """
+    Return the sync message due time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return SYNC_MESSAGE_DUE_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return SYNC_MESSAGE_DUE_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_contribution_due_ms`
+
+```python
+def get_contribution_due_ms(epoch: Epoch) -> uint64:
+    """
+    Return the contribution due time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return CONTRIBUTION_DUE_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return CONTRIBUTION_DUE_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_proposer_reorg_cutoff_ms`
+
+```python
+def get_proposer_reorg_cutoff_ms(epoch: Epoch) -> uint64:
+    """
+    Return the proposer reorg cutoff time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return PROPOSER_REORG_CUTOFF_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return PROPOSER_REORG_CUTOFF_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_payload_attestation_due_ms`
+
+```python
+def get_payload_attestation_due_ms(epoch: Epoch) -> uint64:
+    """
+    Return the payload attestation due time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return PAYLOAD_ATTESTATION_DUE_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return PAYLOAD_ATTESTATION_DUE_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_view_freeze_cutoff_ms`
+
+```python
+def get_view_freeze_cutoff_ms(epoch: Epoch) -> uint64:
+    """
+    Return the view freeze cutoff time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return VIEW_FREEZE_CUTOFF_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return VIEW_FREEZE_CUTOFF_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_inclusion_list_submission_due_ms`
+
+```python
+def get_inclusion_list_submission_due_ms(epoch: Epoch) -> uint64:
+    """
+    Return the inclusion list submission due time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return INCLUSION_LIST_SUBMISSION_DUE_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return INCLUSION_LIST_SUBMISSION_DUE_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_proposer_inclusion_list_cutoff_ms`
+
+```python
+def get_proposer_inclusion_list_cutoff_ms(epoch: Epoch) -> uint64:
+    """
+    Return the proposer inclusion list cutoff time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return PROPOSER_INCLUSION_LIST_CUTOFF_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return PROPOSER_INCLUSION_LIST_CUTOFF_BPS * SLOT_DURATION_MS // BASIS_POINTS
 ```
