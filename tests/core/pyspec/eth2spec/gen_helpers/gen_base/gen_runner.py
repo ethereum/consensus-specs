@@ -57,7 +57,7 @@ def display_test_summary(
     elapsed_time: float,
 ):
     """Display a rich formatted summary table of test generation results."""
-    summary_table = Table(title="Test Generation Summary", box=box.ROUNDED, title_style="bold blue")
+    summary_table = Table(title="Reference Test Generation Summary", box=box.ROUNDED, title_style="bold blue")
     summary_table.add_column("Metric", style="cyan", justify="left")
     summary_table.add_column("Count", style="green", justify="right")
     summary_table.add_column("Percentage", style="yellow", justify="right")
@@ -69,12 +69,12 @@ def display_test_summary(
     completed_pct = (total_completed / total_selected * 100) if total_selected > 0 else 0
     skipped_pct = (total_skipped / total_selected * 100) if total_selected > 0 else 0
 
-    summary_table.add_row("Found Tests", str(total_found), "100.0%")
-    summary_table.add_row("Filtered Tests", str(total_filtered), f"{filtered_pct:.1f}%")
-    summary_table.add_row("Selected Tests", str(total_selected), f"{selected_pct:.1f}%")
-    summary_table.add_row("Completed Tests", str(total_completed), f"{completed_pct:.1f}%")
-    summary_table.add_row("Skipped Tests", str(total_skipped), f"{skipped_pct:.1f}%")
-    summary_table.add_row("Total Execution Time", f"{elapsed_time:.2f}s", "")
+    summary_table.add_row("Found", str(total_found), "100.0%")
+    summary_table.add_row("Filtered", str(total_filtered), f"{filtered_pct:.1f}%")
+    summary_table.add_row("Selected", str(total_selected), f"{selected_pct:.1f}%")
+    summary_table.add_row("Completed", str(total_completed), f"{completed_pct:.1f}%")
+    summary_table.add_row("Skipped", str(total_skipped), f"{skipped_pct:.1f}%")
+    summary_table.add_row("Time", f"{elapsed_time:.2f}s", "")
 
     console.print()
     console.print(summary_table)
