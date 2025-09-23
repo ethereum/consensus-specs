@@ -961,10 +961,7 @@ def test_partially_withdrawable_validator_legacy_max_plus_one(spec, state):
 
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
-        state.latest_execution_payload_bid.block_hash = (
-            state.latest_execution_payload_header.block_hash
-        )
+        state.latest_block_hash = state.latest_execution_payload_bid.block_hash
 
     execution_payload = build_empty_execution_payload(spec, state)
     yield from run_withdrawals_processing(

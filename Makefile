@@ -195,6 +195,7 @@ MKDOCS_VENV = $(VENV)/bin/mkdocs
 
 # Make a virtual environment.
 $(VENV):
+	@python3 scripts/check_python_version.py
 	@echo "Creating virtual environment"
 	@python3 -m venv $(VENV)
 	@$(PIP_VENV) install --quiet --upgrade uv
@@ -209,6 +210,7 @@ PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 # Create the pyspec for all phases.
 _pyspec: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 _pyspec: $(VENV) setup.py pyproject.toml
+	@python3 scripts/check_python_version.py
 	@$(PYTHON_VENV) -m uv pip install $(MAYBE_VERBOSE) --reinstall-package=eth2spec .[docs,lint,test,generator]
 	@for dir in $(ALL_EXECUTABLE_SPEC_NAMES); do \
 	    mkdir -p "./tests/core/pyspec/eth2spec/$$dir"; \

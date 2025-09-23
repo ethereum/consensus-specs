@@ -500,10 +500,7 @@ def test_apply_pending_deposit_success_top_up_to_withdrawn_validator(spec, state
 
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
-        state.latest_execution_payload_bid.block_hash = (
-            state.latest_execution_payload_header.block_hash
-        )
+        state.latest_block_hash = state.latest_execution_payload_bid.block_hash
 
     next_epoch_via_block(spec, state)
     assert state.balances[validator_index] == 0

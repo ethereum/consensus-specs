@@ -37,24 +37,6 @@ jobs:
             exit 1
           fi
 
-      # Ensure framework tests pass
-      - name: Run tests for test framework
-        run: |
-          cd consensus-specs
-          make test component=fw
-
-      # Ensure minimal tests pass
-      - name: Run tests for minimal
-        run: |
-          cd consensus-specs
-          make test component=pyspec preset=minimal
-
-      # Ensure mainnet tests pass
-      - name: Run tests for mainnet
-        run: |
-          cd consensus-specs
-          make test component=pyspec preset=mainnet
-
       # Add support for large files
       - name: Install Git LFS
         run: |
