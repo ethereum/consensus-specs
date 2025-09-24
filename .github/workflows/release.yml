@@ -47,7 +47,8 @@ jobs:
       # Clone the repo with our PAT and delete old files
       - name: Clone spec tests repo
         run: |
-          git clone https://x-access-token:${{ secrets.CONSENSUS_SPEC_TESTS_PAT }}@github.com/ethereum/consensus-spec-tests.git --depth=1
+          rm -rf consensus-spec-tests
+          git clone https://x-access-token:${{ secrets.CONSENSUS_SPEC_TESTS_PAT }}@github.com/ethereum/consensus-spec-tests.git --branch=master --single-branch --depth=1 --no-tags
           cd consensus-spec-tests
           rm -rf configs presets tests
 
@@ -79,10 +80,10 @@ jobs:
           cd consensus-spec-tests
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add .
+          git add -A
           if ! git diff --cached --quiet; then
             git commit -m "release ${{ github.ref_name }} tests"
-            git push
+            git push origin HEAD:refs/heads/master
           else
             echo "No changes to commit"
           fi
