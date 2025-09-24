@@ -335,7 +335,7 @@ def enumerate_test_dnas(config_dir, test_name, params) -> Iterable[tuple[str, FC
                 yield case_name, test_dna
 
 
-def enumerate_test_cases(config_path, forks, presets, debug, initial_seed: int=None):
+def enumerate_test_cases(config_path, forks, presets, debug, initial_seed: int = None):
     config_dir = path.dirname(config_path)
     test_gen_config = _load_yaml(config_path)
 

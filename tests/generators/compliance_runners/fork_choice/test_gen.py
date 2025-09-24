@@ -77,7 +77,9 @@ def main():
         raise ValueError("Neither neither fc-gen-config not fc-gen-config-path specified")
 
     prepare_bls()
-    test_cases = enumerate_test_cases(config_path, forks, presets, args.fc_gen_debug, args.fc_gen_seed)
+    test_cases = enumerate_test_cases(
+        config_path, forks, presets, args.fc_gen_debug, args.fc_gen_seed
+    )
     gen_runner.run_generator(test_cases, args)
 
 
