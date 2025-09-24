@@ -69,7 +69,9 @@ def load_preset(preset_files: Sequence[Path]) -> dict[str, str]:
             duplicates = set(fork_preset.keys()).intersection(set(preset.keys()))
             raise Exception(f"duplicate config var(s) in preset files: {', '.join(duplicates)}")
         preset.update(fork_preset)
-    assert preset != {}
+    if not preset:
+        # Do not rely on assert for runtime validation; this must fail even under Python optimizations.
+        raise ValueError("Preset files produced empty configuration (no variables found)")
     return cast(dict[str, str], parse_config_vars(preset))
 
 
