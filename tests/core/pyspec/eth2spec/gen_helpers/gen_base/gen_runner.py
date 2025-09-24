@@ -57,7 +57,9 @@ def display_test_summary(
     elapsed_time: float,
 ):
     """Display a rich formatted summary table of test generation results."""
-    summary_table = Table(title="Reference Test Generation Summary", box=box.ROUNDED, title_style="bold blue")
+    summary_table = Table(
+        title="Reference Test Generation Summary", box=box.ROUNDED, title_style="bold blue"
+    )
     summary_table.add_column("Metric", style="cyan", justify="left")
     summary_table.add_column("Count", style="green", justify="right")
     summary_table.add_column("Percentage", style="yellow", justify="right")
