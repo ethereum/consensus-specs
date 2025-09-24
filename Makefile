@@ -149,6 +149,7 @@ help-verbose:
 	@echo "    fork=<fork>            Generate for specific fork (comma-separated)"
 	@echo "    preset=<preset>        Generate for specific preset (comma-separated)"
 	@echo "    threads=N              Number of threads to use"
+	@echo "    seed=N                 Override test seeds (fuzzing mode)"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make comptests"
@@ -349,13 +350,15 @@ comptests: FC_GEN_CONFIG := $(if $(fc_gen_config),$(fc_gen_config),tiny)
 comptests: MAYBE_THREADS := $(if $(threads),--threads=$(threads),--fc-gen-multi-processing)
 comptests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
 comptests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
+comptests: MAYBE_SEED := $(if $(seed),--fc-gen-seed $(seed))
 comptests: _pyspec
 	@$(PYTHON_VENV) -m tests.generators.compliance_runners.fork_choice.test_gen \
 		--output $(COMP_TEST_VECTOR_DIR) \
 		--fc-gen-config $(FC_GEN_CONFIG) \
 		$(MAYBE_THREADS) \
 		$(MAYBE_FORKS) \
-		$(MAYBE_PRESETS)
+		$(MAYBE_PRESETS) \
+		$(MAYBE_SEED)
 
 ###############################################################################
 # Cleaning
