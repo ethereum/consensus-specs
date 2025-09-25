@@ -85,6 +85,22 @@ class DataColumnSidecar(Container):
     kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
 ```
 
+#### `PartialDataColumnSidecar`
+
+```python
+class PartialDataColumnSidecar(Container):
+    # Only provided if the index can not be inferred from the Gossipsub topic
+    index: ColumnIndex | None
+    # Encoded the same as an IHAVE bitmap
+    cells_present_bitmap: ByteVector[NUMBER_OF_COLUMNS/8] # ceiling if NUMBER_OF_COLUMNS is not divisible by 8
+    column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+     # The following are only provided on eager pushes.
+    kzg_commitments: None | List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    signed_block_header: None | SignedBeaconBlockHeader
+    kzg_commitments_inclusion_proof: None | Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
+```
+
 #### `MatrixEntry`
 
 ```python
