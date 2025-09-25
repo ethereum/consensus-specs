@@ -482,5 +482,5 @@ appear in an SSZ stream.
 encoded as `hex-byte-string`. `Bitlist`, `ProgressiveBitlist`, and `Bitvector`
 similarly map their SSZ-byte encodings to a `hex-byte-string`.
 
-`Union`, and `CompatibleUnion` are encoded as an object with a `selector` and
+`Union` and `CompatibleUnion` are encoded as an object with a `selector` and
 `data` field, where the contents of `data` change according to the selector.
