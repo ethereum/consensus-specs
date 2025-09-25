@@ -47,6 +47,7 @@ def main():
     arg_parser.add_argument(
         "--fc-gen-seed",
         dest="fc_gen_seed",
+        type=int,
         default=None,
         required=False,
         help="override test seeds (fuzzing mode)",
