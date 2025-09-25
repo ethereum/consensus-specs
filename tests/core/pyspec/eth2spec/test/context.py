@@ -6,6 +6,7 @@ from random import Random
 from typing import Any
 
 import pytest
+from frozendict import frozendict
 from lru import LRU
 
 from eth2spec.utils import bls
@@ -306,7 +307,7 @@ is_pytest = True
 def dump_skipping_message(reason: str) -> None:
     message = f"[Skipped test] {reason}"
     if is_pytest:
-        pytest.skip(message)
+        pytest.skip(message, allow_module_level=True)
     else:
         raise SkippedTest(message)
 
@@ -657,25 +658,27 @@ with_eip7441_and_later = with_all_phases_from(EIP7441, all_phases=ALLOWED_TEST_R
 with_eip7805_and_later = with_all_phases_from(EIP7805, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7928_and_later = with_all_phases_from(EIP7928, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
+with_bellatrix_only = with_phases([BELLATRIX])
+
 
 class quoted_str(str):
     pass
 
 
-def _get_basic_dict(ssz_dict: dict[str, Any]) -> dict[str, Any]:
+def _get_basic_value(v: Any) -> Any:
     """
-    Get dict of basic types from a dict of SSZ objects.
+    Deeply convert a value to a form consisting of Python built-in types.
     """
-    result = {}
-    for k, v in ssz_dict.items():
-        if isinstance(v, int):
-            value = int(v)
-        elif isinstance(v, bytes):
-            value = bytes(bytearray(v))
-        else:
-            value = quoted_str(v)
-        result[k] = value
-    return result
+    if isinstance(v, int):
+        return int(v)
+    elif isinstance(v, bytes):
+        return bytes(bytearray(v))
+    elif isinstance(v, list | tuple):
+        return list(_get_basic_value(v) for v in v)
+    elif isinstance(v, dict | frozendict):
+        return dict({k: _get_basic_value(v) for k, v in dict(v).items()})
+    else:
+        return quoted_str(v)
 
 
 def get_copy_of_spec(spec):
@@ -703,7 +706,7 @@ def spec_with_config_overrides(spec, config_overrides):
 
     # To output the changed config in a format compatible with yaml test vectors,
     # the dict SSZ objects have to be converted into Python built-in types.
-    output_config = _get_basic_dict(modified_config)
+    output_config = _get_basic_value(modified_config)
 
     return spec, output_config
 

@@ -28,6 +28,9 @@
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
     - [`seconds_to_milliseconds`](#seconds_to_milliseconds)
     - [`get_slot_component_duration_ms`](#get_slot_component_duration_ms)
+    - [`get_attestation_due_ms`](#get_attestation_due_ms)
+    - [`get_proposer_reorg_cutoff_ms`](#get_proposer_reorg_cutoff_ms)
+    - [`get_aggregate_due_ms`](#get_aggregate_due_ms)
     - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
       - [`is_head_late`](#is_head_late)
       - [`is_shuffling_stable`](#is_shuffling_stable)
@@ -331,7 +334,7 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
 
 *Note*: External calls to `filter_block_tree` (i.e., any calls that are not made
 by the recursive logic in this function) MUST set `block_root` to
-`store.justified_checkpoint`.
+`store.justified_checkpoint.root`.
 
 ```python
 def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconBlock]) -> bool:
@@ -472,6 +475,27 @@ def get_slot_component_duration_ms(basis_points: uint64) -> uint64:
     return basis_points * SLOT_DURATION_MS // BASIS_POINTS
 ```
 
+#### `get_attestation_due_ms`
+
+```python
+def get_attestation_due_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+```
+
+#### `get_proposer_reorg_cutoff_ms`
+
+```python
+def get_proposer_reorg_cutoff_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
+```
+
+#### `get_aggregate_due_ms`
+
+```python
+def get_aggregate_due_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
+```
+
 #### Proposer head and reorg helpers
 
 _Implementing these helpers is optional_.
@@ -513,7 +537,8 @@ def is_finalization_ok(store: Store, slot: Slot) -> bool:
 def is_proposing_on_time(store: Store) -> bool:
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    proposer_reorg_cutoff_ms = get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
+    epoch = get_current_store_epoch(store)
+    proposer_reorg_cutoff_ms = get_proposer_reorg_cutoff_ms(epoch)
     return time_into_slot_ms <= proposer_reorg_cutoff_ms
 ```
 
@@ -765,7 +790,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add block timeliness to the store
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+    epoch = get_current_store_epoch(store)
+    attestation_threshold_ms = get_attestation_due_ms(epoch)
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
