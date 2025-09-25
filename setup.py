@@ -61,7 +61,7 @@ def load_preset(preset_files: Sequence[Path]) -> dict[str, str]:
     """
     preset: dict[str, str] = {}
     for fork_file in preset_files:
-        yaml = YAML(typ="base")
+        yaml = YAML(typ="safe")  # Use safe loader to avoid constructing arbitrary objects from YAML
         fork_preset: dict = yaml.load(fork_file)
         if fork_preset is None:  # for empty YAML files
             continue
@@ -78,7 +78,7 @@ def load_config(config_path: Path) -> dict[str, str | list[dict[str, str]]]:
     """
     Loads the given configuration file.
     """
-    yaml = YAML(typ="base")
+    yaml = YAML(typ="safe")  # Use safe loader to avoid constructing arbitrary objects from YAML
     config_data = yaml.load(config_path)
     return parse_config_vars(config_data)
 
