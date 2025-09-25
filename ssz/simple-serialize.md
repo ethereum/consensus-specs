@@ -328,8 +328,8 @@ non-exhaustive list:
 - Offsets: out of order, out of range, mismatching minimum element size.
 - Scope: Extra unused bytes, not aligned with element size.
 - More elements than a list limit allows. Part of enforcing consensus.
-- An out-of-bounds selected index in an `Union`
-- An out-of-bounds type selector in a `CompatibleUnion`
+- An out-of-bounds selected index in an `Union`.
+- An out-of-bounds type selector in a `CompatibleUnion`.
 
 Efficient algorithms for computing this object can be found in
 [the implementations](#implementations).
