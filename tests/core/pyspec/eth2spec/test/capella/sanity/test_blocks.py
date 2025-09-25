@@ -244,11 +244,8 @@ def test_partial_withdrawal_in_epoch_transition(spec, state):
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
         # For Gloas, we need the parent block to be full to process withdrawals
-        # Set latest_block_hash to match latest_execution_payload_header.block_hash
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
-        state.latest_execution_payload_bid.block_hash = (
-            state.latest_execution_payload_header.block_hash
-        )
+        # Set latest_block_hash to match latest_execution_payload_bid.block_hash
+        state.latest_block_hash = state.latest_execution_payload_bid.block_hash
 
     yield "pre", state
 
@@ -285,10 +282,7 @@ def test_many_partial_withdrawals_in_epoch_transition(spec, state):
         )
         assert len(get_expected_withdrawals(spec, state)) == expected_count
         # Make parent block full in Gloas so withdrawals are processed
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
-        state.latest_execution_payload_bid.block_hash = (
-            state.latest_execution_payload_header.block_hash
-        )
+        state.latest_block_hash = state.latest_execution_payload_bid.block_hash
     else:
         assert len(get_expected_withdrawals(spec, state)) == spec.MAX_WITHDRAWALS_PER_PAYLOAD
 
@@ -343,10 +337,7 @@ def _perform_valid_withdrawal(spec, state):
 
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
-        state.latest_execution_payload_bid.block_hash = (
-            state.latest_execution_payload_header.block_hash
-        )
+        state.latest_block_hash = state.latest_execution_payload_bid.block_hash
 
     pre_state = state.copy()
 
@@ -501,10 +492,7 @@ def test_top_up_to_fully_withdrawn_validator(spec, state):
 
     # Make parent block full in Gloas so withdrawals are processed
     if is_post_gloas(spec):
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
-        state.latest_execution_payload_bid.block_hash = (
-            state.latest_execution_payload_header.block_hash
-        )
+        state.latest_block_hash = state.latest_execution_payload_bid.block_hash
 
     next_epoch_via_block(spec, state)
     assert state.balances[validator_index] == 0

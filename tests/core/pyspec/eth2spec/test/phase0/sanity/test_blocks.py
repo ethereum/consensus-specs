@@ -30,7 +30,7 @@ from eth2spec.test.helpers.constants import MINIMAL, PHASE0
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
-    build_empty_signed_execution_payload_header,
+    build_empty_signed_execution_payload_bid,
     compute_el_block_hash,
     compute_el_block_hash_for_block,
 )
@@ -225,7 +225,7 @@ def test_invalid_parent_from_same_slot(spec, state):
     child_block.parent_root = state.latest_block_header.hash_tree_root()
 
     if is_post_gloas(spec):
-        child_block.body.signed_execution_payload_bid = build_empty_signed_execution_payload_header(
+        child_block.body.signed_execution_payload_bid = build_empty_signed_execution_payload_bid(
             spec, state
         )
     elif is_post_bellatrix(spec):
