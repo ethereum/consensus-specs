@@ -335,11 +335,14 @@ def enumerate_test_dnas(config_dir, test_name, params) -> Iterable[tuple[str, FC
                 yield case_name, test_dna
 
 
-def enumerate_test_cases(config_path, forks, presets, debug):
+def enumerate_test_cases(config_path, forks, presets, debug, initial_seed: int = None):
     config_dir = path.dirname(config_path)
     test_gen_config = _load_yaml(config_path)
 
+    seed_generator = random.Random(initial_seed) if initial_seed is not None else None
     for test_name, params in test_gen_config.items():
+        if seed_generator is not None:
+            params = params | {"seed": seed_generator.randint(0, 1_000_000_000)}
         if debug:
             print(test_name)
         for fork_name in forks:
