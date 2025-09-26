@@ -54,3 +54,6 @@ site
 
 # docker test results
 testResults
+
+# pytest durations
+pytest-durations.log
