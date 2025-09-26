@@ -10,6 +10,21 @@ from eth2spec.test.utils.kzg_tests import VALID_BLOBS
 from tests.infra.manifest import manifest
 from tests.infra.template_test import template_test
 
+def _run_compute_challenge_test(spec, blob, commitment):
+    challenge = spec.compute_challenge(blob, commitment)
+
+    yield (
+        "data",
+        "data",
+        {
+            "input": {
+                "blob": encode_hex(blob),
+                "commitment": encode_hex(commitment),
+            },
+            "output": encode_hex(spec.bls_field_to_bytes(challenge)),
+        },
+    )
+
 
 @template_test
 def _compute_challenge_case_valid(blob_index):
@@ -22,19 +37,7 @@ def _compute_challenge_case_valid(blob_index):
     @single_phase
     def the_test(spec):
         commitment = spec.blob_to_kzg_commitment(blob)
-        challenge = spec.compute_challenge(blob, commitment)
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "blob": encode_hex(blob),
-                    "commitment": encode_hex(commitment),
-                },
-                "output": encode_hex(spec.bls_field_to_bytes(challenge)),
-            },
-        )
+        yield from _run_compute_challenge_test(spec, blob, commitment)
 
     return (the_test, f"test_compute_challenge_case_valid_{blob_index}")
 
@@ -52,19 +55,7 @@ def test_compute_challenge_case_mismatched_commitment(spec):
     # Use commitment from a different blob
     commitment = spec.blob_to_kzg_commitment(VALID_BLOBS[4])
     blob = VALID_BLOBS[3]
-    challenge = spec.compute_challenge(blob, commitment)
-
-    yield (
-        "data",
-        "data",
-        {
-            "input": {
-                "blob": encode_hex(blob),
-                "commitment": encode_hex(commitment),
-            },
-            "output": encode_hex(spec.bls_field_to_bytes(challenge)),
-        },
-    )
+    yield from _run_compute_challenge_test(spec, blob, commitment)
 
 
 @manifest(preset_name="general", suite_name="kzg-mainnet")
@@ -75,16 +66,4 @@ def test_compute_challenge_case_mismatched_commitment(spec):
 def test_compute_challenge_case_commitment_at_infinity(spec):
     commitment = spec.G1_POINT_AT_INFINITY
     blob = VALID_BLOBS[4]
-    challenge = spec.compute_challenge(blob, commitment)
-
-    yield (
-        "data",
-        "data",
-        {
-            "input": {
-                "blob": encode_hex(blob),
-                "commitment": encode_hex(commitment),
-            },
-            "output": encode_hex(spec.bls_field_to_bytes(challenge)),
-        },
-    )
+    yield from _run_compute_challenge_test(spec, blob, commitment)

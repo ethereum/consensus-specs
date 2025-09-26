@@ -15,6 +15,27 @@ from eth2spec.test.utils.kzg_tests import (
 from tests.infra.manifest import manifest
 from tests.infra.template_test import template_test
 
+def _run_compute_kzg_proof_test(spec, blob, z, valid: bool):
+    try:
+        proof, y = spec.compute_kzg_proof(blob, z)
+        result = (encode_hex(proof), encode_hex(y))
+    except Exception:
+        result = None
+
+    assert (result is not None) == valid
+
+    yield (
+        "data",
+        "data",
+        {
+            "input": {
+                "blob": encode_hex(blob),
+                "z": encode_hex(z),
+            },
+            "output": result,
+        },
+    )
+
 
 @template_test
 def _compute_kzg_proof_case_valid(blob_index, z_index):
@@ -27,19 +48,7 @@ def _compute_kzg_proof_case_valid(blob_index, z_index):
     @spec_test
     @single_phase
     def the_test(spec):
-        proof, y = spec.compute_kzg_proof(blob, z)
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "blob": encode_hex(blob),
-                    "z": encode_hex(z),
-                },
-                "output": (encode_hex(proof), encode_hex(y)),
-            },
-        )
+        yield from _run_compute_kzg_proof_test(spec, blob, z, valid=True)
 
     return (the_test, f"test_compute_kzg_proof_case_valid_blob_{blob_index}_{z_index}")
 
@@ -60,26 +69,7 @@ def _compute_kzg_proof_case_invalid_blob(blob_index):
     @spec_test
     @single_phase
     def the_test(spec):
-        try:
-            proof, y = spec.compute_kzg_proof(blob, z)
-            output = (encode_hex(proof), encode_hex(y))
-        except Exception:
-            output = None
-
-        # assert exception is thrown
-        assert output == None
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "blob": encode_hex(blob),
-                    "z": encode_hex(z),
-                },
-                "output": output,
-            },
-        )
+        yield from _run_compute_kzg_proof_test(spec, blob, z, valid=False)
 
     return (the_test, f"test_compute_kzg_proof_case_invalid_blob_{blob_index}")
 
@@ -99,26 +89,7 @@ def _compute_kzg_proof_case_invalid_z(z_index):
     @spec_test
     @single_phase
     def the_test(spec):
-        try:
-            proof, y = spec.compute_kzg_proof(blob, z)
-            output = (encode_hex(proof), encode_hex(y))
-        except Exception:
-            output = None
-
-        # assert exception is thrown
-        assert output == None
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "blob": encode_hex(blob),
-                    "z": encode_hex(z),
-                },
-                "output": output,
-            },
-        )
+        yield from _run_compute_kzg_proof_test(spec, blob, z, valid=False)
 
     return (the_test, f"test_compute_kzg_proof_case_invalid_z_{z_index}")
 

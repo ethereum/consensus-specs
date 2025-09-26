@@ -19,6 +19,32 @@ from eth2spec.test.utils.kzg_tests import (
 from tests.infra.manifest import manifest
 from tests.infra.template_test import template_test
 
+def _run_verify_kzg_proof_test(spec, commitment, z, y, proof, expected_result=None, valid: bool = True):
+    if valid:
+        result = spec.verify_kzg_proof(commitment, z, y, proof)
+        if expected_result is not None:
+            assert result == expected_result
+    else:
+        try:
+            result = spec.verify_kzg_proof(commitment, z, y, proof)
+        except Exception:
+            result = None
+        assert result == None
+
+    yield (
+        "data",
+        "data",
+        {
+            "input": {
+                "commitment": encode_hex(commitment),
+                "z": encode_hex(z),
+                "y": encode_hex(y),
+                "proof": encode_hex(proof),
+            },
+            "output": result,
+        },
+    )
+
 
 @template_test
 def _verify_kzg_proof_case_correct_proof(blob_index, z_index):
@@ -33,22 +59,7 @@ def _verify_kzg_proof_case_correct_proof(blob_index, z_index):
     def the_test(spec):
         proof, y = spec.compute_kzg_proof(blob, z)
         commitment = spec.blob_to_kzg_commitment(blob)
-
-        assert spec.verify_kzg_proof(commitment, z, y, proof)
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "commitment": encode_hex(commitment),
-                    "z": encode_hex(z),
-                    "y": encode_hex(y),
-                    "proof": encode_hex(proof),
-                },
-                "output": True,
-            },
-        )
+        yield from _run_verify_kzg_proof_test(spec, commitment, z, y, proof, expected_result=True)
 
     return (the_test, f"test_verify_kzg_proof_case_correct_proof_{blob_index}_{z_index}")
 
@@ -72,22 +83,7 @@ def _verify_kzg_proof_case_incorrect_proof(blob_index, z_index):
         proof_orig, y = spec.compute_kzg_proof(blob, z)
         proof = bls_add_one(proof_orig)
         commitment = spec.blob_to_kzg_commitment(blob)
-
-        assert not spec.verify_kzg_proof(commitment, z, y, proof)
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "commitment": encode_hex(commitment),
-                    "z": encode_hex(z),
-                    "y": encode_hex(y),
-                    "proof": encode_hex(proof),
-                },
-                "output": False,
-            },
-        )
+        yield from _run_verify_kzg_proof_test(spec, commitment, z, y, proof, expected_result=False)
 
     return (the_test, f"test_verify_kzg_proof_case_incorrect_proof_{blob_index}_{z_index}")
 
@@ -111,22 +107,7 @@ def _verify_kzg_proof_case_incorrect_proof_point_at_infinity(z_index):
         _, y = spec.compute_kzg_proof(blob, z)
         commitment = spec.blob_to_kzg_commitment(blob)
         proof = spec.G1_POINT_AT_INFINITY
-
-        assert not spec.verify_kzg_proof(commitment, z, y, proof)
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "commitment": encode_hex(commitment),
-                    "z": encode_hex(z),
-                    "y": encode_hex(y),
-                    "proof": encode_hex(proof),
-                },
-                "output": False,
-            },
-        )
+        yield from _run_verify_kzg_proof_test(spec, commitment, z, y, proof, expected_result=False)
 
     return (the_test, f"test_verify_kzg_proof_case_incorrect_proof_point_at_infinity_{z_index}")
 
@@ -149,22 +130,7 @@ def _verify_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly(z_index
         _, y = spec.compute_kzg_proof(blob, z)
         commitment = spec.blob_to_kzg_commitment(blob)
         proof = spec.G1_POINT_AT_INFINITY
-
-        assert spec.verify_kzg_proof(commitment, z, y, proof)
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "commitment": encode_hex(commitment),
-                    "z": encode_hex(z),
-                    "y": encode_hex(y),
-                    "proof": encode_hex(proof),
-                },
-                "output": True,
-            },
-        )
+        yield from _run_verify_kzg_proof_test(spec, commitment, z, y, proof, expected_result=True)
 
     return (
         the_test,
@@ -190,22 +156,7 @@ def _verify_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly(z_index
         _, y = spec.compute_kzg_proof(blob, z)
         commitment = spec.blob_to_kzg_commitment(blob)
         proof = spec.G1_POINT_AT_INFINITY
-
-        assert spec.verify_kzg_proof(commitment, z, y, proof)
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "commitment": encode_hex(commitment),
-                    "z": encode_hex(z),
-                    "y": encode_hex(y),
-                    "proof": encode_hex(proof),
-                },
-                "output": True,
-            },
-        )
+        yield from _run_verify_kzg_proof_test(spec, commitment, z, y, proof, expected_result=True)
 
     return (
         the_test,
@@ -229,28 +180,7 @@ def _verify_kzg_proof_case_invalid_commitment(commitment_index):
     def the_test(spec):
         blob, z = VALID_BLOBS[2], VALID_FIELD_ELEMENTS[1]
         proof, y = spec.compute_kzg_proof(blob, z)
-
-        try:
-            output = spec.verify_kzg_proof(commitment, z, y, proof)
-        except Exception:
-            output = None
-
-        # assert exception is thrown
-        assert output == None
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "commitment": encode_hex(commitment),
-                    "z": encode_hex(z),
-                    "y": encode_hex(y),
-                    "proof": encode_hex(proof),
-                },
-                "output": None,
-            },
-        )
+        yield from _run_verify_kzg_proof_test(spec, commitment, z, y, proof, valid=False)
 
     return (the_test, f"test_verify_kzg_proof_case_invalid_commitment_{commitment_index}")
 
@@ -272,28 +202,7 @@ def _verify_kzg_proof_case_invalid_z(z_index):
         blob, validz = VALID_BLOBS[4], VALID_FIELD_ELEMENTS[1]
         proof, y = spec.compute_kzg_proof(blob, validz)
         commitment = spec.blob_to_kzg_commitment(blob)
-
-        try:
-            output = spec.verify_kzg_proof(commitment, z, y, proof)
-        except Exception:
-            output = None
-
-        # assert exception is thrown
-        assert output == None
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "commitment": encode_hex(commitment),
-                    "z": encode_hex(z),
-                    "y": encode_hex(y),
-                    "proof": encode_hex(proof),
-                },
-                "output": None,
-            },
-        )
+        yield from _run_verify_kzg_proof_test(spec, commitment, z, y, proof, valid=False)
 
     return (the_test, f"test_verify_kzg_proof_case_invalid_z_{z_index}")
 
@@ -315,28 +224,7 @@ def _verify_kzg_proof_case_invalid_y(y_index):
         blob, z = VALID_BLOBS[4], VALID_FIELD_ELEMENTS[1]
         proof, _ = spec.compute_kzg_proof(blob, z)
         commitment = spec.blob_to_kzg_commitment(blob)
-
-        try:
-            output = spec.verify_kzg_proof(commitment, z, y, proof)
-        except Exception:
-            output = None
-
-        # assert exception is thrown
-        assert output == None
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "commitment": encode_hex(commitment),
-                    "z": encode_hex(z),
-                    "y": encode_hex(y),
-                    "proof": encode_hex(proof),
-                },
-                "output": None,
-            },
-        )
+        yield from _run_verify_kzg_proof_test(spec, commitment, z, y, proof, valid=False)
 
     return (the_test, f"test_verify_kzg_proof_case_invalid_y_{y_index}")
 
@@ -358,28 +246,7 @@ def _verify_kzg_proof_case_invalid_proof(proof_index):
         blob, z = VALID_BLOBS[2], VALID_FIELD_ELEMENTS[1]
         _, y = spec.compute_kzg_proof(blob, z)
         commitment = spec.blob_to_kzg_commitment(blob)
-
-        try:
-            output = spec.verify_kzg_proof(commitment, z, y, proof)
-        except Exception:
-            output = None
-
-        # assert exception is thrown
-        assert output == None
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "commitment": encode_hex(commitment),
-                    "z": encode_hex(z),
-                    "y": encode_hex(y),
-                    "proof": encode_hex(proof),
-                },
-                "output": None,
-            },
-        )
+        yield from _run_verify_kzg_proof_test(spec, commitment, z, y, proof, valid=False)
 
     return (the_test, f"test_verify_kzg_proof_case_invalid_proof_{proof_index}")
 
