@@ -176,5 +176,5 @@ def invalid_cases():
 
                 yield (
                     f"{name}_{mode.to_name()}_modded_{i}",
-                    invalid_test_case(the_test),
+                    invalid_test_case(typ, the_test),
                 )

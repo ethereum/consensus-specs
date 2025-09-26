@@ -53,12 +53,12 @@ def invalid_cases():
         options = typ.options()
         yield (
             f"{name}_empty",
-            invalid_test_case(lambda: b""),
+            invalid_test_case(typ, lambda: b""),
         )
         for option in range(0, 255):
             yield (
                 f"{name}_selector_{option}_none",
-                invalid_test_case(lambda option=option: bytes([option])),
+                invalid_test_case(typ, lambda option=option: bytes([option])),
             )
         for mode in list(RandomizationMode):
             for option in range(0, 255):
@@ -71,7 +71,7 @@ def invalid_cases():
 
                     yield (
                         f"{name}_{mode.to_name()}_selector_{option}_invalid",
-                        invalid_test_case(the_test),
+                        invalid_test_case(typ, the_test),
                     )
 
             def the_test(
@@ -89,7 +89,7 @@ def invalid_cases():
 
             yield (
                 f"{name}_{mode.to_name()}_extra_padding",
-                invalid_test_case(the_test),
+                invalid_test_case(typ, the_test),
             )
 
             def the_test(
@@ -107,7 +107,7 @@ def invalid_cases():
 
             yield (
                 f"{name}_{mode.to_name()}_selector_missing",
-                invalid_test_case(the_test),
+                invalid_test_case(typ, the_test),
             )
 
             def the_test(
@@ -125,5 +125,5 @@ def invalid_cases():
 
             yield (
                 f"{name}_{mode.to_name()}_extra_byte",
-                invalid_test_case(the_test),
+                invalid_test_case(typ, the_test),
             )

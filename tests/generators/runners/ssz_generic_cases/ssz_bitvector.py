@@ -46,7 +46,7 @@ def valid_cases():
 
 def invalid_cases():
     # zero length bitvecors are illegal
-    yield "bitvec_0", invalid_test_case(lambda: b"")
+    yield "bitvec_0", invalid_test_case(Bitvector[1], lambda: b"")
     rng = Random(1234)
     # Create a vector with test_size bits, but make the type typ_size instead,
     # which is invalid when used with the given type size
@@ -71,8 +71,9 @@ def invalid_cases():
             yield (
                 f"bitvec_{typ_size}_{mode.to_name()}_{test_size}",
                 invalid_test_case(
+                    Bitvector[typ_size],
                     lambda rng=rng, mode=mode, test_size=test_size, typ_size=typ_size: serialize(
                         bitvector_case_fn(rng, mode, test_size, invalid_making_pos=typ_size)
-                    )
+                    ),
                 ),
             )
