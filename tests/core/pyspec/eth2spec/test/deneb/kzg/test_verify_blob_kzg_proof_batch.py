@@ -50,73 +50,59 @@ for length in range(len(VALID_BLOBS)):
     _verify_blob_kzg_proof_batch_case(length)
 
 
-@template_test
-def _verify_blob_kzg_proof_batch_case_incorrect_proof_add_one():
-    @manifest(preset_name="general", suite_name="kzg-mainnet")
-    @only_generator("too slow")
-    @with_phases([DENEB])
-    @spec_test
-    @single_phase
-    def the_test(spec):
-        blobs = VALID_BLOBS
-        commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
-        proofs = [spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)]
-        # Add one to the first proof, so that it's incorrect
-        proofs = [bls_add_one(proofs[0])] + proofs[1:]
+@manifest(preset_name="general", suite_name="kzg-mainnet")
+@only_generator("too slow")
+@with_phases([DENEB])
+@spec_test
+@single_phase
+def test_verify_blob_kzg_proof_batch_case_incorrect_proof_add_one(spec):
+    blobs = VALID_BLOBS
+    commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+    proofs = [spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)]
+    # Add one to the first proof, so that it's incorrect
+    proofs = [bls_add_one(proofs[0])] + proofs[1:]
 
-        assert not spec.verify_blob_kzg_proof_batch(blobs, commitments, proofs)
+    assert not spec.verify_blob_kzg_proof_batch(blobs, commitments, proofs)
 
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "blobs": encode_hex_list(blobs),
-                    "commitments": encode_hex_list(commitments),
-                    "proofs": encode_hex_list(proofs),
-                },
-                "output": False,
+    yield (
+        "data",
+        "data",
+        {
+            "input": {
+                "blobs": encode_hex_list(blobs),
+                "commitments": encode_hex_list(commitments),
+                "proofs": encode_hex_list(proofs),
             },
-        )
-
-    return (the_test, "test_verify_blob_kzg_proof_batch_case_incorrect_proof_add_one")
-
-
-_verify_blob_kzg_proof_batch_case_incorrect_proof_add_one()
+            "output": False,
+        },
+    )
 
 
-@template_test
-def _verify_blob_kzg_proof_batch_case_incorrect_proof_point_at_infinity():
-    @manifest(preset_name="general", suite_name="kzg-mainnet")
-    @only_generator("too slow")
-    @with_phases([DENEB])
-    @spec_test
-    @single_phase
-    def the_test(spec):
-        blobs = [BLOB_RANDOM_VALID1]
-        commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
-        # Use the wrong proof
-        proofs = [spec.G1_POINT_AT_INFINITY]
+@manifest(preset_name="general", suite_name="kzg-mainnet")
+@only_generator("too slow")
+@with_phases([DENEB])
+@spec_test
+@single_phase
+def test_verify_blob_kzg_proof_batch_case_incorrect_proof_point_at_infinity(spec):
+    blobs = [BLOB_RANDOM_VALID1]
+    commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+    # Use the wrong proof
+    proofs = [spec.G1_POINT_AT_INFINITY]
 
-        assert not spec.verify_blob_kzg_proof_batch(blobs, commitments, proofs)
+    assert not spec.verify_blob_kzg_proof_batch(blobs, commitments, proofs)
 
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "blobs": encode_hex_list(blobs),
-                    "commitments": encode_hex_list(commitments),
-                    "proofs": encode_hex_list(proofs),
-                },
-                "output": False,
+    yield (
+        "data",
+        "data",
+        {
+            "input": {
+                "blobs": encode_hex_list(blobs),
+                "commitments": encode_hex_list(commitments),
+                "proofs": encode_hex_list(proofs),
             },
-        )
-
-    return (the_test, "test_verify_blob_kzg_proof_batch_case_incorrect_proof_point_at_infinity")
-
-
-_verify_blob_kzg_proof_batch_case_incorrect_proof_point_at_infinity()
+            "output": False,
+        },
+    )
 
 
 @template_test
@@ -248,118 +234,97 @@ for proof_index in range(len(INVALID_G1_POINTS)):
     _verify_blob_kzg_proof_batch_case_invalid_proof(proof_index)
 
 
-@template_test
-def _verify_blob_kzg_proof_batch_case_blob_length_different():
-    @manifest(preset_name="general", suite_name="kzg-mainnet")
-    @only_generator("too slow")
-    @with_phases([DENEB])
-    @spec_test
-    @single_phase
-    def the_test(spec):
-        blobs = VALID_BLOBS
-        commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
-        proofs = [spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)]
-        # Delete the last blob
-        blobs = blobs[:-1]
+@manifest(preset_name="general", suite_name="kzg-mainnet")
+@only_generator("too slow")
+@with_phases([DENEB])
+@spec_test
+@single_phase
+def test_verify_blob_kzg_proof_batch_case_blob_length_different(spec):
+    blobs = VALID_BLOBS
+    commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+    proofs = [spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)]
+    # Delete the last blob
+    blobs = blobs[:-1]
 
-        try:
-            spec.verify_blob_kzg_proof_batch(blobs, commitments, proofs)
-            assert False, "Expected exception"
-        except Exception:
-            pass  # Expected exception
+    try:
+        spec.verify_blob_kzg_proof_batch(blobs, commitments, proofs)
+        assert False, "Expected exception"
+    except Exception:
+        pass  # Expected exception
 
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "blobs": encode_hex_list(blobs),
-                    "commitments": encode_hex_list(commitments),
-                    "proofs": encode_hex_list(proofs),
-                },
-                "output": None,
+    yield (
+        "data",
+        "data",
+        {
+            "input": {
+                "blobs": encode_hex_list(blobs),
+                "commitments": encode_hex_list(commitments),
+                "proofs": encode_hex_list(proofs),
             },
-        )
-
-    return (the_test, "test_verify_blob_kzg_proof_batch_case_blob_length_different")
-
-
-_verify_blob_kzg_proof_batch_case_blob_length_different()
+            "output": None,
+        },
+    )
 
 
-@template_test
-def _verify_blob_kzg_proof_batch_case_commitment_length_different():
-    @manifest(preset_name="general", suite_name="kzg-mainnet")
-    @only_generator("too slow")
-    @with_phases([DENEB])
-    @spec_test
-    @single_phase
-    def the_test(spec):
-        blobs = VALID_BLOBS
-        commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
-        proofs = [spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)]
-        # Delete the last commitment
-        commitments = commitments[:-1]
+@manifest(preset_name="general", suite_name="kzg-mainnet")
+@only_generator("too slow")
+@with_phases([DENEB])
+@spec_test
+@single_phase
+def test_verify_blob_kzg_proof_batch_case_commitment_length_different(spec):
+    blobs = VALID_BLOBS
+    commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+    proofs = [spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)]
+    # Delete the last commitment
+    commitments = commitments[:-1]
 
-        try:
-            spec.verify_blob_kzg_proof_batch(blobs, commitments, proofs)
-            assert False, "Expected exception"
-        except Exception:
-            pass  # Expected exception
+    try:
+        spec.verify_blob_kzg_proof_batch(blobs, commitments, proofs)
+        assert False, "Expected exception"
+    except Exception:
+        pass  # Expected exception
 
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "blobs": encode_hex_list(blobs),
-                    "commitments": encode_hex_list(commitments),
-                    "proofs": encode_hex_list(proofs),
-                },
-                "output": None,
+    yield (
+        "data",
+        "data",
+        {
+            "input": {
+                "blobs": encode_hex_list(blobs),
+                "commitments": encode_hex_list(commitments),
+                "proofs": encode_hex_list(proofs),
             },
-        )
-
-    return (the_test, "test_verify_blob_kzg_proof_batch_case_commitment_length_different")
-
-
-_verify_blob_kzg_proof_batch_case_commitment_length_different()
+            "output": None,
+        },
+    )
 
 
-@template_test
-def _verify_blob_kzg_proof_batch_case_proof_length_different():
-    @manifest(preset_name="general", suite_name="kzg-mainnet")
-    @only_generator("too slow")
-    @with_phases([DENEB])
-    @spec_test
-    @single_phase
-    def the_test(spec):
-        blobs = VALID_BLOBS
-        commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
-        proofs = [spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)]
-        # Delete the last proof
-        proofs = proofs[:-1]
+@manifest(preset_name="general", suite_name="kzg-mainnet")
+@only_generator("too slow")
+@with_phases([DENEB])
+@spec_test
+@single_phase
+def test_verify_blob_kzg_proof_batch_case_proof_length_different(spec):
+    blobs = VALID_BLOBS
+    commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
+    proofs = [spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)]
+    # Delete the last proof
+    proofs = proofs[:-1]
 
-        try:
-            spec.verify_blob_kzg_proof_batch(blobs, commitments, proofs)
-            assert False, "Expected exception"
-        except Exception:
-            pass  # Expected exception
+    try:
+        spec.verify_blob_kzg_proof_batch(blobs, commitments, proofs)
+        assert False, "Expected exception"
+    except Exception:
+        pass  # Expected exception
 
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "blobs": encode_hex_list(blobs),
-                    "commitments": encode_hex_list(commitments),
-                    "proofs": encode_hex_list(proofs),
-                },
-                "output": None,
+    yield (
+        "data",
+        "data",
+        {
+            "input": {
+                "blobs": encode_hex_list(blobs),
+                "commitments": encode_hex_list(commitments),
+                "proofs": encode_hex_list(proofs),
             },
-        )
-
-    return (the_test, "test_verify_blob_kzg_proof_batch_case_proof_length_different")
-
-
-_verify_blob_kzg_proof_batch_case_proof_length_different()
+            "output": None,
+        },
+    )

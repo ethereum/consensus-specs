@@ -91,109 +91,82 @@ for blob_index in range(len(VALID_BLOBS)):
     _verify_blob_kzg_proof_case_incorrect_proof(blob_index)
 
 
-@template_test
-def _verify_blob_kzg_proof_case_incorrect_proof_point_at_infinity():
-    @manifest(preset_name="general", suite_name="kzg-mainnet")
-    @only_generator("too slow")
-    @with_phases([DENEB])
-    @spec_test
-    @single_phase
-    def the_test(spec):
-        blob = BLOB_RANDOM_VALID1
-        commitment = spec.blob_to_kzg_commitment(blob)
-        proof = spec.G1_POINT_AT_INFINITY
+@manifest(preset_name="general", suite_name="kzg-mainnet")
+@only_generator("too slow")
+@with_phases([DENEB])
+@spec_test
+@single_phase
+def test_verify_blob_kzg_proof_case_incorrect_proof_point_at_infinity(spec):
+    blob = BLOB_RANDOM_VALID1
+    commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.G1_POINT_AT_INFINITY
 
-        assert not spec.verify_blob_kzg_proof(blob, commitment, proof)
+    assert not spec.verify_blob_kzg_proof(blob, commitment, proof)
 
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "blob": encode_hex(blob),
-                    "commitment": encode_hex(commitment),
-                    "proof": encode_hex(proof),
-                },
-                "output": False,
+    yield (
+        "data",
+        "data",
+        {
+            "input": {
+                "blob": encode_hex(blob),
+                "commitment": encode_hex(commitment),
+                "proof": encode_hex(proof),
             },
-        )
-
-    return (the_test, "test_verify_blob_kzg_proof_case_incorrect_proof_point_at_infinity")
-
-
-_verify_blob_kzg_proof_case_incorrect_proof_point_at_infinity()
-
-
-@template_test
-def _verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly():
-    @manifest(preset_name="general", suite_name="kzg-mainnet")
-    @only_generator("too slow")
-    @with_phases([DENEB])
-    @spec_test
-    @single_phase
-    def the_test(spec):
-        blob = BLOB_ALL_ZEROS
-        commitment = spec.blob_to_kzg_commitment(blob)
-        proof = spec.G1_POINT_AT_INFINITY
-
-        assert spec.verify_blob_kzg_proof(blob, commitment, proof)
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "blob": encode_hex(blob),
-                    "commitment": encode_hex(commitment),
-                    "proof": encode_hex(proof),
-                },
-                "output": True,
-            },
-        )
-
-    return (
-        the_test,
-        "test_verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly",
+            "output": False,
+        },
     )
 
 
-_verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly()
+@manifest(preset_name="general", suite_name="kzg-mainnet")
+@only_generator("too slow")
+@with_phases([DENEB])
+@spec_test
+@single_phase
+def test_verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_zero_poly(spec):
+    blob = BLOB_ALL_ZEROS
+    commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.G1_POINT_AT_INFINITY
 
+    assert spec.verify_blob_kzg_proof(blob, commitment, proof)
 
-@template_test
-def _verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly():
-    @manifest(preset_name="general", suite_name="kzg-mainnet")
-    @only_generator("too slow")
-    @with_phases([DENEB])
-    @spec_test
-    @single_phase
-    def the_test(spec):
-        blob = BLOB_ALL_TWOS
-        commitment = spec.blob_to_kzg_commitment(blob)
-        proof = spec.G1_POINT_AT_INFINITY
-
-        assert spec.verify_blob_kzg_proof(blob, commitment, proof)
-
-        yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "blob": encode_hex(blob),
-                    "commitment": encode_hex(commitment),
-                    "proof": encode_hex(proof),
-                },
-                "output": True,
+    yield (
+        "data",
+        "data",
+        {
+            "input": {
+                "blob": encode_hex(blob),
+                "commitment": encode_hex(commitment),
+                "proof": encode_hex(proof),
             },
-        )
-
-    return (
-        the_test,
-        "test_verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly",
+            "output": True,
+        },
     )
 
 
-_verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly()
+@manifest(preset_name="general", suite_name="kzg-mainnet")
+@only_generator("too slow")
+@with_phases([DENEB])
+@spec_test
+@single_phase
+def test_verify_blob_kzg_proof_case_correct_proof_point_at_infinity_for_twos_poly(spec):
+    blob = BLOB_ALL_TWOS
+    commitment = spec.blob_to_kzg_commitment(blob)
+    proof = spec.G1_POINT_AT_INFINITY
+
+    assert spec.verify_blob_kzg_proof(blob, commitment, proof)
+
+    yield (
+        "data",
+        "data",
+        {
+            "input": {
+                "blob": encode_hex(blob),
+                "commitment": encode_hex(commitment),
+                "proof": encode_hex(proof),
+            },
+            "output": True,
+        },
+    )
 
 
 @template_test
