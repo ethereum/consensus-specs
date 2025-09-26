@@ -10,6 +10,7 @@ from eth2spec.test.utils.kzg_tests import VALID_BLOBS
 from tests.infra.manifest import manifest
 from tests.infra.template_test import template_test
 
+
 def _run_compute_challenge_test(spec, blob, commitment):
     challenge = spec.compute_challenge(blob, commitment)
 

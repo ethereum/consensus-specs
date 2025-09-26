@@ -10,6 +10,7 @@ from eth2spec.test.utils.kzg_tests import G1, INVALID_BLOBS, INVALID_G1_POINTS, 
 from tests.infra.manifest import manifest
 from tests.infra.template_test import template_test
 
+
 def _run_compute_blob_kzg_proof_test(spec, blob, commitment, valid: bool):
     try:
         proof = spec.compute_blob_kzg_proof(blob, commitment)
@@ -19,16 +20,16 @@ def _run_compute_blob_kzg_proof_test(spec, blob, commitment, valid: bool):
     assert (proof is not None) == valid
 
     yield (
-            "data",
-            "data",
-            {
-                "input": {
-                    "blob": encode_hex(blob),
-                    "commitment": encode_hex(commitment),
-                },
-                "output": encode_hex(proof) if proof is not None else None,
+        "data",
+        "data",
+        {
+            "input": {
+                "blob": encode_hex(blob),
+                "commitment": encode_hex(commitment),
             },
-        )
+            "output": encode_hex(proof) if proof is not None else None,
+        },
+    )
 
 
 @template_test

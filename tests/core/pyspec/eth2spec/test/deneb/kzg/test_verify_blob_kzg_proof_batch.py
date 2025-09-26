@@ -15,7 +15,10 @@ from eth2spec.test.utils.kzg_tests import (
 from tests.infra.manifest import manifest
 from tests.infra.template_test import template_test
 
-def _run_verify_blob_kzg_proof_batch_test(spec, blobs, commitments, proofs, expected_result=None, valid: bool = True):
+
+def _run_verify_blob_kzg_proof_batch_test(
+    spec, blobs, commitments, proofs, expected_result=None, valid: bool = True
+):
     if valid:
         result = spec.verify_blob_kzg_proof_batch(blobs, commitments, proofs)
         if expected_result is not None:
@@ -52,7 +55,9 @@ def _verify_blob_kzg_proof_batch_case(length):
         blobs = VALID_BLOBS[:length]
         commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
         proofs = [spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)]
-        yield from _run_verify_blob_kzg_proof_batch_test(spec, blobs, commitments, proofs, expected_result=True)
+        yield from _run_verify_blob_kzg_proof_batch_test(
+            spec, blobs, commitments, proofs, expected_result=True
+        )
 
     return (the_test, f"test_verify_blob_kzg_proof_batch_case_{length}")
 
@@ -72,7 +77,9 @@ def test_verify_blob_kzg_proof_batch_case_incorrect_proof_add_one(spec):
     proofs = [spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)]
     # Add one to the first proof, so that it's incorrect
     proofs = [bls_add_one(proofs[0])] + proofs[1:]
-    yield from _run_verify_blob_kzg_proof_batch_test(spec, blobs, commitments, proofs, expected_result=False)
+    yield from _run_verify_blob_kzg_proof_batch_test(
+        spec, blobs, commitments, proofs, expected_result=False
+    )
 
 
 @manifest(preset_name="general", suite_name="kzg-mainnet")
@@ -85,7 +92,9 @@ def test_verify_blob_kzg_proof_batch_case_incorrect_proof_point_at_infinity(spec
     commitments = [spec.blob_to_kzg_commitment(blob) for blob in blobs]
     # Use the wrong proof
     proofs = [spec.G1_POINT_AT_INFINITY]
-    yield from _run_verify_blob_kzg_proof_batch_test(spec, blobs, commitments, proofs, expected_result=False)
+    yield from _run_verify_blob_kzg_proof_batch_test(
+        spec, blobs, commitments, proofs, expected_result=False
+    )
 
 
 @template_test
@@ -103,7 +112,9 @@ def _verify_blob_kzg_proof_batch_case_invalid_blob(blob_index):
         proofs = [spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)]
         # Insert an invalid blob into the middle
         blobs = VALID_BLOBS[:4] + [invalid_blob] + VALID_BLOBS[5:]
-        yield from _run_verify_blob_kzg_proof_batch_test(spec, blobs, commitments, proofs, valid=False)
+        yield from _run_verify_blob_kzg_proof_batch_test(
+            spec, blobs, commitments, proofs, valid=False
+        )
 
     return (the_test, f"test_verify_blob_kzg_proof_batch_case_invalid_blob_{blob_index}")
 
@@ -127,7 +138,9 @@ def _verify_blob_kzg_proof_batch_case_invalid_commitment(commitment_index):
         proofs = [spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)]
         # Replace first commitment with an invalid commitment
         commitments = [invalid_commitment] + commitments[1:]
-        yield from _run_verify_blob_kzg_proof_batch_test(spec, blobs, commitments, proofs, valid=False)
+        yield from _run_verify_blob_kzg_proof_batch_test(
+            spec, blobs, commitments, proofs, valid=False
+        )
 
     return (
         the_test,
@@ -154,7 +167,9 @@ def _verify_blob_kzg_proof_batch_case_invalid_proof(proof_index):
         proofs = [spec.compute_blob_kzg_proof(blob, commitments[i]) for i, blob in enumerate(blobs)]
         # Replace first proof with an invalid proof
         proofs = [invalid_proof] + proofs[1:]
-        yield from _run_verify_blob_kzg_proof_batch_test(spec, blobs, commitments, proofs, valid=False)
+        yield from _run_verify_blob_kzg_proof_batch_test(
+            spec, blobs, commitments, proofs, valid=False
+        )
 
     return (the_test, f"test_verify_blob_kzg_proof_batch_case_invalid_proof_{proof_index}")
 

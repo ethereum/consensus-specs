@@ -19,7 +19,10 @@ from eth2spec.test.utils.kzg_tests import (
 from tests.infra.manifest import manifest
 from tests.infra.template_test import template_test
 
-def _run_verify_kzg_proof_test(spec, commitment, z, y, proof, expected_result=None, valid: bool = True):
+
+def _run_verify_kzg_proof_test(
+    spec, commitment, z, y, proof, expected_result=None, valid: bool = True
+):
     if valid:
         result = spec.verify_kzg_proof(commitment, z, y, proof)
         if expected_result is not None:

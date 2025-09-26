@@ -19,7 +19,10 @@ from eth2spec.test.utils.kzg_tests import (
 from tests.infra.manifest import manifest
 from tests.infra.template_test import template_test
 
-def _run_verify_blob_kzg_proof_test(spec, blob, commitment, proof, expected_result=None, valid: bool = True):
+
+def _run_verify_blob_kzg_proof_test(
+    spec, blob, commitment, proof, expected_result=None, valid: bool = True
+):
     if valid:
         result = spec.verify_blob_kzg_proof(blob, commitment, proof)
         if expected_result is not None:
@@ -57,7 +60,9 @@ def _verify_blob_kzg_proof_case_correct_proof(blob_index):
     def the_test(spec):
         commitment = spec.blob_to_kzg_commitment(blob)
         proof = spec.compute_blob_kzg_proof(blob, commitment)
-        yield from _run_verify_blob_kzg_proof_test(spec, blob, commitment, proof, expected_result=True)
+        yield from _run_verify_blob_kzg_proof_test(
+            spec, blob, commitment, proof, expected_result=True
+        )
 
     return (the_test, f"test_verify_blob_kzg_proof_case_correct_proof_{blob_index}")
 
@@ -79,7 +84,9 @@ def _verify_blob_kzg_proof_case_incorrect_proof(blob_index):
         commitment = spec.blob_to_kzg_commitment(blob)
         proof_orig = spec.compute_blob_kzg_proof(blob, commitment)
         proof = bls_add_one(proof_orig)
-        yield from _run_verify_blob_kzg_proof_test(spec, blob, commitment, proof, expected_result=False)
+        yield from _run_verify_blob_kzg_proof_test(
+            spec, blob, commitment, proof, expected_result=False
+        )
 
     return (the_test, f"test_verify_blob_kzg_proof_case_incorrect_proof_{blob_index}")
 
