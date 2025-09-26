@@ -319,6 +319,18 @@ As seen by the client at the time of sending the message:
 - `earliest_available_slot`: The slot of earliest available block
   (`SignedBeaconBlock`).
 
+*Note*:
+According the the definition of `earliest_available_slot`:
+- If the node is NOT able to serve all sidecars throughout the entire sidecars
+  retention period (as defined by both `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
+  and `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`), but is able to serve all
+  blocks during this period, it should advertise the earliest slot from which it
+  can serve all sidecars.
+- If the node is able to serve all sidecars throughout the entire sidecars
+  retention period (as defined by both `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
+  and `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`), it should advertise the
+  earliest slot from which it can serve all blocks.
+
 ##### BlobSidecarsByRange v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/blob_sidecars_by_range/1/`
