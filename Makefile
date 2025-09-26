@@ -240,6 +240,8 @@ test: _pyspec
 	@$(PYTHON_VENV) -m pytest \
 		$(MAYBE_PARALLEL) \
 		--capture=no \
+		--pytest-durations=20000 \
+		--pytest-durations-log=pytest-durations.log \
 		$(MAYBE_TEST) \
 		$(MAYBE_FORK) \
 		$(PRESET) \
