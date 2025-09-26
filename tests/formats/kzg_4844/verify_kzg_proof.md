@@ -13,7 +13,7 @@ input:
   z: Bytes32 -- bytes encoding the BLS field element at which the polynomial should be evaluated
   y: Bytes32 -- the claimed result of the evaluation
   proof: KZGProof -- The KZG proof
-output: bool -- true (valid proof) or false (incorrect proof), None if exception is thrown by verify_kzg_proof
+output: bool -- true (valid proof) or false (incorrect proof)
 ```
 
 - `z` here is encoded as a string: hexadecimal encoding of `32` bytes
