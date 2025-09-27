@@ -4,7 +4,7 @@
 
 A util to quickly write new test suite generators with.
 
-See [Generators documentation](../../../../generators/README.md) for integration
+See [Generators documentation](../../../../generators) for integration
 details.
 
 Options:
