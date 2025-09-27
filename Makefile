@@ -245,6 +245,8 @@ test: _pyspec
 		$(PRESET) \
 		$(BLS) \
 		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
+		--html=$(TEST_REPORT_DIR)/test_results.html \
+		--self-contained-html \
 		$(MAYBE_INFRA) \
 		$(MAYBE_ETH2SPEC)
 
