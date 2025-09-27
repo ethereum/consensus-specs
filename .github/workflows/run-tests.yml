@@ -65,6 +65,12 @@ jobs:
           cache: 'pip'
       - name: Run framework tests
         run: make test component=fw
+      - name: Upload framework test results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: test_results_framework.html
+          path: ./tests/core/pyspec/test-reports/test_results.html
 
   tests:
     needs: [lint, whitespace, comments, framework]
@@ -92,3 +98,9 @@ jobs:
           cache: 'pip'
       - name: Run pyspec tests for ${{ matrix.fork }}
         run: make test component=pyspec preset=minimal fork=${{ matrix.fork }}
+      - name: Upload ${{ matrix.fork }} test results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: test_results_${{ matrix.fork }}.html
+          path: ./tests/core/pyspec/test-reports/test_results.html
