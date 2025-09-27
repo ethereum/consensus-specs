@@ -54,7 +54,8 @@ def invalid_cases():
         yield (
             f"uint_{byte_len * 8}_one_too_high",
             invalid_test_case(
-                lambda byte_len=byte_len: (2 ** (byte_len * 8)).to_bytes(byte_len + 1, "little")
+                uint_type,
+                lambda byte_len=byte_len: (2 ** (byte_len * 8)).to_bytes(byte_len + 1, "little"),
             ),
         )
     for uint_type in [uint8, uint16, uint32, uint64, uint128, uint256]:
@@ -62,7 +63,10 @@ def invalid_cases():
         yield (
             f"uint_{byte_len * 8}_one_byte_longer",
             invalid_test_case(
-                lambda byte_len=byte_len: (2 ** (byte_len * 8) - 1).to_bytes(byte_len + 1, "little")
+                uint_type,
+                lambda byte_len=byte_len: (2 ** (byte_len * 8) - 1).to_bytes(
+                    byte_len + 1, "little"
+                ),
             ),
         )
     for uint_type in [uint8, uint16, uint32, uint64, uint128, uint256]:
@@ -70,8 +74,9 @@ def invalid_cases():
         yield (
             f"uint_{byte_len * 8}_one_byte_shorter",
             invalid_test_case(
+                uint_type,
                 lambda byte_len=byte_len: (2 ** ((byte_len - 1) * 8) - 1).to_bytes(
                     byte_len - 1, "little"
-                )
+                ),
             ),
         )

@@ -17,4 +17,4 @@ def valid_cases():
 
 def invalid_cases():
     for description, data in INVALID_BOOL_CASES:
-        yield f"byte_{description}", invalid_test_case(lambda data=data: data)
+        yield f"byte_{description}", invalid_test_case(boolean, lambda data=data: data)

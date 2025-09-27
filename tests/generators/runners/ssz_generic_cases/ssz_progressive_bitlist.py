@@ -79,4 +79,7 @@ def valid_cases():
 
 def invalid_cases():
     for description, data in INVALID_BITLIST_CASES:
-        yield f"progbitlist_{description}", invalid_test_case(lambda data=data: data)
+        yield (
+            f"progbitlist_{description}",
+            invalid_test_case(ProgressiveBitlist, lambda data=data: data),
+        )
