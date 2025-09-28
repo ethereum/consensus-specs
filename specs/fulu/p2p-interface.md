@@ -321,11 +321,11 @@ As seen by the client at the time of sending the message:
 
 *Note*: According the the definition of `earliest_available_slot`:
 
-- If the node is NOT able to serve all sidecars throughout the entire sidecars
+- If the node is able to serve all blocks throughout the entire sidecars
   retention period (as defined by both `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
-  and `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`), but is able to serve all
-  blocks during this period, it should advertise the earliest slot from which it
-  can serve all sidecars.
+  and `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`), but is NOT able to serve
+  all sidecars during this period, it should advertise the earliest slot from
+  which it can serve all sidecars.
 - If the node is able to serve all sidecars throughout the entire sidecars
   retention period (as defined by both `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
   and `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`), it should advertise the
