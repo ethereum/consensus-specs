@@ -80,16 +80,16 @@ def run_execution_payload_processing(
             message=envelope,
             signature=signature,
         )
-        body = spec.BeaconBlockBody()
+        yield "signed_envelope", signed_envelope
     else:
         body = spec.BeaconBlockBody(
             blob_kzg_commitments=blob_kzg_commitments,
             execution_payload=execution_payload,
         )
+        yield "body", body
 
     yield "pre", state
     yield "execution", {"execution_valid": execution_valid}
-    yield "body", body
 
     called_new_block = False
 
