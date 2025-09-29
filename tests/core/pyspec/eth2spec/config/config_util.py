@@ -37,7 +37,9 @@ def load_preset(preset_files: Iterable[Path | BinaryIO | TextIO]) -> dict[str, A
             duplicates = set(fork_preset.keys()).intersection(set(preset.keys()))
             raise Exception(f"duplicate config var(s) in preset files: {', '.join(duplicates)}")
         preset.update(fork_preset)
-    assert preset != {}
+    if not preset:
+        # Avoid assert for critical validation; ensure predictable error regardless of -O
+        raise ValueError("No preset values were loaded from the provided files")
     return parse_config_vars(preset)
 
 
