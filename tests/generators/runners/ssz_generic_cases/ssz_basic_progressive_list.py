@@ -85,15 +85,16 @@ def invalid_cases():
                             ),
                         )
                 if typ.type_byte_length() > 1:
-                    yield (
-                        f"proglist_{name}_{length}_{mode.to_name()}_one_byte_less",
-                        invalid_test_case(
-                            ProgressiveList[typ],
-                            lambda rng=rng, mode=mode, typ=typ, length=length: serialize(
-                                progressive_list_case_fn(rng, mode, typ, length)
-                            )[:-1],
-                        ),
-                    )
+                    if length > 0:
+                        yield (
+                            f"proglist_{name}_{length}_{mode.to_name()}_one_byte_less",
+                            invalid_test_case(
+                                ProgressiveList[typ],
+                                lambda rng=rng, mode=mode, typ=typ, length=length: serialize(
+                                    progressive_list_case_fn(rng, mode, typ, length)
+                                )[:-1],
+                            ),
+                        )
                     yield (
                         f"proglist_{name}_{length}_{mode.to_name()}_one_byte_more",
                         invalid_test_case(
