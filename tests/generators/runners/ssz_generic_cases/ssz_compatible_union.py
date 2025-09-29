@@ -10,14 +10,13 @@ from eth2spec.utils.ssz.ssz_typing import (
 
 from .ssz_container import (
     container_case_fn,
-    valid_container_cases,
 )
 from .ssz_progressive_container import (
     ProgressiveSingleFieldContainerTestStruct,
     ProgressiveSingleListContainerTestStruct,
     ProgressiveVarTestStruct,
 )
-from .ssz_test_case import invalid_test_case
+from .ssz_test_case import invalid_test_case, valid_test_case
 
 CompatibleUnionA = CompatibleUnion({1: ProgressiveSingleFieldContainerTestStruct})
 
@@ -41,10 +40,45 @@ PRESET_COMPATIBLE_UNIONS: dict[str, type[View]] = {
 }
 
 
+def valid_compatible_union_cases(rng: Random, name: str, typ: type[View]):
+    for option, elem_type in typ.options().items():
+        for mode in [RandomizationMode.mode_zero, RandomizationMode.mode_max]:
+            yield (
+                f"{name}_{mode.to_name()}",
+                valid_test_case(
+                    lambda rng=rng, mode=mode, elem_type=elem_type, option=option: (
+                        bytes([option]) + container_case_fn(rng, mode, elem_type)
+                    )
+                ),
+            )
+        for mode in list(RandomizationMode):
+            for variation in range(3):
+                yield (
+                    f"{name}_{mode.to_name()}_chaos_{variation}",
+                    valid_test_case(
+                        lambda rng=rng, mode=mode, elem_type=elem_type, option=option: (
+                            bytes([option]) + container_case_fn(rng, mode, elem_type, chaos=True)
+                        )
+                    ),
+                )
+            if mode == RandomizationMode.mode_random:
+                for variation in range(10):
+                    yield (
+                        f"{name}_{mode.to_name()}_{variation}",
+                        valid_test_case(
+                            valid_test_case(
+                                lambda rng=rng, mode=mode, elem_type=elem_type, option=option: (
+                                    bytes([option]) + container_case_fn(rng, mode, elem_type)
+                                )
+                            ),
+                        ),
+                    )
+
+
 def valid_cases():
     rng = Random(1234)
     for name, typ in PRESET_COMPATIBLE_UNIONS.items():
-        yield from valid_container_cases(rng, name, typ, offsets=[])
+        yield from valid_compatible_union_cases(rng, name, typ)
 
 
 def invalid_cases():
