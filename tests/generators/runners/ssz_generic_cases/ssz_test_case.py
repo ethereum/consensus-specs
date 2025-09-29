@@ -31,8 +31,12 @@ def invalid_test_case(typ: type[View], bytez_fn: Callable[[], bytes]):
         serialized = safe_lambda(bytez_fn)()
         try:
             _ = deserialize(typ, serialized)
-            assert False  # Invalid data should not deserialize
         except Exception:
             yield "serialized", "ssz", serialized
+            return
+        code = bytez_fn.__code__
+        raise ValueError(
+            f"Invalid {typ.type_repr()} data should not deserialize: {serialized.hex()} in {code.co_filename}:{code.co_firstlineno}"
+        )
 
     return case_fn
