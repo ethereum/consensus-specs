@@ -1,3 +1,4 @@
+from itertools import permutations
 from random import Random
 
 from eth2spec.debug.random_value import RandomizationMode
@@ -44,33 +45,48 @@ def valid_compatible_union_cases(rng: Random, name: str, typ: type[View]):
     for option, elem_type in typ.options().items():
         for mode in [RandomizationMode.mode_zero, RandomizationMode.mode_max]:
             yield (
-                f"{name}_{mode.to_name()}",
+                f"{name}_{mode.to_name()}_selector_{option}",
                 valid_test_case(
-                    lambda rng=rng, mode=mode, elem_type=elem_type, option=option: (
-                        bytes([option]) + container_case_fn(rng, mode, elem_type)
+                    lambda rng=rng,
+                    mode=mode,
+                    typ=typ,
+                    elem_type=elem_type,
+                    option=option: deserialize(
+                        typ,
+                        bytes([option]) + serialize(container_case_fn(rng, mode, elem_type)),
                     )
                 ),
             )
         for mode in list(RandomizationMode):
             for variation in range(3):
                 yield (
-                    f"{name}_{mode.to_name()}_chaos_{variation}",
+                    f"{name}_{mode.to_name()}_selector_{option}_chaos_{variation}",
                     valid_test_case(
-                        lambda rng=rng, mode=mode, elem_type=elem_type, option=option: (
-                            bytes([option]) + container_case_fn(rng, mode, elem_type, chaos=True)
+                        lambda rng=rng,
+                        mode=mode,
+                        typ=typ,
+                        elem_type=elem_type,
+                        option=option: deserialize(
+                            typ,
+                            bytes([option])
+                            + serialize(container_case_fn(rng, mode, elem_type, chaos=True)),
                         )
                     ),
                 )
             if mode == RandomizationMode.mode_random:
                 for variation in range(10):
                     yield (
-                        f"{name}_{mode.to_name()}_{variation}",
+                        f"{name}_{mode.to_name()}_selector_{option}_{variation}",
                         valid_test_case(
-                            valid_test_case(
-                                lambda rng=rng, mode=mode, elem_type=elem_type, option=option: (
-                                    bytes([option]) + container_case_fn(rng, mode, elem_type)
-                                )
-                            ),
+                            lambda rng=rng,
+                            mode=mode,
+                            typ=typ,
+                            elem_type=elem_type,
+                            option=option: deserialize(
+                                typ,
+                                bytes([option])
+                                + serialize(container_case_fn(rng, mode, elem_type)),
+                            )
                         ),
                     )
 
@@ -85,16 +101,45 @@ def invalid_cases():
     rng = Random(1234)
     for name, typ in PRESET_COMPATIBLE_UNIONS.items():
         options = typ.options()
+
+        # No selector and no data. Always invalid
         yield (
             f"{name}_empty",
             invalid_test_case(typ, lambda: b""),
         )
+
+        # Only selector without any data. Always invalid
         for option in range(0, 255):
             yield (
                 f"{name}_selector_{option}_none",
                 invalid_test_case(typ, lambda option=option: bytes([option])),
             )
+
         for mode in list(RandomizationMode):
+            # Valid selector but with data from different type option. Not guaranteed to invalidate if data accidentally compatible
+            for option_a, option_b in permutations(options, 2):
+                elem_type_b = options[option_b]
+
+                def the_test(
+                    rng=rng, mode=mode, typ=typ, elem_type_b=elem_type_b, option_a=option_a
+                ):
+                    serialized = bytes([option_a]) + serialize(
+                        container_case_fn(rng, mode, elem_type_b)
+                    )
+                    try:
+                        _ = deserialize(typ, serialized)
+                    except Exception:
+                        return serialized
+                    raise SkippedTest(
+                        "The serialized data still parses fine, it's not invalid data"
+                    )
+
+                yield (
+                    f"{name}_{mode.to_name()}_selector_{option_a}_with_{option_b}_data",
+                    invalid_test_case(typ, the_test),
+                )
+
+            # Unsupported type option. Always invalid
             for option in range(0, 255):
                 if option not in options:
 
@@ -108,6 +153,7 @@ def invalid_cases():
                         invalid_test_case(typ, the_test),
                     )
 
+            # Extra byte between selector and data. Not guaranteed to invalidate for variable length data types
             def the_test(
                 rng=rng,
                 mode=mode,
@@ -126,6 +172,7 @@ def invalid_cases():
                 invalid_test_case(typ, the_test),
             )
 
+            # Raw data, without selector. Not guaranteed to invalidate if first byte randomly is a valid selector
             def the_test(
                 rng=rng,
                 mode=mode,
@@ -144,6 +191,7 @@ def invalid_cases():
                 invalid_test_case(typ, the_test),
             )
 
+            # Extra byte at end. Not guaranteed to invalidate for variable length data types
             def the_test(
                 rng=rng,
                 mode=mode,

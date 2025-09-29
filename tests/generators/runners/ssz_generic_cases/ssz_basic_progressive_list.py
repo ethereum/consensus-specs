@@ -16,6 +16,7 @@ from eth2spec.utils.ssz.ssz_typing import (
 
 from .ssz_boolean import INVALID_BOOL_CASES
 from .ssz_test_case import invalid_test_case, valid_test_case
+from .ssz_uints import uint_case_fn
 
 
 def progressive_list_case_fn(
@@ -102,6 +103,6 @@ def invalid_cases():
                             lambda rng=rng, mode=mode, typ=typ, length=length: serialize(
                                 progressive_list_case_fn(rng, mode, typ, length)
                             )
-                            + serialize(progressive_list_case_fn(rng, mode, uint8, 1)),
+                            + serialize(uint_case_fn(rng, mode, uint8)),
                         ),
                     )
