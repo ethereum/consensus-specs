@@ -44,6 +44,14 @@ def main():
         required=False,
         help="If set generates tests in the multi-processing mode",
     )
+    arg_parser.add_argument(
+        "--fc-gen-seed",
+        dest="fc_gen_seed",
+        type=int,
+        default=None,
+        required=False,
+        help="override test seeds (fuzzing mode)",
+    )
 
     # change default value for `threads` to detect whether it is explicitly set
     default_threads = arg_parser.get_default("threads")
@@ -70,7 +78,9 @@ def main():
         raise ValueError("Neither neither fc-gen-config not fc-gen-config-path specified")
 
     prepare_bls()
-    test_cases = enumerate_test_cases(config_path, forks, presets, args.fc_gen_debug)
+    test_cases = enumerate_test_cases(
+        config_path, forks, presets, args.fc_gen_debug, args.fc_gen_seed
+    )
     gen_runner.run_generator(test_cases, args)
 
 
