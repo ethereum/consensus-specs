@@ -133,7 +133,7 @@ class StemStateDiff(Container):
 class IPAProof(Container):
     cl: Vector[BanderwagonGroupElement, IPA_PROOF_DEPTH]
     cr: Vector[BanderwagonGroupElement, IPA_PROOF_DEPTH]
-    final_evaluation = BanderwagonFieldElement
+    final_evaluation: BanderwagonFieldElement
 ```
 
 #### `VerkleProof`
