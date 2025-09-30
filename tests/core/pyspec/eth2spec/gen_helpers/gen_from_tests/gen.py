@@ -71,24 +71,6 @@ def generate_from_tests(
         )
 
 
-def get_expected_modules_old(package, absolute=False):
-    """
-    Return all modules (which are not packages) inside the given package.
-    """
-    modules = []
-    eth2spec = import_module("eth2spec")
-    prefix = eth2spec.__name__ + "."
-    for _, modname, ispkg in walk_packages(eth2spec.__path__, prefix):
-        s = package if absolute else f".{package}."
-        # Skip modules in the unittests package.
-        # These are not associated with generators.
-        if ".unittests." in modname:
-            continue
-        if s in modname and not ispkg:
-            modules.append(modname)
-    return modules
-
-
 CACHED_WALK_PACKAGES: list[ModuleInfo] | None = None
 
 
@@ -123,13 +105,6 @@ def get_expected_modules(module, absolute=False):
         if find_mod_name in cur_mod_name:
             modules.append(cur_mod_name)
 
-    old = get_expected_modules_old(module, absolute)
-    assert len(old) == len(modules), (
-        f"Mismatch between old and new get_expected_modules for {module}"
-    )
-    assert set(old) == set(modules), (
-        f"Mismatch between old and new get_expected_modules for {module}"
-    )
     return modules
 
 
