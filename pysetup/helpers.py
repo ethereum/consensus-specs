@@ -23,8 +23,19 @@ def collect_prev_forks(fork: str) -> list[str]:
 
 
 def requires_mypy_type_ignore(value: str) -> bool:
-    return value.startswith("ByteVector") or (
-        value.startswith("Vector") and any(k in value for k in ["ceillog2", "floorlog2"])
+    return (
+        value.startswith("Bitlist")
+        or value.startswith("ByteVector")
+        or (value.startswith("List") and not re.match(r"^List\[\w+,\s*\w+\]$", value))
+        or (value.startswith("Vector") and any(k in value for k in ["ceillog2", "floorlog2"]))
+    )
+
+
+def gen_new_type_definition(name: str, value: str) -> str:
+    return (
+        f"class {name}({value}):\n    pass"
+        if not requires_mypy_type_ignore(value)
+        else f"class {name}({value}):  # type: ignore\n    pass"
     )
 
 
@@ -41,19 +52,11 @@ def objects_to_spec(
     """
 
     def gen_new_type_definitions(custom_types: dict[str, str]) -> str:
-        return "\n\n".join(
-            [
-                (
-                    f"class {key}({value}):\n    pass\n"
-                    if not requires_mypy_type_ignore(value)
-                    else f"class {key}({value}):  # type: ignore\n    pass\n"
-                )
-                for key, value in custom_types.items()
-            ]
+        return "\n\n\n".join(
+            [gen_new_type_definition(key, value) for key, value in custom_types.items()]
         )
 
     new_type_definitions = gen_new_type_definitions(spec_object.custom_types)
-    preset_dep_new_type_definitions = gen_new_type_definitions(spec_object.preset_dep_custom_types)
 
     # Collect builders with the reversed previous forks
     # e.g. `[bellatrix, altair, phase0]` -> `[phase0, altair, bellatrix]`
@@ -224,10 +227,9 @@ def objects_to_spec(
         ssz_dep_constants,
         new_type_definitions,
         constant_vars_spec,
-        # The presets that some SSZ types require. Need to be defined before `preset_dep_new_type_definitions`
+        # The presets that some SSZ types require.
         preset_vars_spec,
         preset_dep_constant_vars_spec,
-        preset_dep_new_type_definitions,
         config_spec,
         # Custom classes which are not required to be SSZ containers.
         classes,
@@ -267,8 +269,6 @@ ignored_dependencies = [
     "bit",
     "Bitlist",
     "Bitvector",
-    "BLSPubkey",
-    "BLSSignature",
     "boolean",
     "byte",
     "ByteList",
@@ -292,6 +292,8 @@ ignored_dependencies = [
     "floorlog2",
     "List",
     "Optional",
+    "ProgressiveBitlist",
+    "ProgressiveList",
     "Sequence",
     "Set",
     "Tuple",
@@ -312,10 +314,14 @@ def dependency_order_class_objects(objects: dict[str, str], custom_types: dict[s
     items = list(objects.items())
     for key, value in items:
         dependencies = []
-        for line in value.split("\n"):
-            if not re.match(r"\s+\w+: .+", line):
+        for i, line in enumerate(value.split("\n")):
+            if i == 0:
+                match = re.match(r".+\((.+)\):", line)
+            else:
+                match = re.match(r"\s+\w+: (.+)", line)
+            if not match:
                 continue  # skip whitespace etc.
-            line = line[line.index(":") + 1 :]  # strip of field name
+            line = match.group(1)
             if "#" in line:
                 line = line[: line.index("#")]  # strip of comment
             dependencies.extend(
@@ -349,9 +355,6 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
     protocols = combine_protocols(spec0.protocols, spec1.protocols)
     functions = combine_dicts(spec0.functions, spec1.functions)
     custom_types = combine_dicts(spec0.custom_types, spec1.custom_types)
-    preset_dep_custom_types = combine_dicts(
-        spec0.preset_dep_custom_types, spec1.preset_dep_custom_types
-    )
     constant_vars = combine_dicts(spec0.constant_vars, spec1.constant_vars)
     preset_dep_constant_vars = combine_dicts(
         spec0.preset_dep_constant_vars, spec1.preset_dep_constant_vars
@@ -366,7 +369,6 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
         functions=functions,
         protocols=protocols,
         custom_types=custom_types,
-        preset_dep_custom_types=preset_dep_custom_types,
         constant_vars=constant_vars,
         preset_dep_constant_vars=preset_dep_constant_vars,
         preset_vars=preset_vars,
@@ -375,6 +377,41 @@ def combine_spec_objects(spec0: SpecObject, spec1: SpecObject) -> SpecObject:
         func_dep_presets=func_dep_presets,
         ssz_objects=ssz_objects,
         dataclasses=dataclasses,
+    )
+
+
+def finalized_spec_object(spec_object: SpecObject) -> SpecObject:
+    all_config_dependencies = {
+        vardef.type_name or vardef.type_hint
+        for vardef in (
+            spec_object.constant_vars
+            | spec_object.preset_dep_constant_vars
+            | spec_object.preset_vars
+            | spec_object.config_vars
+        ).values()
+        if (vardef.type_name or vardef.type_hint) is not None
+    }
+
+    custom_types = {}
+    ssz_objects = spec_object.ssz_objects
+    for name, value in spec_object.custom_types.items():
+        if any(k in name for k in all_config_dependencies):
+            custom_types[name] = value
+        else:
+            ssz_objects[name] = gen_new_type_definition(name, value)
+
+    return SpecObject(
+        functions=spec_object.functions,
+        protocols=spec_object.protocols,
+        custom_types=custom_types,
+        constant_vars=spec_object.constant_vars,
+        preset_dep_constant_vars=spec_object.preset_dep_constant_vars,
+        preset_vars=spec_object.preset_vars,
+        config_vars=spec_object.config_vars,
+        ssz_dep_constants=spec_object.ssz_dep_constants,
+        func_dep_presets=spec_object.func_dep_presets,
+        ssz_objects=ssz_objects,
+        dataclasses=spec_object.dataclasses,
     )
 
 

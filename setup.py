@@ -21,6 +21,7 @@ from pysetup.constants import (
 from pysetup.helpers import (
     combine_spec_objects,
     dependency_order_class_objects,
+    finalized_spec_object,
     objects_to_spec,
     parse_config_vars,
 )
@@ -97,6 +98,7 @@ def build_spec(
     spec_object = all_specs[0]
     for value in all_specs[1:]:
         spec_object = combine_spec_objects(spec_object, value)
+    spec_object = finalized_spec_object(spec_object)
 
     class_objects = {**spec_object.ssz_objects, **spec_object.dataclasses}
 
@@ -106,7 +108,7 @@ def build_spec(
         new_objects = copy.deepcopy(class_objects)
         dependency_order_class_objects(
             class_objects,
-            spec_object.custom_types | spec_object.preset_dep_custom_types,
+            spec_object.custom_types,
         )
 
     return objects_to_spec(preset_name, spec_object, fork, class_objects)
