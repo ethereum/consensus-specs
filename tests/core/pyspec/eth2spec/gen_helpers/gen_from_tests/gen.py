@@ -70,6 +70,7 @@ def generate_from_tests(
             ),
         )
 
+
 def get_expected_modules_old(package, absolute=False):
     """
     Return all modules (which are not packages) inside the given package.
@@ -86,6 +87,7 @@ def get_expected_modules_old(package, absolute=False):
         if s in modname and not ispkg:
             modules.append(modname)
     return modules
+
 
 CACHED_WALK_PACKAGES: list[ModuleInfo] | None = None
 
@@ -122,8 +124,12 @@ def get_expected_modules(module, absolute=False):
             modules.append(cur_mod_name)
 
     old = get_expected_modules_old(module, absolute)
-    assert len(old) == len(modules), f"Mismatch between old and new get_expected_modules for {module}"
-    assert set(old) == set(modules), f"Mismatch between old and new get_expected_modules for {module}"
+    assert len(old) == len(modules), (
+        f"Mismatch between old and new get_expected_modules for {module}"
+    )
+    assert set(old) == set(modules), (
+        f"Mismatch between old and new get_expected_modules for {module}"
+    )
     return modules
 
 
