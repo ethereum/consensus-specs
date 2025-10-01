@@ -35,7 +35,7 @@ def gen_new_type_definition(name: str, value: str) -> str:
     return (
         f"class {name}({value}):\n    pass"
         if not requires_mypy_type_ignore(value)
-        else f"class {name}({value}):  # type: ignore\n    pass"
+        else f"class {name}(\n    {value}  # type: ignore\n):\n    pass"
     )
 
 
