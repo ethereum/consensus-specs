@@ -1,11 +1,9 @@
 version: 2
 updates:
-
-updates:
-   - package-ecosystem: "uv"
-     directory: "/"
+   - package-ecosystem: uv
+     directory: /
      schedule:
-       interval: "weekly"
+       interval: weekly
      groups:
         actions:
            patterns:
