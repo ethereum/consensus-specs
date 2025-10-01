@@ -34,6 +34,7 @@ dependencies = [
 test = [
   "deepdiff==8.6.1",
   "pytest-cov==7.0.0",
+  "pytest-html==4.1.1",
   "pytest-xdist==3.8.0",
   "pytest==8.4.2",
 ]
@@ -45,7 +46,7 @@ lint = [
   "mdformat-toc==0.3.0",
   "mdformat==0.7.22",
   "mypy==1.18.2",
-  "ruff==0.13.1",
+  "ruff==0.13.2",
 ]
 generator = [
   "filelock==3.19.1",
