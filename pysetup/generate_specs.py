@@ -32,13 +32,11 @@ from functools import cache
 from pathlib import Path
 from typing import cast
 
-# Check for required dependencies
 try:
     from ruamel.yaml import YAML
 except ImportError:
     print("Error: Missing required dependencies.", file=sys.stderr)
-    print("Install with: pip install marko ruamel.yaml", file=sys.stderr)
-    print("Or: uv pip install marko ruamel.yaml", file=sys.stderr)
+    print("Run: uv sync --all-extras", file=sys.stderr)
     sys.exit(1)
 
 from pysetup.constants import PHASE0
