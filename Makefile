@@ -312,7 +312,7 @@ lint: _pyspec
 	@$(UV_RUN) codespell . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
 	@$(UV_RUN) ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
 	@$(UV_RUN) ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
-	$(UV_RUN) mypy $(MYPY_SCOPE)
+	@$(UV_RUN) mypy $(MYPY_SCOPE)
 
 ###############################################################################
 # Generators
