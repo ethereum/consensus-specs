@@ -304,12 +304,10 @@ serve_docs: _pyspec _copy_docs
 MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md')
 MYPY_PACKAGE_BASE := $(subst /,.,$(PYSPEC_DIR:$(CURDIR)/%=%))
 MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p $(MYPY_PACKAGE_BASE).eth2spec.$S)
-# Check that lockfile is up to date.
-check-lock:
-	@uv lock --check
 
 # Check for mistakes.
-lint: _pyspec check-lock
+lint: _pyspec
+	@uv lock --check
 	@$(UV_RUN) mdformat --number --wrap=80 $(MARKDOWN_FILES)
 	@$(UV_RUN) codespell . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
 	@$(UV_RUN) ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
