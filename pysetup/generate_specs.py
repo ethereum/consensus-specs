@@ -346,7 +346,7 @@ Examples:
                 verbose=args.verbose,
             )
 
-        if args.verbose or args.all_forks:
+        if args.verbose:
             print(f"\nSuccessfully generated {len(forks)} fork(s)")
 
         return 0

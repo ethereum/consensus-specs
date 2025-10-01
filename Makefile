@@ -199,7 +199,6 @@ sync: pyproject.toml
 		echo "Install with: curl -LsSf https://astral.sh/uv/install.sh | sh"; \
 		exit 1; \
 	}
-	@echo "Syncing dependencies with uv..."
 	@uv sync --all-extras $(MAYBE_VERBOSE)
 
 ###############################################################################
@@ -212,7 +211,6 @@ PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 # Create the pyspec for all phases.
 _pyspec: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 _pyspec: sync
-	@echo "Generating consensus specs from markdown files..."
 	@$(UV_RUN) python -m pysetup.generate_specs --all-forks $(MAYBE_VERBOSE)
 
 ###############################################################################
