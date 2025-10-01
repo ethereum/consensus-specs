@@ -210,14 +210,14 @@ PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 
 # Create the pyspec for all phases.
 _pyspec: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
-_pyspec: $(VENV) setup.py pyproject.toml
+_pyspec: $(VENV) pyproject.toml
 	@python3 scripts/check_python_version.py
+	@echo "Installing build dependencies..."
+	@$(PYTHON_VENV) -m uv pip install $(MAYBE_VERBOSE) marko==2.2.0 ruamel.yaml==0.18.15
+	@echo "Generating consensus specs from markdown files..."
+	@$(PYTHON_VENV) -m pysetup.generate_specs --all-forks $(if $(filter true,$(verbose)),--verbose)
+	@echo "Installing package with dependencies..."
 	@$(PYTHON_VENV) -m uv pip install $(MAYBE_VERBOSE) --reinstall-package=eth2spec .[docs,lint,test,generator]
-	@for dir in $(ALL_EXECUTABLE_SPEC_NAMES); do \
-	    mkdir -p "./tests/core/pyspec/eth2spec/$$dir"; \
-	    cp "./build/lib/eth2spec/$$dir/mainnet.py" "./tests/core/pyspec/eth2spec/$$dir/mainnet.py"; \
-	    cp "./build/lib/eth2spec/$$dir/minimal.py" "./tests/core/pyspec/eth2spec/$$dir/minimal.py"; \
-	done
 
 ###############################################################################
 # Testing
