@@ -18,11 +18,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Setup python
+      - name: Set up Python
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
-          python-version: '3.13'
-          cache: 'pip'
+          python-version-file: "pyproject.toml"
+      - name: Install uv ${{ vars.UV_VERSION }}
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          version: ${{ vars.UV_VERSION }}
       - name: Run linter for pyspec
         run: |
           make lint
@@ -45,11 +49,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Setup python
+      - name: Set up Python
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
-          python-version: '3.13'
-          cache: 'pip'
+          python-version-file: "pyproject.toml"
       - name: Check fork comments
         run: python3 scripts/check_fork_comments.py
 
@@ -58,11 +61,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Setup python
+      - name: Set up Python
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
-          python-version: '3.13'
-          cache: 'pip'
+          python-version-file: "pyproject.toml"
+      - name: Install uv ${{ vars.UV_VERSION }}
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          version: ${{ vars.UV_VERSION }}
       - name: Run framework tests
         run: make test component=fw
       - name: Prepare test results for upload
@@ -94,11 +101,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Setup python
+      - name: Set up Python
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
-          python-version: '3.13'
-          cache: 'pip'
+          python-version-file: "pyproject.toml"
+      - name: Install uv ${{ vars.UV_VERSION }}
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+          version: ${{ vars.UV_VERSION }}
       - name: Run pyspec tests for ${{ matrix.fork }}
         run: make test component=pyspec preset=minimal fork=${{ matrix.fork }}
       - name: Prepare test results for upload

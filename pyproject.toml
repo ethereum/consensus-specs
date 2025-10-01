@@ -1,10 +1,5 @@
 [build-system]
-requires = [
-  "marko==2.2.0",
-  "ruamel.yaml==0.18.15",
-  "setuptools==80.9.0",
-  "wheel==0.45.1",
-]
+requires = ["setuptools==80.9.0"]
 
 [project]
 name = "eth2spec"
@@ -13,6 +8,7 @@ authors = [{ name = "ethereum" }]
 description = "Ethereum consensus layer specifications package"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10,<4.0"
+urls = { homepage = "https://github.com/ethereum/consensus-specs" }
 dependencies = [
   "curdleproofs==0.1.2",
   "eth-typing==5.2.1",
@@ -65,6 +61,21 @@ docs = [
   "mkdocs==1.6.1",
 ]
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.mypy]
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+warn_unused_ignores = true
+warn_unused_configs = true
+warn_redundant_casts = true
+ignore_missing_imports = true
+# TODO(jtraglia): Remove these bandaids
+no_implicit_optional = false
+disable_error_code = ["empty-body"]
+
 [tool.ruff]
 line-length = 100
 
@@ -91,3 +102,6 @@ ignore = [
 combine-as-imports = true
 known-first-party = ["eth2spec"]
 order-by-type = false
+
+[tool.setuptools.dynamic]
+version = { file = "tests/core/pyspec/eth2spec/VERSION.txt" }
