@@ -62,7 +62,7 @@ def is_within_weak_subjectivity_period(
     store: Store, ws_state: BeaconState, ws_checkpoint: Checkpoint
 ) -> bool:
     # Clients may choose to validate the input state against the input Weak Subjectivity Checkpoint
-    assert ws_state.latest_block_header.state_root == ws_checkpoint.root
+    assert get_block_root(ws_state, ws_checkpoint.epoch) == ws_checkpoint.root
     assert compute_epoch_at_slot(ws_state.slot) == ws_checkpoint.epoch
 
     # [Modified in Electra]
