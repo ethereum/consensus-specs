@@ -20,11 +20,11 @@ jobs:
         with:
           python-version-file: "pyproject.toml"
 
-      - name: Install uv
+      - name: Install uv ${{ vars.UV_VERSION }}
         uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           enable-cache: true
-          version: "0.8.22"
+          version: ${{ vars.UV_VERSION }}
 
       - name: Install dependencies to venv
         run: make _pyspec
