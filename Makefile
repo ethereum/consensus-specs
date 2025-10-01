@@ -18,13 +18,13 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 
 # A list of fake targets.
 .PHONY: \
+	_sync         \
 	clean         \
 	coverage      \
 	help          \
 	lint          \
 	reftests      \
 	serve_docs    \
-	sync          \
 	test
 
 ###############################################################################
@@ -192,8 +192,8 @@ VENV = .venv
 UV_RUN = uv run
 
 # Sync dependencies using uv.
-sync: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
-sync: pyproject.toml
+_sync: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
+_sync: pyproject.toml
 	@command -v uv >/dev/null 2>&1 || { \
 		echo "Error: uv is required but not installed."; \
 		echo "Install with: curl -LsSf https://astral.sh/uv/install.sh | sh"; \
@@ -210,7 +210,7 @@ PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 
 # Create the pyspec for all phases.
 _pyspec: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
-_pyspec: sync
+_pyspec: _sync
 	@$(UV_RUN) python -m pysetup.generate_specs --all-forks $(MAYBE_VERBOSE)
 
 ###############################################################################
