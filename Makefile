@@ -193,7 +193,11 @@ UV_RUN = uv run
 # Sync dependencies using uv.
 sync: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
 sync: pyproject.toml
-	@python3 scripts/check_python_version.py
+	@command -v uv >/dev/null 2>&1 || { \
+		echo "Error: uv is required but not installed."; \
+		echo "Install with: curl -LsSf https://astral.sh/uv/install.sh | sh"; \
+		exit 1; \
+	}
 	@echo "Syncing dependencies with uv..."
 	@uv sync --all-extras $(MAYBE_VERBOSE)
 
