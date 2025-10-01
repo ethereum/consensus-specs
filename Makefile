@@ -24,6 +24,7 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	lint          \
 	reftests      \
 	serve_docs    \
+	sync          \
 	test
 
 ###############################################################################
@@ -173,7 +174,7 @@ help-verbose:
 	@echo "$(BOLD)make clean$(NORM)"
 	@echo ""
 	@echo "  Removes all untracked files. This includes:"
-	@echo "    - Virtual environment (venv/)"
+	@echo "    - Virtual environment (.venv/)"
 	@echo "    - Build artifacts"
 	@echo "    - Cache files"
 	@echo ""
