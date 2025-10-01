@@ -61,6 +61,10 @@ docs = [
   "mkdocs==1.6.1",
 ]
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
 [tool.ruff]
 line-length = 100
 
@@ -89,4 +93,4 @@ known-first-party = ["eth2spec"]
 order-by-type = false
 
 [tool.setuptools.dynamic]
-version = {file = "tests/core/pyspec/eth2spec/VERSION.txt"}
+version = { file = "tests/core/pyspec/eth2spec/VERSION.txt" }
