@@ -42,7 +42,7 @@ jobs:
         with:
           python-version-file: "pyproject.toml"
       - name: Install uv
-        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e@v4
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           enable-cache: true
       - name: test-${{ matrix.fork }}
