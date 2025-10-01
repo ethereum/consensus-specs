@@ -5,6 +5,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.attestations import (
     get_valid_attestation,
+    upgrade_attestation_to_new_spec,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
@@ -112,6 +113,7 @@ def test_transition_attestation_from_previous_fork_with_new_range(
     # Transition to the fork epoch with a block
     transition_until_fork(spec, state, fork_epoch)
     state, fork_block = do_fork(state, spec, post_spec, fork_epoch)
+    attestation = upgrade_attestation_to_new_spec(spec, post_spec, attestation)
     current_epoch = spec.get_current_epoch(state)
     assert current_epoch == fork_epoch
     # Transition to second to last slot in `fork_epoch`
