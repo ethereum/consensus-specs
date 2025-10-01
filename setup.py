@@ -2,7 +2,6 @@ import copy
 import logging
 import os
 import string
-import warnings
 from collections import OrderedDict
 from collections.abc import Sequence
 from distutils import dir_util
@@ -31,9 +30,6 @@ from pysetup.typing import (
     BuildTarget,
     SpecObject,
 )
-
-# Ignore '1.5.0-alpha.*' to '1.5.0a*' messages.
-warnings.filterwarnings("ignore", message="Normalizing .* to .*")
 
 
 # Ignore 'running' and 'creating' messages
@@ -259,17 +255,7 @@ commands = {
     "pyspecdev": PyspecDevCommand,
 }
 
-with open("README.md", encoding="utf8") as f:
-    readme = f.read()
-
-with open(os.path.join("tests", "core", "pyspec", "eth2spec", "VERSION.txt")) as f:
-    spec_version = f.read().strip()
-
 setup(
-    version=spec_version,
-    long_description=readme,
-    long_description_content_type="text/markdown",
-    url="https://github.com/ethereum/consensus-specs",
     include_package_data=False,
     package_data={
         "configs": ["*.yaml"],
