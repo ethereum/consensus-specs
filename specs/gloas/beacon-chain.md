@@ -788,7 +788,7 @@ def is_builder_payment_withdrawable(
     """
     builder = state.validators[withdrawal.builder_index]
     current_epoch = compute_epoch_at_slot(state.slot)
-    return builder.withdrawable_epoch >= current_epoch or not builder.slashed
+    return current_epoch > withdrawable.withdrawable_epoch or builder.slashed
 ```
 
 ##### Modified `get_expected_withdrawals`
@@ -1029,6 +1029,7 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
             fee_recipient=bid.fee_recipient,
             amount=amount,
             builder_index=builder_index,
+            withdrawable_epoch=FAR_FUTURE_EPOCH,
         ),
     )
     state.builder_pending_payments[SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH] = pending_payment
