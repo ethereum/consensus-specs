@@ -189,7 +189,11 @@ help-verbose:
 ###############################################################################
 
 VENV = .venv
-UV_RUN = uv run
+
+# Use editable installs for all non-generation targets, but use non-editable
+# installs for generators. More details: ethereum/consensus-specs#4633.
+UV_RUN    = uv run
+UV_RUN_NE = uv run --no-editable
 
 # Sync dependencies using uv.
 _sync: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
@@ -330,7 +334,7 @@ reftests: MAYBE_TESTS := $(if $(k),--cases $(subst ${COMMA}, ,$(k)))
 reftests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
 reftests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
 reftests: _pyspec
-	@$(UV_RUN) python -m tests.generators.main \
+	@$(UV_RUN_NE) python -m tests.generators.main \
 		--output $(TEST_VECTOR_DIR) \
 		$(MAYBE_VERBOSE) \
 		$(MAYBE_THREADS) \
@@ -346,7 +350,7 @@ comptests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
 comptests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
 comptests: MAYBE_SEED := $(if $(seed),--fc-gen-seed $(seed))
 comptests: _pyspec
-	@$(UV_RUN) python -m tests.generators.compliance_runners.fork_choice.test_gen \
+	@$(UV_RUN_NE) python -m tests.generators.compliance_runners.fork_choice.test_gen \
 		--output $(COMP_TEST_VECTOR_DIR) \
 		--fc-gen-config $(FC_GEN_CONFIG) \
 		$(MAYBE_THREADS) \
