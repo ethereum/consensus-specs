@@ -16,7 +16,7 @@ from eth2spec.utils.ssz.ssz_impl import (
     hash_tree_root,
     serialize,
 )
-from eth2spec.utils.ssz.ssz_typing import Container
+from eth2spec.utils.ssz.ssz_typing import Container, ProgressiveContainer
 from tests.infra.manifest import Manifest, manifest
 from tests.infra.template_test import template_test
 
@@ -109,8 +109,10 @@ def _create_test_cases():
         return [
             name
             for (name, value) in getmembers(spec, isclass)
-            if issubclass(value, Container)
-            and value != Container  # only the subclasses, not the imported base class
+            if issubclass(value, Container | ProgressiveContainer)
+            # only the subclasses, not the imported base class
+            and value != Container
+            and value != ProgressiveContainer
         ]
 
     def _get_ssz_types_to_specs_mapping() -> dict[str, list[str]]:
