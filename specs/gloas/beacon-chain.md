@@ -5,6 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Custom types](#custom-types)
 - [Constants](#constants)
   - [Domain types](#domain-types)
   - [Misc](#misc)
@@ -12,7 +13,6 @@
 - [Preset](#preset)
   - [Misc](#misc-1)
   - [Max operations per block](#max-operations-per-block)
-  - [State list lengths](#state-list-lengths)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`BuilderPendingPayment`](#builderpendingpayment)
@@ -26,10 +26,15 @@
     - [`ExecutionPayloadEnvelope`](#executionpayloadenvelope)
     - [`SignedExecutionPayloadEnvelope`](#signedexecutionpayloadenvelope)
   - [Modified containers](#modified-containers)
+    - [`Attestation`](#attestation)
+    - [`IndexedAttestation`](#indexedattestation)
     - [`BeaconBlockBody`](#beaconblockbody)
+    - [`ExecutionPayload`](#executionpayload)
+    - [`ExecutionRequests`](#executionrequests)
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
   - [Predicates](#predicates)
+    - [Modified `is_valid_indexed_attestation`](#modified-is_valid_indexed_attestation)
     - [New `has_builder_withdrawal_credential`](#new-has_builder_withdrawal_credential)
     - [Modified `has_compounding_withdrawal_credential`](#modified-has_compounding_withdrawal_credential)
     - [New `is_attestation_same_slot`](#new-is_attestation_same_slot)
@@ -107,6 +112,18 @@ At any given slot, the status of the blockchain's head may be either
 - A full block for the current slot (both the proposer and the builder revealed
   on time).
 
+## Custom types
+
+*[Modified in Gloas:EIP7688]*
+
+| Name                    | SSZ equivalent                          | Description                                                     |
+| ----------------------- | --------------------------------------- | --------------------------------------------------------------- |
+| `AggregationBits`       | `ProgressiveBitlist`                    | Combined participation info for all participating subcommittees |
+| `AttestingIndices`      | `ProgressiveList[ValidatorIndex]`       | List of attesting validator indices                             |
+| `DepositRequests`       | `ProgressiveList[DepositRequest]`       | List of deposit requests pertaining to an execution payload     |
+| `WithdrawalRequests`    | `ProgressiveList[WithdrawalRequest]`    | List of withdrawal requests pertaining to an execution payload  |
+| `ConsolidationRequests` | `ProgressiveList[ConsolidationRequest]` | List of withdrawal requests pertaining to an execution payload  |
+
 ## Constants
 
 ### Domain types
@@ -142,12 +159,6 @@ At any given slot, the status of the blockchain's head may be either
 | Name                       | Value |
 | -------------------------- | ----- |
 | `MAX_PAYLOAD_ATTESTATIONS` | `4`   |
-
-### State list lengths
-
-| Name                                | Value                         | Unit                        |
-| ----------------------------------- | ----------------------------- | --------------------------- |
-| `BUILDER_PENDING_WITHDRAWALS_LIMIT` | `uint64(2**20)` (= 1,048,576) | Builder pending withdrawals |
 
 ## Containers
 
@@ -240,7 +251,7 @@ class ExecutionPayloadEnvelope(Container):
     builder_index: ValidatorIndex
     beacon_block_root: Root
     slot: Slot
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    blob_kzg_commitments: ProgressiveList[KZGCommitment]
     state_root: Root
 ```
 
@@ -254,6 +265,27 @@ class SignedExecutionPayloadEnvelope(Container):
 
 ### Modified containers
 
+#### `Attestation`
+
+```python
+# [Modified in Gloas:EIP7688]
+class Attestation(ProgressiveContainer(active_fields=[1] * 4)):
+    aggregation_bits: AggregationBits
+    data: AttestationData
+    signature: BLSSignature
+    committee_bits: Bitvector[MAX_COMMITTEES_PER_SLOT]
+```
+
+#### `IndexedAttestation`
+
+```python
+# [Modified in Gloas:EIP7688]
+class IndexedAttestation(ProgressiveContainer(active_fields=[1] * 3)):
+    attesting_indices: AttestingIndices
+    data: AttestationData
+    signature: BLSSignature
+```
+
 #### `BeaconBlockBody`
 
 *Note*: The `BeaconBlockBody` container is modified to contain a
@@ -263,19 +295,20 @@ removed from the beacon block body and moved into the signed execution payload
 envelope.
 
 ```python
-class BeaconBlockBody(Container):
+# [Modified in Gloas:EIP7688]
+class BeaconBlockBody(ProgressiveContainer(active_fields=[1] * 12)):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data
     graffiti: Bytes32
-    proposer_slashings: List[ProposerSlashing, MAX_PROPOSER_SLASHINGS]
-    attester_slashings: List[AttesterSlashing, MAX_ATTESTER_SLASHINGS_ELECTRA]
-    attestations: List[Attestation, MAX_ATTESTATIONS_ELECTRA]
-    deposits: List[Deposit, MAX_DEPOSITS]
-    voluntary_exits: List[SignedVoluntaryExit, MAX_VOLUNTARY_EXITS]
+    proposer_slashings: ProgressiveList[ProposerSlashing]
+    attester_slashings: ProgressiveList[AttesterSlashing]
+    attestations: ProgressiveList[Attestation]
+    deposits: ProgressiveList[Deposit]
+    voluntary_exits: ProgressiveList[SignedVoluntaryExit]
     sync_aggregate: SyncAggregate
     # [Modified in Gloas:EIP7732]
     # Removed `execution_payload`
-    bls_to_execution_changes: List[SignedBLSToExecutionChange, MAX_BLS_TO_EXECUTION_CHANGES]
+    bls_to_execution_changes: ProgressiveList[SignedBLSToExecutionChange]
     # [Modified in Gloas:EIP7732]
     # Removed `blob_kzg_commitments`
     # [Modified in Gloas:EIP7732]
@@ -283,7 +316,43 @@ class BeaconBlockBody(Container):
     # [New in Gloas:EIP7732]
     signed_execution_payload_bid: SignedExecutionPayloadBid
     # [New in Gloas:EIP7732]
-    payload_attestations: List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]
+    payload_attestations: ProgressiveList[PayloadAttestation]
+```
+
+#### `ExecutionPayload`
+
+```python
+# [Modified in Gloas:EIP7688]
+class ExecutionPayload(ProgressiveContainer(active_fields=[1] * 17)):
+    parent_hash: Hash32
+    fee_recipient: ExecutionAddress
+    state_root: Bytes32
+    receipts_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    prev_randao: Bytes32
+    block_number: uint64
+    gas_limit: uint64
+    gas_used: uint64
+    timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    base_fee_per_gas: uint256
+    block_hash: Hash32
+    # [Modified in Gloas:EIP7688]
+    transactions: ProgressiveList[Transaction]
+    # [Modified in Gloas:EIP7688]
+    withdrawals: ProgressiveList[Withdrawal]
+    blob_gas_used: uint64
+    excess_blob_gas: uint64
+```
+
+#### `ExecutionRequests`
+
+```python
+# [Modified in Gloas:EIP7688]
+class ExecutionRequests(ProgressiveContainer(active_fields=[1] * 3)):
+    deposits: DepositRequests
+    withdrawals: WithdrawalRequests
+    consolidations: ConsolidationRequests
 ```
 
 #### `BeaconState`
@@ -296,7 +365,8 @@ committed block hash and the last slot that was full, that is in which there
 were both consensus and execution blocks included.
 
 ```python
-class BeaconState(Container):
+# [Modified in Gloas:EIP7688]
+class BeaconState(ProgressiveContainer(active_fields=[1] * 43)):
     genesis_time: uint64
     genesis_validators_root: Root
     slot: Slot
@@ -308,17 +378,22 @@ class BeaconState(Container):
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
     eth1_deposit_index: uint64
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
-    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
+    # [Modified in Gloas:EIP7688]
+    validators: ProgressiveList[Validator]
+    # [Modified in Gloas:EIP7688]
+    balances: ProgressiveList[Gwei]
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
-    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    # [Modified in Gloas:EIP7688]
+    previous_epoch_participation: ProgressiveList[ParticipationFlags]
+    # [Modified in Gloas:EIP7688]
+    current_epoch_participation: ProgressiveList[ParticipationFlags]
     justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    # [Modified in Gloas:EIP7688]
+    inactivity_scores: ProgressiveList[uint64]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     # [Modified in Gloas:EIP7732]
@@ -334,16 +409,19 @@ class BeaconState(Container):
     earliest_exit_epoch: Epoch
     consolidation_balance_to_consume: Gwei
     earliest_consolidation_epoch: Epoch
-    pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
-    pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
-    pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
+    # [Modified in Gloas:EIP7688]
+    pending_deposits: ProgressiveList[PendingDeposit]
+    # [Modified in Gloas:EIP7688]
+    pending_partial_withdrawals: ProgressiveList[PendingPartialWithdrawal]
+    # [Modified in Gloas:EIP7688]
+    pending_consolidations: ProgressiveList[PendingConsolidation]
     proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
     # [New in Gloas:EIP7732]
     execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
     # [New in Gloas:EIP7732]
     builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
     # [New in Gloas:EIP7732]
-    builder_pending_withdrawals: List[BuilderPendingWithdrawal, BUILDER_PENDING_WITHDRAWALS_LIMIT]
+    builder_pending_withdrawals: ProgressiveList[BuilderPendingWithdrawal]
     # [New in Gloas:EIP7732]
     latest_block_hash: Hash32
     # [New in Gloas:EIP7732]
@@ -353,6 +431,31 @@ class BeaconState(Container):
 ## Helper functions
 
 ### Predicates
+
+#### Modified `is_valid_indexed_attestation`
+
+```python
+def is_valid_indexed_attestation(
+    state: BeaconState, indexed_attestation: IndexedAttestation
+) -> bool:
+    """
+    Check if ``indexed_attestation`` is not empty, has sorted and unique indices and has a valid aggregate signature.
+    """
+    # [Modified in Gloas:EIP7688]
+    # Verify indices are sorted and unique
+    indices = indexed_attestation.attesting_indices
+    if (
+        len(indices) == 0
+        or len(indices) > MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT
+        or not indices == sorted(set(indices))
+    ):
+        return False
+    # Verify aggregate signature
+    pubkeys = [state.validators[i].pubkey for i in indices]
+    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
+    signing_root = compute_signing_root(indexed_attestation.data, domain)
+    return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
+```
 
 #### New `has_builder_withdrawal_credential`
 
@@ -925,7 +1028,7 @@ def process_withdrawals(state: BeaconState) -> None:
     withdrawals, processed_builder_withdrawals_count, processed_partial_withdrawals_count = (
         get_expected_withdrawals(state)
     )
-    withdrawals_list = List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD](withdrawals)
+    withdrawals_list = ProgressiveList[Withdrawal](withdrawals)
     state.latest_withdrawals_root = hash_tree_root(withdrawals_list)
     for withdrawal in withdrawals:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
@@ -1056,6 +1159,13 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
         for operation in operations:
             fn(state, operation)
 
+    # [Modified in Gloas:EIP7688]
+    assert len(body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS
+    assert len(body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA
+    assert len(body.attestations) <= MAX_ATTESTATIONS_ELECTRA
+    assert len(body.voluntary_exits) <= MAX_VOLUNTARY_EXITS
+    assert len(body.bls_to_execution_changes) <= MAX_BLS_TO_EXECUTION_CHANGES
+    assert len(body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS
     # [Modified in Gloas:EIP7732]
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
@@ -1230,7 +1340,7 @@ blob kzg commitments root for an empty list
 ```python
 def is_merge_transition_complete(state: BeaconState) -> bool:
     bid = ExecutionPayloadBid()
-    kzgs = List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+    kzgs = ProgressiveList[KZGCommitment]()
     bid.blob_kzg_commitments_root = kzgs.hash_tree_root()
 
     return state.latest_execution_payload_bid != bid
@@ -1352,6 +1462,9 @@ def process_execution_payload(
         for operation in operations:
             fn(state, operation)
 
+    assert len(requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD
+    assert len(requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
+    assert len(requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
     for_ops(requests.deposits, process_deposit_request)
     for_ops(requests.withdrawals, process_withdrawal_request)
     for_ops(requests.consolidations, process_consolidation_request)

@@ -592,7 +592,7 @@ requires-dist = [
     { name = "pytest-html", marker = "extra == 'test'", specifier = "==4.1.1" },
     { name = "pytest-xdist", marker = "extra == 'test'", specifier = "==3.8.0" },
     { name = "python-snappy", marker = "extra == 'generator'", specifier = "==0.7.3" },
-    { name = "remerkleable", git = "https://github.com/ethereum/remerkleable?rev=92dcbb6f0507035d6875986fc263a05fec19d473" },
+    { name = "remerkleable", git = "https://github.com/ethereum/remerkleable?rev=71a94389375aa9afbe39145dcd26d4cddafa140d" },
     { name = "rich", marker = "extra == 'generator'", specifier = "==14.1.0" },
     { name = "ruamel-yaml", specifier = "==0.18.15" },
     { name = "ruff", marker = "extra == 'lint'", specifier = "==0.13.2" },
@@ -1709,7 +1709,7 @@ wheels = [
 [[package]]
 name = "remerkleable"
 version = "0.1.28"
-source = { git = "https://github.com/ethereum/remerkleable?rev=92dcbb6f0507035d6875986fc263a05fec19d473#92dcbb6f0507035d6875986fc263a05fec19d473" }
+source = { git = "https://github.com/ethereum/remerkleable?rev=71a94389375aa9afbe39145dcd26d4cddafa140d#71a94389375aa9afbe39145dcd26d4cddafa140d" }
 
 [[package]]
 name = "requests"
