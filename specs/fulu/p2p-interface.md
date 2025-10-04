@@ -292,6 +292,110 @@ gossip. In particular, clients MUST:
 - Update gossip rule related data structures (i.e. update the anti-equivocation
   cache).
 
+#### Partial Columns
+
+Gossipsub's [Partial Message
+Extension](https://github.com/libp2p/specs/pull/685) enables exchanging
+selective parts of a message rather than the whole. The specification here
+describes how Consensus Clients use Partial Messages to disseminate cells.
+
+*Editor Note*: This change MUST NOT be merged before the linked libp2p/specs.
+
+##### `PartialDataColumnSidecar`
+
+The `PartialDataColumnSidecar` is similar to the `DataColumnSidecar `container,
+except that only the cells and proofs identified by the bitmap are present.
+
+Some fields are only set when a peer is eagerly pushing this container.
+Otherwise, if a peer is sending the container as a response, there is no need to
+include redundant fields.
+
+```python
+class PartialDataColumnSidecar(Container):
+    cells_present_bitmap: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    partial_column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+```
+
+##### Partial IHAVE/IWANT
+
+Peers communicate IHAVE and IWANTS succintly with a bitmap. For IHAVE, a set bit (`1`)
+means that the peer has the corresponding cell. For IWANT, a set bit means the
+peer wants the corresponding cell. The bitmap is encoded by the following function:
+
+```python
+def create_bitmap(set_indices, n):
+    bitmap = [0] * ((n + 7) // 8)
+    for i in set_indices:
+        bitmap[i // 8] |= 1 << (i % 8)
+    return bitmap
+```
+
+For example, if the peer wanted cells at positions 0,3,9, the corresponding
+IWANT bitmap would be: `0000 1001 0000 0010`.
+
+##### Encoding and Decoding Responses
+
+All responses should be encoded and decoded with the PartialDataColumnSidecar
+container.
+
+##### Validation
+
+TODO add full validation rules
+
+######  `verify_partial_data_column_sidecar_kzg_proofs`
+
+```python
+def verify_partial_data_column_sidecar_kzg_proofs(sidecar: PartialDataColumnSidecar, all_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]) -> bool:
+    """
+    Verify if the KZG proofs are correct.
+    """
+    # The column index also represents the cell index
+    cell_indices = [i for i, b in enumerate(bin(bitmap)[:1:-1]) if b == '1']
+
+    # Batch verify that the cells match the corresponding commitments and proofs
+    return verify_cell_kzg_proof_batch(
+        commitments_bytes=[all_commitments[i] for i in cell_indices],
+        cell_indices=cell_indices,
+        cells=sidecar.column,
+        proofs_bytes=sidecar.kzg_proofs,
+    )
+```
+
+##### Eager Pushing
+
+In contrast to standard Gossipsub, A Client usually requests missing parts from
+a peer. A client can send its partial IWANT before receiving a peer's partial
+IHAVE to register interest in certain parts. This can introduce extra latency
+compared to a Client unconditionally pushing messages to a peer.
+
+To address this tradeoff a Client may choose to eagerly push some (or all) of
+the cells it has. Clients SHOULD only do this when they are reasonably confident
+that a peer does not have the provided cells. For example, a proposer including
+private blobs SHOULD eagerly push the cells corresponding to the private blobs.
+
+##### Interaction with standard Gossipsub
+
+###### Mesh
+
+The Partial Message Extension uses the same mesh peers and the same topic name
+as the standard Gossipsub topics for DataColumnSidecars.
+
+###### Scoring
+
+TODO: this needs to be discussed in the libp2p spec first.
+
+###### Forwarding
+
+Once Clients can construct the full DataColumnSidecar after receiving missing
+cells, they should forward the full DataColumnSidecar over standard Gossipsub to
+peers that do not support partial messages. This provides backwards
+compatibility with nodes that do not yet support partial messages
+
+Avoid forwarding the full DataColumnSidecar message to peers that support
+partial messages. It is purely redundant information to send them a standard
+gossipsub message if they support partial mess
+
 ### The Req/Resp domain
 
 #### Messages
