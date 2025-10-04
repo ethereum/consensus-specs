@@ -32,7 +32,6 @@ class MarkdownToSpec:
         self.preset_name = preset_name
 
         self.document_iterator: Iterator[Element] = self._parse_document(file_name)
-        self.all_custom_types: dict[str, str] = {}
         self.current_heading_name: str | None = None
 
         # Use a single dict to hold all SpecObject fields
@@ -44,7 +43,6 @@ class MarkdownToSpec:
             "func_dep_presets": {},
             "functions": {},
             "preset_dep_constant_vars": {},
-            "preset_dep_custom_types": {},
             "preset_vars": {},
             "protocols": {},
             "ssz_dep_constants": {},
@@ -180,8 +178,12 @@ class MarkdownToSpec:
         if class_name != self.current_heading_name:
             raise Exception(f"class_name {class_name} != current_name {self.current_heading_name}")
 
-        if parent_class:
-            assert parent_class == "Container"
+        if parent_class == "ProgressiveContainer":
+            source = re.sub(
+                r"^(.*ProgressiveContainer.*)$", r"\1  # type: ignore", source, flags=re.MULTILINE
+            )
+        else:
+            assert parent_class is None or parent_class == "Container"
         self.spec["ssz_objects"][class_name] = source
 
     def _process_table(self, table: Table) -> None:
@@ -202,9 +204,21 @@ class MarkdownToSpec:
             if not _is_constant_id(name):
                 # Check for short type declarations
                 if value.startswith(
-                    ("uint", "Bytes", "ByteList", "Union", "Vector", "List", "ByteVector")
+                    (
+                        "uint",
+                        "Bitlist",
+                        "Bitvector",
+                        "ByteList",
+                        "ByteVector",
+                        "Bytes",
+                        "List",
+                        "ProgressiveBitlist",
+                        "ProgressiveList",
+                        "Union",
+                        "Vector",
+                    )
                 ):
-                    self.all_custom_types[name] = value
+                    self.spec["custom_types"][name] = value
                 continue
 
             # It is a constant name and a generalized index
@@ -418,7 +432,6 @@ class MarkdownToSpec:
 
     def _finalize_types(self) -> None:
         """
-        Processes all_custom_types into custom_types and preset_dep_custom_types.
         Calls helper functions to update KZG and CURDLEPROOFS setups if needed.
         """
         # Update KZG trusted setup if needed
@@ -433,17 +446,6 @@ class MarkdownToSpec:
                 self.spec["constant_vars"], self.preset_name
             )
 
-        # Split all_custom_types into custom_types and preset_dep_custom_types
-        self.spec["custom_types"] = {}
-        self.spec["preset_dep_custom_types"] = {}
-        for name, value in self.all_custom_types.items():
-            if any(k in value for k in self.preset) or any(
-                k in value for k in self.spec["preset_dep_constant_vars"]
-            ):
-                self.spec["preset_dep_custom_types"][name] = value
-            else:
-                self.spec["custom_types"][name] = value
-
     def _build_spec_object(self) -> SpecObject:
         """
         Returns the SpecObject using all collected data.
@@ -456,7 +458,6 @@ class MarkdownToSpec:
             func_dep_presets=self.spec["func_dep_presets"],
             functions=self.spec["functions"],
             preset_dep_constant_vars=self.spec["preset_dep_constant_vars"],
-            preset_dep_custom_types=self.spec["preset_dep_custom_types"],
             preset_vars=self.spec["preset_vars"],
             protocols=self.spec["protocols"],
             ssz_dep_constants=self.spec["ssz_dep_constants"],
@@ -496,6 +497,8 @@ def _get_class_info_from_ast(cls: ast.ClassDef) -> tuple[str, str | None]:
         parent_class = base.id
     elif isinstance(base, ast.Subscript):
         parent_class = base.value.id
+    elif isinstance(base, ast.Call):
+        parent_class = base.func.id
     else:
         # NOTE: SSZ definition derives from earlier phase...
         # e.g. `phase0.SignedBeaconBlock`
