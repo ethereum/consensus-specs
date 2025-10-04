@@ -1,0 +1,20 @@
+# test_vectors_manifest.yaml
+# Manifest file for Ethereum Consensus Specs test vectors
+
+version: 1.0
+
+vectors:
+  - name: block_processing
+    description: Test for processing a new block
+    input_file: block_processing_input.yaml
+    expected_output_file: block_processing_expected.yaml
+
+  - name: validator_slashing
+    description: Test for validator slashing scenarios
+    input_file: validator_slashing_input.yaml
+    expected_output_file: validator_slashing_expected.yaml
+
+  - name: epoch_transition
+    description: Test for epoch transition
+    input_file: epoch_transition_input.yaml
+    expected_output_file: epoch_transition_expected.yaml
