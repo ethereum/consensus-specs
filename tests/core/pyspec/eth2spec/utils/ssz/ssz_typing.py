@@ -25,7 +25,12 @@ from remerkleable.byte_arrays import (
 )
 from remerkleable.complex import Container, List, Vector
 from remerkleable.core import BasicView, Path, View
-from remerkleable.progressive import ProgressiveBitlist, ProgressiveContainer, ProgressiveList
+from remerkleable.progressive import (
+    CompatibleUnion,
+    ProgressiveBitlist,
+    ProgressiveContainer,
+    ProgressiveList,
+)
 from remerkleable.union import Union
 
 Bytes20 = ByteVector[20]  # type: ignore
