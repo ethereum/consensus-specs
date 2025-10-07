@@ -61,6 +61,21 @@ reference tests are available
 
 ## Contributors
 
+### Prerequisites
+
+This project uses `uv` ([docs.astral.sh/uv](https://docs.astral.sh/uv/)) to
+manage its dependencies and virtual environment. `uv` can
+[download Python](https://docs.astral.sh/uv/guides/install-python/#installing-a-specific-version)
+for your target platform if one of the required versions (3.10-3.13) is not
+available natively.
+
+`uv` can be installed via curl (recommended over a pip-install as it can
+self-update and manage Python versions):
+
+```console
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
 ### Installation and usage
 
 Clone the repository with:
