@@ -132,7 +132,7 @@ PRESET_PROGRESSIVE_CONTAINERS: dict[str, tuple[type[View], Sequence[int]]] = {
 }
 
 
-MODIFIED_PROGRESSIVE_CONTIANERS: Sequence[type[View]] = {
+MODIFIED_PROGRESSIVE_CONTAINERS: Sequence[type[View]] = [
     ModifiedTestStruct1,
     ModifiedTestStruct2,
     ModifiedTestStruct3,
@@ -142,7 +142,7 @@ MODIFIED_PROGRESSIVE_CONTIANERS: Sequence[type[View]] = {
     ModifiedTestStruct7,
     ModifiedTestStruct8,
     ModifiedTestStruct9,
-}
+]
 
 
 def valid_cases():
@@ -162,7 +162,7 @@ def invalid_cases():
             RandomizationMode.mode_one_count,
             RandomizationMode.mode_max_count,
         ]:
-            for i, modded_typ in enumerate(MODIFIED_PROGRESSIVE_CONTIANERS):
+            for i, modded_typ in enumerate(MODIFIED_PROGRESSIVE_CONTAINERS):
 
                 def the_test(rng, mode=mode, typ=typ, modded_typ=modded_typ):
                     serialized = serialize(container_case_fn(rng, mode, modded_typ))
