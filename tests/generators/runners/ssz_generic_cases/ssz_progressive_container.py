@@ -164,7 +164,7 @@ def invalid_cases():
         ]:
             for i, modded_typ in enumerate(MODIFIED_PROGRESSIVE_CONTIANERS):
 
-                def the_test(rng=rng, mode=mode, typ=typ, modded_typ=modded_typ):
+                def the_test(rng, mode=mode, typ=typ, modded_typ=modded_typ):
                     serialized = serialize(container_case_fn(rng, mode, modded_typ))
                     try:
                         _ = deserialize(typ, serialized)
@@ -176,5 +176,5 @@ def invalid_cases():
 
                 yield (
                     f"{name}_{mode.to_name()}_modded_{i}",
-                    invalid_test_case(typ, the_test),
+                    invalid_test_case(typ, the_test, rng),
                 )
