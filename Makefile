@@ -362,8 +362,6 @@ comptests: _pyspec
 # Cleaning
 ###############################################################################
 
-# Remove uv's python installs.
 # Delete all untracked files.
 clean:
-	@uv python uninstall --all --quiet
 	@git clean -fdx
