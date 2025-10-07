@@ -18,7 +18,6 @@ class SpecObject(NamedTuple):
     functions: dict[str, str]
     protocols: dict[str, ProtocolDefinition]
     custom_types: dict[str, str]
-    preset_dep_custom_types: dict[str, str]  # the types that depend on presets
     constant_vars: dict[str, VariableDefinition]
     preset_dep_constant_vars: dict[str, VariableDefinition]
     preset_vars: dict[str, VariableDefinition]
