@@ -1,6 +1,7 @@
 from random import Random
 
 from eth2spec.debug.random_value import get_random_ssz_object, RandomizationMode
+from eth2spec.test.exceptions import SkippedTest
 from eth2spec.utils.ssz.ssz_impl import serialize
 from eth2spec.utils.ssz.ssz_typing import (
     BasicView,
@@ -54,9 +55,10 @@ def valid_cases():
                 yield (
                     f"proglist_{name}_{mode.to_name()}_{length}",
                     valid_test_case(
-                        lambda rng=rng, mode=mode, typ=typ, length=length: progressive_list_case_fn(
+                        lambda rng, mode=mode, typ=typ, length=length: progressive_list_case_fn(
                             rng, mode, typ, length
-                        )
+                        ),
+                        rng,
                     ),
                 )
 
@@ -75,34 +77,38 @@ def invalid_cases():
                             f"proglist_{name}_{length}_{mode.to_name()}_{description}",
                             invalid_test_case(
                                 ProgressiveList[typ],
-                                lambda rng=rng,
-                                mode=mode,
-                                typ=typ,
-                                length=length,
-                                data=data: serialize(
+                                lambda rng, mode=mode, typ=typ, length=length, data=data: serialize(
                                     progressive_list_case_fn(rng, mode, typ, length)
                                 )[:-1]
                                 + data,
+                                rng,
                             ),
                         )
                 if typ.type_byte_length() > 1:
                     if length > 0:
+
+                        def the_test(rng, mode=mode, typ=typ, length=length):
+                            serialized = serialize(progressive_list_case_fn(rng, mode, typ, length))
+                            if len(serialized) == 0:
+                                raise SkippedTest("Cannot invalidate by removing a byte")
+                            return serialized[:-1]
+
                         yield (
                             f"proglist_{name}_{length}_{mode.to_name()}_one_byte_less",
                             invalid_test_case(
                                 ProgressiveList[typ],
-                                lambda rng=rng, mode=mode, typ=typ, length=length: serialize(
-                                    progressive_list_case_fn(rng, mode, typ, length)
-                                )[:-1],
+                                the_test,
+                                rng,
                             ),
                         )
                     yield (
                         f"proglist_{name}_{length}_{mode.to_name()}_one_byte_more",
                         invalid_test_case(
                             ProgressiveList[typ],
-                            lambda rng=rng, mode=mode, typ=typ, length=length: serialize(
+                            lambda rng, mode=mode, typ=typ, length=length: serialize(
                                 progressive_list_case_fn(rng, mode, typ, length)
                             )
                             + serialize(uint_case_fn(rng, mode, uint8)),
+                            rng,
                         ),
                     )
