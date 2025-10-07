@@ -162,7 +162,7 @@ def invalid_cases():
             RandomizationMode.mode_one_count,
             RandomizationMode.mode_max_count,
         ]:
-            for i, modded_typ in enumerate(MODIFIED_PROGRESSIVE_CONTIANERS):
+            for i, modded_typ in enumerate(sorted(MODIFIED_PROGRESSIVE_CONTIANERS, key=lambda x: x.__name__)):
 
                 def the_test(rng=rng, mode=mode, typ=typ, modded_typ=modded_typ):
                     serialized = serialize(container_case_fn(rng, mode, modded_typ))
