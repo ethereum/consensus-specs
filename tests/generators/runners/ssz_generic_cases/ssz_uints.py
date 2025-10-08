@@ -32,18 +32,16 @@ def valid_cases():
             yield (
                 f"uint_{byte_len * 8}_{mode.to_name()}_{variation}",
                 valid_test_case(
-                    lambda rng=rng, mode=mode, uint_type=uint_type: uint_case_fn(
-                        rng, mode, uint_type
-                    )
+                    lambda rng, mode=mode, uint_type=uint_type: uint_case_fn(rng, mode, uint_type),
+                    rng,
                 ),
             )
         for mode in [RandomizationMode.mode_zero, RandomizationMode.mode_max]:
             yield (
                 f"uint_{byte_len * 8}_{mode.to_name()}",
                 valid_test_case(
-                    lambda rng=rng, mode=mode, uint_type=uint_type: uint_case_fn(
-                        rng, mode, uint_type
-                    )
+                    lambda rng, mode=mode, uint_type=uint_type: uint_case_fn(rng, mode, uint_type),
+                    rng,
                 ),
             )
 

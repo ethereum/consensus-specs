@@ -43,9 +43,10 @@ def valid_cases():
                 yield (
                     f"bitlist_{size}_{mode.to_name()}_{variation}",
                     valid_test_case(
-                        lambda rng=rng, mode=mode, size=size, variation=variation: bitlist_case_fn(
+                        lambda rng, mode=mode, size=size, variation=variation: bitlist_case_fn(
                             rng, mode, size, force_final_bit=[None, True, False][variation % 3]
-                        )
+                        ),
+                        rng,
                     ),
                 )
 
@@ -77,8 +78,9 @@ def invalid_cases():
             f"bitlist_{typ_limit}_but_{test_limit}",
             invalid_test_case(
                 Bitlist[typ_limit],
-                lambda rng=rng, test_limit=test_limit: serialize(
+                lambda rng, test_limit=test_limit: serialize(
                     bitlist_case_fn(rng, RandomizationMode.mode_max_count, test_limit)
                 ),
+                rng,
             ),
         )

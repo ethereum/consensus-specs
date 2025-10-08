@@ -107,7 +107,7 @@ def valid_container_cases(rng: Random, name: str, typ: type[View], offsets: Sequ
     for mode in [RandomizationMode.mode_zero, RandomizationMode.mode_max]:
         yield (
             f"{name}_{mode.to_name()}",
-            valid_test_case(lambda rng=rng, mode=mode, typ=typ: container_case_fn(rng, mode, typ)),
+            valid_test_case(lambda rng, mode=mode, typ=typ: container_case_fn(rng, mode, typ), rng),
         )
 
     if len(offsets) == 0:
@@ -124,9 +124,8 @@ def valid_container_cases(rng: Random, name: str, typ: type[View], offsets: Sequ
             yield (
                 f"{name}_{mode.to_name()}_chaos_{variation}",
                 valid_test_case(
-                    lambda rng=rng, mode=mode, typ=typ: container_case_fn(
-                        rng, mode, typ, chaos=True
-                    )
+                    lambda rng, mode=mode, typ=typ: container_case_fn(rng, mode, typ, chaos=True),
+                    rng,
                 ),
             )
     # Notes: Below is the second wave of iteration, and only the random mode is selected
@@ -138,7 +137,7 @@ def valid_container_cases(rng: Random, name: str, typ: type[View], offsets: Sequ
             yield (
                 f"{name}_{mode.to_name()}_{variation}",
                 valid_test_case(
-                    lambda rng=rng, mode=mode, typ=typ: container_case_fn(rng, mode, typ)
+                    lambda rng, mode=mode, typ=typ: container_case_fn(rng, mode, typ), rng
                 ),
             )
 
@@ -166,10 +165,11 @@ def invalid_container_cases(rng: Random, name: str, typ: type[View], offsets: Se
         f"{name}_extra_byte",
         invalid_test_case(
             typ,
-            lambda rng=rng, typ=typ: serialize(
+            lambda rng, typ=typ: serialize(
                 container_case_fn(rng, RandomizationMode.mode_max_count, typ)
             )
             + b"\x00",
+            rng,
         ),
     )
 
@@ -189,9 +189,7 @@ def invalid_container_cases(rng: Random, name: str, typ: type[View], offsets: Se
                     ("minus_one", lambda x: x - 1),
                 ]:
 
-                    def the_test(
-                        rng=rng, mode=mode, typ=typ, offset_index=offset_index, change=change
-                    ):
+                    def the_test(rng, mode=mode, typ=typ, offset_index=offset_index, change=change):
                         serialized = mod_offset(
                             b=serialize(container_case_fn(rng, mode, typ)),
                             offset_index=offset_index,
@@ -207,13 +205,11 @@ def invalid_container_cases(rng: Random, name: str, typ: type[View], offsets: Se
 
                     yield (
                         f"{name}_{mode.to_name()}_offset_{offset_index}_{description}",
-                        invalid_test_case(typ, the_test),
+                        invalid_test_case(typ, the_test, rng),
                     )
                 if mode == RandomizationMode.mode_max_count:
 
-                    def the_test(
-                        rng=rng, mode=mode, typ=typ, offset_index=offset_index, change=change
-                    ):
+                    def the_test(rng, mode=mode, typ=typ, offset_index=offset_index, change=change):
                         serialized = serialize(container_case_fn(rng, mode, typ))
                         serialized = serialized + serialized[:3]
                         try:
@@ -226,13 +222,11 @@ def invalid_container_cases(rng: Random, name: str, typ: type[View], offsets: Se
 
                     yield (
                         f"{name}_{mode.to_name()}_last_offset_{offset_index}_overflow",
-                        invalid_test_case(typ, the_test),
+                        invalid_test_case(typ, the_test, rng),
                     )
                 if mode == RandomizationMode.mode_one_count:
 
-                    def the_test(
-                        rng=rng, mode=mode, typ=typ, offset_index=offset_index, change=change
-                    ):
+                    def the_test(rng, mode=mode, typ=typ, offset_index=offset_index, change=change):
                         serialized = serialize(container_case_fn(rng, mode, typ))
                         serialized = serialized + serialized[:1]
                         try:
@@ -245,7 +239,7 @@ def invalid_container_cases(rng: Random, name: str, typ: type[View], offsets: Se
 
                     yield (
                         f"{name}_{mode.to_name()}_last_offset_{offset_index}_wrong_byte_length",
-                        invalid_test_case(typ, the_test),
+                        invalid_test_case(typ, the_test, rng),
                     )
 
 

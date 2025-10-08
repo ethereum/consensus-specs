@@ -47,14 +47,11 @@ def valid_compatible_union_cases(rng: Random, name: str, typ: type[View]):
             yield (
                 f"{name}_{mode.to_name()}_selector_{option}",
                 valid_test_case(
-                    lambda rng=rng,
-                    mode=mode,
-                    typ=typ,
-                    elem_type=elem_type,
-                    option=option: deserialize(
+                    lambda rng, mode=mode, typ=typ, elem_type=elem_type, option=option: deserialize(
                         typ,
                         bytes([option]) + serialize(container_case_fn(rng, mode, elem_type)),
-                    )
+                    ),
+                    rng,
                 ),
             )
         for mode in list(RandomizationMode):
@@ -62,7 +59,7 @@ def valid_compatible_union_cases(rng: Random, name: str, typ: type[View]):
                 yield (
                     f"{name}_{mode.to_name()}_selector_{option}_chaos_{variation}",
                     valid_test_case(
-                        lambda rng=rng,
+                        lambda rng,
                         mode=mode,
                         typ=typ,
                         elem_type=elem_type,
@@ -70,7 +67,8 @@ def valid_compatible_union_cases(rng: Random, name: str, typ: type[View]):
                             typ,
                             bytes([option])
                             + serialize(container_case_fn(rng, mode, elem_type, chaos=True)),
-                        )
+                        ),
+                        rng,
                     ),
                 )
             if mode == RandomizationMode.mode_random:
@@ -78,7 +76,7 @@ def valid_compatible_union_cases(rng: Random, name: str, typ: type[View]):
                     yield (
                         f"{name}_{mode.to_name()}_selector_{option}_{variation}",
                         valid_test_case(
-                            lambda rng=rng,
+                            lambda rng,
                             mode=mode,
                             typ=typ,
                             elem_type=elem_type,
@@ -86,7 +84,8 @@ def valid_compatible_union_cases(rng: Random, name: str, typ: type[View]):
                                 typ,
                                 bytes([option])
                                 + serialize(container_case_fn(rng, mode, elem_type)),
-                            )
+                            ),
+                            rng,
                         ),
                     )
 
@@ -120,9 +119,7 @@ def invalid_cases():
             for option_a, option_b in permutations(options, 2):
                 elem_type_b = options[option_b]
 
-                def the_test(
-                    rng=rng, mode=mode, typ=typ, elem_type_b=elem_type_b, option_a=option_a
-                ):
+                def the_test(rng, mode=mode, typ=typ, elem_type_b=elem_type_b, option_a=option_a):
                     serialized = bytes([option_a]) + serialize(
                         container_case_fn(rng, mode, elem_type_b)
                     )
@@ -136,26 +133,26 @@ def invalid_cases():
 
                 yield (
                     f"{name}_{mode.to_name()}_selector_{option_a}_with_{option_b}_data",
-                    invalid_test_case(typ, the_test),
+                    invalid_test_case(typ, the_test, rng),
                 )
 
             # Unsupported type option. Always invalid
             for option in range(0, 255):
                 if option not in options:
 
-                    def the_test(rng=rng, mode=mode, typ=typ, option=option):
+                    def the_test(rng, mode=mode, typ=typ, option=option):
                         serialized = serialize(container_case_fn(rng, mode, typ))
                         serialized = bytes([option]) + serialized[1:]
                         return serialized
 
                     yield (
                         f"{name}_{mode.to_name()}_selector_{option}_invalid",
-                        invalid_test_case(typ, the_test),
+                        invalid_test_case(typ, the_test, rng),
                     )
 
             # Extra byte between selector and data. Not guaranteed to invalidate for variable length data types
             def the_test(
-                rng=rng,
+                rng,
                 mode=mode,
                 typ=typ,
             ):
@@ -169,12 +166,12 @@ def invalid_cases():
 
             yield (
                 f"{name}_{mode.to_name()}_extra_padding",
-                invalid_test_case(typ, the_test),
+                invalid_test_case(typ, the_test, rng),
             )
 
             # Raw data, without selector. Not guaranteed to invalidate if first byte randomly is a valid selector
             def the_test(
-                rng=rng,
+                rng,
                 mode=mode,
                 typ=typ,
             ):
@@ -188,12 +185,12 @@ def invalid_cases():
 
             yield (
                 f"{name}_{mode.to_name()}_selector_missing",
-                invalid_test_case(typ, the_test),
+                invalid_test_case(typ, the_test, rng),
             )
 
             # Extra byte at end. Not guaranteed to invalidate for variable length data types
             def the_test(
-                rng=rng,
+                rng,
                 mode=mode,
                 typ=typ,
             ):
@@ -207,5 +204,5 @@ def invalid_cases():
 
             yield (
                 f"{name}_{mode.to_name()}_extra_byte",
-                invalid_test_case(typ, the_test),
+                invalid_test_case(typ, the_test, rng),
             )

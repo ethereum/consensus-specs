@@ -55,8 +55,8 @@
       foo: uint64
       bar: boolean
   ```
-- **progressive container** _[EIP-7495]_: ordered
-  heterogeneous collection of values with stable Merkleization
+- **progressive container** _[EIP-7495]_: ordered heterogeneous collection of
+  values with stable Merkleization
   - python dataclass notation with key-type pairs, e.g.
   ```python
   class Square(ProgressiveContainer(active_fields=[1, 0, 1])):
@@ -73,8 +73,8 @@
 - **list**: ordered variable-length homogeneous collection, limited to `N`
   values
   - notation `List[type, N]`, e.g. `List[uint64, N]`
-- **progressive list** _[EIP-7916]_: ordered variable-length
-  homogeneous collection, without limit
+- **progressive list** _[EIP-7916]_: ordered variable-length homogeneous
+  collection, without limit
   - notation `ProgressiveList[type]`, e.g. `ProgressiveList[uint64]`
 - **bitvector**: ordered fixed-length collection of `boolean` values, with `N`
   bits
@@ -82,8 +82,8 @@
 - **bitlist**: ordered variable-length collection of `boolean` values, limited
   to `N` bits
   - notation `Bitlist[N]`
-- **progressive bitlist** _[EIP-7916]_: ordered
-  variable-length collection of `boolean` values, without limit
+- **progressive bitlist** _[EIP-7916]_: ordered variable-length collection of
+  `boolean` values, without limit
   - notation `ProgressiveBitlist`
 - **union**: union type containing one of the given subtypes
   - notation `Union[type_0, type_1, ...]`, e.g. `union[None, uint64, uint32]`
