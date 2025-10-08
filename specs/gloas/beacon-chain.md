@@ -300,14 +300,20 @@ class BeaconBlockBody(ProgressiveContainer(active_fields=[1] * 12)):
     randao_reveal: BLSSignature
     eth1_data: Eth1Data
     graffiti: Bytes32
+    # [Modified in Gloas:EIP7688]
     proposer_slashings: ProgressiveList[ProposerSlashing]
+    # [Modified in Gloas:EIP7688]
     attester_slashings: ProgressiveList[AttesterSlashing]
+    # [Modified in Gloas:EIP7688]
     attestations: ProgressiveList[Attestation]
+    # [Modified in Gloas:EIP7688]
     deposits: ProgressiveList[Deposit]
+    # [Modified in Gloas:EIP7688]
     voluntary_exits: ProgressiveList[SignedVoluntaryExit]
     sync_aggregate: SyncAggregate
     # [Modified in Gloas:EIP7732]
     # Removed `execution_payload`
+    # [Modified in Gloas:EIP7688]
     bls_to_execution_changes: ProgressiveList[SignedBLSToExecutionChange]
     # [Modified in Gloas:EIP7732]
     # Removed `blob_kzg_commitments`
