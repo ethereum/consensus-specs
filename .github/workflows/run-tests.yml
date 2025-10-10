@@ -95,6 +95,8 @@ jobs:
           - deneb
           - electra
           - fulu
+          - eip7732
+          - eip7782
           - gloas
           - eip7805
           - eip7928
