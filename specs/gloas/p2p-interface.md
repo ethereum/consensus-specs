@@ -91,7 +91,14 @@ class DataColumnSidecar(Container):
     column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    # [Modified in Gloas:EIP7732]
+    # Removed `signed_block_header`
+    # [Modified in Gloas:EIP7732]
+    # Removed `kzg_commitments_inclusion_proof`
+    # [New in Gloas:EIP7732]
     beacon_block_root: Root
+    # [New in Gloas:EIP7732]
+    slot: Slot
 ```
 
 ### The gossip domain: gossipsub
@@ -277,6 +284,8 @@ The following validations MUST pass before forwarding the
 
 - _[IGNORE]_ The sidecar's `beacon_block_root` has been seen via a valid signed
   execution payload header (builder's bid).
+- _[REJECT]_ The sidecars's `slot` matches the slot of the block with root
+  `beacon_block_root`.
 - _[REJECT]_ The hash of the sidecar's `kzg_commitments` matches the
   `blob_kzg_commitments_root` in the corresponding builder's bid for
   `sidecar.beacon_block_root`.
