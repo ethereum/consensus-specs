@@ -22,6 +22,23 @@ Additional documents describes the impact of the upgrade on certain roles:
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 
+## Containers
+
+### Modified `LightClientUpdate`
+
+```python
+class LightClientUpdate(Container):
+    # [Modified in Deneb] References the Deneb-specific LightClientHeader
+    attested_header: LightClientHeader
+    next_sync_committee: SyncCommittee
+    next_sync_committee_branch: NextSyncCommitteeBranch
+    # [Modified in Deneb] References the Deneb-specific LightClientHeader
+    finalized_header: LightClientHeader
+    finality_branch: FinalityBranch
+    sync_aggregate: SyncAggregate
+    signature_slot: Slot
+```
+
 ## Helper functions
 
 ### Modified `get_lc_execution_root`
