@@ -51,6 +51,21 @@ class LightClientHeader(Container):
     execution_branch: ExecutionBranch
 ```
 
+### Modified `LightClientUpdate`
+
+```python
+class LightClientUpdate(Container):
+    # [Modified in Capella] References the Capella-specific LightClientHeader
+    attested_header: LightClientHeader
+    next_sync_committee: SyncCommittee
+    next_sync_committee_branch: NextSyncCommitteeBranch
+    # [Modified in Capella] References the Capella-specific LightClientHeader
+    finalized_header: LightClientHeader
+    finality_branch: FinalityBranch
+    sync_aggregate: SyncAggregate
+    signature_slot: Slot
+```
+
 ## Helper functions
 
 ### `get_lc_execution_root`
