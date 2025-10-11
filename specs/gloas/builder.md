@@ -148,6 +148,7 @@ and inclusion proof verifications are no longer required in ePBS.
 ```python
 def get_data_column_sidecars(
     beacon_block_root: Root,
+    slot: Slot,
     kzg_commitments: ProgressiveList[KZGCommitment],
     cells_and_kzg_proofs: Sequence[
         Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
@@ -172,6 +173,7 @@ def get_data_column_sidecars(
                 kzg_commitments=kzg_commitments,
                 kzg_proofs=column_proofs,
                 beacon_block_root=beacon_block_root,
+                slot=slot,
             )
         )
     return sidecars
@@ -199,6 +201,7 @@ def get_data_column_sidecars_from_block(
     beacon_block_root = hash_tree_root(signed_block.message)
     return get_data_column_sidecars(
         beacon_block_root,
+        signed_block.message.slot,
         blob_kzg_commitments,
         cells_and_kzg_proofs,
     )
