@@ -9,6 +9,13 @@ specifications. Discussions about design rationale and proposed changes can be
 brought up and discussed as issues. Solidified, agreed-upon changes to the
 specifications can be made through pull requests.
 
+## Quick Start
+
+For developers and researchers looking to understand Ethereum's consensus layer:
+- **Validators**: See [validator guide](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/)
+- **Client Developers**: Check [client implementations](https://ethereum.org/en/developers/docs/nodes-and-clients/)
+- **Researchers**: Review [EIPs](https://eips.ethereum.org/) and [research papers](https://ethresear.ch/)
+
 ## Specifications
 
 Core specifications for Ethereum proof-of-stake clients can be found in
