@@ -168,8 +168,6 @@ regards to the `ExecutionPayload` are removed:
   - [IGNORE] The block's parent (defined by `block.parent_root`) passes all
     validation (including execution node verification of the
     `block.body.execution_payload`).
-- [REJECT] The block's parent (defined by `block.parent_root`) passes
-  validation.
 
 And instead the following validations are set in place with the alias
 `bid = signed_execution_payload_bid.message`:
@@ -178,8 +176,8 @@ And instead the following validations are set in place with the alias
   execution node **is complete**:
   - [REJECT] The block's execution payload parent (defined by
     `bid.parent_block_hash`) passes all validation.
-- [REJECT] The block's parent (defined by `bid.parent_block_root`) passes
-  validation.
+- [REJECT] The bid's parent (defined by `bid.parent_block_root`) equals the
+  block's parent (defined by `block.parent_root`).
 
 ###### `execution_payload`
 
