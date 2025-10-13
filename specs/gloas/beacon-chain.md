@@ -826,15 +826,16 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
             else:
                 withdrawable_balance = 0
 
-            withdrawals.append(
-                Withdrawal(
-                    index=withdrawal_index,
-                    validator_index=withdrawal.builder_index,
-                    address=withdrawal.fee_recipient,
-                    amount=withdrawable_balance,
+            if withdrawable_balance > 0:
+                withdrawals.append(
+                    Withdrawal(
+                        index=withdrawal_index,
+                        validator_index=withdrawal.builder_index,
+                        address=withdrawal.fee_recipient,
+                        amount=withdrawable_balance,
+                    )
                 )
-            )
-            withdrawal_index += WithdrawalIndex(1)
+                withdrawal_index += WithdrawalIndex(1)
         processed_builder_withdrawals_count += 1
 
     # Sweep for pending partial withdrawals
