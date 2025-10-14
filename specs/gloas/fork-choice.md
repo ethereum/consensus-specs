@@ -97,7 +97,7 @@ def update_latest_messages(
 ) -> None:
     slot = attestation.data.slot
     beacon_block_root = attestation.data.beacon_block_root
-    payload_present = attestation.data.index == 1
+    payload_present = attestation.data.payload_status == PayloadStaus.FULL
     non_equivocating_attesting_indices = [
         i for i in attesting_indices if i not in store.equivocating_indices
     ]
@@ -658,9 +658,9 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
     assert block_slot <= attestation.data.slot
 
     # [New in Gloas:EIP7732]
-    assert attestation.data.index in [0, 1]
+    assert attestation.data.payload_status in in (PayloadStatus.EMPTY, PayloadStatus.FULL)
     if block_slot == attestation.data.slot:
-        assert attestation.data.index == 0
+        assert attestation.data.payload_status == EMPTY
 
     # LMD vote must be consistent with FFG vote target
     assert target.root == get_checkpoint_block(
