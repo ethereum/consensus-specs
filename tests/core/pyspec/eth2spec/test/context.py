@@ -9,6 +9,7 @@ import pytest
 from frozendict import frozendict
 from lru import LRU
 
+from eth2spec.test import context
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
@@ -720,7 +721,7 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
     This is a decorator that applies a dict of config value overrides to the spec during execution.
     """
 
-    def decorator(fn):
+    def decorator_emit(fn):
         def wrapper(*args, spec: Spec, **kw):
             # Apply config overrides to spec
             spec, output_config = spec_with_config_overrides(
@@ -739,8 +740,7 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
                 kw["phases"] = phases
 
             # Emit requested spec (with overrides)
-            if emit:
-                yield "config", "cfg", output_config
+            yield "config", "cfg", output_config
 
             # Run the function
             out = fn(*args, spec=spec, **kw)
@@ -752,7 +752,31 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
 
         return wrapper
 
-    return decorator
+    def decorator_no_emit(fn):
+        def wrapper(*args, spec: Spec, **kw):
+            # Apply config overrides to spec
+            spec, output_config = spec_with_config_overrides(
+                get_copy_of_spec(spec), config_overrides
+            )
+
+            # Apply config overrides to additional phases, if present
+            if "phases" in kw:
+                phases = {}
+                for fork in kw["phases"]:
+                    phases[fork], output = spec_with_config_overrides(
+                        get_copy_of_spec(kw["phases"][fork]), config_overrides
+                    )
+                kw["phases"] = phases
+
+            # Run the function
+            return fn(*args, spec=spec, **kw)
+
+        return wrapper
+
+    if emit:
+        return decorator_emit
+    else:
+        return decorator_no_emit
 
 
 def only_generator(reason):

@@ -1,5 +1,8 @@
 from typing import Any
 
+import inspect
+
+from eth2spec.test import context
 from eth2spec.utils.ssz.ssz_impl import serialize
 from eth2spec.utils.ssz.ssz_typing import View
 
@@ -16,6 +19,7 @@ def vector_test(description: str = None):
     """
 
     def runner(fn):
+
         # this wraps the function, to yield type-annotated entries of data.
         # Valid types are:
         #   - "meta": all key-values with this type can be collected by the generator, to put somewhere together.
@@ -72,7 +76,22 @@ def vector_test(description: str = None):
                     continue
                 return None
 
-        return entry
+        assert context.is_pytest, "vector_test should only be used in a pytest context"
+        assert inspect.isgeneratorfunction(fn), "vector_test should only be used on generator functions"
+
+        if inspect.isgeneratorfunction(fn):
+            if context.is_pytest:
+                # pytest does not support yielded data in the outer function,
+                # so we need to wrap it like this.
+                def wrapped(*args, **kw):
+                    for _ in fn(*args, **kw):
+                        continue
+
+                return wrapped
+            else:
+                return entry
+        else:
+            return fn
 
     return runner
 
