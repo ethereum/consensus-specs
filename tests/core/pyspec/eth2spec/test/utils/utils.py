@@ -76,9 +76,6 @@ def vector_test(description: str = None):
                     continue
                 return None
 
-        assert context.is_pytest, "vector_test should only be used in a pytest context"
-        assert inspect.isgeneratorfunction(fn), "vector_test should only be used on generator functions"
-
         if inspect.isgeneratorfunction(fn):
             if context.is_pytest:
                 # pytest does not support yielded data in the outer function,
