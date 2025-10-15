@@ -244,21 +244,20 @@ columns from other peers.
 
 ## Reconstruction and cross-seeding
 
-If the node obtains 50%+ of all the columns, it SHOULD reconstruct the full data
-matrix via the `recover_matrix` helper. Nodes MAY delay this reconstruction
-allowing time for other columns to arrive over the network. If delaying
-reconstruction, nodes may use a random delay in order to desynchronize
+If the node obtains more than 50% of all the columns, it SHOULD reconstruct the
+full data matrix via the `recover_matrix` helper. Nodes MAY delay this
+reconstruction allowing time for other columns to arrive over the network. If
+delaying reconstruction, nodes may use a random delay in order to desynchronize
 reconstruction among nodes, thus reducing overall CPU load.
 
 Once the node obtains a column through reconstruction, the node MUST expose the
 new column as if it had received it over the network. If the node is subscribed
 to the subnet corresponding to the column, it MUST send the reconstructed
 `DataColumnSidecar` to its topic mesh neighbors. If instead the node is not
-subscribed to the corresponding subnet, it SHOULD still expose the availability
-of the `DataColumnSidecar` as part of the gossip emission process. After
-exposing the reconstructed `DataColumnSidecar` to the network, the node MAY
-delete the `DataColumnSidecar` if it is not part of the node's custody
-requirement.
+subscribed to the corresponding subnet, it MAY still expose the availability of
+the `DataColumnSidecar` as part of the gossip emission process. After exposing
+the reconstructed `DataColumnSidecar` to the network, the node MAY delete the
+`DataColumnSidecar` if it is not part of the node's custody requirement.
 
 *Note*: A node always maintains a matrix view of the rows and columns they are
 following, able to cross-reference and cross-seed in either direction.
