@@ -41,6 +41,11 @@ def _run_verify_cell_kzg_proof_batch_test(
     )
 
 
+###############################################################################
+# Valid cases
+###############################################################################
+
+
 @template_test
 def _verify_cell_kzg_proof_batch_case_valid(blob_index):
     blob = VALID_BLOBS[blob_index]
@@ -240,7 +245,9 @@ def test_verify_cell_kzg_proof_batch_case_valid_regression1(spec):
     )
 
 
+###############################################################################
 # Invalid cases
+###############################################################################
 
 
 @manifest(preset_name="general", suite_name="kzg-mainnet")
@@ -311,9 +318,6 @@ def test_verify_cell_kzg_proof_batch_case_incorrect_proof(spec):
     )
 
 
-# Edge case: Invalid commitment
-
-
 @template_test
 def _verify_cell_kzg_proof_batch_case_invalid_commitment(index):
     commitment = INVALID_G1_POINTS[index]
@@ -347,8 +351,6 @@ def _verify_cell_kzg_proof_batch_case_invalid_commitment(index):
 for index in range(len(INVALID_G1_POINTS)):
     _verify_cell_kzg_proof_batch_case_invalid_commitment(index)
 
-# Edge case: Invalid cell_index
-
 
 @manifest(preset_name="general", suite_name="kzg-mainnet")
 @only_generator("too slow")
@@ -371,9 +373,6 @@ def test_verify_cell_kzg_proof_batch_case_invalid_cell_index(spec):
         proofs,
         valid=False,
     )
-
-
-# Edge case: Invalid cell
 
 
 @template_test
@@ -412,8 +411,6 @@ def _verify_cell_kzg_proof_batch_case_invalid_cell(index):
 for index in range(len(INVALID_INDIVIDUAL_CELL_BYTES)):
     _verify_cell_kzg_proof_batch_case_invalid_cell(index)
 
-# Edge case: Invalid proof
-
 
 @template_test
 def _verify_cell_kzg_proof_batch_case_invalid_proof(index):
@@ -449,8 +446,6 @@ def _verify_cell_kzg_proof_batch_case_invalid_proof(index):
 for index in range(len(INVALID_G1_POINTS)):
     _verify_cell_kzg_proof_batch_case_invalid_proof(index)
 
-# Edge case: Missing a commitment
-
 
 @manifest(preset_name="general", suite_name="kzg-mainnet")
 @only_generator("too slow")
@@ -472,9 +467,6 @@ def test_verify_cell_kzg_proof_batch_case_invalid_missing_commitment(spec):
         proofs,
         valid=False,
     )
-
-
-# Edge case: Missing a cell index
 
 
 @manifest(preset_name="general", suite_name="kzg-mainnet")
@@ -502,9 +494,6 @@ def test_verify_cell_kzg_proof_batch_case_invalid_missing_cell_index(spec):
     )
 
 
-# Edge case: Missing a cell
-
-
 @manifest(preset_name="general", suite_name="kzg-mainnet")
 @only_generator("too slow")
 @with_phases([FULU])
@@ -529,9 +518,6 @@ def test_verify_cell_kzg_proof_batch_case_invalid_missing_cell(spec):
         proofs,
         valid=False,
     )
-
-
-# Edge case: Missing a proof
 
 
 @manifest(preset_name="general", suite_name="kzg-mainnet")

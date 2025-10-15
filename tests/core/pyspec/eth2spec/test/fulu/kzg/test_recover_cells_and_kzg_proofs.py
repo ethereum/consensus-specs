@@ -52,7 +52,9 @@ def _run_recover_cells_and_kzg_proofs_test(
     )
 
 
+###############################################################################
 # Valid cases
+###############################################################################
 
 
 @manifest(preset_name="general", suite_name="kzg-mainnet")
@@ -122,7 +124,9 @@ def test_recover_cells_and_kzg_proofs_case_valid_half_missing_second_half(spec):
     )
 
 
+###############################################################################
 # Invalid cases
+###############################################################################
 
 
 @manifest(preset_name="general", suite_name="kzg-mainnet")
@@ -175,9 +179,6 @@ def test_recover_cells_and_kzg_proofs_case_invalid_more_cells_than_cells_per_ext
     )
 
 
-# Edge case: Invalid cell_index
-
-
 @manifest(preset_name="general", suite_name="kzg-mainnet")
 @only_generator("too slow")
 @with_phases([FULU])
@@ -196,9 +197,6 @@ def test_recover_cells_and_kzg_proofs_case_invalid_cell_index(spec):
         partial_cells,
         valid=False,
     )
-
-
-# Edge case: Invalid cell
 
 
 @template_test
@@ -230,8 +228,6 @@ def _recover_cells_and_kzg_proofs_case_invalid_cell(index):
 for index in range(len(INVALID_INDIVIDUAL_CELL_BYTES)):
     _recover_cells_and_kzg_proofs_case_invalid_cell(index)
 
-# Edge case: More cell_indices than cells
-
 
 @manifest(preset_name="general", suite_name="kzg-mainnet")
 @only_generator("too slow")
@@ -253,9 +249,6 @@ def test_recover_cells_and_kzg_proofs_case_invalid_more_cell_indices_than_cells(
     )
 
 
-# Edge case: More cells than cell_indices
-
-
 @manifest(preset_name="general", suite_name="kzg-mainnet")
 @only_generator("too slow")
 @with_phases([FULU])
@@ -274,9 +267,6 @@ def test_recover_cells_and_kzg_proofs_case_invalid_more_cells_than_cell_indices(
         partial_cells,
         valid=False,
     )
-
-
-# Edge case: Duplicate cell_index
 
 
 @manifest(preset_name="general", suite_name="kzg-mainnet")
@@ -304,9 +294,6 @@ def test_recover_cells_and_kzg_proofs_case_invalid_duplicate_cell_index(spec):
     )
 
 
-# Edge case: Shuffled indices, no missing
-
-
 @manifest(preset_name="general", suite_name="kzg-mainnet")
 @only_generator("too slow")
 @with_phases([FULU])
@@ -327,9 +314,6 @@ def test_recover_cells_and_kzg_proofs_case_invalid_shuffled_no_missing(spec):
     )
 
 
-# Edge case: Shuffled indices, one missing
-
-
 @manifest(preset_name="general", suite_name="kzg-mainnet")
 @only_generator("too slow")
 @with_phases([FULU])
@@ -348,9 +332,6 @@ def test_recover_cells_and_kzg_proofs_case_invalid_shuffled_one_missing(spec):
         partial_cells,
         valid=False,
     )
-
-
-# Edge case: Shuffled indices, half missing
 
 
 @manifest(preset_name="general", suite_name="kzg-mainnet")
