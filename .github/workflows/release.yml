@@ -28,7 +28,7 @@ jobs:
           python-version-file: "consensus-specs/pyproject.toml"
 
       - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        uses: astral-sh/setup-uv@3259c6206f993105e3a61b142c2d97bf4b9ef83d # v7.1.0
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
@@ -109,7 +109,7 @@ jobs:
       # Finally, publish the spec tests release
       # Requires a personal access token (PAT) with contents:read-write
       - name: Publish spec tests release
-        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
+        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
         with:
           tag_name: ${{ github.ref_name }}
           name: "Spec tests for ${{ github.ref_name }}"

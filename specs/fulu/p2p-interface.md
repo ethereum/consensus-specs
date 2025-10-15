@@ -120,6 +120,11 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     if len(sidecar.kzg_commitments) == 0:
         return False
 
+    # Check that the sidecar respects the blob limit
+    epoch = compute_epoch_at_slot(sidecar.signed_block_header.message.slot)
+    if len(sidecar.kzg_commitments) > get_blob_parameters(epoch).max_blobs_per_block:
+        return False
+
     # The column length must be equal to the number of commitments/proofs
     if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(
         sidecar.kzg_proofs
@@ -318,6 +323,18 @@ As seen by the client at the time of sending the message:
 
 - `earliest_available_slot`: The slot of earliest available block
   (`SignedBeaconBlock`).
+
+*Note*: According the the definition of `earliest_available_slot`:
+
+- If the node is able to serve all blocks throughout the entire sidecars
+  retention period (as defined by both `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
+  and `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`), but is NOT able to serve
+  all sidecars during this period, it should advertise the earliest slot from
+  which it can serve all sidecars.
+- If the node is able to serve all sidecars throughout the entire sidecars
+  retention period (as defined by both `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
+  and `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`), it should advertise the
+  earliest slot from which it can serve all blocks.
 
 ##### BlobSidecarsByRange v1
 

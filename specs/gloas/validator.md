@@ -276,6 +276,7 @@ def get_data_column_sidecars_from_column_sidecar(
 
     return get_data_column_sidecars(
         sidecar.beacon_block_root,
+        sidecar.slot,
         sidecar.kzg_commitments,
         cells_and_kzg_proofs,
     )
