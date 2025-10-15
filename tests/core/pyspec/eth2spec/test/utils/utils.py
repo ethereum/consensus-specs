@@ -1,6 +1,5 @@
-from typing import Any
-
 import inspect
+from typing import Any
 
 from eth2spec.test import context
 from eth2spec.utils.ssz.ssz_impl import serialize
@@ -19,7 +18,6 @@ def vector_test(description: str = None):
     """
 
     def runner(fn):
-
         # this wraps the function, to yield type-annotated entries of data.
         # Valid types are:
         #   - "meta": all key-values with this type can be collected by the generator, to put somewhere together.

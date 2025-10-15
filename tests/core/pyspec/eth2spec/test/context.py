@@ -9,7 +9,6 @@ import pytest
 from frozendict import frozendict
 from lru import LRU
 
-from eth2spec.test import context
 from eth2spec.utils import bls
 
 from .exceptions import SkippedTest
