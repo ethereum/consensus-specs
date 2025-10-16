@@ -43,16 +43,6 @@ from .utils import (
     vector_test,
     with_meta_tags,
 )
-import inspect
-
-def _drain(gen_or_val):
-    """If a test returns a generator, consume it so pytest sees None."""
-    if inspect.isgenerator(gen_or_val):
-        for _ in gen_or_val:
-            pass
-
-
-
 
 # Without pytest CLI arg or pyspec-test-generator 'preset' argument, this will be the config to apply.
 DEFAULT_TEST_PRESET = MINIMAL
@@ -598,14 +588,12 @@ def _run_test_case_with_phases(fn, phases, other_phases, kw, args, is_fork_trans
     return ret
 
 
-
-
-
 def with_phases(phases, other_phases=None):
     """
     Decorator factory that returns a decorator that runs a test for the appropriate phases.
     Additional phases that do not initially run, but are made available through the test, are optional.
     """
+
     def decorator(fn):
         def wrapper(*args, **kw):
             if "fork_metas" in kw:
@@ -614,12 +602,13 @@ def with_phases(phases, other_phases=None):
                     # When running test generator, it sets specific `phase`
                     phase = kw["phase"]
                     _phases = [phase]
-                    _other_phases = [POST_FORK_OF[phase]] if phase in POST_FORK_OF else None
+                    if phase in POST_FORK_OF:
+                        _other_phases = [POST_FORK_OF[phase]]
+                    else:
+                        _other_phases = None
                     ret = _run_test_case_with_phases(
                         fn, _phases, _other_phases, kw, args, is_fork_transition=True
                     )
-                    _drain(ret)
-                    return None
                 else:
                     # When running pytest, go through `fork_metas` instead of using `phases`
                     for fork_meta in fork_metas:
@@ -628,13 +617,12 @@ def with_phases(phases, other_phases=None):
                         ret = _run_test_case_with_phases(
                             fn, _phases, _other_phases, kw, args, is_fork_transition=True
                         )
-                        _drain(ret)
-                    return None
             else:
                 ret = _run_test_case_with_phases(fn, phases, other_phases, kw, args)
-                _drain(ret)
-                return None
+            return ret
+
         return wrapper
+
     return decorator
 
 
