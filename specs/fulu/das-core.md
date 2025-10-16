@@ -244,11 +244,13 @@ columns from other peers.
 
 ## Reconstruction and cross-seeding
 
-If the node obtains more than 50% of all the columns, it SHOULD reconstruct the
-full data matrix via the `recover_matrix` helper. Nodes MAY delay this
-reconstruction allowing time for other columns to arrive over the network. If
-delaying reconstruction, nodes may use a random delay in order to desynchronize
-reconstruction among nodes, thus reducing overall CPU load.
+If the node custodies more than 50% of columns, and has obtained at least 50% of
+all columns, it SHOULD reconstruct the full data matrix via the `recover_matrix`
+helper to obtain the remaining columns needed for its custody requirements.
+Nodes MAY delay this reconstruction allowing time for other columns to arrive
+over the network. If delaying reconstruction, nodes may use a random delay in
+order to desynchronize reconstruction among nodes, thus reducing overall CPU
+load.
 
 Once the node obtains a column through reconstruction, the node MUST expose the
 new column as if it had received it over the network. If the node is subscribed
