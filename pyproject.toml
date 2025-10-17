@@ -48,6 +48,7 @@ generator = [
   "filelock==3.19.1",
   "minizinc==0.10.0",
   "pathos==0.3.4",
+  "psutil==7.1.0",
   "pytest==8.4.2",
   "python-snappy==0.7.3",
   "rich==14.1.0",
