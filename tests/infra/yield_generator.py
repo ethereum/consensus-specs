@@ -63,6 +63,7 @@ def vector_test(fn):
     completion and ignore all yielded values so the function behaves like a normal
     (non-yielding) test function in test runners that do not support yielded tests.
     """
+
     def wrapper_generator(*args, **kw) -> Generator | None:
         # check generator mode, may be None/else.
         # "pop" removes it, so it is not passed to the inner function.
