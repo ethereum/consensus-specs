@@ -284,7 +284,8 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
                         skipped.value += 1
                     completed.value += 1
             else:
-                pool = Pool(processes=args.threads)
+                # Restart workers periodically to prevent memory accumulation
+                pool = Pool(processes=args.threads, maxtasksperchild=100)
                 try:
                     for result in pool.uimap(worker_function, inputs):
                         if result == "skipped":
