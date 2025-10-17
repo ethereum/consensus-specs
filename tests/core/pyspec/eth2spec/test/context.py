@@ -10,6 +10,7 @@ from frozendict import frozendict
 from lru import LRU
 
 from eth2spec.utils import bls
+from tests.infra.yield_generator import vector_test
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
@@ -40,7 +41,6 @@ from .helpers.typing import (
     SpecForks,
 )
 from .utils import (
-    vector_test,
     with_meta_tags,
 )
 
@@ -325,7 +325,7 @@ def spec_test(fn):
     # A test may apply BLS overrides such as @always_bls,
     #  but if it yields data (n.b. @always_bls yields the bls setting), it should be wrapped by this decorator.
     #  This is why @always_bls has its own bls switch, since the override is beyond the reach of the outer switch.
-    return vector_test()(bls_switch(fn))
+    return vector_test(bls_switch(fn))
 
 
 # shorthand for decorating @spec_test @with_state @single_phase
@@ -334,7 +334,7 @@ def spec_state_test(fn):
 
 
 def spec_configured_state_test(conf):
-    overrides = with_config_overrides(conf)
+    overrides = _with_config_overrides_emit(conf)
 
     def decorator(fn):
         return spec_test(overrides(with_state(single_phase(fn))))
@@ -369,7 +369,7 @@ def with_matching_spec_config(emitted_fork=None):
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
             overrides = config_fork_epoch_overrides(spec, kw["state"])
-            deco = with_config_overrides(overrides, emitted_fork)
+            deco = _with_config_overrides_emit(overrides, emitted_fork)
             return deco(fn)(*args, spec=spec, **kw)
 
         return wrapper
@@ -711,7 +711,36 @@ def spec_with_config_overrides(spec, config_overrides):
     return spec, output_config
 
 
-def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
+def with_config_overrides(config_overrides):
+    """
+    WARNING: the spec_test decorator must wrap this, to ensure the decorated test actually runs.
+
+    This is a decorator that applies a dict of config value overrides to the spec during execution.
+    """
+
+    def decorator(fn):
+        def wrapper(*args, spec: Spec, **kw):
+            # Apply config overrides to spec
+            spec, _ = spec_with_config_overrides(get_copy_of_spec(spec), config_overrides)
+
+            # Apply config overrides to additional phases, if present
+            if "phases" in kw:
+                phases = {}
+                for fork in kw["phases"]:
+                    phases[fork], _ = spec_with_config_overrides(
+                        get_copy_of_spec(kw["phases"][fork]), config_overrides
+                    )
+                kw["phases"] = phases
+
+            # Run the function
+            return fn(*args, spec=spec, **kw)
+
+        return wrapper
+
+    return decorator
+
+
+def _with_config_overrides_emit(config_overrides, emitted_fork=None):
     """
     WARNING: the spec_test decorator must wrap this, to ensure the decorated test actually runs.
     This decorator forces the test to yield, and pytest doesn't run generator tests, and instead silently passes it.
@@ -720,7 +749,7 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
     This is a decorator that applies a dict of config value overrides to the spec during execution.
     """
 
-    def decorator_emit(fn):
+    def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
             # Apply config overrides to spec
             spec, output_config = spec_with_config_overrides(
@@ -751,31 +780,7 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
 
         return wrapper
 
-    def decorator_no_emit(fn):
-        def wrapper(*args, spec: Spec, **kw):
-            # Apply config overrides to spec
-            spec, output_config = spec_with_config_overrides(
-                get_copy_of_spec(spec), config_overrides
-            )
-
-            # Apply config overrides to additional phases, if present
-            if "phases" in kw:
-                phases = {}
-                for fork in kw["phases"]:
-                    phases[fork], output = spec_with_config_overrides(
-                        get_copy_of_spec(kw["phases"][fork]), config_overrides
-                    )
-                kw["phases"] = phases
-
-            # Run the function
-            return fn(*args, spec=spec, **kw)
-
-        return wrapper
-
-    if emit:
-        return decorator_emit
-    else:
-        return decorator_no_emit
+    return decorator
 
 
 def only_generator(reason):

@@ -41,7 +41,6 @@ from eth2spec.test.helpers.state import (
     {
         "BLOB_SCHEDULE": sample_blob_schedule(),
     },
-    emit=False,
 )
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
@@ -293,7 +292,6 @@ def test_light_client_sync(spec, state):
     {
         "BLOB_SCHEDULE": sample_blob_schedule(),
     },
-    emit=False,
 )
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
@@ -333,7 +331,6 @@ def test_supply_sync_committee_from_past_update(spec, state):
     {
         "BLOB_SCHEDULE": sample_blob_schedule(),
     },
-    emit=False,
 )
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
@@ -427,7 +424,6 @@ def test_advance_finality_without_sync_committee(spec, state):
     {
         "BLOB_SCHEDULE": sample_blob_schedule(),
     },
-    emit=False,
 )
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
