@@ -25,7 +25,6 @@
     - [`SignedExecutionPayloadBid`](#signedexecutionpayloadbid)
     - [`ExecutionPayloadEnvelope`](#executionpayloadenvelope)
     - [`SignedExecutionPayloadEnvelope`](#signedexecutionpayloadenvelope)
-    - [`PayloadStatus`](#payloadstatus)
   - [Modified containers](#modified-containers)
     - [`AttestationData`](#attestationdata)
     - [`BeaconBlockBody`](#beaconblockbody)
@@ -254,30 +253,20 @@ class SignedExecutionPayloadEnvelope(Container):
     signature: BLSSignature
 ```
 
-#### `PayloadStatus`
-
-```python
-class PayloadStatus(enum.Enum):
-    EMPTY = 0
-    FULL = 1
-```
-
 ### Modified containers
 
 #### `AttestationData`
 
-*Note*: The `AttestationData` container is modified to contain a
-`PayloadStatus`. The `Attestation`, `SingleAttestation` and `IndexedAttestation` containers are modified indirectly.
-The field `index` is removed from the `AttestationData` and a new field `payload_status` is added.
+*Note*: The `AttestationData` container is modified.
+The field `index` is renamed to `payload_status`.
+The `Attestation`, `SingleAttestation` and `IndexedAttestation` containers are modified indirectly.
 
 ```python
 class AttestationData(Container):
     slot: Slot
-    # [Modified in Gloas:EIP7732]
-    # Removed index
+    # [New in Gloas:EIP7732] Formerly 'index'
+    payload_status: uint64
     beacon_block_root: Root
-    # [New in Gloas:EIP7732]
-    payload_status: PayloadStatus
     source: Checkpoint
     target: Checkpoint
 ```
@@ -617,12 +606,11 @@ def get_attestation_participation_flag_indices(
     )
     is_matching_payload = False
     if is_attestation_same_slot(state, data):
-        assert data.payload_status == PayloadStatus.EMPTY
+        assert data.payload_status == 0
         is_matching_payload = True
     else:
         is_matching_payload = (
-            data.payload_status.value
-            == state.execution_payload_availability[data.slot % SLOTS_PER_HISTORICAL_ROOT]
+            data.payload_status == state.execution_payload_availability[data.slot % SLOTS_PER_HISTORICAL_ROOT]
         )
 
     # [Modified in Gloas:EIP7732]
@@ -1119,7 +1107,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
 
     # [Modified in Gloas:EIP7732]
-    assert data.payload_status in (PayloadStatus.EMPTY, PayloadStatus.FULL)
+    assert data.payload_status < 2
     committee_indices = get_committee_indices(attestation.committee_bits)
     committee_offset = 0
     for committee_index in committee_indices:
