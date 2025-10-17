@@ -1148,7 +1148,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         # [New in Gloas:EIP7732]
         # Add weight for same-slot attestations when any new flag is set
         # This ensures each validator contributes exactly once per slot
-        if will_set_new_flag and is_attestation_same_slot(state, data) and payment.amount > 0:
+        if will_set_new_flag and is_attestation_same_slot(state, data) and payment.withdrawal.amount > 0:
             payment.weight += state.validators[index].effective_balance
 
     # Reward proposer
