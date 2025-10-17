@@ -98,9 +98,9 @@ class DataColumnSidecar(Container):
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments_inclusion_proof`
     # [New in Gloas:EIP7732]
-    beacon_block_root: Root
-    # [New in Gloas:EIP7732]
     slot: Slot
+    # [New in Gloas:EIP7732]
+    beacon_block_root: Root
 ```
 
 ### Helpers
