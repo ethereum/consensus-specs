@@ -6,6 +6,7 @@ import uuid
 from collections.abc import Iterable
 from typing import Any
 
+import psutil
 from pathos.multiprocessing import ProcessingPool as Pool
 from rich import box
 from rich.console import Console
@@ -121,7 +122,7 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
     def debug_print(msg):
         """Only print if verbose is enabled."""
         if args.verbose:
-            print(msg)
+            print(msg, flush=True)
 
     console = Console()
     dumper = Dumper()
@@ -135,16 +136,12 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
         total_found += 1
         # Check if the test case should be filtered out
         if len(args.runners) != 0 and test_case.runner_name not in args.runners:
-            debug_print(f"Filtered: {test_case.get_identifier()}")
             continue
         if len(args.presets) != 0 and test_case.preset_name not in args.presets:
-            debug_print(f"Filtered: {test_case.get_identifier()}")
             continue
         if len(args.forks) != 0 and test_case.fork_name not in args.forks:
-            debug_print(f"Filtered: {test_case.get_identifier()}")
             continue
         if len(args.cases) != 0 and not any(s in test_case.case_name for s in args.cases):
-            debug_print(f"Filtered: {test_case.get_identifier()}")
             continue
 
         # Set the output dir and add this to out list
@@ -166,16 +163,59 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
         """Execute a test case and update active tests."""
         test_case, active_tests = data
         key = (uuid.uuid4(), test_case.get_identifier())
-        active_tests[key] = time.time()
+        test_start = time.time()
+        active_tests[key] = test_start
+
+        debug_print(f"Starting: {test_case.get_identifier()}")
+
         try:
             execute_test(test_case, dumper)
-            debug_print(f"Generated: {test_case.get_identifier()}")
+            elapsed = time.time() - test_start
+            debug_print(f"Generated: {test_case.get_identifier()} (took {elapsed:.2f}s)")
             return "generated"
         except SkippedTest:
-            debug_print(f"Skipped: {test_case.get_identifier()}")
+            elapsed = time.time() - test_start
+            debug_print(f"Skipped: {test_case.get_identifier()} (took {elapsed:.2f}s)")
             return "skipped"
         finally:
             del active_tests[key]
+
+    def periodic_status_print(active_tests, total_tasks, completed, skipped, interval=300):
+        """Print status updates periodically in verbose mode."""
+        process = psutil.Process()
+        while completed.value < total_tasks:
+            time.sleep(interval)
+            remaining = total_tasks - completed.value
+            if remaining > 0:
+                active_count = len(active_tests)
+                # Get system-wide and process memory stats
+                vm = psutil.virtual_memory()
+                total_memory_mb = vm.total / 1024 / 1024
+                system_used_mb = vm.used / 1024 / 1024
+                # Include main process + all child processes (worker pool)
+                process_rss_mb = process.memory_info().rss / 1024 / 1024
+                for child in process.children(recursive=True):
+                    try:
+                        process_rss_mb += child.memory_info().rss / 1024 / 1024
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+
+                debug_print(
+                    f"Progress: {completed.value}/{total_tasks} completed, "
+                    f"{skipped.value} skipped, {active_count} active, "
+                    f"{remaining} remaining, elapsed {time_since(start_time)}"
+                )
+                debug_print(
+                    f"Memory: "
+                    f"this process {process_rss_mb:.0f}MB, "
+                    f"all processes {system_used_mb:.0f}MB, "
+                    f"total available {total_memory_mb:.0f}MB"
+                )
+                if active_tests:
+                    for key, start_time_test in list(active_tests.items()):
+                        debug_print(
+                            f"  - Active: {key[1]} (running for {time_since(start_time_test)})"
+                        )
 
     def display_active_tests(active_tests, total_tasks, completed, skipped, width):
         """Display a table of active tests."""
@@ -211,47 +251,69 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
                 time.sleep(0.25)
 
     # Generate all of the test cases
-    with multiprocessing.Manager() as manager:
-        active_tests = manager.dict()
-        completed = manager.Value("i", 0)
-        skipped = manager.Value("i", 0)
-        width = max([len(t.get_identifier()) for t in selected_test_cases])
+    try:
+        with multiprocessing.Manager() as manager:
+            active_tests = manager.dict()
+            completed = manager.Value("i", 0)
+            skipped = manager.Value("i", 0)
+            width = max([len(t.get_identifier()) for t in selected_test_cases])
 
-        if not args.verbose:
-            display_thread = threading.Thread(
-                target=display_active_tests,
-                args=(active_tests, len(selected_test_cases), completed, skipped, width),
-                daemon=True,
-            )
-            display_thread.start()
+            if not args.verbose:
+                display_thread = threading.Thread(
+                    target=display_active_tests,
+                    args=(active_tests, len(selected_test_cases), completed, skipped, width),
+                    daemon=True,
+                )
+                display_thread.start()
+            else:
+                # Start periodic status printing in verbose mode
+                status_thread = threading.Thread(
+                    target=periodic_status_print,
+                    args=(active_tests, len(selected_test_cases), completed, skipped),
+                    daemon=True,
+                )
+                status_thread.start()
 
-        # Map each test case to a thread worker
-        inputs = [(t, active_tests) for t in selected_test_cases]
+            # Map each test case to a thread worker
+            inputs = [(t, active_tests) for t in selected_test_cases]
 
-        if args.threads == 1:
-            for input in inputs:
-                result = worker_function(input)
-                if result == "skipped":
-                    skipped.value += 1
-                completed.value += 1
-        else:
-            for result in Pool(processes=args.threads).uimap(worker_function, inputs):
-                if result == "skipped":
-                    skipped.value += 1
-                completed.value += 1
+            if args.threads == 1:
+                for input in inputs:
+                    result = worker_function(input)
+                    if result == "skipped":
+                        skipped.value += 1
+                    completed.value += 1
+            else:
+                pool = Pool(processes=args.threads)
+                try:
+                    for result in pool.uimap(worker_function, inputs):
+                        if result == "skipped":
+                            skipped.value += 1
+                        completed.value += 1
+                except KeyboardInterrupt:
+                    # Terminate pool immediately on interrupt
+                    pool.terminate()
+                    pool.join()
+                    raise
+                else:
+                    # Normal cleanup when completed
+                    pool.close()
+                    pool.join()
 
-        if not args.verbose:
-            display_thread.join()
+            if not args.verbose:
+                display_thread.join()
 
-        elapsed = round(time.time() - start_time, 2)
+            elapsed = round(time.time() - start_time, 2)
 
-        # Display final summary using rich
-        total_selected = len(selected_test_cases)
-        total_completed = completed.value - skipped.value
-        total_skipped = skipped.value
+            # Display final summary using rich
+            total_selected = len(selected_test_cases)
+            total_completed = completed.value - skipped.value
+            total_skipped = skipped.value
 
-    display_test_summary(
-        console, total_found, total_selected, total_completed, total_skipped, elapsed
-    )
+        display_test_summary(
+            console, total_found, total_selected, total_completed, total_skipped, elapsed
+        )
 
-    debug_print(f"Completed generation of {tests_prefix} in {elapsed} seconds")
+        debug_print(f"Completed generation of {tests_prefix} in {elapsed} seconds")
+    except KeyboardInterrupt:
+        return
