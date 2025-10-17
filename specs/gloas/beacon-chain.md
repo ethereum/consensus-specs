@@ -1046,6 +1046,7 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
             fee_recipient=bid.fee_recipient,
             amount=amount,
             builder_index=builder_index,
+            withdrawable_epoch=FAR_FUTURE_EPOCH,
         ),
     )
     state.builder_pending_payments[SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH] = pending_payment

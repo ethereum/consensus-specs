@@ -11,6 +11,8 @@
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
+  - [Helpers](#helpers)
+    - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -96,9 +98,41 @@ class DataColumnSidecar(Container):
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments_inclusion_proof`
     # [New in Gloas:EIP7732]
-    beacon_block_root: Root
-    # [New in Gloas:EIP7732]
     slot: Slot
+    # [New in Gloas:EIP7732]
+    beacon_block_root: Root
+```
+
+### Helpers
+
+##### Modified `verify_data_column_sidecar`
+
+```python
+def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
+    """
+    Verify if the data column sidecar is valid.
+    """
+    # The sidecar index must be within the valid range
+    if sidecar.index >= NUMBER_OF_COLUMNS:
+        return False
+
+    # A sidecar for zero blobs is invalid
+    if len(sidecar.kzg_commitments) == 0:
+        return False
+
+    # [Modified in Gloas:EIP7732]
+    # Check that the sidecar respects the blob limit
+    epoch = compute_epoch_at_slot(sidecar.slot)
+    if len(sidecar.kzg_commitments) > get_blob_parameters(epoch).max_blobs_per_block:
+        return False
+
+    # The column length must be equal to the number of commitments/proofs
+    if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(
+        sidecar.kzg_proofs
+    ):
+        return False
+
+    return True
 ```
 
 ### The gossip domain: gossipsub
