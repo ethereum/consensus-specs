@@ -4,7 +4,7 @@ from eth2spec.utils.ssz.ssz_impl import serialize
 from eth2spec.utils.ssz.ssz_typing import View
 
 
-def vector_test(description: str = None):
+def vector_test(_description: str = None):
     """
     vector_test decorator: Allow a caller to pass "generator_mode=True" to make the test yield data,
      but behave like a normal test (ignoring the yield, but fully processing) a test when not in "generator_mode"
@@ -24,9 +24,9 @@ def vector_test(description: str = None):
         #   - "data": a python structure to be encoded by the user.
         def entry(*args, **kw):
             def generator_mode():
-                if description is not None:
+                if _description is not None:
                     # description can be explicit
-                    yield "description", "meta", description
+                    yield "description", "meta", _description
 
                 # transform the yielded data, and add type annotations
                 for data in fn(*args, **kw):
