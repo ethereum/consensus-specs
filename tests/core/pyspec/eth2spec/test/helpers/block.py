@@ -18,14 +18,14 @@ from eth2spec.test.helpers.eip7441 import (
 )
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
-    build_empty_signed_execution_payload_header,
+    build_empty_signed_execution_payload_bid,
 )
 from eth2spec.test.helpers.forks import (
     is_post_altair,
     is_post_bellatrix,
     is_post_eip7441,
-    is_post_eip7732,
     is_post_electra,
+    is_post_gloas,
 )
 from eth2spec.test.helpers.keys import privkeys, whisk_ks_final, whisk_ks_initial
 from eth2spec.utils import bls
@@ -130,9 +130,9 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
     if is_post_altair(spec):
         empty_block.body.sync_aggregate.sync_committee_signature = spec.G2_POINT_AT_INFINITY
 
-    if is_post_eip7732(spec):
-        signed_header = build_empty_signed_execution_payload_header(spec, state)
-        empty_block.body.signed_execution_payload_header = signed_header
+    if is_post_gloas(spec):
+        signed_bid = build_empty_signed_execution_payload_bid(spec, state)
+        empty_block.body.signed_execution_payload_bid = signed_bid
         return empty_block
 
     if is_post_bellatrix(spec):

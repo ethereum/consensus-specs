@@ -2,12 +2,16 @@ from lru import LRU
 
 from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
-from eth2spec.test.helpers.forks import is_post_altair, is_post_deneb, is_post_electra
+from eth2spec.test.helpers.forks import (
+    is_post_altair,
+    is_post_deneb,
+    is_post_electra,
+    is_post_gloas,
+)
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_slot,
-    payload_state_transition_no_store,
     state_transition_and_sign_block,
 )
 from eth2spec.utils import bls
@@ -79,9 +83,15 @@ def build_attestation_data(spec, state, slot, index, beacon_block_root=None, sha
         source_epoch = state.current_justified_checkpoint.epoch
         source_root = state.current_justified_checkpoint.root
 
+    if is_post_electra(spec):
+        index = 0
+        if is_post_gloas(spec):
+            if slot >= 1 and beacon_block_root == spec.get_block_root_at_slot(state, slot - 1):
+                index = 1
+
     data = spec.AttestationData(
         slot=slot,
-        index=0 if is_post_electra(spec) else index,
+        index=index,
         beacon_block_root=beacon_block_root,
         source=spec.Checkpoint(epoch=source_epoch, root=source_root),
         target=spec.Checkpoint(epoch=spec.compute_epoch_at_slot(slot), root=epoch_boundary_root),
@@ -292,7 +302,6 @@ def next_slots_with_attestations(
             participation_fn,
         )
         signed_blocks.append(signed_block)
-        payload_state_transition_no_store(spec, post_state, signed_block.message)
 
     return state, signed_blocks, post_state
 

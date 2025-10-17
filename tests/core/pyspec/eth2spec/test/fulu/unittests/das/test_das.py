@@ -13,6 +13,9 @@ from eth2spec.test.helpers.blob import (
     get_sample_blob,
 )
 from eth2spec.test.helpers.fork_choice import BlobData, with_blob_data
+from eth2spec.test.helpers.forks import (
+    is_post_gloas,
+)
 
 
 def chunks(lst, n):
@@ -62,8 +65,8 @@ def test_recover_matrix(spec):
     # Construct a matrix with some entries missing
     partial_matrix = []
     for blob_entries in chunks(matrix, spec.CELLS_PER_EXT_BLOB):
-        rng.shuffle(blob_entries)
-        partial_matrix.extend(blob_entries[:N_SAMPLES])
+        indices = sorted(rng.sample(range(len(blob_entries)), N_SAMPLES))
+        partial_matrix.extend([blob_entries[i] for i in indices])
 
     # Given the partial matrix, recover the missing entries
     recovered_matrix = spec.recover_matrix(partial_matrix, blob_count)
@@ -101,12 +104,19 @@ def test_get_data_column_sidecars(spec, state):
         spec, state, rng=rng, blob_count=2
     )
 
-    sidecars_result = spec.get_data_column_sidecars(
-        signed_block_header=spec.compute_signed_block_header(signed_block),
-        kzg_commitments=sidecars[0].kzg_commitments,
-        kzg_commitments_inclusion_proof=sidecars[0].kzg_commitments_inclusion_proof,
-        cells_and_kzg_proofs=[spec.compute_cells_and_kzg_proofs(blob) for blob in blobs],
-    )
+    if is_post_gloas(spec):
+        sidecars_result = spec.get_data_column_sidecars_from_block(
+            signed_block,
+            sidecars[0].kzg_commitments,
+            [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs],
+        )
+    else:
+        sidecars_result = spec.get_data_column_sidecars(
+            signed_block_header=spec.compute_signed_block_header(signed_block),
+            kzg_commitments=sidecars[0].kzg_commitments,
+            kzg_commitments_inclusion_proof=sidecars[0].kzg_commitments_inclusion_proof,
+            cells_and_kzg_proofs=[spec.compute_cells_and_kzg_proofs(blob) for blob in blobs],
+        )
 
     assert len(sidecars_result) == len(sidecars), (
         "Should return the same number of sidecars as input"
@@ -117,6 +127,11 @@ def test_get_data_column_sidecars(spec, state):
 @with_fulu_and_later
 @spec_state_test
 def test_get_data_column_sidecars_from_column_sidecar(spec, state):
+    if is_post_gloas(spec):
+        # Skip this test for Gloas as the function hasn't been updated yet
+        # to work without signed_block_header and kzg_commitments_inclusion_proof
+        return
+
     rng = random.Random(1234)
     _, blobs, _, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
 

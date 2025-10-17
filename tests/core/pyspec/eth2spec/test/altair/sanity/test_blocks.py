@@ -20,7 +20,9 @@ from eth2spec.test.helpers.sync_committee import (
 )
 
 
-def run_sync_committee_sanity_test(spec, state, fraction_full=1.0, rng=Random(454545)):
+def run_sync_committee_sanity_test(spec, state, fraction_full=1.0, rng=None):
+    if rng is None:
+        rng = Random(454545)
     all_pubkeys = [v.pubkey for v in state.validators]
     committee = [all_pubkeys.index(pubkey) for pubkey in state.current_sync_committee.pubkeys]
     selected_indices = rng.sample(range(len(committee)), int(len(committee) * fraction_full))

@@ -29,9 +29,10 @@ ready.
 
 ### In-development Specifications
 
-| Seq. | Code Name | Fork Epoch | Links                                                              |
-| ---- | --------- | ---------- | ------------------------------------------------------------------ |
-| 6    | **Fulu**  | TBD        | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu) |
+| Seq. | Code Name | Fork Epoch | Links                                                                |
+| ---- | --------- | ---------- | -------------------------------------------------------------------- |
+| 6    | **Fulu**  | TBD        | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu)   |
+| 7    | **Gloas** | TBD        | [Specs](specs/gloas), [Tests](tests/core/pyspec/eth2spec/test/gloas) |
 
 ### Accompanying documents
 
@@ -59,6 +60,21 @@ reference tests are available
 [here](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml).
 
 ## Contributors
+
+### Prerequisites
+
+This project uses `uv` ([docs.astral.sh/uv](https://docs.astral.sh/uv/)) to
+manage its dependencies and virtual environment. `uv` can
+[download Python](https://docs.astral.sh/uv/guides/install-python/#installing-a-specific-version)
+for your target platform if one of the required versions (3.10-3.13) is not
+available natively.
+
+`uv` can be installed via curl (recommended over a pip-install as it can
+self-update and manage Python versions):
+
+```console
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
 ### Installation and usage
 
@@ -103,4 +119,3 @@ consensus specifications:
 - [Specifications viewer (jtraglia)](https://jtraglia.github.io/eth-spec-viewer/)
 - [The Eth2 Book](https://eth2book.info)
 - [PySpec Tests](tests/core/pyspec/README.md)
-- [Reference Tests Generators](tests/generators/README.md)

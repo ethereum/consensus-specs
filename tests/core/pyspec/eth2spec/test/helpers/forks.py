@@ -4,9 +4,11 @@ from .constants import (
     CAPELLA,
     DENEB,
     EIP7441,
-    EIP7732,
+    EIP7805,
+    EIP7928,
     ELECTRA,
     FULU,
+    GLOAS,
     PHASE0,
     PREVIOUS_FORK_OF,
 )
@@ -52,12 +54,20 @@ def is_post_fulu(spec):
     return is_post_fork(spec.fork, FULU)
 
 
+def is_post_gloas(spec):
+    return is_post_fork(spec.fork, GLOAS)
+
+
 def is_post_eip7441(spec):
     return is_post_fork(spec.fork, EIP7441)
 
 
-def is_post_eip7732(spec):
-    return is_post_fork(spec.fork, EIP7732)
+def is_post_eip7805(spec):
+    return is_post_fork(spec.fork, EIP7805)
+
+
+def is_post_eip7928(spec):
+    return is_post_fork(spec.fork, EIP7928)
 
 
 def get_spec_for_fork_version(spec, fork_version, phases):

@@ -2,7 +2,7 @@ from eth_utils import encode_hex
 
 from eth2spec.test.context import (
     spec_state_test,
-    with_all_phases_from_except,
+    with_all_phases_from_to,
 )
 from eth2spec.test.helpers.attestations import (
     get_valid_attestations_at_slot,
@@ -12,7 +12,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.constants import (
     ALTAIR,
-    EIP7732,
+    GLOAS,
 )
 from eth2spec.test.helpers.fork_choice import (
     apply_next_epoch_with_attestations,
@@ -30,7 +30,7 @@ from eth2spec.test.helpers.state import (
 )
 
 
-@with_all_phases_from_except(ALTAIR, [EIP7732])
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @spec_state_test
 def test_basic_is_head_root(spec, state):
     test_steps = []
@@ -72,7 +72,7 @@ def test_basic_is_head_root(spec, state):
     yield "steps", test_steps
 
 
-@with_all_phases_from_except(ALTAIR, [EIP7732])
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @spec_state_test
 def test_basic_is_parent_root(spec, state):
     test_steps = []
@@ -120,7 +120,10 @@ def test_basic_is_parent_root(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # Make the head block late
-    attesting_cutoff = spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT
+    # Round up to nearest second
+    epoch = spec.get_current_store_epoch(store)
+    attestation_due_ms = spec.get_attestation_due_ms(epoch)
+    attesting_cutoff = (attestation_due_ms + 999) // 1000
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time + attesting_cutoff
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time

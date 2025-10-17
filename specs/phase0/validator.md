@@ -10,6 +10,8 @@ actions of a "validator" participating in the Ethereum proof-of-stake protocol.
 - [Prerequisites](#prerequisites)
 - [Constants](#constants)
   - [Misc](#misc)
+- [Configuration](#configuration)
+  - [Time parameters](#time-parameters)
 - [Containers](#containers)
   - [`Eth1Block`](#eth1block)
   - [`AggregateAndProof`](#aggregateandproof)
@@ -101,6 +103,15 @@ use as a reference throughout.
 | Name                               | Value         |    Unit    |
 | ---------------------------------- | ------------- | :--------: |
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators |
+
+## Configuration
+
+### Time parameters
+
+| Name                  | Value          |     Unit     |          Duration          |
+| --------------------- | -------------- | :----------: | :------------------------: |
+| `ATTESTATION_DUE_BPS` | `uint64(3333)` | basis points | ~33% of `SLOT_DURATION_MS` |
+| `AGGREGATE_DUE_BPS`   | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
 
 ## Containers
 
@@ -435,7 +446,7 @@ contract) and deposit count after execution of the corresponding Eth1 block. If
 over half of the block proposers in the current Eth1 voting period vote for the
 same `eth1_data` then `state.eth1_data` updates immediately allowing new
 deposits to be processed. Each deposit in `block.body.deposits` must verify
-against `state.eth1_data.eth1_deposit_root`.
+against `state.eth1_data.deposit_root`.
 
 ###### `get_eth1_data`
 
@@ -600,9 +611,8 @@ validator performs this role during an epoch are defined by
 A validator should create and broadcast the `attestation` to the associated
 attestation subnet when either (a) the validator has received a valid block from
 the expected block proposer for the assigned `slot` or (b)
-`1 / INTERVALS_PER_SLOT` of the `slot` has transpired
-(`SECONDS_PER_SLOT / INTERVALS_PER_SLOT` seconds after the start of `slot`) --
-whichever comes _first_.
+`get_attestation_due_ms(epoch)` milliseconds has transpired since the start of
+the slot -- whichever comes first.
 
 *Note*: Although attestations during `GENESIS_EPOCH` do not count toward FFG
 finality, these initial attestations do give weight to the fork choice, are
@@ -766,9 +776,8 @@ def get_aggregate_signature(attestations: Sequence[Attestation]) -> BLSSignature
 
 If the validator is selected to aggregate (`is_aggregator`), then they broadcast
 their best aggregate as a `SignedAggregateAndProof` to the global aggregate
-channel (`beacon_aggregate_and_proof`) `2 / INTERVALS_PER_SLOT` of the way
-through the `slot`-that is, `SECONDS_PER_SLOT * 2 / INTERVALS_PER_SLOT` seconds
-after the start of `slot`.
+channel (`beacon_aggregate_and_proof`) `get_aggregate_due_ms(epoch)`
+milliseconds into the slot.
 
 Selection proofs are provided in `AggregateAndProof` to prove to the gossip
 channel that the validator has been selected as an aggregator.

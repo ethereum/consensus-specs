@@ -19,13 +19,15 @@ from eth2spec.test.helpers.block import (
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
+from eth2spec.test.helpers.forks import (
+    is_post_gloas,
+)
 
 # Helper functions
 
 
 def compute_data_column_sidecar(spec, state):
     rng = random.Random(5566)
-    opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2)
     block = get_random_ssz_object(
         rng,
         spec.BeaconBlock,
@@ -34,14 +36,26 @@ def compute_data_column_sidecar(spec, state):
         mode=RandomizationMode,
         chaos=True,
     )
-    block.body.blob_kzg_commitments = blob_kzg_commitments
-    block.body.execution_payload.transactions = [opaque_tx]
-    block.body.execution_payload.block_hash = compute_el_block_hash(
-        spec, block.body.execution_payload, state
-    )
-    signed_block = sign_block(spec, state, block, proposer_index=0)
+
+    opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2)
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
-    return spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)[0]
+
+    if is_post_gloas(spec):
+        block.body.signed_execution_payload_bid.message.blob_kzg_commitments_root = spec.List[
+            spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
+        ](blob_kzg_commitments).hash_tree_root()
+        signed_block = sign_block(spec, state, block, proposer_index=0)
+        return spec.get_data_column_sidecars_from_block(
+            signed_block, blob_kzg_commitments, cells_and_kzg_proofs
+        )[0]
+    else:
+        block.body.blob_kzg_commitments = blob_kzg_commitments
+        block.body.execution_payload.transactions = [opaque_tx]
+        block.body.execution_payload.block_hash = compute_el_block_hash(
+            spec, block.body.execution_payload, state
+        )
+        signed_block = sign_block(spec, state, block, proposer_index=0)
+        return spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)[0]
 
 
 # Tests for verify_data_column_sidecar
@@ -147,6 +161,9 @@ def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_proof(spec, state)
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__valid(spec, state):
+    if is_post_gloas(spec):
+        # Skip for Gloas as inclusion proof fields were removed
+        return
     sidecar = compute_data_column_sidecar(spec, state)
     assert spec.verify_data_column_sidecar_inclusion_proof(sidecar)
 
@@ -155,6 +172,9 @@ def test_verify_data_column_sidecar_inclusion_proof__valid(spec, state):
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__invalid_missing_commitment(spec, state):
+    if is_post_gloas(spec):
+        # Skip for Gloas as inclusion proof fields were removed
+        return
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
     assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
@@ -164,6 +184,9 @@ def test_verify_data_column_sidecar_inclusion_proof__invalid_missing_commitment(
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__invalid_duplicate_commitment(spec, state):
+    if is_post_gloas(spec):
+        # Skip for Gloas as inclusion proof fields were removed
+        return
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_commitments = sidecar.kzg_commitments + [sidecar.kzg_commitments[0]]
     assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)

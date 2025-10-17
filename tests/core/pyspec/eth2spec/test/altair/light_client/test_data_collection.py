@@ -1,10 +1,14 @@
 from eth2spec.test.context import (
     spec_state_test_with_matching_config,
+    with_config_overrides,
     with_light_client,
     with_presets,
 )
 from eth2spec.test.helpers.constants import (
     MINIMAL,
+)
+from eth2spec.test.helpers.light_client import (
+    sample_blob_schedule,
 )
 from eth2spec.test.helpers.light_client_data_collection import (
     add_new_block,
@@ -23,6 +27,12 @@ from eth2spec.test.helpers.light_client_data_collection import (
 
 @with_light_client
 @spec_state_test_with_matching_config
+@with_config_overrides(
+    {
+        "BLOB_SCHEDULE": sample_blob_schedule(initial_epoch=1, interval=1),
+    },
+    emit=False,
+)
 @with_presets([MINIMAL], reason="too slow")
 def test_light_client_data_collection(spec, state):
     # Start test

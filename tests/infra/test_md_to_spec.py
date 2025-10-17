@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from pysetup.helpers import finalized_spec_object
 from pysetup.md_to_spec import MarkdownToSpec
 from pysetup.typing import SpecObject
 
@@ -35,7 +36,6 @@ def test_constructor_initializes_fields(dummy_file, dummy_preset, dummy_config):
     assert m2s.config == dummy_config
     assert m2s.preset_name == preset_name
     assert isinstance(m2s.spec, dict)
-    assert isinstance(m2s.all_custom_types, dict)
     assert hasattr(m2s, "document_iterator")
     assert m2s.current_heading_name is None
 
@@ -109,11 +109,19 @@ def test_run_includes_list_of_records_table(tmp_path, dummy_preset, dummy_config
     # The result should have 'BLOB_SCHEDULE' in config_vars
     assert "BLOB_SCHEDULE" in spec_obj.config_vars
     # The value should be a list of dicts with type constructors applied
-    assert isinstance(spec_obj.config_vars["BLOB_SCHEDULE"], list)
-    assert spec_obj.config_vars["BLOB_SCHEDULE"][0]["EPOCH"] == "Epoch(269568)"
-    assert spec_obj.config_vars["BLOB_SCHEDULE"][0]["MAX_BLOBS_PER_BLOCK"] == "uint64(6)"
-    assert spec_obj.config_vars["BLOB_SCHEDULE"][1]["EPOCH"] == "Epoch(364032)"
-    assert spec_obj.config_vars["BLOB_SCHEDULE"][1]["MAX_BLOBS_PER_BLOCK"] == "uint64(9)"
+    assert (
+        spec_obj.config_vars["BLOB_SCHEDULE"].value
+        == """(
+    frozendict({
+        "EPOCH": Epoch(269568),
+        "MAX_BLOBS_PER_BLOCK": uint64(6),
+    }),
+    frozendict({
+        "EPOCH": Epoch(364032),
+        "MAX_BLOBS_PER_BLOCK": uint64(9),
+    }),
+)"""
+    )
 
 
 def test_run_includes_list_of_records_table_minimal(tmp_path, dummy_preset, dummy_config):
@@ -141,26 +149,34 @@ def test_run_includes_list_of_records_table_minimal(tmp_path, dummy_preset, dumm
     )
     spec_obj = m2s.run()
     assert "BLOB_SCHEDULE" in spec_obj.config_vars
-    assert isinstance(spec_obj.config_vars["BLOB_SCHEDULE"], list)
     # The result should follow the config, not the table
-    assert spec_obj.config_vars["BLOB_SCHEDULE"][0]["EPOCH"] == "Epoch(2)"
-    assert spec_obj.config_vars["BLOB_SCHEDULE"][0]["MAX_BLOBS_PER_BLOCK"] == "uint64(3)"
-    assert spec_obj.config_vars["BLOB_SCHEDULE"][1]["EPOCH"] == "Epoch(4)"
-    assert spec_obj.config_vars["BLOB_SCHEDULE"][1]["MAX_BLOBS_PER_BLOCK"] == "uint64(5)"
+    assert (
+        spec_obj.config_vars["BLOB_SCHEDULE"].value
+        == """(
+    frozendict({
+        "EPOCH": Epoch(2),
+        "MAX_BLOBS_PER_BLOCK": uint64(3),
+    }),
+    frozendict({
+        "EPOCH": Epoch(4),
+        "MAX_BLOBS_PER_BLOCK": uint64(5),
+    }),
+)"""
+    )
 
 
 def test_run_includes_python_function(tmp_path, dummy_preset, dummy_config):
-    md_content = """
+    md_content = '''
 #### `compute_epoch_at_slot`
 
 ```python
 def compute_epoch_at_slot(slot: Slot) -> Epoch:
-    \"\"\"
+    """
     Return the epoch number at slot.
-    \"\"\"
+    """
     return Epoch(slot // SLOTS_PER_EPOCH)
 ```
-"""
+'''
     file = tmp_path / "function.md"
     file.write_text(md_content)
     m2s = MarkdownToSpec(
@@ -297,7 +313,7 @@ class PayloadAttributes(object):
     assert "PayloadAttributes" not in spec_obj.dataclasses
 
 
-def test_finalize_types_called_and_updates_custom_types(
+def test_finalized_spec_object_updates_custom_types(
     tmp_path, dummy_preset, dummy_config, monkeypatch
 ):
     # Minimal markdown with a type definition
@@ -308,6 +324,11 @@ def test_finalize_types_called_and_updates_custom_types(
 | ---------------- | -------------- | --------------------------------- |
 | `Slot`           | `uint64`       | a slot number                     |
 | `Epoch`          | `uint64`       | an epoch number                   |
+
+| Name            | Value      |
+| --------------- | ---------- |
+| `GENESIS_SLOT`  | `Slot(0)`  |
+| `GENESIS_EPOCH` | `Epoch(0)` |
 """
     file = tmp_path / "types.md"
     file.write_text(md_content)
@@ -318,18 +339,7 @@ def test_finalize_types_called_and_updates_custom_types(
         preset_name="mainnet",
     )
 
-    # Spy on _finalize_types
-    called = {}
-    orig_finalize_types = m2s._finalize_types
-
-    def spy_finalize_types():
-        called["ran"] = True
-        return orig_finalize_types()
-
-    monkeypatch.setattr(m2s, "_finalize_types", spy_finalize_types)
-
-    spec_obj = m2s.run()
-    assert called.get("ran") is True
-    # After _finalize_types, custom_types should include 'Slot' and 'Epoch'
+    spec_obj = finalized_spec_object(m2s.run())
+    # After finalized_spec_object, custom_types should include 'Slot' and 'Epoch'
     assert spec_obj.custom_types["Slot"] == "uint64"
     assert spec_obj.custom_types["Epoch"] == "uint64"

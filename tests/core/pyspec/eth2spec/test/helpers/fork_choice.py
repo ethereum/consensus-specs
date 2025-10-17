@@ -10,16 +10,12 @@ from eth2spec.test.helpers.attestations import (
     next_slots_with_attestations,
     state_transition_with_full_block,
 )
-from eth2spec.test.helpers.forks import is_post_eip7732, is_post_fulu
-from eth2spec.test.helpers.state import (
-    payload_state_transition,
-    payload_state_transition_no_store,
-)
+from eth2spec.test.helpers.forks import is_post_fulu, is_post_gloas
 
 
 def check_head_against_root(spec, store, root):
     head = spec.get_head(store)
-    if is_post_eip7732(spec):
+    if is_post_gloas(spec):
         assert head.root == root
     else:
         assert head == root
@@ -130,7 +126,7 @@ def tick_and_add_block(
     is_optimistic=False,
     blob_data: BlobData | None = None,
 ):
-    pre_state = get_store_full_state(spec, store, signed_block.message.parent_root)
+    pre_state = store.block_states[signed_block.message.parent_root]
     if merge_block:
         assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
 
@@ -211,13 +207,11 @@ def get_genesis_forkchoice_store(spec, genesis_state):
 def get_genesis_forkchoice_store_and_block(spec, genesis_state):
     assert genesis_state.slot == spec.GENESIS_SLOT
     genesis_block = spec.BeaconBlock(state_root=genesis_state.hash_tree_root())
-    if is_post_eip7732(spec):
-        genesis_block.body.signed_execution_payload_header.message.block_hash = (
+    if is_post_gloas(spec):
+        genesis_block.body.signed_execution_payload_bid.message.block_hash = (
             genesis_state.latest_block_hash
         )
     store = spec.get_forkchoice_store(genesis_state, genesis_block)
-    if is_post_eip7732(spec):
-        store.execution_payload_states = store.block_states.copy()
     return store, genesis_block
 
 
@@ -273,12 +267,6 @@ def run_on_block(spec, store, signed_block, valid=True):
     spec.on_block(store, signed_block)
     root = signed_block.message.hash_tree_root()
     assert store.blocks[root] == signed_block.message
-
-
-def get_store_full_state(spec, store, root):
-    if is_post_eip7732(spec):
-        return store.execution_payload_states[root]
-    return store.block_states[root]
 
 
 def add_block(
@@ -405,16 +393,14 @@ def add_attester_slashing(spec, store, attester_slashing, test_steps, valid=True
 
 def get_formatted_head_output(spec, store):
     head = spec.get_head(store)
-    if is_post_eip7732(spec):
-        return {
-            "slot": int(head.slot),
-            "root": encode_hex(head.root),
-        }
-
-    slot = store.blocks[head].slot
+    if is_post_gloas(spec):
+        head_root = head.root
+    else:
+        head_root = head
+    slot = store.blocks[head_root].slot
     return {
         "slot": int(slot),
-        "root": encode_hex(head),
+        "root": encode_hex(head_root),
     }
 
 
@@ -475,18 +461,11 @@ def apply_next_epoch_with_attestations(
     for signed_block in new_signed_blocks:
         block = signed_block.message
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-        payload_state_transition(spec, store, signed_block.message)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
 
-    if is_post_eip7732(spec):
-        assert (
-            store.execution_payload_states[block_root].hash_tree_root()
-            == post_state.hash_tree_root()
-        )
-    else:
-        assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
+    assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
 
     return post_state, store, last_signed_block
 
@@ -500,18 +479,11 @@ def apply_next_slots_with_attestations(
     for signed_block in new_signed_blocks:
         block = signed_block.message
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-        payload_state_transition(spec, store, signed_block.message)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
 
-    if is_post_eip7732(spec):
-        assert (
-            store.execution_payload_states[block_root].hash_tree_root()
-            == post_state.hash_tree_root()
-        )
-    else:
-        assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
+    assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
 
     return post_state, store, last_signed_block
 
@@ -539,7 +511,6 @@ def find_next_justifying_slot(spec, state, fill_cur_epoch, fill_prev_epoch, part
             participation_fn,
         )
         signed_blocks.append(signed_block)
-        payload_state_transition_no_store(spec, temp_state, signed_block.message)
 
         if is_ready_to_justify(spec, temp_state):
             justifying_slot = temp_state.slot

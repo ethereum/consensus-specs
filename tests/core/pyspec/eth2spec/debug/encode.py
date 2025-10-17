@@ -3,8 +3,12 @@ from eth2spec.utils.ssz.ssz_typing import (
     Bitlist,
     Bitvector,
     boolean,
+    CompatibleUnion,
     Container,
     List,
+    ProgressiveBitlist,
+    ProgressiveContainer,
+    ProgressiveList,
     uint,
     Union,
     Vector,
@@ -19,15 +23,15 @@ def encode(value, include_hash_tree_roots=False):
         return int(value)
     elif isinstance(value, boolean):
         return value == 1
-    elif isinstance(value, Bitlist | Bitvector):
+    elif isinstance(value, Bitlist | ProgressiveBitlist | Bitvector):
         return "0x" + serialize(value).hex()
     elif isinstance(value, list):  # normal python lists
         return [encode(element, include_hash_tree_roots) for element in value]
-    elif isinstance(value, List | Vector):
+    elif isinstance(value, List | ProgressiveList | Vector):
         return [encode(element, include_hash_tree_roots) for element in value]
     elif isinstance(value, bytes):  # bytes, ByteList, ByteVector
         return "0x" + value.hex()
-    elif isinstance(value, Container):
+    elif isinstance(value, Container | ProgressiveContainer):
         ret = {}
         for field_name in value.fields().keys():
             field_value = getattr(value, field_name)
@@ -42,6 +46,11 @@ def encode(value, include_hash_tree_roots=False):
         return {
             "selector": int(value.selector()),
             "value": None if inner_value is None else encode(inner_value, include_hash_tree_roots),
+        }
+    elif isinstance(value, CompatibleUnion):
+        return {
+            "selector": encode(value.selector()),
+            "data": encode(value.data(), include_hash_tree_roots),
         }
     else:
         raise Exception(f"Type not recognized: value={value}, typ={type(value)}")

@@ -133,7 +133,7 @@ class StemStateDiff(Container):
 class IPAProof(Container):
     cl: Vector[BanderwagonGroupElement, IPA_PROOF_DEPTH]
     cr: Vector[BanderwagonGroupElement, IPA_PROOF_DEPTH]
-    final_evaluation = BanderwagonFieldElement
+    final_evaluation: BanderwagonFieldElement
 ```
 
 #### `VerkleProof`
@@ -211,7 +211,8 @@ def process_execution_payload(
         transactions_root=hash_tree_root(payload.transactions),
         withdrawals_root=hash_tree_root(payload.withdrawals),
         excess_data_gas=payload.excess_data_gas,
-        execution_witness_root=hash_tree_root(payload.execution_witness),  # [New in EIP6800]
+        # [New in EIP6800]
+        execution_witness_root=hash_tree_root(payload.execution_witness),
     )
 ```
 
