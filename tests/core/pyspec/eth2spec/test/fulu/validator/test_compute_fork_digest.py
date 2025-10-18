@@ -20,7 +20,6 @@ from eth2spec.test.context import (
             {"EPOCH": 300, "MAX_BLOBS_PER_BLOCK": 300},
         ],
     },
-    emit=False,
 )
 def test_compute_fork_digest(spec):
     test_cases = [

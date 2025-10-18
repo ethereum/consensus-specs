@@ -31,7 +31,6 @@ from eth2spec.test.helpers.light_client_data_collection import (
     {
         "BLOB_SCHEDULE": sample_blob_schedule(initial_epoch=1, interval=1),
     },
-    emit=False,
 )
 @with_presets([MINIMAL], reason="too slow")
 def test_light_client_data_collection(spec, state):

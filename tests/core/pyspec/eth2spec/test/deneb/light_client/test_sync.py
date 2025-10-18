@@ -22,7 +22,6 @@ from eth2spec.test.helpers.light_client_sync import (
     {
         "ELECTRA_FORK_EPOCH": 3,  # Test setup advances to epoch 2
     },
-    emit=False,
 )
 @with_state
 @with_matching_spec_config(emitted_fork=ELECTRA)
