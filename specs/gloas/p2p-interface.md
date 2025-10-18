@@ -170,8 +170,8 @@ Let `block` be the beacon block corresponding to
 
 The following validations are added:
 
-- _[REJECT]_ `aggregate.data.index < 2`.
-- _[REJECT]_ `aggregate.data.index == 0` if `block.slot == aggregate.data.slot`.
+- _[REJECT]_ `aggregate.data.payload_status < 2`.
+- _[REJECT]_ `aggregate.data.payload_status == 0` if `block.slot == aggregate.data.slot`.
 
 The following validations are removed:
 
@@ -362,8 +362,8 @@ Let `block` be the beacon block corresponding to
 
 The following validations are added:
 
-- _[REJECT]_ `attestation.data.index < 2`.
-- _[REJECT]_ `attestation.data.index == 0` if
+- _[REJECT]_ `attestation.data.payload_status < 2`.
+- _[REJECT]_ `attestation.data.payload_status == 0` if
   `block.slot == attestation.data.slot`.
 
 The following validations are removed:

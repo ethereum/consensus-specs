@@ -26,6 +26,7 @@
     - [`ExecutionPayloadEnvelope`](#executionpayloadenvelope)
     - [`SignedExecutionPayloadEnvelope`](#signedexecutionpayloadenvelope)
   - [Modified containers](#modified-containers)
+    - [`AttestationData`](#attestationdata)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
@@ -253,6 +254,22 @@ class SignedExecutionPayloadEnvelope(Container):
 ```
 
 ### Modified containers
+
+#### `AttestationData`
+
+*Note*: The `AttestationData` container is modified.
+The field `index` is renamed to `payload_status`.
+The `Attestation`, `SingleAttestation` and `IndexedAttestation` containers are modified indirectly.
+
+```python
+class AttestationData(Container):
+    slot: Slot
+    # [New in Gloas:EIP7732] Formerly 'index'
+    payload_status: uint64
+    beacon_block_root: Root
+    source: Checkpoint
+    target: Checkpoint
+```
 
 #### `BeaconBlockBody`
 
@@ -589,12 +606,11 @@ def get_attestation_participation_flag_indices(
     )
     is_matching_payload = False
     if is_attestation_same_slot(state, data):
-        assert data.index == 0
+        assert data.payload_status == 0
         is_matching_payload = True
     else:
         is_matching_payload = (
-            data.index
-            == state.execution_payload_availability[data.slot % SLOTS_PER_HISTORICAL_ROOT]
+            data.payload_status == state.execution_payload_availability[data.slot % SLOTS_PER_HISTORICAL_ROOT]
         )
 
     # [Modified in Gloas:EIP7732]
@@ -1095,7 +1111,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
 
     # [Modified in Gloas:EIP7732]
-    assert data.index < 2
+    assert data.payload_status < 2
     committee_indices = get_committee_indices(attestation.committee_bits)
     committee_offset = 0
     for committee_index in committee_indices:
