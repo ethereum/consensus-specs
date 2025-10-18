@@ -20,6 +20,7 @@ from eth2spec.test.phase0.block_processing.test_process_proposer_slashing import
 @spec_state_test
 def test_builder_payment_deletion_current_epoch(spec, state):
     """Test that builder pending payment is deleted when proposer is slashed in the same epoch as the proposal."""
+    random.seed(1234)
     # Advance past genesis epochs
     next_epoch(spec, state)
     next_epoch(spec, state)
@@ -55,6 +56,7 @@ def test_builder_payment_deletion_current_epoch(spec, state):
 @spec_state_test
 def test_builder_payment_deletion_previous_epoch(spec, state):
     """Test that builder pending payment is deleted when proposer is slashed in the epoch after the proposal."""
+    random.seed(5678)
     # Advance past genesis epochs
     next_epoch(spec, state)
     next_epoch(spec, state)
@@ -91,6 +93,7 @@ def test_builder_payment_deletion_previous_epoch(spec, state):
 @spec_state_test
 def test_builder_payment_deletion_too_late(spec, state):
     """Test that builder pending payment is NOT deleted when slashing comes more than two epochs after the proposal slot."""
+    random.seed(9012)
     # Advance past genesis epochs
     next_epoch(spec, state)
     next_epoch(spec, state)
