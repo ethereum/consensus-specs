@@ -6,6 +6,7 @@ from eth2spec.test.helpers.attestations import (
 )
 from eth2spec.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
+    upgrade_attester_slashing_to_new_spec,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block,
@@ -382,6 +383,10 @@ def run_transition_with_operation(
                 signed_1=True,
                 signed_2=True,
             )
+            if is_at_fork:
+                attester_slashing = upgrade_attester_slashing_to_new_spec(
+                    target_spec, post_spec, attester_slashing
+                )
             operation_dict = {"attester_slashings": [attester_slashing]}
     elif operation_type == OperationType.DEPOSIT:
         # create a new deposit
