@@ -186,8 +186,20 @@ def test_builder_payment_weight_tracking(spec, state):
 
     sign_attestation(spec, state, attestation)
 
-    # Store initial weight for slot 0
+    # Manually set up a non-zero builder pending payment for slot 0
     payment_slot_index = spec.SLOTS_PER_EPOCH + attestation_slot % spec.SLOTS_PER_EPOCH
+    test_payment_amount = spec.Gwei(1000000000)
+    state.builder_pending_payments[payment_slot_index] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(),
+            amount=test_payment_amount,
+            builder_index=spec.ValidatorIndex(0),
+            withdrawable_epoch=spec.Epoch(0),
+        ),
+    )
+
+    # Store initial weight for slot 0
     initial_weight = state.builder_pending_payments[payment_slot_index].weight
 
     # Process attestation
@@ -227,8 +239,20 @@ def test_builder_payment_weight_no_double_counting(spec, state):
 
     sign_attestation(spec, state, attestation1)
 
-    # Store initial weight for slot 0
+    # Manually set up a non-zero builder pending payment for slot 0
     payment_slot_index = spec.SLOTS_PER_EPOCH + attestation_slot % spec.SLOTS_PER_EPOCH
+    test_payment_amount = spec.Gwei(1000000000)
+    state.builder_pending_payments[payment_slot_index] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(),
+            amount=test_payment_amount,
+            builder_index=spec.ValidatorIndex(0),
+            withdrawable_epoch=spec.Epoch(0),
+        ),
+    )
+
+    # Store initial weight for slot 0
     initial_weight = state.builder_pending_payments[payment_slot_index].weight
 
     # Process first attestation (this should set flags and increase weight)

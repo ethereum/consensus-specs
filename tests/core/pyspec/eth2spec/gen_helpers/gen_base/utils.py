@@ -1,5 +1,4 @@
 import functools
-import os
 import signal
 import time
 
@@ -7,11 +6,11 @@ from rich.console import Console
 
 
 def install_sigint_handler(console: Console) -> None:
-    """On Ctrl-C, show the cursor and exit immediately."""
+    """On Ctrl-C, show the cursor and allow cleanup to run."""
 
     def _handle_sigint(signum, frame):
         console.show_cursor()
-        os._exit(0)
+        raise KeyboardInterrupt
 
     signal.signal(signal.SIGINT, _handle_sigint)
 
