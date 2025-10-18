@@ -1023,17 +1023,20 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
     assert bid.parent_block_hash == state.latest_block_hash
     assert bid.parent_block_root == block.parent_root
 
-    # Record the pending payment
-    pending_payment = BuilderPendingPayment(
-        weight=0,
-        withdrawal=BuilderPendingWithdrawal(
-            fee_recipient=bid.fee_recipient,
-            amount=amount,
-            builder_index=builder_index,
-            withdrawable_epoch=FAR_FUTURE_EPOCH,
-        ),
-    )
-    state.builder_pending_payments[SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH] = pending_payment
+    # Record the pending payment if there is some payment
+    if amount > 0:
+        pending_payment = BuilderPendingPayment(
+            weight=0,
+            withdrawal=BuilderPendingWithdrawal(
+                fee_recipient=bid.fee_recipient,
+                amount=amount,
+                builder_index=builder_index,
+                withdrawable_epoch=FAR_FUTURE_EPOCH,
+            ),
+        )
+        state.builder_pending_payments[SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH] = (
+            pending_payment
+        )
 
     # Cache the signed execution payload bid
     state.latest_execution_payload_bid = bid
@@ -1145,7 +1148,11 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         # [New in Gloas:EIP7732]
         # Add weight for same-slot attestations when any new flag is set
         # This ensures each validator contributes exactly once per slot
-        if will_set_new_flag and is_attestation_same_slot(state, data):
+        if (
+            will_set_new_flag
+            and is_attestation_same_slot(state, data)
+            and payment.withdrawal.amount > 0
+        ):
             payment.weight += state.validators[index].effective_balance
 
     # Reward proposer
