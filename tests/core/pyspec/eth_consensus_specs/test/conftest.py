@@ -154,3 +154,6 @@ def kzg_type(request):
     kzg_type = request.config.getoption("--kzg-type")
     if kzg_type == "ckzg":
         _apply_ckzg(request)
+
+
+pytest_plugins = ["tests.infra.pytest_plugins.yield_generator"]
