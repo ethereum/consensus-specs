@@ -2,16 +2,19 @@
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
-- [Capella Light Client -- Sync Protocol](#capella-light-client----sync-protocol)
-  - [Introduction](#introduction)
-  - [Custom types](#custom-types)
-  - [Constants](#constants)
-  - [Containers](#containers)
-    - [Modified `LightClientHeader`](#modified-lightclientheader)
-    - [Modified `LightClientUpdate`](#modified-lightclientupdate)
-  - [Helper functions](#helper-functions)
-    - [`get_lc_execution_root`](#get_lc_execution_root)
-    - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
+- [Introduction](#introduction)
+- [Custom types](#custom-types)
+- [Constants](#constants)
+- [Containers](#containers)
+  - [Modified `LightClientHeader`](#modified-lightclientheader)
+  - [Modified `LightClientBootstrap`](#modified-lightclientbootstrap)
+  - [Modified `LightClientUpdate`](#modified-lightclientupdate)
+  - [Modified `LightClientFinalityUpdate`](#modified-lightclientfinalityupdate)
+  - [Modified `LightClientOptimisticUpdate`](#modified-lightclientoptimisticupdate)
+  - [Modified `LightClientStore`](#modified-lightclientstore)
+- [Helper functions](#helper-functions)
+  - [`get_lc_execution_root`](#get_lc_execution_root)
+  - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
 <!-- mdformat-toc end -->
 
@@ -46,11 +49,21 @@ Additional documents describes the impact of the upgrade on certain roles:
 
 ```python
 class LightClientHeader(Container):
-    # Beacon block header
     beacon: BeaconBlockHeader
-    # Execution payload header corresponding to `beacon.body_root` (from Capella onward)
+    # [New in Capella]
     execution: ExecutionPayloadHeader
+    # [New in Capella]
     execution_branch: ExecutionBranch
+```
+
+### Modified `LightClientBootstrap`
+
+```python
+class LightClientBootstrap(Container):
+    # [Modified in Capella]
+    header: LightClientHeader
+    current_sync_committee: SyncCommittee
+    current_sync_committee_branch: CurrentSyncCommitteeBranch
 ```
 
 ### Modified `LightClientUpdate`
@@ -66,6 +79,46 @@ class LightClientUpdate(Container):
     finality_branch: FinalityBranch
     sync_aggregate: SyncAggregate
     signature_slot: Slot
+```
+
+### Modified `LightClientFinalityUpdate`
+
+```python
+class LightClientFinalityUpdate(Container):
+    # [Modified in Capella]
+    attested_header: LightClientHeader
+    # [Modified in Capella]
+    finalized_header: LightClientHeader
+    finality_branch: FinalityBranch
+    sync_aggregate: SyncAggregate
+    signature_slot: Slot
+```
+
+### Modified `LightClientOptimisticUpdate`
+
+```python
+class LightClientOptimisticUpdate(Container):
+    # [Modified in Capella]
+    attested_header: LightClientHeader
+    sync_aggregate: SyncAggregate
+    signature_slot: Slot
+```
+
+### Modified `LightClientStore`
+
+```python
+@dataclass
+class LightClientStore(object):
+    # [Modified in Capella]
+    finalized_header: LightClientHeader
+    current_sync_committee: SyncCommittee
+    next_sync_committee: SyncCommittee
+    # [Modified in Capella]
+    best_valid_update: Optional[LightClientUpdate]
+    # [Modified in Capella]
+    optimistic_header: LightClientHeader
+    previous_max_active_participants: uint64
+    current_max_active_participants: uint64
 ```
 
 ## Helper functions
