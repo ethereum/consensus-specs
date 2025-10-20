@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 from frozendict import frozendict
-from lru import LRU
+from tests.infra.context import with_custom_state
 
 from eth2spec.utils import bls
 
@@ -70,31 +70,6 @@ def _prepare_state(
         spec=spec, validator_balances=balances, activation_threshold=activation_threshold
     )
     return state
-
-
-_custom_state_cache_dict = LRU(size=10)
-
-
-def with_custom_state(
-    balances_fn: Callable[[Any], Sequence[int]], threshold_fn: Callable[[Any], int]
-):
-    def deco(fn):
-        def entry(*args, spec: Spec, phases: SpecForks, **kw):
-            # make a key for the state, unique to the fork + config (incl preset choice) and balances/activations
-            key = (spec.fork, spec.config.__hash__(), spec.__file__, balances_fn, threshold_fn)
-            if key not in _custom_state_cache_dict:
-                state = _prepare_state(balances_fn, threshold_fn, spec, phases)
-                _custom_state_cache_dict[key] = state.get_backing()
-
-            # Take an entry out of the LRU.
-            # No copy is necessary, as we wrap the immutable backing with a new view.
-            state = spec.BeaconState(backing=_custom_state_cache_dict[key])
-            kw["state"] = state
-            return fn(*args, spec=spec, phases=phases, **kw)
-
-        return entry
-
-    return deco
 
 
 def default_activation_threshold(spec: Spec):
