@@ -2,14 +2,16 @@
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
-- [Introduction](#introduction)
-- [Custom types](#custom-types)
-- [Constants](#constants)
-- [Containers](#containers)
-  - [Modified `LightClientHeader`](#modified-lightclientheader)
-- [Helper functions](#helper-functions)
-  - [`get_lc_execution_root`](#get_lc_execution_root)
-  - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
+- [Capella Light Client -- Sync Protocol](#capella-light-client----sync-protocol)
+  - [Introduction](#introduction)
+  - [Custom types](#custom-types)
+  - [Constants](#constants)
+  - [Containers](#containers)
+    - [Modified `LightClientHeader`](#modified-lightclientheader)
+    - [Modified `LightClientUpdate`](#modified-lightclientupdate)
+  - [Helper functions](#helper-functions)
+    - [`get_lc_execution_root`](#get_lc_execution_root)
+    - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
 <!-- mdformat-toc end -->
 
@@ -55,11 +57,11 @@ class LightClientHeader(Container):
 
 ```python
 class LightClientUpdate(Container):
-    # [Modified in Capella] References the Capella-specific LightClientHeader
+    # [Modified in Capella]
     attested_header: LightClientHeader
     next_sync_committee: SyncCommittee
     next_sync_committee_branch: NextSyncCommitteeBranch
-    # [Modified in Capella] References the Capella-specific LightClientHeader
+    # [Modified in Capella]
     finalized_header: LightClientHeader
     finality_branch: FinalityBranch
     sync_aggregate: SyncAggregate
