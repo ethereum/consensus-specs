@@ -10,6 +10,7 @@ from frozendict import frozendict
 from lru import LRU
 
 from eth2spec.utils import bls
+from tests.infra.pytest_plugins.yield_generator import MultiPhaseResult
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
@@ -582,10 +583,14 @@ def _run_test_case_with_phases(fn, phases, other_phases, kw, args, is_fork_trans
 
     # Return is ignored whenever multiple phases are ran.
     # This return is for test generators to emit python generators (yielding test vector outputs)
+
+    results: MultiPhaseResult = {}
+
     for phase in run_phases:
         ret = fn(spec=targets[phase], phases=phase_dir, *args, **kw)
+        results[phase] = ret
 
-    return ret
+    return results
 
 
 def with_phases(phases, other_phases=None):

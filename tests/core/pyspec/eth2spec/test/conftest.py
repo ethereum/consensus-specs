@@ -109,3 +109,6 @@ def bls_type(request):
         bls_utils.use_fastest()
     else:
         raise Exception(f"unrecognized bls type: {bls_type}")
+
+
+pytest_plugins = ["tests.infra.pytest_plugins.yield_generator"]

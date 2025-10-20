@@ -68,6 +68,7 @@ def vector_test(description: str = None):
                 # Just complete the function, ignore all yielded data,
                 # we are not using it (or processing it, i.e. nearly zero efficiency loss)
                 # Pytest does not support yielded data in the outer function, so we need to wrap it like this.
+                return generator_mode()
                 for _ in fn(*args, **kw):
                     continue
                 return None
