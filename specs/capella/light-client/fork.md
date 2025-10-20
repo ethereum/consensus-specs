@@ -23,14 +23,16 @@ order to do so, that pre-Capella data needs to be locally upgraded to Capella
 before processing.
 
 ```python
-def upgrade_lc_header_to_capella(pre: bellatrix.LightClientHeader) -> LightClientHeader:
+def upgrade_lc_header_to_capella(pre: altair.LightClientHeader) -> LightClientHeader:
     return LightClientHeader(
         beacon=pre.beacon,
+        execution=ExecutionPayloadHeader(),
+        execution_branch=ExecutionBranch(),
     )
 ```
 
 ```python
-def upgrade_lc_bootstrap_to_capella(pre: bellatrix.LightClientBootstrap) -> LightClientBootstrap:
+def upgrade_lc_bootstrap_to_capella(pre: altair.LightClientBootstrap) -> LightClientBootstrap:
     return LightClientBootstrap(
         header=upgrade_lc_header_to_capella(pre.header),
         current_sync_committee=pre.current_sync_committee,
@@ -39,7 +41,7 @@ def upgrade_lc_bootstrap_to_capella(pre: bellatrix.LightClientBootstrap) -> Ligh
 ```
 
 ```python
-def upgrade_lc_update_to_capella(pre: bellatrix.LightClientUpdate) -> LightClientUpdate:
+def upgrade_lc_update_to_capella(pre: altair.LightClientUpdate) -> LightClientUpdate:
     return LightClientUpdate(
         attested_header=upgrade_lc_header_to_capella(pre.attested_header),
         next_sync_committee=pre.next_sync_committee,
@@ -53,7 +55,7 @@ def upgrade_lc_update_to_capella(pre: bellatrix.LightClientUpdate) -> LightClien
 
 ```python
 def upgrade_lc_finality_update_to_capella(
-    pre: bellatrix.LightClientFinalityUpdate,
+    pre: altair.LightClientFinalityUpdate,
 ) -> LightClientFinalityUpdate:
     return LightClientFinalityUpdate(
         attested_header=upgrade_lc_header_to_capella(pre.attested_header),
@@ -66,7 +68,7 @@ def upgrade_lc_finality_update_to_capella(
 
 ```python
 def upgrade_lc_optimistic_update_to_capella(
-    pre: bellatrix.LightClientOptimisticUpdate,
+    pre: altair.LightClientOptimisticUpdate,
 ) -> LightClientOptimisticUpdate:
     return LightClientOptimisticUpdate(
         attested_header=upgrade_lc_header_to_capella(pre.attested_header),
@@ -82,7 +84,7 @@ before Capella based light client data can be processed. The `LightClientStore`
 upgrade MAY be performed before `CAPELLA_FORK_EPOCH`.
 
 ```python
-def upgrade_lc_store_to_capella(pre: bellatrix.LightClientStore) -> LightClientStore:
+def upgrade_lc_store_to_capella(pre: altair.LightClientStore) -> LightClientStore:
     if pre.best_valid_update is None:
         best_valid_update = None
     else:
