@@ -57,23 +57,6 @@ Existing `GeneralizedIndex` constants are frozen at their
 | `CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 86)        |
 | `NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA`    | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 87)           |
 
-## Containers
-
-### Modified `LightClientUpdate`
-
-```python
-class LightClientUpdate(Container):
-    # [Modified in Electra] References the Electra-specific LightClientHeader
-    attested_header: LightClientHeader
-    next_sync_committee: SyncCommittee
-    next_sync_committee_branch: NextSyncCommitteeBranch
-    # [Modified in Electra] References the Electra-specific LightClientHeader
-    finalized_header: LightClientHeader
-    finality_branch: FinalityBranch
-    sync_aggregate: SyncAggregate
-    signature_slot: Slot
-```
-
 ## Helper functions
 
 ### Modified `finalized_root_gindex_at_slot`
