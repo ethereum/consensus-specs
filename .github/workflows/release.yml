@@ -106,6 +106,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Upload spec test tarballs to the specs release
+      - name: Upload spec test tarballs
+        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            consensus-spec-tests/general.tar.gz
+            consensus-spec-tests/minimal.tar.gz
+            consensus-spec-tests/mainnet.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # Finally, publish the spec tests release
       # Requires a personal access token (PAT) with contents:read-write
       - name: Publish spec tests release
