@@ -54,7 +54,7 @@ jobs:
       - name: Clone spec tests repo
         run: |
           rm -rf consensus-spec-tests
-          git clone https://x-access-token:${{ secrets.CONSENSUS_SPEC_TESTS_PAT }}@github.com/ethereum/consensus-spec-tests.git --branch=master --single-branch --depth=1 --no-tags
+          git clone https://x-access-token:${{ secrets.CONSENSUS_SPEC_TESTS_PAT }}@github.com/ethereum/consensus-spec-tests.git --branch=master --single-branch --no-tags
           cd consensus-spec-tests
           rm -rf configs presets tests
 
