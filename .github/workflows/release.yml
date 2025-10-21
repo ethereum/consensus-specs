@@ -54,7 +54,7 @@ jobs:
       - name: Clone spec tests repo
         run: |
           rm -rf consensus-spec-tests
-          git clone https://x-access-token:${{ secrets.CONSENSUS_SPEC_TESTS_PAT }}@github.com/ethereum/consensus-spec-tests.git --branch=master --single-branch --depth=1 --no-tags
+          git clone https://x-access-token:${{ secrets.CONSENSUS_SPEC_TESTS_PAT }}@github.com/ethereum/consensus-spec-tests.git --branch=master --single-branch --no-tags
           cd consensus-spec-tests
           rm -rf configs presets tests
 
@@ -103,6 +103,18 @@ jobs:
           tag: ${{ github.ref_name }}
           prerelease: ${{ contains(github.ref_name, '-') }}
           publish: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Upload spec test tarballs to the specs release
+      - name: Upload spec test tarballs
+        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            consensus-spec-tests/general.tar.gz
+            consensus-spec-tests/minimal.tar.gz
+            consensus-spec-tests/mainnet.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
