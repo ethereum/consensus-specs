@@ -56,7 +56,7 @@ jobs:
           rm -rf consensus-spec-tests
           git clone https://x-access-token:${{ secrets.CONSENSUS_SPEC_TESTS_PAT }}@github.com/ethereum/consensus-spec-tests.git --branch=master --single-branch --no-tags
           cd consensus-spec-tests
-          rm -rf configs presets tests
+          git rm -rf configs presets tests
 
       # Write presets/configs to the spec tests repo
       - name: Copy presets/configs
@@ -86,7 +86,7 @@ jobs:
           cd consensus-spec-tests
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add -A
+          git add --all
           if ! git diff --cached --quiet; then
             git commit -m "release ${{ github.ref_name }} tests"
             git push origin HEAD:refs/heads/master
