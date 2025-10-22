@@ -275,7 +275,8 @@ def get_data_column_sidecars_from_column_sidecar(
     assert len(cells_and_kzg_proofs) == len(sidecar.kzg_commitments)
 
     return get_data_column_sidecars(
-        sidecar.signed_block_header.message.body_root,
+        sidecar.beacon_block_root,
+        sidecar.slot,
         sidecar.kzg_commitments,
         cells_and_kzg_proofs,
     )

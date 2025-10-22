@@ -120,6 +120,11 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     if len(sidecar.kzg_commitments) == 0:
         return False
 
+    # Check that the sidecar respects the blob limit
+    epoch = compute_epoch_at_slot(sidecar.signed_block_header.message.slot)
+    if len(sidecar.kzg_commitments) > get_blob_parameters(epoch).max_blobs_per_block:
+        return False
+
     # The column length must be equal to the number of commitments/proofs
     if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(
         sidecar.kzg_proofs
