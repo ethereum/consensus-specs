@@ -26,12 +26,12 @@ ready.
 | 3    | **Capella**   | `194048`   | [Specs](specs/capella), [Tests](tests/core/pyspec/eth2spec/test/capella)     |
 | 4    | **Deneb**     | `269568`   | [Specs](specs/deneb), [Tests](tests/core/pyspec/eth2spec/test/deneb)         |
 | 5    | **Electra**   | `364032`   | [Specs](specs/electra), [Tests](tests/core/pyspec/eth2spec/test/electra)     |
+| 6    | **Fulu**      | `411392`   | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu)           |
 
 ### In-development Specifications
 
 | Seq. | Code Name | Fork Epoch | Links                                                                |
 | ---- | --------- | ---------- | -------------------------------------------------------------------- |
-| 6    | **Fulu**  | TBD        | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu)   |
 | 7    | **Gloas** | TBD        | [Specs](specs/gloas), [Tests](tests/core/pyspec/eth2spec/test/gloas) |
 
 ### Accompanying documents
