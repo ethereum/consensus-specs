@@ -447,13 +447,9 @@ ignore it)
 
 So far we've ran tests against the formal specifications. This is a way to check
 the specifications are what we expect, but it doesn't actually check the beacon
-chain clients. The way these tests get applied by clients is that every few
-weeks
-[new test specifications are released](https://github.com/ethereum/consensus-spec-tests/releases),
-in a format
-[documented here](https://github.com/ethereum/consensus-specs/tree/master/tests/formats).
-All the consensus layer clients implement test-runners that consume the test
-vectors in this standard format.
+chain clients. Consensus layer clients implement test-runners that
+consume/execute these reference tests to ensure they have implemented the
+specifications properly.
 
 ______________________________________________________________________
 
