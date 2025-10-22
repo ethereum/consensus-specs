@@ -20,8 +20,7 @@
 
 ## Introduction
 
-*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md) and
-is under active development.
+*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md).
 
 ## Custom types
 
