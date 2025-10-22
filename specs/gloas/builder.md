@@ -172,8 +172,8 @@ def get_data_column_sidecars(
                 column=column_cells,
                 kzg_commitments=kzg_commitments,
                 kzg_proofs=column_proofs,
-                beacon_block_root=beacon_block_root,
                 slot=slot,
+                beacon_block_root=beacon_block_root,
             )
         )
     return sidecars
