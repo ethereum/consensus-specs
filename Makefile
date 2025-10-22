@@ -225,7 +225,7 @@ TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 
 # Run pyspec tests.
 test: MAYBE_TEST := $(if $(k),-k=$(k))
-# Disable parallelism which running a specific test.
+# Disable parallelism when running a specific test.
 # Parallelism makes debugging difficult (print doesn't work).
 test: MAYBE_PARALLEL := $(if $(k),,-n auto)
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
