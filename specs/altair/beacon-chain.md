@@ -571,9 +571,32 @@ def add_validator_to_registry(
 def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) -> None:
     # Verify sync committee aggregate signature signing over the previous slot block root
     committee_pubkeys = state.current_sync_committee.pubkeys
-    participant_pubkeys = [
-        pubkey for pubkey, bit in zip(committee_pubkeys, sync_aggregate.sync_committee_bits) if bit
-    ]
+    committee_bits = sync_aggregate.sync_committee_bits
+    if sum(committee_bits) == SYNC_COMMITTEE_SIZE:
+        # All members participated - use precomputed aggregate
+        participant_pubkeys = [state.current_sync_committee.aggregate_pubkey]
+    elif sum(committee_bits) > SYNC_COMMITTEE_SIZE // 2:
+        # More than half participated - subtract non-participant keys.
+        # First determine nonparticipating members
+        non_participant_pubkeys = [
+            pubkey for pubkey, bit in zip(committee_pubkeys, committee_bits) if not bit
+        ]
+        # Compute aggregate of non-participants
+        non_participant_aggregate = eth_aggregate_pubkeys(non_participant_pubkeys)
+        # Subtract non-participants from the full aggregate
+        # This is equivalent to: aggregate_pubkey + (-non_participant_aggregate)
+        participant_pubkey = bls.add(
+            bls.bytes48_to_G1(state.current_sync_committee.aggregate_pubkey),
+            bls.neg(bls.bytes48_to_G1(non_participant_aggregate)),
+        )
+        participant_pubkeys = [BLSPubkey(bls.G1_to_bytes48(participant_pubkey))]
+    else:
+        # Less than half participated - aggregate participant keys
+        participant_pubkeys = [
+            pubkey
+            for pubkey, bit in zip(committee_pubkeys, sync_aggregate.sync_committee_bits)
+            if bit
+        ]
     previous_slot = max(state.slot, Slot(1)) - Slot(1)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
