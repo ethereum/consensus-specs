@@ -1,0 +1,280 @@
+# EIP-7782 -- The Beacon Chain
+
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
+
+- [Time parameters](#time-parameters)
+- [Rewards and penalties](#rewards-and-penalties)
+- [Configuration](#configuration)
+  - [Time parameters](#time-parameters-1)
+  - [EIP-7782 timing parameters](#eip-7782-timing-parameters)
+  - [EIP-7782 sync committee parameters](#eip-7782-sync-committee-parameters)
+  - [EIP-7782 churn limit parameters](#eip-7782-churn-limit-parameters)
+  - [Modified churn limit functions](#modified-churn-limit-functions)
+    - [Modified `get_balance_churn_limit`](#modified-get_balance_churn_limit)
+    - [Modified `get_activation_exit_churn_limit`](#modified-get_activation_exit_churn_limit)
+    - [Modified `get_activation_exit_churn_limit`](#modified-get_activation_exit_churn_limit-1)
+  - [Modified sync committee functions](#modified-sync-committee-functions)
+    - [Modified `get_sync_committee_period`](#modified-get_sync_committee_period)
+    - [Modified `get_sync_committee_period_at_slot`](#modified-get_sync_committee_period_at_slot)
+- [Rewards and penalties](#rewards-and-penalties-1)
+  - [Helpers](#helpers)
+    - [`get_base_reward_per_increment`](#get_base_reward_per_increment)
+  - [Modified timing functions](#modified-timing-functions)
+    - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
+    - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
+    - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
+    - [Modified `get_contribution_due_ms`](#modified-get_contribution_due_ms)
+    - [Modified `get_proposer_reorg_cutoff_ms`](#modified-get_proposer_reorg_cutoff_ms)
+    - [Modified `get_payload_attestation_due_ms`](#modified-get_payload_attestation_due_ms)
+    - [Modified `get_view_freeze_cutoff_ms`](#modified-get_view_freeze_cutoff_ms)
+    - [Modified `get_inclusion_list_submission_due_ms`](#modified-get_inclusion_list_submission_due_ms)
+    - [Modified `get_proposer_inclusion_list_cutoff_ms`](#modified-get_proposer_inclusion_list_cutoff_ms)
+
+<!-- mdformat-toc end -->
+
+### Time parameters
+
+### Rewards and penalties
+
+| Name | Value |
+| ---------------------------- | --------------------- |
+| `BASE_REWARD_FACTOR_EIP7782` | `uint64(2**5)` (= 32) |
+
+## Configuration
+
+### Time parameters
+
+| Name | Value | Unit | Duration |
+| -------------------------- | -------------- | :----------: | :-------: |
+| `SLOT_DURATION_MS_EIP7782` | `uint64(6000)` | milliseconds | 6 seconds |
+
+### EIP-7782 timing parameters
+
+| Name | Value | Unit | Duration |
+| ------------------------------ | -------------- | :----------: | :----------: |
+| `ATTESTATION_DUE_BPS_EIP7782` | `uint64(5000)` | basis points | ~50% of slot |
+| `AGGREGRATE_DUE_BPS_EIP7782` | `uint64(7500)` | basis points | ~75% of slot |
+| `SYNC_MESSAGE_DUE_BPS_EIP7782` | `uint64(3333)` | basis points | ~33% of slot |
+| `CONTRIBUTION_DUE_BPS_EIP7782` | `uint64(6667)` | basis points | ~67% of slot |
+| `PROPOSER_REORG_CUTOFF_BPS_EIP7782` | `uint64(1667)` | basis points | ~17% of slot |
+| `PAYLOAD_ATTESTATION_DUE_BPS_EIP7782` | `uint64(7500)` | basis points | ~75% of slot |
+| `VIEW_FREEZE_CUTOFF_BPS_EIP7782` | `uint64(7500)` | basis points | ~75% of slot |
+| `INCLUSION_LIST_SUBMISSION_DUE_BPS_EIP7782` | `uint64(6667)` | basis points | ~67% of slot |
+| `PROPOSER_INCLUSION_LIST_CUTOFF_BPS_EIP7782` | `uint64(9167)` | basis points | ~92% of slot |
+
+### EIP-7782 sync committee parameters
+
+| Name | Value | Unit | Duration |
+| ---------------------------------------------- | -------------- | :--: | :------: |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD_EIP7782` | `uint64(512)` | epochs | ~27 hours |
+
+*Note*: EIP-7782 uses the blob schedule mechanism to reduce blob throughput. The
+blob schedule entry for EIP-7782 sets `MAX_BLOBS_PER_BLOCK` to 3 (half of the
+current 6 blobs) to maintain constant throughput per unit time with 6-second
+slots. Transaction limits remain unchanged.
+
+*Note*: EIP-7782 also halves the churn limits to maintain timing constants with
+6-second slots. This ensures that validator activation/exit rates remain
+proportional to time rather than slot count.
+
+*Note*: EIP-7782 doubles the sync committee period to maintain the same time duration (~27 hours) with 6-second slots.
+
+### EIP-7782 churn limit parameters
+
+| Name | Value | Unit | Description |
+| --------------------------------------------------- | -------------------- | :--: | :-----------------------------: |
+| `MIN_PER_EPOCH_CHURN_LIMIT_EIP7782` | `Gwei(64000000000)` | Gwei | Minimum balance per epoch |
+| `MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT_EIP7782` | `Gwei(128000000000)` | Gwei | Maximum activation/exit balance |
+
+### Modified churn limit functions
+
+#### Modified `get_balance_churn_limit`
+
+```python
+def get_balance_churn_limit(state: BeaconState) -> Gwei:
+    """
+    Return the churn limit for the current epoch.
+    """
+    churn = max(
+        MIN_PER_EPOCH_CHURN_LIMIT_EIP7782,
+        get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT,
+    )
+    return churn - churn % EFFECTIVE_BALANCE_INCREMENT
+```
+
+#### Modified `get_activation_exit_churn_limit`
+
+```python
+def get_activation_exit_churn_limit(state: BeaconState) -> Gwei:
+    """
+    Return the churn limit for the current epoch dedicated to activations and exits.
+    """
+    return min(MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT_EIP7782, get_balance_churn_limit(state))
+```
+
+#### Modified `get_activation_exit_churn_limit`
+
+```python
+def get_activation_exit_churn_limit(state: BeaconState) -> Gwei:
+    """
+    Return the churn limit for the current epoch dedicated to activations and exits.
+    """
+    return min(MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT_EIP7782, get_balance_churn_limit(state))
+```
+
+### Modified sync committee functions
+
+#### Modified `get_sync_committee_period`
+
+```python
+def get_sync_committee_period(epoch: Epoch) -> uint64:
+    """
+    Return the sync committee period at ``epoch``.
+    """
+     return epoch // EPOCHS_PER_SYNC_COMMITTEE_PERIOD_EIP7782
+```
+
+#### Modified `get_sync_committee_period_at_slot`
+
+```python
+def get_sync_committee_period_at_slot(slot: Slot) -> uint64:
+    """
+    Return the sync committee period at ``slot``.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    return get_sync_committee_period(epoch)
+```
+
+## Rewards and penalties
+
+### Helpers
+
+#### `get_base_reward_per_increment`
+
+```python
+def get_base_reward_per_increment(state: BeaconState) -> Gwei:
+    return Gwei(
+        EFFECTIVE_BALANCE_INCREMENT
+        * BASE_REWARD_FACTOR_EIP7782
+        // integer_squareroot(get_total_active_balance(state))
+    )
+```
+
+### Modified timing functions
+
+#### Modified `get_attestation_due_ms`
+
+```python
+def get_attestation_due_ms(epoch: Epoch) -> uint64:
+    """
+    Return the attestation due time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return ATTESTATION_DUE_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return ATTESTATION_DUE_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_aggregate_due_ms`
+
+```python
+def get_aggregate_due_ms(epoch: Epoch) -> uint64:
+    """
+    Return the aggregate due time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return AGGREGRATE_DUE_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return AGGREGATE_DUE_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_sync_message_due_ms`
+
+```python
+def get_sync_message_due_ms(epoch: Epoch) -> uint64:
+    """
+    Return the sync message due time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return SYNC_MESSAGE_DUE_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return SYNC_MESSAGE_DUE_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_contribution_due_ms`
+
+```python
+def get_contribution_due_ms(epoch: Epoch) -> uint64:
+    """
+    Return the contribution due time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return CONTRIBUTION_DUE_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return CONTRIBUTION_DUE_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_proposer_reorg_cutoff_ms`
+
+```python
+def get_proposer_reorg_cutoff_ms(epoch: Epoch) -> uint64:
+    """
+    Return the proposer reorg cutoff time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return PROPOSER_REORG_CUTOFF_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return PROPOSER_REORG_CUTOFF_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_payload_attestation_due_ms`
+
+```python
+def get_payload_attestation_due_ms(epoch: Epoch) -> uint64:
+    """
+    Return the payload attestation due time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return PAYLOAD_ATTESTATION_DUE_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return PAYLOAD_ATTESTATION_DUE_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_view_freeze_cutoff_ms`
+
+```python
+def get_view_freeze_cutoff_ms(epoch: Epoch) -> uint64:
+    """
+    Return the view freeze cutoff time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return VIEW_FREEZE_CUTOFF_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return VIEW_FREEZE_CUTOFF_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_inclusion_list_submission_due_ms`
+
+```python
+def get_inclusion_list_submission_due_ms(epoch: Epoch) -> uint64:
+    """
+    Return the inclusion list submission due time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return INCLUSION_LIST_SUBMISSION_DUE_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return INCLUSION_LIST_SUBMISSION_DUE_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### Modified `get_proposer_inclusion_list_cutoff_ms`
+
+```python
+def get_proposer_inclusion_list_cutoff_ms(epoch: Epoch) -> uint64:
+    """
+    Return the proposer inclusion list cutoff time in milliseconds for the given epoch.
+    """
+    if epoch >= EIP7782_FORK_EPOCH:
+        return PROPOSER_INCLUSION_LIST_CUTOFF_BPS_EIP7782 * SLOT_DURATION_MS_EIP7782 // BASIS_POINTS
+    else:
+        return PROPOSER_INCLUSION_LIST_CUTOFF_BPS * SLOT_DURATION_MS // BASIS_POINTS
+```

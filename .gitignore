@@ -27,6 +27,8 @@ tests/core/pyspec/eth2spec/fulu/
 tests/core/pyspec/eth2spec/gloas/
 tests/core/pyspec/eth2spec/eip6800/
 tests/core/pyspec/eth2spec/eip7441/
+tests/core/pyspec/eth2spec/eip7732/
+tests/core/pyspec/eth2spec/eip7782/
 tests/core/pyspec/eth2spec/eip7805/
 tests/core/pyspec/eth2spec/eip7928/
 
