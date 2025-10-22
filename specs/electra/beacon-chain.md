@@ -1278,7 +1278,8 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     for withdrawal in expected_withdrawals:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 
-    # [New in Electra:EIP7251] Update pending partial withdrawals
+    # [New in Electra:EIP7251]
+    # Update pending partial withdrawals
     state.pending_partial_withdrawals = state.pending_partial_withdrawals[
         processed_partial_withdrawals_count:
     ]
@@ -1342,12 +1343,16 @@ def process_execution_payload(
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
-    # [Modified in Electra:EIP7691] Verify commitments are under limit
+    # [Modified in Electra:EIP7691]
+    # Verify commitments are under limit
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA
-    # Verify the execution payload is valid
+
+    # Compute list of versioned hashes
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
     ]
+
+    # Verify the execution payload is valid
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
@@ -1357,6 +1362,7 @@ def process_execution_payload(
             execution_requests=body.execution_requests,
         )
     )
+
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
