@@ -110,7 +110,7 @@ def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_commitments(spec, 
 @with_fulu_and_later
 @spec_state_test
 @single_phase
-def test_verify_data_column_sidecars__invalid_mismatch_len_kzg_proofs(spec, state):
+def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_proofs(spec, state):
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_proofs = sidecar.kzg_proofs[1:]
     assert not spec.verify_data_column_sidecar(sidecar)
@@ -119,7 +119,7 @@ def test_verify_data_column_sidecars__invalid_mismatch_len_kzg_proofs(spec, stat
 @with_fulu_and_later
 @spec_state_test
 @single_phase
-def test_verify_data_column_sidecars__invalid_kzg_commitments_over_max_blobs(spec, state):
+def test_verify_data_column_sidecar__invalid_kzg_commitments_over_max_blobs(spec, state):
     sidecar = compute_data_column_sidecar(spec, state)
 
     if is_post_gloas(spec):
