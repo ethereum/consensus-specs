@@ -600,7 +600,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     previous_slot = max(state.slot, Slot(1)) - Slot(1)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
-    # Note: eth_fast_aggregate_verify works with a singleton list containing an already aggregated key.
+    # Note: eth_fast_aggregate_verify works with a singleton list containing an aggregated key
     assert eth_fast_aggregate_verify(
         participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature
     )
