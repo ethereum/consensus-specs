@@ -539,6 +539,9 @@ def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorInd
 
 #### Modified `get_attestation_participation_flag_indices`
 
+*Note*: The function `get_attestation_participation_flag_indices` is modified to
+include a new payload matching constraint to `is_matching_head`.
+
 ```python
 def get_attestation_participation_flag_indices(
     state: BeaconState, data: AttestationData, inclusion_delay: uint64
@@ -546,33 +549,32 @@ def get_attestation_participation_flag_indices(
     """
     Return the flag indices that are satisfied by an attestation.
     """
+    # Matching source
     if data.target.epoch == get_current_epoch(state):
         justified_checkpoint = state.current_justified_checkpoint
     else:
         justified_checkpoint = state.previous_justified_checkpoint
-
-    # Matching roots
     is_matching_source = data.source == justified_checkpoint
-    is_matching_target = is_matching_source and data.target.root == get_block_root(
-        state, data.target.epoch
-    )
+
+    # Matching target
+    target_root = get_block_root(state, data.target.epoch)
+    target_matches = data.target.root == target_root
+    is_matching_target = is_matching_source and target_matches
 
     # [New in Gloas:EIP7732]
-    is_matching_blockroot = is_matching_target and data.beacon_block_root == get_block_root_at_slot(
-        state, Slot(data.slot)
-    )
-    is_matching_payload = False
     if is_attestation_same_slot(state, data):
         assert data.index == 0
-        is_matching_payload = True
+        payload_matches = True
     else:
-        is_matching_payload = (
-            data.index
-            == state.execution_payload_availability[data.slot % SLOTS_PER_HISTORICAL_ROOT]
-        )
+        slot_index = data.slot % SLOTS_PER_HISTORICAL_ROOT
+        payload_index = state.execution_payload_availability[slot_index]
+        payload_matches = data.index == payload_index
 
+    # Matching head
+    head_root = get_block_root_at_slot(state, data.slot)
+    head_matches = data.beacon_block_root == head_root
     # [Modified in Gloas:EIP7732]
-    is_matching_head = is_matching_blockroot and is_matching_payload
+    is_matching_head = is_matching_target and head_matches and payload_matches
 
     assert is_matching_source
 
