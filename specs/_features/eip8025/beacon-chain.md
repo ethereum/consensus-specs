@@ -178,10 +178,12 @@ def process_execution_payload(
         # Stateless validation using execution proofs
         assert verify_execution_proofs(payload.parent_hash, payload.block_hash, state)
     else:
-        # Traditional validation - execute the payload
+        # Compute list of versioned hashes
         versioned_hashes = [
             kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
         ]
+
+        # Verify the execution payload is valid
         assert execution_engine.verify_and_notify_new_payload(
             NewPayloadRequest(
                 execution_payload=payload,
