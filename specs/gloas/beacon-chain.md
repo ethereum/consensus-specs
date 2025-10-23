@@ -635,9 +635,9 @@ def get_builder_payment_quorum_threshold(state: BeaconState) -> uint64:
     """
     Calculate the quorum threshold for builder payments.
     """
-    quorum = (
-        get_total_active_balance(state) // SLOTS_PER_EPOCH * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
-    )
+    total_active_balance = get_total_active_balance(state)
+    per_slot_balance = total_active_balance // SLOTS_PER_EPOCH
+    quorum = per_slot_balance * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
     return uint64(quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR)
 ```
 
