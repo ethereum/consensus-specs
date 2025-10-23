@@ -82,8 +82,7 @@
 This is the beacon chain specification of the enshrined proposer builder
 separation feature.
 
-*Note*: This specification is built upon [Fulu](../fulu/beacon-chain.md) and is
-under active development.
+*Note*: This specification is built upon [Fulu](../fulu/beacon-chain.md).
 
 This feature adds new staked consensus participants called *Builders* and new
 honest validators duties called *payload timeliness attestations*. The slot is

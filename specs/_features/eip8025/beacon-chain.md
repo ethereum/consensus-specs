@@ -32,8 +32,7 @@
 This document contains the consensus specs for EIP-8025. This enables stateless
 validation of execution payloads through cryptographic proofs.
 
-*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md) and
-is under active development.
+*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md).
 
 *Note*: This specification assumes the reader is familiar with the
 [public zkEVM methods exposed](./zkevm.md).
