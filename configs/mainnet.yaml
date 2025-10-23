@@ -239,7 +239,7 @@ MAX_BYTES_PER_INCLUSION_LIST: 8192
 # ---------------------------------------------------------------
 
 BLOB_SCHEDULE:
-  - EPOCH: 414464  # December 17, 2025, 01:29:59pm UTC
+  - EPOCH: 412672  # December 9, 2025, 02:21:11pm UTC
     MAX_BLOBS_PER_BLOCK: 15
   - EPOCH: 419072  # January 7, 2026, 01:01:11am UTC
     MAX_BLOBS_PER_BLOCK: 21
