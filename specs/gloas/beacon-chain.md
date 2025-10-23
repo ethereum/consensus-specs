@@ -368,10 +368,10 @@ def is_attestation_same_slot(state: BeaconState, data: AttestationData) -> bool:
         return True
 
     blockroot = data.beacon_block_root
-    curr_blockroot = get_block_root_at_slot(state, Slot(data.slot))
+    slot_blockroot = get_block_root_at_slot(state, data.slot)
     prev_blockroot = get_block_root_at_slot(state, Slot(data.slot - 1))
 
-    return blockroot == curr_blockroot and blockroot != prev_blockroot
+    return blockroot == slot_blockroot and blockroot != prev_blockroot
 ```
 
 #### New `is_valid_indexed_payload_attestation`
