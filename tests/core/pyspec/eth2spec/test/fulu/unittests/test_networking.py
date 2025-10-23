@@ -41,9 +41,9 @@ def compute_data_column_sidecar(spec, state):
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
 
     if is_post_gloas(spec):
-        block.body.signed_execution_payload_bid.message.blob_kzg_commitments_root = spec.List[
-            spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
-        ](blob_kzg_commitments).hash_tree_root()
+        block.body.signed_execution_payload_bid.message.blob_kzg_commitments_root = (
+            spec.ProgressiveList[spec.KZGCommitment](blob_kzg_commitments).hash_tree_root()
+        )
         signed_block = sign_block(spec, state, block, proposer_index=0)
         return spec.get_data_column_sidecars_from_block(
             signed_block, blob_kzg_commitments, cells_and_kzg_proofs

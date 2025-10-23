@@ -38,9 +38,7 @@ def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None, blob_coun
             chaos=True,
         )
     if is_post_gloas(spec):
-        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
-            blob_kzg_commitments
-        )
+        blob_kzg_commitments = spec.ProgressiveList[spec.KZGCommitment](blob_kzg_commitments)
         kzg_root = blob_kzg_commitments.hash_tree_root()
         block.body.signed_execution_payload_bid.message.blob_kzg_commitments_root = kzg_root
     else:
