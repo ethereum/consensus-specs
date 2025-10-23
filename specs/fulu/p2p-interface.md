@@ -313,6 +313,11 @@ class PartialDataColumnSidecar(Container):
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
 ```
 
+*Note*: The `PartialDataColumnSidecar` can not be validated until the
+corresponding block with the commitments is available. Implementations SHOULD
+maintain a bounded number (0 is a valid number) of messages until the block is
+available and the messages can be validated.
+
 ##### Parts Metadata
 
 Peers communicate the cells available with a bitmap. A set bit (`1`) at index `i`
