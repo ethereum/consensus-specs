@@ -30,7 +30,7 @@ This document details the beacon chain additions and changes of to support the
 EIP-7441 (Whisk SSLE).
 
 *Note*: This specification is built upon
-[capella](../../capella/beacon-chain.md) and is under active development.
+[Capella](../../capella/beacon-chain.md).
 
 ## Constants
 

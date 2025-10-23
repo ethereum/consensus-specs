@@ -53,11 +53,9 @@ functionality can be found in the following repositories:
 
 ### Reference tests
 
-Reference tests built from the executable Python spec are available in the
-[Ethereum Proof-of-Stake Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests)
-repository. Compressed tarballs are available for each release
-[here](https://github.com/ethereum/consensus-spec-tests/releases). Nightly
-reference tests are available
+Reference tests built from the executable Python specifications are available in
+the release assets for each release in this repository. There are also *nightly*
+reference tests which are built from the latest version of the specifications
 [here](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml).
 
 ## Contributors
