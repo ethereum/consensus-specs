@@ -713,14 +713,15 @@ def process_builder_pending_payments(state: BeaconState) -> None:
     quorum = get_builder_payment_quorum_threshold(state)
     for payment in state.builder_pending_payments[:SLOTS_PER_EPOCH]:
         if payment.weight > quorum:
-            exit_queue_epoch = compute_exit_epoch_and_update_churn(state, payment.withdrawal.amount)
-            payment.withdrawal.withdrawable_epoch = Epoch(
-                exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-            )
+            amount = payment.withdrawal.amount
+            exit_queue_epoch = compute_exit_epoch_and_update_churn(state, amount)
+            withdrawable_epoch = exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+            payment.withdrawal.withdrawable_epoch = Epoch(withdrawable_epoch)
             state.builder_pending_withdrawals.append(payment.withdrawal)
-    state.builder_pending_payments = state.builder_pending_payments[SLOTS_PER_EPOCH:] + [
-        BuilderPendingPayment() for _ in range(SLOTS_PER_EPOCH)
-    ]
+
+    old_payments = state.builder_pending_payments[SLOTS_PER_EPOCH:]
+    new_payments = [BuilderPendingPayment() for _ in range(SLOTS_PER_EPOCH)]
+    state.builder_pending_payments = old_payments + new_payments
 ```
 
 ### Block processing
