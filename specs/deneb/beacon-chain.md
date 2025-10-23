@@ -246,13 +246,13 @@ def get_attestation_participation_flag_indices(
 
     # Matching target
     target_root = get_block_root(state, data.target.epoch)
-    target_matches = data.target.root == target_root
-    is_matching_target = is_matching_source and target_matches
+    target_root_matches = data.target.root == target_root
+    is_matching_target = is_matching_source and target_root_matches
 
     # Matching head
     head_root = get_block_root_at_slot(state, data.slot)
-    head_matches = data.beacon_block_root == head_root
-    is_matching_head = is_matching_target and head_matches
+    head_root_matches = data.beacon_block_root == head_root
+    is_matching_head = is_matching_target and head_root_matches
 
     assert is_matching_source
 

@@ -558,8 +558,8 @@ def get_attestation_participation_flag_indices(
 
     # Matching target
     target_root = get_block_root(state, data.target.epoch)
-    target_matches = data.target.root == target_root
-    is_matching_target = is_matching_source and target_matches
+    target_root_matches = data.target.root == target_root
+    is_matching_target = is_matching_source and target_root_matches
 
     # [New in Gloas:EIP7732]
     if is_attestation_same_slot(state, data):
@@ -572,9 +572,9 @@ def get_attestation_participation_flag_indices(
 
     # Matching head
     head_root = get_block_root_at_slot(state, data.slot)
-    head_matches = data.beacon_block_root == head_root
+    head_root_matches = data.beacon_block_root == head_root
     # [Modified in Gloas:EIP7732]
-    is_matching_head = is_matching_target and head_matches and payload_matches
+    is_matching_head = is_matching_target and head_root_matches and payload_matches
 
     assert is_matching_source
 
