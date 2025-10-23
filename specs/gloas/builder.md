@@ -12,11 +12,11 @@
   - [Builder index](#builder-index)
   - [Activation](#activation)
 - [Builder activities](#builder-activities)
-  - [Constructing the payload bid](#constructing-the-payload-bid)
+  - [Constructing the `SignedExecutionPayloadBid`](#constructing-the-signedexecutionpayloadbid)
   - [Constructing the `DataColumnSidecar`s](#constructing-the-datacolumnsidecars)
     - [Modified `get_data_column_sidecars`](#modified-get_data_column_sidecars)
     - [Modified `get_data_column_sidecars_from_block`](#modified-get_data_column_sidecars_from_block)
-  - [Constructing the `ExecutionPayloadEnvelope`](#constructing-the-executionpayloadenvelope)
+  - [Constructing the `SignedExecutionPayloadEnvelope`](#constructing-the-signedexecutionpayloadenvelope)
   - [Honest payload withheld messages](#honest-payload-withheld-messages)
 
 <!-- mdformat-toc end -->
@@ -87,7 +87,7 @@ broadcast an accompanying `SignedExecutionPayloadEnvelope` object honoring the
 commitment. If a proposer accepts a builder's bid, the builder will pay the
 proposer what it promised whether it submits the payload or not.
 
-### Constructing the payload bid
+### Constructing the `SignedExecutionPayloadBid`
 
 Builders can broadcast a payload bid for the current or the next slot's proposer
 to include. They produce a `SignedExecutionPayloadBid` as follows.
@@ -207,7 +207,7 @@ def get_data_column_sidecars_from_block(
     )
 ```
 
-### Constructing the `ExecutionPayloadEnvelope`
+### Constructing the `SignedExecutionPayloadEnvelope`
 
 When the proposer publishes a valid `SignedBeaconBlock` containing a signed
 commitment by the builder, the builder is later expected to broadcast the
