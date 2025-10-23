@@ -365,19 +365,23 @@ def get_attestation_participation_flag_indices(
     """
     Return the flag indices that are satisfied by an attestation.
     """
+    # Matching source
     if data.target.epoch == get_current_epoch(state):
         justified_checkpoint = state.current_justified_checkpoint
     else:
         justified_checkpoint = state.previous_justified_checkpoint
-
-    # Matching roots
     is_matching_source = data.source == justified_checkpoint
-    is_matching_target = is_matching_source and data.target.root == get_block_root(
-        state, data.target.epoch
-    )
-    is_matching_head = is_matching_target and data.beacon_block_root == get_block_root_at_slot(
-        state, data.slot
-    )
+
+    # Matching target
+    target_root = get_block_root(state, data.target.epoch)
+    target_root_matches = data.target.root == target_root
+    is_matching_target = is_matching_source and target_root_matches
+
+    # Matching head
+    head_root = get_block_root_at_slot(state, data.slot)
+    head_root_matches = data.beacon_block_root == head_root
+    is_matching_head = is_matching_target and head_root_matches
+
     assert is_matching_source
 
     participation_flag_indices = []
