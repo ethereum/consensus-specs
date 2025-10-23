@@ -573,7 +573,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     committee_pubkeys = state.current_sync_committee.pubkeys
     committee_bits = sync_aggregate.sync_committee_bits
     if sum(committee_bits) == SYNC_COMMITTEE_SIZE:
-        # All members participated - use precomputed aggregate
+        # All members participated - use precomputed aggregate key
         participant_pubkeys = [state.current_sync_committee.aggregate_pubkey]
     elif sum(committee_bits) > SYNC_COMMITTEE_SIZE // 2:
         # More than half participated - subtract non-participant keys.
@@ -600,6 +600,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     previous_slot = max(state.slot, Slot(1)) - Slot(1)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
+    # Note: eth_fast_aggregate_verify works with a singleton list containing an already aggregated key.
     assert eth_fast_aggregate_verify(
         participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature
     )
