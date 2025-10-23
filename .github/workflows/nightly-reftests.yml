@@ -1,4 +1,4 @@
-name: Generate reference tests
+name: Nightly Reference Tests
 
 defaults:
   run:

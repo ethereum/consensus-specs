@@ -1,4 +1,4 @@
-name: Nightly mainnet tests
+name: Nightly Mainnet Tests
 
 defaults:
   run:

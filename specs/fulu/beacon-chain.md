@@ -31,8 +31,7 @@
 
 ## Introduction
 
-*Note*: This specification is built upon [Electra](../electra/beacon-chain.md)
-and is under active development.
+*Note*: This specification is built upon [Electra](../electra/beacon-chain.md).
 
 ## Configuration
 
@@ -80,10 +79,13 @@ def process_execution_payload(
         len(body.blob_kzg_commitments)
         <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
     )
-    # Verify the execution payload is valid
+
+    # Compute list of versioned hashes
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
     ]
+
+    # Verify the execution payload is valid
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
@@ -92,6 +94,7 @@ def process_execution_payload(
             execution_requests=body.execution_requests,
         )
     )
+
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,

@@ -440,20 +440,23 @@ def process_execution_payload(
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
-
-    # [New in Deneb:EIP4844] Verify commitments are under limit
+    # [New in Deneb:EIP4844]
+    # Verify commitments are under limit
     assert len(body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK
 
-    # Verify the execution payload is valid
-    # [Modified in Deneb:EIP4844] Pass `versioned_hashes` to Execution Engine
-    # [Modified in Deneb:EIP4788] Pass `parent_beacon_block_root` to Execution Engine
+    # [New in Deneb:EIP4844]
+    # Compute list of versioned hashes
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
     ]
+
+    # Verify the execution payload is valid
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
+            # [New in Deneb:EIP4844]
             versioned_hashes=versioned_hashes,
+            # [New in Deneb:EIP4788]
             parent_beacon_block_root=state.latest_block_header.parent_root,
         )
     )
