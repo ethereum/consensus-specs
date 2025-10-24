@@ -229,6 +229,9 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ The node has not seen another valid
   `SignedExecutionPayloadEnvelope` for this block root from this builder.
 
+- _[IGNORE]_ The envelope is from a slot greater than the latest finalized slot --
+  i.e. validate that `envelope.slot > compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
+
 Let `block` be the block with `envelope.beacon_block_root`. Let `bid` alias
 `block.body.signed_execution_payload_bid.message` (notice that this can be
 obtained from the `state.latest_execution_payload_bid`)
