@@ -341,7 +341,7 @@ def verify_partial_data_column_sidecar_kzg_proofs(sidecar: PartialDataColumnSide
     Verify if the KZG proofs are correct.
     """
     # The column index also represents the cell index
-    cell_indices = [i for i, b in enumerate(bin(bitmap)[:1:-1]) if b == '1']
+    cell_indices = [i for i, b in enumerate(sidecar.cells_present_bitmap) if b]
 
     # Batch verify that the cells match the corresponding commitments and proofs
     return verify_cell_kzg_proof_batch(
