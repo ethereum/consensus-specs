@@ -313,7 +313,7 @@ MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p $(MYPY_PACKAGE_BASE).
 lint: _pyspec
 	@uv --quiet lock --check
 	@$(UV_RUN) mdformat --number --wrap=80 $(MARKDOWN_FILES)
-	@$(UV_RUN) codespell . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
+	@$(UV_RUN) codespell
 	@$(UV_RUN) ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
 	@$(UV_RUN) ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
 	@$(UV_RUN) mypy $(MYPY_SCOPE)
