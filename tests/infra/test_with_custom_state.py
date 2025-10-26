@@ -20,14 +20,31 @@ class TestWithCustomState:
         _custom_state_cache_dict.clear()
 
     def test_with_custom_state_injects_state_view(self):
+        """Test that the decorator injects state and that it differs from default."""
         spec = spec_targets[MINIMAL][PHASE0]
 
-        @with_custom_state(default_balances, default_activation_threshold)
-        def case(*, spec, phases, state):
+        def fewer_balances(s):
+            return [s.MAX_EFFECTIVE_BALANCE] * (s.SLOTS_PER_EPOCH * 4)
+
+        @with_custom_state(fewer_balances, default_activation_threshold)
+        def case_with_decorator(*, spec, phases, state):
             return state
 
-        state = case(spec=spec, phases={})
-        assert isinstance(state, spec.BeaconState)
+        @with_custom_state(default_balances, default_activation_threshold)
+        def case_with_different_config(*, spec, phases, state):
+            return state
+
+        state_custom = case_with_decorator(spec=spec, phases={})
+        state_default = case_with_different_config(spec=spec, phases={})
+
+        # Verify state is injected and is the correct type
+        assert isinstance(state_custom, spec.BeaconState)
+        assert isinstance(state_default, spec.BeaconState)
+
+        # Verify the decorator actually changed the state - different validator counts
+        assert len(state_custom.validators) == spec.SLOTS_PER_EPOCH * 4
+        assert len(state_default.validators) == spec.SLOTS_PER_EPOCH * 8
+        assert len(state_custom.validators) != len(state_default.validators)
 
     def test_with_custom_state_caches_for_identical_key(self):
         spec = spec_targets[MINIMAL][PHASE0]
