@@ -330,6 +330,9 @@ non-exhaustive list:
 - More elements than a list limit allows. Part of enforcing consensus.
 - An out-of-bounds selected index in an `Union`.
 - An out-of-bounds type selector in a `CompatibleUnion`.
+- Incomplete data in a `CompatibleUnion` where the input is shorter than required for the selected type.
+- Corrupted input in a `CompatibleUnion` where the data contains invalid values or malformed content.
+- Inner type validation failures in a `CompatibleUnion` where the deserialized data fails validation for the selected type.
 
 Efficient algorithms for computing this object can be found in
 [the implementations](#implementations).
