@@ -45,9 +45,7 @@ def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None, blob_coun
     )
     signed_block = sign_block(spec, state, block, proposer_index=0)
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
-    column_sidecars = spec.get_data_column_sidecars_from_block(
-        signed_block, cells_and_kzg_proofs
-    )
+    column_sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
     column_sidecar = column_sidecars[0]
 
     yield "object", block.body
