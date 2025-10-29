@@ -24,6 +24,7 @@ from .utils import install_sigint_handler, time_since
 
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
+context.is_generator = True
 
 
 def get_shared_prefix(test_cases, min_segments=3):
@@ -104,10 +105,10 @@ def execute_test(test_case: TestCase, dumper: Dumper):
 
     for name, kind, data in outputs:
         method = getattr(dumper, f"dump_{kind}")
-        method(test_case, name, data)
+        method(test_case.dir, name, data)
 
     if meta:
-        dumper.dump_meta(test_case, meta)
+        dumper.dump_meta(test_case.dir, meta)
 
 
 def run_generator(input_test_cases: Iterable[TestCase], args=None):

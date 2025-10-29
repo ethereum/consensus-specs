@@ -7,7 +7,10 @@ import _pytest
 import pytest
 
 from eth2spec.test.helpers.typing import SpecForkName
+from eth2spec.gen_helpers.gen_base.dumper import Dumper
+from eth2spec.test import context
 from tests.infra.manifest import Manifest
+from pathlib import Path
 
 RUNNERS = ["kzg", "epoch_processing"]
 
@@ -27,30 +30,23 @@ class SpecTestFunction(pytest.Function):
 
     result: MultiPhaseResult | list | None = None
 
-    def __init__(
-        self,
-        name: str,
-        parent,
-        config: pytest.Config | None = None,
-        callspec: _pytest.CallSpec2 | None = None,
-        callobj=_pytest.compat.NOTSET,
-        keywords: Mapping[str, Any] | None = None,
-        session: pytest.Session | None = None,
-        fixtureinfo: _pytest.fixtures.FuncFixtureInfo | None = None,
-        originalname: str | None = None,
-    ) -> None:
-        super().__init__(
-            name,
-            parent,
-            config=config,
-            callspec=callspec,
-            callobj=callobj,
-            keywords=keywords,
-            session=session,
-            fixtureinfo=fixtureinfo,
-            originalname=originalname,
+    @classmethod
+    def from_function(cls, f: pytest.Function) -> SpecTestFunction:
+        """
+        Create a SpecTestFunction from an existing pytest.Function.
+        """
+        self = cls.from_parent(
+            parent=f.parent,
+            name=f.name,
+            callspec=getattr(f, "callspec", None),
+            callobj=getattr(f, "_obj", _pytest.compat.NOTSET),
+            keywords=f.keywords,
+            fixtureinfo=getattr(f, "_fixtureinfo", None),
+            originalname=f.originalname,
         )
+        self.manifest_guess()
 
+        return self
 
     def manifest_guess(self) -> None:
         print("guessing manifest for:", self.name)
@@ -87,26 +83,19 @@ class SpecTestFunction(pytest.Function):
     def runtest(self):
         super().runtest()
 
-    @classmethod
-    def from_function(cls, f: pytest.Function) -> SpecTestFunction:
-        """
-        Create a SpecTestFunction from an existing pytest.Function.
-        """
-        self = cls.from_parent(
-            parent=f.parent,
-            name=f.name,
-            callspec=getattr(f, "callspec", None),
-            callobj=getattr(f, "_obj", _pytest.compat.NOTSET),
-            keywords=f.keywords,
-            fixtureinfo=getattr(f, "_fixtureinfo", None),
-            originalname=f.originalname,
-        )
-        self.manifest_guess()
+    def get_manifest(self) -> Manifest | None:
+        if not hasattr(self.obj, "manifest") or self.obj.manifest is None:
+            return None
+        return self.obj.manifest
 
-        return self
+    def get_result(self) -> MultiPhaseResult | list | None:
+        return self.result
 
 
 class YieldGeneratorPlugin:
+    output_dir: str = "generated-tests"
+    dumper: Dumper | None = None
+
     def __init__(self, config):
         self.config = config
 
@@ -115,7 +104,10 @@ class YieldGeneratorPlugin:
 
     @pytest.hookimpl(tryfirst=True)
     def pytest_pyfunc_call(self, pyfuncitem: pytest.Function):
-        pyfuncitem._result = None
+        if not isinstance(pyfuncitem, SpecTestFunction):
+            return False
+
+        pyfuncitem.result = None
 
         testfunction = pyfuncitem.obj
         if _pytest.compat.is_async_function(testfunction):
@@ -127,29 +119,43 @@ class YieldGeneratorPlugin:
             _pytest.compat.async_fail(pyfuncitem.nodeid)
         elif result is not None:
             if not isinstance(result, dict) and isinstance(result, Iterable):
-                pyfuncitem._result = list(result)
+                pyfuncitem.result = list(result)
             else:
-                pyfuncitem._result = result
+                pyfuncitem.result = result
         return True
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_protocol(self, item, nextitem):
+        print(f"\nRunning test: {item.name}")
+
         yield
 
-        if hasattr(item.obj, "manifest") and item.obj.manifest is not None:
+        if self.config.getoption("--pytest-reftests") is False:
+            return
+
+        if not isinstance(item, SpecTestFunction):
+            return
+
+        manifest = item.get_manifest()
+        result = item.get_result()
+
+        if manifest is not None:
             print(f"\nManifest from {item.name}:")
-            print(item.obj.manifest)
+            print(manifest)
         else:
             print(f"\nNo manifest found for {item.name}")
 
-        if hasattr(item.obj, "manifest") and (not hasattr(item, "_result") or item._result is None):
+        if manifest is not None and result is None:
             print(f"\nWarning: manifest but vector not created for {item.name}")
 
-        if hasattr(item, "_result") and item._result is not None:
-            if isinstance(item._result, dict) and isinstance(list(item._result.keys())[0], str):
+        if result is not None:
+            if isinstance(result, dict) and isinstance(list(result.keys())[0], str):
                 print(f"\nMulti-phase test result for {item.name}")
             else:
                 print(f"\nSingle-phase test result for {item.name}")
+
+        if manifest is not None and result is not None:
+            self.generate_test_vector(manifest, result)
 
     def pytest_collection_modifyitems(self, config, items):
         for i, item in enumerate(items):
@@ -157,7 +163,62 @@ class YieldGeneratorPlugin:
                 # Replace with custom item
                 items[i] = SpecTestFunction.from_function(item)
 
+    def pytest_addoption(self, parser):
+        """Add custom command-line options"""
+        parser.addoption(
+            "--pytest-reftests",
+            action="store_true",
+            default=True,
+            help="Vector tests generation"
+        )
+
+    def pytest_configure(self, config):
+        if config.getoption("--pytest-reftests"):
+            context.is_generator = True
+
+    def generate_test_vector(self, manifest: Manifest, result: MultiPhaseResult | list) -> None:
+        if isinstance(result, dict):
+            for fork_name, phase_result in result.items():
+                self.generate_test_vector_phase(manifest, phase_result, fork_name)
+
+    def generate_test_vector_phase(self, manifest: Manifest, phase_result: list, fork_name: SpecForkName) -> None:
+        dumper = self.get_dumper()
+
+        manifest = manifest.override(Manifest(fork_name=fork_name, preset_name="mainnet"))
+        assert manifest.is_complete(), f"Manifest must be complete to generate test vector for {manifest}"
+
+        dir = (
+            Path(self.output_dir)
+            / manifest.preset_name # type: ignore
+            / manifest.fork_name
+            / manifest.runner_name
+            / manifest.handler_name
+            / manifest.suite_name
+            / manifest.case_name
+        )
+
+        outputs: list[tuple[str, str, Any]] = []
+        meta: dict[str, Any] = {}
+
+        for name, kind, data in phase_result:
+            if kind == "meta":
+                meta[name] = data
+            else:
+                method = getattr(dumper, f"dump_{kind}", None)
+                if method is None:
+                    raise ValueError(f"Unknown kind {kind!r}")
+                outputs.append((name, kind, data))
+
+        for name, kind, data in outputs:
+            method = getattr(dumper, f"dump_{kind}")
+            method(dir, name, data)
+
+    def get_dumper(self):
+        if self.dumper is None:
+            self.dumper = Dumper()
+        return self.dumper
+
 
 def pytest_configure(config):
     """Register the plugin."""
-    config.pluginmanager.register(YieldGeneratorPlugin(config), "yield_generator")
+    YieldGeneratorPlugin(config).register()

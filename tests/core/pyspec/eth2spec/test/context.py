@@ -303,7 +303,7 @@ DEFAULT_BLS_ACTIVE = True
 
 
 is_pytest = True
-
+is_generator = False
 
 def dump_skipping_message(reason: str) -> None:
     message = f"[Skipped test] {reason}"
@@ -763,7 +763,7 @@ def with_config_overrides(config_overrides, emitted_fork=None, emit=True):
 def only_generator(reason):
     def _decorator(inner):
         def _wrapper(*args, **kwargs):
-            if is_pytest:
+            if not is_generator and is_pytest:
                 dump_skipping_message(reason)
                 return None
             return inner(*args, **kwargs)
