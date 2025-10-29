@@ -41,7 +41,7 @@ distinguishes builders from other validator types.
 
 The `withdrawal_credentials` field must be:
 
-- `withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX` (i.e., `0x03`)
+- `withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX` (`0x03`)
 - `withdrawal_credentials[1:12] == b'\x00' * 11`
 - `withdrawal_credentials[12:] == builder_execution_address`
 
