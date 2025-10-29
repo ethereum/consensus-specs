@@ -362,15 +362,16 @@ def has_compounding_withdrawal_credential(validator: Validator) -> bool:
 ```python
 def is_attestation_same_slot(state: BeaconState, data: AttestationData) -> bool:
     """
-    Checks if the attestation was for the block proposed at the attestation slot.
+    Check if the attestation is for the block proposed at the attestation slot.
     """
     if data.slot == 0:
         return True
-    is_matching_blockroot = data.beacon_block_root == get_block_root_at_slot(state, Slot(data.slot))
-    is_current_blockroot = data.beacon_block_root != get_block_root_at_slot(
-        state, Slot(data.slot - 1)
-    )
-    return is_matching_blockroot and is_current_blockroot
+
+    blockroot = data.beacon_block_root
+    slot_blockroot = get_block_root_at_slot(state, data.slot)
+    prev_blockroot = get_block_root_at_slot(state, Slot(data.slot - 1))
+
+    return blockroot == slot_blockroot and blockroot != prev_blockroot
 ```
 
 #### New `is_valid_indexed_payload_attestation`
@@ -619,9 +620,8 @@ def get_indexed_payload_attestation(
     Return the indexed payload attestation corresponding to ``payload_attestation``.
     """
     ptc = get_ptc(state, slot)
-    attesting_indices = [
-        index for i, index in enumerate(ptc) if payload_attestation.aggregation_bits[i]
-    ]
+    bits = payload_attestation.aggregation_bits
+    attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
 
     return IndexedPayloadAttestation(
         attesting_indices=sorted(attesting_indices),
@@ -637,9 +637,8 @@ def get_builder_payment_quorum_threshold(state: BeaconState) -> uint64:
     """
     Calculate the quorum threshold for builder payments.
     """
-    quorum = (
-        get_total_active_balance(state) // SLOTS_PER_EPOCH * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
-    )
+    per_slot_balance = get_total_active_balance(state) // SLOTS_PER_EPOCH
+    quorum = per_slot_balance * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
     return uint64(quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR)
 ```
 
@@ -715,14 +714,15 @@ def process_builder_pending_payments(state: BeaconState) -> None:
     quorum = get_builder_payment_quorum_threshold(state)
     for payment in state.builder_pending_payments[:SLOTS_PER_EPOCH]:
         if payment.weight > quorum:
-            exit_queue_epoch = compute_exit_epoch_and_update_churn(state, payment.withdrawal.amount)
-            payment.withdrawal.withdrawable_epoch = Epoch(
-                exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-            )
+            amount = payment.withdrawal.amount
+            exit_queue_epoch = compute_exit_epoch_and_update_churn(state, amount)
+            withdrawable_epoch = exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+            payment.withdrawal.withdrawable_epoch = Epoch(withdrawable_epoch)
             state.builder_pending_withdrawals.append(payment.withdrawal)
-    state.builder_pending_payments = state.builder_pending_payments[SLOTS_PER_EPOCH:] + [
-        BuilderPendingPayment() for _ in range(SLOTS_PER_EPOCH)
-    ]
+
+    old_payments = state.builder_pending_payments[SLOTS_PER_EPOCH:]
+    new_payments = [BuilderPendingPayment() for _ in range(SLOTS_PER_EPOCH)]
+    state.builder_pending_payments = old_payments + new_payments
 ```
 
 ### Block processing
