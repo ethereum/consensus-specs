@@ -656,10 +656,10 @@ out-of-range list access) are considered invalid. State transitions that cause a
 
 The post-state corresponding to a pre-state `state` and a signed execution
 payload envelope `signed_envelope` is defined as
-`process_execution_payload(state, signed_envelope)`. State transitions that
-trigger an unhandled exception (e.g. a failed `assert` or an out-of-range list
-access) are considered invalid. State transitions that cause an `uint64`
-overflow or underflow are also considered invalid.
+`process_execution_payload(state, signed_envelope, execution_engine)`. State
+transitions that trigger an unhandled exception (e.g. a failed `assert` or an
+out-of-range list access) are considered invalid. State transitions that cause
+an `uint64` overflow or underflow are also considered invalid.
 
 ### Modified `process_slot`
 
