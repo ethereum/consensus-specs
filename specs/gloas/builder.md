@@ -34,11 +34,12 @@ bids. This document is a collection of guidelines for builders.
 
 ### Builder withdrawal credentials
 
-The `validator.withdrawal_credentials` field for builders has a specific format
-that identifies them as registered builders in the network. Builders must use
-the `BUILDER_WITHDRAWAL_PREFIX` to be a builder.
+The `withdrawal_credentials` field determines whether a validator is registered
+as a builder on the network. To be recognized as a builder, a validator’s
+`withdrawal_credentials` must use the `BUILDER_WITHDRAWAL_PREFIX`. This prefix
+distinguishes builders from other validator types.
 
-The `withdrawal_credentials` field must be such that:
+The `withdrawal_credentials` field must be:
 
 - `withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX` (i.e., `0x03`)
 - `withdrawal_credentials[1:12] == b'\x00' * 11`
