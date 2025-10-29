@@ -131,7 +131,7 @@ def get_execution_payload_bid_signature(
     return bls.Sign(privkey, signing_root)
 ```
 
-Then builder assembles
+Then the builder assembles
 `signed_execution_payload_bid = SignedExecutionPayloadBid(message=bid, signature=signature)`
 and broadcasts it on the `execution_payload_bid` global gossip topic.
 
@@ -249,7 +249,7 @@ def get_execution_payload_envelope_signature(
     return bls.Sign(privkey, signing_root)
 ```
 
-Then builder assembles
+Then the builder assembles
 `signed_execution_payload_envelope = SignedExecutionPayloadEnvelope(message=envelope, signature=signature)`
 and broadcasts it on the `execution_payload` global gossip topic.
 
