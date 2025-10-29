@@ -26,10 +26,9 @@
 This is an accompanying document which describes the expected actions of a
 "builder" participating in the Ethereum proof-of-stake protocol.
 
-With the Gloas fork, the protocol includes new type of validator called a
-*builder*. A builder is a type of validator that can submit bids to produce
-execution payloads. Becoming a builder is an opt-in process. This document is a
-collection of guidelines for builders.
+With the Gloas fork, the protocol introduces a new type of validator called a
+*builder*. Builders have the option to produce execution payloads by submitting
+bids. This document is a collection of guidelines for builders.
 
 ## Becoming a builder
 
