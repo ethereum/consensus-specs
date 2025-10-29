@@ -9,6 +9,7 @@ from eth2spec.test.context import (
     spec_state_test,
     spec_test,
     with_all_phases,
+    with_all_phases_from_to,
     with_custom_state,
     with_phases,
     with_presets,
@@ -26,7 +27,7 @@ from eth2spec.test.helpers.block import (
     sign_block,
     transition_unsigned_block,
 )
-from eth2spec.test.helpers.constants import MINIMAL, PHASE0
+from eth2spec.test.helpers.constants import FULU, MINIMAL, PHASE0
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
@@ -793,7 +794,7 @@ def test_high_proposer_index(spec, state):
         next_slot(spec, state)
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_invalid_only_increase_deposit_count(spec, state):
     # Make the state expect a deposit, then don't provide it.
@@ -807,7 +808,7 @@ def test_invalid_only_increase_deposit_count(spec, state):
     yield "post", None
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_deposit_in_block(spec, state):
     initial_registry_len = len(state.validators)
@@ -837,7 +838,7 @@ def test_deposit_in_block(spec, state):
     assert state.validators[validator_index].pubkey == pubkeys[validator_index]
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_invalid_duplicate_deposit_same_block(spec, state):
     validator_index = len(state.validators)
@@ -858,7 +859,7 @@ def test_invalid_duplicate_deposit_same_block(spec, state):
     yield "post", None
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_deposit_top_up(spec, state):
     validator_index = 0

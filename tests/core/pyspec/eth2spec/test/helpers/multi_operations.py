@@ -7,7 +7,7 @@ from eth2spec.test.helpers.block import (
 )
 from eth2spec.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth2spec.test.helpers.deposits import build_deposit, deposit_from_context
-from eth2spec.test.helpers.forks import is_post_electra
+from eth2spec.test.helpers.forks import is_post_electra, is_post_fulu
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth2spec.test.helpers.state import (
@@ -244,8 +244,12 @@ def build_random_block_from_state_for_next_slot(spec, state, rng=None, deposits=
     ]
     block.body.attester_slashings = get_random_attester_slashings(spec, state, rng, slashed_indices)
     block.body.attestations = get_random_attestations(spec, state, rng)
-    if deposits:
+    # [Modified for Fulu]
+    # Old deposits mechanism is not supported in Fulu and later
+    if deposits and not is_post_fulu(spec):
         block.body.deposits = deposits
+    else:
+        block.body.deposits = []
 
     # cannot include to be slashed indices as exits
     slashed_indices = set(
@@ -268,8 +272,10 @@ def run_test_full_random_operations(spec, state, rng=None):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
-    # prepare state for deposits before building block
-    deposits = prepare_state_and_get_random_deposits(spec, state, rng)
+    # prepare state for deposits before building block (not supported in Fulu and later)
+    deposits = None
+    if not is_post_fulu(spec):
+        deposits = prepare_state_and_get_random_deposits(spec, state, rng)
     block = build_random_block_from_state_for_next_slot(spec, state, rng, deposits=deposits)
 
     yield "pre", state
