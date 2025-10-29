@@ -381,10 +381,10 @@ def is_valid_indexed_payload_attestation(
     state: BeaconState, indexed_payload_attestation: IndexedPayloadAttestation
 ) -> bool:
     """
-    Check if ``indexed_payload_attestation`` is non-empty, has sorted and unique indices, and has
+    Check if ``indexed_payload_attestation`` is non-empty, has sorted indices, and has
     a valid aggregate signature.
     """
-    # Verify indices are non-empty, sorted, and unique
+    # Verify indices are non-empty and sorted
     indices = indexed_payload_attestation.attesting_indices
     if len(indices) == 0 or not indices == sorted(indices):
         return False
