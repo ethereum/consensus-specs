@@ -6,7 +6,7 @@ from eth2spec.debug.random_value import (
 )
 from eth2spec.test.context import (
     spec_state_test,
-    with_fulu_and_later,
+    with_all_phases_from_to,
     with_test_suite_name,
 )
 from eth2spec.test.helpers.blob import (
@@ -16,11 +16,12 @@ from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block,
 )
+from eth2spec.test.helpers.constants import (
+    FULU,
+    GLOAS,
+)
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
-)
-from eth2spec.test.helpers.forks import (
-    is_post_gloas,
 )
 
 
@@ -37,60 +38,47 @@ def _run_blob_kzg_commitments_merkle_proof_test(spec, state, rng=None, blob_coun
             mode=RandomizationMode,
             chaos=True,
         )
-    if is_post_gloas(spec):
-        blob_kzg_commitments = spec.ProgressiveList[spec.KZGCommitment](blob_kzg_commitments)
-        kzg_root = blob_kzg_commitments.hash_tree_root()
-        block.body.signed_execution_payload_bid.message.blob_kzg_commitments_root = kzg_root
-    else:
-        block.body.blob_kzg_commitments = blob_kzg_commitments
-        block.body.execution_payload.transactions = [opaque_tx]
-        block.body.execution_payload.block_hash = compute_el_block_hash(
-            spec, block.body.execution_payload, state
-        )
+    block.body.blob_kzg_commitments = blob_kzg_commitments
+    block.body.execution_payload.transactions = [opaque_tx]
+    block.body.execution_payload.block_hash = compute_el_block_hash(
+        spec, block.body.execution_payload, state
+    )
     signed_block = sign_block(spec, state, block, proposer_index=0)
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
-    if is_post_gloas(spec):
-        column_sidcars = spec.get_data_column_sidecars_from_block(
-            signed_block, blob_kzg_commitments, cells_and_kzg_proofs
-        )
-    else:
-        column_sidcars = spec.get_data_column_sidecars_from_block(
-            signed_block, cells_and_kzg_proofs
-        )
-    column_sidcar = column_sidcars[0]
+    column_sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
+    column_sidecar = column_sidecars[0]
 
     yield "object", block.body
-    if not is_post_gloas(spec):
-        kzg_commitments_inclusion_proof = column_sidcar.kzg_commitments_inclusion_proof
-        gindex = spec.get_generalized_index(spec.BeaconBlockBody, "blob_kzg_commitments")
-        yield (
-            "proof",
-            {
-                "leaf": "0x" + column_sidcar.kzg_commitments.hash_tree_root().hex(),
-                "leaf_index": gindex,
-                "branch": ["0x" + root.hex() for root in kzg_commitments_inclusion_proof],
-            },
-        )
-        assert spec.is_valid_merkle_branch(
-            leaf=column_sidcar.kzg_commitments.hash_tree_root(),
-            branch=column_sidcar.kzg_commitments_inclusion_proof,
-            depth=spec.floorlog2(gindex),
-            index=spec.get_subtree_index(gindex),
-            root=column_sidcar.signed_block_header.message.body_root,
-        )
-        assert spec.verify_data_column_sidecar_inclusion_proof(column_sidcar)
-    assert spec.verify_data_column_sidecar_kzg_proofs(column_sidcar)
+    kzg_commitments_inclusion_proof = column_sidecar.kzg_commitments_inclusion_proof
+    gindex = spec.get_generalized_index(spec.BeaconBlockBody, "blob_kzg_commitments")
+    yield (
+        "proof",
+        {
+            "leaf": "0x" + column_sidecar.kzg_commitments.hash_tree_root().hex(),
+            "leaf_index": gindex,
+            "branch": ["0x" + root.hex() for root in kzg_commitments_inclusion_proof],
+        },
+    )
+    assert spec.is_valid_merkle_branch(
+        leaf=column_sidecar.kzg_commitments.hash_tree_root(),
+        branch=column_sidecar.kzg_commitments_inclusion_proof,
+        depth=spec.floorlog2(gindex),
+        index=spec.get_subtree_index(gindex),
+        root=column_sidecar.signed_block_header.message.body_root,
+    )
+    assert spec.verify_data_column_sidecar_inclusion_proof(column_sidecar)
+    assert spec.verify_data_column_sidecar_kzg_proofs(column_sidecar)
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_fulu_and_later
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_blob_kzg_commitments_merkle_proof__basic(spec, state):
     yield from _run_blob_kzg_commitments_merkle_proof_test(spec, state)
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_fulu_and_later
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_blob_kzg_commitments_merkle_proof__random_block_1(spec, state):
     rng = random.Random(1111)
@@ -98,7 +86,7 @@ def test_blob_kzg_commitments_merkle_proof__random_block_1(spec, state):
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_fulu_and_later
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_blob_kzg_commitments_merkle_proof__multiple_blobs(spec, state):
     blob_count = spec.get_blob_parameters(spec.get_current_epoch(state)).max_blobs_per_block // 2
@@ -109,7 +97,7 @@ def test_blob_kzg_commitments_merkle_proof__multiple_blobs(spec, state):
 
 
 @with_test_suite_name("BeaconBlockBody")
-@with_fulu_and_later
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_blob_kzg_commitments_merkle_proof__max_blobs(spec, state):
     max_blobs = spec.get_blob_parameters(spec.get_current_epoch(state)).max_blobs_per_block

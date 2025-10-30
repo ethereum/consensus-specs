@@ -37,12 +37,12 @@ from eth2spec.test.helpers.state import (
 
 
 @with_light_client
-@spec_state_test_with_matching_config
 @with_config_overrides(
     {
         "BLOB_SCHEDULE": sample_blob_schedule(),
     },
 )
+@spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_light_client_sync(spec, state):
     # Start test
@@ -288,12 +288,12 @@ def test_light_client_sync(spec, state):
 
 
 @with_light_client
-@spec_state_test_with_matching_config
 @with_config_overrides(
     {
         "BLOB_SCHEDULE": sample_blob_schedule(),
     },
 )
+@spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_supply_sync_committee_from_past_update(spec, state):
     # Advance the chain, so that a `LightClientUpdate` from the past is available
@@ -327,12 +327,12 @@ def test_supply_sync_committee_from_past_update(spec, state):
 
 
 @with_light_client
-@spec_state_test_with_matching_config
 @with_config_overrides(
     {
         "BLOB_SCHEDULE": sample_blob_schedule(),
     },
 )
+@spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_advance_finality_without_sync_committee(spec, state):
     # Start test
@@ -420,12 +420,12 @@ def test_advance_finality_without_sync_committee(spec, state):
 
 
 @with_light_client
-@spec_state_test_with_matching_config
 @with_config_overrides(
     {
         "BLOB_SCHEDULE": sample_blob_schedule(),
     },
 )
+@spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_light_client_sync_no_force_update(spec, state):
     """Test that force update does not occur before timeout threshold is reached.

@@ -193,7 +193,7 @@ VENV = .venv
 # Use editable installs for all non-generation targets, but use non-editable
 # installs for generators. More details: ethereum/consensus-specs#4633.
 UV_RUN    = uv run
-UV_RUN_NE = uv run --no-editable
+UV_RUN_NE = uv run --no-editable --reinstall-package=eth2spec
 
 # Sync dependencies using uv.
 _sync: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
@@ -225,7 +225,7 @@ TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 
 # Run pyspec tests.
 test: MAYBE_TEST := $(if $(k),-k=$(k))
-# Disable parallelism which running a specific test.
+# Disable parallelism when running a specific test.
 # Parallelism makes debugging difficult (print doesn't work).
 test: MAYBE_PARALLEL := $(if $(k),,-n auto)
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
@@ -313,7 +313,7 @@ MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p $(MYPY_PACKAGE_BASE).
 lint: _pyspec
 	@uv --quiet lock --check
 	@$(UV_RUN) mdformat --number --wrap=80 $(MARKDOWN_FILES)
-	@$(UV_RUN) codespell . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
+	@$(UV_RUN) codespell
 	@$(UV_RUN) ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
 	@$(UV_RUN) ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
 	@$(UV_RUN) mypy $(MYPY_SCOPE)
