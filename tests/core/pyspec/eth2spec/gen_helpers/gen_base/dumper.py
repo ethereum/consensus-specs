@@ -70,6 +70,18 @@ class Dumper:
         with path.open("wb") as f:
             f.write(compress(data))
 
+    def dump_manifest(self, test_case: TestCase) -> None:
+        """Write manifest.yml file containing test case metadata."""
+        manifest_data = {
+            'config_name': test_case.preset_name,
+            'fork_name': test_case.fork_name,
+            'runner_name': test_case.runner_name,
+            'handler_name': test_case.handler_name,
+            'suite_name': test_case.suite_name,
+            'case_name': test_case.case_name,
+        }
+        self._dump_yaml(test_case, "manifest", manifest_data, self.default_yaml)
+
     def _dump_yaml(self, test_case: TestCase, name: str, data: any, yaml_encoder: YAML) -> None:
         """Helper to write YAML files for test case."""
         path = test_case.dir / f"{name}.yaml"

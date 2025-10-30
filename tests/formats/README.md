@@ -22,6 +22,7 @@ testing.
     - [Common output formats](#common-output-formats)
     - [Special output parts](#special-output-parts)
       - [`meta.yaml`](#metayaml)
+      - [`manifest.yaml`](#manifestyaml)
       - [`config.yaml`](#configyaml)
 - [Config sourcing](#config-sourcing)
 - [Note for implementers](#note-for-implementers)
@@ -213,6 +214,28 @@ bls_setting: int     -- optional, can have 3 different values:
                             2: known as "BLS ignored"  - if the test validity is strictly dependent on BLS being OFF
 ```
 
+##### `manifest.yaml`
+
+Included in every test case. Contains metadata that identifies the test vector:
+
+```yaml
+config_name: minimal      # Configuration preset (mainnet, minimal, general)
+fork_name: phase0         # Fork/phase name
+runner_name: bls          # Test runner category
+handler_name: eth_aggregate_pubkeys  # Specific handler
+suite_name: bls           # Test suite name
+case_name: eth_aggregate_pubkeys_valid_0  # Individual test case name
+```
+
+This metadata duplicates what is already encoded in the directory path:
+
+```
+tests/<config_name>/<fork_name>/<runner_name>/<handler_name>/<suite_name>/<case_name>/
+```
+
+Having it in a file means test vectors can be moved or distributed without
+losing context.
+
 ##### `config.yaml`
 
 The runtime-configurables may be different for specific tests. When present,
@@ -247,13 +270,13 @@ The basic pattern for test-suite loading and running is:
 
 1. For a specific config, load it first (and only need to do so once), then
    continue with the tests defined in the config folder.
-2. Select a fork. Repeat for each fork if running tests for multiple forks.
-3. Select the category and specialization of interest (e.g.
+1. Select a fork. Repeat for each fork if running tests for multiple forks.
+1. Select the category and specialization of interest (e.g.
    `operations > deposits`). Again, repeat for each if running all.
-4. Select a test suite. Or repeat for each.
-5. Select a test case. Or repeat for each.
-6. Load the parts of the case. And `meta.yaml` if present.
-7. Run the test, as defined by the test format.
+1. Select a test suite. Or repeat for each.
+1. Select a test case. Or repeat for each.
+1. Load the parts of the case. `manifest.yaml` and `meta.yaml` if present.
+1. Run the test, as defined by the test format.
 
 Step 1 may be a step with compile time selection of a configuration, if desired
 for optimization. The base requirement is just to use the same set of constants,
