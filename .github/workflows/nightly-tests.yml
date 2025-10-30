@@ -32,7 +32,6 @@ jobs:
           - electra
           - fulu
           - gloas
-          - eip7805
           - eip7928
     steps:
       - name: Checkout repository

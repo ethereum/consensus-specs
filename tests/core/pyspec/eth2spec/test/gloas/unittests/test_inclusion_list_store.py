@@ -4,7 +4,7 @@ from eth2spec.test.context import (
     spec_state_test,
     spec_test,
     with_custom_state,
-    with_eip7805_and_later,
+    with_gloas_and_later,
 )
 from eth2spec.test.helpers.fork_choice import get_genesis_forkchoice_store
 from eth2spec.test.helpers.inclusion_list import (
@@ -18,7 +18,7 @@ from eth2spec.test.helpers.inclusion_list import (
 from tests.core.pyspec.eth2spec.utils.hash_function import ZERO_BYTES32
 
 
-@with_eip7805_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_inclusion_list_store_transaction_uniqueness(spec, state):
     def run_func():
@@ -124,7 +124,7 @@ def test_inclusion_list_store_transaction_uniqueness(spec, state):
     run_with_inclusion_list_store(spec, run_func)
 
 
-@with_eip7805_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_inclusion_list_store_by_slot_and_committee_root(spec, state):
     def run_func():
@@ -173,7 +173,7 @@ def test_inclusion_list_store_by_slot_and_committee_root(spec, state):
     run_with_inclusion_list_store(spec, run_func)
 
 
-@with_eip7805_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_inclusion_list_store_equivocation(spec, state):
     def run_func():
@@ -233,7 +233,7 @@ def test_inclusion_list_store_equivocation(spec, state):
     run_with_inclusion_list_store(spec, run_func)
 
 
-@with_eip7805_and_later
+@with_gloas_and_later
 @spec_test
 @with_custom_state(
     balances_fn=lambda spec: [spec.MAX_EFFECTIVE_BALANCE] * spec.INCLUSION_LIST_COMMITTEE_SIZE,
@@ -286,7 +286,7 @@ def test_inclusion_list_store_equivocation_scope(spec, state):
     run_with_inclusion_list_store(spec, run_func)
 
 
-@with_eip7805_and_later
+@with_gloas_and_later
 @spec_state_test
 def test_inclusion_list_store_view_freeze_cutoff(spec, state):
     def run_func():

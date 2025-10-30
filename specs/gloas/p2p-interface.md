@@ -21,6 +21,7 @@
         - [`execution_payload`](#execution_payload)
         - [`payload_attestation_message`](#payload_attestation_message)
         - [`execution_payload_bid`](#execution_payload_bid)
+        - [`inclusion_list`](#inclusion_list)
       - [Blob subnets](#blob-subnets)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
       - [Attestation subnets](#attestation-subnets)
@@ -31,6 +32,7 @@
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
       - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
       - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
+      - [InclusionListByCommitteeIndices v1](#inclusionlistbycommitteeindices-v1)
 
 <!-- mdformat-toc end -->
 
@@ -76,6 +78,13 @@ def compute_fork_version(epoch: Epoch) -> Version:
 | Name                   | Value          | Description                                                       |
 | ---------------------- | -------------- | ----------------------------------------------------------------- |
 | `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
+
+*[New in Gloas:EIP7805]*
+
+| Name                           | Value            | Description                                                |
+| ------------------------------ | ---------------- | ---------------------------------------------------------- |
+| `MAX_REQUEST_INCLUSION_LIST`   | `2**4` (= 16)    | Maximum number of inclusion list in a single request       |
+| `MAX_BYTES_PER_INCLUSION_LIST` | `2**13` (= 8192) | Maximum size of the inclusion list's transactions in bytes |
 
 ### Containers
 
@@ -157,6 +166,7 @@ are given in this table:
 | `execution_payload_bid`       | `SignedExecutionPayloadBid`      |
 | `execution_payload`           | `SignedExecutionPayloadEnvelope` |
 | `payload_attestation_message` | `PayloadAttestationMessage`      |
+| `inclusion_list`              | `SignedInclusionList`            |
 
 ##### Global topics
 
@@ -295,6 +305,32 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
+
+###### `inclusion_list`
+
+*[New in Gloas:EIP7805]*
+
+This topic is used to propagate signed inclusion list as `SignedInclusionList`.
+The following validations MUST pass before forwarding the `inclusion_list` on
+the network, assuming the alias `message = signed_inclusion_list.message`:
+
+- _[REJECT]_ The size of `message.transactions` is within upperbound
+  `MAX_BYTES_PER_INCLUSION_LIST`.
+- _[REJECT]_ The slot `message.slot` is equal to the previous or current slot.
+- _[IGNORE]_ The slot `message.slot` is equal to the current slot, or it is
+  equal to the previous slot and the current time is less than
+  `get_attestation_due_ms(epoch)` milliseconds into the slot.
+- _[IGNORE]_ The `inclusion_list_committee` for slot `message.slot` on the
+  current branch corresponds to `message.inclusion_list_committee_root`, as
+  determined by
+  `hash_tree_root(inclusion_list_committee) == message.inclusion_list_committee_root`.
+- _[REJECT]_ The validator index `message.validator_index` is within the
+  `inclusion_list_committee` corresponding to
+  `message.inclusion_list_committee_root`.
+- _[IGNORE]_ The `message` is either the first or second valid message received
+  from the validator with index `message.validator_index`.
+- _[REJECT]_ The signature of `inclusion_list.signature` is valid with respect
+  to the validator's public key.
 
 ##### Blob subnets
 
@@ -507,3 +543,37 @@ epoch.
 
 Clients MUST respond with at least one payload envelope, if they have it.
 Clients MAY limit the number of payload envelopes in the response.
+
+##### InclusionListByCommitteeIndices v1
+
+*[New in Gloas:EIP7805]*
+
+**Protocol ID:** `/eth2/beacon_chain/req/inclusion_list_by_committee_indices/1/`
+
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(signed_inclusion_list.message.slot)`.
+
+Per `fork_version = compute_fork_version(epoch)`:
+
+<!-- eth2spec: skip -->
+
+| `fork_version`       | Chunk SSZ type              |
+| -------------------- | --------------------------- |
+| `GLOAS_FORK_VERSION` | `gloas.SignedInclusionList` |
+
+Request Content:
+
+```
+(
+  slot: Slot
+  committee_indices: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]
+)
+```
