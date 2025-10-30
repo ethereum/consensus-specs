@@ -32,8 +32,7 @@
 This document contains the consensus specs for EIP-8025. This enables stateless
 validation of execution payloads through cryptographic proofs.
 
-*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md) and
-is under active development.
+*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md).
 
 *Note*: This specification assumes the reader is familiar with the
 [public zkEVM methods exposed](./zkevm.md).
@@ -179,10 +178,12 @@ def process_execution_payload(
         # Stateless validation using execution proofs
         assert verify_execution_proofs(payload.parent_hash, payload.block_hash, state)
     else:
-        # Traditional validation - execute the payload
+        # Compute list of versioned hashes
         versioned_hashes = [
             kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
         ]
+
+        # Verify the execution payload is valid
         assert execution_engine.verify_and_notify_new_payload(
             NewPayloadRequest(
                 execution_payload=payload,
