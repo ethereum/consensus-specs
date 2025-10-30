@@ -3,6 +3,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+import yaml
+import os
+
 
 @dataclass
 class Manifest:
@@ -37,6 +40,23 @@ class Manifest:
                 self.case_name is not None,
             ]
         )
+    
+    def save_to_yaml(self, directory: str) -> None:
+        """
+        Save the manifest data as manifest.yml inside the given directory.
+        """
+        manifest_path = os.path.join(directory, "manifest.yml")
+        data = {
+            "fork_name": self.fork_name,
+            "preset_name": self.preset_name,
+            "runner_name": self.runner_name,
+            "handler_name": self.handler_name,
+            "suite_name": self.suite_name,
+            "case_name": self.case_name,
+        }
+
+        with open(manifest_path, "w") as f:
+            yaml.dump(data, f, sort_keys=False)
 
 
 def manifest(
@@ -47,6 +67,7 @@ def manifest(
     handler_name: str | None = None,
     suite_name: str | None = None,
     case_name: str | None = None,
+    base_dir: str = "tests",
 ) -> Callable:
     """
     Decorator that adds the manifest to a vector generating test.
@@ -67,6 +88,20 @@ def manifest(
 
         if _manifest is not None:
             func.manifest = func.manifest.override(_manifest)
+
+        parts = [
+            base_dir,
+            func.manifest.preset_name,
+            func.manifest.fork_name,
+            func.manifest.runner_name,
+            func.manifest.handler_name,
+            func.manifest.suite_name,
+            func.manifest.case_name,
+        ]
+        output_dir = os.path.join(*[p for p in parts if p])
+        os.makedirs(output_dir, exist_ok=True)
+
+        func.manifest.save_to_yaml(output_dir)
 
         return func
 
