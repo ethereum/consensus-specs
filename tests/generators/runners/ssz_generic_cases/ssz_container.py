@@ -87,7 +87,7 @@ class ProgressiveBitsStruct(Container):
 
 def container_case_fn(rng: Random, mode: RandomizationMode, typ: type[View], chaos: bool = False):
     return get_random_ssz_object(
-        rng, typ, max_bytes_length=2000, max_list_length=2000, mode=mode, chaos=chaos
+        rng, typ, max_bytes_length=2000, max_list_length=1500, mode=mode, chaos=chaos
     )
 
 

@@ -73,7 +73,6 @@ def test_config_override_matching_fork_epochs(spec, state):
         "ALTAIR_FORK_VERSION": "0x11111111",
         "BELLATRIX_FORK_EPOCH": 4,
     },
-    emit=False,
 )
 @with_state
 @with_matching_spec_config(emitted_fork=BELLATRIX)

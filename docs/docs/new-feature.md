@@ -123,10 +123,8 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
 ### 6. Update CI configurations
 
-- Update
-  [GitHub Actions config](https://github.com/ethereum/consensus-specs/blob/master/.github/workflows/run-tests.yml)
-  - Update `pyspec-tests.strategy.matrix.version` list by adding new feature to
-    it
+- Update [GitHub PR checks](../../.github/workflows/checks.yml)
+  - Update `tests.strategy.matrix.version` list by adding new feature to it
 
 ## Others
 

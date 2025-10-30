@@ -43,8 +43,8 @@ git tag <version>
 git push origin <version>
 ```
 
-Approximately 12 hours later, the releases for consensus-specs and
-consensus-spec-tests will be available on GitHub.
+Several hours later, the consensus-specs release will be automatically published
+on GitHub.
 
 ## Make an Announcement
 
@@ -62,6 +62,4 @@ Use the following template for your announcement:
 Consensus layer specs <version> -- <release-name> -- released!
 
 https://github.com/ethereum/consensus-specs/releases/tag/<version>
-
-Test vectors: https://github.com/ethereum/consensus-spec-tests/releases/tag/<version>
 ```

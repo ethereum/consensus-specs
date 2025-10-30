@@ -101,6 +101,17 @@ def invalid_cases():
     for name, typ in PRESET_COMPATIBLE_UNIONS.items():
         options = typ.options()
 
+        # Focus testing on edge cases
+        unsupported_options_of_interest = {0, 128, 129, 254, 255}
+        if 127 not in options:
+            unsupported_options_of_interest.add(127)
+        for option in options:
+            for modifier in (-2, -1, 1, 2):
+                candidate = int(option) + modifier
+                if candidate >= 0 and candidate not in options:
+                    unsupported_options_of_interest.add(candidate)
+        unsupported_options_of_interest = sorted(unsupported_options_of_interest)
+
         # No selector and no data. Always invalid
         yield (
             f"{name}_empty",
@@ -108,7 +119,7 @@ def invalid_cases():
         )
 
         # Only selector without any data. Always invalid
-        for option in range(0, 255):
+        for option in list(options.keys()) + unsupported_options_of_interest:
             yield (
                 f"{name}_selector_{option}_none",
                 invalid_test_case(typ, lambda option=option: bytes([option])),
@@ -116,7 +127,7 @@ def invalid_cases():
 
         for mode in list(RandomizationMode):
             # Valid selector but with data from different type option. Not guaranteed to invalidate if data accidentally compatible
-            for option_a, option_b in permutations(options, 2):
+            for option_a, option_b in permutations(options.keys(), 2):
                 elem_type_b = options[option_b]
 
                 def the_test(rng, mode=mode, typ=typ, elem_type_b=elem_type_b, option_a=option_a):
@@ -137,18 +148,17 @@ def invalid_cases():
                 )
 
             # Unsupported type option. Always invalid
-            for option in range(0, 255):
-                if option not in options:
+            for option in unsupported_options_of_interest:
 
-                    def the_test(rng, mode=mode, typ=typ, option=option):
-                        serialized = serialize(container_case_fn(rng, mode, typ))
-                        serialized = bytes([option]) + serialized[1:]
-                        return serialized
+                def the_test(rng, mode=mode, typ=typ, option=option):
+                    serialized = serialize(container_case_fn(rng, mode, typ))
+                    serialized = bytes([option]) + serialized[1:]
+                    return serialized
 
-                    yield (
-                        f"{name}_{mode.to_name()}_selector_{option}_invalid",
-                        invalid_test_case(typ, the_test, rng),
-                    )
+                yield (
+                    f"{name}_{mode.to_name()}_selector_{option}_invalid",
+                    invalid_test_case(typ, the_test, rng),
+                )
 
             # Extra byte between selector and data. Not guaranteed to invalidate for variable length data types
             def the_test(

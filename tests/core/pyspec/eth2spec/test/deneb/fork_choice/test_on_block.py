@@ -23,7 +23,6 @@ from eth2spec.test.helpers.state import (
 @with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_simple_blob_data(spec, state):
-    print(spec)
     rng = Random(1234)
 
     test_steps = []

@@ -24,7 +24,6 @@ from eth2spec.test.helpers.light_client_sync import (
     {
         "DENEB_FORK_EPOCH": 3,  # Test setup advances to epoch 2
     },
-    emit=False,
 )
 @with_state
 @with_matching_spec_config(emitted_fork=DENEB)
@@ -40,7 +39,6 @@ def test_deneb_fork(spec, phases, state):
         "DENEB_FORK_EPOCH": 3,  # Test setup advances to epoch 2
         "ELECTRA_FORK_EPOCH": 4,
     },
-    emit=False,
 )
 @with_state
 @with_matching_spec_config(emitted_fork=ELECTRA)

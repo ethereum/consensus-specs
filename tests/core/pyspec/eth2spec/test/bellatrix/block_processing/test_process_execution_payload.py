@@ -55,13 +55,13 @@ def run_execution_payload_processing(
             message=envelope,
             signature=signature,
         )
+        yield "signed_envelope", signed_envelope
     else:
         body = spec.BeaconBlockBody(execution_payload=execution_payload)
+        yield "body", body
 
     yield "pre", state
     yield "execution", {"execution_valid": execution_valid}
-    if not is_post_gloas(spec):
-        yield "body", body
 
     called_new_block = False
 
