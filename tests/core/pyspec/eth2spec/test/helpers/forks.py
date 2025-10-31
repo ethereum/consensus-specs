@@ -4,7 +4,6 @@ from .constants import (
     CAPELLA,
     DENEB,
     EIP7441,
-    EIP7805,
     EIP7928,
     ELECTRA,
     FULU,
@@ -60,10 +59,6 @@ def is_post_gloas(spec):
 
 def is_post_eip7441(spec):
     return is_post_fork(spec.fork, EIP7441)
-
-
-def is_post_eip7805(spec):
-    return is_post_fork(spec.fork, EIP7805)
 
 
 def is_post_eip7928(spec):

@@ -13,7 +13,6 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	gloas     \
 	eip6800   \
 	eip7441   \
-	eip7805   \
 	eip7928
 
 # A list of fake targets.
