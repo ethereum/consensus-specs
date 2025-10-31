@@ -1,7 +1,6 @@
 from eth2spec.test.context import (
     spec_state_test,
     with_all_phases_from_to,
-    with_bellatrix_and_later,
 )
 from eth2spec.test.helpers.constants import (
     BELLATRIX,
@@ -14,14 +13,14 @@ from eth2spec.test.helpers.execution_payload import (
 )
 
 
-@with_bellatrix_and_later
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_fail_merge_complete(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
     assert not spec.is_merge_transition_complete(state)
 
 
-@with_bellatrix_and_later
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_success_merge_complete(spec, state):
     state = build_state_with_complete_transition(spec, state)

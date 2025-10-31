@@ -444,8 +444,7 @@ def build_state_with_incomplete_transition(spec, state):
     else:
         header = spec.ExecutionPayloadHeader()
         state = build_state_with_execution_payload_header(spec, state, header)
-
-    assert not spec.is_merge_transition_complete(state)
+        assert not spec.is_merge_transition_complete(state)
 
     return state
 
@@ -458,8 +457,7 @@ def build_state_with_complete_transition(spec, state):
     else:
         payload_header = get_execution_payload_header(spec, state, pre_state_payload)
         state = build_state_with_execution_payload_header(spec, state, payload_header)
-
-    assert spec.is_merge_transition_complete(state)
+        assert spec.is_merge_transition_complete(state)
 
     return state
 
