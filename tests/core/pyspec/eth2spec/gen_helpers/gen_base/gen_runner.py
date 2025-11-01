@@ -130,23 +130,9 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
     # Gracefully handle Ctrl+C
     install_sigint_handler(console)
 
-    # Deduplicate test cases based on identifier
-    input_test_cases_list = list(input_test_cases)
-    seen_identifiers = {}
-    deduplicated_test_cases = []
-    for test_case in input_test_cases_list:
-        identifier = test_case.get_identifier()
-        if identifier not in seen_identifiers:
-            seen_identifiers[identifier] = True
-            deduplicated_test_cases.append(test_case)
-
-    debug_print(f"Total test cases before deduplication: {len(input_test_cases_list)}")
-    debug_print(f"Total test cases after deduplication: {len(deduplicated_test_cases)}")
-    debug_print(f"Duplicates removed: {len(input_test_cases_list) - len(deduplicated_test_cases)}")
-
     total_found = 0
     selected_test_cases = []
-    for test_case in deduplicated_test_cases:
+    for test_case in input_test_cases:
         total_found += 1
         # Check if the test case should be filtered out
         if len(args.runners) != 0 and test_case.runner_name not in args.runners:

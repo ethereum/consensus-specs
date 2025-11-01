@@ -1,7 +1,5 @@
 # Fulu -- The Beacon Chain
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
@@ -46,12 +44,12 @@ The epoch value in each entry MUST be greater than or equal to
 than or equal to `MAX_BLOB_COMMITMENTS_PER_BLOCK`. The blob schedule entries
 SHOULD be sorted by epoch in ascending order. The blob schedule MAY be empty.
 
-*Note*: The blob schedule is to be determined.
-
 <!-- list-of-records:blob_schedule -->
 
-| Epoch | Max Blobs Per Block | Description |
-| ----- | ------------------- | ----------- |
+|  Epoch | Max Blobs Per Block |                             Date |
+| -----: | ------------------: | -------------------------------: |
+| 412672 |                  15 | December 9, 2025, 02:21:11pm UTC |
+| 419072 |                  21 |  January 7, 2026, 01:01:11am UTC |
 
 ## Beacon chain state transition function
 
