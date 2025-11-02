@@ -12,12 +12,12 @@ from eth2spec.test.helpers.constants import (
     MAINNET,
     MINIMAL,
 )
-from eth2spec.test.helpers.forks import is_post_eip7805
 from eth2spec.test.helpers.keys import privkeys, pubkey_to_privkey, pubkeys
 from eth2spec.test.helpers.state import transition_to
 from eth2spec.test.helpers.sync_committee import compute_sync_committee_signature
 from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitvector
+from tests.core.pyspec.eth2spec.test.helpers.forks import is_post_gloas
 
 rng = random.Random(1337)
 
@@ -135,7 +135,7 @@ def test_get_sync_committee_message(spec, state):
     validator_index = 0
     block = spec.BeaconBlock(state_root=state.hash_tree_root())
     block_root = spec.Root(block.hash_tree_root())
-    if is_post_eip7805(spec):
+    if is_post_gloas(spec):
         store = spec.get_forkchoice_store(state, block)
         block_root = spec.get_attester_head(store, block_root)
     sync_committee_message = spec.get_sync_committee_message(

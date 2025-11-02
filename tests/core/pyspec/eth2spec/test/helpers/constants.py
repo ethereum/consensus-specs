@@ -16,7 +16,6 @@ GLOAS = SpecForkName("gloas")
 
 # Experimental phases (not included in default "ALL_PHASES"):
 EIP7441 = SpecForkName("eip7441")
-EIP7805 = SpecForkName("eip7805")
 EIP7928 = SpecForkName("eip7928")
 
 #
@@ -35,13 +34,12 @@ ALL_PHASES = (
     FULU,
     GLOAS,
     # Experimental patches
-    EIP7805,
     EIP7928,
 )
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = [item for item in MAINNET_FORKS if item != PHASE0] + [FULU]
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (*MAINNET_FORKS, FULU, GLOAS, EIP7805)
+TESTGEN_FORKS = (*MAINNET_FORKS, FULU, GLOAS)
 # Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
 ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, EIP7441)
 
@@ -58,7 +56,6 @@ PREVIOUS_FORK_OF = {
     GLOAS: FULU,
     # Experimental patches
     EIP7441: CAPELLA,
-    EIP7805: FULU,
     EIP7928: FULU,
 }
 

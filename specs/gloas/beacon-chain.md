@@ -25,6 +25,8 @@
     - [`SignedExecutionPayloadBid`](#signedexecutionpayloadbid)
     - [`ExecutionPayloadEnvelope`](#executionpayloadenvelope)
     - [`SignedExecutionPayloadEnvelope`](#signedexecutionpayloadenvelope)
+    - [`InclusionList`](#inclusionlist)
+    - [`SignedInclusionList`](#signedinclusionlist)
   - [Modified containers](#modified-containers)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
@@ -36,6 +38,7 @@
     - [New `is_attestation_same_slot`](#new-is_attestation_same_slot)
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
     - [New `is_parent_block_full`](#new-is_parent_block_full)
+    - [New `is_valid_inclusion_list_signature`](#new-is_valid_inclusion_list_signature)
   - [Misc](#misc-2)
     - [Modified `get_pending_balance_to_withdraw`](#modified-get_pending_balance_to_withdraw)
     - [New `remove_flag`](#new-remove_flag)
@@ -48,6 +51,7 @@
     - [New `get_ptc`](#new-get_ptc)
     - [New `get_indexed_payload_attestation`](#new-get_indexed_payload_attestation)
     - [New `get_builder_payment_quorum_threshold`](#new-get_builder_payment_quorum_threshold)
+    - [New `get_inclusion_list_committee`](#new-get_inclusion_list_committee)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
@@ -83,6 +87,8 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 - [EIP-7732](https://eips.ethereum.org/EIPS/eip-7732): Enshrined
   Proposer-Builder Separation
+- [EIP-7805](https://eips.ethereum.org/EIPS/eip-7805): Fork-choice enforced
+  Inclusion Lists
 
 *Note*: This specification is built upon [Fulu](../fulu/beacon-chain.md).
 
@@ -90,10 +96,11 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 ### Domain types
 
-| Name                    | Value                      |
-| ----------------------- | -------------------------- |
-| `DOMAIN_BEACON_BUILDER` | `DomainType('0x1B000000')` |
-| `DOMAIN_PTC_ATTESTER`   | `DomainType('0x0C000000')` |
+| Name                              | Value                      |
+| --------------------------------- | -------------------------- |
+| `DOMAIN_BEACON_BUILDER`           | `DomainType('0x1B000000')` |
+| `DOMAIN_PTC_ATTESTER`             | `DomainType('0x0C000000')` |
+| `DOMAIN_INCLUSION_LIST_COMMITTEE` | `DomainType('0x0D000000')` |
 
 ### Misc
 
@@ -112,9 +119,10 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 ### Misc
 
-| Name       | Value                  |
-| ---------- | ---------------------- |
-| `PTC_SIZE` | `uint64(2**9)` (= 512) |
+| Name                            | Value                  |
+| ------------------------------- | ---------------------- |
+| `PTC_SIZE`                      | `uint64(2**9)` (= 512) |
+| `INCLUSION_LIST_COMMITTEE_SIZE` | `uint64(2**4)` (=16)   |
 
 ### Max operations per block
 
@@ -200,6 +208,7 @@ class ExecutionPayloadBid(Container):
     slot: Slot
     value: Gwei
     blob_kzg_commitments_root: Root
+    inclusion_list_bits: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]
 ```
 
 #### `SignedExecutionPayloadBid`
@@ -228,6 +237,24 @@ class ExecutionPayloadEnvelope(Container):
 ```python
 class SignedExecutionPayloadEnvelope(Container):
     message: ExecutionPayloadEnvelope
+    signature: BLSSignature
+```
+
+#### `InclusionList`
+
+```python
+class InclusionList(Container):
+    slot: Slot
+    validator_index: ValidatorIndex
+    inclusion_list_committee_root: Root
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+```
+
+#### `SignedInclusionList`
+
+```python
+class SignedInclusionList(Container):
+    message: InclusionList
     signature: BLSSignature
 ```
 
@@ -406,6 +433,23 @@ processing the execution payload bid in the block.
 ```python
 def is_parent_block_full(state: BeaconState) -> bool:
     return state.latest_execution_payload_bid.block_hash == state.latest_block_hash
+```
+
+#### New `is_valid_inclusion_list_signature`
+
+```python
+def is_valid_inclusion_list_signature(
+    state: BeaconState, signed_inclusion_list: SignedInclusionList
+) -> bool:
+    """
+    Check if ``signed_inclusion_list`` has a valid signature.
+    """
+    message = signed_inclusion_list.message
+    index = message.validator_index
+    pubkey = state.validators[index].pubkey
+    domain = get_domain(state, DOMAIN_INCLUSION_LIST_COMMITTEE, compute_epoch_at_slot(message.slot))
+    signing_root = compute_signing_root(message, domain)
+    return bls.Verify(pubkey, signing_root, signed_inclusion_list.signature)
 ```
 
 ### Misc
@@ -640,6 +684,25 @@ def get_builder_payment_quorum_threshold(state: BeaconState) -> uint64:
     per_slot_balance = get_total_active_balance(state) // SLOTS_PER_EPOCH
     quorum = per_slot_balance * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
     return uint64(quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR)
+```
+
+#### New `get_inclusion_list_committee`
+
+```python
+def get_inclusion_list_committee(
+    state: BeaconState, slot: Slot
+) -> Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]:
+    epoch = compute_epoch_at_slot(slot)
+    seed = get_seed(state, epoch, DOMAIN_INCLUSION_LIST_COMMITTEE)
+    indices = get_active_validator_indices(state, epoch)
+    start = (slot % SLOTS_PER_EPOCH) * INCLUSION_LIST_COMMITTEE_SIZE
+    end = start + INCLUSION_LIST_COMMITTEE_SIZE
+    return Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE](
+        [
+            indices[compute_shuffled_index(uint64(i % len(indices)), uint64(len(indices)), seed)]
+            for i in range(start, end)
+        ]
+    )
 ```
 
 ## Beacon chain state transition function
