@@ -80,7 +80,10 @@ class Dumper:
             'suite_name': test_case.suite_name,
             'case_name': test_case.case_name,
         }
-        self._dump_yaml(test_case, "manifest", manifest_data, self.default_yaml)
+        # Use cfg_yaml which has block style formatting (default_flow_style=False)
+        # This ensures each field appears on a separate line, matching data.yaml format
+        self._dump_yaml(test_case, "manifest", manifest_data, self.cfg_yaml)
+
 
     def _dump_yaml(self, test_case: TestCase, name: str, data: any, yaml_encoder: YAML) -> None:
         """Helper to write YAML files for test case."""
