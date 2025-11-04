@@ -13,8 +13,8 @@
   - [Attestation](#attestation)
   - [Sync Committee participations](#sync-committee-participations)
   - [Block proposal](#block-proposal)
-    - [Constructing the new `signed_execution_payload_bid` field in `BeaconBlockBody`](#constructing-the-new-signed_execution_payload_bid-field-in-beaconblockbody)
-    - [Constructing the new `payload_attestations` field in `BeaconBlockBody`](#constructing-the-new-payload_attestations-field-in-beaconblockbody)
+    - [Constructing `signed_execution_payload_bid`](#constructing-signed_execution_payload_bid)
+    - [Constructing `payload_attestations`](#constructing-payload_attestations)
     - [Blob sidecars](#blob-sidecars)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing a payload attestation](#constructing-a-payload-attestation)
@@ -27,8 +27,8 @@
 
 ## Introduction
 
-This document represents the changes and additions to the Honest validator guide
-included in Gloas.
+This document represents the changes to be made in the code of an "honest
+validator" to implement Gloas.
 
 ## Configuration
 
@@ -45,10 +45,9 @@ included in Gloas.
 ## Validator assignment
 
 A validator may be a member of the new Payload Timeliness Committee (PTC) for a
-given slot. To check for PTC assignments the validator uses the helper
-`get_ptc_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`.
-
-PTC committee selection is only stable within the context of the current and
+given slot. To check for PTC assignments, use
+`get_ptc_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`,
+as PTC committee selection is only stable within the context of the current and
 next epoch.
 
 ```python
@@ -56,8 +55,9 @@ def get_ptc_assignment(
     state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
 ) -> Optional[Slot]:
     """
-    Returns the slot during the requested epoch in which the validator with index `validator_index`
-    is a member of the PTC. Returns None if no assignment is found.
+    Returns the slot during the requested epoch in which the validator with
+    index `validator_index` is a member of the PTC. Returns None if no
+    assignment is found.
     """
     next_epoch = Epoch(get_current_epoch(state) + 1)
     assert epoch <= next_epoch
@@ -112,47 +112,48 @@ deadline is changed with `SYNC_MESSAGE_DUE_BPS_GLOAS`.
 ### Block proposal
 
 Validators are still expected to propose `SignedBeaconBlock` at the beginning of
-any slot during which `is_proposer(state, validator_index)` returns `true`. The
+any slot during which `is_proposer(state, validator_index)` returns `True`. The
 mechanism to prepare this beacon block and related sidecars differs from
 previous forks as follows
 
-#### Constructing the new `signed_execution_payload_bid` field in `BeaconBlockBody`
+#### Constructing `signed_execution_payload_bid`
 
 To obtain `signed_execution_payload_bid`, a block proposer building a block on
-top of a `state` must take the following actions:
+top of a `state` MUST take the following actions in order to construct the
+`signed_execution_payload_bid` field in `BeaconBlockBody`:
 
 - Listen to the `execution_payload_bid` gossip global topic and save an accepted
-  `signed_execution_payload_bid` from a builder. Proposer MAY obtain these
-  signed messages by other off-protocol means.
-- The `signed_execution_payload_bid` must satisfy the verification conditions
+  `signed_execution_payload_bid` from a builder. The block proposer MAY obtain
+  these signed messages by other off-protocol means.
+- The `signed_execution_payload_bid` MUST satisfy the verification conditions
   found in `process_execution_payload_bid`, that is:
-  - For external builders: The header signature must be valid
-  - For self-builds: The signature must be `bls.G2_POINT_AT_INFINITY` and the
-    bid amount must be zero
-  - The builder balance can cover the header value
-  - The header slot is for the proposal block slot
+  - For external builders, the header signature MUST be valid.
+  - For self-builds, the signature MUST be `bls.G2_POINT_AT_INFINITY` and the
+    bid amount MUST be zero.
+  - The builder balance can cover the header value.
+  - The header slot is for the proposal block slot.
   - The header parent block hash equals the state's `latest_block_hash`.
   - The header parent block root equals the current block's `parent_root`.
 - Select one bid and set
-  `body.signed_execution_payload_bid = signed_execution_payload_bid`
+  `body.signed_execution_payload_bid = signed_execution_payload_bid`.
 
-*Note:* The execution address encoded in the field `fee_recipient` in the
-`signed_execution_payload_bid.message` is the recipient of the builder payment.
+*Note:* The execution address encoded in the `fee_recipient` field in the
+`signed_execution_payload_bid.message` will receive the builder payment.
 
-#### Constructing the new `payload_attestations` field in `BeaconBlockBody`
+#### Constructing `payload_attestations`
 
-Up to `MAX_PAYLOAD_ATTESTATIONS`, aggregate payload attestations can be included
-in the block. The validator will have to
+Up to `MAX_PAYLOAD_ATTESTATIONS` aggregate payload attestations can be included
+in the block. The block proposer MUST take the following actions in order to
+construct the `payload_attestations` field in `BeaconBlockBody`:
 
-- Listen to the `payload_attestation_message` gossip global topic
-- The payload attestations added must satisfy the verification conditions found
-  in payload attestation gossip validation and payload attestation processing.
-  This means
+- Listen to the `payload_attestation_message` gossip global topic.
+- Added payload attestations MUST satisfy the verification conditions found in
+  payload attestation gossip validation and payload attestation processing.
   - The `data.beacon_block_root` corresponds to `block.parent_root`.
   - The slot of the parent block is exactly one slot before the proposing slot.
   - The signature of the payload attestation data message verifies correctly.
-- The proposer needs to aggregate all payload attestations with the same data
-  into a given `PayloadAttestation` object. For this it needs to fill the
+- The proposer MUST aggregate all payload attestations with the same data into a
+  given `PayloadAttestation` object. For this the proposer needs to fill the
   `aggregation_bits` field by using the relative position of the validator
   indices with respect to the PTC that is obtained from
   `get_ptc(state, block_slot - 1)`.
@@ -161,8 +162,8 @@ in the block. The validator will have to
 
 The blob sidecars are no longer broadcast by the validator, and thus their
 construction is not necessary. This deprecates the corresponding sections from
-the honest validator guide in the Fulu fork, moving them, albeit with some
-modifications, to the [honest Builder guide](./builder.md)
+the Honest Validator specifications in the Fulu fork, moving them, albeit with
+some modifications, to the [Honest Builder](./builder.md) specifications.
 
 ### Payload timeliness attestation
 
@@ -171,22 +172,22 @@ Validators should call `get_ptc_assignment` at the beginning of an epoch to be
 prepared to submit their PTC attestations during the next epoch.
 
 A validator should create and broadcast the `payload_attestation_message` to the
-global execution attestation subnet not after
-`get_payload_attestation_due_ms(epoch)` milliseconds since the start of `slot`.
+global execution attestation subnet within the first
+`get_payload_attestation_due_ms(epoch)` milliseconds of the slot.
 
 #### Constructing a payload attestation
 
 If a validator is in the payload attestation committee for the current slot (as
 obtained from `get_ptc_assignment` above) then the validator should prepare a
-`PayloadAttestationMessage` for the current slot, according to the logic in
-`get_payload_attestation_message` below and broadcast it not after
-`get_payload_attestation_due_ms(epoch)` milliseconds since the start of the
-slot, to the global `payload_attestation_message` pubsub topic.
+`PayloadAttestationMessage` for the current slot. Follow the logic below to
+create the `payload_attestation_message` and broadcast to the global
+`payload_attestation_message` pubsub topic within the first
+`get_payload_attestation_due_ms(epoch)` milliseconds of the slot.
 
 The validator creates `payload_attestation_message` as follows:
 
 - If the validator has not seen any beacon block for the assigned slot, do not
-  submit a payload attestation. It will be ignored anyway.
+  submit a payload attestation; it will be ignored anyway.
 - Set `data.beacon_block_root` be the hash tree root of the beacon block seen
   for the assigned slot.
 - Set `data.slot` to be the assigned slot.
@@ -213,9 +214,9 @@ def get_payload_attestation_message_signature(
     return bls.Sign(privkey, signing_root)
 ```
 
-**Remark** Validators do not need to check the full validity of the
+*Note*: Validators do not need to check the full validity of the
 `ExecutionPayload` contained in within the envelope, but the checks in the
-[P2P guide](./p2p-interface.md) should pass for the
+[Networking](./p2p-interface.md) specifications should pass for the
 `SignedExecutionPayloadEnvelope`.
 
 ## Modified functions
