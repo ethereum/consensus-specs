@@ -187,12 +187,12 @@ The validator creates `payload_attestation_message` as follows:
 
 - If the validator has not seen any beacon block for the assigned slot, do not
   submit a payload attestation. It will be ignored anyway.
-- Set `data.beacon_block_root` be the HTR of the beacon block seen for the
-  assigned slot
+- Set `data.beacon_block_root` be the hash tree root of the beacon block seen
+  for the assigned slot.
 - Set `data.slot` to be the assigned slot.
-- If a `SignedExecutionPayloadEnvelope` has been seen referencing the block
-  `data.beacon_block_root` set `data.payload_present = True`. Otherwise set it
-  to `False`.
+- If a previously seen `SignedExecutionPayloadEnvelope` references the block
+  with root `data.beacon_block_root`, set `data.payload_present` to `True`;
+  otherwise, set `data.payload_present` to `False`.
 - Set `payload_attestation_message.validator_index = validator_index` where
   `validator_index` is the validator chosen to submit. The private key mapping
   to `state.validators[validator_index].pubkey` is used to sign the payload
