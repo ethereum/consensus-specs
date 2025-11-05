@@ -1,3 +1,8 @@
+import random
+from eth2spec.test.helpers.state import next_epoch
+
+from eth2spec.test.helpers.attestations import get_valid_attestation
+
 from eth2spec.test.context import (
     always_bls,
     spec_state_test,
@@ -9,6 +14,7 @@ from eth2spec.test.helpers.withdrawals import (
     set_builder_withdrawal_credential,
     set_builder_withdrawal_credential_with_balance,
 )
+from eth2spec.test.helpers.execution_payload import build_empty_execution_payload
 
 
 def run_execution_payload_bid_processing(spec, state, block, valid=True):
@@ -347,6 +353,45 @@ def test_process_execution_payload_bid_slashed_builder(spec, state):
     block.body.signed_execution_payload_bid = signed_bid
 
     yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_block_then_slash_non_timely_builder(spec, state):
+    """
+    Empty-case payment path:
+    - A builder posts a successful bid in a block, but the payload is not revealed in time.
+    - Builder is slashed
+    - Proposer unconditional payment is enforced by moving the bid amount into
+    """
+
+    # Get past genesis
+    next_epoch(spec, state)
+    next_epoch(spec, state)
+
+    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+
+    value = spec.Gwei(1_000_000)
+    state.balances[builder_index] = value + spec.MIN_ACTIVATION_BALANCE
+
+    # Create a bid with value amount
+    signed_bid = prepare_signed_execution_payload_bid(
+        spec,
+        state,
+        builder_index=builder_index,
+        value=value,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
+    )
+
+    block.body.signed_execution_payload_bid = signed_bid
+    spec.process_block(state, block)
+    # Slash validator
+    spec.slash_validator(state, builder_index)
+
+    payment_slot = spec.SLOTS_PER_EPOCH + (block.slot % spec.SLOTS_PER_EPOCH)
+    payment = state.builder_pending_payments[payment_slot]
+    assert payment.withdrawal.amount == value
+    assert payment.withdrawal.builder_index == builder_index
 
 
 @with_gloas_and_later
