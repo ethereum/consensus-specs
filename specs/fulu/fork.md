@@ -47,8 +47,8 @@ def initialize_proposer_lookahead(
 
 The fork is triggered at epoch `FULU_FORK_EPOCH`.
 
-Note that for the pure Fulu networks, we don't apply `upgrade_to_fulu` since it
-starts with Fulu version logic.
+*Note*: For the pure Fulu networks, the `upgrade_to_fulu` function is applied to
+transition the genesis state to this fork.
 
 ### Upgrading the state
 
