@@ -8,6 +8,7 @@
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
 - [Validator assignment](#validator-assignment)
+  - [Payload timeliness committee](#payload-timeliness-committee)
   - [Lookahead](#lookahead)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Attestation](#attestation)
@@ -43,6 +44,8 @@ validator" to implement Gloas.
 | `PAYLOAD_ATTESTATION_DUE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
 
 ## Validator assignment
+
+### Payload timeliness committee
 
 A validator may be a member of the new Payload Timeliness Committee (PTC) for a
 given slot. To check for PTC assignments, use
