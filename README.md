@@ -119,3 +119,33 @@ consensus specifications:
 - [Specifications viewer (jtraglia)](https://jtraglia.github.io/eth-spec-viewer/)
 - [The Eth2 Book](https://eth2book.info)
 - [PySpec Tests](tests/core/pyspec/README.md)
+
+### Contributing
+
+We welcome contributions to the Ethereum consensus specifications! Here's how you can help:
+
+1. **Report Issues**: Found a bug or have a suggestion? Open an [issue](https://github.com/ethereum/consensus-specs/issues) to discuss it.
+
+2. **Submit Pull Requests**: 
+   - Fork the repository
+   - Create a feature branch from `master`
+   - Make your changes
+   - Ensure all tests pass
+   - Submit a pull request with a clear description
+
+3. **Code Style**: 
+   - Follow Python PEP 8 style guidelines
+   - Ensure type hints are used where appropriate
+   - Add docstrings to new functions and classes
+
+4. **Documentation**: 
+   - Keep documentation up to date with code changes
+   - Use clear and concise language
+   - Follow existing documentation patterns
+
+5. **Testing**: 
+   - Add tests for new features
+   - Ensure existing tests continue to pass
+   - Test with both minimal and mainnet configurations
+
+For more detailed contribution guidelines, please see our [Security Policy](SECURITY.md).
