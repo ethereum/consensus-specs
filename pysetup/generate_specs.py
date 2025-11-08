@@ -53,6 +53,27 @@ from pysetup.spec_builders import spec_builders
 from pysetup.typing import BuildTarget, SpecObject  # type: ignore[attr-defined]
 
 
+def validate_path(path: Path, path_type: str = "file") -> None:
+    """
+    Validate that a path exists and is of the expected type.
+    
+    Args:
+        path: The path to validate
+        path_type: Type of path ('file' or 'directory')
+        
+    Raises:
+        FileNotFoundError: If path doesn't exist
+        ValueError: If path is not of the expected type
+    """
+    if not path.exists():
+        raise FileNotFoundError(f"{path_type.capitalize()} not found: {path}")
+    
+    if path_type == "file" and not path.is_file():
+        raise ValueError(f"Path is not a file: {path}")
+    elif path_type == "directory" and not path.is_dir():
+        raise ValueError(f"Path is not a directory: {path}")
+
+
 def get_spec(
     file_name: Path,
     preset: dict[str, str],
