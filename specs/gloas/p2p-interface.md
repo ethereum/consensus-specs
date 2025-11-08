@@ -281,6 +281,7 @@ The following validations MUST pass before forwarding the
   `BUILDER_WITHDRAWAL_PREFIX` -- i.e.
   `is_builder_withdrawal_credential(state.validators[bid.builder_index].withdrawal_credentials)`
   returns `True`.
+- _[REJECT]_ `bid.el_payment` is non-zero.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
