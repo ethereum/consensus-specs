@@ -49,3 +49,23 @@ the variable.
 
 This format is fully YAML compatible. The presets and configurations may contain
 comments to describe the values.
+
+## Configuration Variables
+
+Configuration files contain various types of variables:
+
+- **Fork Epochs**: Define when forks activate (e.g., `ALTAIR_FORK_EPOCH`)
+- **Fork Versions**: Define fork version identifiers (e.g., `ALTAIR_FORK_VERSION`)
+- **Network Parameters**: Define network-specific settings
+- **Time Parameters**: Define timing-related constants
+- **Validator Parameters**: Define validator-related settings
+
+## Best Practices
+
+When creating or modifying configurations:
+
+1. **Use Comments**: Add descriptive comments explaining the purpose of each variable
+2. **Follow Naming Conventions**: Use `UPPER_SNAKE_CASE` for all variable names
+3. **Validate Values**: Ensure values are within expected ranges
+4. **Test Changes**: Always test configuration changes with minimal preset first
+5. **Document Changes**: Document any custom modifications or additions
