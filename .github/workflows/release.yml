@@ -28,7 +28,7 @@ jobs:
           python-version-file: "consensus-specs/pyproject.toml"
 
       - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7.1.2
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
@@ -43,27 +43,23 @@ jobs:
             exit 1
           fi
 
-      # Add support for large files
-      - name: Install Git LFS
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git-lfs
-          git lfs install
-
-      # Clone the repo with our PAT and delete old files
-      - name: Clone spec tests repo
-        run: |
-          rm -rf consensus-spec-tests
-          git clone https://x-access-token:${{ secrets.CONSENSUS_SPEC_TESTS_PAT }}@github.com/ethereum/consensus-spec-tests.git --branch=master --single-branch --depth=1 --no-tags
-          cd consensus-spec-tests
-          rm -rf configs presets tests
-
-      # Write presets/configs to the spec tests repo
-      - name: Copy presets/configs
+      # Ensure framework tests pass
+      - name: Run tests for framework
         run: |
           cd consensus-specs
-          cp -r presets/ ../consensus-spec-tests/presets
-          cp -r configs/ ../consensus-spec-tests/configs
+          make test component=fw
+
+      # Ensure minimal tests pass
+      - name: Run tests for minimal
+        run: |
+          cd consensus-specs
+          make test component=pyspec preset=minimal
+
+      # Ensure mainnet tests pass
+      - name: Run tests for mainnet
+        run: |
+          cd consensus-specs
+          make test component=pyspec preset=mainnet
 
       # Write reference tests to the spec tests repo
       - name: Generate reference tests
@@ -79,21 +75,6 @@ jobs:
           tar -czvf minimal.tar.gz tests/minimal
           tar -czvf mainnet.tar.gz tests/mainnet
 
-      # Commit the tests to the spec tests repo
-      # Cloned with PAT, so don't need to specify it here
-      - name: Push spec tests
-        run: |
-          cd consensus-spec-tests
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add -A
-          if ! git diff --cached --quiet; then
-            git commit -m "release ${{ github.ref_name }} tests"
-            git push origin HEAD:refs/heads/master
-          else
-            echo "No changes to commit"
-          fi
-
       # Publish the specs release. We use release-drafter to
       # organize PRs into the appropriate section based on PR labels
       - name: Publish specs release
@@ -106,23 +87,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Finally, publish the spec tests release
-      # Requires a personal access token (PAT) with contents:read-write
-      - name: Publish spec tests release
-        uses: softprops/action-gh-release@62c96d0c4e8a889135c1f3a25910db8dbe0e85f7 # v2.3.4
+      # Upload spec test tarballs to the specs release
+      - name: Upload spec test tarballs
+        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
         with:
           tag_name: ${{ github.ref_name }}
-          name: "Spec tests for ${{ github.ref_name }}"
-          body: |
-            Spec tests for `${{ github.ref_name }}`.
-
-            Detailed changelog can be found in [`${{ github.ref_name }}` specs release](https://github.com/ethereum/consensus-specs/releases/tag/${{ github.ref_name }}).
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          draft: false
-          repository: ethereum/consensus-spec-tests
           files: |
             consensus-spec-tests/general.tar.gz
             consensus-spec-tests/minimal.tar.gz
             consensus-spec-tests/mainnet.tar.gz
         env:
-          GITHUB_TOKEN: ${{ secrets.CONSENSUS_SPEC_TESTS_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

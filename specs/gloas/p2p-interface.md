@@ -11,6 +11,8 @@
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
+  - [Helpers](#helpers)
+    - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -96,9 +98,41 @@ class DataColumnSidecar(Container):
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments_inclusion_proof`
     # [New in Gloas:EIP7732]
-    beacon_block_root: Root
-    # [New in Gloas:EIP7732]
     slot: Slot
+    # [New in Gloas:EIP7732]
+    beacon_block_root: Root
+```
+
+### Helpers
+
+##### Modified `verify_data_column_sidecar`
+
+```python
+def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
+    """
+    Verify if the data column sidecar is valid.
+    """
+    # The sidecar index must be within the valid range
+    if sidecar.index >= NUMBER_OF_COLUMNS:
+        return False
+
+    # A sidecar for zero blobs is invalid
+    if len(sidecar.kzg_commitments) == 0:
+        return False
+
+    # [Modified in Gloas:EIP7732]
+    # Check that the sidecar respects the blob limit
+    epoch = compute_epoch_at_slot(sidecar.slot)
+    if len(sidecar.kzg_commitments) > get_blob_parameters(epoch).max_blobs_per_block:
+        return False
+
+    # The column length must be equal to the number of commitments/proofs
+    if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(
+        sidecar.kzg_proofs
+    ):
+        return False
+
+    return True
 ```
 
 ### The gossip domain: gossipsub
@@ -168,8 +202,6 @@ regards to the `ExecutionPayload` are removed:
   - [IGNORE] The block's parent (defined by `block.parent_root`) passes all
     validation (including execution node verification of the
     `block.body.execution_payload`).
-- [REJECT] The block's parent (defined by `block.parent_root`) passes
-  validation.
 
 And instead the following validations are set in place with the alias
 `bid = signed_execution_payload_bid.message`:
@@ -178,8 +210,8 @@ And instead the following validations are set in place with the alias
   execution node **is complete**:
   - [REJECT] The block's execution payload parent (defined by
     `bid.parent_block_hash`) passes all validation.
-- [REJECT] The block's parent (defined by `block.parent_root`) passes
-  validation.
+- [REJECT] The bid's parent (defined by `bid.parent_block_root`) equals the
+  block's parent (defined by `block.parent_root`).
 
 ###### `execution_payload`
 
@@ -196,6 +228,9 @@ The following validations MUST pass before forwarding the
   the block is retrieved).
 - _[IGNORE]_ The node has not seen another valid
   `SignedExecutionPayloadEnvelope` for this block root from this builder.
+- _[IGNORE]_ The envelope is from a slot greater than or equal to the latest
+  finalized slot -- i.e. validate that
+  `envelope.slot >= compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
 
 Let `block` be the block with `envelope.beacon_block_root`. Let `bid` alias
 `block.body.signed_execution_payload_bid.message` (notice that this can be
