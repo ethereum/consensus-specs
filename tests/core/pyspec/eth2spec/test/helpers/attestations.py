@@ -493,9 +493,7 @@ def get_empty_eip7549_aggregation_bits(spec, state, committee_bits, slot):
     for index in committee_indices:
         committee = spec.get_beacon_committee(state, slot, index)
         participants_count += len(committee)
-    aggregation_bits = Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT](
-        [False] * participants_count
-    )
+    aggregation_bits = spec.AggregationBits([False] * participants_count)
     return aggregation_bits
 
 
@@ -512,3 +510,24 @@ def get_eip7549_aggregation_bits_offset(spec, state, slot, committee_bits, commi
         committee = spec.get_beacon_committee(state, slot, committee_indices[i])
         offset += len(committee)
     return offset
+
+
+def needs_upgrade_to_gloas(spec, new_spec):
+    return is_post_gloas(new_spec) and not is_post_gloas(spec)
+
+
+def check_attestation_equal(spec, new_spec, data, upgraded):
+    assert list(data.aggregation_bits) == list(upgraded.aggregation_bits)
+    assert data.data == upgraded.data
+    assert data.signature == upgraded.signature
+    assert list(data.committee_bits) == list(upgraded.committee_bits)
+
+
+def upgrade_attestation_to_new_spec(spec, new_spec, data):
+    upgraded = data
+
+    if needs_upgrade_to_gloas(spec, new_spec):
+        upgraded = new_spec.upgrade_attestation_to_gloas(upgraded)
+        check_attestation_equal(spec, new_spec, data, upgraded)
+
+    return upgraded
