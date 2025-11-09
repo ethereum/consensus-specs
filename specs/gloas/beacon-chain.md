@@ -199,7 +199,7 @@ class ExecutionPayloadBid(Container):
     builder_index: ValidatorIndex
     slot: Slot
     value: Gwei
-    el_payment: Gwei
+    execution_payment: Gwei
     blob_kzg_commitments_root: Root
 ```
 
