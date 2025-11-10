@@ -693,6 +693,8 @@ def process_epoch(state: BeaconState) -> None:
     process_eth1_data_reset(state)
     process_pending_deposits(state)
     process_pending_consolidations(state)
+    # [New in Gloas:EIP7732]
+    process_builder_pending_payments(state)
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
@@ -700,8 +702,6 @@ def process_epoch(state: BeaconState) -> None:
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
     process_proposer_lookahead(state)
-    # [New in Gloas:EIP7732]
-    process_builder_pending_payments(state)
 ```
 
 #### New `process_builder_pending_payments`
