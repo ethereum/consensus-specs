@@ -323,10 +323,12 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
     # to distinguish it from the genesis block hash and have
     # is_parent_node_full correctly return False
     empty_payload_hash = spec.Hash32(b"\x01" + b"\x00" * 31)
+    prev_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
     return spec.ExecutionPayloadBid(
         parent_block_hash=state.latest_block_hash,
         parent_block_root=parent_block_root,
         block_hash=empty_payload_hash,
+        prev_randao=prev_randao,
         fee_recipient=spec.ExecutionAddress(),
         gas_limit=spec.uint64(0),
         builder_index=builder_index,
