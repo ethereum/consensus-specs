@@ -7,12 +7,12 @@ from eth2spec.test.helpers.constants import (
     AFTER_DENEB_PRE_POST_FORKS,
     MINIMAL,
 )
-from eth2spec.test.helpers.keys import pubkeys
 from eth2spec.test.helpers.fork_transition import (
     do_fork,
     transition_to_next_epoch_and_append_blocks,
     transition_until_fork,
 )
+from eth2spec.test.helpers.keys import pubkeys
 
 
 def mock_activated_validators(spec, state, mock_activations):
@@ -21,7 +21,9 @@ def mock_activated_validators(spec, state, mock_activations):
         index = validator_count + i
         validator = spec.Validator(
             pubkey=pubkeys[index],
-            withdrawal_credentials=spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b'\x00' * 11 + b'\x56' * 20,
+            withdrawal_credentials=spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
+            + b"\x00" * 11
+            + b"\x56" * 20,
             activation_eligibility_epoch=0,
             activation_epoch=spec.FAR_FUTURE_EPOCH,
             exit_epoch=spec.FAR_FUTURE_EPOCH,
@@ -36,15 +38,21 @@ def mock_activated_validators(spec, state, mock_activations):
         state.validators[index].activation_epoch = spec.get_current_epoch(state)
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
-                  for pre, post in AFTER_DENEB_PRE_POST_FORKS])
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in AFTER_DENEB_PRE_POST_FORKS
+    ]
+)
 @with_presets([MINIMAL], reason="churn limit update needs enough validators")
 def test_higher_churn_limit_to_lower(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
     """
     Test if churn limit goes from high to low due to EIP-7514.
     """
     # Create high churn limit
-    mock_activations = post_spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT * spec.config.CHURN_LIMIT_QUOTIENT
+    mock_activations = (
+        post_spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT * spec.config.CHURN_LIMIT_QUOTIENT
+    )
     mock_activated_validators(spec, state, mock_activations)
 
     transition_until_fork(spec, state, fork_epoch)
@@ -66,7 +74,9 @@ def test_higher_churn_limit_to_lower(state, fork_epoch, spec, post_spec, pre_tag
     assert spec.get_current_epoch(state) == fork_epoch
 
     # continue regular state transition with new spec into next epoch
-    transition_to_next_epoch_and_append_blocks(post_spec, state, post_tag, blocks, only_last_block=True)
+    transition_to_next_epoch_and_append_blocks(
+        post_spec, state, post_tag, blocks, only_last_block=True
+    )
 
     yield "blocks", blocks
     yield "post", state

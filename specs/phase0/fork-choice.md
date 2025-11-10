@@ -1,18 +1,15 @@
 # Phase 0 -- Beacon Chain Fork Choice
 
-## Table of contents
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Fork choice](#fork-choice)
   - [Constant](#constant)
   - [Configuration](#configuration)
+    - [Time parameters](#time-parameters)
   - [Helpers](#helpers)
     - [`LatestMessage`](#latestmessage)
     - [`Store`](#store)
-    - [`is_previous_epoch_justified`](#is_previous_epoch_justified)
     - [`get_forkchoice_store`](#get_forkchoice_store)
     - [`get_slots_since_genesis`](#get_slots_since_genesis)
     - [`get_current_slot`](#get_current_slot)
@@ -29,6 +26,11 @@
     - [`get_head`](#get_head)
     - [`update_checkpoints`](#update_checkpoints)
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
+    - [`seconds_to_milliseconds`](#seconds_to_milliseconds)
+    - [`get_slot_component_duration_ms`](#get_slot_component_duration_ms)
+    - [`get_attestation_due_ms`](#get_attestation_due_ms)
+    - [`get_proposer_reorg_cutoff_ms`](#get_proposer_reorg_cutoff_ms)
+    - [`get_aggregate_due_ms`](#get_aggregate_due_ms)
     - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
       - [`is_head_late`](#is_head_late)
       - [`is_shuffling_stable`](#is_shuffling_stable)
@@ -53,51 +55,77 @@
     - [`on_attestation`](#on_attestation)
     - [`on_attester_slashing`](#on_attester_slashing)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This document is the beacon chain fork choice spec, part of Phase 0. It assumes the [beacon chain state transition function spec](./beacon-chain.md).
+This document is the beacon chain fork choice spec, part of Phase 0. It assumes
+the [beacon chain state transition function spec](./beacon-chain.md).
 
 ## Fork choice
 
-The head block root associated with a `store` is defined as `get_head(store)`. At genesis, let `store = get_forkchoice_store(genesis_state, genesis_block)` and update `store` by running:
+The head block root associated with a `store` is defined as `get_head(store)`.
+At genesis, let `store = get_forkchoice_store(genesis_state, genesis_block)` and
+update `store` by running:
 
-- `on_tick(store, time)` whenever `time > store.time` where `time` is the current Unix time
-- `on_block(store, block)` whenever a block `block: SignedBeaconBlock` is received
-- `on_attestation(store, attestation)` whenever an attestation `attestation` is received
-- `on_attester_slashing(store, attester_slashing)` whenever an attester slashing `attester_slashing` is received
+- `on_tick(store, time)` whenever `time > store.time` where `time` is the
+  current Unix time
+- `on_block(store, block)` whenever a block `block: SignedBeaconBlock` is
+  received
+- `on_attestation(store, attestation)` whenever an attestation `attestation` is
+  received
+- `on_attester_slashing(store, attester_slashing)` whenever an attester slashing
+  `attester_slashing` is received
 
-Any of the above handlers that trigger an unhandled exception (e.g. a failed assert or an out-of-range list access) are considered invalid. Invalid calls to handlers must not modify `store`.
+Any of the above handlers that trigger an unhandled exception (e.g. a failed
+assert or an out-of-range list access) are considered invalid. Invalid calls to
+handlers must not modify `store`.
 
 *Notes*:
 
-1) **Leap seconds**: Slots will last `SECONDS_PER_SLOT + 1` or `SECONDS_PER_SLOT - 1` seconds around leap seconds. This is automatically handled by [UNIX time](https://en.wikipedia.org/wiki/Unix_time).
-2) **Honest clocks**: Honest nodes are assumed to have clocks synchronized within `SECONDS_PER_SLOT` seconds of each other.
-3) **Eth1 data**: The large `ETH1_FOLLOW_DISTANCE` specified in the [honest validator document](./validator.md) should ensure that `state.latest_eth1_data` of the canonical beacon chain remains consistent with the canonical Ethereum proof-of-work chain. If not, emergency manual intervention will be required.
-4) **Manual forks**: Manual forks may arbitrarily change the fork choice rule but are expected to be enacted at epoch transitions, with the fork details reflected in `state.fork`.
-5) **Implementation**: The implementation found in this specification is constructed for ease of understanding rather than for optimization in computation, space, or any other resource. A number of optimized alternatives can be found [here](https://github.com/protolambda/lmd-ghost).
-
+1. **Leap seconds**: Slots will last `SECONDS_PER_SLOT + 1` or
+   `SECONDS_PER_SLOT - 1` seconds around leap seconds. This is automatically
+   handled by [UNIX time](https://en.wikipedia.org/wiki/Unix_time).
+2. **Honest clocks**: Honest nodes are assumed to have clocks synchronized
+   within `SECONDS_PER_SLOT` seconds of each other.
+3. **Eth1 data**: The large `ETH1_FOLLOW_DISTANCE` specified in the
+   [honest validator document](./validator.md) should ensure that
+   `state.latest_eth1_data` of the canonical beacon chain remains consistent
+   with the canonical Ethereum proof-of-work chain. If not, emergency manual
+   intervention will be required.
+4. **Manual forks**: Manual forks may arbitrarily change the fork choice rule
+   but are expected to be enacted at epoch transitions, with the fork details
+   reflected in `state.fork`.
+5. **Implementation**: The implementation found in this specification is
+   constructed for ease of understanding rather than for optimization in
+   computation, space, or any other resource. A number of optimized alternatives
+   can be found [here](https://github.com/protolambda/lmd-ghost).
 
 ### Constant
 
-| Name                 | Value       |
-| -------------------- | ----------- |
-| `INTERVALS_PER_SLOT` | `uint64(3)` |
+| Name                              | Value           |
+| --------------------------------- | --------------- |
+| `INTERVALS_PER_SLOT` *deprecated* | `uint64(3)`     |
+| `BASIS_POINTS`                    | `uint64(10000)` |
 
 ### Configuration
 
-| Name                                  | Value        |
-| ------------------------------------- | ------------ |
-| `PROPOSER_SCORE_BOOST`                | `uint64(40)` |
-| `REORG_HEAD_WEIGHT_THRESHOLD`         | `uint64(20)` |
-| `REORG_PARENT_WEIGHT_THRESHOLD`       | `uint64(160)`|
-| `REORG_MAX_EPOCHS_SINCE_FINALIZATION` | `Epoch(2)`   |
+| Name                                  | Value         |
+| ------------------------------------- | ------------- |
+| `PROPOSER_SCORE_BOOST`                | `uint64(40)`  |
+| `REORG_HEAD_WEIGHT_THRESHOLD`         | `uint64(20)`  |
+| `REORG_PARENT_WEIGHT_THRESHOLD`       | `uint64(160)` |
+| `REORG_MAX_EPOCHS_SINCE_FINALIZATION` | `Epoch(2)`    |
 
-- The proposer score boost and re-org weight threshold are percentage
-  values that are measured with respect to the weight of a single committee. See
+- The proposer score boost and re-org weight threshold are percentage values
+  that are measured with respect to the weight of a single committee. See
   `calculate_committee_fraction`.
+
+#### Time parameters
+
+| Name                        | Value          |     Unit     |          Duration          |
+| --------------------------- | -------------- | :----------: | :------------------------: |
+| `PROPOSER_REORG_CUTOFF_BPS` | `uint64(1667)` | basis points | ~17% of `SLOT_DURATION_MS` |
 
 ### Helpers
 
@@ -112,12 +140,22 @@ class LatestMessage(object):
 
 #### `Store`
 
-The `Store` is responsible for tracking information required for the fork choice algorithm. The important fields being tracked are described below:
+The `Store` is responsible for tracking information required for the fork choice
+algorithm. The important fields being tracked are described below:
 
-- `justified_checkpoint`: the justified checkpoint used as the starting point for the LMD GHOST fork choice algorithm.
-- `finalized_checkpoint`: the highest known finalized checkpoint. The fork choice only considers blocks that are not conflicting with this checkpoint.
-- `unrealized_justified_checkpoint` & `unrealized_finalized_checkpoint`: these track the highest justified & finalized checkpoints resp., without regard to whether on-chain ***realization*** has occurred, i.e. FFG processing of new attestations within the state transition function. This is an important distinction from `justified_checkpoint` & `finalized_checkpoint`, because they will only track the checkpoints that are realized on-chain. Note that on-chain processing of FFG information only happens at epoch boundaries.
-- `unrealized_justifications`: stores a map of block root to the unrealized justified checkpoint observed in that block.
+- `justified_checkpoint`: the justified checkpoint used as the starting point
+  for the LMD GHOST fork choice algorithm.
+- `finalized_checkpoint`: the highest known finalized checkpoint. The fork
+  choice only considers blocks that are not conflicting with this checkpoint.
+- `unrealized_justified_checkpoint` & `unrealized_finalized_checkpoint`: these
+  track the highest justified & finalized checkpoints resp., without regard to
+  whether on-chain ***realization*** has occurred, i.e. FFG processing of new
+  attestations within the state transition function. This is an important
+  distinction from `justified_checkpoint` & `finalized_checkpoint`, because they
+  will only track the checkpoints that are realized on-chain. Note that on-chain
+  processing of FFG information only happens at epoch boundaries.
+- `unrealized_justifications`: stores a map of block root to the unrealized
+  justified checkpoint observed in that block.
 
 ```python
 @dataclass
@@ -138,20 +176,16 @@ class Store(object):
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
 ```
 
-#### `is_previous_epoch_justified`
-
-```python
-def is_previous_epoch_justified(store: Store) -> bool:
-    current_epoch = get_current_store_epoch(store)
-    return store.justified_checkpoint.epoch + 1 == current_epoch
-```
-
 #### `get_forkchoice_store`
 
-The provided anchor-state will be regarded as a trusted state, to not roll back beyond.
-This should be the genesis state for a full client.
+The provided anchor-state will be regarded as a trusted state, to not roll back
+beyond. This should be the genesis state for a full client.
 
-*Note* With regards to fork choice, block headers are interchangeable with blocks. The spec is likely to move to headers for reduced overhead in test vectors and better encapsulation. Full implementations store blocks as part of their database and will often use full blocks when dealing with production fork choice.
+*Note* With regards to fork choice, block headers are interchangeable with
+blocks. The spec is likely to move to headers for reduced overhead in test
+vectors and better encapsulation. Full implementations store blocks as part of
+their database and will often use full blocks when dealing with production fork
+choice.
 
 ```python
 def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
@@ -173,7 +207,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
-        unrealized_justifications={anchor_root: justified_checkpoint}
+        unrealized_justifications={anchor_root: justified_checkpoint},
     )
 ```
 
@@ -249,15 +283,22 @@ def get_proposer_score(store: Store) -> Gwei:
 def get_weight(store: Store, root: Root) -> Gwei:
     state = store.checkpoint_states[store.justified_checkpoint]
     unslashed_and_active_indices = [
-        i for i in get_active_validator_indices(state, get_current_epoch(state))
+        i
+        for i in get_active_validator_indices(state, get_current_epoch(state))
         if not state.validators[i].slashed
     ]
-    attestation_score = Gwei(sum(
-        state.validators[i].effective_balance for i in unslashed_and_active_indices
-        if (i in store.latest_messages
-            and i not in store.equivocating_indices
-            and get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot) == root)
-    ))
+    attestation_score = Gwei(
+        sum(
+            state.validators[i].effective_balance
+            for i in unslashed_and_active_indices
+            if (
+                i in store.latest_messages
+                and i not in store.equivocating_indices
+                and get_ancestor(store, store.latest_messages[i].root, store.blocks[root].slot)
+                == root
+            )
+        )
+    )
     if store.proposer_boost_root == Root():
         # Return only attestation score if ``proposer_boost_root`` is not set
         return attestation_score
@@ -291,14 +332,15 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
 
 #### `filter_block_tree`
 
-*Note*: External calls to `filter_block_tree` (i.e., any calls that are not made by the recursive logic in this function) MUST set `block_root` to `store.justified_checkpoint`.
+*Note*: External calls to `filter_block_tree` (i.e., any calls that are not made
+by the recursive logic in this function) MUST set `block_root` to
+`store.justified_checkpoint.root`.
 
 ```python
 def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconBlock]) -> bool:
     block = store.blocks[block_root]
     children = [
-        root for root in store.blocks.keys()
-        if store.blocks[root].parent_root == block_root
+        root for root in store.blocks.keys() if store.blocks[root].parent_root == block_root
     ]
 
     # If any children branches contain expected finalized/justified checkpoints,
@@ -364,10 +406,7 @@ def get_head(store: Store) -> Root:
     # Execute the LMD-GHOST fork choice
     head = store.justified_checkpoint.root
     while True:
-        children = [
-            root for root in blocks.keys()
-            if blocks[root].parent_root == head
-        ]
+        children = [root for root in blocks.keys() if blocks[root].parent_root == head]
         if len(children) == 0:
             return head
         # Sort by latest attesting balance with ties broken lexicographically
@@ -378,7 +417,9 @@ def get_head(store: Store) -> Root:
 #### `update_checkpoints`
 
 ```python
-def update_checkpoints(store: Store, justified_checkpoint: Checkpoint, finalized_checkpoint: Checkpoint) -> None:
+def update_checkpoints(
+    store: Store, justified_checkpoint: Checkpoint, finalized_checkpoint: Checkpoint
+) -> None:
     """
     Update checkpoints in store if necessary
     """
@@ -394,8 +435,11 @@ def update_checkpoints(store: Store, justified_checkpoint: Checkpoint, finalized
 #### `update_unrealized_checkpoints`
 
 ```python
-def update_unrealized_checkpoints(store: Store, unrealized_justified_checkpoint: Checkpoint,
-                                  unrealized_finalized_checkpoint: Checkpoint) -> None:
+def update_unrealized_checkpoints(
+    store: Store,
+    unrealized_justified_checkpoint: Checkpoint,
+    unrealized_finalized_checkpoint: Checkpoint,
+) -> None:
     """
     Update unrealized checkpoints in store if necessary
     """
@@ -407,17 +451,64 @@ def update_unrealized_checkpoints(store: Store, unrealized_justified_checkpoint:
     if unrealized_finalized_checkpoint.epoch > store.unrealized_finalized_checkpoint.epoch:
         store.unrealized_finalized_checkpoint = unrealized_finalized_checkpoint
 ```
+
+#### `seconds_to_milliseconds`
+
+```python
+def seconds_to_milliseconds(seconds: uint64) -> uint64:
+    """
+    Convert seconds to milliseconds with overflow protection.
+    Returns ``UINT64_MAX`` if the result would overflow.
+    """
+    if seconds > UINT64_MAX // 1000:
+        return UINT64_MAX
+    return seconds * 1000
+```
+
+#### `get_slot_component_duration_ms`
+
+```python
+def get_slot_component_duration_ms(basis_points: uint64) -> uint64:
+    """
+    Calculate the duration of a slot component in milliseconds.
+    """
+    return basis_points * SLOT_DURATION_MS // BASIS_POINTS
+```
+
+#### `get_attestation_due_ms`
+
+```python
+def get_attestation_due_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+```
+
+#### `get_proposer_reorg_cutoff_ms`
+
+```python
+def get_proposer_reorg_cutoff_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
+```
+
+#### `get_aggregate_due_ms`
+
+```python
+def get_aggregate_due_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
+```
+
 #### Proposer head and reorg helpers
 
 _Implementing these helpers is optional_.
 
 ##### `is_head_late`
+
 ```python
 def is_head_late(store: Store, head_root: Root) -> bool:
     return not store.block_timeliness[head_root]
 ```
 
 ##### `is_shuffling_stable`
+
 ```python
 def is_shuffling_stable(slot: Slot) -> bool:
     return slot % SLOTS_PER_EPOCH != 0
@@ -427,7 +518,9 @@ def is_shuffling_stable(slot: Slot) -> bool:
 
 ```python
 def is_ffg_competitive(store: Store, head_root: Root, parent_root: Root) -> bool:
-    return (store.unrealized_justifications[head_root] == store.unrealized_justifications[parent_root])
+    return (
+        store.unrealized_justifications[head_root] == store.unrealized_justifications[parent_root]
+    )
 ```
 
 ##### `is_finalization_ok`
@@ -442,10 +535,11 @@ def is_finalization_ok(store: Store, slot: Slot) -> bool:
 
 ```python
 def is_proposing_on_time(store: Store) -> bool:
-    # Use half `SECONDS_PER_SLOT // INTERVALS_PER_SLOT` as the proposer reorg deadline
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    proposer_reorg_cutoff = SECONDS_PER_SLOT // INTERVALS_PER_SLOT // 2
-    return time_into_slot <= proposer_reorg_cutoff
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    epoch = get_current_store_epoch(store)
+    proposer_reorg_cutoff_ms = get_proposer_reorg_cutoff_ms(epoch)
+    return time_into_slot_ms <= proposer_reorg_cutoff_ms
 ```
 
 ##### `is_head_weak`
@@ -503,17 +597,27 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
     # Check that the missing votes are assigned to the parent and not being hoarded.
     parent_strong = is_parent_strong(store, parent_root)
 
-    if all([head_late, shuffling_stable, ffg_competitive, finalization_ok,
-            proposing_on_time, single_slot_reorg, head_weak, parent_strong]):
+    if all(
+        [
+            head_late,
+            shuffling_stable,
+            ffg_competitive,
+            finalization_ok,
+            proposing_on_time,
+            single_slot_reorg,
+            head_weak,
+            parent_strong,
+        ]
+    ):
         # We can re-org the current head by building upon its parent block.
         return parent_root
     else:
         return head_root
 ```
 
-*Note*: The ordering of conditions is a suggestion only. Implementations are free to
-optimize by re-ordering the conditions from least to most expensive and by returning early if
-any of the early conditions are `False`.
+*Note*: The ordering of conditions is a suggestion only. Implementations are
+free to optimize by re-ordering the conditions from least to most expensive and
+by returning early if any of the early conditions are `False`.
 
 #### Pull-up tip helpers
 
@@ -526,7 +630,9 @@ def compute_pulled_up_tip(store: Store, block_root: Root) -> None:
     process_justification_and_finalization(state)
 
     store.unrealized_justifications[block_root] = state.current_justified_checkpoint
-    update_unrealized_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
+    update_unrealized_checkpoints(
+        store, state.current_justified_checkpoint, state.finalized_checkpoint
+    )
 
     # If the block is from a prior epoch, apply the realized values
     block_epoch = compute_epoch_at_slot(store.blocks[block_root].slot)
@@ -554,11 +660,12 @@ def on_tick_per_slot(store: Store, time: uint64) -> None:
 
     # If a new epoch, pull-up justification and finalization from previous epoch
     if current_slot > previous_slot and compute_slots_since_epoch_start(current_slot) == 0:
-        update_checkpoints(store, store.unrealized_justified_checkpoint, store.unrealized_finalized_checkpoint)
+        update_checkpoints(
+            store, store.unrealized_justified_checkpoint, store.unrealized_finalized_checkpoint
+        )
 ```
 
 #### `on_attestation` helpers
-
 
 ##### `validate_target_epoch_against_current_time`
 
@@ -596,7 +703,9 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
     assert store.blocks[attestation.data.beacon_block_root].slot <= attestation.data.slot
 
     # LMD vote must be consistent with FFG vote target
-    assert target.root == get_checkpoint_block(store, attestation.data.beacon_block_root, target.epoch)
+    assert target.root == get_checkpoint_block(
+        store, attestation.data.beacon_block_root, target.epoch
+    )
 
     # Attestations can only affect the fork choice of subsequent slots.
     # Delay consideration in the fork choice until their slot is in the past.
@@ -618,15 +727,18 @@ def store_target_checkpoint_state(store: Store, target: Checkpoint) -> None:
 ##### `update_latest_messages`
 
 ```python
-def update_latest_messages(store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation) -> None:
+def update_latest_messages(
+    store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation
+) -> None:
     target = attestation.data.target
     beacon_block_root = attestation.data.beacon_block_root
-    non_equivocating_attesting_indices = [i for i in attesting_indices if i not in store.equivocating_indices]
+    non_equivocating_attesting_indices = [
+        i for i in attesting_indices if i not in store.equivocating_indices
+    ]
     for i in non_equivocating_attesting_indices:
         if i not in store.latest_messages or target.epoch > store.latest_messages[i].epoch:
             store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=beacon_block_root)
 ```
-
 
 ### Handlers
 
@@ -676,8 +788,11 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     store.block_states[block_root] = state
 
     # Add block timeliness to the store
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    epoch = get_current_store_epoch(store)
+    attestation_threshold_ms = get_attestation_due_ms(epoch)
+    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
 
@@ -696,7 +811,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 #### `on_attestation`
 
 ```python
-def on_attestation(store: Store, attestation: Attestation, is_from_block: bool=False) -> None:
+def on_attestation(store: Store, attestation: Attestation, is_from_block: bool = False) -> None:
     """
     Run ``on_attestation`` upon receiving a new ``attestation`` from either within a block or directly on the wire.
 
@@ -718,7 +833,9 @@ def on_attestation(store: Store, attestation: Attestation, is_from_block: bool=F
 
 #### `on_attester_slashing`
 
-*Note*: `on_attester_slashing` should be called while syncing and a client MUST maintain the equivocation set of `AttesterSlashing`s from at least the latest finalized checkpoint.
+*Note*: `on_attester_slashing` should be called while syncing and a client MUST
+maintain the equivocation set of `AttesterSlashing`s from at least the latest
+finalized checkpoint.
 
 ```python
 def on_attester_slashing(store: Store, attester_slashing: AttesterSlashing) -> None:

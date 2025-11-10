@@ -1,25 +1,26 @@
 # Deneb Light Client -- Fork Logic
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Upgrading light client data](#upgrading-light-client-data)
 - [Upgrading the store](#upgrading-the-store)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This document describes how to upgrade existing light client objects based on the [Capella specification](../../capella/light-client/sync-protocol.md) to Deneb. This is necessary when processing pre-Deneb data with a post-Deneb `LightClientStore`. Note that the data being exchanged over the network protocols uses the original format.
+This document describes how to upgrade existing light client objects based on
+the [Capella specification](../../capella/light-client/sync-protocol.md) to
+Deneb. This is necessary when processing pre-Deneb data with a post-Deneb
+`LightClientStore`. Note that the data being exchanged over the network
+protocols uses the original format.
 
 ## Upgrading light client data
 
-A Deneb `LightClientStore` can still process earlier light client data. In order to do so, that pre-Deneb data needs to be locally upgraded to Deneb before processing.
+A Deneb `LightClientStore` can still process earlier light client data. In order
+to do so, that pre-Deneb data needs to be locally upgraded to Deneb before
+processing.
 
 ```python
 def upgrade_lc_header_to_deneb(pre: capella.LightClientHeader) -> LightClientHeader:
@@ -41,8 +42,10 @@ def upgrade_lc_header_to_deneb(pre: capella.LightClientHeader) -> LightClientHea
             block_hash=pre.execution.block_hash,
             transactions_root=pre.execution.transactions_root,
             withdrawals_root=pre.execution.withdrawals_root,
-            blob_gas_used=uint64(0),  # [New in Deneb:EIP4844]
-            excess_blob_gas=uint64(0),  # [New in Deneb:EIP4844]
+            # [New in Deneb:EIP4844]
+            blob_gas_used=uint64(0),
+            # [New in Deneb:EIP4844]
+            excess_blob_gas=uint64(0),
         ),
         execution_branch=pre.execution_branch,
     )
@@ -71,7 +74,9 @@ def upgrade_lc_update_to_deneb(pre: capella.LightClientUpdate) -> LightClientUpd
 ```
 
 ```python
-def upgrade_lc_finality_update_to_deneb(pre: capella.LightClientFinalityUpdate) -> LightClientFinalityUpdate:
+def upgrade_lc_finality_update_to_deneb(
+    pre: capella.LightClientFinalityUpdate,
+) -> LightClientFinalityUpdate:
     return LightClientFinalityUpdate(
         attested_header=upgrade_lc_header_to_deneb(pre.attested_header),
         finalized_header=upgrade_lc_header_to_deneb(pre.finalized_header),
@@ -82,7 +87,9 @@ def upgrade_lc_finality_update_to_deneb(pre: capella.LightClientFinalityUpdate) 
 ```
 
 ```python
-def upgrade_lc_optimistic_update_to_deneb(pre: capella.LightClientOptimisticUpdate) -> LightClientOptimisticUpdate:
+def upgrade_lc_optimistic_update_to_deneb(
+    pre: capella.LightClientOptimisticUpdate,
+) -> LightClientOptimisticUpdate:
     return LightClientOptimisticUpdate(
         attested_header=upgrade_lc_header_to_deneb(pre.attested_header),
         sync_aggregate=pre.sync_aggregate,
@@ -92,7 +99,9 @@ def upgrade_lc_optimistic_update_to_deneb(pre: capella.LightClientOptimisticUpda
 
 ## Upgrading the store
 
-Existing `LightClientStore` objects based on Capella MUST be upgraded to Deneb before Deneb based light client data can be processed. The `LightClientStore` upgrade MAY be performed before `DENEB_FORK_EPOCH`.
+Existing `LightClientStore` objects based on Capella MUST be upgraded to Deneb
+before Deneb based light client data can be processed. The `LightClientStore`
+upgrade MAY be performed before `DENEB_FORK_EPOCH`.
 
 ```python
 def upgrade_lc_store_to_deneb(pre: capella.LightClientStore) -> LightClientStore:

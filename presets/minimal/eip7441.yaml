@@ -1,0 +1,16 @@
+# Minimal preset - EIP7441
+
+# Misc
+# ---------------------------------------------------------------
+# 2**2 (= 4) blinders
+CURDLEPROOFS_N_BLINDERS: 4
+# [customized] 2**5 (= 32) trackers
+CANDIDATE_TRACKERS_COUNT: 32
+# [customized] 2**4 (= 16) trackers
+PROPOSER_TRACKERS_COUNT: 16
+# [customized] 2**3 - CURDLEPROOFS_N_BLINDERS (= 4) validators
+VALIDATORS_PER_SHUFFLE: 4
+# 2**15 (= 32,768) bytes
+MAX_SHUFFLE_PROOF_SIZE: 32768
+# 2**10 (= 1,024) bytes
+MAX_OPENING_PROOF_SIZE: 1024

@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
-    ForkMeta,
     always_bls,
+    ForkMeta,
     with_fork_metas,
 )
 from eth2spec.test.helpers.attestations import (
@@ -13,27 +13,33 @@ from eth2spec.test.helpers.constants import (
     AFTER_DENEB_PRE_POST_FORKS,
     DENEB,
 )
+from eth2spec.test.helpers.fork_transition import (
+    do_fork,
+    OperationType,
+    run_transition_with_operation,
+    transition_until_fork,
+)
 from eth2spec.test.helpers.state import (
     next_epoch_via_block,
     state_transition_and_sign_block,
     transition_to,
 )
-from eth2spec.test.helpers.fork_transition import (
-    OperationType,
-    do_fork,
-    run_transition_with_operation,
-    transition_until_fork,
-)
-
 
 #
 # BLSToExecutionChange
 #
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
-                  for pre, post in AFTER_DENEB_PRE_POST_FORKS])
+
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in AFTER_DENEB_PRE_POST_FORKS
+    ]
+)
 @always_bls
-def test_transition_with_btec_right_after_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+def test_transition_with_btec_right_after_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Create a BLS_TO_EXECUTION_CHANGE right *after* the transition
     """
@@ -49,10 +55,16 @@ def test_transition_with_btec_right_after_fork(state, fork_epoch, spec, post_spe
     )
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
-                  for pre, post in AFTER_DENEB_PRE_POST_FORKS])
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in AFTER_DENEB_PRE_POST_FORKS
+    ]
+)
 @always_bls
-def test_transition_with_btec_right_before_fork(state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+def test_transition_with_btec_right_before_fork(
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     Create a BLS_TO_EXECUTION_CHANGE right *before* the transition
     """
@@ -68,10 +80,15 @@ def test_transition_with_btec_right_before_fork(state, fork_epoch, spec, post_sp
     )
 
 
-@with_fork_metas([ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
-                  for pre, post in AFTER_DENEB_PRE_POST_FORKS])
+@with_fork_metas(
+    [
+        ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
+        for pre, post in AFTER_DENEB_PRE_POST_FORKS
+    ]
+)
 def test_transition_attestation_from_previous_fork_with_new_range(
-        state, fork_epoch, spec, post_spec, pre_tag, post_tag):
+    state, fork_epoch, spec, post_spec, pre_tag, post_tag
+):
     """
     [EIP-7045] test
     """
@@ -90,7 +107,7 @@ def test_transition_attestation_from_previous_fork_with_new_range(
         target_state = state
     attestation = get_valid_attestation(target_spec, target_state, signed=True)
 
-    yield 'pre', state
+    yield "pre", state
 
     # Transition to the fork epoch with a block
     transition_until_fork(spec, state, fork_epoch)
@@ -108,5 +125,5 @@ def test_transition_attestation_from_previous_fork_with_new_range(
     block.body.attestations.append(attestation)
     signed_block = state_transition_and_sign_block(post_spec, state, block)
 
-    yield 'blocks', [post_tag(fork_block), post_tag(signed_block)]
-    yield 'post', state
+    yield "blocks", [post_tag(fork_block), post_tag(signed_block)]
+    yield "post", state

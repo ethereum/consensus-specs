@@ -1,247 +1,367 @@
-SPEC_DIR = ./specs
-SSZ_DIR = ./ssz
-TEST_LIBS_DIR = ./tests/core
-TEST_GENERATORS_DIR = ./tests/generators
-# The working dir during testing
-PY_SPEC_DIR = $(TEST_LIBS_DIR)/pyspec
-ETH2SPEC_MODULE_DIR = $(PY_SPEC_DIR)/eth2spec
-TEST_REPORT_DIR = $(PY_SPEC_DIR)/test-reports
-TEST_VECTOR_DIR = ../consensus-spec-tests/tests
-GENERATOR_DIR = ./tests/generators
-SOLIDITY_DEPOSIT_CONTRACT_DIR = ./solidity_deposit_contract
-SOLIDITY_DEPOSIT_CONTRACT_SOURCE = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/deposit_contract.sol
-SOLIDITY_FILE_NAME = deposit_contract.json
-DEPOSIT_CONTRACT_TESTER_DIR = ${SOLIDITY_DEPOSIT_CONTRACT_DIR}/web3_tester
-CONFIGS_DIR = ./configs
-TEST_PRESET_TYPE ?= minimal
-# Collect a list of generator names
-GENERATORS = $(sort $(dir $(wildcard $(GENERATOR_DIR)/*/.)))
-# Map this list of generator paths to "gen_{generator name}" entries
-GENERATOR_TARGETS = $(patsubst $(GENERATOR_DIR)/%/, gen_%, $(GENERATORS))
-GENERATOR_VENVS = $(patsubst $(GENERATOR_DIR)/%, $(GENERATOR_DIR)/%venv, $(GENERATORS))
-# Documents
-DOCS_DIR = ./docs
-SSZ_DIR = ./ssz
-SYNC_DIR = ./sync
-FORK_CHOICE_DIR = ./fork_choice
+all: help
 
-# To check generator matching:
-#$(info $$GENERATOR_TARGETS is [${GENERATOR_TARGETS}])
+# A list of executable specifications.
+# These must pass a strict linter.
+ALL_EXECUTABLE_SPEC_NAMES = \
+	phase0    \
+	altair    \
+	bellatrix \
+	capella   \
+	deneb     \
+	electra   \
+	fulu      \
+	gloas     \
+	eip6800   \
+	eip7441   \
+	eip7805   \
+	eip7928
 
-MARKDOWN_FILES = $(wildcard $(SPEC_DIR)/*/*.md) \
-                 $(wildcard $(SPEC_DIR)/*/*/*.md) \
-                 $(wildcard $(SPEC_DIR)/_features/*/*.md) \
-                 $(wildcard $(SPEC_DIR)/_features/*/*/*.md) \
-                 $(wildcard $(SSZ_DIR)/*.md)
+# A list of fake targets.
+.PHONY: \
+	_sync         \
+	clean         \
+	coverage      \
+	help          \
+	lint          \
+	reftests      \
+	serve_docs    \
+	test
 
-ALL_EXECUTABLE_SPEC_NAMES = phase0 altair bellatrix capella deneb electra whisk eip6800
-# The parameters for commands. Use `foreach` to avoid listing specs again.
-COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
-PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), ./eth2spec/$S)
-MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p eth2spec.$S)
+###############################################################################
+# Help
+###############################################################################
 
-COV_HTML_OUT=.htmlcov
-COV_HTML_OUT_DIR=$(PY_SPEC_DIR)/$(COV_HTML_OUT)
-COV_INDEX_FILE=$(COV_HTML_OUT_DIR)/index.html
+BOLD = $(shell tput bold)
+NORM = $(shell tput sgr0)
 
-CURRENT_DIR = ${CURDIR}
-LINTER_CONFIG_FILE = $(CURRENT_DIR)/linter.ini
-GENERATOR_ERROR_LOG_FILE = $(CURRENT_DIR)/$(TEST_VECTOR_DIR)/testgen_error_log.txt
-
-SCRIPTS_DIR = ${CURRENT_DIR}/scripts
-
-export DAPP_SKIP_BUILD:=1
-export DAPP_SRC:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)
-export DAPP_LIB:=$(SOLIDITY_DEPOSIT_CONTRACT_DIR)/lib
-export DAPP_JSON:=build/combined.json
-
-.PHONY: clean partial_clean all test citest lint generate_tests pyspec install_test open_cov \
-        install_deposit_contract_tester test_deposit_contract install_deposit_contract_compiler \
-        compile_deposit_contract test_compile_deposit_contract check_toc \
-        detect_generator_incomplete detect_generator_error_log
-
-all: $(PY_SPEC_ALL_TARGETS)
-
-# deletes everything except the venvs
-partial_clean:
-	rm -rf $(TEST_VECTOR_DIR)
-	rm -rf $(GENERATOR_VENVS)
-	rm -rf .pytest_cache
-	rm -f .coverage
-	rm -rf $(PY_SPEC_DIR)/.pytest_cache
-	rm -rf $(DEPOSIT_CONTRACT_TESTER_DIR)/.pytest_cache
-	rm -rf $(COV_HTML_OUT_DIR)
-	rm -rf $(TEST_REPORT_DIR)
-	rm -rf eth2spec.egg-info dist build
-	rm -rf build;
-	@for spec_name in $(ALL_EXECUTABLE_SPEC_NAMES) ; do \
-		echo $$spec_name; \
-		rm -rf $(ETH2SPEC_MODULE_DIR)/$$spec_name; \
-	done
-
-clean: partial_clean
-	rm -rf venv
-	# legacy cleanup. The pyspec venv should be located at the repository root
-	rm -rf $(PY_SPEC_DIR)/venv
-	rm -rf $(DEPOSIT_CONTRACT_COMPILER_DIR)/venv
-	rm -rf $(DEPOSIT_CONTRACT_TESTER_DIR)/venv
-
-# The pyspec is rebuilt to enforce the /specs being part of eth2specs source distribution. It could be forgotten otherwise.
-dist_build: pyspec
-	python3 setup.py sdist bdist_wheel
-
-dist_check:
-	python3 -m twine check dist/*
-
-dist_upload:
-	python3 -m twine upload dist/*
-
-
-# "make generate_tests" to run all generators
-generate_tests: $(GENERATOR_TARGETS)
-
-# "make pyspec" to create the pyspec for all phases.
-pyspec:
-	python3 -m venv venv; . venv/bin/activate; python3 setup.py pyspecdev
-
-# check the setup tool requirements
-preinstallation:
-	python3 -m venv venv && \
-	. venv/bin/activate && \
-	python3 -m pip install -r requirements_preinstallation.txt
-
-install_test: preinstallation
-	. venv/bin/activate && \
-	python3 -m pip install -e .[lint,test]
-
-# Testing against `minimal` or `mainnet` config by default
-test: pyspec
-	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n auto --disable-bls $(COVERAGE_SCOPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
-
-# Testing against `minimal` or `mainnet` config by default
-find_test: pyspec
-	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -k=$(K) --disable-bls $(COVERAGE_SCOPE) --cov-report="html:$(COV_HTML_OUT)" --cov-branch eth2spec
-
-citest: pyspec
-	mkdir -p $(TEST_REPORT_DIR);
-ifdef fork
-	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n auto --bls-type=fastest --preset=$(TEST_PRESET_TYPE) --fork=$(fork) --junitxml=test-reports/test_results.xml eth2spec
+# Print help.
+help:
+ifeq ($(verbose),true)
+	@$(MAKE) -s help-verbose
 else
-	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	python3 -m pytest -n auto --bls-type=fastest --preset=$(TEST_PRESET_TYPE) --junitxml=test-reports/test_results.xml eth2spec
+	@$(MAKE) -s help-nonverbose
 endif
 
+# Print basic help output.
+help-nonverbose:
+	@echo "make $(BOLD)clean$(NORM)      -- delete all untracked files"
+	@echo "make $(BOLD)comptests$(NORM)  -- generate compliance tests"
+	@echo "make $(BOLD)coverage$(NORM)   -- run pyspec tests with coverage"
+	@echo "make $(BOLD)lint$(NORM)       -- run the linters"
+	@echo "make $(BOLD)reftests$(NORM)   -- generate reference tests"
+	@echo "make $(BOLD)serve_docs$(NORM) -- start a local docs web server"
+	@echo "make $(BOLD)test$(NORM)       -- run pyspec tests"
+	@echo ""
+	@echo "Run 'make $(BOLD)help verbose=true$(NORM)' to print detailed usage/examples."
+	@echo ""
 
-open_cov:
-	((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
+# Print verbose help output.
+help-verbose:
+	@echo ""
+	@echo "$(BOLD)TESTING$(NORM)"
+	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
+	@echo ""
+	@echo "$(BOLD)make test$(NORM)"
+	@echo ""
+	@echo "  Runs pyspec tests with various configuration options. Tests run in parallel"
+	@echo "  by default using pytest with the minimal preset and fastest BLS library."
+	@echo ""
+	@echo "  Parameters:"
+	@echo "    k=<test>          Run specific test by name"
+	@echo "    fork=<fork>       Test specific fork (phase0, altair, bellatrix, capella, etc.)"
+	@echo "    preset=<preset>   Use specific preset (mainnet or minimal; default: minimal)"
+	@echo "    bls=<type>        BLS library type (py_ecc, milagro, arkworks, fastest; default: fastest)"
+	@echo "    component=<value> Test component: (all, pyspec, fw; default: all)"
+	@echo ""
+	@echo "  Examples:"
+	@echo "    make test"
+	@echo "    make test k=test_verify_kzg_proof"
+	@echo "    make test fork=deneb"
+	@echo "    make test preset=mainnet"
+	@echo "    make test preset=mainnet fork=deneb k=test_verify_kzg_proof"
+	@echo "    make test bls=arkworks"
+	@echo "    make test component=fw"
+	@echo ""
+	@echo "$(BOLD)make coverage$(NORM)"
+	@echo ""
+	@echo "  Runs tests with code coverage tracking and generates an HTML report."
+	@echo "  Automatically opens the coverage report in your browser after completion."
+	@echo ""
+	@echo "  Parameters:"
+	@echo "    k=<test>    Run specific test by name"
+	@echo "    fork=<fork> Test specific fork"
+	@echo ""
+	@echo "  Examples:"
+	@echo "    make coverage"
+	@echo "    make coverage k=test_process_attestation"
+	@echo "    make coverage fork=electra"
+	@echo ""
+	@echo "$(BOLD)CODE QUALITY$(NORM)"
+	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
+	@echo ""
+	@echo "$(BOLD)make lint$(NORM)"
+	@echo ""
+	@echo "  Runs all linters and formatters to check code quality:"
+	@echo "    - mdformat: Formats markdown files"
+	@echo "    - codespell: Checks for spelling mistakes"
+	@echo "    - ruff: Python linter and formatter"
+	@echo "    - mypy: Static type checker for Python"
+	@echo ""
+	@echo "  Example: make lint"
+	@echo ""
+	@echo "$(BOLD)TEST GENERATION$(NORM)"
+	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
+	@echo ""
+	@echo "$(BOLD)make reftests$(NORM)"
+	@echo ""
+	@echo "  Generates reference test vectors for consensus spec tests. These tests are"
+	@echo "  used by client implementations to verify correctness. This command will write"
+	@echo "  reference tests to the ../consensus-spec-tests/ directory."
+	@echo ""
+	@echo "  Parameters:"
+	@echo "    runner=<runner>   Generate tests for specific runner (bls, operations, etc.)"
+	@echo "    k=<test>          Generate specific test cases (comma-separated)"
+	@echo "    fork=<fork>       Generate for specific fork (comma-separated)"
+	@echo "    preset=<preset>   Generate for specific preset (comma-separated)"
+	@echo "    threads=N         Number of threads to use (default: auto)"
+	@echo "    verbose=true      Enable verbose output"
+	@echo ""
+	@echo "  Examples:"
+	@echo "    make reftests"
+	@echo "    make reftests runner=bls"
+	@echo "    make reftests runner=operations k=invalid_committee_index"
+	@echo "    make reftests runner=operations fork=fulu"
+	@echo "    make reftests runner=operations preset=mainnet"
+	@echo "    make reftests runner=operations k=invalid_committee_index,invalid_too_many_committee_bits"
+	@echo "    make reftests runner=operations preset=mainnet fork=fulu k=invalid_committee_index"
+	@echo "    make reftests runner=bls threads=1 verbose=true"
+	@echo ""
+	@echo "  Tip:"
+	@echo "    Use the following command to list available runners:"
+	@echo "    ls -1 tests/generators/runners | grep -v '/$$' | sed 's/\.py$$//'"
+	@echo ""
+	@echo "$(BOLD)make comptests$(NORM)"
+	@echo ""
+	@echo "  Generates compliance tests for fork choice. These tests verify that"
+	@echo "  implementations correctly handle fork choice scenarios."
+	@echo ""
+	@echo "  Parameters:"
+	@echo "    fc_gen_config=<config> Configuration size (tiny, small, standard; default: tiny)"
+	@echo "    fork=<fork>            Generate for specific fork (comma-separated)"
+	@echo "    preset=<preset>        Generate for specific preset (comma-separated)"
+	@echo "    threads=N              Number of threads to use"
+	@echo "    seed=N                 Override test seeds (fuzzing mode)"
+	@echo ""
+	@echo "  Examples:"
+	@echo "    make comptests"
+	@echo "    make comptests fc_gen_config=standard"
+	@echo "    make comptests fc_gen_config=standard fork=deneb preset=mainnet threads=8"
+	@echo ""
+	@echo "$(BOLD)DOCUMENTATION$(NORM)"
+	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
+	@echo ""
+	@echo "$(BOLD)make serve_docs$(NORM)"
+	@echo ""
+	@echo "  Builds and serves the documentation locally using MkDocs. Copies spec files,"
+	@echo "  removes deprecated content, and starts a local web server for viewing docs."
+	@echo ""
+	@echo "  Example: make serve_docs"
+	@echo "  Then open: http://127.0.0.1:8000"
+	@echo ""
+	@echo "$(BOLD)MAINTENANCE$(NORM)"
+	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
+	@echo ""
+	@echo "$(BOLD)make clean$(NORM)"
+	@echo ""
+	@echo "  Removes all untracked files. This includes:"
+	@echo "    - Virtual environment (.venv/)"
+	@echo "    - Build artifacts"
+	@echo "    - Cache files"
+	@echo ""
+	@echo "  $(BOLD)WARNING:$(NORM) This will delete ALL untracked files. Make sure to commit or"
+	@echo "           stash any important changes first."
+	@echo ""
+	@echo "  Example: make clean"
+	@echo ""
 
-check_toc: $(MARKDOWN_FILES:=.toc)
+###############################################################################
+# Virtual Environment
+###############################################################################
 
-%.toc:
-	cp $* $*.tmp && \
-	doctoc $* && \
-	diff -q $* $*.tmp && \
-	rm $*.tmp
+VENV = .venv
 
-codespell:
-	codespell . --skip "./.git,./venv,$(PY_SPEC_DIR)/.mypy_cache" -I .codespell-whitelist
+# Use editable installs for all non-generation targets, but use non-editable
+# installs for generators. More details: ethereum/consensus-specs#4633.
+UV_RUN    = uv run
+UV_RUN_NE = uv run --no-editable --reinstall-package=eth2spec
 
-lint: pyspec
-	. venv/bin/activate; cd $(PY_SPEC_DIR); \
-	flake8  --config $(LINTER_CONFIG_FILE) ./eth2spec \
-	&& python -m pylint --rcfile $(LINTER_CONFIG_FILE) $(PYLINT_SCOPE) \
-	&& python -m mypy --config-file $(LINTER_CONFIG_FILE) $(MYPY_SCOPE)
+# Sync dependencies using uv.
+_sync: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
+_sync: pyproject.toml
+	@command -v uv >/dev/null 2>&1 || { \
+		echo "Error: uv is required but not installed."; \
+		echo "Install with: curl -LsSf https://astral.sh/uv/install.sh | sh"; \
+		exit 1; \
+	}
+	@uv sync --all-extras $(MAYBE_VERBOSE)
 
-lint_generators: pyspec
-	. venv/bin/activate; cd $(TEST_GENERATORS_DIR); \
-	flake8 --config $(LINTER_CONFIG_FILE)
+###############################################################################
+# Specification
+###############################################################################
 
-compile_deposit_contract:
-	@cd $(SOLIDITY_DEPOSIT_CONTRACT_DIR)
-	@git submodule update --recursive --init
-	@solc --metadata-literal --optimize --optimize-runs 5000000 --bin --abi --combined-json=abi,bin,bin-runtime,srcmap,srcmap-runtime,ast,metadata,storage-layout --overwrite -o build $(SOLIDITY_DEPOSIT_CONTRACT_SOURCE) $(SOLIDITY_DEPOSIT_CONTRACT_DIR)/tests/deposit_contract.t.sol
-	@/bin/echo -n '{"abi": ' > $(SOLIDITY_FILE_NAME)
-	@cat build/DepositContract.abi >> $(SOLIDITY_FILE_NAME)
-	@/bin/echo -n ', "bytecode": "0x' >> $(SOLIDITY_FILE_NAME)
-	@cat build/DepositContract.bin >> $(SOLIDITY_FILE_NAME)
-	@/bin/echo -n '"}' >> $(SOLIDITY_FILE_NAME)
+TEST_LIBS_DIR = $(CURDIR)/tests/core
+PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 
-test_deposit_contract:
-	dapp test -v --fuzz-runs 5
+# Create the pyspec for all phases.
+_pyspec: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
+_pyspec: _sync
+	@$(UV_RUN) python -m pysetup.generate_specs --all-forks $(MAYBE_VERBOSE)
 
-install_deposit_contract_web3_tester:
-	cd $(DEPOSIT_CONTRACT_TESTER_DIR); python3 -m venv venv; . venv/bin/activate; python3 -m pip install -r requirements.txt
+###############################################################################
+# Testing
+###############################################################################
 
-test_deposit_contract_web3_tests:
-	cd $(DEPOSIT_CONTRACT_TESTER_DIR); . venv/bin/activate; \
-	python3 -m pytest .
+TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 
-# Runs a generator, identified by param 1
-define run_generator
-	# Started!
-	# Create output directory
-	# Navigate to the generator
-	# Create a virtual environment, if it does not exist already
-	# Activate the venv, this is where dependencies are installed for the generator
-	# Install all the necessary requirements
-	# Run the generator. The generator is assumed to have an "main.py" file.
-	# We output to the tests dir (generator program should accept a "-o <filepath>" argument.
-	# `-l minimal general` can be added to the generator call to filter to smaller configs, when testing.
-	echo "generator $(1) started"; \
-	mkdir -p $(TEST_VECTOR_DIR); \
-	cd $(GENERATOR_DIR)/$(1); \
-	if ! test -d venv; then python3 -m venv venv; fi; \
-	. venv/bin/activate; \
-	pip3 install -r requirements.txt; \
-	python3 main.py -o $(CURRENT_DIR)/$(TEST_VECTOR_DIR); \
-	echo "generator $(1) finished"
-endef
+# Run pyspec tests.
+test: MAYBE_TEST := $(if $(k),-k=$(k))
+# Disable parallelism when running a specific test.
+# Parallelism makes debugging difficult (print doesn't work).
+test: MAYBE_PARALLEL := $(if $(k),,-n auto)
+test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
+test: PRESET := $(if $(filter fw,$(component)),,--preset=$(if $(preset),$(preset),minimal))
+test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),fastest))
+test: MAYBE_ETH2SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth2spec)
+test: MAYBE_INFRA := $(if $(filter pyspec,$(component)),,$(CURDIR)/tests/infra)
+test: _pyspec
+	@mkdir -p $(TEST_REPORT_DIR)
+	@$(UV_RUN) pytest \
+		$(MAYBE_PARALLEL) \
+		--capture=no \
+		$(MAYBE_TEST) \
+		$(MAYBE_FORK) \
+		$(PRESET) \
+		$(BLS) \
+		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
+		--html=$(TEST_REPORT_DIR)/test_results.html \
+		--self-contained-html \
+		$(MAYBE_INFRA) \
+		$(MAYBE_ETH2SPEC)
 
-# The tests dir itself is simply built by creating the directory (recursively creating deeper directories if necessary)
-$(TEST_VECTOR_DIR):
-	$(info creating test output directory, for generators: ${GENERATOR_TARGETS})
-	mkdir -p $@
-$(TEST_VECTOR_DIR)/:
-	$(info ignoring duplicate tests dir)
+###############################################################################
+# Coverage
+###############################################################################
 
-gen_kzg_setups:
-	cd $(SCRIPTS_DIR); \
-	if ! test -d venv; then python3 -m venv venv; fi; \
-	. venv/bin/activate; \
-	pip3 install -r requirements.txt; \
-	python3 ./gen_kzg_trusted_setups.py --secret=1337 --g1-length=4096 --g2-length=65 --output-dir ${CURRENT_DIR}/presets/minimal/trusted_setups; \
-	python3 ./gen_kzg_trusted_setups.py --secret=1337 --g1-length=4096 --g2-length=65 --output-dir ${CURRENT_DIR}/presets/mainnet/trusted_setups
+TEST_PRESET_TYPE ?= minimal
+COV_HTML_OUT=$(PYSPEC_DIR)/.htmlcov
+COV_INDEX_FILE=$(COV_HTML_OUT)/index.html
+COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
 
-# For any generator, build it using the run_generator function.
-# (creation of output dir is a dependency)
-gen_%: $(TEST_VECTOR_DIR)
-	$(call run_generator,$*)
+# Run pytest with coverage tracking
+_test_with_coverage: MAYBE_TEST := $(if $(k),-k=$(k))
+_test_with_coverage: MAYBE_FORK := $(if $(fork),--fork=$(fork))
+_test_with_coverage: _pyspec
+	@$(UV_RUN) pytest \
+		-n auto \
+		$(MAYBE_TEST) \
+		$(MAYBE_FORK) \
+		--disable-bls \
+		$(COVERAGE_SCOPE) \
+		--cov-report="html:$(COV_HTML_OUT)" \
+		--cov-branch \
+		$(PYSPEC_DIR)/eth2spec
 
-detect_generator_incomplete: $(TEST_VECTOR_DIR)
-	find $(TEST_VECTOR_DIR) -name "INCOMPLETE"
+# Run tests with coverage then open the coverage report.
+# See `make test` for a list of options.
+coverage: _test_with_coverage
+	@echo "Opening result: $(COV_INDEX_FILE)"
+	@((open "$(COV_INDEX_FILE)" || xdg-open "$(COV_INDEX_FILE)") &> /dev/null) &
 
-detect_generator_error_log: $(TEST_VECTOR_DIR)
-	[ -f $(GENERATOR_ERROR_LOG_FILE) ] && echo "[ERROR] $(GENERATOR_ERROR_LOG_FILE) file exists" || echo "[PASSED] error log file does not exist"
+###############################################################################
+# Documentation
+###############################################################################
 
+DOCS_DIR = ./docs
+FORK_CHOICE_DIR = ./fork_choice
+SPEC_DIR = ./specs
+SSZ_DIR = ./ssz
+SYNC_DIR = ./sync
 
-# For docs reader
-install_docs:
-	python3 -m venv venv; . venv/bin/activate; python3 -m pip install -e .[docs];
+# Copy files to the docs directory.
+_copy_docs:
+	@cp -r $(SPEC_DIR) $(DOCS_DIR)
+	@rm -rf $(DOCS_DIR)/specs/_deprecated
+	@cp -r $(SYNC_DIR) $(DOCS_DIR)
+	@cp -r $(SSZ_DIR) $(DOCS_DIR)
+	@cp -r $(FORK_CHOICE_DIR) $(DOCS_DIR)
+	@cp $(CURDIR)/README.md $(DOCS_DIR)/README.md
 
-copy_docs:
-	cp -r $(SPEC_DIR) $(DOCS_DIR);
-	cp -r $(SYNC_DIR) $(DOCS_DIR);
-	cp -r $(SSZ_DIR) $(DOCS_DIR);
-	cp -r $(FORK_CHOICE_DIR) $(DOCS_DIR);
-	cp $(CURRENT_DIR)/README.md $(DOCS_DIR)/README.md
+# Start a local documentation server.
+serve_docs: _pyspec _copy_docs
+	@$(UV_RUN) mkdocs build
+	@$(UV_RUN) mkdocs serve
 
-build_docs: copy_docs
-	. venv/bin/activate;
-	mkdocs build
+###############################################################################
+# Checks
+###############################################################################
 
-serve_docs:
-	. venv/bin/activate;
-	mkdocs serve
+MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md')
+MYPY_PACKAGE_BASE := $(subst /,.,$(PYSPEC_DIR:$(CURDIR)/%=%))
+MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p $(MYPY_PACKAGE_BASE).eth2spec.$S)
+
+# Check for mistakes.
+lint: _pyspec
+	@uv --quiet lock --check
+	@$(UV_RUN) mdformat --number --wrap=80 $(MARKDOWN_FILES)
+	@$(UV_RUN) codespell
+	@$(UV_RUN) ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
+	@$(UV_RUN) ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
+	@$(UV_RUN) mypy $(MYPY_SCOPE)
+
+###############################################################################
+# Generators
+###############################################################################
+
+COMMA:= ,
+TEST_VECTOR_DIR = $(CURDIR)/../consensus-spec-tests/tests
+COMP_TEST_VECTOR_DIR = $(CURDIR)/../compliance-spec-tests/tests
+
+# Generate reference tests.
+reftests: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
+reftests: MAYBE_THREADS := $(if $(threads),--threads=$(threads))
+reftests: MAYBE_RUNNERS := $(if $(runner),--runners $(subst ${COMMA}, ,$(runner)))
+reftests: MAYBE_TESTS := $(if $(k),--cases $(subst ${COMMA}, ,$(k)))
+reftests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
+reftests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
+reftests: _pyspec
+	@$(UV_RUN_NE) python -m tests.generators.main \
+		--output $(TEST_VECTOR_DIR) \
+		$(MAYBE_VERBOSE) \
+		$(MAYBE_THREADS) \
+		$(MAYBE_RUNNERS) \
+		$(MAYBE_TESTS) \
+		$(MAYBE_FORKS) \
+		$(MAYBE_PRESETS)
+
+# Generate compliance tests (fork choice).
+comptests: FC_GEN_CONFIG := $(if $(fc_gen_config),$(fc_gen_config),tiny)
+comptests: MAYBE_THREADS := $(if $(threads),--threads=$(threads),--fc-gen-multi-processing)
+comptests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
+comptests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
+comptests: MAYBE_SEED := $(if $(seed),--fc-gen-seed $(seed))
+comptests: _pyspec
+	@$(UV_RUN_NE) python -m tests.generators.compliance_runners.fork_choice.test_gen \
+		--output $(COMP_TEST_VECTOR_DIR) \
+		--fc-gen-config $(FC_GEN_CONFIG) \
+		$(MAYBE_THREADS) \
+		$(MAYBE_FORKS) \
+		$(MAYBE_PRESETS) \
+		$(MAYBE_SEED)
+
+###############################################################################
+# Cleaning
+###############################################################################
+
+# Delete all untracked files.
+clean:
+	@git clean -fdx

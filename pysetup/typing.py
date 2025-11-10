@@ -1,33 +1,34 @@
 from pathlib import Path
-from typing import Dict, NamedTuple, Optional, List
+from typing import NamedTuple
 
 
 class ProtocolDefinition(NamedTuple):
     # just function definitions currently. May expand with configuration vars in future.
-    functions: Dict[str, str]
+    functions: dict[str, str]
 
 
 class VariableDefinition(NamedTuple):
-    type_name: Optional[str]
+    type_name: str | None
     value: str
-    comment: Optional[str]  # e.g. "noqa: E501"
-    type_hint: Optional[str]  # e.g., "Final"
+    comment: str | None  # e.g. "noqa: E501"
+    type_hint: str | None  # e.g., "Final"
 
 
 class SpecObject(NamedTuple):
-    functions: Dict[str, str]
-    protocols: Dict[str, ProtocolDefinition]
-    custom_types: Dict[str, str]
-    constant_vars: Dict[str, VariableDefinition]
-    preset_vars: Dict[str, VariableDefinition]
-    config_vars: Dict[str, VariableDefinition]
-    ssz_dep_constants: Dict[str, str]  # the constants that depend on ssz_objects
-    func_dep_presets: Dict[str, str]  # the constants that depend on functions
-    ssz_objects: Dict[str, str]
-    dataclasses: Dict[str, str]
+    functions: dict[str, str]
+    protocols: dict[str, ProtocolDefinition]
+    custom_types: dict[str, str]
+    constant_vars: dict[str, VariableDefinition]
+    preset_dep_constant_vars: dict[str, VariableDefinition]
+    preset_vars: dict[str, VariableDefinition]
+    config_vars: dict[str, VariableDefinition]
+    ssz_dep_constants: dict[str, str]  # the constants that depend on ssz_objects
+    func_dep_presets: dict[str, str]  # the constants that depend on functions
+    ssz_objects: dict[str, str]
+    dataclasses: dict[str, str]
 
 
 class BuildTarget(NamedTuple):
     name: str
-    preset_paths: List[Path]
+    preset_paths: list[Path]
     config_path: Path

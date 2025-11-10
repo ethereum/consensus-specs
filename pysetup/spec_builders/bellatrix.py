@@ -1,16 +1,17 @@
-from .base import BaseSpecBuilder
 from ..constants import BELLATRIX
+from .base import BaseSpecBuilder
+
 
 class BellatrixSpecBuilder(BaseSpecBuilder):
     fork: str = BELLATRIX
 
     @classmethod
     def imports(cls, preset_name: str):
-        return f'''
+        return f"""
 from typing import Protocol
 from eth2spec.altair import {preset_name} as altair
 from eth2spec.utils.ssz.ssz_typing import Bytes8, Bytes20, ByteList, ByteVector
-'''
+"""
 
     @classmethod
     def sundry_functions(cls) -> str:
@@ -62,10 +63,3 @@ class NoopExecutionEngine(ExecutionEngine):
 
 
 EXECUTION_ENGINE = NoopExecutionEngine()"""
-
-
-    @classmethod
-    def hardcoded_custom_type_dep_constants(cls, spec_object) -> str:
-        return {
-            'MAX_BYTES_PER_TRANSACTION': spec_object.preset_vars['MAX_BYTES_PER_TRANSACTION'].value,
-        }

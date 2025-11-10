@@ -1,22 +1,26 @@
 from random import Random
 
+from eth2spec.test.context import (
+    expect_assertion_error,
+    spec_state_test,
+    with_deneb_and_later,
+)
+from eth2spec.test.helpers.blob import (
+    get_max_blob_count,
+    get_sample_blob_tx,
+)
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
     compute_el_block_hash,
     get_execution_payload_header,
 )
-from eth2spec.test.context import (
-    spec_state_test,
-    expect_assertion_error,
-    with_deneb_and_later
-)
-from eth2spec.test.helpers.sharding import (
-    get_sample_opaque_tx,
-)
+from eth2spec.test.helpers.forks import is_post_gloas
+from eth2spec.test.helpers.keys import privkeys
 
 
-def run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments,
-                                     valid=True, execution_valid=True):
+def run_execution_payload_processing(
+    spec, state, execution_payload, blob_kzg_commitments, valid=True, execution_valid=True
+):
     """
     Run ``process_execution_payload``, yielding:
       - pre-state ('pre')
@@ -25,38 +29,108 @@ def run_execution_payload_processing(spec, state, execution_payload, blob_kzg_co
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
-    # Before Deneb, only `body.execution_payload` matters. `BeaconBlockBody` is just a wrapper.
-    body = spec.BeaconBlockBody(
-        blob_kzg_commitments=blob_kzg_commitments,
-        execution_payload=execution_payload
-    )
 
-    yield 'pre', state
-    yield 'execution', {'execution_valid': execution_valid}
-    yield 'body', body
+    # After Gloas the execution payload is no longer in the body
+    if is_post_gloas(spec):
+        envelope = spec.ExecutionPayloadEnvelope(
+            payload=execution_payload,
+            blob_kzg_commitments=blob_kzg_commitments,
+            slot=state.slot,
+            builder_index=spec.get_beacon_proposer_index(state),
+        )
+        kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
+            blob_kzg_commitments
+        )
+        # In Gloas, blob_kzg_commitments_root is stored in latest_execution_payload_bid, not latest_execution_payload_header
+        state.latest_execution_payload_bid.blob_kzg_commitments_root = kzg_list.hash_tree_root()
+        state.latest_execution_payload_bid.builder_index = envelope.builder_index
+        # Ensure bid fields match payload for assertions to pass
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
+        post_state = state.copy()
+        previous_state_root = state.hash_tree_root()
+        if post_state.latest_block_header.state_root == spec.Root():
+            post_state.latest_block_header.state_root = previous_state_root
+        envelope.beacon_block_root = post_state.latest_block_header.hash_tree_root()
+
+        payment = post_state.builder_pending_payments[
+            spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
+        ]
+        amount = payment.withdrawal.amount
+        if amount > 0:
+            exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(post_state, amount)
+            payment.withdrawal.withdrawable_epoch = spec.Epoch(
+                exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+            )
+            post_state.builder_pending_withdrawals.append(payment.withdrawal)
+        post_state.builder_pending_payments[
+            spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
+        ] = spec.BuilderPendingPayment()
+
+        post_state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] = 0b1
+        post_state.latest_block_hash = execution_payload.block_hash
+        envelope.state_root = post_state.hash_tree_root()
+        privkey = privkeys[envelope.builder_index]
+        signature = spec.get_execution_payload_envelope_signature(
+            state,
+            envelope,
+            privkey,
+        )
+        signed_envelope = spec.SignedExecutionPayloadEnvelope(
+            message=envelope,
+            signature=signature,
+        )
+        yield "signed_envelope", signed_envelope
+    else:
+        body = spec.BeaconBlockBody(
+            blob_kzg_commitments=blob_kzg_commitments,
+            execution_payload=execution_payload,
+        )
+        yield "body", body
+
+    yield "pre", state
+    yield "execution", {"execution_valid": execution_valid}
 
     called_new_block = False
 
     class TestEngine(spec.NoopExecutionEngine):
         def verify_and_notify_new_payload(self, new_payload_request) -> bool:
-            nonlocal called_new_block, execution_valid
+            nonlocal called_new_block
             called_new_block = True
-            assert new_payload_request.execution_payload == body.execution_payload
+            assert new_payload_request.execution_payload == execution_payload
             return execution_valid
 
     if not valid:
-        expect_assertion_error(lambda: spec.process_execution_payload(state, body, TestEngine()))
-        yield 'post', None
+        if is_post_gloas(spec):
+            expect_assertion_error(
+                lambda: spec.process_execution_payload(state, signed_envelope, TestEngine())
+            )
+        else:
+            expect_assertion_error(
+                lambda: spec.process_execution_payload(state, body, TestEngine())
+            )
+        yield "post", None
         return
 
-    spec.process_execution_payload(state, body, TestEngine())
+    if is_post_gloas(spec):
+        spec.process_execution_payload(state, signed_envelope, TestEngine())
+    else:
+        spec.process_execution_payload(state, body, TestEngine())
 
     # Make sure we called the engine
     assert called_new_block
 
-    yield 'post', state
+    yield "post", state
 
-    assert state.latest_execution_payload_header == get_execution_payload_header(spec, body.execution_payload)
+    if is_post_gloas(spec):
+        assert (
+            state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] == 0b1
+        )
+        assert state.latest_block_hash == execution_payload.block_hash
+    else:
+        assert state.latest_execution_payload_header == get_execution_payload_header(
+            spec, state, execution_payload
+        )
 
 
 """
@@ -70,193 +144,334 @@ attempting to do a validation of its own.
 @spec_state_test
 def test_incorrect_blob_tx_type(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The transaction type is wrong, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
-    opaque_tx = b'\x04' + opaque_tx[1:]  # incorrect tx type
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
+    opaque_tx = b"\x04" + opaque_tx[1:]  # incorrect tx type
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+    # Make the parent block full in Gloas and set up bid to match payload
+    if is_post_gloas(spec):
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
+
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, blob_kzg_commitments
+    )
 
 
 @with_deneb_and_later
 @spec_state_test
 def test_incorrect_transaction_length_1_extra_byte(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The transaction length is wrong, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
-    opaque_tx = opaque_tx + b'\x12'  # incorrect tx length, longer
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
+    opaque_tx = opaque_tx + b"\x12"  # incorrect tx length, longer
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+    # Make the parent block full in Gloas and set up bid to match payload
+    if is_post_gloas(spec):
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, blob_kzg_commitments
+    )
 
 
 @with_deneb_and_later
 @spec_state_test
 def test_incorrect_transaction_length_1_byte_short(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The transaction length is wrong, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
     opaque_tx = opaque_tx[:-1]  # incorrect tx length, shorter
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+    # Make the parent block full in Gloas and set up bid to match payload
+    if is_post_gloas(spec):
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, blob_kzg_commitments
+    )
 
 
 @with_deneb_and_later
 @spec_state_test
 def test_incorrect_transaction_length_empty(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The transaction length is wrong, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
     opaque_tx = opaque_tx[0:0]  # incorrect tx length, empty
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+    # Make the parent block full in Gloas and set up bid to match payload
+    if is_post_gloas(spec):
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, blob_kzg_commitments
+    )
 
 
 @with_deneb_and_later
 @spec_state_test
 def test_incorrect_transaction_length_32_extra_bytes(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The transaction length is wrong, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
-    opaque_tx = opaque_tx + b'\x12' * 32  # incorrect tx length
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
+    opaque_tx = opaque_tx + b"\x12" * 32  # incorrect tx length
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+    # Make the parent block full in Gloas and set up bid to match payload
+    if is_post_gloas(spec):
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, blob_kzg_commitments
+    )
 
 
 @with_deneb_and_later
 @spec_state_test
 def test_no_transactions_with_commitments(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The commitments are provided without blob transactions, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    _, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    _, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
 
     execution_payload.transactions = []
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+    # Make the parent block full in Gloas and set up bid to match payload
+    if is_post_gloas(spec):
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, blob_kzg_commitments
+    )
 
 
 @with_deneb_and_later
 @spec_state_test
 def test_incorrect_commitment(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The commitments are wrong, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
-    blob_kzg_commitments[0] = b'\x12' * 48  # incorrect commitment
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
+    blob_kzg_commitments[0] = b"\x12" * 48  # incorrect commitment
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+    # Make the parent block full in Gloas and set up bid to match payload
+    if is_post_gloas(spec):
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, blob_kzg_commitments
+    )
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_no_commitments_for_transactions(spec, state):
+    """
+    The blob transactions are provided without commitments, but the testing ExecutionEngine returns VALID by default.
+    """
+    execution_payload = build_empty_execution_payload(spec, state)
+
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2, rng=Random(1111))
+    blob_kzg_commitments = []  # incorrect count
+
+    execution_payload.transactions = [opaque_tx]
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
+
+    if is_post_gloas(spec):
+        state.latest_block_hash = execution_payload.parent_hash
+
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, blob_kzg_commitments
+    )
 
 
 @with_deneb_and_later
 @spec_state_test
 def test_incorrect_commitments_order(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The commitments are provided in wrong order, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec, blob_count=2, rng=Random(1111))
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2, rng=Random(1111))
     blob_kzg_commitments = [blob_kzg_commitments[1], blob_kzg_commitments[0]]  # incorrect order
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+    # Make the parent block full in Gloas and set up bid to match payload
+    if is_post_gloas(spec):
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, blob_kzg_commitments
+    )
+
+
+@with_deneb_and_later
+@spec_state_test
+def test_incorrect_transaction_no_blobs_but_with_commitments(spec, state):
+    """
+    The blob transaction is wrong, but the testing ExecutionEngine returns VALID by default.
+    """
+    execution_payload = build_empty_execution_payload(spec, state)
+
+    # the blob transaction is invalid, because the EL verifies that the tx contains at least one blob
+    # therefore the EL should reject it, but the CL should not reject the block regardless
+    opaque_tx, _, _, _ = get_sample_blob_tx(spec, blob_count=0, rng=Random(1111))
+    _, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2, rng=Random(1112))
+
+    execution_payload.transactions = [opaque_tx]
+    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
+
+    if is_post_gloas(spec):
+        state.latest_block_hash = execution_payload.parent_hash
+
+    # the transaction doesn't contain any blob, but commitments are provided
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, blob_kzg_commitments
+    )
 
 
 @with_deneb_and_later
 @spec_state_test
 def test_incorrect_block_hash(spec, state):
+    """
+    The block hash is wrong, but the testing ExecutionEngine returns VALID by default.
+    """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
 
     execution_payload.transactions = [opaque_tx]
-    execution_payload.block_hash = b'\x12' * 32  # incorrect block hash
+    execution_payload.block_hash = b"\x12" * 32  # incorrect block hash
 
     # CL itself doesn't verify EL block hash
-    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+    # Make the parent block full in Gloas and set up bid to match payload
+    if is_post_gloas(spec):
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, blob_kzg_commitments
+    )
 
 
 @with_deneb_and_later
 @spec_state_test
 def test_zeroed_commitment(spec, state):
     """
-    The blob is invalid, but the commitment is in correct form.
+    The commitment is in correct form but the blob is invalid, but the testing ExecutionEngine returns VALID by default.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec, blob_count=1, is_valid_blob=False)
-    assert all(commitment == b'\x00' * 48 for commitment in blob_kzg_commitments)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
+        spec, blob_count=1, is_valid_blob=False
+    )
+    assert all(commitment == b"\x00" * 48 for commitment in blob_kzg_commitments)
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments)
+    # Make the parent block full in Gloas and set up bid to match payload
+    if is_post_gloas(spec):
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, blob_kzg_commitments
+    )
 
 
 @with_deneb_and_later
 @spec_state_test
 def test_invalid_correct_input__execution_invalid(spec, state):
     """
-    The versioned hashes are wrong, but the testing ExecutionEngine returns VALID by default.
+    The blob transaction and commitments are correct, but the testing ExecutionEngine returns INVALID.
     """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec)
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments,
-                                                valid=False, execution_valid=False)
+    # Make the parent block full in Gloas and set up bid to match payload
+    if is_post_gloas(spec):
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, blob_kzg_commitments, valid=False, execution_valid=False
+    )
 
 
 @with_deneb_and_later
 @spec_state_test
 def test_invalid_exceed_max_blobs_per_block(spec, state):
+    """
+    The blob transaction and commitments are correct but the number of blobs exceeds the `MAX_BLOBS_PER_BLOCK`.
+    """
     execution_payload = build_empty_execution_payload(spec, state)
 
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_opaque_tx(spec, blob_count=spec.config.MAX_BLOBS_PER_BLOCK + 1)
+    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
+        spec, blob_count=get_max_blob_count(spec, state) + 1
+    )
 
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    yield from run_execution_payload_processing(spec, state, execution_payload, blob_kzg_commitments, valid=False)
+    # Make the parent block full in Gloas and set up bid to match payload
+    if is_post_gloas(spec):
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
+    yield from run_execution_payload_processing(
+        spec, state, execution_payload, blob_kzg_commitments, valid=False
+    )

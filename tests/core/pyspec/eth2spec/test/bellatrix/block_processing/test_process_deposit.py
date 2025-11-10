@@ -1,6 +1,6 @@
 from eth2spec.test.context import (
-    spec_state_test,
     always_bls,
+    spec_state_test,
     with_bellatrix_and_later,
 )
 from eth2spec.test.helpers.deposits import (
@@ -29,7 +29,10 @@ def test_ineffective_deposit_with_previous_fork_version(spec, state):
 @spec_state_test
 @always_bls
 def test_effective_deposit_with_genesis_fork_version(spec, state):
-    assert spec.config.GENESIS_FORK_VERSION not in (state.fork.previous_version, state.fork.current_version)
+    assert spec.config.GENESIS_FORK_VERSION not in (
+        state.fork.previous_version,
+        state.fork.current_version,
+    )
 
     yield from run_deposit_processing_with_specific_fork_version(
         spec,

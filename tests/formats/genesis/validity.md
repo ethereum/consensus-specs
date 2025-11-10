@@ -16,17 +16,16 @@ description: string    -- Optional. Description of test case, purely for debuggi
 
 An SSZ-snappy encoded `BeaconState`, the state to validate as genesis candidate.
 
-
 ### `is_valid.yaml`
 
-A boolean, true if the genesis state is deemed valid as to launch with, false otherwise.
-
+A boolean, true if the genesis state is deemed valid as to launch with, false
+otherwise.
 
 ## Processing
 
 To process the data, call `is_valid_genesis_state(genesis)`.
 
-
 ## Condition
 
-The result of calling `is_valid_genesis_state(genesis)` should match the expected `is_valid` boolean.
+The result of calling `is_valid_genesis_state(genesis)` should match the
+expected `is_valid` boolean.

@@ -1,0 +1,38 @@
+block_tree_test:
+  test_type: block_tree
+  instances: block_tree_tree.yaml # 1024
+  seed: 123
+  nr_variations: 2
+  nr_mutations: 1
+block_weight_test:
+  test_type: block_tree
+  instances: block_tree_other.yaml # 8
+  seed: 123
+  nr_variations: 64
+  nr_mutations: 3
+shuffling_test:
+  test_type: block_tree
+  instances: block_tree_other.yaml # 8
+  seed: 6673
+  nr_variations: 4
+  nr_mutations: 63
+attester_slashing_test:
+  test_type: block_tree
+  instances: block_tree_other.yaml # 8
+  seed: 123
+  nr_variations: 16
+  nr_mutations: 7
+  with_attester_slashings: true
+invalid_message_test:
+  test_type: block_tree
+  instances: block_tree_other.yaml # 8
+  seed: 123
+  nr_variations: 32
+  nr_mutations: 3
+  with_invalid_messages: true
+block_cover_test:
+  test_type: block_cover
+  instances: block_cover.yaml # 60
+  seed: 456
+  nr_variations: 5
+  nr_mutations: 9

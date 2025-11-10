@@ -1,10 +1,8 @@
 # EIP-6914 -- The Beacon Chain
 
-## Table of contents
+*Note*: This document is a work-in-progress for researchers and implementers.
 
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Preset](#preset)
@@ -16,21 +14,23 @@
   - [Block processing](#block-processing)
     - [Modified `get_index_for_new_validator`](#modified-get_index_for_new_validator)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This is the beacon chain specification to assign new deposits to existing validator records. Refers to [EIP-6914](https://github.com/ethereum/EIPs/pull/6914).
+This is the beacon chain specification to assign new deposits to existing
+validator records. Refers to
+[EIP-6914](https://github.com/ethereum/EIPs/pull/6914).
 
-*Note:* This specification is built upon [Capella](../../capella/beacon_chain.md) and is under active development.
+*Note*: This specification is built upon
+[Capella](../../capella/beacon-chain.md).
 
 ## Preset
 
 ### Time parameters
 
-| Name | Value | Unit | Duration |
-| - | - | - | - |
+| Name                         | Value                      | Unit   | Duration  |
+| ---------------------------- | -------------------------- | ------ | --------- |
 | `SAFE_EPOCHS_TO_REUSE_INDEX` | `uint64(2**16)` (= 65,536) | epochs | ~0.8 year |
 
 ## Helper functions
@@ -44,10 +44,7 @@ def is_reusable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> 
     """
     Check if ``validator`` index can be re-assigned to a new deposit.
     """
-    return (
-        epoch > validator.withdrawable_epoch + SAFE_EPOCHS_TO_REUSE_INDEX
-        and balance == 0
-    )
+    return epoch > validator.withdrawable_epoch + SAFE_EPOCHS_TO_REUSE_INDEX and balance == 0
 ```
 
 ## Beacon chain state transition function

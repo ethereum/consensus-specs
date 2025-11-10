@@ -1,10 +1,14 @@
-from eth2spec.test.context import with_all_phases, spec_state_test
-from eth2spec.test.helpers.block import build_empty_block_for_next_slot
+from eth2spec.test.context import spec_state_test, with_all_phases
 from eth2spec.test.helpers.attestations import get_valid_attestation, sign_attestation
-from eth2spec.test.helpers.constants import ALL_PHASES
-from eth2spec.test.helpers.forks import is_post_electra
-from eth2spec.test.helpers.state import transition_to, state_transition_and_sign_block, next_epoch, next_slot
+from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.fork_choice import get_genesis_forkchoice_store
+from eth2spec.test.helpers.forks import is_post_electra, is_post_gloas
+from eth2spec.test.helpers.state import (
+    next_epoch,
+    next_slot,
+    state_transition_and_sign_block,
+    transition_to,
+)
 
 
 def run_on_attestation(spec, state, store, attestation, valid=True):
@@ -20,16 +24,20 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
     spec.on_attestation(store, attestation)
 
     sample_index = indexed_attestation.attesting_indices[0]
-    if spec.fork in ALL_PHASES:
+    if is_post_gloas(spec):
+        assert attestation.data.index < 2
+        latest_message = spec.LatestMessage(
+            slot=attestation.data.slot,
+            root=attestation.data.beacon_block_root,
+            payload_present=attestation.data.index == 1,
+        )
+    else:
         latest_message = spec.LatestMessage(
             epoch=attestation.data.target.epoch,
             root=attestation.data.beacon_block_root,
         )
-    # elif spec.fork == SHARDING: TODO: check if vote count for shard blob increased as expected
 
-    assert (
-        store.latest_messages[sample_index] == latest_message
-    )
+    assert store.latest_messages[sample_index] == latest_message
 
 
 @with_all_phases
@@ -143,7 +151,9 @@ def test_on_attestation_inconsistent_target_and_head(spec, state):
     epoch = spec.compute_epoch_at_slot(attestation.data.slot)
 
     # Set attestation target to be from chain 2
-    attestation.data.target = spec.Checkpoint(epoch=epoch, root=spec.get_block_root(target_state_2, epoch))
+    attestation.data.target = spec.Checkpoint(
+        epoch=epoch, root=spec.get_block_root(target_state_2, epoch)
+    )
     sign_attestation(spec, state, attestation)
 
     assert attestation.data.target.epoch == spec.GENESIS_EPOCH + 1

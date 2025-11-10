@@ -1,0 +1,16 @@
+# Minimal preset - Gloas
+
+# Misc
+# ---------------------------------------------------------------
+# [customized] 2**1 (= 2) validators
+PTC_SIZE: 2
+
+# Max operations per block
+# ---------------------------------------------------------------
+# 2**2 (= 4) attestations
+MAX_PAYLOAD_ATTESTATIONS: 4
+
+# State list lengths
+# ---------------------------------------------------------------
+# 2**20 (= 1,048,576) builder pending withdrawals
+BUILDER_PENDING_WITHDRAWALS_LIMIT: 1048576

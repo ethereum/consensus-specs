@@ -7,7 +7,7 @@ theme:
     - scheme: default
       primary: black
       toggle:
-        icon: material/brightness-7 
+        icon: material/brightness-7
         name: Switch to dark mode
     - scheme: slate
       primary: black
@@ -32,6 +32,9 @@ markdown_extensions:
 plugins:
   - search
   - awesome-pages
+  - gen-files:
+      scripts:
+        - scripts/gen_spec_indices.py
 extra_css:
   - stylesheets/extra.css
 extra:

@@ -1,4 +1,5 @@
 from random import Random
+
 from eth2spec.utils.ssz.ssz_typing import uint256
 
 
@@ -16,13 +17,12 @@ class PowChain:
         return self.blocks[offset - 1]
 
     def to_dict(self):
-        return {
-            block.block_hash: block
-            for block in self.blocks
-        }
+        return {block.block_hash: block for block in self.blocks}
 
 
-def prepare_random_pow_block(spec, rng=Random(3131)):
+def prepare_random_pow_block(spec, rng=None):
+    if rng is None:
+        rng = Random(3131)
     return spec.PowBlock(
         block_hash=spec.Hash32(spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
         parent_hash=spec.Hash32(spec.hash(bytearray(rng.getrandbits(8) for _ in range(32)))),
@@ -30,7 +30,9 @@ def prepare_random_pow_block(spec, rng=Random(3131)):
     )
 
 
-def prepare_random_pow_chain(spec, length, rng=Random(3131)) -> PowChain:
+def prepare_random_pow_chain(spec, length, rng=None) -> PowChain:
+    if rng is None:
+        rng = Random(3131)
     assert length > 0
     chain = [prepare_random_pow_block(spec, rng)]
     for i in range(1, length):

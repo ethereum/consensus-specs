@@ -1,17 +1,20 @@
 # Definitions in context.py
-PHASE0 = 'phase0'
-ALTAIR = 'altair'
-BELLATRIX = 'bellatrix'
-CAPELLA = 'capella'
-DENEB = 'deneb'
-ELECTRA = 'electra'
-EIP7594 = 'eip7594'
-EIP6800 = 'eip6800'
-WHISK = 'whisk'
+PHASE0 = "phase0"
+ALTAIR = "altair"
+BELLATRIX = "bellatrix"
+CAPELLA = "capella"
+DENEB = "deneb"
+ELECTRA = "electra"
+FULU = "fulu"
+GLOAS = "gloas"
+EIP6800 = "eip6800"
+EIP7441 = "eip7441"
+EIP7805 = "eip7805"
+EIP7928 = "eip7928"
 
 
 # The helper functions that are used when defining constants
-CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS = '''
+CONSTANT_DEP_SUNDRY_CONSTANTS_FUNCTIONS = """
 def ceillog2(x: int) -> uint64:
     if x < 1:
         raise ValueError(f"ceillog2 accepts only positive values, x={x}")
@@ -22,13 +25,10 @@ def floorlog2(x: int) -> uint64:
     if x < 1:
         raise ValueError(f"floorlog2 accepts only positive values, x={x}")
     return uint64(x.bit_length() - 1)
-'''
+"""
 
 
-OPTIMIZED_BLS_AGGREGATE_PUBKEYS = '''
+OPTIMIZED_BLS_AGGREGATE_PUBKEYS = """
 def eth_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
     return bls.AggregatePKs(pubkeys)
-'''
-
-
-ETH2_SPEC_COMMENT_PREFIX = "eth2spec:"
+"""

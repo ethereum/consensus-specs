@@ -1,16 +1,18 @@
 import random
 
 from eth2spec.test.context import (
+    always_bls,
     single_phase,
     spec_state_test,
+    spec_state_test_with_matching_config,
     spec_test,
-    always_bls,
-    with_phases,
     with_all_phases,
+    with_all_phases_from_to,
+    with_phases,
 )
-from eth2spec.test.helpers.constants import PHASE0
 from eth2spec.test.helpers.attestations import build_attestation_data, get_valid_attestation
 from eth2spec.test.helpers.block import build_empty_block
+from eth2spec.test.helpers.constants import FULU, PHASE0
 from eth2spec.test.helpers.deposits import prepare_state_and_deposit
 from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.state import next_epoch
@@ -18,7 +20,9 @@ from eth2spec.utils import bls
 from eth2spec.utils.ssz.ssz_typing import Bitlist
 
 
-def run_get_signature_test(spec, state, obj, domain, get_signature_fn, privkey, pubkey, signing_ssz_object=None):
+def run_get_signature_test(
+    spec, state, obj, domain, get_signature_fn, privkey, pubkey, signing_ssz_object=None
+):
     if signing_ssz_object is None:
         signing_ssz_object = obj
     signature = get_signature_fn(state, obj, privkey)
@@ -34,7 +38,6 @@ def run_get_committee_assignment(spec, state, epoch, validator_index, valid=True
         assert committee == spec.get_beacon_committee(state, slot, committee_index)
         assert committee_index < spec.get_committee_count_per_slot(state, epoch)
         assert validator_index in committee
-        assert valid
     except AssertionError:
         assert not valid
     else:
@@ -48,7 +51,8 @@ def run_is_candidate_block(spec, eth1_block, period_start, success=True):
 def get_min_new_period_epochs(spec):
     return (
         (spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE * 2)  # to seconds
-        // spec.config.SECONDS_PER_SLOT // spec.SLOTS_PER_EPOCH
+        // spec.config.SECONDS_PER_SLOT
+        // spec.SLOTS_PER_EPOCH
     )
 
 
@@ -200,14 +204,17 @@ def test_get_eth1_vote_consensus_vote(spec, state):
     state.eth1_data_votes = ()
 
     block_1 = spec.Eth1Block(
-        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE - 1,
+        timestamp=period_start
+        - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE
+        - 1,
         deposit_count=state.eth1_data.deposit_count,
-        deposit_root=b'\x04' * 32,
+        deposit_root=b"\x04" * 32,
     )
     block_2 = spec.Eth1Block(
-        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
+        timestamp=period_start
+        - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
         deposit_count=state.eth1_data.deposit_count + 1,
-        deposit_root=b'\x05' * 32,
+        deposit_root=b"\x05" * 32,
     )
     eth1_chain = [block_1, block_2]
     eth1_data_votes = []
@@ -236,14 +243,17 @@ def test_get_eth1_vote_tie(spec, state):
 
     state.eth1_data_votes = ()
     block_1 = spec.Eth1Block(
-        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE - 1,
+        timestamp=period_start
+        - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE
+        - 1,
         deposit_count=state.eth1_data.deposit_count,
-        deposit_root=b'\x04' * 32,
+        deposit_root=b"\x04" * 32,
     )
     block_2 = spec.Eth1Block(
-        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
+        timestamp=period_start
+        - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
         deposit_count=state.eth1_data.deposit_count + 1,
-        deposit_root=b'\x05' * 32,
+        deposit_root=b"\x05" * 32,
     )
     eth1_chain = [block_1, block_2]
     eth1_data_votes = []
@@ -275,9 +285,10 @@ def test_get_eth1_vote_chain_in_past(spec, state):
 
     state.eth1_data_votes = ()
     block_1 = spec.Eth1Block(
-        timestamp=period_start - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
+        timestamp=period_start
+        - spec.config.SECONDS_PER_ETH1_BLOCK * spec.config.ETH1_FOLLOW_DISTANCE,
         deposit_count=state.eth1_data.deposit_count - 1,  # Chain prior to current eth1data
-        deposit_root=b'\x42' * 32,
+        deposit_root=b"\x42" * 32,
     )
     eth1_chain = [block_1]
     eth1_data_votes = []
@@ -313,7 +324,9 @@ def test_get_block_signature(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]
     block = build_empty_block(spec, state)
-    domain = spec.get_domain(state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot))
+    domain = spec.get_domain(
+        state, spec.DOMAIN_BEACON_PROPOSER, spec.compute_epoch_at_slot(block.slot)
+    )
     run_get_signature_test(
         spec=spec,
         state=state,
@@ -325,14 +338,19 @@ def test_get_block_signature(spec, state):
     )
 
 
-@with_all_phases
-@spec_state_test
+@with_all_phases_from_to(from_phase=PHASE0, to_phase=FULU)
+@spec_state_test_with_matching_config
 def test_compute_fork_digest(spec, state):
-    actual_fork_digest = spec.compute_fork_digest(state.fork.current_version, state.genesis_validators_root)
+    actual_fork_digest = spec.compute_fork_digest(
+        state.genesis_validators_root, spec.compute_epoch_at_slot(state.slot)
+    )
 
     expected_fork_data_root = spec.hash_tree_root(
-        spec.ForkData(current_version=state.fork.current_version,
-                      genesis_validators_root=state.genesis_validators_root))
+        spec.ForkData(
+            current_version=state.fork.current_version,
+            genesis_validators_root=state.genesis_validators_root,
+        )
+    )
     expected_fork_digest = spec.ForkDigest(expected_fork_data_root[:4])
 
     assert actual_fork_digest == expected_fork_digest
@@ -366,12 +384,18 @@ def test_get_attestation_signature_phase0(spec, state):
 def test_compute_subnet_for_attestation(spec, state):
     for committee_idx in range(spec.MAX_COMMITTEES_PER_SLOT):
         for slot in range(state.slot, state.slot + spec.SLOTS_PER_EPOCH):
-            committees_per_slot = spec.get_committee_count_per_slot(state, spec.compute_epoch_at_slot(slot))
-            actual_subnet_id = spec.compute_subnet_for_attestation(committees_per_slot, slot, committee_idx)
+            committees_per_slot = spec.get_committee_count_per_slot(
+                state, spec.compute_epoch_at_slot(slot)
+            )
+            actual_subnet_id = spec.compute_subnet_for_attestation(
+                committees_per_slot, slot, committee_idx
+            )
 
             slots_since_epoch_start = slot % spec.SLOTS_PER_EPOCH
             committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
-            expected_subnet_id = (committees_since_epoch_start + committee_idx) % spec.config.ATTESTATION_SUBNET_COUNT
+            expected_subnet_id = (
+                committees_since_epoch_start + committee_idx
+            ) % spec.config.ATTESTATION_SUBNET_COUNT
 
             assert actual_subnet_id == expected_subnet_id
 
@@ -440,7 +464,9 @@ def test_get_aggregate_signature(spec, state):
             spec.Attestation(
                 data=attestation_data,
                 aggregation_bits=bits,
-                signature=spec.get_attestation_signature(state, attestation_data, privkeys[validator_index]),
+                signature=spec.get_attestation_signature(
+                    state, attestation_data, privkeys[validator_index]
+                ),
             )
         )
         attesting_pubkeys.append(state.validators[validator_index].pubkey)
@@ -461,7 +487,9 @@ def test_get_aggregate_and_proof(spec, state):
     aggregate_and_proof = spec.get_aggregate_and_proof(state, aggregator_index, aggregate, privkey)
     assert aggregate_and_proof.aggregator_index == aggregator_index
     assert aggregate_and_proof.aggregate == aggregate
-    assert aggregate_and_proof.selection_proof == spec.get_slot_signature(state, aggregate.data.slot, privkey)
+    assert aggregate_and_proof.selection_proof == spec.get_slot_signature(
+        state, aggregate.data.slot, privkey
+    )
 
 
 @with_all_phases
@@ -471,8 +499,12 @@ def test_get_aggregate_and_proof_signature(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]
     aggregate = get_mock_aggregate(spec)
-    aggregate_and_proof = spec.get_aggregate_and_proof(state, spec.ValidatorIndex(1), aggregate, privkey)
-    domain = spec.get_domain(state, spec.DOMAIN_AGGREGATE_AND_PROOF, spec.compute_epoch_at_slot(aggregate.data.slot))
+    aggregate_and_proof = spec.get_aggregate_and_proof(
+        state, spec.ValidatorIndex(1), aggregate, privkey
+    )
+    domain = spec.get_domain(
+        state, spec.DOMAIN_AGGREGATE_AND_PROOF, spec.compute_epoch_at_slot(aggregate.data.slot)
+    )
     run_get_signature_test(
         spec=spec,
         state=state,
@@ -484,7 +516,9 @@ def test_get_aggregate_and_proof_signature(spec, state):
     )
 
 
-def run_compute_subscribed_subnets_arguments(spec, rng=random.Random(1111)):
+def run_compute_subscribed_subnets_arguments(spec, rng=None):
+    if rng is None:
+        rng = random.Random(1111)
     node_id = rng.randint(0, 2**256 - 1)
     epoch = rng.randint(0, 2**64 - 1)
     subnets = spec.compute_subscribed_subnets(node_id, epoch)

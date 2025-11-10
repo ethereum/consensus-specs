@@ -1,0 +1,5 @@
+pip>=24.0.0
+wheel>=0.44.0
+setuptools>=72.0.0
+pylint>=3.2.0
+build>=1.2.2

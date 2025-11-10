@@ -1,0 +1,16 @@
+# Mainnet preset - EIP7441
+
+# Misc
+# ---------------------------------------------------------------
+# 2**2 (= 4) blinders
+CURDLEPROOFS_N_BLINDERS: 4
+# 2**14 (= 16,384) trackers
+CANDIDATE_TRACKERS_COUNT: 16384
+# 2**13 (= 8,192) trackers
+PROPOSER_TRACKERS_COUNT: 8192
+# 2**7 - CURDLEPROOFS_N_BLINDERS (= 124) validators
+VALIDATORS_PER_SHUFFLE: 124
+# 2**15 (= 32,768) bytes
+MAX_SHUFFLE_PROOF_SIZE: 32768
+# 2**10 (= 1,024) bytes
+MAX_OPENING_PROOF_SIZE: 1024

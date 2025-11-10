@@ -1,54 +1,51 @@
 # Capella -- Fork Choice
 
-## Table of contents
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
 - [Helpers](#helpers)
-  - [Extended `PayloadAttributes`](#extended-payloadattributes)
+  - [Modified `PayloadAttributes`](#modified-payloadattributes)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [`on_block`](#on_block)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
 This is the modification of the fork choice according to the Capella upgrade.
 
-Unless stated explicitly, all prior functionality from [Bellatrix](../bellatrix/fork-choice.md) is inherited.
-
-## Custom types
+Unless stated explicitly, all prior functionality from
+[Bellatrix](../bellatrix/fork-choice.md) is inherited.
 
 ## Protocols
 
 ### `ExecutionEngine`
 
-*Note*: The `notify_forkchoice_updated` function is modified in the `ExecutionEngine` protocol at the Capella upgrade.
+*Note*: The `notify_forkchoice_updated` function is modified in the
+`ExecutionEngine` protocol at the Capella upgrade.
 
 #### `notify_forkchoice_updated`
 
-The only change made is to the `PayloadAttributes` container through the addition of `withdrawals`.
-Otherwise, `notify_forkchoice_updated` inherits all prior functionality.
+The only change made is to the `PayloadAttributes` container through the
+addition of `withdrawals`. Otherwise, `notify_forkchoice_updated` inherits all
+prior functionality.
 
 ```python
-def notify_forkchoice_updated(self: ExecutionEngine,
-                              head_block_hash: Hash32,
-                              safe_block_hash: Hash32,
-                              finalized_block_hash: Hash32,
-                              payload_attributes: Optional[PayloadAttributes]) -> Optional[PayloadId]:
-    ...
+def notify_forkchoice_updated(
+    self: ExecutionEngine,
+    head_block_hash: Hash32,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    payload_attributes: Optional[PayloadAttributes],
+) -> Optional[PayloadId]: ...
 ```
 
 ## Helpers
 
-### Extended `PayloadAttributes`
+### Modified `PayloadAttributes`
 
 `PayloadAttributes` is extended with the `withdrawals` field.
 
@@ -58,14 +55,16 @@ class PayloadAttributes(object):
     timestamp: uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
-    withdrawals: Sequence[Withdrawal]  # [New in Capella]
+    # [New in Capella]
+    withdrawals: Sequence[Withdrawal]
 ```
 
 ## Updated fork-choice handlers
 
 ### `on_block`
 
-*Note*: The only modification is the deletion of the verification of merge transition block conditions.
+*Note*: The only modification is the deletion of the verification of merge
+transition block conditions.
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
@@ -75,8 +74,6 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block = signed_block.message
     # Parent block must be known
     assert block.parent_root in store.block_states
-    # Make a copy of the state to avoid mutability issues
-    pre_state = copy(store.block_states[block.parent_root])
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
     assert get_current_slot(store) >= block.slot
 
@@ -92,7 +89,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert store.finalized_checkpoint.root == finalized_checkpoint_block
 
     # Check the block is valid and compute the post-state
-    state = pre_state.copy()
+    # Make a copy of the state to avoid mutability issues
+    state = copy(store.block_states[block.parent_root])
     block_root = hash_tree_root(block)
     state_transition(state, signed_block, True)
 
@@ -102,8 +100,11 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     store.block_states[block_root] = state
 
     # Add block timeliness to the store
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    epoch = get_current_store_epoch(store)
+    attestation_threshold_ms = get_attestation_due_ms(epoch)
+    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
 

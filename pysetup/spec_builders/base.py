@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Sequence, Dict
-from pathlib import Path
+
 
 class BaseSpecBuilder(ABC):
     @property
@@ -12,6 +11,13 @@ class BaseSpecBuilder(ABC):
     def imports(cls, preset_name: str) -> str:
         """
         Import objects from other libraries.
+        """
+        return ""
+
+    @classmethod
+    def classes(cls) -> str:
+        """
+        Define special classes.
         """
         return ""
 
@@ -34,23 +40,24 @@ class BaseSpecBuilder(ABC):
         return ""
 
     @classmethod
-    def hardcoded_ssz_dep_constants(cls) -> Dict[str, str]:
+    def hardcoded_ssz_dep_constants(cls) -> dict[str, str]:
         """
         The constants that are required for SSZ objects.
         """
         return {}
 
     @classmethod
-    def hardcoded_custom_type_dep_constants(cls, spec_object) -> Dict[str, str]:  # TODO
-        """
-        The constants that are required for custom types.
-        """
+    def hardcoded_func_dep_presets(cls, spec_object) -> dict[str, str]:
         return {}
 
     @classmethod
-    def hardcoded_func_dep_presets(cls, spec_object) -> Dict[str, str]:
-        return {}
-
-    @classmethod
-    def implement_optimizations(cls, functions: Dict[str, str]) -> Dict[str, str]:
+    def implement_optimizations(cls, functions: dict[str, str]) -> dict[str, str]:
         return functions
+
+    @classmethod
+    def deprecate_constants(cls) -> set[str]:
+        return set()
+
+    @classmethod
+    def deprecate_presets(cls) -> set[str]:
+        return set()

@@ -1,25 +1,29 @@
 from random import Random
 
 from eth2spec.test.context import (
-    with_phases,
+    large_validator_set,
+    low_balances,
+    misc_balances,
+    spec_test,
     with_custom_state,
+    with_phases,
     with_presets,
-    spec_test, with_state,
-    low_balances, misc_balances, large_validator_set,
-)
-from eth2spec.test.utils import with_meta_tags
-from eth2spec.test.helpers.constants import (
-    PHASE0, ALTAIR,
-    MINIMAL,
+    with_state,
 )
 from eth2spec.test.helpers.altair.fork import (
     ALTAIR_FORK_TEST_META_TAGS,
     run_fork_test,
 )
-from eth2spec.test.helpers.random import (
-    randomize_state,
-    randomize_attestation_participation,
+from eth2spec.test.helpers.constants import (
+    ALTAIR,
+    MINIMAL,
+    PHASE0,
 )
+from eth2spec.test.helpers.random import (
+    randomize_attestation_participation,
+    randomize_state,
+)
+from eth2spec.test.utils import with_meta_tags
 
 
 @with_phases(phases=[PHASE0], other_phases=[ALTAIR])
@@ -65,7 +69,9 @@ def test_altair_fork_random_3(spec, phases, state):
 def test_altair_fork_random_duplicate_attestations(spec, phases, state):
     randomize_state(spec, state, rng=Random(1111))
     # Note: `run_fork_test` empties `current_epoch_attestations`
-    state.previous_epoch_attestations = state.previous_epoch_attestations + state.previous_epoch_attestations
+    state.previous_epoch_attestations = (
+        state.previous_epoch_attestations + state.previous_epoch_attestations
+    )
     yield from run_fork_test(phases[ALTAIR], state)
 
 
@@ -87,7 +93,9 @@ def test_altair_fork_random_mismatched_attestations(spec, phases, state):
 
     # Note: `run_fork_test` empties `current_epoch_attestations`
     # Use pending attestations from both random states in a single state for testing
-    state_0.previous_epoch_attestations = state_0.previous_epoch_attestations + state_1.previous_epoch_attestations
+    state_0.previous_epoch_attestations = (
+        state_0.previous_epoch_attestations + state_1.previous_epoch_attestations
+    )
     yield from run_fork_test(phases[ALTAIR], state_0)
 
 
@@ -102,7 +110,9 @@ def test_altair_fork_random_low_balances(spec, phases, state):
 
 @with_phases(phases=[PHASE0], other_phases=[ALTAIR])
 @spec_test
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
+)
 @with_meta_tags(ALTAIR_FORK_TEST_META_TAGS)
 def test_altair_fork_random_misc_balances(spec, phases, state):
     randomize_state(spec, state, rng=Random(6060))
@@ -110,10 +120,14 @@ def test_altair_fork_random_misc_balances(spec, phases, state):
 
 
 @with_phases(phases=[PHASE0], other_phases=[ALTAIR])
-@with_presets([MINIMAL],
-              reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated")
+@with_presets(
+    [MINIMAL],
+    reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
+)
 @spec_test
-@with_custom_state(balances_fn=large_validator_set, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=large_validator_set, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
+)
 @with_meta_tags(ALTAIR_FORK_TEST_META_TAGS)
 def test_altair_fork_random_large_validator_set(spec, phases, state):
     randomize_state(spec, state, rng=Random(7070))

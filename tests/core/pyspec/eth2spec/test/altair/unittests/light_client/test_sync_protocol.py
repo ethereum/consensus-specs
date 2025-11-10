@@ -2,8 +2,9 @@ from copy import deepcopy
 
 from eth2spec.test.context import (
     spec_state_test_with_matching_config,
-    with_presets,
+    with_config_overrides,
     with_light_client,
+    with_presets,
 )
 from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,
@@ -12,6 +13,7 @@ from eth2spec.test.helpers.attestations import (
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.light_client import (
     create_update,
+    sample_blob_schedule,
 )
 from eth2spec.test.helpers.state import (
     next_slots,
@@ -30,6 +32,11 @@ def setup_test(spec, state):
 
 
 @with_light_client
+@with_config_overrides(
+    {
+        "BLOB_SCHEDULE": sample_blob_schedule(),
+    },
+)
 @spec_state_test_with_matching_config
 def test_process_light_client_update_not_timeout(spec, state):
     genesis_block, store = setup_test(spec, state)
@@ -62,6 +69,11 @@ def test_process_light_client_update_not_timeout(spec, state):
 
 
 @with_light_client
+@with_config_overrides(
+    {
+        "BLOB_SCHEDULE": sample_blob_schedule(),
+    },
+)
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_at_period_boundary(spec, state):
@@ -97,6 +109,11 @@ def test_process_light_client_update_at_period_boundary(spec, state):
 
 
 @with_light_client
+@with_config_overrides(
+    {
+        "BLOB_SCHEDULE": sample_blob_schedule(),
+    },
+)
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_timeout(spec, state):
@@ -132,6 +149,11 @@ def test_process_light_client_update_timeout(spec, state):
 
 
 @with_light_client
+@with_config_overrides(
+    {
+        "BLOB_SCHEDULE": sample_blob_schedule(),
+    },
+)
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_finality_updated(spec, state):
@@ -155,7 +177,9 @@ def test_process_light_client_update_finality_updated(spec, state):
 
     # Updated finality
     finalized_block = blocks[spec.SLOTS_PER_EPOCH - 1]
-    assert finalized_block.message.slot == spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
+    assert finalized_block.message.slot == spec.compute_start_slot_at_epoch(
+        state.finalized_checkpoint.epoch
+    )
     assert finalized_block.message.hash_tree_root() == state.finalized_checkpoint.root
 
     update = create_update(

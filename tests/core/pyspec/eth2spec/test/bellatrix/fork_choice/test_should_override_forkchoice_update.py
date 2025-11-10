@@ -1,16 +1,18 @@
 from eth2spec.test.context import (
     spec_state_test,
-    with_bellatrix_and_later,
+    with_all_phases_from_to,
     with_presets,
-)
-from eth2spec.test.helpers.constants import (
-    MINIMAL,
 )
 from eth2spec.test.helpers.attestations import (
     get_valid_attestations_at_slot,
 )
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
+)
+from eth2spec.test.helpers.constants import (
+    BELLATRIX,
+    GLOAS,
+    MINIMAL,
 )
 from eth2spec.test.helpers.fork_choice import (
     apply_next_epoch_with_attestations,
@@ -22,21 +24,21 @@ from eth2spec.test.helpers.fork_choice import (
     tick_and_run_on_attestation,
 )
 from eth2spec.test.helpers.state import (
-    state_transition_and_sign_block,
     next_epoch,
     next_slot,
+    state_transition_and_sign_block,
 )
 
 
-@with_bellatrix_and_later
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_should_override_forkchoice_update__false(spec, state):
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
@@ -61,37 +63,42 @@ def test_should_override_forkchoice_update__false(spec, state):
     assert not should_override
 
     output_store_checks(spec, store, test_steps)
-    test_steps.append({
-        'checks': {
-            'should_override_forkchoice_update': {
-                'validator_is_connected': True,
-                'result': should_override,
-            },
+    test_steps.append(
+        {
+            "checks": {
+                "should_override_forkchoice_update": {
+                    "validator_is_connected": True,
+                    "result": should_override,
+                },
+            }
         }
-    })
+    )
 
-    yield 'steps', test_steps
+    yield "steps", test_steps
 
 
-@with_bellatrix_and_later
+@with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_should_override_forkchoice_update__true(spec, state):
     test_steps = []
     # Initialization
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield 'anchor_state', state
-    yield 'anchor_block', anchor_block
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
-    on_tick_and_append_step(spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps)
+    on_tick_and_append_step(
+        spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps
+    )
 
     # Fill epoch 1 to 3
     for _ in range(3):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps)
+            spec, state, store, True, True, test_steps=test_steps
+        )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
@@ -104,7 +111,8 @@ def test_should_override_forkchoice_update__true(spec, state):
 
     # Fill a slot (parent)
     state, store, signed_parent_block = yield from apply_next_slots_with_attestations(
-        spec, state, store, 1, True, True, test_steps)
+        spec, state, store, 1, True, True, test_steps
+    )
 
     # Fill a slot with attestations to its parent
     block = build_empty_block_for_next_slot(spec, state)
@@ -117,7 +125,10 @@ def test_should_override_forkchoice_update__true(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # Make the head block late
-    attesting_cutoff = spec.config.SECONDS_PER_SLOT // spec.INTERVALS_PER_SLOT
+    # Round up to nearest second
+    epoch = spec.get_current_store_epoch(store)
+    attestation_due_ms = spec.get_attestation_due_ms(epoch)
+    attesting_cutoff = (attestation_due_ms + 999) // 1000
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time + attesting_cutoff
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
@@ -172,13 +183,15 @@ def test_should_override_forkchoice_update__true(spec, state):
     assert should_override
 
     output_store_checks(spec, store, test_steps)
-    test_steps.append({
-        'checks': {
-            'should_override_forkchoice_update': {
-                'validator_is_connected': True,
-                'result': should_override,
-            },
+    test_steps.append(
+        {
+            "checks": {
+                "should_override_forkchoice_update": {
+                    "validator_is_connected": True,
+                    "result": should_override,
+                },
+            }
         }
-    })
+    )
 
-    yield 'steps', test_steps
+    yield "steps", test_steps

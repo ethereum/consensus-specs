@@ -1,19 +1,12 @@
 # Deneb Light Client -- Full Node
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
   - [Modified `block_to_light_client_header`](#modified-block_to_light_client_header)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
@@ -53,7 +46,8 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
             execution_header.excess_blob_gas = payload.excess_blob_gas
 
         execution_branch = ExecutionBranch(
-            compute_merkle_proof(block.message.body, EXECUTION_PAYLOAD_GINDEX))
+            compute_merkle_proof(block.message.body, EXECUTION_PAYLOAD_GINDEX)
+        )
     else:
         # Note that during fork transitions, `finalized_header` may still point to earlier forks.
         # While Bellatrix blocks also contain an `ExecutionPayload` (minus `withdrawals_root`),

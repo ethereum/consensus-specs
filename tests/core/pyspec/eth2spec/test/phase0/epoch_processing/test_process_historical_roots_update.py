@@ -1,15 +1,15 @@
 from eth2spec.test.context import (
-    PHASE0, ALTAIR, BELLATRIX,
+    ALTAIR,
+    BELLATRIX,
+    PHASE0,
     spec_state_test,
     with_phases,
 )
-from eth2spec.test.helpers.epoch_processing import (
-    run_epoch_processing_with
-)
+from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 
 
 def run_process_historical_roots_update(spec, state):
-    yield from run_epoch_processing_with(spec, state, 'process_historical_roots_update')
+    yield from run_epoch_processing_with(spec, state, "process_historical_roots_update")
 
 
 @with_phases([PHASE0, ALTAIR, BELLATRIX])

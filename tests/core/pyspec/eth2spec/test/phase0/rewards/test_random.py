@@ -1,18 +1,19 @@
 from random import Random
 
-from eth2spec.test.context import (
-    with_all_phases,
-    spec_test,
-    spec_state_test,
-    with_custom_state,
-    single_phase,
-    low_balances, misc_balances,
-)
 import eth2spec.test.helpers.rewards as rewards_helpers
+from eth2spec.test.context import (
+    low_balances,
+    misc_balances,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_all_phases,
+    with_custom_state,
+)
 from eth2spec.test.helpers.random import (
-    randomize_state,
     patch_state_to_non_leaking,
     randomize_attestation_participation,
+    randomize_state,
 )
 from eth2spec.test.helpers.state import has_active_balance_differential, next_epoch
 from eth2spec.test.helpers.voluntary_exits import get_unslashed_exited_validators
@@ -74,7 +75,9 @@ def test_full_random_low_balances_1(spec, state):
 
 
 @with_all_phases
-@with_custom_state(balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE)
+@with_custom_state(
+    balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
+)
 @spec_test
 @single_phase
 def test_full_random_misc_balances(spec, state):
@@ -121,7 +124,9 @@ def test_full_random_without_leak_and_current_exit_0(spec, state):
         # patch exited validators to exit in the current epoch
         validator = state.validators[index]
         validator.exit_epoch = current_epoch
-        validator.withdrawable_epoch = current_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+        validator.withdrawable_epoch = (
+            current_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+        )
 
     # re-randomize attestation participation for the current epoch
     randomize_attestation_participation(spec, state, rng)

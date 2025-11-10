@@ -1,4 +1,4 @@
-from eth2spec.test.context import spec_state_test, always_bls, with_all_phases
+from eth2spec.test.context import always_bls, spec_state_test, with_all_phases
 from eth2spec.test.helpers.deposits import (
     build_deposit,
     prepare_state_and_deposit,
@@ -6,8 +6,8 @@ from eth2spec.test.helpers.deposits import (
     run_deposit_processing_with_specific_fork_version,
     sign_deposit_data,
 )
-from eth2spec.test.helpers.keys import privkeys, pubkeys
 from eth2spec.test.helpers.forks import is_post_electra
+from eth2spec.test.helpers.keys import privkeys, pubkeys
 
 
 @with_all_phases
@@ -53,12 +53,13 @@ def test_new_deposit_eth1_withdrawal_credentials(spec, state):
     validator_index = len(state.validators)
     withdrawal_credentials = (
         spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
-        + b'\x00' * 11  # specified 0s
-        + b'\x59' * 20  # a 20-byte eth1 address
+        + b"\x00" * 11  # specified 0s
+        + b"\x59" * 20  # a 20-byte eth1 address
     )
     amount = spec.MAX_EFFECTIVE_BALANCE
     deposit = prepare_state_and_deposit(
-        spec, state,
+        spec,
+        state,
         validator_index,
         amount,
         withdrawal_credentials=withdrawal_credentials,
@@ -74,12 +75,12 @@ def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
     withdrawal_credentials = (
-        b'\xFF'  # Non specified withdrawal credentials version
-        + b'\x02' * 31  # Garabage bytes
+        b"\xff" + b"\x02" * 31  # Non specified withdrawal credentials version  # Garbage bytes
     )
     amount = spec.MAX_EFFECTIVE_BALANCE
     deposit = prepare_state_and_deposit(
-        spec, state,
+        spec,
+        state,
         validator_index,
         amount,
         withdrawal_credentials=withdrawal_credentials,
@@ -96,7 +97,7 @@ def test_correct_sig_but_forked_state(spec, state):
     validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
     # deposits will always be valid, regardless of the current fork
-    state.fork.current_version = spec.Version('0x1234abcd')
+    state.fork.current_version = spec.Version("0x1234abcd")
     deposit = prepare_state_and_deposit(spec, state, validator_index, amount, signed=True)
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
@@ -188,11 +189,7 @@ def test_incorrect_withdrawal_credentials_top_up(spec, state):
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
     withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(b"junk")[1:]
     deposit = prepare_state_and_deposit(
-        spec,
-        state,
-        validator_index,
-        amount,
-        withdrawal_credentials=withdrawal_credentials
+        spec, state, validator_index, amount, withdrawal_credentials=withdrawal_credentials
     )
 
     # inconsistent withdrawal credentials, in top-ups, are allowed!
@@ -214,7 +211,7 @@ def test_invalid_wrong_deposit_for_deposit_count(spec, state):
         pubkey_1,
         privkey_1,
         spec.MAX_EFFECTIVE_BALANCE,
-        withdrawal_credentials=b'\x00' * 32,
+        withdrawal_credentials=b"\x00" * 32,
         signed=True,
     )
     deposit_count_1 = len(deposit_data_leaves)
@@ -229,7 +226,7 @@ def test_invalid_wrong_deposit_for_deposit_count(spec, state):
         pubkey_2,
         privkey_2,
         spec.MAX_EFFECTIVE_BALANCE,
-        withdrawal_credentials=b'\x00' * 32,
+        withdrawal_credentials=b"\x00" * 32,
         signed=True,
     )
 
@@ -262,9 +259,11 @@ def test_key_validate_invalid_subgroup(spec, state):
     amount = spec.MAX_EFFECTIVE_BALANCE
 
     # All-zero pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
-    pubkey = b'\x00' * 48
+    pubkey = b"\x00" * 48
 
-    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, pubkey=pubkey, signed=True)
+    deposit = prepare_state_and_deposit(
+        spec, state, validator_index, amount, pubkey=pubkey, signed=True
+    )
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
@@ -277,10 +276,12 @@ def test_key_validate_invalid_decompression(spec, state):
 
     # `deserialization_fails_infinity_with_true_b_flag` BLS G1 deserialization test case.
     # This pubkey would not pass `bls.KeyValidate`, but `process_deposit` would not throw exception.
-    pubkey_hex = 'c01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+    pubkey_hex = "c01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
     pubkey = bytes.fromhex(pubkey_hex)
 
-    deposit = prepare_state_and_deposit(spec, state, validator_index, amount, pubkey=pubkey, signed=True)
+    deposit = prepare_state_and_deposit(
+        spec, state, validator_index, amount, pubkey=pubkey, signed=True
+    )
 
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
@@ -292,6 +293,6 @@ def test_ineffective_deposit_with_bad_fork_version(spec, state):
     yield from run_deposit_processing_with_specific_fork_version(
         spec,
         state,
-        fork_version=spec.Version('0xAaBbCcDd'),
+        fork_version=spec.Version("0xAaBbCcDd"),
         effective=False,
     )

@@ -2,13 +2,13 @@
 
 # Misc
 # ---------------------------------------------------------------
-# [customized] Just 4 committees for slot for testing purposes
+# [customized] 2**2 (= 4) committees
 MAX_COMMITTEES_PER_SLOT: 4
-# [customized] insecure, but fast
+# [customized] 2**2 (= 4) committees
 TARGET_COMMITTEE_SIZE: 4
-# 2**11 (= 2,048)
+# 2**11 (= 2,048) validators
 MAX_VALIDATORS_PER_COMMITTEE: 2048
-# [customized] Faster, but insecure.
+# [customized]
 SHUFFLE_ROUND_COUNT: 10
 # 4
 HYSTERESIS_QUOTIENT: 4
@@ -16,7 +16,6 @@ HYSTERESIS_QUOTIENT: 4
 HYSTERESIS_DOWNWARD_MULTIPLIER: 1
 # 5 (plus 1.25)
 HYSTERESIS_UPWARD_MULTIPLIER: 5
-
 
 # Gwei values
 # ---------------------------------------------------------------
@@ -27,38 +26,35 @@ MAX_EFFECTIVE_BALANCE: 32000000000
 # 2**0 * 10**9 (= 1,000,000,000) Gwei
 EFFECTIVE_BALANCE_INCREMENT: 1000000000
 
-
 # Time parameters
 # ---------------------------------------------------------------
-# 2**0 (= 1) slots 6 seconds
+# 2**0 (= 1) slots
 MIN_ATTESTATION_INCLUSION_DELAY: 1
-# [customized] fast epochs
+# [customized] 2**3 (= 8) slots
 SLOTS_PER_EPOCH: 8
 # 2**0 (= 1) epochs
 MIN_SEED_LOOKAHEAD: 1
 # 2**2 (= 4) epochs
 MAX_SEED_LOOKAHEAD: 4
-# [customized] higher frequency new deposits from eth1 for testing
+# [customized] 2**2 (= 4) epochs
 EPOCHS_PER_ETH1_VOTING_PERIOD: 4
-# [customized] smaller state
+# [customized] 2**6 (= 64) slots
 SLOTS_PER_HISTORICAL_ROOT: 64
 # 2**2 (= 4) epochs
 MIN_EPOCHS_TO_INACTIVITY_PENALTY: 4
 
-
 # State list lengths
 # ---------------------------------------------------------------
-# [customized] smaller state
+# [customized] 2**6 (= 64) epochs
 EPOCHS_PER_HISTORICAL_VECTOR: 64
-# [customized] smaller state
+# [customized] 2**6 (= 64) epochs
 EPOCHS_PER_SLASHINGS_VECTOR: 64
 # 2**24 (= 16,777,216) historical roots
 HISTORICAL_ROOTS_LIMIT: 16777216
 # 2**40 (= 1,099,511,627,776) validator spots
 VALIDATOR_REGISTRY_LIMIT: 1099511627776
 
-
-# Reward and penalty quotients
+# Rewards and penalties
 # ---------------------------------------------------------------
 # 2**6 (= 64)
 BASE_REWARD_FACTOR: 64
@@ -70,19 +66,18 @@ PROPOSER_REWARD_QUOTIENT: 8
 INACTIVITY_PENALTY_QUOTIENT: 33554432
 # [customized] 2**6 (= 64)
 MIN_SLASHING_PENALTY_QUOTIENT: 64
-# [customized] 2 (lower safety margin than Phase 0 genesis but different than mainnet config for testing)
+# [customized] 2 (lower safety margin than Phase0 genesis but different than mainnet config for testing)
 PROPORTIONAL_SLASHING_MULTIPLIER: 2
-
 
 # Max operations per block
 # ---------------------------------------------------------------
-# 2**4 (= 16)
+# 2**4 (= 16) proposer slashings
 MAX_PROPOSER_SLASHINGS: 16
-# 2**1 (= 2)
+# 2**1 (= 2) attester slashings
 MAX_ATTESTER_SLASHINGS: 2
-# 2**7 (= 128)
+# 2**7 (= 128) attestations
 MAX_ATTESTATIONS: 128
-# 2**4 (= 16)
+# 2**4 (= 16) deposits
 MAX_DEPOSITS: 16
-# 2**4 (= 16)
+# 2**4 (= 16) voluntary exits
 MAX_VOLUNTARY_EXITS: 16

@@ -1,75 +1,120 @@
 # Ethereum Proof-of-Stake Consensus Specifications
 
 [![Join the chat at https://discord.gg/qGpsxSA](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/qGpsxSA)
+[![nightly-tests](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml/badge.svg?branch=master&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml)
+[![nightly-reftests](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml/badge.svg?branch=master&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml)
 
-To learn more about proof-of-stake and sharding, see the [PoS documentation](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/), [sharding documentation](https://ethereum.org/en/upgrades/sharding/) and the [research compendium](https://notes.ethereum.org/s/H1PGqDhpm).
+This repository hosts the current Ethereum
+[proof-of-stake](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/)
+specifications. Discussions about design rationale and proposed changes can be
+brought up and discussed as issues. Solidified, agreed-upon changes to the
+specifications can be made through pull requests.
 
-This repository hosts the current Ethereum proof-of-stake specifications. Discussions about design rationale and proposed changes can be brought up and discussed as issues. Solidified, agreed-upon changes to the spec can be made through pull requests.
+## Specifications
 
-## Specs
-
-[![GitHub release](https://img.shields.io/github/v/release/ethereum/eth2.0-specs)](https://github.com/ethereum/eth2.0-specs/releases/) [![PyPI version](https://badge.fury.io/py/eth2spec.svg)](https://badge.fury.io/py/eth2spec)
-
-Core specifications for Ethereum proof-of-stake clients can be found in [specs](specs/). These are divided into features.
-Features are researched and developed in parallel, and then consolidated into sequential upgrades when ready.
+Core specifications for Ethereum proof-of-stake clients can be found in
+[specs](specs). These are divided into features. Features are researched and
+developed in parallel, and then consolidated into sequential upgrades when
+ready.
 
 ### Stable Specifications
 
-| Seq. | Code Name | Fork Epoch | Specs |
-| - | - | - | - |
-| 0 | **Phase0** |`0` | <ul><li>Core</li><ul><li>[The beacon chain](specs/phase0/beacon-chain.md)</li><li>[Deposit contract](specs/phase0/deposit-contract.md)</li><li>[Beacon chain fork choice](specs/phase0/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide](specs/phase0/validator.md)</li><li>[P2P networking](specs/phase0/p2p-interface.md)</li><li>[Weak subjectivity](specs/phase0/weak-subjectivity.md)</li></ul></ul> |
-| 1 |  **Altair** | `74240` | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/altair/beacon-chain.md)</li><li>[Altair fork](specs/altair/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol](specs/altair/light-client/sync-protocol.md) ([full node](specs/altair/light-client/full-node.md), [light client](specs/altair/light-client/light-client.md), [networking](specs/altair/light-client/p2p-interface.md))</li><li>[Honest validator guide changes](specs/altair/validator.md)</li><li>[P2P networking](specs/altair/p2p-interface.md)</li></ul></ul> |
-| 2 | **Bellatrix** <br/> (["The Merge"](https://ethereum.org/en/upgrades/merge/)) | `144896` | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/bellatrix/beacon-chain.md)</li><li>[Bellatrix fork](specs/bellatrix/fork.md)</li><li>[Fork choice changes](specs/bellatrix/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/bellatrix/validator.md)</li><li>[P2P networking](specs/bellatrix/p2p-interface.md)</li></ul></ul> |
-| 3 | **Capella** | `194048` | <ul><li>Core</li><ul><li>[Beacon chain changes](specs/capella/beacon-chain.md)</li><li>[Capella fork](specs/capella/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol changes](specs/capella/light-client/sync-protocol.md) ([fork](specs/capella/light-client/fork.md), [full node](specs/capella/light-client/full-node.md), [networking](specs/capella/light-client/p2p-interface.md))</li></ul><ul><li>[Validator additions](specs/capella/validator.md)</li><li>[P2P networking](specs/capella/p2p-interface.md)</li></ul></ul> |
-| 4 | **Deneb** | `269568` | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/deneb/beacon-chain.md)</li><li>[Deneb fork](specs/deneb/fork.md)</li><li>[Polynomial commitments](specs/deneb/polynomial-commitments.md)</li><li>[Fork choice changes](specs/deneb/fork-choice.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol changes](specs/deneb/light-client/sync-protocol.md) ([fork](specs/deneb/light-client/fork.md), [full node](specs/deneb/light-client/full-node.md), [networking](specs/deneb/light-client/p2p-interface.md))</li></ul><ul><li>[Honest validator guide changes](specs/deneb/validator.md)</li><li>[P2P networking](specs/deneb/p2p-interface.md)</li></ul></ul> |
+| Seq. | Code Name     | Fork Epoch | Links                                                                        |
+| ---- | ------------- | ---------- | ---------------------------------------------------------------------------- |
+| 0    | **Phase0**    | `0`        | [Specs](specs/phase0), [Tests](tests/core/pyspec/eth2spec/test/phase0)       |
+| 1    | **Altair**    | `74240`    | [Specs](specs/altair), [Tests](tests/core/pyspec/eth2spec/test/altair)       |
+| 2    | **Bellatrix** | `144896`   | [Specs](specs/bellatrix), [Tests](tests/core/pyspec/eth2spec/test/bellatrix) |
+| 3    | **Capella**   | `194048`   | [Specs](specs/capella), [Tests](tests/core/pyspec/eth2spec/test/capella)     |
+| 4    | **Deneb**     | `269568`   | [Specs](specs/deneb), [Tests](tests/core/pyspec/eth2spec/test/deneb)         |
+| 5    | **Electra**   | `364032`   | [Specs](specs/electra), [Tests](tests/core/pyspec/eth2spec/test/electra)     |
+| 6    | **Fulu**      | `411392`   | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu)           |
 
 ### In-development Specifications
-| Code Name or Topic | Specs | Notes |
-| - | - | - |
-| Electra | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/electra/beacon-chain.md)</li><li>[EIP-6110 fork](specs/electra/fork.md)</li></ul><li>Additions</li><ul><li>[Light client sync protocol changes](specs/electra/light-client/sync-protocol.md) ([fork](specs/electra/light-client/fork.md), [full node](specs/electra/light-client/full-node.md), [networking](specs/electra/light-client/p2p-interface.md))</li></ul><ul><li>[Honest validator guide changes](specs/electra/validator.md)</li></ul></ul> |
-| Sharding (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/_features/sharding/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[P2P networking](specs/_features/sharding/p2p-interface.md)</li></ul></ul> |
-| Custody Game (outdated) | <ul><li>Core</li><ul><li>[Beacon Chain changes](specs/_features/custody_game/beacon-chain.md)</li></ul><li>Additions</li><ul><li>[Honest validator guide changes](specs/_features/custody_game/validator.md)</li></ul></ul> | Dependent on sharding |
-| Data Availability Sampling (outdated) | <ul><li>Core</li><ul><li>[Core types and functions](specs/_features/das/das-core.md)</li><li>[Fork choice changes](specs/_features/das/fork-choice.md)</li></ul><li>Additions</li><ul><li>[P2P Networking](specs/_features/das/p2p-interface.md)</li><li>[Sampling process](specs/_features/das/sampling.md)</li></ul></ul> | <ul><li> Dependent on sharding</li><li>[Technical explainer](https://hackmd.io/@HWeNw8hNRimMm2m2GH56Cw/B1YJPGkpD)</li></ul> |
 
-### Accompanying documents can be found in [specs](specs) and include:
+| Seq. | Code Name | Fork Epoch | Links                                                                |
+| ---- | --------- | ---------- | -------------------------------------------------------------------- |
+| 7    | **Gloas** | TBD        | [Specs](specs/gloas), [Tests](tests/core/pyspec/eth2spec/test/gloas) |
 
-* [SimpleSerialize (SSZ) spec](ssz/simple-serialize.md)
-* [Merkle proof formats](ssz/merkle-proofs.md)
-* [General test format](tests/formats/README.md)
+### Accompanying documents
 
-## Additional specifications for client implementers
+- [SimpleSerialize (SSZ) spec](ssz/simple-serialize.md)
+- [Merkle proof formats](ssz/merkle-proofs.md)
+- [General test format](tests/formats/README.md)
 
-Additional specifications and standards outside of requisite client functionality can be found in the following repos:
+### External specifications
 
-* [Beacon APIs](https://github.com/ethereum/beacon-apis)
-* [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
-* [Beacon Metrics](https://github.com/ethereum/beacon-metrics/)
+Additional specifications and standards outside of requisite client
+functionality can be found in the following repositories:
 
-## Design goals
+- [Beacon APIs](https://github.com/ethereum/beacon-apis)
+- [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
+- [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
+- [Builder Specs](https://github.com/ethereum/builder-specs)
 
-The following are the broad design goals for the Ethereum proof-of-stake consensus specifications:
-* to minimize complexity, even at the cost of some losses in efficiency
-* to remain live through major network partitions and when very large portions of nodes go offline
-* to select all components such that they are either quantum secure or can be easily swapped out for quantum secure counterparts when available
-* to utilize crypto and design techniques that allow for a large participation of validators in total and per unit time
-* to allow for a typical consumer laptop with `O(C)` resources to process/validate `O(1)` shards (including any system level validation such as the beacon chain)
+### Reference tests
 
-## Useful external resources
+Reference tests built from the executable Python specifications are available in
+the release assets for each release in this repository. There are also *nightly*
+reference tests which are built from the latest version of the specifications
+[here](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml).
 
-* [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
-* [Phase 0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
-* [Combining GHOST and Casper paper](https://arxiv.org/abs/2003.03052)
+## Contributors
 
-## For spec contributors
+### Prerequisites
 
-Documentation on the different components used during spec writing can be found here:
-* [YAML Test Generators](tests/generators/README.md)
-* [Executable Python Spec, with Py-tests](tests/core/pyspec/README.md)
+This project uses `uv` ([docs.astral.sh/uv](https://docs.astral.sh/uv/)) to
+manage its dependencies and virtual environment. `uv` can
+[download Python](https://docs.astral.sh/uv/guides/install-python/#installing-a-specific-version)
+for your target platform if one of the required versions (3.10-3.13) is not
+available natively.
 
-## Online viewer of the latest release (latest `master` branch)
+`uv` can be installed via curl (recommended over a pip-install as it can
+self-update and manage Python versions):
 
-[Ethereum Consensus Specs](https://ethereum.github.io/consensus-specs/)
+```console
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
-## Consensus spec tests
+### Installation and usage
 
-Conformance tests built from the executable python spec are available in the [Ethereum Proof-of-Stake Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests) repo. Compressed tarballs are available in [releases](https://github.com/ethereum/consensus-spec-tests/releases).
+Clone the repository with:
+
+```bash
+git clone https://github.com/ethereum/consensus-specs.git
+```
+
+Switch to the directory:
+
+```bash
+cd consensus-specs
+```
+
+View the help output:
+
+```bash
+make help
+```
+
+### Design goals
+
+The following are the broad design goals for the Ethereum proof-of-stake
+consensus specifications:
+
+- Minimize complexity, even at the cost of some losses in efficiency.
+- Remain live through major network partitions and when very large portions of
+  nodes go offline.
+- Select components that are quantum secure or easily swappable for
+  quantum-secure alternatives.
+- Utilize crypto and design techniques that allow for a large participation of
+  validators.
+- Minimize hardware requirements such that a consumer laptop can participate.
+
+### Useful resources
+
+- [Design Rationale](https://notes.ethereum.org/s/rkhCgQteN#)
+- [Phase0 Onboarding Document](https://notes.ethereum.org/s/Bkn3zpwxB)
+- [Combining GHOST and Casper paper](https://arxiv.org/abs/2003.03052)
+- [Specifications viewer (mkdocs)](https://ethereum.github.io/consensus-specs/)
+- [Specifications viewer (jtraglia)](https://jtraglia.github.io/eth-spec-viewer/)
+- [The Eth2 Book](https://eth2book.info)
+- [PySpec Tests](tests/core/pyspec/README.md)

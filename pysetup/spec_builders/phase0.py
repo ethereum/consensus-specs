@@ -1,5 +1,5 @@
-from .base import BaseSpecBuilder
 from ..constants import PHASE0
+from .base import BaseSpecBuilder
 
 
 class Phase0SpecBuilder(BaseSpecBuilder):
@@ -7,13 +7,14 @@ class Phase0SpecBuilder(BaseSpecBuilder):
 
     @classmethod
     def imports(cls, preset_name: str) -> str:
-        return '''from lru import LRU
+        return """from lru import LRU
+from collections import defaultdict
 from dataclasses import (
     dataclass,
     field,
 )
 from typing import (
-    Any, Callable, Dict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple, Final
+    Any, Callable, Dict, DefaultDict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple, Final
 )
 
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
@@ -23,13 +24,13 @@ from eth2spec.utils.ssz.ssz_typing import (
 from eth2spec.utils.ssz.ssz_typing import Bitvector  # noqa: F401
 from eth2spec.utils import bls
 from eth2spec.utils.hash_function import hash
-'''
+"""
 
     @classmethod
     def preparations(cls) -> str:
-        return  '''
+        return """
 SSZObject = TypeVar('SSZObject', bound=View)
-'''
+"""
 
     @classmethod
     def sundry_functions(cls) -> str:
@@ -49,7 +50,6 @@ def cache_this(key_fn, value_fn, lru_size):  # type: ignore
 
     def wrapper(*args, **kw):  # type: ignore
         key = key_fn(*args, **kw)
-        nonlocal cache_dict
         if key not in cache_dict:
             cache_dict[key] = value_fn(*args, **kw)
         return cache_dict[key]

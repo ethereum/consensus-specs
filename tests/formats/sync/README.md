@@ -1,3 +1,4 @@
 # Sync tests
 
-It re-uses the [fork choice test format](../fork_choice/README.md) to apply the test script.
+It reuses the [fork choice test format](../fork_choice/README.md) to apply the
+test script.

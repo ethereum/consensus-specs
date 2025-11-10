@@ -5,12 +5,11 @@ venv
 .venv
 /.pytest_cache
 *.swp
+.eth2spec
 
 build/
 output/
 dist/
-
-consensus-spec-tests/
 
 .pytest_cache
 .mypy_cache
@@ -22,9 +21,9 @@ tests/core/pyspec/eth2spec/bellatrix/
 tests/core/pyspec/eth2spec/capella/
 tests/core/pyspec/eth2spec/deneb/
 tests/core/pyspec/eth2spec/electra/
-tests/core/pyspec/eth2spec/whisk/
-tests/core/pyspec/eth2spec/eip7594/
-tests/core/pyspec/eth2spec/eip6800/
+tests/core/pyspec/eth2spec/fulu/
+tests/core/pyspec/eth2spec/gloas/
+tests/core/pyspec/eth2spec/eip*/
 
 # coverage reports
 .htmlcov

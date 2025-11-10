@@ -51,7 +51,7 @@ def registration_contract(w3, tester):
         abi=contract_abi,
         bytecode=contract_bytecode)
     tx_hash = registration.constructor().transact()
-    tx_receipt = w3.eth.waitForTransactionReceipt(tx_hash)
+    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
     registration_deployed = w3.eth.contract(
         address=tx_receipt.contractAddress,
         abi=contract_abi

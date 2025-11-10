@@ -1,23 +1,17 @@
 # Capella Light Client -- Full Node
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Helper functions](#helper-functions)
   - [Modified `block_to_light_client_header`](#modified-block_to_light_client_header)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This upgrade adds information about the execution payload to light client data as part of the Capella upgrade.
+This upgrade adds information about the execution payload to light client data
+as part of the Capella upgrade.
 
 ## Helper functions
 
@@ -47,7 +41,8 @@ def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
             withdrawals_root=hash_tree_root(payload.withdrawals),
         )
         execution_branch = ExecutionBranch(
-            compute_merkle_proof(block.message.body, EXECUTION_PAYLOAD_GINDEX))
+            compute_merkle_proof(block.message.body, EXECUTION_PAYLOAD_GINDEX)
+        )
     else:
         # Note that during fork transitions, `finalized_header` may still point to earlier forks.
         # While Bellatrix blocks also contain an `ExecutionPayload` (minus `withdrawals_root`),

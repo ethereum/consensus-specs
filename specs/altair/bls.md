@@ -1,10 +1,6 @@
 # Altair -- BLS extensions
 
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Constants](#constants)
@@ -12,19 +8,20 @@
   - [`eth_aggregate_pubkeys`](#eth_aggregate_pubkeys)
   - [`eth_fast_aggregate_verify`](#eth_fast_aggregate_verify)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-A number of extensions are defined to handle BLS signatures in the Altair upgrade.
+A number of extensions are defined to handle BLS signatures in the Altair
+upgrade.
 
-Knowledge of the [phase 0 specification](../phase0/beacon-chain.md) is assumed, including type definitions.
+Knowledge of the [phase 0 specification](../phase0/beacon-chain.md) is assumed,
+including type definitions.
 
 ## Constants
 
-| Name | Value |
-| - | - |
+| Name                   | Value                                  |
+| ---------------------- | -------------------------------------- |
 | `G2_POINT_AT_INFINITY` | `BLSSignature(b'\xc0' + b'\x00' * 95)` |
 
 ## Extensions
@@ -40,7 +37,7 @@ def eth_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
     """
     Return the aggregate public key for the public keys in ``pubkeys``.
 
-    NOTE: the ``+`` operation should be interpreted as elliptic curve point addition, which takes as input
+    Note: the ``+`` operation should be interpreted as elliptic curve point addition, which takes as input
     elliptic curve points that must be decoded from the input ``BLSPubkey``s.
     This implementation is for demonstrative purposes only and ignores encoding/decoding concerns.
     Refer to the BLS signature draft standard for more information.
@@ -58,7 +55,9 @@ def eth_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:
 ### `eth_fast_aggregate_verify`
 
 ```python
-def eth_fast_aggregate_verify(pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature) -> bool:
+def eth_fast_aggregate_verify(
+    pubkeys: Sequence[BLSPubkey], message: Bytes32, signature: BLSSignature
+) -> bool:
     """
     Wrapper to ``bls.FastAggregateVerify`` accepting the ``G2_POINT_AT_INFINITY`` signature when ``pubkeys`` is empty.
     """

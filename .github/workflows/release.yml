@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    timeout-minutes: 1440 # 24 hours
+    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
+    permissions:
+      contents: write
+      packages: write
+      pull-requests: read
+
+    steps:
+      # Clone specs
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          path: "consensus-specs"
+
+      # Setup python
+      - name: Set up Python
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          python-version-file: "consensus-specs/pyproject.toml"
+
+      - name: Install uv ${{ vars.UV_VERSION }}
+        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7.1.2
+        with:
+          enable-cache: true
+          version: ${{ vars.UV_VERSION }}
+
+      # Check the tag matches the version
+      - name: Version check
+        run: |
+          tag="${{ github.ref_name }}"
+          version="v$(cat consensus-specs/tests/core/pyspec/eth2spec/VERSION.txt)"
+          if [ "$tag" != "$version" ]; then
+            echo "Tag ($tag) does not match version ($version)"
+            exit 1
+          fi
+
+      # Ensure framework tests pass
+      - name: Run tests for framework
+        run: |
+          cd consensus-specs
+          make test component=fw
+
+      # Ensure minimal tests pass
+      - name: Run tests for minimal
+        run: |
+          cd consensus-specs
+          make test component=pyspec preset=minimal
+
+      # Ensure mainnet tests pass
+      - name: Run tests for mainnet
+        run: |
+          cd consensus-specs
+          make test component=pyspec preset=mainnet
+
+      # Write reference tests to the spec tests repo
+      - name: Generate reference tests
+        run: |
+          cd consensus-specs
+          make reftests verbose=true
+
+      # Make tarballs
+      - name: Archive configurations
+        run: |
+          cd consensus-spec-tests
+          tar -czvf general.tar.gz tests/general
+          tar -czvf minimal.tar.gz tests/minimal
+          tar -czvf mainnet.tar.gz tests/mainnet
+
+      # Publish the specs release. We use release-drafter to
+      # organize PRs into the appropriate section based on PR labels
+      - name: Publish specs release
+        uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5 # v6.1.0
+        with:
+          name: ${{ github.ref_name }}
+          tag: ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          publish: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Upload spec test tarballs to the specs release
+      - name: Upload spec test tarballs
+        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            consensus-spec-tests/general.tar.gz
+            consensus-spec-tests/minimal.tar.gz
+            consensus-spec-tests/mainnet.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

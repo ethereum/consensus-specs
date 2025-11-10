@@ -1,7 +1,13 @@
 from copy import deepcopy
 
-from eth2spec.test.context import spec_state_test, expect_assertion_error, with_all_phases
+from eth2spec.test.context import expect_assertion_error, spec_state_test, with_all_phases
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
+from eth2spec.test.helpers.execution_payload import (
+    build_empty_execution_payload,
+    compute_el_block_hash,
+    compute_el_block_hash_for_block,
+)
+from eth2spec.test.helpers.forks import is_post_bellatrix, is_post_gloas
 from eth2spec.test.helpers.state import next_slot
 
 
@@ -20,16 +26,16 @@ def run_block_header_processing(spec, state, block, prepare_state=True, valid=Tr
     if prepare_state:
         prepare_state_for_header_processing(spec, state)
 
-    yield 'pre', state
-    yield 'block', block
+    yield "pre", state
+    yield "block", block
 
     if not valid:
         expect_assertion_error(lambda: spec.process_block_header(state, block))
-        yield 'post', None
+        yield "post", None
         return
 
     spec.process_block_header(state, block)
-    yield 'post', state
+    yield "post", state
 
 
 @with_all_phases
@@ -64,7 +70,14 @@ def test_invalid_proposer_index(spec, state):
 @spec_state_test
 def test_invalid_parent_root(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
-    block.parent_root = b'\12' * 32  # invalid prev root
+    block.parent_root = b"\12" * 32  # invalid prev root
+    if is_post_gloas(spec):
+        payload = build_empty_execution_payload(spec, state)
+        block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
+            spec, payload, state
+        )
+    elif is_post_bellatrix(spec):
+        block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
     yield from run_block_header_processing(spec, state, block, valid=False)
 
@@ -81,8 +94,19 @@ def test_invalid_multiple_blocks_single_slot(spec, state):
 
     child_block = block.copy()
     child_block.parent_root = block.hash_tree_root()
+    if is_post_gloas(spec):
+        payload = build_empty_execution_payload(spec, state)
+        child_block.body.signed_execution_payload_bid.message.block_hash = compute_el_block_hash(
+            spec, payload, state
+        )
+    elif is_post_bellatrix(spec):
+        child_block.body.execution_payload.block_hash = compute_el_block_hash_for_block(
+            spec, child_block
+        )
 
-    yield from run_block_header_processing(spec, state, child_block, prepare_state=False, valid=False)
+    yield from run_block_header_processing(
+        spec, state, child_block, prepare_state=False, valid=False
+    )
 
 
 @with_all_phases

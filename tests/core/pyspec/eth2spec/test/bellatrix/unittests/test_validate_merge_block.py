@@ -1,5 +1,8 @@
-from typing import Optional
-from eth2spec.utils.ssz.ssz_typing import uint256, Bytes32
+from eth2spec.test.context import (
+    spec_configured_state_test,
+    spec_state_test,
+    with_bellatrix_only,
+)
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
@@ -9,14 +12,11 @@ from eth2spec.test.helpers.execution_payload import (
 from eth2spec.test.helpers.pow_block import (
     prepare_random_pow_chain,
 )
-from eth2spec.test.context import (
-    spec_state_test,
-    with_bellatrix_and_later,
-    spec_configured_state_test
+from eth2spec.utils.ssz.ssz_typing import Bytes32, uint256
+
+TERMINAL_BLOCK_HASH_CONFIG_VAR = (
+    "0x0000000000000000000000000000000000000000000000000000000000000001"
 )
-
-
-TERMINAL_BLOCK_HASH_CONFIG_VAR = '0x0000000000000000000000000000000000000000000000000000000000000001'
 TERMINAL_BLOCK_HASH = Bytes32(TERMINAL_BLOCK_HASH_CONFIG_VAR)
 
 
@@ -26,7 +26,7 @@ def run_validate_merge_block(spec, pow_chain, beacon_block, valid=True):
     If ``valid == False``, run expecting ``AssertionError``
     """
 
-    def get_pow_block(hash: spec.Bytes32) -> Optional[spec.PowBlock]:
+    def get_pow_block(hash: spec.Bytes32) -> spec.PowBlock | None:
         for block in pow_chain:
             if block.block_hash == hash:
                 return block
@@ -52,7 +52,7 @@ def run_validate_merge_block(spec, pow_chain, beacon_block, valid=True):
         assert assertion_error_caught
 
 
-@with_bellatrix_and_later
+@with_bellatrix_only
 @spec_state_test
 def test_validate_merge_block_success(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
@@ -60,11 +60,14 @@ def test_validate_merge_block_success(spec, state):
     pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = build_empty_block_for_next_slot(spec, state)
     block.body.execution_payload.parent_hash = pow_chain.head().block_hash
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash(
+        spec, block.body.execution_payload, state
+    )
+
     run_validate_merge_block(spec, pow_chain, block)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_only
 @spec_state_test
 def test_validate_merge_block_fail_block_lookup(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
@@ -74,18 +77,21 @@ def test_validate_merge_block_fail_block_lookup(spec, state):
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_only
 @spec_state_test
 def test_validate_merge_block_fail_parent_block_lookup(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 1)
     pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = build_empty_block_for_next_slot(spec, state)
     block.body.execution_payload.parent_hash = pow_chain.head().block_hash
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash(
+        spec, block.body.execution_payload, state
+    )
+
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
 
-@with_bellatrix_and_later
+@with_bellatrix_only
 @spec_state_test
 def test_validate_merge_block_fail_after_terminal(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
@@ -93,15 +99,20 @@ def test_validate_merge_block_fail_after_terminal(spec, state):
     pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY + uint256(1)
     block = build_empty_block_for_next_slot(spec, state)
     block.body.execution_payload.parent_hash = pow_chain.head().block_hash
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash(
+        spec, block.body.execution_payload, state
+    )
+
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
 
-@with_bellatrix_and_later
-@spec_configured_state_test({
-    'TERMINAL_BLOCK_HASH': TERMINAL_BLOCK_HASH_CONFIG_VAR,
-    'TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH': '0'
-})
+@with_bellatrix_only
+@spec_configured_state_test(
+    {
+        "TERMINAL_BLOCK_HASH": TERMINAL_BLOCK_HASH_CONFIG_VAR,
+        "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH": "0",
+    }
+)
 def test_validate_merge_block_tbh_override_success(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
     # should fail if TTD check is reached
@@ -110,15 +121,20 @@ def test_validate_merge_block_tbh_override_success(spec, state):
     pow_chain.head().block_hash = TERMINAL_BLOCK_HASH
     block = build_empty_block_for_next_slot(spec, state)
     block.body.execution_payload.parent_hash = pow_chain.head().block_hash
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash(
+        spec, block.body.execution_payload, state
+    )
+
     run_validate_merge_block(spec, pow_chain, block)
 
 
-@with_bellatrix_and_later
-@spec_configured_state_test({
-    'TERMINAL_BLOCK_HASH': TERMINAL_BLOCK_HASH_CONFIG_VAR,
-    'TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH': '0'
-})
+@with_bellatrix_only
+@spec_configured_state_test(
+    {
+        "TERMINAL_BLOCK_HASH": TERMINAL_BLOCK_HASH_CONFIG_VAR,
+        "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH": "0",
+    }
+)
 def test_validate_merge_block_fail_parent_hash_is_not_tbh(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
     # shouldn't fail if TTD check is reached
@@ -126,15 +142,20 @@ def test_validate_merge_block_fail_parent_hash_is_not_tbh(spec, state):
     pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = build_empty_block_for_next_slot(spec, state)
     block.body.execution_payload.parent_hash = pow_chain.head().block_hash
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash(
+        spec, block.body.execution_payload, state
+    )
+
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
 
-@with_bellatrix_and_later
-@spec_configured_state_test({
-    'TERMINAL_BLOCK_HASH': TERMINAL_BLOCK_HASH_CONFIG_VAR,
-    'TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH': '1'
-})
+@with_bellatrix_only
+@spec_configured_state_test(
+    {
+        "TERMINAL_BLOCK_HASH": TERMINAL_BLOCK_HASH_CONFIG_VAR,
+        "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH": "1",
+    }
+)
 def test_validate_merge_block_terminal_block_hash_fail_activation_not_reached(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
     # shouldn't fail if TTD check is reached
@@ -143,15 +164,20 @@ def test_validate_merge_block_terminal_block_hash_fail_activation_not_reached(sp
     pow_chain.head().block_hash = TERMINAL_BLOCK_HASH
     block = build_empty_block_for_next_slot(spec, state)
     block.body.execution_payload.parent_hash = pow_chain.head().block_hash
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash(
+        spec, block.body.execution_payload, state
+    )
+
     run_validate_merge_block(spec, pow_chain, block, valid=False)
 
 
-@with_bellatrix_and_later
-@spec_configured_state_test({
-    'TERMINAL_BLOCK_HASH': TERMINAL_BLOCK_HASH_CONFIG_VAR,
-    'TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH': '1'
-})
+@with_bellatrix_only
+@spec_configured_state_test(
+    {
+        "TERMINAL_BLOCK_HASH": TERMINAL_BLOCK_HASH_CONFIG_VAR,
+        "TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH": "1",
+    }
+)
 def test_validate_merge_block_fail_activation_not_reached_parent_hash_is_not_tbh(spec, state):
     pow_chain = prepare_random_pow_chain(spec, 2)
     # shouldn't fail if TTD check is reached
@@ -159,5 +185,8 @@ def test_validate_merge_block_fail_activation_not_reached_parent_hash_is_not_tbh
     pow_chain.head().total_difficulty = spec.config.TERMINAL_TOTAL_DIFFICULTY
     block = build_empty_block_for_next_slot(spec, state)
     block.body.execution_payload.parent_hash = pow_chain.head().block_hash
-    block.body.execution_payload.block_hash = compute_el_block_hash(spec, block.body.execution_payload, state)
+    block.body.execution_payload.block_hash = compute_el_block_hash(
+        spec, block.body.execution_payload, state
+    )
+
     run_validate_merge_block(spec, pow_chain, block, valid=False)

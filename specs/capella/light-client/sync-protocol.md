@@ -1,43 +1,46 @@
 # Capella Light Client -- Sync Protocol
 
-**Notice**: This document is a work-in-progress for researchers and implementers.
-
-## Table of contents
-
-<!-- TOC -->
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
 - [Containers](#containers)
   - [Modified `LightClientHeader`](#modified-lightclientheader)
+  - [Modified `LightClientBootstrap`](#modified-lightclientbootstrap)
+  - [Modified `LightClientUpdate`](#modified-lightclientupdate)
+  - [Modified `LightClientFinalityUpdate`](#modified-lightclientfinalityupdate)
+  - [Modified `LightClientOptimisticUpdate`](#modified-lightclientoptimisticupdate)
+  - [Modified `LightClientStore`](#modified-lightclientstore)
 - [Helper functions](#helper-functions)
   - [`get_lc_execution_root`](#get_lc_execution_root)
   - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-<!-- /TOC -->
+<!-- mdformat-toc end -->
 
 ## Introduction
 
-This upgrade adds information about the execution payload to light client data as part of the Capella upgrade. It extends the [Altair Light Client specifications](../../altair/light-client/sync-protocol.md). The [fork document](./fork.md) explains how to upgrade existing Altair based deployments to Capella.
+This upgrade adds information about the execution payload to light client data
+as part of the Capella upgrade. It extends the
+[Altair Light Client specifications](../../altair/light-client/sync-protocol.md).
+The [fork document](./fork.md) explains how to upgrade existing Altair based
+deployments to Capella.
 
 Additional documents describes the impact of the upgrade on certain roles:
+
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 
 ## Custom types
 
-| Name | SSZ equivalent | Description |
-| - | - | - |
+| Name              | SSZ equivalent                                         | Description                                                   |
+| ----------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
 | `ExecutionBranch` | `Vector[Bytes32, floorlog2(EXECUTION_PAYLOAD_GINDEX)]` | Merkle branch of `execution_payload` within `BeaconBlockBody` |
 
 ## Constants
 
-| Name | Value |
-| - | - |
+| Name                       | Value                                                                |
+| -------------------------- | -------------------------------------------------------------------- |
 | `EXECUTION_PAYLOAD_GINDEX` | `get_generalized_index(BeaconBlockBody, 'execution_payload')` (= 25) |
 
 ## Containers
@@ -46,11 +49,76 @@ Additional documents describes the impact of the upgrade on certain roles:
 
 ```python
 class LightClientHeader(Container):
-    # Beacon block header
     beacon: BeaconBlockHeader
-    # Execution payload header corresponding to `beacon.body_root` (from Capella onward)
+    # [New in Capella]
     execution: ExecutionPayloadHeader
+    # [New in Capella]
     execution_branch: ExecutionBranch
+```
+
+### Modified `LightClientBootstrap`
+
+```python
+class LightClientBootstrap(Container):
+    # [Modified in Capella]
+    header: LightClientHeader
+    current_sync_committee: SyncCommittee
+    current_sync_committee_branch: CurrentSyncCommitteeBranch
+```
+
+### Modified `LightClientUpdate`
+
+```python
+class LightClientUpdate(Container):
+    # [Modified in Capella]
+    attested_header: LightClientHeader
+    next_sync_committee: SyncCommittee
+    next_sync_committee_branch: NextSyncCommitteeBranch
+    # [Modified in Capella]
+    finalized_header: LightClientHeader
+    finality_branch: FinalityBranch
+    sync_aggregate: SyncAggregate
+    signature_slot: Slot
+```
+
+### Modified `LightClientFinalityUpdate`
+
+```python
+class LightClientFinalityUpdate(Container):
+    # [Modified in Capella]
+    attested_header: LightClientHeader
+    # [Modified in Capella]
+    finalized_header: LightClientHeader
+    finality_branch: FinalityBranch
+    sync_aggregate: SyncAggregate
+    signature_slot: Slot
+```
+
+### Modified `LightClientOptimisticUpdate`
+
+```python
+class LightClientOptimisticUpdate(Container):
+    # [Modified in Capella]
+    attested_header: LightClientHeader
+    sync_aggregate: SyncAggregate
+    signature_slot: Slot
+```
+
+### Modified `LightClientStore`
+
+```python
+@dataclass
+class LightClientStore(object):
+    # [Modified in Capella]
+    finalized_header: LightClientHeader
+    current_sync_committee: SyncCommittee
+    next_sync_committee: SyncCommittee
+    # [Modified in Capella]
+    best_valid_update: Optional[LightClientUpdate]
+    # [Modified in Capella]
+    optimistic_header: LightClientHeader
+    previous_max_active_participants: uint64
+    current_max_active_participants: uint64
 ```
 
 ## Helper functions

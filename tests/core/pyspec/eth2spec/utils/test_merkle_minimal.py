@@ -1,6 +1,7 @@
 import pytest
-from .merkle_minimal import zerohashes, merkleize_chunks, get_merkle_root
+
 from .hash_function import hash
+from .merkle_minimal import get_merkle_root, merkleize_chunks, zerohashes
 
 
 def h(a: bytes, b: bytes) -> bytes:
@@ -9,7 +10,7 @@ def h(a: bytes, b: bytes) -> bytes:
 
 def e(v: int) -> bytes:
     # prefix with 0xfff... to make it non-zero
-    return b'\xff' * 28 + v.to_bytes(length=4, byteorder='little')
+    return b"\xff" * 28 + v.to_bytes(length=4, byteorder="little")
 
 
 def z(i: int) -> bytes:
@@ -56,12 +57,19 @@ cases = [
     (6, 16, h(h(h(h(e(0), e(1)), h(e(2), e(3))), h(h(e(4), e(5)), h(z(0), z(0)))), z(3))),
     (7, 16, h(h(h(h(e(0), e(1)), h(e(2), e(3))), h(h(e(4), e(5)), h(e(6), z(0)))), z(3))),
     (8, 16, h(h(h(h(e(0), e(1)), h(e(2), e(3))), h(h(e(4), e(5)), h(e(6), e(7)))), z(3))),
-    (9, 16, h(h(h(h(e(0), e(1)), h(e(2), e(3))), h(h(e(4), e(5)), h(e(6), e(7)))), h(h(h(e(8), z(0)), z(1)), z(2)))),
+    (
+        9,
+        16,
+        h(
+            h(h(h(e(0), e(1)), h(e(2), e(3))), h(h(e(4), e(5)), h(e(6), e(7)))),
+            h(h(h(e(8), z(0)), z(1)), z(2)),
+        ),
+    ),
 ]
 
 
 @pytest.mark.parametrize(
-    'count,limit,value',
+    "count,limit,value",
     cases,
 )
 def test_merkleize_chunks_and_get_merkle_root(count, limit, value):

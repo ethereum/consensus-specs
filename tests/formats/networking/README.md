@@ -1,6 +1,11 @@
 # Networking tests
 
-The aim of the networking tests is to set a base-line on what really needs to pass, i.e. the essentials.
+The aim of the networking tests is to set a base-line on what really needs to
+pass, i.e. the essentials.
 
 Handlers:
-- [`get_custody_columns`](./get_custody_columns.md): `get_custody_columns` helper tests
+
+- [`compute_columns_for_custody_group`](./compute_columns_for_custody_group.md):
+  `compute_columns_for_custody_group` helper tests
+- [`get_custody_groups`](./get_custody_groups.md): `get_custody_groups` helper
+  tests
