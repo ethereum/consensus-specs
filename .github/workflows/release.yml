@@ -28,7 +28,7 @@ jobs:
           python-version-file: "consensus-specs/pyproject.toml"
 
       - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7.1.2
+        uses: astral-sh/setup-uv@5a7eac68fb9809dea845d802897dc5c723910fa3 # v7.1.3
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
@@ -89,7 +89,7 @@ jobs:
 
       # Upload spec test tarballs to the specs release
       - name: Upload spec test tarballs
-        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
+        uses: softprops/action-gh-release@5be0e66d93ac7ed76da52eca8bb058f665c3a5fe # v2.4.2
         with:
           tag_name: ${{ github.ref_name }}
           files: |
