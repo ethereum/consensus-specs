@@ -84,9 +84,9 @@ future assignments by noting their assigned PTC slot.
 
 All validator responsibilities remain unchanged other than the following:
 
-- Proposers are no longer required to broadcast `BlobSidecar` objects, as this
-  becomes a builder's duty.
-- Some validators are selected per slot to become PTC members, these validators
+- Proposers are no longer required to broadcast `DataColumnSidecar` objects, as
+  this becomes a builder's duty.
+- Some attesters are selected per slot to become PTC members, these validators
   must broadcast `PayloadAttestationMessage` objects during the assigned slot
   before the deadline of `get_attestation_due_ms(epoch)` milliseconds into the
   slot.
