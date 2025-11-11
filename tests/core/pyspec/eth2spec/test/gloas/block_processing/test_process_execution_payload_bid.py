@@ -384,10 +384,13 @@ def test_process_block_then_slash_non_timely_builder(spec, state):
     )
 
     block.body.signed_execution_payload_bid = signed_bid
+    yield "pre", state
+    yield "block", block
     spec.process_block(state, block)
     # Slash validator
     spec.slash_validator(state, builder_index)
-
+    yield "post", state
+    
     payment_slot = spec.SLOTS_PER_EPOCH + (block.slot % spec.SLOTS_PER_EPOCH)
     payment = state.builder_pending_payments[payment_slot]
     assert payment.withdrawal.amount == value
