@@ -61,7 +61,7 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 | `PAYLOAD_STATUS_EMPTY`     | `PayloadStatus(1)`      |
 | `PAYLOAD_STATUS_FULL`      | `PayloadStatus(2)`      |
 
-## Containers
+## Helpers
 
 ### New `ForkChoiceNode`
 

@@ -38,7 +38,6 @@
     - [New `is_parent_block_full`](#new-is_parent_block_full)
   - [Misc](#misc-2)
     - [Modified `get_pending_balance_to_withdraw`](#modified-get_pending_balance_to_withdraw)
-    - [New `remove_flag`](#new-remove_flag)
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
     - [New `compute_balance_weighted_acceptance`](#new-compute_balance_weighted_acceptance)
     - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
@@ -436,14 +435,6 @@ def get_pending_balance_to_withdraw(state: BeaconState, validator_index: Validat
             if payment.withdrawal.builder_index == validator_index
         )
     )
-```
-
-#### New `remove_flag`
-
-```python
-def remove_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlags:
-    flag = ParticipationFlags(2**flag_index)
-    return flags & ~flag
 ```
 
 #### New `compute_balance_weighted_selection`
