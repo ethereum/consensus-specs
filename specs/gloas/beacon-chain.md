@@ -38,7 +38,6 @@
     - [New `is_parent_block_full`](#new-is_parent_block_full)
   - [Misc](#misc-2)
     - [Modified `get_pending_balance_to_withdraw`](#modified-get_pending_balance_to_withdraw)
-    - [New `remove_flag`](#new-remove_flag)
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
     - [New `compute_balance_weighted_acceptance`](#new-compute_balance_weighted_acceptance)
     - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
@@ -69,8 +68,6 @@
         - [New `process_payload_attestation`](#new-process_payload_attestation)
       - [Proposer Slashing](#proposer-slashing)
         - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
-    - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete)
-    - [Modified `validate_merge_block`](#modified-validate_merge_block)
   - [Execution payload processing](#execution-payload-processing)
     - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
     - [New `process_execution_payload`](#new-process_execution_payload)
@@ -199,6 +196,7 @@ class ExecutionPayloadBid(Container):
     builder_index: ValidatorIndex
     slot: Slot
     value: Gwei
+    execution_payment: Gwei
     blob_kzg_commitments_root: Root
 ```
 
@@ -436,14 +434,6 @@ def get_pending_balance_to_withdraw(state: BeaconState, validator_index: Validat
             if payment.withdrawal.builder_index == validator_index
         )
     )
-```
-
-#### New `remove_flag`
-
-```python
-def remove_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlags:
-    flag = ParticipationFlags(2**flag_index)
-    return flags & ~flag
 ```
 
 #### New `compute_balance_weighted_selection`
@@ -1209,53 +1199,6 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         state.builder_pending_payments[payment_index] = BuilderPendingPayment()
 
     slash_validator(state, header_1.proposer_index)
-```
-
-#### Modified `is_merge_transition_complete`
-
-*Note*: `is_merge_transition_complete` is modified only for testing purposes to
-add the blob kzg commitments root for an empty list
-
-```python
-def is_merge_transition_complete(state: BeaconState) -> bool:
-    bid = ExecutionPayloadBid()
-    kzgs = List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]()
-    bid.blob_kzg_commitments_root = kzgs.hash_tree_root()
-
-    return state.latest_execution_payload_bid != bid
-```
-
-#### Modified `validate_merge_block`
-
-*Note*: `validate_merge_block` is modified to use the new
-`signed_execution_payload_bid` field in the `BeaconBlockBody`.
-
-```python
-def validate_merge_block(block: BeaconBlock) -> None:
-    """
-    Check the parent PoW block of execution payload is a valid terminal PoW block.
-
-    Note: Unavailable PoW block(s) may later become available,
-    and a client software MAY delay a call to ``validate_merge_block``
-    until the PoW block(s) become available.
-    """
-    if TERMINAL_BLOCK_HASH != Hash32():
-        # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
-        assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
-        assert (
-            block.body.signed_execution_payload_bid.message.parent_block_hash == TERMINAL_BLOCK_HASH
-        )
-        return
-
-    # [Modified in Gloas:EIP7732]
-    pow_block = get_pow_block(block.body.signed_execution_payload_bid.message.parent_block_hash)
-    # Check if `pow_block` is available
-    assert pow_block is not None
-    pow_parent = get_pow_block(pow_block.parent_hash)
-    # Check if `pow_parent` is available
-    assert pow_parent is not None
-    # Check if `pow_block` is a valid terminal PoW block
-    assert is_valid_terminal_pow_block(pow_block, pow_parent)
 ```
 
 ### Execution payload processing

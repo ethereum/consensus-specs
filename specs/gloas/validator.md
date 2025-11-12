@@ -8,6 +8,7 @@
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
 - [Validator assignment](#validator-assignment)
+  - [Payload timeliness committee](#payload-timeliness-committee)
   - [Lookahead](#lookahead)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Attestation](#attestation)
@@ -43,6 +44,8 @@ validator" to implement Gloas.
 | `PAYLOAD_ATTESTATION_DUE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
 
 ## Validator assignment
+
+### Payload timeliness committee
 
 A validator may be a member of the new Payload Timeliness Committee (PTC) for a
 given slot. To check for PTC assignments, use
@@ -81,9 +84,9 @@ future assignments by noting their assigned PTC slot.
 
 All validator responsibilities remain unchanged other than the following:
 
-- Proposers are no longer required to broadcast `BlobSidecar` objects, as this
-  becomes a builder's duty.
-- Some validators are selected per slot to become PTC members, these validators
+- Proposers are no longer required to broadcast `DataColumnSidecar` objects, as
+  this becomes a builder's duty.
+- Some attesters are selected per slot to become PTC members, these validators
   must broadcast `PayloadAttestationMessage` objects during the assigned slot
   before the deadline of `get_attestation_due_ms(epoch)` milliseconds into the
   slot.

@@ -28,8 +28,8 @@ the Altair hard fork, introducing light client support and other improvements.
 
 The fork is triggered at epoch `ALTAIR_FORK_EPOCH`.
 
-Note that for the pure Altair networks, we don't apply `upgrade_to_altair` since
-it starts with Altair version logic.
+*Note*: For the pure Altair networks, the `upgrade_to_altair` function is
+applied to transition the genesis state to this fork.
 
 ### Upgrading the state
 
