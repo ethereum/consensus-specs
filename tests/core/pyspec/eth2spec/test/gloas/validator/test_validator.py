@@ -7,7 +7,7 @@ from eth2spec.test.context import (
     spec_state_test,
     spec_test,
     with_custom_state,
-    with_eip7805_and_later,
+    with_gloas_and_later,
 )
 from eth2spec.test.helpers.inclusion_list import get_empty_inclusion_list
 from eth2spec.test.helpers.keys import privkeys, pubkeys
@@ -44,7 +44,7 @@ def run_get_inclusion_committee_assignments(spec, state, epoch, valid=True):
             assert valid
 
 
-@with_eip7805_and_later
+@with_gloas_and_later
 @spec_test
 @with_custom_state(
     balances_fn=inclusion_committee_balances, threshold_fn=default_activation_threshold
@@ -55,7 +55,7 @@ def test_get_inclusion_committee_assignment_current_epoch(spec, state):
     run_get_inclusion_committee_assignments(spec, state, epoch, valid=True)
 
 
-@with_eip7805_and_later
+@with_gloas_and_later
 @spec_test
 @with_custom_state(
     balances_fn=inclusion_committee_balances, threshold_fn=default_activation_threshold
@@ -66,7 +66,7 @@ def test_get_inclusion_committee_assignment_next_epoch(spec, state):
     run_get_inclusion_committee_assignments(spec, state, epoch, valid=True)
 
 
-@with_eip7805_and_later
+@with_gloas_and_later
 @spec_test
 @with_custom_state(
     balances_fn=inclusion_committee_balances, threshold_fn=default_activation_threshold
@@ -77,7 +77,7 @@ def test_get_inclusion_committee_assignment_out_bound_epoch(spec, state):
     run_get_inclusion_committee_assignments(spec, state, epoch, valid=False)
 
 
-@with_eip7805_and_later
+@with_gloas_and_later
 @spec_state_test
 @always_bls
 def test_get_inclusion_list_signature(spec, state):
