@@ -364,14 +364,15 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     if is_post_gloas(spec):
         latest = state.latest_execution_payload_bid
         parent_hash = latest.parent_block_hash
+        if randao_mix is None:
+            randao_mix = state.latest_execution_payload_bid.prev_randao 
     else:
         latest = state.latest_execution_payload_header
         parent_hash = latest.block_hash
+        if randao_mix is None:
+            randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
     timestamp = spec.compute_time_at_slot(state, state.slot)
     empty_txs = spec.List[spec.Transaction, spec.MAX_TRANSACTIONS_PER_PAYLOAD]()
-
-    if randao_mix is None:
-        randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
 
     payload = spec.ExecutionPayload(
         parent_hash=parent_hash,
