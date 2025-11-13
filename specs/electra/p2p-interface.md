@@ -105,7 +105,7 @@ The following convenience variables are re-defined
 The following validations are added:
 
 - [REJECT] `len(committee_indices) == 1`, where
-  `committee_indices = get_committee_indices(aggregate)`.
+  `committee_indices = get_committee_indices(aggregate.committee_bits)`.
 - [REJECT] `aggregate.data.index == 0`
 
 ###### `blob_sidecar_{subnet_id}`
