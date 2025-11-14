@@ -100,7 +100,7 @@ The derivation of the `message-id` remains stable.
 
 Assuming the alias `aggregate = signed_aggregate_and_proof.message.aggregate`:
 
-The following convenience variables are re-defined
+The following convenience variables are re-defined:
 
 - `index = get_committee_indices(aggregate.committee_bits)[0]`
 
