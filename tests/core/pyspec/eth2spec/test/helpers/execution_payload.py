@@ -365,7 +365,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         latest = state.latest_execution_payload_bid
         parent_hash = latest.parent_block_hash
         if randao_mix is None:
-            randao_mix = state.latest_execution_payload_bid.prev_randao 
+            randao_mix = state.latest_execution_payload_bid.prev_randao
     else:
         latest = state.latest_execution_payload_header
         parent_hash = latest.block_hash
