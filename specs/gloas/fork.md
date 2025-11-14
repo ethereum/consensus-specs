@@ -74,7 +74,9 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         # [Modified in Gloas:EIP7732]
         # Removed `latest_execution_payload_header`
         # [New in Gloas:EIP7732]
-        latest_execution_payload_bid=ExecutionPayloadBid(),
+        latest_execution_payload_bid=ExecutionPayloadBid(
+            block_hash=pre.latest_execution_payload_header.block_hash,
+        ),
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         historical_summaries=pre.historical_summaries,
