@@ -191,6 +191,7 @@ class ExecutionPayloadBid(Container):
     parent_block_hash: Hash32
     parent_block_root: Root
     block_hash: Hash32
+    prev_randao: Bytes32
     fee_recipient: ExecutionAddress
     gas_limit: uint64
     builder_index: ValidatorIndex
@@ -984,6 +985,7 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
     # Verify that the bid is for the right parent block
     assert bid.parent_block_hash == state.latest_block_hash
     assert bid.parent_block_root == block.parent_root
+    assert bid.prev_randao == get_randao_mix(state, get_current_epoch(state))
 
     # Record the pending payment if there is some payment
     if amount > 0:
@@ -1253,6 +1255,7 @@ def process_execution_payload(
     committed_bid = state.latest_execution_payload_bid
     assert envelope.builder_index == committed_bid.builder_index
     assert committed_bid.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
+    assert committed_bid.prev_randao == payload.prev_randao
 
     # Verify the withdrawals root
     assert hash_tree_root(payload.withdrawals) == state.latest_withdrawals_root
@@ -1263,8 +1266,6 @@ def process_execution_payload(
     assert committed_bid.block_hash == payload.block_hash
     # Verify consistency of the parent hash with respect to the previous execution payload
     assert payload.parent_hash == state.latest_block_hash
-    # Verify prev_randao
-    assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
     # Verify commitments are under limit

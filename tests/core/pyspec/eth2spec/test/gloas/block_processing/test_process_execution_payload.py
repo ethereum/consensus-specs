@@ -169,7 +169,7 @@ def prepare_execution_payload_envelope(
     )
 
 
-def setup_state_with_payload_bid(spec, state, builder_index=None, value=None):
+def setup_state_with_payload_bid(spec, state, builder_index=None, value=None, prev_randao=None):
     """
     Helper to setup state with a committed execution payload bid.
     This simulates the state after process_execution_payload_bid has run.
@@ -180,12 +180,16 @@ def setup_state_with_payload_bid(spec, state, builder_index=None, value=None):
     if value is None:
         value = spec.Gwei(0)
 
+    if prev_randao is None:
+        prev_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
+
     # Create and set the latest execution payload bid
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
     bid = spec.ExecutionPayloadBid(
         parent_block_hash=state.latest_block_hash,
         parent_block_root=state.latest_block_header.hash_tree_root(),
         block_hash=spec.Hash32(),
+        prev_randao=prev_randao,
         fee_recipient=spec.ExecutionAddress(),
         gas_limit=spec.uint64(60000000),
         builder_index=builder_index,
@@ -829,6 +833,38 @@ def test_process_execution_payload_wrong_prev_randao(spec, state):
     execution_payload.gas_limit = state.latest_execution_payload_bid.gas_limit
     execution_payload.parent_hash = state.latest_block_hash
     execution_payload.prev_randao = spec.Bytes32(b"\x42" * 32)  # Wrong prev_randao
+
+    signed_envelope = prepare_execution_payload_envelope(
+        spec, state, builder_index=builder_index, execution_payload=execution_payload
+    )
+
+    yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
+def test_process_execution_payload_bid_prev_randao_mismatch(spec, state):
+    """
+    Test that committed_bid.prev_randao must equal payload.prev_randao
+    """
+    proposer_index = spec.get_beacon_proposer_index(state)
+    # Use a different validator as builder
+    builder_index = (proposer_index + 1) % len(state.validators)
+    make_validator_builder(spec, state, builder_index)
+
+    # Setup bid with one prev_randao value
+    bid_prev_randao = spec.Bytes32(b"\x11" * 32)
+    setup_state_with_payload_bid(
+        spec, state, builder_index, spec.Gwei(2300000), prev_randao=bid_prev_randao
+    )
+
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.block_hash = state.latest_execution_payload_bid.block_hash
+    execution_payload.gas_limit = state.latest_execution_payload_bid.gas_limit
+    execution_payload.parent_hash = state.latest_block_hash
+    # Set payload with a different prev_randao value
+    execution_payload.prev_randao = spec.Bytes32(b"\x22" * 32)
 
     signed_envelope = prepare_execution_payload_envelope(
         spec, state, builder_index=builder_index, execution_payload=execution_payload

@@ -323,10 +323,12 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
     # to distinguish it from the genesis block hash and have
     # is_parent_node_full correctly return False
     empty_payload_hash = spec.Hash32(b"\x01" + b"\x00" * 31)
+    prev_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
     return spec.ExecutionPayloadBid(
         parent_block_hash=state.latest_block_hash,
         parent_block_root=parent_block_root,
         block_hash=empty_payload_hash,
+        prev_randao=prev_randao,
         fee_recipient=spec.ExecutionAddress(),
         gas_limit=spec.uint64(0),
         builder_index=builder_index,
@@ -362,14 +364,15 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     if is_post_gloas(spec):
         latest = state.latest_execution_payload_bid
         parent_hash = latest.parent_block_hash
+        if randao_mix is None:
+            randao_mix = state.latest_execution_payload_bid.prev_randao
     else:
         latest = state.latest_execution_payload_header
         parent_hash = latest.block_hash
+        if randao_mix is None:
+            randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
     timestamp = spec.compute_time_at_slot(state, state.slot)
     empty_txs = spec.List[spec.Transaction, spec.MAX_TRANSACTIONS_PER_PAYLOAD]()
-
-    if randao_mix is None:
-        randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
 
     payload = spec.ExecutionPayload(
         parent_hash=parent_hash,
