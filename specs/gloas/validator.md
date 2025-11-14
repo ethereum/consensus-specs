@@ -129,14 +129,15 @@ top of a `state` MUST take the following actions in order to construct the
   `signed_execution_payload_bid` from a builder. The block proposer MAY obtain
   these signed messages by other off-protocol means.
 - The `signed_execution_payload_bid` MUST satisfy the verification conditions
-  found in `process_execution_payload_bid`, that is:
-  - For external builders, the header signature MUST be valid.
+  found in `process_execution_payload_bid` with the alias
+  `bid = signed_execution_payload_bid.message`, that is:
+  - For external builders, the signature MUST be valid.
   - For self-builds, the signature MUST be `bls.G2_POINT_AT_INFINITY` and the
-    bid amount MUST be zero.
-  - The builder balance can cover the header value.
-  - The header slot is for the proposal block slot.
-  - The header parent block hash equals the state's `latest_block_hash`.
-  - The header parent block root equals the current block's `parent_root`.
+    `bid.value` MUST be zero.
+  - The builder balance can cover the `bid.value`.
+  - The `bid.slot` is for the proposal block slot.
+  - The `bid.parent_block_hash` equals the state's `latest_block_hash`.
+  - The `bid.parent_block_root` equals the current block's `parent_root`.
 - Select one bid and set
   `body.signed_execution_payload_bid = signed_execution_payload_bid`.
 
