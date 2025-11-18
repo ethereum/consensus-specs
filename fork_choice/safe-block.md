@@ -20,12 +20,9 @@ This section describes an algorithm to find a safe block.
 
 ```python
 def get_safe_beacon_block_root(store: Store) -> Root:
-    # Use most recent justified block as a stopgap
-    return store.justified_checkpoint.root
+    # Use the most recent confirmed_root determined by the FCR algorithm
+    return store.confirmed_root
 ```
-
-*Note*: Currently safe block algorithm simply returns
-`store.justified_checkpoint.root` and is meant to be improved in the future.
 
 ## `get_safe_execution_block_hash`
 
