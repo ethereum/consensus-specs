@@ -99,7 +99,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         # [New in Gloas:EIP7732]
         latest_block_hash=pre.latest_execution_payload_header.block_hash,
         # [New in Gloas:EIP7732]
-        latest_withdrawals_root=Root(),
+        payload_expected_withdrawals=[],
     )
 
     return post

@@ -200,8 +200,9 @@ def setup_state_with_payload_bid(spec, state, builder_index=None, value=None, pr
     state.latest_execution_payload_bid = bid
 
     # Setup withdrawals root
-    empty_withdrawals = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD]()
-    state.latest_withdrawals_root = empty_withdrawals.hash_tree_root()
+    state.payload_expected_withdrawals = spec.List[
+        spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    ]()
 
     # Add pending payment if value > 0
     if value > 0:
