@@ -31,8 +31,8 @@ Warning: this configuration is not definitive.
 
 The fork is triggered at epoch `EIP6800_FORK_EPOCH`.
 
-Note that for the pure eip6800 networks, we don't apply `upgrade_to_eip6800`
-since it starts with the eip6800 version logic.
+*Note*: For the pure eip6800 networks, the `upgrade_to_eip6800` function is
+applied to transition the genesis state to this fork.
 
 ### Upgrading the state
 

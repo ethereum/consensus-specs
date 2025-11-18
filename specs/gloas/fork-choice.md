@@ -7,7 +7,7 @@
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
-- [Containers](#containers)
+- [Helpers](#helpers)
   - [New `ForkChoiceNode`](#new-forkchoicenode)
   - [Modified `LatestMessage`](#modified-latestmessage)
   - [Modified `update_latest_messages`](#modified-update_latest_messages)
@@ -61,7 +61,7 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 | `PAYLOAD_STATUS_EMPTY`     | `PayloadStatus(1)`      |
 | `PAYLOAD_STATUS_FULL`      | `PayloadStatus(2)`      |
 
-## Containers
+## Helpers
 
 ### New `ForkChoiceNode`
 
