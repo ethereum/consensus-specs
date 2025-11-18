@@ -28,6 +28,7 @@
     - [`get_head`](#get_head)
     - [`update_checkpoints`](#update_checkpoints)
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
+    - [`get_latest_message_epoch`](#get_latest_message_epoch)
     - [`seconds_to_milliseconds`](#seconds_to_milliseconds)
     - [`get_slot_component_duration_ms`](#get_slot_component_duration_ms)
     - [`get_attestation_due_ms`](#get_attestation_due_ms)
@@ -466,6 +467,16 @@ def update_unrealized_checkpoints(
     # Update unrealized finalized checkpoint
     if unrealized_finalized_checkpoint.epoch > store.unrealized_finalized_checkpoint.epoch:
         store.unrealized_finalized_checkpoint = unrealized_finalized_checkpoint
+```
+
+#### `get_latest_message_epoch`
+
+```python
+def get_latest_message_epoch(latest_message: LatestMessage) -> Epoch:
+    """
+    Return epoch of the ``latest_message``.
+    """
+    return latest_message.epoch
 ```
 
 #### `seconds_to_milliseconds`

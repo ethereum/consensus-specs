@@ -25,6 +25,7 @@
   - [Modified `get_weight`](#modified-get_weight)
   - [New `get_node_children`](#new-get_node_children)
   - [Modified `get_head`](#modified-get_head)
+  - [Modified `get_latest_message_epoch`](#modified-get_latest_message_epoch)
 - [Updated fork-choice helpers](#updated-fork-choice-helpers)
   - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
   - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
@@ -430,6 +431,13 @@ def get_head(store: Store) -> ForkChoiceNode:
                 get_payload_status_tiebreaker(store, child),
             ),
         )
+```
+
+### Modified `get_latest_message_epoch`
+
+```python
+def get_latest_message_epoch(latest_message: LatestMessage) -> Epoch:
+    return compute_epoch_at_slot(latest_message.slot)
 ```
 
 ## Updated fork-choice helpers
