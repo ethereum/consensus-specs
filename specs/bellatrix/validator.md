@@ -127,7 +127,7 @@ To obtain an execution payload, a block proposer building a block on top of a
 `state` must take the following actions:
 
 1. Set
-   `payload_id = prepare_execution_payload(state, pow_chain, safe_block_hash, finalized_block_hash, suggested_fee_recipient, execution_engine)`,
+   `payload_id = prepare_execution_payload(state=state, pow_chain=pow_chain, safe_block_hash=safe_block_hash, finalized_block_hash=finalized_block_hash, suggested_fee_recipient=suggested_fee_recipient, execution_engine=execution_engine)`,
    where:
    - `state` is the state object after applying `process_slots(state, slot)`
      transition to the resulting state of the parent block processing
