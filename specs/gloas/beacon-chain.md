@@ -315,7 +315,7 @@ class BeaconState(Container):
     # [New in Gloas:EIP7732]
     latest_block_hash: Hash32
     # [New in Gloas:EIP7732]
-    latest_withdrawals_root: Root
+    payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
 ```
 
 ## Helper functions
@@ -889,8 +889,7 @@ def process_withdrawals(
     withdrawals, processed_builder_withdrawals_count, processed_partial_withdrawals_count = (
         get_expected_withdrawals(state)
     )
-    withdrawals_list = List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD](withdrawals)
-    state.latest_withdrawals_root = hash_tree_root(withdrawals_list)
+    state.payload_expected_withdrawals = List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD](withdrawals)
     for withdrawal in withdrawals:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 
@@ -1257,8 +1256,8 @@ def process_execution_payload(
     assert committed_bid.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
     assert committed_bid.prev_randao == payload.prev_randao
 
-    # Verify the withdrawals root
-    assert hash_tree_root(payload.withdrawals) == state.latest_withdrawals_root
+    # Verify consistency with expected withdrawals
+    assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
 
     # Verify the gas_limit
     assert committed_bid.gas_limit == payload.gas_limit
