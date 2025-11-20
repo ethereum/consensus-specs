@@ -118,7 +118,7 @@ jobs:
           fi
 
           # Check if ends with punctuation
-          if [[ "$PR_TITLE" =~ [.!?;,]$ ]]; then
+          if [[ "$PR_TITLE" =~ [.!?,\;]$ ]]; then
             echo "PR title must not end with punctuation"
             exit 1
           fi
