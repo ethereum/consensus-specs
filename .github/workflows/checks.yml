@@ -124,11 +124,8 @@ jobs:
           fi
 
           # Check for correct tense (imperative mood)
-          # Reject past tense (-ed) and third person present (-s, -es, -ies)
           first_word=$(echo "$PR_TITLE" | awk '{print $1}')
-          # Allow some exceptions which might be false positives
           if [[ ! "$first_word" =~ ^(Embed|Shed)$ ]]; then
-            # Reject past tense (-ed) and third person present (-s, -es, -ies)
             if [[ "$first_word" =~ [^e]ed$ ]] || \
                [[ "$first_word" =~ ies$ ]] || \
                [[ "$first_word" =~ [^s]es$ ]] || \
