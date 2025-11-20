@@ -126,10 +126,10 @@ jobs:
           # Check for correct tense (imperative mood)
           first_word=$(echo "$PR_TITLE" | awk '{print $1}')
           if [[ ! "$first_word" =~ ^(Embed|Shed)$ ]]; then
-            if [[ "$first_word" =~ [^e]ed$ ]] || \
-               [[ "$first_word" =~ ies$ ]] || \
-               [[ "$first_word" =~ [^s]es$ ]] || \
-               [[ "$first_word" =~ [^s]s$ ]]; then
+            if [[ "$first_word" =~ [^e]ed$ || \
+                  "$first_word" =~ ies$ || \
+                  "$first_word" =~ [^s]es$ || \
+                  "$first_word" =~ [^s]s$ ]]; then
               echo "PR title must use imperative mood"
               exit 1
             fi
