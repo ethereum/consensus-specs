@@ -18,6 +18,8 @@
     - [`get_ancestor`](#get_ancestor)
     - [`calculate_committee_fraction`](#calculate_committee_fraction)
     - [`get_checkpoint_block`](#get_checkpoint_block)
+    - [`get_attestation_score`](#get_attestation_score)
+    - [`compute_proposer_score`](#compute_proposer_score)
     - [`get_proposer_score`](#get_proposer_score)
     - [`get_weight`](#get_weight)
     - [`get_voting_source`](#get_voting_source)
@@ -26,6 +28,7 @@
     - [`get_head`](#get_head)
     - [`update_checkpoints`](#update_checkpoints)
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
+    - [`get_latest_message_epoch`](#get_latest_message_epoch)
     - [`seconds_to_milliseconds`](#seconds_to_milliseconds)
     - [`get_slot_component_duration_ms`](#get_slot_component_duration_ms)
     - [`get_attestation_due_ms`](#get_attestation_due_ms)
@@ -157,6 +160,15 @@ algorithm. The important fields being tracked are described below:
 - `unrealized_justifications`: stores a map of block root to the unrealized
   justified checkpoint observed in that block.
 
+The following fields are used by the Fast Confirmation Rule:
+
+- `confirmed_root`: root of the most recent confirmed block.
+- `prev_epoch_unrealized_justified_checkpoint`:
+  `unrealized_justified_checkpoint` at the start of the last slot of the
+  previous epoch.
+- `prev_slot_head`: the head of canonical chain at the start of the previous
+  slot.
+
 ```python
 @dataclass
 class Store(object):
@@ -167,6 +179,9 @@ class Store(object):
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
+    confirmed_root: Root
+    prev_epoch_unrealized_justified_checkpoint: Checkpoint
+    prev_slot_head: Root
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
@@ -203,6 +218,9 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         unrealized_justified_checkpoint=justified_checkpoint,
         unrealized_finalized_checkpoint=finalized_checkpoint,
         proposer_boost_root=proposer_boost_root,
+        confirmed_root=anchor_root,
+        prev_epoch_unrealized_justified_checkpoint=justified_checkpoint,
+        prev_slot_head=anchor_root,
         equivocating_indices=set(),
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
@@ -268,26 +286,16 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
     return get_ancestor(store, root, epoch_first_slot)
 ```
 
-#### `get_proposer_score`
+#### `get_attestation_score`
 
 ```python
-def get_proposer_score(store: Store) -> Gwei:
-    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
-    committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
-    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
-```
-
-#### `get_weight`
-
-```python
-def get_weight(store: Store, root: Root) -> Gwei:
-    state = store.checkpoint_states[store.justified_checkpoint]
+def get_attestation_score(store: Store, root: Root, state: BeaconState) -> Gwei:
     unslashed_and_active_indices = [
         i
         for i in get_active_validator_indices(state, get_current_epoch(state))
         if not state.validators[i].slashed
     ]
-    attestation_score = Gwei(
+    return Gwei(
         sum(
             state.validators[i].effective_balance
             for i in unslashed_and_active_indices
@@ -299,6 +307,30 @@ def get_weight(store: Store, root: Root) -> Gwei:
             )
         )
     )
+```
+
+#### `compute_proposer_score`
+
+```python
+def compute_proposer_score(state: BeaconState) -> Gwei:
+    committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
+    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
+```
+
+#### `get_proposer_score`
+
+```python
+def get_proposer_score(store: Store) -> Gwei:
+    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
+    return compute_proposer_score(justified_checkpoint_state)
+```
+
+#### `get_weight`
+
+```python
+def get_weight(store: Store, root: Root) -> Gwei:
+    state = store.checkpoint_states[store.justified_checkpoint]
+    attestation_score = get_attestation_score(store, root, state)
     if store.proposer_boost_root == Root():
         # Return only attestation score if ``proposer_boost_root`` is not set
         return attestation_score
@@ -450,6 +482,16 @@ def update_unrealized_checkpoints(
     # Update unrealized finalized checkpoint
     if unrealized_finalized_checkpoint.epoch > store.unrealized_finalized_checkpoint.epoch:
         store.unrealized_finalized_checkpoint = unrealized_finalized_checkpoint
+```
+
+#### `get_latest_message_epoch`
+
+```python
+def get_latest_message_epoch(latest_message: LatestMessage) -> Epoch:
+    """
+    Return epoch of the ``latest_message``.
+    """
+    return latest_message.epoch
 ```
 
 #### `seconds_to_milliseconds`
