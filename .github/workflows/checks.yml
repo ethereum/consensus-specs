@@ -9,6 +9,7 @@ on:
     branches:
       - master
   pull_request:
+    types: [opened, edited, reopened, synchronize]
     branches:
       - master
 
@@ -82,8 +83,62 @@ jobs:
           name: test-results-framework-${{ github.run_number }}
           path: ./tests/core/pyspec/test-results-framework-${{ github.run_number }}
 
+  title:
+    if: github.event_name == 'pull_request'
+    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    steps:
+      - name: Check PR title
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+
+          echo "Checking PR title: $PR_TITLE"
+
+          # Check length (must be <= 68 characters)
+          if [ ${#PR_TITLE} -gt 68 ]; then
+            echo "PR title (${#PR_TITLE} characters) must be <= 68 characters"
+            exit 1
+          fi
+
+          # Check for leading or trailing whitespace
+          if [[ "$PR_TITLE" =~ ^[[:space:]] ]] || [[ "$PR_TITLE" =~ [[:space:]]$ ]]; then
+            echo "PR title must not have leading or trailing whitespace"
+            exit 1
+          fi
+
+          # Check for double spaces
+          if [[ "$PR_TITLE" =~ [[:space:]]{2,} ]]; then
+            echo "PR title must not contain double spaces"
+            exit 1
+          fi
+
+          # Check if starts with capital letter
+          if ! [[ "$PR_TITLE" =~ ^[A-Z] ]]; then
+            echo "PR title must start with a capital letter"
+            exit 1
+          fi
+
+          # Check if ends with punctuation
+          if [[ "$PR_TITLE" =~ [.!?,\;]$ ]]; then
+            echo "PR title must not end with punctuation"
+            exit 1
+          fi
+
+          # Check for correct tense (imperative mood)
+          first_word=$(echo "$PR_TITLE" | awk '{print $1}')
+          if [[ ! "$first_word" =~ ^(Embed|Shed)$ ]]; then
+            if [[ "$first_word" =~ [^e]ed$ ]] || \
+               [[ "$first_word" =~ ies$ ]] || \
+               [[ "$first_word" =~ [^s]es$ ]] || \
+               [[ "$first_word" =~ [^s]s$ ]]; then
+              echo "PR title must use imperative mood"
+              exit 1
+            fi
+          fi
+
+          echo "PR title is valid"
+
   tests:
-    needs: [lint, whitespace, comments, framework]
+    needs: [lint, whitespace, comments, framework, title]
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     strategy:
       matrix:
