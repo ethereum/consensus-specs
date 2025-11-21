@@ -24,6 +24,7 @@ dependencies = [
   "ruamel.yaml==0.18.15",
   "setuptools==80.9.0",
   "trie==3.1.0",
+  "wrapt==2.0.1",
 ]
 
 [project.optional-dependencies]
