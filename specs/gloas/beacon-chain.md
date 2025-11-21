@@ -89,7 +89,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 | Name                    | Value                      |
 | ----------------------- | -------------------------- |
-| `DOMAIN_BEACON_BUILDER` | `DomainType('0x1B000000')` |
+| `DOMAIN_BEACON_BUILDER` | `DomainType('0x0B000000')` |
 | `DOMAIN_PTC_ATTESTER`   | `DomainType('0x0C000000')` |
 
 ### Misc

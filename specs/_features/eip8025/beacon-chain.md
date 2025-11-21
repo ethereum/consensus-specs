@@ -50,7 +50,7 @@ validation of execution payloads through cryptographic proofs.
 
 | Name                     | Value                      |
 | ------------------------ | -------------------------- |
-| `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0B000000')` |
+| `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0D000000')` |
 
 ## Configuration
 
