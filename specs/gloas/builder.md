@@ -231,16 +231,10 @@ alias `bid` to be the committed `ExecutionPayloadBid` in
 6. Set `envelope.blob_kzg_commitments` to be the `commitments` field of the
    blobs bundle constructed when constructing the bid. This field **MUST** have
    a `hash_tree_root` equal to `bid.blob_kzg_commitments_root`.
-
-After setting these parameters, the builder assembles
-`signed_execution_payload_envelope = SignedExecutionPayloadEnvelope(message=envelope, signature=BLSSignature())`,
-then verify that the envelope is valid with
-`process_execution_payload(state, signed_execution_payload_envelope, execution_engine, verify=False)`.
-This function should not trigger an exception.
-
 7. Set `envelope.state_root` to `hash_tree_root(state)`.
 
-After preparing the `envelope` the builder should sign the envelope using:
+After building the `envelope`, the builder obtains a `signature` of the envelope
+by using:
 
 ```python
 def get_execution_payload_envelope_signature(
@@ -253,7 +247,10 @@ def get_execution_payload_envelope_signature(
 
 Then the builder assembles
 `signed_execution_payload_envelope = SignedExecutionPayloadEnvelope(message=envelope, signature=signature)`
-and broadcasts it on the `execution_payload` global gossip topic.
+and verifies the validity of the envelope with
+`process_execution_payload(state, signed_execution_payload_envelope, execution_engine, verify=False)`.
+If it doesn't trigger an exception, the builder broadcasts it on the
+`execution_payload` global gossip topic.
 
 ### Honest payload withheld messages
 
