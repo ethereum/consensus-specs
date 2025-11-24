@@ -241,9 +241,13 @@ def generate_fork_specs(
         if verbose:
             print(f"    Wrote: {output_file} ({len(spec_str):,} bytes)")
 
-    # Create __init__.py that imports mainnet as default
+    # Create __init__.py that imports an available preset as default
+    default_target_name = next(
+        (target.name for target in build_targets if target.name == "mainnet"),
+        build_targets[0].name,
+    )
     init_file = out_dir / "__init__.py"
-    init_file.write_text("from . import mainnet as spec  # noqa:F401\n")
+    init_file.write_text(f"from . import {default_target_name} as spec  # noqa:F401\n")
 
     if verbose:
         print(f"  Wrote: {init_file}")
