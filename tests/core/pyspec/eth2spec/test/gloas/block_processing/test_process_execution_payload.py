@@ -990,3 +990,39 @@ def test_process_execution_payload_execution_engine_invalid(spec, state):
     yield from run_execution_payload_processing(
         spec, state, signed_envelope, valid=False, execution_valid=False
     )
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
+def test_process_execution_payload_unexpected_builder_withdrawal(spec, state):
+    """
+    Test exception when the builder includes one unexpected withdrawal in the execution payload
+    """
+    proposer_index = spec.get_beacon_proposer_index(state)
+    # Use a different validator as builder (not the proposer)
+    builder_index = (proposer_index + 1) % len(state.validators)
+    make_validator_builder(spec, state, builder_index)
+
+    setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(50000000))
+
+    # Create execution payload that matches the committed bid
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.block_hash = state.latest_execution_payload_bid.block_hash
+    execution_payload.gas_limit = state.latest_execution_payload_bid.gas_limit
+    execution_payload.parent_hash = state.latest_block_hash
+
+    unexpected_withdrawal = spec.Withdrawal(
+        index=0,
+        validator_index=0,
+        address=b"\x30" * 20,
+        amount=420,
+    )
+    execution_payload.withdrawals.append(unexpected_withdrawal)
+
+    assert len(execution_payload.withdrawals) == 1
+
+    signed_envelope = prepare_execution_payload_envelope(
+        spec, state, builder_index=builder_index, execution_payload=execution_payload
+    )
+
+    yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
