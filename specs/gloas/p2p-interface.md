@@ -209,7 +209,7 @@ And instead the following validations are set in place with the alias
 - If `execution_payload` verification of block's execution payload parent by an
   execution node **is complete**:
   - [REJECT] The block's execution payload parent (defined by
-    `bid.parent_block_hash`) passes all validation.
+    `bid.parent_block_root`) passes all validation.
 - [REJECT] The bid's parent (defined by `bid.parent_block_root`) equals the
   block's parent (defined by `block.parent_root`).
 
