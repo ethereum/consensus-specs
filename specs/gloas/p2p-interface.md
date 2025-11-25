@@ -204,7 +204,7 @@ regards to the `ExecutionPayload` are removed:
     `block.body.execution_payload`).
 
 And instead the following validations are set in place with the alias
-`bid = signed_execution_payload_bid.message`:
+`bid = block.body.signed_execution_payload_bid.message`:
 
 - If `execution_payload` verification of block's execution payload parent by an
   execution node **is complete**:
