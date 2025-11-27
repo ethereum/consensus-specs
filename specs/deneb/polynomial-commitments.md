@@ -327,7 +327,7 @@ def evaluate_polynomial_in_evaluation_form(
     - When ``z`` is in the domain, the evaluation can be found by indexing the polynomial at the
     position that ``z`` is in the domain.
     - When ``z`` is not in the domain, the barycentric formula is used:
-       f(z) = (z**WIDTH - 1) / WIDTH  *  sum_(i=0)^WIDTH  (f(DOMAIN[i]) * DOMAIN[i]) / (z - DOMAIN[i])
+       f(z) = (z**WIDTH - 1) / WIDTH  *  sum_(i=0)^(WIDTH-1) (f(DOMAIN[i]) * DOMAIN[i]) / (z - DOMAIN[i])
     """
     width = len(polynomial)
     assert width == FIELD_ELEMENTS_PER_BLOB

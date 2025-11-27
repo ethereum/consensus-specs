@@ -221,7 +221,7 @@ This topic is used to propagate execution payload messages as
 The following validations MUST pass before forwarding the
 `signed_execution_payload_envelope` on the network, assuming the alias
 `envelope = signed_execution_payload_envelope.message`,
-`payload = payload_envelope.payload`:
+`payload = envelope.payload`:
 
 - _[IGNORE]_ The envelope's block root `envelope.block_root` has been seen (via
   gossip or non-gossip sources) (a client MAY queue payload for processing once
