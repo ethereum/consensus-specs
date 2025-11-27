@@ -88,8 +88,9 @@ jobs:
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     steps:
       - name: Check PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          PR_TITLE="${{ github.event.pull_request.title }}"
 
           echo "Checking PR title: $PR_TITLE"
 
