@@ -1,9 +1,3 @@
-"""
-Comprehensive tests for get_expected_withdrawals function - Electra version
-
-Tests cover Electra-specific features: pending partial withdrawals queue and compounding validators.
-"""
-
 import pytest
 
 from eth2spec.test.context import (
@@ -19,7 +13,7 @@ from tests.infra.helpers.withdrawals import (
 )
 
 #
-# Electra-Specific Tests - Pending Partial Withdrawals
+# Pending Partial Withdrawals Tests
 #
 
 
@@ -367,7 +361,7 @@ def test_validator_depleted_by_multiple_partials(spec, state):
     assert total_withdrawn == total_excess
 
 
-# Edge Cases by Processing Phase
+# Edge Cases
 
 
 @with_electra_and_later
@@ -378,7 +372,6 @@ def test_pending_partial_future_epoch(spec, state):
     validator_index_future = 11
     validator_index_after = 12
 
-    # Ensure we have enough validators
     assert len(state.validators) >= validator_index_after + 1, (
         f"Test requires at least {validator_index_after + 1} validators"
     )
@@ -474,7 +467,6 @@ def test_pending_partial_invalid_validator_index(spec, state):
 def test_pending_queue_fifo_order(spec, state):
     """Multiple pending entries should process in FIFO order"""
     indices = [2, 0, 1]
-    # Ensure we have enough validators
     required_validators = max(indices) + 1
     assert len(state.validators) >= required_validators, (
         f"Test requires at least {required_validators} validators"

@@ -1,9 +1,3 @@
-"""
-Comprehensive tests for get_expected_withdrawals function - Gloas version
-
-Tests cover Gloas-specific features: builder withdrawals with three-tier priority system.
-"""
-
 from eth2spec.test.context import (
     spec_state_test,
     with_gloas_and_later,
@@ -18,7 +12,7 @@ from tests.infra.helpers.withdrawals import (
 )
 
 #
-# Gloas-Only Tests - Builder Withdrawals
+# Builder Withdrawals Tests
 #
 
 
@@ -146,7 +140,6 @@ def test_builder_withdrawal_insufficient_balance(spec, state):
 def test_builder_withdrawals_respect_max_limit(spec, state):
     """When more builder withdrawals than MAX exist, should not exceed MAX total"""
     num_builders = spec.MAX_WITHDRAWALS_PER_PAYLOAD * 2
-    # Ensure we have enough validators
     assert len(state.validators) >= num_builders, (
         f"Test requires at least {num_builders} validators"
     )

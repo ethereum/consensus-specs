@@ -1,9 +1,3 @@
-"""
-Comprehensive tests for get_expected_withdrawals function - Capella version
-
-Tests cover basic withdrawal functionality that applies to Capella and later forks.
-"""
-
 from eth2spec.test.context import (
     spec_state_test,
     with_capella_and_later,
@@ -18,7 +12,7 @@ from tests.infra.helpers.withdrawals import (
 )
 
 #
-# Basic Tests (Applicable to Capella and Later)
+# Basic Tests
 #
 
 
@@ -26,7 +20,6 @@ from tests.infra.helpers.withdrawals import (
 @spec_state_test
 def test_no_withdrawals_no_withdrawal_credentials(spec, state):
     """Validators with BLS_WITHDRAWAL_PREFIX credentials should not withdraw even with excess balance"""
-    # Ensure we have at least one validator
     assert len(state.validators) >= 1
 
     current_epoch = spec.get_current_epoch(state)
@@ -89,7 +82,6 @@ def test_max_withdrawals_per_payload(spec, state):
     """Should return exactly MAX_WITHDRAWALS_PER_PAYLOAD when more are eligible"""
     num_withdrawals = 20
 
-    # Ensure we have enough validators
     assert len(state.validators) >= num_withdrawals, (
         f"Test requires at least {num_withdrawals} validators"
     )
@@ -112,7 +104,6 @@ def test_max_withdrawals_per_payload(spec, state):
 @spec_state_test
 def test_withdrawal_index_wraparound(spec, state):
     """Withdrawal validator index should wrap around to 0"""
-    # Ensure we have enough validators for wraparound test
     assert len(state.validators) >= 3, "Test requires at least 3 validators for wraparound"
 
     state.next_withdrawal_validator_index = len(state.validators) - 2
@@ -198,7 +189,7 @@ def test_mixed_full_and_partial_withdrawals(spec, state):
     assert validator_indices == sorted(validator_indices)
 
 
-# Corner Cases - All Versions
+# Corner Cases Tests
 
 
 @with_capella_and_later
@@ -261,7 +252,6 @@ def test_all_validators_withdrawable(spec, state):
     """Every validator eligible should process only first MAX_WITHDRAWALS_PER_PAYLOAD"""
     num_validators = min(len(state.validators), spec.MAX_WITHDRAWALS_PER_PAYLOAD + 5)
 
-    # Ensure we have enough validators for this test
     assert len(state.validators) >= spec.MAX_WITHDRAWALS_PER_PAYLOAD + 1, (
         f"Test requires at least {spec.MAX_WITHDRAWALS_PER_PAYLOAD + 1} validators"
     )
@@ -328,7 +318,6 @@ def test_partial_validator_sweep_index_update(spec, state):
 @spec_state_test
 def test_skip_validators_wrong_credentials(spec, state):
     """Mix of BLS_WITHDRAWAL_PREFIX and ETH1_ADDRESS_WITHDRAWAL_PREFIX credentials, only ETH1 processed"""
-    # Ensure we have at least 2 validators
     assert len(state.validators) >= 2, "Test requires at least 2 validators"
 
     prepare_withdrawals(
