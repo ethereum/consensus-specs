@@ -3,12 +3,17 @@ from eth2spec.test.helpers.forks import is_post_electra, is_post_gloas
 
 # Import needed helper functions from test helpers (avoiding circular import)
 def _import_test_helpers():
-    from tests.core.pyspec.eth2spec.test.helpers.withdrawals import (
+    from tests.core.pyspec.eth2spec.test.helpers.withdrawals import (  # noqa: PLC0415
         prepare_pending_withdrawal,
         set_validator_fully_withdrawable,
         set_validator_partially_withdrawable,
     )
-    return prepare_pending_withdrawal, set_validator_fully_withdrawable, set_validator_partially_withdrawable
+
+    return (
+        prepare_pending_withdrawal,
+        set_validator_fully_withdrawable,
+        set_validator_partially_withdrawable,
+    )
 
 
 def prepare_withdrawals(

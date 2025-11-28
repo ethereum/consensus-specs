@@ -26,7 +26,7 @@ from tests.infra.helpers.withdrawals import (
 @with_electra_and_later
 @spec_state_test
 def test_pending_partial_withdrawals_basic(spec, state):
-    """ Pending partial withdrawals should be processed before validator sweep"""
+    """Pending partial withdrawals should be processed before validator sweep"""
     assert len(state.validators) >= 2, "Test requires at least 2 validators"
 
     pending_index = 1
@@ -36,7 +36,8 @@ def test_pending_partial_withdrawals_basic(spec, state):
     state.next_withdrawal_validator_index = sweep_index
 
     prepare_withdrawals(
-        spec, state,
+        spec,
+        state,
         pending_partial_indices=[pending_index],
         pending_partial_amounts=[pending_amount],
         pending_partial_withdrawable_offsets=[0],
@@ -55,7 +56,7 @@ def test_pending_partial_withdrawals_basic(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_pending_partial_max_per_sweep(spec, state):
-    """ Should process only MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP pending partials per sweep"""
+    """Should process only MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP pending partials per sweep"""
     num_pending = spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP + 4
 
     assert len(state.validators) >= num_pending, f"Test requires at least {num_pending} validators"
@@ -63,7 +64,8 @@ def test_pending_partial_max_per_sweep(spec, state):
     pending_indices = list(range(num_pending))
 
     prepare_withdrawals(
-        spec, state,
+        spec,
+        state,
         pending_partial_indices=pending_indices,
         pending_partial_amounts=[spec.Gwei(1_000_000_000)] * num_pending,
         pending_partial_withdrawable_offsets=[0] * num_pending,
@@ -78,12 +80,14 @@ def test_pending_partial_max_per_sweep(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_compounding_credentials(spec, state):
-    """ Validator with COMPOUNDING_WITHDRAWAL_PREFIX credentials and max balance"""
+    """Validator with COMPOUNDING_WITHDRAWAL_PREFIX credentials and max balance"""
     validator_index = 0
     excess_balance = spec.Gwei(10_000_000_000)  # 10 ETH excess
 
     set_compounding_withdrawal_credential_with_balance(
-        spec, state, validator_index,
+        spec,
+        state,
+        validator_index,
         effective_balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,
         balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA + excess_balance,
     )
@@ -98,13 +102,15 @@ def test_compounding_credentials(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_multiple_withdrawals_same_validator(spec, state):
-    """ Same validator appears multiple times in pending queue"""
+    """Same validator appears multiple times in pending queue"""
     validator_index = 0
     amount_1 = spec.Gwei(1_000_000_000)  # 1 ETH
     amount_2 = spec.Gwei(2_000_000_000)  # 2 ETH
 
     set_compounding_withdrawal_credential_with_balance(
-        spec, state, validator_index,
+        spec,
+        state,
+        validator_index,
         effective_balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,
         balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA + amount_1 + amount_2,
     )
@@ -135,12 +141,13 @@ def test_multiple_withdrawals_same_validator(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_pending_partial_exiting_validator_skipped(spec, state):
-    """ Pending partial for exiting validator should be skipped"""
+    """Pending partial for exiting validator should be skipped"""
     validator_index = 0
     withdrawal_amount = spec.Gwei(1_000_000_000)
 
     prepare_withdrawals(
-        spec, state,
+        spec,
+        state,
         pending_partial_indices=[validator_index],
         pending_partial_amounts=[withdrawal_amount],
         pending_partial_withdrawable_offsets=[0],
@@ -157,12 +164,14 @@ def test_pending_partial_exiting_validator_skipped(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_pending_partial_insufficient_balance(spec, state):
-    """ Pending partial but balance < MIN_ACTIVATION_BALANCE should be skipped"""
+    """Pending partial but balance < MIN_ACTIVATION_BALANCE should be skipped"""
     validator_index = 0
     withdrawal_amount = spec.Gwei(1_000_000_000)
 
     set_compounding_withdrawal_credential_with_balance(
-        spec, state, validator_index,
+        spec,
+        state,
+        validator_index,
         effective_balance=spec.MIN_ACTIVATION_BALANCE,
         balance=spec.MIN_ACTIVATION_BALANCE - spec.Gwei(1),  # Just below minimum
     )
@@ -187,12 +196,14 @@ def test_pending_partial_insufficient_balance(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_pending_partial_exact_min_activation_balance(spec, state):
-    """ Validator balance exactly MIN_ACTIVATION_BALANCE, withdrawable amount should be 0"""
+    """Validator balance exactly MIN_ACTIVATION_BALANCE, withdrawable amount should be 0"""
     validator_index = 0
     withdrawal_amount = spec.Gwei(1_000_000_000)
 
     set_compounding_withdrawal_credential_with_balance(
-        spec, state, validator_index,
+        spec,
+        state,
+        validator_index,
         effective_balance=spec.MIN_ACTIVATION_BALANCE,
         balance=spec.MIN_ACTIVATION_BALANCE,
     )
@@ -215,13 +226,15 @@ def test_pending_partial_exact_min_activation_balance(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_pending_partial_amount_exceeds_available(spec, state):
-    """ Request 10 ETH, only 5 ETH available, should withdraw only 5 ETH"""
+    """Request 10 ETH, only 5 ETH available, should withdraw only 5 ETH"""
     validator_index = 0
     requested_amount = spec.Gwei(10_000_000_000)  # 10 ETH
     available_amount = spec.Gwei(5_000_000_000)  # 5 ETH
 
     set_compounding_withdrawal_credential_with_balance(
-        spec, state, validator_index,
+        spec,
+        state,
+        validator_index,
         effective_balance=spec.MIN_ACTIVATION_BALANCE,
         balance=spec.MIN_ACTIVATION_BALANCE + available_amount,
     )
@@ -244,12 +257,14 @@ def test_pending_partial_amount_exceeds_available(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_all_pending_partials_invalid(spec, state):
-    """ All pending partials fail conditions, pending queue should not process them"""
+    """All pending partials fail conditions, pending queue should not process them"""
     assert len(state.validators) >= 3, "Test requires at least 3 validators"
 
     for i in range(3):
         set_compounding_withdrawal_credential_with_balance(
-            spec, state, i,
+            spec,
+            state,
+            i,
             effective_balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,
             balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,
         )
@@ -265,7 +280,9 @@ def test_all_pending_partials_invalid(spec, state):
     withdrawals = get_expected_withdrawals(spec, state)
 
     for i in range(3):
-        assert not any(w.validator_index == i for w in withdrawals), f"Validator {i} with pending partial and exit_epoch set should not withdraw"
+        assert not any(w.validator_index == i for w in withdrawals), (
+            f"Validator {i} with pending partial and exit_epoch set should not withdraw"
+        )
 
 
 @with_electra_and_later
@@ -275,7 +292,9 @@ def test_pending_partials_and_sweep_together(spec, state):
     num_pending = spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
     sweep_validator_index = num_pending
 
-    assert len(state.validators) >= num_pending + 1, f"Test requires at least {num_pending + 1} validators"
+    assert len(state.validators) >= num_pending + 1, (
+        f"Test requires at least {num_pending + 1} validators"
+    )
 
     state.next_withdrawal_validator_index = sweep_validator_index
 
@@ -283,7 +302,8 @@ def test_pending_partials_and_sweep_together(spec, state):
     pending_amounts = [spec.Gwei(1_000_000_000)] * num_pending
 
     prepare_withdrawals(
-        spec, state,
+        spec,
+        state,
         pending_partial_indices=pending_indices,
         pending_partial_amounts=pending_amounts,
         pending_partial_withdrawable_offsets=[0] * num_pending,
@@ -294,22 +314,28 @@ def test_pending_partials_and_sweep_together(spec, state):
     withdrawals = get_expected_withdrawals(spec, state)
 
     pending_count = sum(1 for w in withdrawals if w.validator_index in pending_indices)
-    assert pending_count == spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP, "Should process all pending partials up to limit"
+    assert pending_count == spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP, (
+        "Should process all pending partials up to limit"
+    )
 
     if pending_count < spec.MAX_WITHDRAWALS_PER_PAYLOAD:
-        assert sweep_validator_index in [w.validator_index for w in withdrawals], "Regular sweep should fill remaining slots after pending partials"
+        assert sweep_validator_index in [w.validator_index for w in withdrawals], (
+            "Regular sweep should fill remaining slots after pending partials"
+        )
 
 
 @with_electra_and_later
 @spec_state_test
 def test_validator_depleted_by_multiple_partials(spec, state):
-    """ Multiple pending partials drain validator balance, later ones get reduced"""
+    """Multiple pending partials drain validator balance, later ones get reduced"""
     validator_index = 0
     total_excess = spec.Gwei(5_000_000_000)  # 5 ETH excess
     amount_per_request = spec.Gwei(3_000_000_000)  # 3 ETH each
 
     set_compounding_withdrawal_credential_with_balance(
-        spec, state, validator_index,
+        spec,
+        state,
+        validator_index,
         effective_balance=spec.MIN_ACTIVATION_BALANCE,
         balance=spec.MIN_ACTIVATION_BALANCE + total_excess,
     )
@@ -347,32 +373,39 @@ def test_validator_depleted_by_multiple_partials(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_pending_partial_future_epoch(spec, state):
-    """ withdrawable_epoch > current_epoch should break processing pending queue"""
+    """withdrawable_epoch > current_epoch should break processing pending queue"""
     validator_index_current = 10
     validator_index_future = 11
     validator_index_after = 12
 
     # Ensure we have enough validators
-    assert len(state.validators) >= validator_index_after + 1, \
+    assert len(state.validators) >= validator_index_after + 1, (
         f"Test requires at least {validator_index_after + 1} validators"
+    )
 
     withdrawal_amount = spec.Gwei(1_000_000_000)
     future_epoch = spec.get_current_epoch(state) + 10
 
     set_compounding_withdrawal_credential_with_balance(
-        spec, state, validator_index_current,
+        spec,
+        state,
+        validator_index_current,
         effective_balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,
         balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA + withdrawal_amount,
     )
 
     set_compounding_withdrawal_credential_with_balance(
-        spec, state, validator_index_future,
+        spec,
+        state,
+        validator_index_future,
         effective_balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,
         balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,  # No excess
     )
 
     set_compounding_withdrawal_credential_with_balance(
-        spec, state, validator_index_after,
+        spec,
+        state,
+        validator_index_after,
         effective_balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,
         balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,  # No excess
     )
@@ -403,9 +436,15 @@ def test_pending_partial_future_epoch(spec, state):
 
     withdrawals = get_expected_withdrawals(spec, state)
 
-    validator_withdrawals_current = [w for w in withdrawals if w.validator_index == validator_index_current]
-    validator_withdrawals_future = [w for w in withdrawals if w.validator_index == validator_index_future]
-    validator_withdrawals_after = [w for w in withdrawals if w.validator_index == validator_index_after]
+    validator_withdrawals_current = [
+        w for w in withdrawals if w.validator_index == validator_index_current
+    ]
+    validator_withdrawals_future = [
+        w for w in withdrawals if w.validator_index == validator_index_future
+    ]
+    validator_withdrawals_after = [
+        w for w in withdrawals if w.validator_index == validator_index_after
+    ]
 
     assert len(validator_withdrawals_current) == 1  # Should be processed
     assert len(validator_withdrawals_future) == 0  # Future, should be skipped
@@ -415,7 +454,7 @@ def test_pending_partial_future_epoch(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_pending_partial_invalid_validator_index(spec, state):
-    """ Invalid validator index should raise IndexError"""
+    """Invalid validator index should raise IndexError"""
     invalid_index = len(state.validators) + 10
 
     state.pending_partial_withdrawals.append(
@@ -433,17 +472,20 @@ def test_pending_partial_invalid_validator_index(spec, state):
 @with_electra_and_later
 @spec_state_test
 def test_pending_queue_fifo_order(spec, state):
-    """ Multiple pending entries should process in FIFO order"""
+    """Multiple pending entries should process in FIFO order"""
     indices = [2, 0, 1]
     # Ensure we have enough validators
     required_validators = max(indices) + 1
-    assert len(state.validators) >= required_validators, f"Test requires at least {required_validators} validators"
-
+    assert len(state.validators) >= required_validators, (
+        f"Test requires at least {required_validators} validators"
+    )
 
     for idx in indices:
         withdrawal_amount = spec.Gwei(1_000_000_000)  # 1 ETH
         set_compounding_withdrawal_credential_with_balance(
-            spec, state, idx,
+            spec,
+            state,
+            idx,
             effective_balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,
             balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA + withdrawal_amount,  # Exact amount
         )
@@ -457,7 +499,7 @@ def test_pending_queue_fifo_order(spec, state):
 
     withdrawals = get_expected_withdrawals(spec, state)
 
-    pending_withdrawals = withdrawals[:len(indices)]
+    pending_withdrawals = withdrawals[: len(indices)]
     withdrawal_indices = [w.validator_index for w in pending_withdrawals]
 
     assert withdrawal_indices == indices
