@@ -20,7 +20,6 @@ from tests.infra.helpers.withdrawals import (
 @spec_state_test
 def test_no_withdrawals_no_withdrawal_credentials(spec, state):
     """Validators with BLS_WITHDRAWAL_PREFIX credentials should not withdraw even with excess balance"""
-    assert len(state.validators) >= 1
 
     current_epoch = spec.get_current_epoch(state)
     for i in range(len(state.validators)):

@@ -212,9 +212,7 @@ def test_pending_partial_exact_min_activation_balance(spec, state):
 
     withdrawals = get_expected_withdrawals(spec, state)
 
-    validator_withdrawals = [w for w in withdrawals if w.validator_index == validator_index]
-    if len(validator_withdrawals) > 0:
-        assert validator_withdrawals[0].amount == 0
+    assert len(withdrawals) == 0, "No partial withdrawals should be processed when balance equals MIN_ACTIVATION_BALANCE"
 
 
 @with_electra_and_later
