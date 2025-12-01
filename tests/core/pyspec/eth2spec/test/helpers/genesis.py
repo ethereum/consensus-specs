@@ -232,8 +232,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if is_post_gloas(spec):
         state.execution_payload_availability = [0b1 for _ in range(spec.SLOTS_PER_HISTORICAL_ROOT)]
-        withdrawals = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD]()
-        state.latest_withdrawals_root = withdrawals.hash_tree_root()
+        state.payload_expected_withdrawals = spec.List[
+            spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
+        ]()
         state.builder_pending_payments = [
             spec.BuilderPendingPayment() for _ in range(2 * spec.SLOTS_PER_EPOCH)
         ]
