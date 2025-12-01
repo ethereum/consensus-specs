@@ -56,6 +56,7 @@
     - [Withdrawals](#withdrawals)
       - [New `is_builder_payment_withdrawable`](#new-is_builder_payment_withdrawable)
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
+      - [New `update_builder_pending_withdrawals`](#new-update_builder_pending_withdrawals)
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
     - [Execution payload bid](#execution-payload-bid)
       - [New `verify_execution_payload_bid_signature`](#new-verify_execution_payload_bid_signature)
@@ -864,6 +865,22 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     )
 ```
 
+##### New `update_builder_pending_withdrawals`
+
+```python
+def update_builder_pending_withdrawals(
+    state: BeaconState, processed_builder_withdrawals_count: uint64
+) -> None:
+    withdrawals = []
+    for i, withdrawal in enumerate(state.builder_pending_withdrawals):
+        if i < processed_builder_withdrawals_count:
+            if not is_builder_payment_withdrawable(state, withdrawal):
+                withdrawals.append(withdrawal)
+        else:
+            withdrawals.append(withdrawal)
+    state.builder_pending_withdrawals = withdrawals
+```
+
 ##### Modified `process_withdrawals`
 
 *Note*: This is modified to only take the `state` as parameter. Withdrawals are
@@ -885,45 +902,22 @@ def process_withdrawals(
         return
 
     # [Modified in Gloas:EIP7732]
-    # Get information about the expected withdrawals
+    # Apply expected withdrawals
     withdrawals, processed_builder_withdrawals_count, processed_partial_withdrawals_count = (
         get_expected_withdrawals(state)
     )
-    withdrawals_list = List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD](withdrawals)
-    state.latest_withdrawals_root = hash_tree_root(withdrawals_list)
-    for withdrawal in withdrawals:
-        decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
+    apply_withdrawals(state, withdrawals)
 
     # [New in Gloas:EIP7732]
-    # Update the pending builder withdrawals
-    state.builder_pending_withdrawals = [
-        w
-        for w in state.builder_pending_withdrawals[:processed_builder_withdrawals_count]
-        if not is_builder_payment_withdrawable(state, w)
-    ] + state.builder_pending_withdrawals[processed_builder_withdrawals_count:]
+    # Cache the withdrawals root
+    withdrawals_list = List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD](withdrawals)
+    state.latest_withdrawals_root = hash_tree_root(withdrawals_list)
 
-    # Update pending partial withdrawals
-    state.pending_partial_withdrawals = state.pending_partial_withdrawals[
-        processed_partial_withdrawals_count:
-    ]
-
-    # Update the next withdrawal index if this block contained withdrawals
-    if len(withdrawals) != 0:
-        latest_withdrawal = withdrawals[-1]
-        state.next_withdrawal_index = WithdrawalIndex(latest_withdrawal.index + 1)
-
-    # Update the next validator index to start the next withdrawal sweep
-    if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
-        # Next sweep starts after the latest withdrawal's validator index
-        next_validator_index = ValidatorIndex(
-            (withdrawals[-1].validator_index + 1) % len(state.validators)
-        )
-        state.next_withdrawal_validator_index = next_validator_index
-    else:
-        # Advance sweep by the max length of the sweep if there was not a full set of withdrawals
-        next_index = state.next_withdrawal_validator_index + MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
-        next_validator_index = ValidatorIndex(next_index % len(state.validators))
-        state.next_withdrawal_validator_index = next_validator_index
+    # [Modified in Gloas:EIP7732]
+    # Update withdrawals fields in the state
+    update_builder_pending_withdrawals(state, processed_builder_withdrawals_count)
+    update_pending_partial_withdrawals(state, processed_partial_withdrawals_count)
+    update_next_withdrawal_indices(state, withdrawals)
 ```
 
 #### Execution payload bid
