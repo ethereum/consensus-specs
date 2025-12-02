@@ -1,12 +1,17 @@
 ## Spec trace framework
 
 This is an implementation of #4603 a new testing framework for the Ethereum
-consensus spec tests, based on tracing spec method calls and recording them in a
-structured trace file.
+consensus spec tests, based on tracing spec method calls and recording them in
+a structured trace file.
 
-The basic idea for new tests is to use pytest more properly, to use fixture
-parametrization for forks and presets, and to use a spec trace file to generate
-vectors (the actual vector generation is another task in progress).
+The basic idea is make tests more simple and linear and hide the minutiae of
+dumping data into the test harness (`@spec_trace` decorator) and automate
+everything that doesn't have to be manual.
+
+Spec is being wrapped into a transparent proxy object and all method calls are
+being tracked including any state mutations before and after. Final state is
+recorded and all relevant artifacts including all states are being saved into
+SSZ artifacts (hash-addressed to avoid duplication).
 
 ### Usage and example test
 
@@ -17,37 +22,69 @@ from tests.infra.trace import spec_trace
 @with_all_phases
 @spec_state_test  # keep these like before
 @spec_trace  # this is the thing that makes the magic happen
-def test_linear_sanity_slots(spec, state):  # spec and state can be positional but the name matters
+def test_linear_sanity_slots_222(
+    spec, state
+):  # spec and state can be positional but the name matters
     # just use spec methods, they are traced automagically, and state is dumped
     spec.process_slot(state)
 ```
 
+this is for example purposes put into
+`tests/core/pyspec/eth2spec/test/gloas/sanity/test_slots_2.py` and can be run
+with something like
+
+```
+make reftests fork=gloas runner=sanity k=linear_sanity_slots_222 verbose=true
+```
+
+that produces a trace in
+`../consensus-spec-tests/tests/minimal/gloas/sanity/slots_2/pyspec_tests/linear_sanity_slots_222/trace.yaml`
+
 ### Spec trace file example
 
 ```yaml
-metadata:
-  fork: electra
-  preset: minimal
-context:
-  fixtures: []
-  parameters: {}
-  objects:
-    states:
-      a5c63f50136afb2ac758cc8c7fc11d3c0ff418f411522eba1cf4b7ac815523ab: states_a5c63f50136afb2ac758cc8c7fc11d3c0ff418f411522eba1cf4b7ac815523ab.ssz
-      90d959fafeb0ce724111cf6fe3900a6a6e464a3dbd3b637002aaf85d6585072e: states_90d959fafeb0ce724111cf6fe3900a6a6e464a3dbd3b637002aaf85d6585072e.ssz
-    blocks: {}
-    attestations: {}
+default_fork: gloas
 trace:
-- op: load_state
-  params: {}
-  result: $context.states.a5c63f50136afb2ac758cc8c7fc11d3c0ff418f411522eba1cf4b7ac815523ab
-- op: process_slot
-  params:
-    state: $context.states.a5c63f50136afb2ac758cc8c7fc11d3c0ff418f411522eba1cf4b7ac815523ab
+- {op: load_state, state_root:
+    95d19311d30804985b06c40cc437bdfbb126209ad9ea8253ba33e0ff0af74c40.ssz_snappy}
+- op: spec_call
+  method: process_slot
+  input: {state:
+      95d19311d30804985b06c40cc437bdfbb126209ad9ea8253ba33e0ff0af74c40.ssz_snappy}
+- {op: assert_state, state_root:
+    41f562b491baaa9fdd981973c8aef64bb7c663c4b07f35141c16afc9e11184c1.ssz_snappy}
 ```
 
 In this example, `process_slot` does not return anything but we can see the
-final state being dumped automatically anmd it's different from the initial one.
+initial state and the final state being dumped automatically and they are
+different. In the other more complex example test (omitted here for brevity) we
+can examine how complex inputs and outputs being dumped and how out-of-band
+state mutations are being tracked with assert and load steps.
+
+A non-normative example of a little more complex inputs and outputs:
+
+```yaml
+- op: spec_call
+  method: get_current_epoch
+  input: {state:
+      0740b3ecc6fb1bdc20c4f2d792da51dc7aaaa506e445ee7ba7ef1dd7ed900443.ssz_snappy}
+  assert_output: 2
+- op: spec_call
+  method: get_seed
+  input:
+    state:
+      0740b3ecc6fb1bdc20c4f2d792da51dc7aaaa506e445ee7ba7ef1dd7ed900443.ssz_snappy
+    epoch: 2
+    domain_type: '0x00000000'
+  assert_output: '0x79edc6cbb9ffac34477afe87d8569b7afab320241ce69d70c6d0c0a1839379df'
+```
+
+simple primitive types here (e.g. int or bytes, not containers) are serialized
+directly into yaml (even in cases where they subclass SSZ `View` and can
+technically be dumped as ssz artifacts), bytes are dumped as 0x-prefixed hex
+strings which seems appropriate. SSZ artifacts are always referred to by root
+hash-based filename so that there's no need to maintain any mappings or
+filename-generating logic.
 
 ### Implementation details
 
@@ -55,25 +92,34 @@ wrapt is used to wrap spec methods and record their calls, parameters and
 results. A decorator is used to set things up. Some simple pydantic models are
 used for the trace file structure and some sanitation/formatting.
 
+From a consumer standpoint (i.e. test runner) new tests using this decorator
+behave differently and are being detected by a new data type (a pydantic model
+instance). Some logic was added to `execute_test` in
+`tests/core/pyspec/eth2spec/gen_helpers/gen_base/gen_runner.py` to catch that
+new case and apply new serialization method.
+
+The way `wrapt.ObjectProxy` operates is that it allows you to create a proxy
+object for e.g. consensus spec module and override things on it without
+affecting any of the underlying logic (unlike monkey-patching). In our case here
+we override all lowercase methods in the spec object by wrapping them in a
+`wrapt` decorator with tracer function. Whenever a state is detected in any of
+the method calls it gets automatically tracked and then it's checked again after
+each method call to check for mutations. Everything is saved in a pydantic model
+object for further dumping using existing reftest tooling.
+
 ### TODO
 
-This is still work in progress.
+This is still being cooked.
 
-I'm not sure about how some of the finer trace details map to vectors yet, so
-this is a WIP. Once we have vectors generated from traces, we can refine the
-trace format as needed.
+Integration with test runner is done by yielding pydantic model as a new data
+type and very simple change in the runner. It would be more natural to just
+return the value but that would require supporting non-generator functions as
+tests which would require much more code than seems reasonable here.
 
 I tried my best to separate core logic from the boilerplate needed but it could
 be improved upon.
 
-I didn't implelement some things we have with yield-based tests, Leo told me to
-not worry about that because the new framework is for new tests and we can keep
-the old ones as is for now and don't need feature parity.
-
-Types are perhaps not as strict as they could be (partially because we had some
-flexibility in mind), but it's a start and in many cases we don't have enough
-typing in the tests to be sure about that. There's an issue open to improve
-typing in the tests in general.
+Some cleanup and polishing is still required. Typing could be improved.
 
 ### Credits
 
