@@ -71,8 +71,6 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### Configuration
 
-*[New in Gloas:EIP7732]*
-
 | Name                   | Value          | Description                                                       |
 | ---------------------- | -------------- | ----------------------------------------------------------------- |
 | `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
@@ -417,8 +415,6 @@ The following validations are removed:
 
 **Protocol ID:**
 `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
-
-*[New in Gloas:EIP7732]*
 
 Request Content:
 

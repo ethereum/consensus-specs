@@ -74,8 +74,6 @@ def get_ptc_assignment(
 
 ### Lookahead
 
-*[New in Gloas:EIP7732]*
-
 `get_ptc_assignment` should be called at the start of each epoch to get the
 assignment for the next epoch (`current_epoch + 1`). A validator should plan for
 future assignments by noting their assigned PTC slot.
@@ -261,8 +259,6 @@ def prepare_execution_payload(
 ```
 
 ## Data column sidecars
-
-*[Modified in Gloas]*
 
 ### Modified `get_data_column_sidecars_from_column_sidecar`
 
