@@ -1988,8 +1988,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert len(attestation.aggregation_bits) == len(committee)
 
     pending_attestation = PendingAttestation(
-        data=data,
         aggregation_bits=attestation.aggregation_bits,
+        data=data,
         inclusion_delay=state.slot - data.slot,
         proposer_index=get_beacon_proposer_index(state),
     )
