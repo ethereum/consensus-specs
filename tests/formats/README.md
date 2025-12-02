@@ -270,13 +270,13 @@ The basic pattern for test-suite loading and running is:
 
 1. For a specific config, load it first (and only need to do so once), then
    continue with the tests defined in the config folder.
-1. Select a fork. Repeat for each fork if running tests for multiple forks.
-1. Select the category and specialization of interest (e.g.
+2. Select a fork. Repeat for each fork if running tests for multiple forks.
+3. Select the category and specialization of interest (e.g.
    `operations > deposits`). Again, repeat for each if running all.
-1. Select a test suite. Or repeat for each.
-1. Select a test case. Or repeat for each.
-1. Load the parts of the case. `manifest.yaml` and `meta.yaml` if present.
-1. Run the test, as defined by the test format.
+4. Select a test suite. Or repeat for each.
+5. Select a test case. Or repeat for each.
+6. Load the parts of the case. `manifest.yaml` and `meta.yaml` if present.
+7. Run the test, as defined by the test format.
 
 Step 1 may be a step with compile time selection of a configuration, if desired
 for optimization. The base requirement is just to use the same set of constants,
