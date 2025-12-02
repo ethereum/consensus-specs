@@ -73,7 +73,7 @@ class Dumper:
     def dump_manifest(self, test_case: TestCase) -> None:
         """Write manifest.yml file containing test case metadata."""
         manifest_data = {
-            "config_name": test_case.preset_name,
+            "preset_name": test_case.preset_name,
             "fork_name": test_case.fork_name,
             "runner_name": test_case.runner_name,
             "handler_name": test_case.handler_name,

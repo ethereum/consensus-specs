@@ -219,7 +219,7 @@ bls_setting: int     -- optional, can have 3 different values:
 Included in every test case. Contains metadata that identifies the test vector:
 
 ```yaml
-config_name: minimal      # Configuration preset (mainnet, minimal, general)
+preset_name: minimal      # Preset (mainnet, minimal, general)
 fork_name: phase0         # Fork/phase name
 runner_name: bls          # Test runner category
 handler_name: eth_aggregate_pubkeys  # Specific handler
@@ -230,7 +230,7 @@ case_name: eth_aggregate_pubkeys_valid_0  # Individual test case name
 This metadata duplicates what is already encoded in the directory path:
 
 ```
-tests/<config_name>/<fork_name>/<runner_name>/<handler_name>/<suite_name>/<case_name>/
+tests/<preset_name>/<fork_name>/<runner_name>/<handler_name>/<suite_name>/<case_name>/
 ```
 
 Having it in a file means test vectors can be moved or distributed without
