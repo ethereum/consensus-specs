@@ -738,16 +738,23 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ##### New `is_builder_payment_withdrawable`
 
+*Note*: Builder payments are immediately withdrawable if the builder is not
+slashed; this allows the builder to submit bids as soon as it becomes active. On
+the other hand, if the builder is slashed, builder payments cannot be made until
+after the builder's withdrawable epoch (which is set by the `slash_validator`
+function); this is a security measure to prevent a slashed builder from sending
+its stake to a colluding proposer before the appropriate penalties are applied.
+
 ```python
 def is_builder_payment_withdrawable(
     state: BeaconState, withdrawal: BuilderPendingWithdrawal
 ) -> bool:
     """
-    Check if the builder is slashed and not yet withdrawable.
+    Check if a builder payment is withdrawable.
     """
     builder = state.validators[withdrawal.builder_index]
     current_epoch = compute_epoch_at_slot(state.slot)
-    return builder.withdrawable_epoch >= current_epoch or not builder.slashed
+    return not builder.slashed or builder.withdrawable_epoch >= current_epoch
 ```
 
 ##### Modified `get_expected_withdrawals`
