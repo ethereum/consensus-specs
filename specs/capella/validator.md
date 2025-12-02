@@ -86,6 +86,8 @@ def prepare_execution_payload(
     finalized_block_hash: Hash32,
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
+    # [Modified in Capella]
+    # Removed `pow_chain`
 ) -> Optional[PayloadId]:
     # [Modified in Capella]
     # Removed `is_merge_transition_complete` check
