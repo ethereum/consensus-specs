@@ -11,12 +11,12 @@ vectors (the actual vector generation is another task in progress).
 ### Usage and example test
 
 ```python
-from tests.infra.trace import record_spec_trace
+from tests.infra.trace import spec_trace
 
 
 @with_all_phases
 @spec_state_test  # keep these like before
-@record_spec_trace  # this is the thing that makes the magic happen
+@spec_trace  # this is the thing that makes the magic happen
 def test_linear_sanity_slots(spec, state):  # spec and state can be positional but the name matters
     # just use spec methods, they are traced automagically, and state is dumped
     spec.process_slot(state)

@@ -3,12 +3,12 @@ from eth2spec.test.context import (
     with_all_phases,
 )
 from eth2spec.test.helpers.state import get_state_root, next_epoch, next_slot, transition_to
-from tests.infra.trace import record_spec_trace
+from tests.infra.trace import spec_trace
 
 
 @with_all_phases
 @spec_state_test
-@record_spec_trace
+@spec_trace
 def test_example_test_slots_1(spec, state):
     pre_slot = state.slot
     pre_root = state.hash_tree_root()
@@ -22,7 +22,7 @@ def test_example_test_slots_1(spec, state):
 
 @with_all_phases
 @spec_state_test
-@record_spec_trace
+@spec_trace
 def test_example_test_balance_change_affects_proposer(spec, state):
     # Brute-force an instance where a validator's balance change prevents it from proposing.
     for _ in range(100):

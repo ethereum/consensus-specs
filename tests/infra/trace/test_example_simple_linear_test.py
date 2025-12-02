@@ -8,12 +8,12 @@ from eth2spec.test.context import (
     spec_state_test,
     with_all_phases,
 )
-from tests.infra.trace import record_spec_trace
+from tests.infra.trace import spec_trace
 
 
 @with_all_phases
 @spec_state_test
-@record_spec_trace
+@spec_trace
 def test_linear_sanity_slots(spec, state):
     """
     Run a sanity test checking that `process_slot` works.

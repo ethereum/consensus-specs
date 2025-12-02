@@ -1,1 +1,1 @@
-from tests.infra.trace.decorator import record_spec_trace as record_spec_trace
+from tests.infra.trace.decorator import spec_trace as spec_trace
