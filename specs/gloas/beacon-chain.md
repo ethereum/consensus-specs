@@ -901,6 +901,7 @@ def process_withdrawals(
         processed_validators_sweep_count,
     ) = get_expected_withdrawals(state)
 
+    # Apply expected withdrawals
     apply_withdrawals(state, withdrawals)
 
     # [Modified in Gloas:EIP7732]
