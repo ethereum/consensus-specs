@@ -906,7 +906,7 @@ def process_withdrawals(
     withdrawals, processed_builder_withdrawals_count, processed_partial_withdrawals_count = (
         get_expected_withdrawals(state)
     )
-    apply_withdrawals(state, withdrawals)   
+    apply_withdrawals(state, withdrawals)
 
     # [Modified in Gloas:EIP7732]
     # Update withdrawals fields in the state
