@@ -59,7 +59,7 @@ def get_ptc_assignment(
 ) -> Optional[Slot]:
     """
     Returns the slot during the requested epoch in which the validator with
-    index `validator_index` is a member of the PTC. Returns None if no
+    index ``validator_index`` is a member of the PTC. Returns None if no
     assignment is found.
     """
     next_epoch = Epoch(get_current_epoch(state) + 1)
@@ -274,7 +274,7 @@ def get_data_column_sidecars_from_column_sidecar(
     ],
 ) -> Sequence[DataColumnSidecar]:
     """
-    Given a DataColumnSidecar and the cells/proofs associated with each blob corresponding
+    Given a data column sidecar and the cells/proofs associated with each blob corresponding
     to the commitments it contains, assemble all sidecars for distribution to peers.
     """
     assert len(cells_and_kzg_proofs) == len(sidecar.kzg_commitments)
