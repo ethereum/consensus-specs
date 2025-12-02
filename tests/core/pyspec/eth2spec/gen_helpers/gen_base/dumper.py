@@ -73,12 +73,12 @@ class Dumper:
     def dump_manifest(self, test_case: TestCase) -> None:
         """Write manifest.yml file containing test case metadata."""
         manifest_data = {
-            "preset_name": test_case.preset_name,
-            "fork_name": test_case.fork_name,
-            "runner_name": test_case.runner_name,
-            "handler_name": test_case.handler_name,
-            "suite_name": test_case.suite_name,
-            "case_name": test_case.case_name,
+            "preset": test_case.preset_name,
+            "fork": test_case.fork_name,
+            "runner": test_case.runner_name,
+            "handler": test_case.handler_name,
+            "suite": test_case.suite_name,
+            "case": test_case.case_name,
         }
         # Use cfg_yaml which has block style formatting (default_flow_style=False)
         # This ensures each field appears on a separate line, matching data.yaml format
