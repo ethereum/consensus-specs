@@ -198,8 +198,7 @@ The validator creates `payload_attestation_message` as follows:
 - If a previously seen `SignedExecutionPayloadEnvelope` references the block
   with root `data.beacon_block_root`, set `data.payload_present` to `True`;
   otherwise, set `data.payload_present` to `False`.
-- Set `data.blob_data_available` to `True`, if
-  `is_data_available(data.beacon_block_root)` returns `True`.
+- Set `data.blob_data_available` to `is_data_available(data.beacon_block_root)`.
 - Set `payload_attestation_message.validator_index = validator_index` where
   `validator_index` is the validator chosen to submit. The private key mapping
   to `state.validators[validator_index].pubkey` is used to sign the payload
