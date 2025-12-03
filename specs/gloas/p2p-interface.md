@@ -221,7 +221,7 @@ This topic is used to propagate execution payload messages as
 The following validations MUST pass before forwarding the
 `signed_execution_payload_envelope` on the network, assuming the alias
 `envelope = signed_execution_payload_envelope.message`,
-`payload = payload_envelope.payload`:
+`payload = envelope.payload`:
 
 - _[IGNORE]_ The envelope's block root `envelope.block_root` has been seen (via
   gossip or non-gossip sources) (a client MAY queue payload for processing once
@@ -281,6 +281,7 @@ The following validations MUST pass before forwarding the
   `BUILDER_WITHDRAWAL_PREFIX` -- i.e.
   `is_builder_withdrawal_credential(state.validators[bid.builder_index].withdrawal_credentials)`
   returns `True`.
+- _[REJECT]_ `bid.execution_payment` is zero.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
@@ -318,7 +319,8 @@ The following validations MUST pass before forwarding the
 **Added in Gloas:**
 
 - _[IGNORE]_ The sidecar's `beacon_block_root` has been seen via a valid signed
-  execution payload header (builder's bid).
+  execution payload bid. A client MAY queue the sidecar for processing once the
+  block is retrieved.
 - _[REJECT]_ The sidecars's `slot` matches the slot of the block with root
   `beacon_block_root`.
 - _[REJECT]_ The hash of the sidecar's `kzg_commitments` matches the

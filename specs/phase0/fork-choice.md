@@ -18,6 +18,8 @@
     - [`get_ancestor`](#get_ancestor)
     - [`calculate_committee_fraction`](#calculate_committee_fraction)
     - [`get_checkpoint_block`](#get_checkpoint_block)
+    - [`get_attestation_score`](#get_attestation_score)
+    - [`compute_proposer_score`](#compute_proposer_score)
     - [`get_proposer_score`](#get_proposer_score)
     - [`get_weight`](#get_weight)
     - [`get_voting_source`](#get_voting_source)
@@ -268,26 +270,16 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
     return get_ancestor(store, root, epoch_first_slot)
 ```
 
-#### `get_proposer_score`
+#### `get_attestation_score`
 
 ```python
-def get_proposer_score(store: Store) -> Gwei:
-    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
-    committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
-    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
-```
-
-#### `get_weight`
-
-```python
-def get_weight(store: Store, root: Root) -> Gwei:
-    state = store.checkpoint_states[store.justified_checkpoint]
+def get_attestation_score(store: Store, root: Root, state: BeaconState) -> Gwei:
     unslashed_and_active_indices = [
         i
         for i in get_active_validator_indices(state, get_current_epoch(state))
         if not state.validators[i].slashed
     ]
-    attestation_score = Gwei(
+    return Gwei(
         sum(
             state.validators[i].effective_balance
             for i in unslashed_and_active_indices
@@ -299,6 +291,30 @@ def get_weight(store: Store, root: Root) -> Gwei:
             )
         )
     )
+```
+
+#### `compute_proposer_score`
+
+```python
+def compute_proposer_score(state: BeaconState) -> Gwei:
+    committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
+    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
+```
+
+#### `get_proposer_score`
+
+```python
+def get_proposer_score(store: Store) -> Gwei:
+    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
+    return compute_proposer_score(justified_checkpoint_state)
+```
+
+#### `get_weight`
+
+```python
+def get_weight(store: Store, root: Root) -> Gwei:
+    state = store.checkpoint_states[store.justified_checkpoint]
+    attestation_score = get_attestation_score(store, root, state)
     if store.proposer_boost_root == Root():
         # Return only attestation score if ``proposer_boost_root`` is not set
         return attestation_score
