@@ -405,7 +405,7 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
 
-    # Get excess balance sweep withdrawals
+    # Get sweep withdrawals
     sweep_withdrawals = get_sweep_withdrawals(
         state, withdrawal_index, validator_index, epoch, withdrawals
     )
