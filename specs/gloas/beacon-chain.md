@@ -827,7 +827,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     # [New in Gloas:EIP7732]
     # Get builder withdrawals
     builder_withdrawals, withdrawal_index, processed_builder_withdrawals_count = (
-        get_builder_withdrawals(state, withdrawal_index, epoch, [])
+        get_builder_withdrawals(state, withdrawal_index, epoch, withdrawals)
     )
     withdrawals.extend(builder_withdrawals)
 
