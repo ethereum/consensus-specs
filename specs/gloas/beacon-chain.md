@@ -55,6 +55,7 @@
   - [Block processing](#block-processing)
     - [Withdrawals](#withdrawals)
       - [New `is_builder_payment_withdrawable`](#new-is_builder_payment_withdrawable)
+      - [New `get_builder_withdrawable_balance`](#new-get_builder_withdrawable_balance)
       - [New `get_builder_withdrawals`](#new-get_builder_withdrawals)
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
@@ -758,6 +759,21 @@ def is_builder_payment_withdrawable(
     return not builder.slashed or current_epoch >= builder.withdrawable_epoch
 ```
 
+##### New `get_builder_withdrawable_balance`
+
+```python
+def get_builder_withdrawable_balance(builder: Validator, balance: Gwei) -> Gwei:
+    """
+    Get the withdrawable balance for a builder payment.
+    """
+    if builder.slashed:
+        return balance
+    elif balance > MIN_ACTIVATION_BALANCE:
+        return balance - MIN_ACTIVATION_BALANCE
+    else:
+        return Gwei(0)
+```
+
 ##### New `get_builder_withdrawals`
 
 ```python
@@ -781,21 +797,15 @@ def get_builder_withdrawals(
             builder_index = withdrawal.builder_index
             builder = state.validators[builder_index]
             balance = get_balance_minus_withdrawals(state, builder_index, all_withdrawals)
-
-            if builder.slashed:
-                withdrawable_balance = min(balance, withdrawal.amount)
-            elif balance > MIN_ACTIVATION_BALANCE:
-                withdrawable_balance = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
-            else:
-                withdrawable_balance = 0
-
-            if withdrawable_balance > 0:
+            withdrawable_balance = get_builder_withdrawable_balance(builder, balance)
+            withdrawal_amount = min(withdrawable_balance, withdrawal.amount)
+            if withdrawal_amount > 0:
                 withdrawals.append(
                     Withdrawal(
                         index=withdrawal_index,
                         validator_index=builder_index,
                         address=withdrawal.fee_recipient,
-                        amount=withdrawable_balance,
+                        amount=withdrawal_amount,
                     )
                 )
                 withdrawal_index += WithdrawalIndex(1)
