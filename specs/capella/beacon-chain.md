@@ -29,6 +29,7 @@
   - [Epoch processing](#epoch-processing)
     - [Historical summaries updates](#historical-summaries-updates)
   - [Block processing](#block-processing)
+    - [New `get_balance_minus_withdrawals`](#new-get_balance_minus_withdrawals)
     - [New `get_sweep_withdrawals`](#new-get_sweep_withdrawals)
     - [New `get_expected_withdrawals`](#new-get_expected_withdrawals)
     - [New `process_withdrawals`](#new-process_withdrawals)
@@ -337,6 +338,18 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
+#### New `get_balance_minus_withdrawals`
+
+```python
+def get_balance_minus_withdrawals(
+    state: BeaconState,
+    validator_index: ValidatorIndex,
+    withdrawals: Sequence[Withdrawal],
+) -> Gwei:
+    total_withdrawn = sum(w.amount for w in withdrawals if w.validator_index == validator_index)
+    return state.balances[validator_index] - total_withdrawn
+```
+
 #### New `get_sweep_withdrawals`
 
 ```python
@@ -351,13 +364,12 @@ def get_sweep_withdrawals(
     bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
 
     for _ in range(bound):
+        all_withdrawals = prior_withdrawals + withdrawals
+        if len(all_withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
+            break
+
         validator = state.validators[validator_index]
-        total_withdrawn = sum(
-            w.amount
-            for w in prior_withdrawals + withdrawals
-            if w.validator_index == validator_index
-        )
-        balance = state.balances[validator_index] - total_withdrawn
+        balance = get_balance_minus_withdrawals(state, validator_index, all_withdrawals)
         if is_fully_withdrawable_validator(validator, balance, epoch):
             withdrawals.append(
                 Withdrawal(
@@ -378,9 +390,7 @@ def get_sweep_withdrawals(
                 )
             )
             withdrawal_index += WithdrawalIndex(1)
-        total_withdrawals_count = len(prior_withdrawals) + len(withdrawals)
-        if total_withdrawals_count == MAX_WITHDRAWALS_PER_PAYLOAD:
-            break
+
         validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
 
     return withdrawals

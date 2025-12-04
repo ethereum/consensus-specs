@@ -771,17 +771,16 @@ def get_builder_withdrawals(
     processed_count = 0
 
     for withdrawal in state.builder_pending_withdrawals:
+        all_withdrawals = prior_withdrawals + withdrawals
         is_not_withdrawable = withdrawal.withdrawable_epoch > epoch
-        total_withdrawals_count = len(prior_withdrawals) + len(withdrawals)
-        has_reached_bound = total_withdrawals_count + 1 == MAX_WITHDRAWALS_PER_PAYLOAD
+        has_reached_bound = len(all_withdrawals) + 1 == MAX_WITHDRAWALS_PER_PAYLOAD
         if is_not_withdrawable or has_reached_bound:
             break
+
         if is_builder_payment_withdrawable(state, withdrawal):
-            total_withdrawn = sum(
-                w.amount for w in withdrawals if w.validator_index == withdrawal.builder_index
-            )
-            balance = state.balances[withdrawal.builder_index] - total_withdrawn
-            builder = state.validators[withdrawal.builder_index]
+            builder_index = withdrawal.builder_index
+            builder = state.validators[builder_index]
+            balance = get_balance_minus_withdrawals(state, builder_index, all_withdrawals)
 
             if builder.slashed:
                 withdrawable_balance = min(balance, withdrawal.amount)
@@ -794,12 +793,13 @@ def get_builder_withdrawals(
                 withdrawals.append(
                     Withdrawal(
                         index=withdrawal_index,
-                        validator_index=withdrawal.builder_index,
+                        validator_index=builder_index,
                         address=withdrawal.fee_recipient,
                         amount=withdrawable_balance,
                     )
                 )
                 withdrawal_index += WithdrawalIndex(1)
+
         processed_count += 1
 
     return withdrawals, withdrawal_index, processed_count
