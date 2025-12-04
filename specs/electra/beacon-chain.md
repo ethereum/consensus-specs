@@ -44,6 +44,7 @@
     - [New `has_execution_withdrawal_credential`](#new-has_execution_withdrawal_credential)
     - [Modified `is_fully_withdrawable_validator`](#modified-is_fully_withdrawable_validator)
     - [Modified `is_partially_withdrawable_validator`](#modified-is_partially_withdrawable_validator)
+    - [New `is_eligible_for_partial_withdrawals`](#new-is_eligible_for_partial_withdrawals)
   - [Misc](#misc-1)
     - [New `get_committee_indices`](#new-get_committee_indices)
     - [New `get_max_effective_balance`](#new-get_max_effective_balance)
@@ -543,6 +544,22 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
         # [Modified in Electra:EIP7251]
         has_execution_withdrawal_credential(validator)
         and has_max_effective_balance
+        and has_excess_balance
+    )
+```
+
+#### New `is_eligible_for_partial_withdrawals`
+
+```python
+def is_eligible_for_partial_withdrawals(validator: Validator, balance: Gwei) -> bool:
+    """
+    Check if ``validator`` can process a pending partial withdrawal.
+    """
+    has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
+    has_excess_balance = balance > MIN_ACTIVATION_BALANCE
+    return (
+        validator.exit_epoch == FAR_FUTURE_EPOCH
+        and has_sufficient_effective_balance
         and has_excess_balance
     )
 ```
@@ -1211,14 +1228,14 @@ def get_pending_partial_withdrawals(
         validator_index = withdrawal.validator_index
         validator = state.validators[validator_index]
         balance = get_balance_minus_withdrawals(state, validator_index, all_withdrawals)
-        if is_partially_withdrawable_validator(validator, balance):
-            withdrawable_balance = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
+        if is_eligible_for_partial_withdrawals(validator, balance):
+            withdrawal_amount = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
             withdrawals.append(
                 Withdrawal(
                     index=withdrawal_index,
                     validator_index=validator_index,
                     address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                    amount=withdrawable_balance,
+                    amount=withdrawal_amount,
                 )
             )
             withdrawal_index += WithdrawalIndex(1)
