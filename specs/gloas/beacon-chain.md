@@ -768,7 +768,7 @@ def get_builder_withdrawals(
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
     withdrawals: List[Withdrawal] = []
-    processed_builder_withdrawals_count = 0
+    processed_count = 0
 
     for withdrawal in state.builder_pending_withdrawals:
         is_not_withdrawable = withdrawal.withdrawable_epoch > epoch
@@ -800,9 +800,9 @@ def get_builder_withdrawals(
                     )
                 )
                 withdrawal_index += WithdrawalIndex(1)
-        processed_builder_withdrawals_count += 1
+        processed_count += 1
 
-    return withdrawals, withdrawal_index, processed_builder_withdrawals_count
+    return withdrawals, withdrawal_index, processed_count
 ```
 
 ##### Modified `get_expected_withdrawals`

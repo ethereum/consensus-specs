@@ -1195,7 +1195,7 @@ def get_pending_partial_withdrawals(
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
     withdrawals: List[Withdrawal] = []
-    processed_partial_withdrawals_count = 0
+    processed_count = 0
     bound = min(
         len(prior_withdrawals) + MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
         MAX_WITHDRAWALS_PER_PAYLOAD - 1,
@@ -1232,9 +1232,9 @@ def get_pending_partial_withdrawals(
                 )
             )
             withdrawal_index += WithdrawalIndex(1)
-        processed_partial_withdrawals_count += 1
+        processed_count += 1
 
-    return withdrawals, withdrawal_index, processed_partial_withdrawals_count
+    return withdrawals, withdrawal_index, processed_count
 ```
 
 ##### Modified `get_sweep_withdrawals`
