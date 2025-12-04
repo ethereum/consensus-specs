@@ -403,8 +403,13 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     epoch = get_current_epoch(state)
     withdrawal_index = state.next_withdrawal_index
     validator_index = state.next_withdrawal_validator_index
+    withdrawals: List[Withdrawal] = []
 
-    withdrawals = get_sweep_withdrawals(state, withdrawal_index, validator_index, epoch, [])
+    # Get excess balance sweep withdrawals
+    sweep_withdrawals = get_sweep_withdrawals(
+        state, withdrawal_index, validator_index, epoch, withdrawals
+    )
+    withdrawals.extend(sweep_withdrawals)
 
     return withdrawals
 ```

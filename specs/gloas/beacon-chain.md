@@ -825,16 +825,19 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     withdrawals: List[Withdrawal] = []
 
     # [New in Gloas:EIP7732]
+    # Get builder withdrawals
     builder_withdrawals, withdrawal_index, processed_builder_withdrawals_count = (
         get_builder_withdrawals(state, withdrawal_index, epoch, [])
     )
     withdrawals.extend(builder_withdrawals)
 
+    # Get partial withdrawals
     partial_withdrawals, withdrawal_index, processed_partial_withdrawals_count = (
         get_pending_partial_withdrawals(state, withdrawal_index, epoch, withdrawals)
     )
     withdrawals.extend(partial_withdrawals)
 
+    # Get excess balance sweep withdrawals
     sweep_withdrawals = get_sweep_withdrawals(
         state, withdrawal_index, validator_index, epoch, withdrawals
     )
