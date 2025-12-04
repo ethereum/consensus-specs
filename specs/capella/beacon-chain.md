@@ -354,7 +354,7 @@ def get_sweep_withdrawals(
         validator = state.validators[validator_index]
         total_withdrawn = sum(
             w.amount
-            for w in list(prior_withdrawals) + withdrawals
+            for w in prior_withdrawals + withdrawals
             if w.validator_index == validator_index
         )
         balance = state.balances[validator_index] - total_withdrawn
