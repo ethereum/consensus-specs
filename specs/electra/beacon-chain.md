@@ -1202,36 +1202,27 @@ def get_pending_partial_withdrawals(
     )
 
     for withdrawal in state.pending_partial_withdrawals:
+        all_withdrawals = prior_withdrawals + withdrawals
         is_not_withdrawable = withdrawal.withdrawable_epoch > epoch
-        total_withdrawals_count = len(prior_withdrawals) + len(withdrawals)
-        has_reached_bound = total_withdrawals_count == bound
+        has_reached_bound = len(all_withdrawals) == bound
         if is_not_withdrawable or has_reached_bound:
             break
 
-        validator = state.validators[withdrawal.validator_index]
-        has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
-        total_withdrawn = sum(
-            w.amount
-            for w in prior_withdrawals + withdrawals
-            if w.validator_index == withdrawal.validator_index
-        )
-        balance = state.balances[withdrawal.validator_index] - total_withdrawn
-        has_excess_balance = balance > MIN_ACTIVATION_BALANCE
-        if (
-            validator.exit_epoch == FAR_FUTURE_EPOCH
-            and has_sufficient_effective_balance
-            and has_excess_balance
-        ):
+        validator_index = withdrawal.validator_index
+        validator = state.validators[validator_index]
+        balance = get_balance_minus_withdrawals(state, validator_index, all_withdrawals)
+        if is_partially_withdrawable_validator(validator, balance):
             withdrawable_balance = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
             withdrawals.append(
                 Withdrawal(
                     index=withdrawal_index,
-                    validator_index=withdrawal.validator_index,
+                    validator_index=validator_index,
                     address=ExecutionAddress(validator.withdrawal_credentials[12:]),
                     amount=withdrawable_balance,
                 )
             )
             withdrawal_index += WithdrawalIndex(1)
+
         processed_count += 1
 
     return withdrawals, withdrawal_index, processed_count
@@ -1255,12 +1246,9 @@ def get_sweep_withdrawals(
 
     for _ in range(bound):
         validator = state.validators[validator_index]
-        total_withdrawn = sum(
-            w.amount
-            for w in prior_withdrawals + withdrawals
-            if w.validator_index == validator_index
+        balance = get_balance_minus_withdrawals(
+            state, validator_index, prior_withdrawals + withdrawals
         )
-        balance = state.balances[validator_index] - total_withdrawn
         if is_fully_withdrawable_validator(validator, balance, epoch):
             withdrawals.append(
                 Withdrawal(
