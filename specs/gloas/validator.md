@@ -16,7 +16,7 @@
   - [Block proposal](#block-proposal)
     - [Constructing `signed_execution_payload_bid`](#constructing-signed_execution_payload_bid)
     - [Constructing `payload_attestations`](#constructing-payload_attestations)
-    - [Blob sidecars](#blob-sidecars)
+    - [Constructing Data column sidecars](#constructing-data-column-sidecars)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing a payload attestation](#constructing-a-payload-attestation)
 - [Modified functions](#modified-functions)
@@ -162,12 +162,10 @@ construct the `payload_attestations` field in `BeaconBlockBody`:
   indices with respect to the PTC that is obtained from
   `get_ptc(state, block_slot - 1)`.
 
-#### Blob sidecars
+#### Constructing Data column sidecars
 
-The blob sidecars are no longer broadcast by the validator, and thus their
-construction is not necessary. This deprecates the corresponding sections from
-the Honest Validator specifications in the Fulu fork, moving them, albeit with
-some modifications, to the [Honest Builder](./builder.md) specifications.
+Unless a validator self-builds, the data column sidecars are no longer broadcast
+by the validator, and thus their construction is not necessary.
 
 ### Payload timeliness attestation
 
