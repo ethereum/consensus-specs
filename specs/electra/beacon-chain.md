@@ -1313,7 +1313,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     )
     withdrawals.extend(partial_withdrawals)
 
-    # Get excess balance sweep withdrawals
+    # Get sweep withdrawals
     sweep_withdrawals = get_sweep_withdrawals(
         state, withdrawal_index, validator_index, epoch, withdrawals
     )
