@@ -122,7 +122,7 @@ previous forks as follows
 
 #### Broadcasting `SignedProposerPreferences`
 
-At the beginning of each epoch, a validator MUST broadcast a
+At the beginning of each epoch, a validator MAY broadcast a
 `SignedProposerPreferences` message to the `proposer_preferences` gossip topic
 if `is_next_epoch_proposer(state, validator_index)` returns `True`. This allows
 builders to construct execution payloads with the validator's preferred
