@@ -11,6 +11,8 @@
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
+    - [New `ProposerPreferences`](#new-proposerpreferences)
+    - [New `SignedProposerPreferences`](#new-signedproposerpreferences)
   - [Helpers](#helpers)
     - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -21,6 +23,7 @@
         - [`execution_payload`](#execution_payload)
         - [`payload_attestation_message`](#payload_attestation_message)
         - [`execution_payload_bid`](#execution_payload_bid)
+        - [`proposer_preferences`](#proposer_preferences)
       - [Blob subnets](#blob-subnets)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
       - [Attestation subnets](#attestation-subnets)
@@ -103,6 +106,28 @@ class DataColumnSidecar(Container):
     beacon_block_root: Root
 ```
 
+#### New `ProposerPreferences`
+
+*[New in Gloas:EIP7732]*
+
+```python
+class ProposerPreferences(Container):
+    proposal_epoch: Epoch
+    validator_index: ValidatorIndex
+    fee_recipient: ExecutionAddress
+    gas_limit: uint64
+```
+
+#### New `SignedProposerPreferences`
+
+*[New in Gloas:EIP7732]*
+
+```python
+class SignedProposerPreferences(Container):
+    message: ProposerPreferences
+    signature: BLSSignature
+```
+
 ### Helpers
 
 ##### Modified `verify_data_column_sidecar`
@@ -157,6 +182,7 @@ are given in this table:
 | `execution_payload_bid`       | `SignedExecutionPayloadBid`      |
 | `execution_payload`           | `SignedExecutionPayloadEnvelope` |
 | `payload_attestation_message` | `PayloadAttestationMessage`      |
+| `proposer_preferences`        | `SignedProposerPreferences`      |
 
 ##### Global topics
 
@@ -282,6 +308,8 @@ The following validations MUST pass before forwarding the
   `is_builder_withdrawal_credential(state.validators[bid.builder_index].withdrawal_credentials)`
   returns `True`.
 - _[REJECT]_ `bid.execution_payment` is zero.
+- _[REJECT]_ `bid.fee_recipient` matches the `fee_recipient` from the proposer's
+  `SignedProposerPreferences` for `compute_epoch_at_slot(bid.slot)`.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
@@ -296,6 +324,29 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
+
+###### `proposer_preferences`
+
+*[New in Gloas:EIP7732]*
+
+This topic is used to propagate signed proposer preferences as
+`SignedProposerPreferences`. These messages allow validators to communicate
+their preferred `fee_recipient` and `gas_limit` to builders.
+
+The following validations MUST pass before forwarding the
+`signed_proposer_preferences` on the network, assuming the alias
+`preferences = signed_proposer_preferences.message`:
+
+- _[IGNORE]_ `preferences.proposal_epoch` is the next epoch (with a
+  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e.
+  `preferences.proposal_epoch == get_current_epoch(state) + 1`.
+- _[REJECT]_ `preferences.validator_index` is present in the next epoch's
+  portion of `state.proposer_lookahead` -- i.e.
+  `is_next_epoch_proposer(state, preferences.validator_index)` returns `True`.
+- _[IGNORE]_ The `signed_proposer_preferences` is the first valid message
+  received from the validator with index `preferences.validator_index`.
+- _[REJECT]_ `signed_proposer_preferences.signature` is valid with respect to
+  the validator's public key.
 
 ##### Blob subnets
 

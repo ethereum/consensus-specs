@@ -14,6 +14,7 @@
   - [Attestation](#attestation)
   - [Sync Committee participations](#sync-committee-participations)
   - [Block proposal](#block-proposal)
+    - [Broadcasting `SignedProposerPreferences`](#broadcasting-signedproposerpreferences)
     - [Constructing `signed_execution_payload_bid`](#constructing-signed_execution_payload_bid)
     - [Constructing `payload_attestations`](#constructing-payload_attestations)
     - [Blob sidecars](#blob-sidecars)
@@ -118,6 +119,33 @@ Validators are still expected to propose `SignedBeaconBlock` at the beginning of
 any slot during which `is_proposer(state, validator_index)` returns `True`. The
 mechanism to prepare this beacon block and related sidecars differs from
 previous forks as follows
+
+#### Broadcasting `SignedProposerPreferences`
+
+At the beginning of each epoch, a validator MUST broadcast a
+`SignedProposerPreferences` message to the `proposer_preferences` gossip topic
+if `is_next_epoch_proposer(state, validator_index)` returns `True`. This allows
+builders to construct execution payloads with the validator's preferred
+`fee_recipient` and `gas_limit`.
+
+```python
+def is_next_epoch_proposer(state: BeaconState, validator_index: ValidatorIndex) -> bool:
+    """
+    Check if ``validator_index`` is scheduled to propose in the next epoch.
+    """
+    next_epoch_proposers = state.proposer_lookahead[SLOTS_PER_EPOCH:]
+    return validator_index in next_epoch_proposers
+```
+
+To construct the `SignedProposerPreferences`:
+
+1. Set `preferences.proposal_epoch` to `get_current_epoch(state) + 1`.
+2. Set `preferences.validator_index` to the validator's index.
+3. Set `preferences.fee_recipient` to the execution address where the validator
+   wishes to receive builder payments.
+4. Set `preferences.gas_limit` to the validator's preferred gas limit for
+   execution payloads.
+5. Sign the `ProposerPreferences` with the validator's signing key.
 
 #### Constructing `signed_execution_payload_bid`
 
