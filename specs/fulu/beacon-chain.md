@@ -9,6 +9,8 @@
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
+    - [Operations](#operations)
+      - [Modified `process_operations`](#modified-process_operations)
 - [Containers](#containers)
   - [Extended Containers](#extended-containers)
     - [`BeaconState`](#beaconstate)
@@ -54,6 +56,18 @@ SHOULD be sorted by epoch in ascending order. The blob schedule MAY be empty.
 ## Beacon chain state transition function
 
 ### Block processing
+
+```python
+def process_block(state: BeaconState, block: BeaconBlock) -> None:
+    process_block_header(state, block)
+    process_withdrawals(state, block.body.execution_payload)
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)
+    process_randao(state, block.body)
+    process_eth1_data(state, block.body)
+    # [Modified in Fulu]
+    process_operations(state, block.body)
+    process_sync_aggregate(state, block.body.sync_aggregate)
+```
 
 #### Execution payload
 
@@ -113,6 +127,36 @@ def process_execution_payload(
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
     )
+```
+
+#### Operations
+
+##### Modified `process_operations`
+
+*Note*: The function `process_operations` is modified to remove support for the
+former deposit mechanism.
+
+```python
+def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
+    # [Modified in Fulu]
+    assert len(body.deposits) == 0
+    if state.deposit_requests_start_index != UNSET_DEPOSIT_REQUESTS_START_INDEX:
+        assert state.eth1_data.deposit_count >= state.deposit_requests_start_index
+
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(body.proposer_slashings, process_proposer_slashing)
+    for_ops(body.attester_slashings, process_attester_slashing)
+    for_ops(body.attestations, process_attestation)
+    # [Modified in Fulu]
+    # Removed `process_deposit`
+    for_ops(body.voluntary_exits, process_voluntary_exit)
+    for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
+    for_ops(body.execution_requests.deposits, process_deposit_request)
+    for_ops(body.execution_requests.withdrawals, process_withdrawal_request)
+    for_ops(body.execution_requests.consolidations, process_consolidation_request)
 ```
 
 ## Containers
