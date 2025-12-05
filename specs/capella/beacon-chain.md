@@ -29,6 +29,8 @@
   - [Epoch processing](#epoch-processing)
     - [Historical summaries updates](#historical-summaries-updates)
   - [Block processing](#block-processing)
+    - [New `get_balance_minus_withdrawals`](#new-get_balance_minus_withdrawals)
+    - [New `get_sweep_withdrawals`](#new-get_sweep_withdrawals)
     - [New `get_expected_withdrawals`](#new-get_expected_withdrawals)
     - [New `process_withdrawals`](#new-process_withdrawals)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
@@ -336,18 +338,38 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
-#### New `get_expected_withdrawals`
+#### New `get_balance_minus_withdrawals`
 
 ```python
-def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
-    epoch = get_current_epoch(state)
-    withdrawal_index = state.next_withdrawal_index
-    validator_index = state.next_withdrawal_validator_index
+def get_balance_minus_withdrawals(
+    state: BeaconState,
+    validator_index: ValidatorIndex,
+    withdrawals: Sequence[Withdrawal],
+) -> Gwei:
+    total_withdrawn = sum(w.amount for w in withdrawals if w.validator_index == validator_index)
+    return state.balances[validator_index] - total_withdrawn
+```
+
+#### New `get_sweep_withdrawals`
+
+```python
+def get_sweep_withdrawals(
+    state: BeaconState,
+    withdrawal_index: WithdrawalIndex,
+    validator_index: ValidatorIndex,
+    epoch: Epoch,
+    prior_withdrawals: Sequence[Withdrawal],
+) -> Sequence[Withdrawal]:
     withdrawals: List[Withdrawal] = []
     bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
+
     for _ in range(bound):
+        all_withdrawals = prior_withdrawals + withdrawals
+        if len(all_withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
+            break
+
         validator = state.validators[validator_index]
-        balance = state.balances[validator_index]
+        balance = get_balance_minus_withdrawals(state, validator_index, all_withdrawals)
         if is_fully_withdrawable_validator(validator, balance, epoch):
             withdrawals.append(
                 Withdrawal(
@@ -368,9 +390,27 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
                 )
             )
             withdrawal_index += WithdrawalIndex(1)
-        if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
-            break
+
         validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
+
+    return withdrawals
+```
+
+#### New `get_expected_withdrawals`
+
+```python
+def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
+    epoch = get_current_epoch(state)
+    withdrawal_index = state.next_withdrawal_index
+    validator_index = state.next_withdrawal_validator_index
+    withdrawals: List[Withdrawal] = []
+
+    # Get sweep withdrawals
+    sweep_withdrawals = get_sweep_withdrawals(
+        state, withdrawal_index, validator_index, epoch, withdrawals
+    )
+    withdrawals.extend(sweep_withdrawals)
+
     return withdrawals
 ```
 

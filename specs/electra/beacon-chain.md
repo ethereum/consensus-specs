@@ -44,6 +44,7 @@
     - [New `has_execution_withdrawal_credential`](#new-has_execution_withdrawal_credential)
     - [Modified `is_fully_withdrawable_validator`](#modified-is_fully_withdrawable_validator)
     - [Modified `is_partially_withdrawable_validator`](#modified-is_partially_withdrawable_validator)
+    - [New `is_eligible_for_partial_withdrawals`](#new-is_eligible_for_partial_withdrawals)
   - [Misc](#misc-1)
     - [New `get_committee_indices`](#new-get_committee_indices)
     - [New `get_max_effective_balance`](#new-get_max_effective_balance)
@@ -79,6 +80,8 @@
       - [Modified `verify_and_notify_new_payload`](#modified-verify_and_notify_new_payload)
   - [Block processing](#block-processing)
     - [Withdrawals](#withdrawals)
+      - [New `get_pending_partial_withdrawals`](#new-get_pending_partial_withdrawals)
+      - [Modified `get_sweep_withdrawals`](#modified-get_sweep_withdrawals)
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
     - [Execution payload](#execution-payload)
@@ -541,6 +544,22 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
         # [Modified in Electra:EIP7251]
         has_execution_withdrawal_credential(validator)
         and has_max_effective_balance
+        and has_excess_balance
+    )
+```
+
+#### New `is_eligible_for_partial_withdrawals`
+
+```python
+def is_eligible_for_partial_withdrawals(validator: Validator, balance: Gwei) -> bool:
+    """
+    Check if ``validator`` can process a pending partial withdrawal.
+    """
+    has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
+    has_excess_balance = balance > MIN_ACTIVATION_BALANCE
+    return (
+        validator.exit_epoch == FAR_FUTURE_EPOCH
+        and has_sufficient_effective_balance
         and has_excess_balance
     )
 ```
@@ -1183,59 +1202,70 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 #### Withdrawals
 
-##### Modified `get_expected_withdrawals`
-
-*Note*: The function `get_expected_withdrawals` is modified to support EIP7251.
+##### New `get_pending_partial_withdrawals`
 
 ```python
-def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], uint64]:
-    epoch = get_current_epoch(state)
-    withdrawal_index = state.next_withdrawal_index
-    validator_index = state.next_withdrawal_validator_index
+def get_pending_partial_withdrawals(
+    state: BeaconState,
+    withdrawal_index: WithdrawalIndex,
+    epoch: Epoch,
+    prior_withdrawals: Sequence[Withdrawal],
+) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
     withdrawals: List[Withdrawal] = []
-    processed_partial_withdrawals_count = 0
+    processed_count = 0
+    bound = min(
+        len(prior_withdrawals) + MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
+        MAX_WITHDRAWALS_PER_PAYLOAD - 1,
+    )
 
-    # [New in Electra:EIP7251]
-    # Consume pending partial withdrawals
     for withdrawal in state.pending_partial_withdrawals:
-        if (
-            withdrawal.withdrawable_epoch > epoch
-            or len(withdrawals) == MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
-        ):
+        all_withdrawals = prior_withdrawals + withdrawals
+        is_not_withdrawable = withdrawal.withdrawable_epoch > epoch
+        has_reached_bound = len(all_withdrawals) == bound
+        if is_not_withdrawable or has_reached_bound:
             break
 
-        validator = state.validators[withdrawal.validator_index]
-        has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
-        total_withdrawn = sum(
-            w.amount for w in withdrawals if w.validator_index == withdrawal.validator_index
-        )
-        balance = state.balances[withdrawal.validator_index] - total_withdrawn
-        has_excess_balance = balance > MIN_ACTIVATION_BALANCE
-        if (
-            validator.exit_epoch == FAR_FUTURE_EPOCH
-            and has_sufficient_effective_balance
-            and has_excess_balance
-        ):
-            withdrawable_balance = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
+        validator_index = withdrawal.validator_index
+        validator = state.validators[validator_index]
+        balance = get_balance_minus_withdrawals(state, validator_index, all_withdrawals)
+        if is_eligible_for_partial_withdrawals(validator, balance):
+            withdrawal_amount = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
             withdrawals.append(
                 Withdrawal(
                     index=withdrawal_index,
-                    validator_index=withdrawal.validator_index,
+                    validator_index=validator_index,
                     address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                    amount=withdrawable_balance,
+                    amount=withdrawal_amount,
                 )
             )
             withdrawal_index += WithdrawalIndex(1)
 
-        processed_partial_withdrawals_count += 1
+        processed_count += 1
 
-    # Sweep for remaining.
+    return withdrawals, withdrawal_index, processed_count
+```
+
+##### Modified `get_sweep_withdrawals`
+
+*Note*: The function `get_sweep_withdrawals` is modified to use
+`get_max_effective_balance`.
+
+```python
+def get_sweep_withdrawals(
+    state: BeaconState,
+    withdrawal_index: WithdrawalIndex,
+    validator_index: ValidatorIndex,
+    epoch: Epoch,
+    prior_withdrawals: Sequence[Withdrawal],
+) -> Sequence[Withdrawal]:
+    withdrawals: List[Withdrawal] = []
     bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
+
     for _ in range(bound):
         validator = state.validators[validator_index]
-        # [Modified in Electra:EIP7251]
-        total_withdrawn = sum(w.amount for w in withdrawals if w.validator_index == validator_index)
-        balance = state.balances[validator_index] - total_withdrawn
+        balance = get_balance_minus_withdrawals(
+            state, validator_index, prior_withdrawals + withdrawals
+        )
         if is_fully_withdrawable_validator(validator, balance, epoch):
             withdrawals.append(
                 Withdrawal(
@@ -1257,9 +1287,39 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
                 )
             )
             withdrawal_index += WithdrawalIndex(1)
-        if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
+        total_withdrawals_count = len(prior_withdrawals) + len(withdrawals)
+        if total_withdrawals_count == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
         validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
+
+    return withdrawals
+```
+
+##### Modified `get_expected_withdrawals`
+
+*Note*: The function `get_expected_withdrawals` is modified to support EIP7251.
+
+```python
+def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], uint64]:
+    epoch = get_current_epoch(state)
+    withdrawal_index = state.next_withdrawal_index
+    validator_index = state.next_withdrawal_validator_index
+    withdrawals: List[Withdrawal] = []
+
+    # [New in Electra:EIP7251]
+    # Get partial withdrawals
+    partial_withdrawals, withdrawal_index, processed_partial_withdrawals_count = (
+        get_pending_partial_withdrawals(state, withdrawal_index, epoch, withdrawals)
+    )
+    withdrawals.extend(partial_withdrawals)
+
+    # Get sweep withdrawals
+    sweep_withdrawals = get_sweep_withdrawals(
+        state, withdrawal_index, validator_index, epoch, withdrawals
+    )
+    withdrawals.extend(sweep_withdrawals)
+
+    # [Modified in Electra:EIP7251]
     return withdrawals, processed_partial_withdrawals_count
 ```
 
