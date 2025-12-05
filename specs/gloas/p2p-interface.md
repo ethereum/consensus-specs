@@ -310,6 +310,8 @@ The following validations MUST pass before forwarding the
 - _[REJECT]_ `bid.execution_payment` is zero.
 - _[REJECT]_ `bid.fee_recipient` matches the `fee_recipient` from the proposer's
   `SignedProposerPreferences` for `compute_epoch_at_slot(bid.slot)`.
+- _[REJECT]_ `bid.gas_limit` matches the `gas_limit` from the proposer's
+  `SignedProposerPreferences` for `compute_epoch_at_slot(bid.slot)`.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
