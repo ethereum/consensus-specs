@@ -1,5 +1,5 @@
 import importlib
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from random import Random
@@ -32,13 +32,11 @@ from .helpers.constants import (
     POST_FORK_OF,
 )
 from .helpers.forks import is_post_electra, is_post_fork
-from .helpers.genesis import create_genesis_state
 from .helpers.specs import (
     spec_targets,
 )
 from .helpers.typing import (
     Spec,
-    SpecForks,
 )
 from .utils import (
     with_meta_tags,

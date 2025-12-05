@@ -1,10 +1,7 @@
-import pytest
-
 from eth2spec.test.context import (
-    with_custom_state,
     default_activation_threshold,
     default_balances,
-    zero_activation_threshold,
+    with_custom_state,
 )
 from eth2spec.test.helpers.constants import MINIMAL, PHASE0
 from eth2spec.test.helpers.specs import spec_targets
