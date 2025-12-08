@@ -117,7 +117,7 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
 09. Set `bid.value` to be the value (in gwei) that the builder will pay the
     proposer if the bid is accepted. The builder **MUST** have enough excess
     balance to fulfill this bid and all pending payments.
-10. Set `bid.kzg_commitments_root` to be the `hash_tree_root` of the
+10. Set `bid.blob_kzg_commitments_root` to be the `hash_tree_root` of the
     `blobsbundle.commitments` field returned by `engine_getPayloadV5`.
 
 After building the `bid`, the builder obtains a `signature` of the bid by using:
@@ -221,7 +221,7 @@ alias `bid` to be the committed `ExecutionPayloadBid` in
 
 1. Set `envelope.payload` to be the `ExecutionPayload` constructed when creating
    the corresponding bid. This payload **MUST** have the same block hash as
-   `envelope.bid.block_hash`.
+   `bid.block_hash`.
 2. Set `envelope.execution_requests` to be the `ExecutionRequests` associated
    with `payload`.
 3. Set `envelope.builder_index` to be the validator index of the builder
