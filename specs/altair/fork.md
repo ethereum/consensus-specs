@@ -4,9 +4,6 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-- [Helper functions](#helper-functions)
-  - [Misc](#misc)
-    - [`compute_fork_version`](#compute_fork_version)
 - [Fork to Altair](#fork-to-altair)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -25,30 +22,14 @@ the Altair hard fork, introducing light client support and other improvements.
 | `ALTAIR_FORK_VERSION` | `Version('0x01000000')`                       |
 | `ALTAIR_FORK_EPOCH`   | `Epoch(74240)` (Oct 27, 2021, 10:56:23am UTC) |
 
-## Helper functions
-
-### Misc
-
-#### `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
-
 ## Fork to Altair
 
 ### Fork trigger
 
 The fork is triggered at epoch `ALTAIR_FORK_EPOCH`.
 
-Note that for the pure Altair networks, we don't apply `upgrade_to_altair` since
-it starts with Altair version logic.
+*Note*: For the pure Altair networks, the `upgrade_to_altair` function is
+applied to transition the genesis state to this fork.
 
 ### Upgrading the state
 

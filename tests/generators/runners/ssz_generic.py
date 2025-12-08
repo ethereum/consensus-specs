@@ -9,8 +9,10 @@ from .ssz_generic_cases import (
     ssz_bitlist,
     ssz_bitvector,
     ssz_boolean,
+    ssz_compatible_union,
     ssz_container,
     ssz_progressive_bitlist,
+    ssz_progressive_container,
     ssz_uints,
 )
 
@@ -27,10 +29,14 @@ def get_test_cases() -> Iterable[TestCase]:
         ("bitvector", "invalid", ssz_bitvector.invalid_cases),
         ("boolean", "valid", ssz_boolean.valid_cases),
         ("boolean", "invalid", ssz_boolean.invalid_cases),
+        ("compatible_unions", "valid", ssz_compatible_union.valid_cases),
+        ("compatible_unions", "invalid", ssz_compatible_union.invalid_cases),
         ("containers", "valid", ssz_container.valid_cases),
         ("containers", "invalid", ssz_container.invalid_cases),
         ("progressive_bitlist", "valid", ssz_progressive_bitlist.valid_cases),
         ("progressive_bitlist", "invalid", ssz_progressive_bitlist.invalid_cases),
+        ("progressive_containers", "valid", ssz_progressive_container.valid_cases),
+        ("progressive_containers", "invalid", ssz_progressive_container.invalid_cases),
         ("uints", "valid", ssz_uints.valid_cases),
         ("uints", "invalid", ssz_uints.invalid_cases),
     ]

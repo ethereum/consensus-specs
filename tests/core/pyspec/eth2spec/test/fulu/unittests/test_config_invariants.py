@@ -37,7 +37,7 @@ def test_polynomial_commitments_sampling(spec):
 @with_presets([MAINNET], reason="to have fork epoch number")
 def test_blob_schedule(spec):
     for entry in spec.config.BLOB_SCHEDULE:
-        # Check that all epochs are post-Deneb
-        assert entry["EPOCH"] >= spec.config.DENEB_FORK_EPOCH
+        # Check that all epochs are post-fulu
+        assert entry["EPOCH"] >= spec.config.FULU_FORK_EPOCH
         # Check that all blob counts are less than the limit
         assert entry["MAX_BLOBS_PER_BLOCK"] <= spec.MAX_BLOB_COMMITMENTS_PER_BLOCK

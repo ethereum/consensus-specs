@@ -1,7 +1,5 @@
 # Fulu -- Data Availability Sampling Core
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Constants](#constants)
@@ -154,8 +152,8 @@ def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
                 MatrixEntry(
                     cell=cell,
                     kzg_proof=proof,
-                    row_index=blob_index,
                     column_index=cell_index,
+                    row_index=blob_index,
                 )
             )
     return matrix
@@ -183,8 +181,8 @@ def recover_matrix(
                 MatrixEntry(
                     cell=cell,
                     kzg_proof=proof,
-                    row_index=blob_index,
                     column_index=cell_index,
+                    row_index=blob_index,
                 )
             )
     return matrix
@@ -281,7 +279,7 @@ are they sent in aggregate forms.
 
 ### Why don't nodes custody rows?
 
-In the one-dimension construction, a node samples the peers by requesting the
+In the one-dimensional construction, a node samples the peers by requesting the
 whole `DataColumnSidecar`. In reconstruction, a node can reconstruct all the
 blobs by 50% of the columns. Note that nodes can still download the row via
 `blob_sidecar_{subnet_id}` subnets.
@@ -289,10 +287,11 @@ blobs by 50% of the columns. Note that nodes can still download the row via
 The potential benefits of having row custody could include:
 
 1. Allow for more "natural" distribution of data to consumers -- e.g., roll-ups
-   -- but honestly, they won't know a priori which row their blob is going to be
-   included in the block, so they would either need to listen to all rows or
-   download a particular row after seeing the block. The former looks just like
-   listening to column \[0, N) and the latter is req/resp instead of gossiping.
+   -- but realistically, they won't know a priori which row their blob is going
+   to be included in the block, so they would either need to listen to all rows
+   or download a particular row after seeing the block. The former looks just
+   like listening to column \[0, N) and the latter is req/resp instead of
+   gossiping.
 2. Help with some sort of distributed reconstruction. Those with full rows can
    compute extensions and seed missing samples to the network. This would either
    need to be able to send individual points on the gossip or would need some

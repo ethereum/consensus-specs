@@ -5,6 +5,7 @@ from .constants import (
     DENEB,
     EIP7441,
     EIP7805,
+    EIP7928,
     ELECTRA,
     FULU,
     GLOAS,
@@ -63,6 +64,10 @@ def is_post_eip7441(spec):
 
 def is_post_eip7805(spec):
     return is_post_fork(spec.fork, EIP7805)
+
+
+def is_post_eip7928(spec):
+    return is_post_fork(spec.fork, EIP7928)
 
 
 def get_spec_for_fork_version(spec, fork_version, phases):

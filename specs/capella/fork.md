@@ -4,9 +4,6 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-- [Helper functions](#helper-functions)
-  - [Misc](#misc)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [Fork to Capella](#fork-to-capella)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -24,34 +21,14 @@ This document describes the process of the Capella upgrade.
 | `CAPELLA_FORK_VERSION` | `Version('0x03000000')`                          |
 | `CAPELLA_FORK_EPOCH`   | `Epoch(194048)` (April 12, 2023, 10:27:35pm UTC) |
 
-## Helper functions
-
-### Misc
-
-#### Modified `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= CAPELLA_FORK_EPOCH:
-        return CAPELLA_FORK_VERSION
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
-
 ## Fork to Capella
 
 ### Fork trigger
 
 The fork is triggered at epoch `CAPELLA_FORK_EPOCH`.
 
-Note that for the pure Capella networks, we don't apply `upgrade_to_capella`
-since it starts with Capella version logic.
+*Note*: For the pure Capella networks, the `upgrade_to_capella` function is
+applied to transition the genesis state to this fork.
 
 ### Upgrading the state
 

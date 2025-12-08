@@ -1,7 +1,5 @@
 # Fulu -- The Beacon Chain
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
@@ -31,8 +29,7 @@
 
 ## Introduction
 
-*Note*: This specification is built upon [Electra](../electra/beacon-chain.md)
-and is under active development.
+*Note*: This specification is built upon [Electra](../electra/beacon-chain.md).
 
 ## Configuration
 
@@ -42,16 +39,17 @@ and is under active development.
 for a given epoch.
 
 There MUST NOT exist multiple blob schedule entries with the same epoch value.
-The maximum blobs per block limit for blob schedules entries MUST be less than
-or equal to `MAX_BLOB_COMMITMENTS_PER_BLOCK`. The blob schedule entries SHOULD
-be sorted by epoch in ascending order. The blob schedule MAY be empty.
-
-*Note*: The blob schedule is to be determined.
+The epoch value in each entry MUST be greater than or equal to
+`FULU_FORK_EPOCH`. The maximum blobs per block limit in each entry MUST be less
+than or equal to `MAX_BLOB_COMMITMENTS_PER_BLOCK`. The blob schedule entries
+SHOULD be sorted by epoch in ascending order. The blob schedule MAY be empty.
 
 <!-- list-of-records:blob_schedule -->
 
-| Epoch | Max Blobs Per Block | Description |
-| ----- | ------------------- | ----------- |
+|  Epoch | Max Blobs Per Block |                             Date |
+| -----: | ------------------: | -------------------------------: |
+| 412672 |                  15 | December 9, 2025, 02:21:11pm UTC |
+| 419072 |                  21 |  January 7, 2026, 01:01:11am UTC |
 
 ## Beacon chain state transition function
 
@@ -73,15 +71,19 @@ def process_execution_payload(
     assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
-    # [Modified in Fulu:EIP7892] Verify commitments are under limit
+    # [Modified in Fulu:EIP7892]
+    # Verify commitments are under limit
     assert (
         len(body.blob_kzg_commitments)
         <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
     )
-    # Verify the execution payload is valid
+
+    # Compute list of versioned hashes
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
     ]
+
+    # Verify the execution payload is valid
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
@@ -90,6 +92,7 @@ def process_execution_payload(
             execution_requests=body.execution_requests,
         )
     )
+
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
@@ -200,27 +203,25 @@ def get_blob_parameters(epoch: Epoch) -> BlobParameters:
 #### Modified `compute_fork_digest`
 
 *Note:* The `compute_fork_digest` helper is updated to account for
-Blob-Parameters-Only forks. Also, the `fork_version` parameter has been removed
-and is now computed for the given epoch with `compute_fork_version`.
+Blob-Parameters-Only forks.
 
 ```python
 def compute_fork_digest(
     genesis_validators_root: Root,
-    # [New in Fulu:EIP7892]
     epoch: Epoch,
 ) -> ForkDigest:
     """
-    Return the 4-byte fork digest for the ``version`` and ``genesis_validators_root``
-    XOR'd with the hash of the blob parameters for ``epoch``.
+    Return the 4-byte fork digest for the ``genesis_validators_root`` at a given ``epoch``.
 
     This is a digest primarily used for domain separation on the p2p layer.
     4-bytes suffices for practical separation of forks/chains.
     """
     fork_version = compute_fork_version(epoch)
     base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
-    blob_parameters = get_blob_parameters(epoch)
 
+    # [Modified in Fulu:EIP7892]
     # Bitmask digest with hash of blob parameters
+    blob_parameters = get_blob_parameters(epoch)
     return ForkDigest(
         bytes(
             xor(

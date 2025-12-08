@@ -13,21 +13,24 @@ categories:
   - title: Electra
     label: electra
   - title: Fulu
-    label: fulu
+    labels:
+      - fulu
+      - eip7594
   - title: Gloas
-    label: gloas
+    labels:
+      - gloas
+      - eip7732
+      - eip7928
 
   # Features
   - title: EIP-6110
     label: eip6110
   - title: EIP-7441
     label: eip7441
-  - title: EIP-7594
-    label: eip7594
-  - title: EIP-7732
-    label: eip7732
   - title: EIP-7805
     label: eip7805
+  - title: EIP-8025
+    label: eip8025
 
   # Testing
   - title: Testing
@@ -36,6 +39,9 @@ categories:
   # Fallback
   - title: Other
 
+commitish: master
+filter-by-commitish: true
+include-pre-releases: true
 sort-direction: ascending
 change-title-escapes: '\<*_&'
 change-template: '- $TITLE (#$NUMBER)'

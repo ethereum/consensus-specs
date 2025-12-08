@@ -7,7 +7,7 @@
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
 - [Constants](#constants)
-- [Containers](#containers)
+- [Helpers](#helpers)
   - [New `ForkChoiceNode`](#new-forkchoicenode)
   - [Modified `LatestMessage`](#modified-latestmessage)
   - [Modified `update_latest_messages`](#modified-update_latest_messages)
@@ -25,6 +25,13 @@
   - [Modified `get_weight`](#modified-get_weight)
   - [New `get_node_children`](#new-get_node_children)
   - [Modified `get_head`](#modified-get_head)
+- [Updated fork-choice helpers](#updated-fork-choice-helpers)
+  - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
+  - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
+  - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
+  - [Modified `get_contribution_due_ms`](#modified-get_contribution_due_ms)
+- [New fork-choice helpers](#new-fork-choice-helpers)
+  - [New `get_payload_attestation_due_ms`](#new-get_payload_attestation_due_ms)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [Modified `on_block`](#modified-on_block)
 - [New fork-choice handlers](#new-fork-choice-handlers)
@@ -54,7 +61,7 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 | `PAYLOAD_STATUS_EMPTY`     | `PayloadStatus(1)`      |
 | `PAYLOAD_STATUS_FULL`      | `PayloadStatus(2)`      |
 
-## Containers
+## Helpers
 
 ### New `ForkChoiceNode`
 
@@ -211,8 +218,8 @@ def is_payload_timely(store: Store, root: Root) -> bool:
 ```python
 def get_parent_payload_status(store: Store, block: BeaconBlock) -> PayloadStatus:
     parent = store.blocks[block.parent_root]
-    parent_block_hash = block.body.signed_execution_payload_header.message.parent_block_hash
-    message_block_hash = parent.body.signed_execution_payload_header.message.block_hash
+    parent_block_hash = block.body.signed_execution_payload_bid.message.parent_block_hash
+    message_block_hash = parent.body.signed_execution_payload_bid.message.block_hash
     return PAYLOAD_STATUS_FULL if parent_block_hash == message_block_hash else PAYLOAD_STATUS_EMPTY
 ```
 
@@ -425,6 +432,57 @@ def get_head(store: Store) -> ForkChoiceNode:
         )
 ```
 
+## Updated fork-choice helpers
+
+### Modified `get_attestation_due_ms`
+
+```python
+def get_attestation_due_ms(epoch: Epoch) -> uint64:
+    # [New in Gloas]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
+    return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+```
+
+### Modified `get_aggregate_due_ms`
+
+```python
+def get_aggregate_due_ms(epoch: Epoch) -> uint64:
+    # [New in Gloas]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return get_slot_component_duration_ms(AGGREGATE_DUE_BPS_GLOAS)
+    return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
+```
+
+### Modified `get_sync_message_due_ms`
+
+```python
+def get_sync_message_due_ms(epoch: Epoch) -> uint64:
+    # [New in Gloas]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS_GLOAS)
+    return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)
+```
+
+### Modified `get_contribution_due_ms`
+
+```python
+def get_contribution_due_ms(epoch: Epoch) -> uint64:
+    # [New in Gloas]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS_GLOAS)
+    return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS)
+```
+
+## New fork-choice helpers
+
+### New `get_payload_attestation_due_ms`
+
+```python
+def get_payload_attestation_due_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)
+```
+
 ## Updated fork-choice handlers
 
 ### Modified `on_block`
@@ -445,14 +503,14 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Check if this blocks builds on empty or full parent block
     parent_block = store.blocks[block.parent_root]
-    header = block.body.signed_execution_payload_header.message
-    parent_header = parent_block.body.signed_execution_payload_header.message
+    bid = block.body.signed_execution_payload_bid.message
+    parent_bid = parent_block.body.signed_execution_payload_bid.message
     # Make a copy of the state to avoid mutability issues
     if is_parent_node_full(store, block):
         assert block.parent_root in store.execution_payload_states
         state = copy(store.execution_payload_states[block.parent_root])
     else:
-        assert header.parent_block_hash == parent_header.parent_block_hash
+        assert bid.parent_block_hash == parent_bid.parent_block_hash
         state = copy(store.block_states[block.parent_root])
 
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
@@ -486,8 +544,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add proposer score boost if the block is timely
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    # [Modified in Gloas:EIP7732]
-    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
+    epoch = get_current_store_epoch(store)
+    attestation_threshold_ms = get_attestation_due_ms(epoch)
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
@@ -631,12 +689,11 @@ def validate_merge_block(block: BeaconBlock) -> None:
         # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
         assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
         assert (
-            block.body.signed_execution_payload_header.message.parent_block_hash
-            == TERMINAL_BLOCK_HASH
+            block.body.signed_execution_payload_bid.message.parent_block_hash == TERMINAL_BLOCK_HASH
         )
         return
 
-    pow_block = get_pow_block(block.body.signed_execution_payload_header.message.parent_block_hash)
+    pow_block = get_pow_block(block.body.signed_execution_payload_bid.message.parent_block_hash)
     # Check if `pow_block` is available
     assert pow_block is not None
     pow_parent = get_pow_block(pow_block.parent_hash)

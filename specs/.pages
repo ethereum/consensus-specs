@@ -1,4 +1,4 @@
 nav:
     - phase0
     - ...
-    - _features
+    - Features: _features

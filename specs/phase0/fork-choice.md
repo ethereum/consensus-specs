@@ -18,6 +18,8 @@
     - [`get_ancestor`](#get_ancestor)
     - [`calculate_committee_fraction`](#calculate_committee_fraction)
     - [`get_checkpoint_block`](#get_checkpoint_block)
+    - [`get_attestation_score`](#get_attestation_score)
+    - [`compute_proposer_score`](#compute_proposer_score)
     - [`get_proposer_score`](#get_proposer_score)
     - [`get_weight`](#get_weight)
     - [`get_voting_source`](#get_voting_source)
@@ -28,6 +30,9 @@
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
     - [`seconds_to_milliseconds`](#seconds_to_milliseconds)
     - [`get_slot_component_duration_ms`](#get_slot_component_duration_ms)
+    - [`get_attestation_due_ms`](#get_attestation_due_ms)
+    - [`get_proposer_reorg_cutoff_ms`](#get_proposer_reorg_cutoff_ms)
+    - [`get_aggregate_due_ms`](#get_aggregate_due_ms)
     - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
       - [`is_head_late`](#is_head_late)
       - [`is_shuffling_stable`](#is_shuffling_stable)
@@ -265,26 +270,16 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
     return get_ancestor(store, root, epoch_first_slot)
 ```
 
-#### `get_proposer_score`
+#### `get_attestation_score`
 
 ```python
-def get_proposer_score(store: Store) -> Gwei:
-    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
-    committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
-    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
-```
-
-#### `get_weight`
-
-```python
-def get_weight(store: Store, root: Root) -> Gwei:
-    state = store.checkpoint_states[store.justified_checkpoint]
+def get_attestation_score(store: Store, root: Root, state: BeaconState) -> Gwei:
     unslashed_and_active_indices = [
         i
         for i in get_active_validator_indices(state, get_current_epoch(state))
         if not state.validators[i].slashed
     ]
-    attestation_score = Gwei(
+    return Gwei(
         sum(
             state.validators[i].effective_balance
             for i in unslashed_and_active_indices
@@ -296,6 +291,30 @@ def get_weight(store: Store, root: Root) -> Gwei:
             )
         )
     )
+```
+
+#### `compute_proposer_score`
+
+```python
+def compute_proposer_score(state: BeaconState) -> Gwei:
+    committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
+    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
+```
+
+#### `get_proposer_score`
+
+```python
+def get_proposer_score(store: Store) -> Gwei:
+    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
+    return compute_proposer_score(justified_checkpoint_state)
+```
+
+#### `get_weight`
+
+```python
+def get_weight(store: Store, root: Root) -> Gwei:
+    state = store.checkpoint_states[store.justified_checkpoint]
+    attestation_score = get_attestation_score(store, root, state)
     if store.proposer_boost_root == Root():
         # Return only attestation score if ``proposer_boost_root`` is not set
         return attestation_score
@@ -331,7 +350,7 @@ def get_voting_source(store: Store, block_root: Root) -> Checkpoint:
 
 *Note*: External calls to `filter_block_tree` (i.e., any calls that are not made
 by the recursive logic in this function) MUST set `block_root` to
-`store.justified_checkpoint`.
+`store.justified_checkpoint.root`.
 
 ```python
 def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconBlock]) -> bool:
@@ -472,6 +491,27 @@ def get_slot_component_duration_ms(basis_points: uint64) -> uint64:
     return basis_points * SLOT_DURATION_MS // BASIS_POINTS
 ```
 
+#### `get_attestation_due_ms`
+
+```python
+def get_attestation_due_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+```
+
+#### `get_proposer_reorg_cutoff_ms`
+
+```python
+def get_proposer_reorg_cutoff_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
+```
+
+#### `get_aggregate_due_ms`
+
+```python
+def get_aggregate_due_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
+```
+
 #### Proposer head and reorg helpers
 
 _Implementing these helpers is optional_.
@@ -513,7 +553,8 @@ def is_finalization_ok(store: Store, slot: Slot) -> bool:
 def is_proposing_on_time(store: Store) -> bool:
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    proposer_reorg_cutoff_ms = get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
+    epoch = get_current_store_epoch(store)
+    proposer_reorg_cutoff_ms = get_proposer_reorg_cutoff_ms(epoch)
     return time_into_slot_ms <= proposer_reorg_cutoff_ms
 ```
 
@@ -765,7 +806,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add block timeliness to the store
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+    epoch = get_current_store_epoch(store)
+    attestation_threshold_ms = get_attestation_due_ms(epoch)
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely

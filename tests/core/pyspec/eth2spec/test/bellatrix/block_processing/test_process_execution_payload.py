@@ -55,13 +55,13 @@ def run_execution_payload_processing(
             message=envelope,
             signature=signature,
         )
+        yield "signed_envelope", signed_envelope
     else:
         body = spec.BeaconBlockBody(execution_payload=execution_payload)
+        yield "body", body
 
     yield "pre", state
     yield "execution", {"execution_valid": execution_valid}
-    if not is_post_gloas(spec):
-        yield "body", body
 
     called_new_block = False
 
@@ -326,10 +326,12 @@ def run_non_empty_transactions_test(spec, state):
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
-    assert (
-        state.latest_execution_payload_header.transactions_root
-        == execution_payload.transactions.hash_tree_root()
-    )
+
+    if not is_post_gloas(spec):
+        assert (
+            state.latest_execution_payload_header.transactions_root
+            == execution_payload.transactions.hash_tree_root()
+        )
 
 
 @with_all_phases_from_to(BELLATRIX, GLOAS)
@@ -355,10 +357,12 @@ def run_zero_length_transaction_test(spec, state):
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     yield from run_execution_payload_processing(spec, state, execution_payload)
-    assert (
-        state.latest_execution_payload_header.transactions_root
-        == execution_payload.transactions.hash_tree_root()
-    )
+
+    if not is_post_gloas(spec):
+        assert (
+            state.latest_execution_payload_header.transactions_root
+            == execution_payload.transactions.hash_tree_root()
+        )
 
 
 @with_all_phases_from_to(BELLATRIX, GLOAS)
@@ -380,8 +384,8 @@ def run_randomized_non_validated_execution_fields_test(spec, state, rng, executi
     execution_payload = build_randomized_execution_payload(spec, state, rng)
 
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
-        state.latest_execution_payload_header.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
         state.latest_block_hash = execution_payload.parent_hash
 
     yield from run_execution_payload_processing(

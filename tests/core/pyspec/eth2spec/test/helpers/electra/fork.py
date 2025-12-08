@@ -17,40 +17,32 @@ def run_fork_test(post_spec, pre_state):
         "genesis_time",
         "genesis_validators_root",
         "slot",
-        # History
         "latest_block_header",
         "block_roots",
         "state_roots",
         "historical_roots",
-        # Eth1
         "eth1_data",
         "eth1_data_votes",
         "eth1_deposit_index",
-        # Registry
-        # NOTE: 'validators', 'balances' could be changed.
-        # Randomness
+        # Note: upgrade_to_electra add validators that are not yet active to pending balance
+        # deposits, which might mutate the state's validators/balances fields.
+        # "validators",
+        # "balances",
         "randao_mixes",
-        # Slashings
         "slashings",
-        # Participation
         "previous_epoch_participation",
         "current_epoch_participation",
-        # Finality
         "justification_bits",
         "previous_justified_checkpoint",
         "current_justified_checkpoint",
         "finalized_checkpoint",
-        # Inactivity
         "inactivity_scores",
-        # Sync
         "current_sync_committee",
         "next_sync_committee",
-        # Withdrawals
+        "latest_execution_payload_header",
         "next_withdrawal_index",
         "next_withdrawal_validator_index",
-        # Deep history valid from Capella onwards
         "historical_summaries",
-        "latest_execution_payload_header",
     ]
     for field in stable_fields:
         assert getattr(pre_state, field) == getattr(post_state, field)

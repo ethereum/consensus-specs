@@ -1,0 +1,36 @@
+name: Update Website
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
+      - name: Set up Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install uv ${{ vars.UV_VERSION }}
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        with:
+          enable-cache: true
+          version: ${{ vars.UV_VERSION }}
+
+      - name: Install dependencies to venv
+        run: make _pyspec
+
+      - name: Build docs
+        run: make _copy_docs
+
+      - name: Deploy
+        run: uv run mkdocs gh-deploy --force

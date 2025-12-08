@@ -4,6 +4,8 @@
 
 - [Introduction](#introduction)
 - [Modifications in Electra](#modifications-in-electra)
+  - [Helper functions](#helper-functions)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Configuration](#configuration)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -30,6 +32,28 @@ The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Electra
+
+### Helper functions
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ### Configuration
 
@@ -74,14 +98,16 @@ The derivation of the `message-id` remains stable.
 
 ###### `beacon_aggregate_and_proof`
 
-The following convenience variables are re-defined
+Assuming the alias `aggregate = signed_aggregate_and_proof.message.aggregate`:
+
+The following convenience variables are re-defined:
 
 - `index = get_committee_indices(aggregate.committee_bits)[0]`
 
 The following validations are added:
 
 - [REJECT] `len(committee_indices) == 1`, where
-  `committee_indices = get_committee_indices(aggregate)`.
+  `committee_indices = get_committee_indices(aggregate.committee_bits)`.
 - [REJECT] `aggregate.data.index == 0`
 
 ###### `blob_sidecar_{subnet_id}`
@@ -129,8 +155,6 @@ The following validations are removed:
 The Electra fork-digest is introduced to the `context` enum to specify Electra
 beacon block type.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
-
 <!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
@@ -145,8 +169,6 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 ##### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
-
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 <!-- eth2spec: skip -->
 

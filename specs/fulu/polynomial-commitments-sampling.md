@@ -1,7 +1,5 @@
 # Fulu -- Polynomial Commitments Sampling
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
@@ -801,6 +799,8 @@ def recover_cells_and_kzg_proofs(
     assert CELLS_PER_EXT_BLOB // 2 <= len(cell_indices) <= CELLS_PER_EXT_BLOB
     # Check for duplicates
     assert len(cell_indices) == len(set(cell_indices))
+    # Check that indices are in ascending order
+    assert cell_indices == sorted(cell_indices)
     # Check that the cell indices are within bounds
     for cell_index in cell_indices:
         assert cell_index < CELLS_PER_EXT_BLOB

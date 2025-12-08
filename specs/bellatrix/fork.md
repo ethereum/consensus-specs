@@ -4,9 +4,6 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-- [Helper functions](#helper-functions)
-  - [Misc](#misc)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [Fork to Bellatrix](#fork-to-bellatrix)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -24,24 +21,6 @@ This document describes the process of Bellatrix upgrade.
 | `BELLATRIX_FORK_VERSION` | `Version('0x02000000')`                        |
 | `BELLATRIX_FORK_EPOCH`   | `Epoch(144896)` (Sept 6, 2022, 11:34:47am UTC) |
 
-## Helper functions
-
-### Misc
-
-#### Modified `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
-
 ## Fork to Bellatrix
 
 ### Fork trigger
@@ -51,8 +30,8 @@ finality, deposits, active validator count, etc. may be part of the decision
 process to trigger the fork. For now we assume the condition will be triggered
 at epoch `BELLATRIX_FORK_EPOCH`.
 
-Note that for the pure Bellatrix networks, we don't apply `upgrade_to_bellatrix`
-since it starts with Bellatrix version logic.
+*Note*: For the pure Bellatrix networks, the `upgrade_to_bellatrix` function is
+applied to transition the genesis state to this fork.
 
 ### Upgrading the state
 

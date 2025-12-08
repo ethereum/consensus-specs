@@ -11,8 +11,6 @@ build/
 output/
 dist/
 
-consensus-spec-tests/
-
 .pytest_cache
 .mypy_cache
 
@@ -25,9 +23,7 @@ tests/core/pyspec/eth2spec/deneb/
 tests/core/pyspec/eth2spec/electra/
 tests/core/pyspec/eth2spec/fulu/
 tests/core/pyspec/eth2spec/gloas/
-tests/core/pyspec/eth2spec/eip6800/
-tests/core/pyspec/eth2spec/eip7441/
-tests/core/pyspec/eth2spec/eip7805/
+tests/core/pyspec/eth2spec/eip*/
 
 # coverage reports
 .htmlcov

@@ -6,12 +6,13 @@
 
 - [Introduction](#introduction)
 - [Modification in Gloas](#modification-in-gloas)
-  - [Preset](#preset)
+  - [Helper functions](#helper-functions)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
-    - [Helpers](#helpers)
-      - [Modified `verify_data_column_sidecar_inclusion_proof`](#modified-verify_data_column_sidecar_inclusion_proof)
+  - [Helpers](#helpers)
+    - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -19,7 +20,9 @@
         - [`beacon_block`](#beacon_block)
         - [`execution_payload`](#execution_payload)
         - [`payload_attestation_message`](#payload_attestation_message)
-        - [`execution_payload_header`](#execution_payload_header)
+        - [`execution_payload_bid`](#execution_payload_bid)
+      - [Blob subnets](#blob-subnets)
+        - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
       - [Attestation subnets](#attestation-subnets)
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
@@ -33,21 +36,38 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for
-GloasGloasGloasGloasGloasGloasGloasGloas.
+This document contains the consensus-layer networking specification for Gloas.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modification in Gloas
 
-### Preset
+### Helper functions
 
-*[Modified in Gloas:EIP7732]*
+#### Modified `compute_fork_version`
 
-| Name                                          | Value | Description                                                 |
-| --------------------------------------------- | ----- | ----------------------------------------------------------- |
-| `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS` | `9`   | Merkle proof depth for the `blob_kzg_commitments` list item |
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= GLOAS_FORK_EPOCH:
+        return GLOAS_FORK_VERSION
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ### Configuration
 
@@ -61,8 +81,11 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 #### Modified `DataColumnSidecar`
 
-*Note*: The `DataColumnSidecar` container is modified indirectly because the
-constant `KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH` is modified.
+*Note*: The `signed_block_header` and `kzg_commitments_inclusion_proof` fields
+have been removed from `DataColumnSidecar` in Gloas as header and inclusion
+proof verifications are no longer required in ePBS. Instead, sidecars are
+validated by checking that the hash of `kzg_commitments` matches what's
+committed in the builder's bid for the corresponding `beacon_block_root`.
 
 ```python
 class DataColumnSidecar(Container):
@@ -70,40 +93,46 @@ class DataColumnSidecar(Container):
     column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    signed_block_header: SignedBeaconBlockHeader
     # [Modified in Gloas:EIP7732]
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS]
+    # Removed `signed_block_header`
+    # [Modified in Gloas:EIP7732]
+    # Removed `kzg_commitments_inclusion_proof`
+    # [New in Gloas:EIP7732]
+    slot: Slot
+    # [New in Gloas:EIP7732]
+    beacon_block_root: Root
 ```
 
-#### Helpers
+### Helpers
 
-##### Modified `verify_data_column_sidecar_inclusion_proof`
-
-`verify_data_column_sidecar_inclusion_proof` is modified in Gloas to account for
-the fact that the KZG commitments are included in the `ExecutionPayloadEnvelope`
-and no longer in the beacon block body.
+##### Modified `verify_data_column_sidecar`
 
 ```python
-def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bool:
+def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     """
-    Verify if the given KZG commitments included in the given beacon block.
+    Verify if the data column sidecar is valid.
     """
-    return is_valid_merkle_branch(
-        leaf=hash_tree_root(sidecar.kzg_commitments),
-        branch=sidecar.kzg_commitments_inclusion_proof,
-        # [Modified in Gloas:EIP7732]
-        depth=KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS,
-        # [Modified in Gloas:EIP7732]
-        index=get_subtree_index(
-            get_generalized_index(
-                BeaconBlockBody,
-                "signed_execution_payload_header",
-                "message",
-                "blob_kzg_commitments_root",
-            )
-        ),
-        root=sidecar.signed_block_header.message.body_root,
-    )
+    # The sidecar index must be within the valid range
+    if sidecar.index >= NUMBER_OF_COLUMNS:
+        return False
+
+    # A sidecar for zero blobs is invalid
+    if len(sidecar.kzg_commitments) == 0:
+        return False
+
+    # [Modified in Gloas:EIP7732]
+    # Check that the sidecar respects the blob limit
+    epoch = compute_epoch_at_slot(sidecar.slot)
+    if len(sidecar.kzg_commitments) > get_blob_parameters(epoch).max_blobs_per_block:
+        return False
+
+    # The column length must be equal to the number of commitments/proofs
+    if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(
+        sidecar.kzg_proofs
+    ):
+        return False
+
+    return True
 ```
 
 ### The gossip domain: gossipsub
@@ -125,13 +154,13 @@ are given in this table:
 
 | Name                          | Message Type                     |
 | ----------------------------- | -------------------------------- |
-| `execution_payload_header`    | `SignedExecutionPayloadHeader`   |
+| `execution_payload_bid`       | `SignedExecutionPayloadBid`      |
 | `execution_payload`           | `SignedExecutionPayloadEnvelope` |
 | `payload_attestation_message` | `PayloadAttestationMessage`      |
 
 ##### Global topics
 
-Gloas introduces new global topics for execution header, execution payload and
+Gloas introduces new global topics for execution bid, execution payload and
 payload attestation.
 
 ###### `beacon_aggregate_and_proof`
@@ -173,18 +202,16 @@ regards to the `ExecutionPayload` are removed:
   - [IGNORE] The block's parent (defined by `block.parent_root`) passes all
     validation (including execution node verification of the
     `block.body.execution_payload`).
-- [REJECT] The block's parent (defined by `block.parent_root`) passes
-  validation.
 
 And instead the following validations are set in place with the alias
-`header = signed_execution_payload_header.message`:
+`bid = signed_execution_payload_bid.message`:
 
 - If `execution_payload` verification of block's execution payload parent by an
   execution node **is complete**:
   - [REJECT] The block's execution payload parent (defined by
-    `header.parent_block_hash`) passes all validation.
-- [REJECT] The block's parent (defined by `block.parent_root`) passes
-  validation.
+    `bid.parent_block_hash`) passes all validation.
+- [REJECT] The bid's parent (defined by `bid.parent_block_root`) equals the
+  block's parent (defined by `block.parent_root`).
 
 ###### `execution_payload`
 
@@ -194,22 +221,25 @@ This topic is used to propagate execution payload messages as
 The following validations MUST pass before forwarding the
 `signed_execution_payload_envelope` on the network, assuming the alias
 `envelope = signed_execution_payload_envelope.message`,
-`payload = payload_envelope.payload`:
+`payload = envelope.payload`:
 
 - _[IGNORE]_ The envelope's block root `envelope.block_root` has been seen (via
   gossip or non-gossip sources) (a client MAY queue payload for processing once
   the block is retrieved).
 - _[IGNORE]_ The node has not seen another valid
   `SignedExecutionPayloadEnvelope` for this block root from this builder.
+- _[IGNORE]_ The envelope is from a slot greater than or equal to the latest
+  finalized slot -- i.e. validate that
+  `envelope.slot >= compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
 
-Let `block` be the block with `envelope.beacon_block_root`. Let `header` alias
-`block.body.signed_execution_payload_header.message` (notice that this can be
-obtained from the `state.signed_execution_payload_header`)
+Let `block` be the block with `envelope.beacon_block_root`. Let `bid` alias
+`block.body.signed_execution_payload_bid.message` (notice that this can be
+obtained from the `state.latest_execution_payload_bid`)
 
 - _[REJECT]_ `block` passes validation.
 - _[REJECT]_ `block.slot` equals `envelope.slot`.
-- _[REJECT]_ `envelope.builder_index == header.builder_index`
-- _[REJECT]_ `payload.block_hash == header.block_hash`
+- _[REJECT]_ `envelope.builder_index == bid.builder_index`
+- _[REJECT]_ `payload.block_hash == bid.block_hash`
 - _[REJECT]_ `signed_execution_payload_envelope.signature` is valid with respect
   to the builder's public key.
 
@@ -237,34 +267,96 @@ The following validations MUST pass before forwarding the
 - _[REJECT]_ `payload_attestation_message.signature` is valid with respect to
   the validator's public key.
 
-###### `execution_payload_header`
+###### `execution_payload_bid`
 
-This topic is used to propagate signed bids as `SignedExecutionPayloadHeader`.
+This topic is used to propagate signed bids as `SignedExecutionPayloadBid`.
 
 The following validations MUST pass before forwarding the
-`signed_execution_payload_header` on the network, assuming the alias
-`header = signed_execution_payload_header.message`:
+`signed_execution_payload_bid` on the network, assuming the alias
+`bid = signed_execution_payload_bid.message`:
 
-- _[REJECT]_ `header.builder_index` is a valid, active, and non-slashed builder
+- _[REJECT]_ `bid.builder_index` is a valid, active, and non-slashed builder
   index.
 - _[REJECT]_ the builder's withdrawal credentials' prefix is
   `BUILDER_WITHDRAWAL_PREFIX` -- i.e.
-  `is_builder_withdrawal_credential(state.validators[header.builder_index].withdrawal_credentials)`
+  `is_builder_withdrawal_credential(state.validators[bid.builder_index].withdrawal_credentials)`
   returns `True`.
+- _[REJECT]_ `bid.execution_payment` is zero.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
   and the given parent block hash.
-- _[IGNORE]_ `header.value` is less or equal than the builder's excess balance
-  -- i.e.
-  `MIN_ACTIVATION_BALANCE + header.value <= state.balances[header.builder_index]`.
-- _[IGNORE]_ `header.parent_block_hash` is the block hash of a known execution
+- _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
+  i.e.
+  `MIN_ACTIVATION_BALANCE + bid.value <= state.balances[bid.builder_index]`.
+- _[IGNORE]_ `bid.parent_block_hash` is the block hash of a known execution
   payload in fork choice.
-- _[IGNORE]_ `header.parent_block_root` is the hash tree root of a known beacon
+- _[IGNORE]_ `bid.parent_block_root` is the hash tree root of a known beacon
   block in fork choice.
-- _[IGNORE]_ `header.slot` is the current slot or the next slot.
-- _[REJECT]_ `signed_execution_payload_header.signature` is valid with respect
-  to the `header.builder_index`.
+- _[IGNORE]_ `bid.slot` is the current slot or the next slot.
+- _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
+  the `bid.builder_index`.
+
+##### Blob subnets
+
+###### `data_column_sidecar_{subnet_id}`
+
+*[Modified in Gloas:EIP7732]*
+
+This topic is used to propagate column sidecars, where each column maps to some
+`subnet_id`.
+
+The *type* of the payload of this topic is `DataColumnSidecar`.
+
+The following validations MUST pass before forwarding the
+`sidecar: DataColumnSidecar` on the network:
+
+**Modified from Fulu:**
+
+- _[IGNORE]_ The sidecar is the first sidecar for the tuple
+  `(sidecar.beacon_block_root, sidecar.index)` with valid kzg proof.
+
+**Added in Gloas:**
+
+- _[IGNORE]_ The sidecar's `beacon_block_root` has been seen via a valid signed
+  execution payload bid. A client MAY queue the sidecar for processing once the
+  block is retrieved.
+- _[REJECT]_ The sidecars's `slot` matches the slot of the block with root
+  `beacon_block_root`.
+- _[REJECT]_ The hash of the sidecar's `kzg_commitments` matches the
+  `blob_kzg_commitments_root` in the corresponding builder's bid for
+  `sidecar.beacon_block_root`.
+
+**Removed from Fulu:**
+
+- _[IGNORE]_ The sidecar is not from a future slot (with a
+  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
+  `block_header.slot <= current_slot` (a client MAY queue future sidecars for
+  processing at the appropriate slot).
+- _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot
+  -- i.e. validate that
+  `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
+- _[REJECT]_ The proposer signature of `sidecar.signed_block_header`, is valid
+  with respect to the `block_header.proposer_index` pubkey.
+- _[IGNORE]_ The sidecar's block's parent (defined by
+  `block_header.parent_root`) has been seen (via gossip or non-gossip sources)
+  (a client MAY queue sidecars for processing once the parent block is
+  retrieved).
+- _[REJECT]_ The sidecar's block's parent (defined by
+  `block_header.parent_root`) passes validation.
+- _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent
+  (defined by `block_header.parent_root`).
+- _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's
+  block -- i.e.
+  `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
+- _[REJECT]_ The sidecar's `kzg_commitments` field inclusion proof is valid as
+  verified by `verify_data_column_sidecar_inclusion_proof(sidecar)`.
+- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the
+  block's slot in the context of the current shuffling (defined by
+  `block_header.parent_root`/`block_header.slot`). If the `proposer_index`
+  cannot immediately be verified against the expected shuffling, the sidecar MAY
+  be queued for later processing while proposers for the block's branch are
+  calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
 ##### Attestation subnets
 
@@ -308,8 +400,6 @@ The following validations are removed:
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
-
 <!-- eth2spec: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
@@ -351,11 +441,12 @@ Specifications of req\\response methods are equivalent to
 [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference
 being the response content type.
 
-For each `response_chunk`, a `ForkDigest`-context based on
-`compute_fork_version(compute_epoch_at_slot(signed_execution_payload_envelop.message.slot))`
-is used to select the fork namespace of the Response type.
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
+`beacon_block` referred to by
+`signed_execution_payload_envelope.message.beacon_block_root`.
 
-Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 
@@ -367,8 +458,12 @@ Per `context = compute_fork_digest(fork_version, genesis_validators_root)`:
 
 **Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_root/1/`
 
-The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`:
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
+`beacon_block` referred to by
+`signed_execution_payload_envelope.message.beacon_block_root`.
+
+Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth2spec: skip -->
 

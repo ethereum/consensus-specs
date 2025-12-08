@@ -78,7 +78,6 @@
     - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
     - [`compute_activation_exit_epoch`](#compute_activation_exit_epoch)
     - [`compute_fork_data_root`](#compute_fork_data_root)
-    - [`compute_fork_digest`](#compute_fork_digest)
     - [`compute_domain`](#compute_domain)
     - [`compute_signing_root`](#compute_signing_root)
   - [Beacon state accessors](#beacon-state-accessors)
@@ -931,18 +930,6 @@ def compute_fork_data_root(current_version: Version, genesis_validators_root: Ro
     )
 ```
 
-#### `compute_fork_digest`
-
-```python
-def compute_fork_digest(current_version: Version, genesis_validators_root: Root) -> ForkDigest:
-    """
-    Return the 4-byte fork digest for the ``current_version`` and ``genesis_validators_root``.
-    This is a digest primarily used for domain separation on the p2p layer.
-    4-bytes suffices for practical separation of forks/chains.
-    """
-    return ForkDigest(compute_fork_data_root(current_version, genesis_validators_root)[:4])
-```
-
 #### `compute_domain`
 
 ```python
@@ -1297,7 +1284,7 @@ def initialize_beacon_state_from_eth1(
     state = BeaconState(
         genesis_time=eth1_timestamp + GENESIS_DELAY,
         fork=fork,
-        eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
+        eth1_data=Eth1Data(deposit_count=uint64(len(deposits)), block_hash=eth1_block_hash),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash]
         * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
@@ -2001,8 +1988,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert len(attestation.aggregation_bits) == len(committee)
 
     pending_attestation = PendingAttestation(
-        data=data,
         aggregation_bits=attestation.aggregation_bits,
+        data=data,
         inclusion_delay=state.slot - data.slot,
         proposer_index=get_beacon_proposer_index(state),
     )
