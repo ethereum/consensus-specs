@@ -1262,10 +1262,12 @@ def get_sweep_withdrawals(
     bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
 
     for _ in range(bound):
+        all_withdrawals = prior_withdrawals + withdrawals
+        if len(all_withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
+            break
+
         validator = state.validators[validator_index]
-        balance = get_balance_minus_withdrawals(
-            state, validator_index, prior_withdrawals + withdrawals
-        )
+        balance = get_balance_minus_withdrawals(state, validator_index, all_withdrawals)
         if is_fully_withdrawable_validator(validator, balance, epoch):
             withdrawals.append(
                 Withdrawal(
@@ -1287,9 +1289,7 @@ def get_sweep_withdrawals(
                 )
             )
             withdrawal_index += WithdrawalIndex(1)
-        total_withdrawals_count = len(prior_withdrawals) + len(withdrawals)
-        if total_withdrawals_count == MAX_WITHDRAWALS_PER_PAYLOAD:
-            break
+
         validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
 
     return withdrawals
