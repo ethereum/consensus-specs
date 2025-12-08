@@ -864,11 +864,11 @@ def update_builder_pending_withdrawals(
 ) -> None:
     withdrawals = []
     for i, withdrawal in enumerate(state.builder_pending_withdrawals):
-        if i < processed_builder_withdrawals_count:
-            if not is_builder_payment_withdrawable(state, withdrawal):
-                withdrawals.append(withdrawal)
-        else:
+        is_processed = i < processed_builder_withdrawals_count
+        is_withdrawable = is_builder_payment_withdrawable(state, withdrawal)
+        if not is_processed or not is_withdrawable:
             withdrawals.append(withdrawal)
+
     state.builder_pending_withdrawals = withdrawals
 ```
 
