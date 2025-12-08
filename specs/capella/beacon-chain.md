@@ -365,9 +365,9 @@ def get_sweep_withdrawals(
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Sequence[Withdrawal]:
     withdrawals: List[Withdrawal] = []
-    bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
+    max_validators_bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
 
-    for _ in range(bound):
+    for _ in range(max_validators_bound):
         all_withdrawals = prior_withdrawals + withdrawals
         if len(all_withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
