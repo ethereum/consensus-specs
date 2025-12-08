@@ -36,7 +36,7 @@
     - [`find_latest_confirmed_descendant`](#find_latest_confirmed_descendant)
     - [`get_latest_confirmed`](#get_latest_confirmed)
   - [Handlers](#handlers)
-    - [`on_slot_start_after_prev_slot_attestations_applied`](#on_slot_start_after_prev_slot_attestations_applied)
+    - [`on_slot_start_after_past_attestations_applied`](#on_slot_start_after_past_attestations_applied)
 
 <!-- mdformat-toc end -->
 
@@ -838,7 +838,7 @@ def get_latest_confirmed(store: Store) -> Root:
 
 ### Handlers
 
-#### `on_slot_start_after_prev_slot_attestations_applied`
+#### `on_slot_start_after_past_attestations_applied`
 
 *Notes:*
 
@@ -849,14 +849,14 @@ algorithm.
 Implementations may run the algorithm (i.e. call `get_latest_confirmed`) at any
 point in time throughout a slot, but they MUST update `Store` variables like
 `store.prev_slot_head` and `store.prev_epoch_unrealized_justified_checkpoint` at
-the start of a slot after attestations from the previous slot has been applied.
-The latter is important because previous slot attestations may affect values of
-those variables. It is also important not to update those variables after the
-start of a slot, because then the synchrony assumption that the algorithm relies
-upon may not hold.
+the start of a slot after attestations from past slots has been applied. The
+latter is important because past slots attestations may affect values of those
+variables. It is also important not to update those variables after the start of
+a slot, because then the synchrony assumption that the algorithm relies upon may
+not hold.
 
 ```python
-def on_slot_start_after_prev_slot_attestations_applied(store: Store) -> None:
+def on_slot_start_after_past_attestations_applied(store: Store) -> None:
     store.confirmed_root = get_latest_confirmed(store)
     if is_start_slot_at_epoch(Slot(get_current_slot(store) + 1)):
         store.prev_epoch_unrealized_justified_checkpoint = store.unrealized_justified_checkpoint
