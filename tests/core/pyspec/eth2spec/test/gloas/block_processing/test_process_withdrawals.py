@@ -170,6 +170,9 @@ def test_single_full_withdrawal(spec, state):
     set_validator_fully_withdrawable(spec, state, 0)
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
+    # Verify full withdrawal: balance should be 0
+    assert state.balances[0] == 0
+
 
 @with_gloas_and_later
 @spec_state_test
@@ -180,6 +183,9 @@ def test_single_partial_withdrawal(spec, state):
     set_parent_block_full(spec, state)
     set_validator_partially_withdrawable(spec, state, 0)
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+
+    # Verify partial withdrawal: balance should equal max effective balance
+    assert state.balances[0] == spec.get_max_effective_balance(state.validators[0])
 
 
 @with_gloas_and_later
@@ -204,6 +210,13 @@ def test_mixed_full_and_partial_withdrawals(spec, state):
         spec, state, num_expected_withdrawals=expected_total
     )
 
+    # Verify full withdrawals: balances should be 0
+    for idx in fully_withdrawable_indices:
+        assert state.balances[idx] == 0
+    # Verify partial withdrawals: balances should equal max effective balance
+    for idx in partial_withdrawals_indices:
+        assert state.balances[idx] == spec.get_max_effective_balance(state.validators[idx])
+
 
 @with_gloas_and_later
 @spec_state_test
@@ -213,7 +226,11 @@ def test_single_builder_withdrawal(spec, state):
     """
     set_parent_block_full(spec, state)
     prepare_builder_withdrawal(spec, state, 0, spec.Gwei(1_000_000_000))
+    pre_builder_count = len(state.builder_pending_withdrawals)
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+
+    # Verify builder withdrawal was processed
+    assert len(state.builder_pending_withdrawals) == pre_builder_count - 1
 
 
 @with_gloas_and_later
@@ -225,7 +242,11 @@ def test_multiple_builder_withdrawals(spec, state):
     set_parent_block_full(spec, state)
     for i in range(3):
         prepare_builder_withdrawal(spec, state, i, spec.Gwei(500_000_000))
+    pre_builder_count = len(state.builder_pending_withdrawals)
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=3)
+
+    # Verify all 3 builder withdrawals were processed
+    assert len(state.builder_pending_withdrawals) == pre_builder_count - 3
 
 
 @with_gloas_and_later
@@ -253,7 +274,11 @@ def test_builder_withdrawal_slashed_validator(spec, state):
     state.validators[0].slashed = True
     state.validators[0].withdrawable_epoch = spec.get_current_epoch(state) + 10
     prepare_builder_withdrawal(spec, state, 0, spec.Gwei(1_000_000_000))
+    pre_builder_count = len(state.builder_pending_withdrawals)
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+
+    # Verify builder withdrawal was processed despite validator being slashed
+    assert len(state.builder_pending_withdrawals) == pre_builder_count - 1
 
 
 @with_gloas_and_later
@@ -266,7 +291,11 @@ def test_builder_withdrawal_insufficient_balance(spec, state):
     withdrawal_amount = spec.Gwei(5_000_000_000)  # 5 ETH
     state.balances[0] = spec.MIN_ACTIVATION_BALANCE + spec.Gwei(1_000_000_000)  # Only 1 ETH excess
     prepare_builder_withdrawal(spec, state, 0, withdrawal_amount)
+    pre_builder_count = len(state.builder_pending_withdrawals)
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+
+    # Verify builder withdrawal was processed (amount is capped to available balance)
+    assert len(state.builder_pending_withdrawals) == pre_builder_count - 1
 
 
 @with_gloas_and_later
@@ -338,6 +367,14 @@ def test_maximum_withdrawals_per_payload_limit(spec, state):
         spec, state, num_expected_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD
     )
 
+    # Verify some withdrawals remain unprocessed due to the limit
+    total_added = num_builders + num_pending + num_sweep
+    total_remaining = len(state.builder_pending_withdrawals) + len(
+        state.pending_partial_withdrawals
+    )
+    assert total_remaining > 0, "Some withdrawals should remain unprocessed"
+    assert total_added > spec.MAX_WITHDRAWALS_PER_PAYLOAD, "Test setup should exceed limit"
+
 
 @with_gloas_and_later
 @spec_state_test
@@ -357,6 +394,9 @@ def test_pending_withdrawals_processing(spec, state):
     yield from run_gloas_withdrawals_processing(
         spec, state, num_expected_withdrawals=expected_withdrawals
     )
+
+    # Verify pending_partial_withdrawals queue was depleted
+    assert len(state.pending_partial_withdrawals) == 0
 
 
 @with_gloas_and_later
@@ -410,6 +450,9 @@ def test_compounding_validator_partial_withdrawal(spec, state):
 
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
+    # Verify balance equals MAX_EFFECTIVE_BALANCE_ELECTRA after partial withdrawal
+    assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+
 
 @with_gloas_and_later
 @spec_state_test
@@ -426,6 +469,11 @@ def test_validator_not_yet_active(spec, state):
         state.validators[validator_index], spec.get_current_epoch(state)
     )
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+
+    # Verify withdrawal processed despite validator not being active
+    assert state.balances[validator_index] == spec.get_max_effective_balance(
+        state.validators[validator_index]
+    )
 
 
 @with_gloas_and_later
@@ -447,6 +495,11 @@ def test_validator_in_exit_queue(spec, state):
     )
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
+    # Verify withdrawal processed for validator in exit queue
+    assert state.balances[validator_index] == spec.get_max_effective_balance(
+        state.validators[validator_index]
+    )
+
 
 @with_gloas_and_later
 @spec_state_test
@@ -461,6 +514,9 @@ def test_withdrawable_epoch_but_zero_balance(spec, state):
     state.balances[3] = 0
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=0)
 
+    # Verify balance remains 0 (no withdrawal since balance was already 0)
+    assert state.balances[3] == 0
+
 
 @with_gloas_and_later
 @spec_state_test
@@ -474,6 +530,9 @@ def test_zero_effective_balance_but_nonzero_balance(spec, state):
     state.validators[4].effective_balance = 0
     state.balances[4] = spec.MIN_ACTIVATION_BALANCE
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+
+    # Verify full balance was withdrawn
+    assert state.balances[4] == 0
 
 
 @with_gloas_and_later
@@ -548,6 +607,13 @@ def test_no_builders_max_pending_with_sweep_spillover(spec, state):
         spec, state, num_expected_withdrawals=expected_total
     )
 
+    # Verify remaining pending withdrawals not processed
+    remaining_pending = spec.MAX_WITHDRAWALS_PER_PAYLOAD - expected_pending
+    assert len(state.pending_partial_withdrawals) == remaining_pending
+    # Verify sweep validators fully withdrawn
+    for i in range(sweep_start, sweep_start + expected_sweep):
+        assert state.balances[i] == 0
+
 
 @with_gloas_and_later
 @spec_state_test
@@ -566,3 +632,7 @@ def test_no_builders_no_pending_max_sweep_withdrawals(spec, state):
     yield from run_gloas_withdrawals_processing(
         spec, state, num_expected_withdrawals=spec.MAX_WITHDRAWALS_PER_PAYLOAD
     )
+
+    # Verify all sweep validators fully withdrawn
+    for i in range(spec.MAX_WITHDRAWALS_PER_PAYLOAD):
+        assert state.balances[i] == 0
