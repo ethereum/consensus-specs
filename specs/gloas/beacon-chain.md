@@ -56,6 +56,7 @@
     - [Withdrawals](#withdrawals)
       - [New `is_builder_payment_withdrawable`](#new-is_builder_payment_withdrawable)
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
+      - [New `update_payload_expected_withdrawals`](#new-update_payload_expected_withdrawals)
       - [New `update_builder_pending_withdrawals`](#new-update_builder_pending_withdrawals)
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
     - [Execution payload bid](#execution-payload-bid)
@@ -865,6 +866,15 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     )
 ```
 
+##### New `update_payload_expected_withdrawals`
+
+```python
+def update_payload_expected_withdrawals(
+    state: BeaconState, withdrawals: Sequence[Withdrawal]
+) -> None:
+    state.payload_expected_withdrawals = List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD](withdrawals)
+```
+
 ##### New `update_builder_pending_withdrawals`
 
 ```python
@@ -910,7 +920,7 @@ def process_withdrawals(
 
     # [Modified in Gloas:EIP7732]
     # Update withdrawals fields in the state
-    state.payload_expected_withdrawals = List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD](withdrawals)
+    update_payload_expected_withdrawals(state, withdrawals)
     update_builder_pending_withdrawals(state, processed_builder_withdrawals_count)
     update_pending_partial_withdrawals(state, processed_partial_withdrawals_count)
     update_next_withdrawal_indices(state, withdrawals)
