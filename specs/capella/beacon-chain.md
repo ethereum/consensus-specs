@@ -346,8 +346,12 @@ def get_balance_minus_withdrawals(
     validator_index: ValidatorIndex,
     withdrawals: Sequence[Withdrawal],
 ) -> Gwei:
-    total_withdrawn = sum(w.amount for w in withdrawals if w.validator_index == validator_index)
-    return state.balances[validator_index] - total_withdrawn
+    withdrawn = sum(
+        withdrawal.amount
+        for withdrawal in withdrawals
+        if withdrawal.validator_index == validator_index
+    )
+    return state.balances[validator_index] - withdrawn
 ```
 
 #### New `get_sweep_withdrawals`
