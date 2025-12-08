@@ -365,11 +365,12 @@ def get_sweep_withdrawals(
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Sequence[Withdrawal]:
     withdrawals: List[Withdrawal] = []
-    max_validators_bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
+    validators_limit = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
+    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
 
-    for _ in range(max_validators_bound):
+    for _ in range(validators_limit):
         all_withdrawals = prior_withdrawals + withdrawals
-        if len(all_withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
+        if len(all_withdrawals) == withdrawals_limit:
             break
 
         validator = state.validators[validator_index]

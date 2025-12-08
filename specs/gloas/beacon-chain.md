@@ -785,11 +785,12 @@ def get_builder_withdrawals(
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
     withdrawals: List[Withdrawal] = []
     processed_count = 0
+    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
 
     for withdrawal in state.builder_pending_withdrawals:
         all_withdrawals = prior_withdrawals + withdrawals
         is_withdrawable = withdrawal.withdrawable_epoch <= epoch
-        has_reached_bound = len(all_withdrawals) + 1 == MAX_WITHDRAWALS_PER_PAYLOAD
+        has_reached_bound = len(all_withdrawals) == withdrawals_limit
         if not is_withdrawable or has_reached_bound:
             break
 
