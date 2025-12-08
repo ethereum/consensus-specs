@@ -788,9 +788,9 @@ def get_builder_withdrawals(
 
     for withdrawal in state.builder_pending_withdrawals:
         all_withdrawals = prior_withdrawals + withdrawals
-        is_not_withdrawable = withdrawal.withdrawable_epoch > epoch
+        is_withdrawable = withdrawal.withdrawable_epoch <= epoch
         has_reached_bound = len(all_withdrawals) + 1 == MAX_WITHDRAWALS_PER_PAYLOAD
-        if is_not_withdrawable or has_reached_bound:
+        if not is_withdrawable or has_reached_bound:
             break
 
         if is_builder_payment_withdrawable(state, withdrawal):
