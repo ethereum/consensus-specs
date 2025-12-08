@@ -89,7 +89,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 | Name                    | Value                      |
 | ----------------------- | -------------------------- |
-| `DOMAIN_BEACON_BUILDER` | `DomainType('0x1B000000')` |
+| `DOMAIN_BEACON_BUILDER` | `DomainType('0x0B000000')` |
 | `DOMAIN_PTC_ATTESTER`   | `DomainType('0x0C000000')` |
 
 ### Misc
@@ -315,7 +315,7 @@ class BeaconState(Container):
     # [New in Gloas:EIP7732]
     latest_block_hash: Hash32
     # [New in Gloas:EIP7732]
-    latest_withdrawals_root: Root
+    payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
 ```
 
 ## Helper functions
@@ -738,16 +738,23 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ##### New `is_builder_payment_withdrawable`
 
+*Note*: Builder payments are immediately withdrawable if the builder is not
+slashed; this allows the builder to submit bids as soon as it becomes active. On
+the other hand, if the builder is slashed, builder payments cannot be made until
+after the builder's withdrawable epoch (which is set by the `slash_validator`
+function); this is a security measure to prevent a slashed builder from sending
+its stake to a colluding proposer before the appropriate penalties are applied.
+
 ```python
 def is_builder_payment_withdrawable(
     state: BeaconState, withdrawal: BuilderPendingWithdrawal
 ) -> bool:
     """
-    Check if the builder is slashed and not yet withdrawable.
+    Check if a builder payment is withdrawable.
     """
     builder = state.validators[withdrawal.builder_index]
     current_epoch = compute_epoch_at_slot(state.slot)
-    return builder.withdrawable_epoch >= current_epoch or not builder.slashed
+    return not builder.slashed or current_epoch >= builder.withdrawable_epoch
 ```
 
 ##### Modified `get_expected_withdrawals`
@@ -889,8 +896,7 @@ def process_withdrawals(
     withdrawals, processed_builder_withdrawals_count, processed_partial_withdrawals_count = (
         get_expected_withdrawals(state)
     )
-    withdrawals_list = List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD](withdrawals)
-    state.latest_withdrawals_root = hash_tree_root(withdrawals_list)
+    state.payload_expected_withdrawals = List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD](withdrawals)
     for withdrawal in withdrawals:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 
@@ -1257,8 +1263,8 @@ def process_execution_payload(
     assert committed_bid.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
     assert committed_bid.prev_randao == payload.prev_randao
 
-    # Verify the withdrawals root
-    assert hash_tree_root(payload.withdrawals) == state.latest_withdrawals_root
+    # Verify consistency with expected withdrawals
+    assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
 
     # Verify the gas_limit
     assert committed_bid.gas_limit == payload.gas_limit

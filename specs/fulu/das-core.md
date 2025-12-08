@@ -152,8 +152,8 @@ def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
                 MatrixEntry(
                     cell=cell,
                     kzg_proof=proof,
-                    row_index=blob_index,
                     column_index=cell_index,
+                    row_index=blob_index,
                 )
             )
     return matrix
@@ -181,8 +181,8 @@ def recover_matrix(
                 MatrixEntry(
                     cell=cell,
                     kzg_proof=proof,
-                    row_index=blob_index,
                     column_index=cell_index,
+                    row_index=blob_index,
                 )
             )
     return matrix
