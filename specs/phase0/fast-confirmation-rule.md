@@ -846,14 +846,17 @@ This handler calls `get_latest_confirmed` and updates `store.confirmed_root`
 with the response of that call. It also updates `Store` variables used by the
 algorithm.
 
-Implementations may run the algorithm (i.e. call `get_latest_confirmed`) at any
-point in time throughout a slot, but they MUST update `Store` variables like
-`store.prev_slot_head` and `store.prev_epoch_unrealized_justified_checkpoint` at
-the start of a slot after attestations from past slots has been applied. The
-latter is important because past slots attestations may affect values of those
-variables. It is also important not to update those variables after the start of
-a slot, because then the synchrony assumption that the algorithm relies upon may
-not hold.
+Implementations MUST update `Store` variables like `prev_slot_head` and
+`prev_epoch_unrealized_justified_checkpoint` at the start of a slot after
+attestations from past slots have been applied. The latter is important because
+past slots attestations may affect values of those variables. It is also
+important not to update those variables after the start of a slot, because then
+the synchrony assumption that the algorithm relies upon may not hold.
+
+Implementations MAY run the algorithm (i.e. call `get_latest_confirmed`) at any
+point in time throughout a slot. In this case the call MUST use values of
+`prev_slot_head` and `prev_epoch_unrealized_justified_checkpoint` assigned at
+the start of the *previous* slot because of the synchrony assumption.
 
 ```python
 def on_slot_start_after_past_attestations_applied(store: Store) -> None:
