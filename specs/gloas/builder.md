@@ -16,6 +16,7 @@
   - [Constructing the `DataColumnSidecar`s](#constructing-the-datacolumnsidecars)
     - [Modified `get_data_column_sidecars`](#modified-get_data_column_sidecars)
     - [Modified `get_data_column_sidecars_from_block`](#modified-get_data_column_sidecars_from_block)
+    - [Modified `get_data_column_sidecars_from_column_sidecar`](#modified-get_data_column_sidecars_from_column_sidecar)
   - [Constructing the `SignedExecutionPayloadEnvelope`](#constructing-the-signedexecutionpayloadenvelope)
   - [Honest payload withheld messages](#honest-payload-withheld-messages)
 
@@ -203,6 +204,29 @@ def get_data_column_sidecars_from_block(
         beacon_block_root,
         signed_block.message.slot,
         blob_kzg_commitments,
+        cells_and_kzg_proofs,
+    )
+```
+
+#### Modified `get_data_column_sidecars_from_column_sidecar`
+
+```python
+def get_data_column_sidecars_from_column_sidecar(
+    sidecar: DataColumnSidecar,
+    cells_and_kzg_proofs: Sequence[
+        Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
+    ],
+) -> Sequence[DataColumnSidecar]:
+    """
+    Given a DataColumnSidecar and the cells/proofs associated with each blob corresponding
+    to the commitments it contains, assemble all sidecars for distribution to peers.
+    """
+    assert len(cells_and_kzg_proofs) == len(sidecar.kzg_commitments)
+
+    return get_data_column_sidecars(
+        sidecar.beacon_block_root,
+        sidecar.slot,
+        sidecar.kzg_commitments,
         cells_and_kzg_proofs,
     )
 ```
