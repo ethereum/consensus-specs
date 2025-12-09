@@ -754,7 +754,7 @@ def is_builder_payment_withdrawable(
     """
     builder = state.validators[withdrawal.builder_index]
     current_epoch = compute_epoch_at_slot(state.slot)
-    return not builder.slashed or builder.withdrawable_epoch >= current_epoch
+    return not builder.slashed or current_epoch >= builder.withdrawable_epoch
 ```
 
 ##### Modified `get_expected_withdrawals`
