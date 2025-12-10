@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tests.infra.helpers.withdrawals import verify_withdrawals_post_state
+from tests.infra.helpers.withdrawals import prepare_withdrawals, verify_withdrawals_post_state
 
 
 class TestVerifyWithdrawalsPostState:
@@ -188,3 +188,242 @@ class TestVerifyWithdrawalsPostState:
                         partial_withdrawals_indices=partial_withdrawals_indices,
                         pending_withdrawal_requests=None,
                     )
+
+
+class TestPrepareWithdrawals:
+    """Test suite for prepare_withdrawals function"""
+
+    def test_prepare_builder_withdrawals(self):
+        """Test setting up builder pending withdrawals"""
+        # Mock spec
+        spec = MagicMock()
+        spec.MIN_ACTIVATION_BALANCE = 32_000_000_000
+        spec.Gwei = int
+        spec.get_current_epoch.return_value = 100
+        spec.fork = "gloas"
+        spec.has_builder_withdrawal_credential.return_value = True
+        spec.BuilderPendingWithdrawal = MagicMock(side_effect=lambda **kwargs: kwargs)
+
+        # Mock state
+        state = MagicMock()
+        state.builder_pending_withdrawals = []
+        state.validators = [MagicMock() for _ in range(10)]
+        state.validators[0].withdrawal_credentials = b"\x03" + b"\x00" * 11 + b"\x42" * 20
+        state.validators[1].withdrawal_credentials = b"\x03" + b"\x00" * 11 + b"\x43" * 20
+        state.balances = [100_000_000_000] * 10  # Plenty of balance
+
+        with patch("tests.infra.helpers.withdrawals.is_post_gloas", return_value=True):
+            with patch("tests.infra.helpers.withdrawals.is_post_electra", return_value=True):
+                prepare_withdrawals(
+                    spec,
+                    state,
+                    builder_indices=[0, 1],
+                    builder_withdrawal_amounts=[1_000_000_000, 2_000_000_000],
+                )
+
+        # Verify two builder pending withdrawals were added
+        assert len(state.builder_pending_withdrawals) == 2
+        assert state.builder_pending_withdrawals[0]["amount"] == 1_000_000_000
+        assert state.builder_pending_withdrawals[0]["builder_index"] == 0
+        assert state.builder_pending_withdrawals[1]["amount"] == 2_000_000_000
+        assert state.builder_pending_withdrawals[1]["builder_index"] == 1
+
+    def test_prepare_pending_partial_withdrawals(self):
+        """Test setting up pending partial withdrawals"""
+        # Mock spec
+        spec = MagicMock()
+        spec.Gwei = int
+        spec.fork = "electra"
+        spec.get_current_epoch.return_value = 100
+        spec.COMPOUNDING_WITHDRAWAL_PREFIX = b"\x02"
+        spec.MAX_EFFECTIVE_BALANCE_ELECTRA = 2048_000_000_000
+        spec.EFFECTIVE_BALANCE_INCREMENT = 1_000_000_000
+        spec.has_compounding_withdrawal_credential.return_value = True
+        spec.PendingPartialWithdrawal = MagicMock(side_effect=lambda **kwargs: kwargs)
+
+        # Mock state
+        state = MagicMock()
+        state.pending_partial_withdrawals = []
+        state.validators = [MagicMock() for _ in range(10)]
+        state.balances = [0] * 10
+
+        # Mock validators with compounding credentials
+        for v in state.validators:
+            v.withdrawal_credentials = b"\x02" + b"\x00" * 31
+            v.effective_balance = 0
+
+        with patch("tests.infra.helpers.withdrawals.is_post_gloas", return_value=False):
+            with patch("tests.infra.helpers.withdrawals.is_post_electra", return_value=True):
+                prepare_withdrawals(
+                    spec,
+                    state,
+                    pending_partial_indices=[2, 3],
+                    pending_partial_amounts=[500_000_000, 600_000_000],
+                )
+
+        # Verify two pending partial withdrawals were added to state
+        assert len(state.pending_partial_withdrawals) == 2
+
+        # Verify withdrawal details
+        assert state.pending_partial_withdrawals[0]["validator_index"] == 2
+        assert state.pending_partial_withdrawals[0]["amount"] == 500_000_000
+        assert state.pending_partial_withdrawals[0]["withdrawable_epoch"] == 100
+
+        assert state.pending_partial_withdrawals[1]["validator_index"] == 3
+        assert state.pending_partial_withdrawals[1]["amount"] == 600_000_000
+        assert state.pending_partial_withdrawals[1]["withdrawable_epoch"] == 100
+
+        # Verify validator balances were set correctly
+        assert state.balances[2] == 32_000_000_000 + 500_000_000  # effective_balance + amount
+        assert state.balances[3] == 32_000_000_000 + 600_000_000
+
+    def test_prepare_full_and_partial_withdrawals(self):
+        """Test setting up full and partial withdrawals"""
+        # Mock spec
+        spec = MagicMock()
+        spec.Gwei = int
+        spec.fork = "capella"
+        spec.get_current_epoch.return_value = 100
+        spec.BLS_WITHDRAWAL_PREFIX = b"\x00"
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX = b"\x01"
+        spec.MAX_EFFECTIVE_BALANCE = 32_000_000_000
+        spec.EFFECTIVE_BALANCE_INCREMENT = 1_000_000_000
+        spec.FAR_FUTURE_EPOCH = 2**64 - 1
+        spec.is_fully_withdrawable_validator.return_value = True
+        spec.is_partially_withdrawable_validator.return_value = True
+        spec.has_compounding_withdrawal_credential.return_value = False
+
+        # Mock state
+        state = MagicMock()
+        state.validators = [MagicMock() for _ in range(10)]
+        state.balances = [0] * 10
+
+        # Set up validators with BLS credentials (will be converted to ETH1)
+        for v in state.validators:
+            v.withdrawal_credentials = b"\x00" + b"\x00" * 31
+            v.effective_balance = 0
+            v.exit_epoch = spec.FAR_FUTURE_EPOCH
+            v.withdrawable_epoch = spec.FAR_FUTURE_EPOCH
+
+        with patch("tests.infra.helpers.withdrawals.is_post_gloas", return_value=False):
+            with patch("tests.infra.helpers.withdrawals.is_post_electra", return_value=False):
+                prepare_withdrawals(
+                    spec,
+                    state,
+                    full_withdrawal_indices=[4, 5],
+                    partial_withdrawal_indices=[6, 7],
+                    partial_excess_balances=[1_000_000_000, 2_000_000_000],
+                )
+
+        # Verify full withdrawals: validators should be withdrawable
+        assert state.validators[4].withdrawable_epoch == 100
+        assert state.validators[4].exit_epoch <= 100
+        assert state.validators[4].withdrawal_credentials[0:1] == b"\x01"  # ETH1 prefix
+        assert state.balances[4] == 10_000_000_000  # Default balance set
+
+        assert state.validators[5].withdrawable_epoch == 100
+        assert state.validators[5].exit_epoch <= 100
+        assert state.validators[5].withdrawal_credentials[0:1] == b"\x01"
+        assert state.balances[5] == 10_000_000_000
+
+        # Verify partial withdrawals: validators should have excess balance
+        assert state.validators[6].withdrawal_credentials[0:1] == b"\x01"  # ETH1 prefix
+        assert state.balances[6] == spec.MAX_EFFECTIVE_BALANCE + 1_000_000_000
+        assert state.validators[6].effective_balance == spec.MAX_EFFECTIVE_BALANCE
+
+        assert state.validators[7].withdrawal_credentials[0:1] == b"\x01"
+        assert state.balances[7] == spec.MAX_EFFECTIVE_BALANCE + 2_000_000_000
+        assert state.validators[7].effective_balance == spec.MAX_EFFECTIVE_BALANCE
+
+    def test_prepare_withdrawals_builder_insufficient_balance(self):
+        """Test that insufficient balance for builder raises assertion"""
+        # Mock spec
+        spec = MagicMock()
+        spec.MIN_ACTIVATION_BALANCE = 32_000_000_000
+        spec.Gwei = int
+        spec.get_current_epoch.return_value = 100
+        spec.has_builder_withdrawal_credential.return_value = True
+
+        # Mock state with insufficient balance
+        state = MagicMock()
+        state.builder_pending_withdrawals = []
+        state.validators = [MagicMock() for _ in range(10)]
+        state.validators[0].withdrawal_credentials = b"\x03" + b"\x00" * 11 + b"\x42" * 20
+        state.balances = [1_000_000_000] * 10  # Insufficient balance
+
+        with patch("tests.infra.helpers.withdrawals.is_post_gloas", return_value=True):
+            with pytest.raises(AssertionError, match="needs balance"):
+                prepare_withdrawals(
+                    spec,
+                    state,
+                    builder_indices=[0],
+                    builder_withdrawal_amounts=[10_000_000_000],
+                )
+
+    def test_prepare_withdrawals_with_future_epochs(self):
+        """Test setting up withdrawals with future withdrawable epochs"""
+        # Mock spec
+        spec = MagicMock()
+        spec.MIN_ACTIVATION_BALANCE = 32_000_000_000
+        spec.Gwei = int
+        spec.get_current_epoch.return_value = 100
+        spec.has_builder_withdrawal_credential.return_value = True
+        spec.BuilderPendingWithdrawal = MagicMock(side_effect=lambda **kwargs: kwargs)
+        spec.BLS_WITHDRAWAL_PREFIX = b"\x00"
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX = b"\x01"
+        spec.MAX_EFFECTIVE_BALANCE = 32_000_000_000
+        spec.EFFECTIVE_BALANCE_INCREMENT = 1_000_000_000
+        spec.FAR_FUTURE_EPOCH = 2**64 - 1
+        spec.COMPOUNDING_WITHDRAWAL_PREFIX = b"\x02"
+        spec.MAX_EFFECTIVE_BALANCE_ELECTRA = 2048_000_000_000
+        spec.has_compounding_withdrawal_credential.return_value = True
+        spec.PendingPartialWithdrawal = MagicMock(side_effect=lambda **kwargs: kwargs)
+        spec.is_fully_withdrawable_validator.return_value = True
+        spec.fork = "gloas"  # Set the fork to gloas
+
+        # Mock state
+        state = MagicMock()
+        state.builder_pending_withdrawals = []
+        state.pending_partial_withdrawals = []
+        state.validators = [MagicMock() for _ in range(10)]
+        state.balances = [100_000_000_000] * 10  # Plenty of balance
+
+        # Set up validators with appropriate credentials
+        for i, v in enumerate(state.validators):
+            if i < 3:  # First 3 for builder withdrawals
+                v.withdrawal_credentials = b"\x03" + b"\x00" * 11 + bytes([0x42 + i]) + b"\x00" * 19
+            else:  # Others for partial withdrawals
+                v.withdrawal_credentials = b"\x02" + b"\x00" * 31
+                v.effective_balance = 0
+            v.exit_epoch = spec.FAR_FUTURE_EPOCH
+            v.withdrawable_epoch = spec.FAR_FUTURE_EPOCH
+
+        with patch("tests.infra.helpers.withdrawals.is_post_gloas", return_value=True):
+            with patch("tests.infra.helpers.withdrawals.is_post_electra", return_value=True):
+                prepare_withdrawals(
+                    spec,
+                    state,
+                    builder_indices=[0, 1, 2],
+                    builder_withdrawal_amounts=[1_000_000_000, 2_000_000_000, 3_000_000_000],
+                    builder_withdrawable_offsets=[0, 5, 10],  # Current, +5 epochs, +10 epochs
+                    pending_partial_indices=[3, 4],
+                    pending_partial_amounts=[500_000_000, 600_000_000],
+                    pending_partial_withdrawable_offsets=[2, 7],  # +2 epochs, +7 epochs
+                    full_withdrawal_indices=[5, 6],
+                    full_withdrawable_offsets=[3, 15],  # +3 epochs, +15 epochs
+                )
+
+        # Verify builder pending withdrawals with future epochs
+        assert len(state.builder_pending_withdrawals) == 3
+        assert state.builder_pending_withdrawals[0]["withdrawable_epoch"] == 100  # Current epoch
+        assert state.builder_pending_withdrawals[1]["withdrawable_epoch"] == 105  # +5 epochs
+        assert state.builder_pending_withdrawals[2]["withdrawable_epoch"] == 110  # +10 epochs
+
+        # Verify pending partial withdrawals with future epochs
+        assert len(state.pending_partial_withdrawals) == 2
+        assert state.pending_partial_withdrawals[0]["withdrawable_epoch"] == 102  # +2 epochs
+        assert state.pending_partial_withdrawals[1]["withdrawable_epoch"] == 107  # +7 epochs
+
+        # Verify full withdrawals with future epochs
+        assert state.validators[5].withdrawable_epoch == 103  # +3 epochs
+        assert state.validators[6].withdrawable_epoch == 115  # +15 epochs
