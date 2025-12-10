@@ -872,14 +872,16 @@ def update_payload_expected_withdrawals(
 def update_builder_pending_withdrawals(
     state: BeaconState, processed_builder_withdrawals_count: uint64
 ) -> None:
-    withdrawals = []
-    for i, withdrawal in enumerate(state.builder_pending_withdrawals):
-        is_processed = i < processed_builder_withdrawals_count
-        is_withdrawable = is_builder_payment_withdrawable(state, withdrawal)
-        if not is_processed or not is_withdrawable:
-            withdrawals.append(withdrawal)
+    deferred_withdrawals = [
+        withdrawal
+        for withdrawal in state.builder_pending_withdrawals[:processed_builder_withdrawals_count]
+        if not is_builder_payment_withdrawable(state, withdrawal)
+    ]
+    unprocessed_withdrawals = state.builder_pending_withdrawals[
+        processed_builder_withdrawals_count:
+    ]
 
-    state.builder_pending_withdrawals = withdrawals
+    state.builder_pending_withdrawals = deferred_withdrawals + unprocessed_withdrawals
 ```
 
 ##### Modified `process_withdrawals`
