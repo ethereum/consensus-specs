@@ -4,13 +4,15 @@ from tests.core.pyspec.eth2spec.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
-from tests.core.pyspec.eth2spec.test.helpers.forks import is_post_gloas
 from tests.core.pyspec.eth2spec.test.helpers.withdrawals import (
     prepare_expected_withdrawals,
-    prepare_pending_withdrawal,
+    set_builder_withdrawal_credential,
     set_compounding_withdrawal_credential_with_balance,
     set_validator_fully_withdrawable,
     set_validator_partially_withdrawable,
+)
+from tests.infra.helpers.withdrawals import (
+    prepare_withdrawals,
 )
 
 
@@ -72,51 +74,6 @@ def run_gloas_withdrawals_processing(
     yield "post", state
 
 
-def prepare_builder_withdrawal(spec, state, builder_index, amount=None, withdrawable_epoch=None):
-    """
-    Helper to set up a builder pending withdrawal.
-    Only works for Gloas specs that have builder withdrawals.
-
-    Note: The Gloas logic for is_builder_payment_withdrawable seems to have
-    some issues in the current implementation, so we'll work around them.
-    """
-    # Skip if not Gloas
-    if not is_post_gloas(spec):
-        return None
-
-    if amount is None:
-        amount = spec.Gwei(1_000_000_000)  # 1 ETH
-
-    if withdrawable_epoch is None:
-        withdrawable_epoch = spec.get_current_epoch(state)
-
-    # Ensure builder has sufficient balance
-    state.balances[builder_index] = max(
-        state.balances[builder_index],
-        amount + spec.MIN_ACTIVATION_BALANCE + spec.Gwei(1_000_000_000),
-    )
-
-    # Make sure the builder is not slashed and has reached withdrawable epoch
-    # to work with the current Gloas is_builder_payment_withdrawable logic
-    builder = state.validators[builder_index]
-    builder.slashed = False
-    builder.withdrawable_epoch = min(builder.withdrawable_epoch, withdrawable_epoch)
-
-    builder_withdrawal = spec.BuilderPendingWithdrawal(
-        fee_recipient=b"\x42" * 20,
-        amount=amount,
-        builder_index=builder_index,
-        withdrawable_epoch=withdrawable_epoch,
-    )
-
-    # Initialize builder_pending_withdrawals if it doesn't exist
-    if not hasattr(state, "builder_pending_withdrawals"):
-        state.builder_pending_withdrawals = []
-
-    state.builder_pending_withdrawals.append(builder_withdrawal)
-    return builder_withdrawal
-
-
 def set_parent_block_full(spec, state):
     """
     Helper to set state indicating parent block was full.
@@ -160,7 +117,7 @@ def test_single_full_withdrawal(spec, state):
     Test processing a single full withdrawal.
     """
     set_parent_block_full(spec, state)
-    set_validator_fully_withdrawable(spec, state, 0)
+    prepare_withdrawals(spec, state, full_withdrawal_indices=[0])
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
     # Verify full withdrawal: balance should be 0
@@ -174,7 +131,7 @@ def test_single_partial_withdrawal(spec, state):
     Test processing a single partial withdrawal.
     """
     set_parent_block_full(spec, state)
-    set_validator_partially_withdrawable(spec, state, 0)
+    prepare_withdrawals(spec, state, partial_withdrawal_indices=[0])
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
     # Verify partial withdrawal: balance should equal max effective balance
@@ -218,7 +175,20 @@ def test_single_builder_withdrawal(spec, state):
     Test processing a single builder withdrawal.
     """
     set_parent_block_full(spec, state)
-    prepare_builder_withdrawal(spec, state, 0, spec.Gwei(1_000_000_000))
+    withdrawal_amount = spec.Gwei(1_000_000_000)
+    set_builder_withdrawal_credential(spec, state, 0)
+    # Ensure sufficient balance
+    state.balances[0] = max(
+        state.balances[0],
+        withdrawal_amount + spec.MIN_ACTIVATION_BALANCE,
+    )
+    prepare_withdrawals(
+        spec,
+        state,
+        builder_indices=[0],
+        builder_withdrawal_amounts=[withdrawal_amount],
+        builder_withdrawable_offsets=[0],
+    )
     pre_builder_count = len(state.builder_pending_withdrawals)
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
@@ -233,8 +203,21 @@ def test_multiple_builder_withdrawals(spec, state):
     Test processing multiple builder withdrawals.
     """
     set_parent_block_full(spec, state)
-    for i in range(3):
-        prepare_builder_withdrawal(spec, state, i, spec.Gwei(500_000_000))
+    withdrawal_amount = spec.Gwei(500_000_000)
+    builder_indices = [0, 1, 2]
+    for i in builder_indices:
+        set_builder_withdrawal_credential(spec, state, i)
+        state.balances[i] = max(
+            state.balances[i],
+            withdrawal_amount + spec.MIN_ACTIVATION_BALANCE,
+        )
+    prepare_withdrawals(
+        spec,
+        state,
+        builder_indices=builder_indices,
+        builder_withdrawal_amounts=[withdrawal_amount] * len(builder_indices),
+        builder_withdrawable_offsets=[0] * len(builder_indices),
+    )
     pre_builder_count = len(state.builder_pending_withdrawals)
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=3)
 
@@ -249,8 +232,19 @@ def test_builder_withdrawal_future_epoch(spec, state):
     Test builder withdrawal not yet withdrawable (future epoch).
     """
     set_parent_block_full(spec, state)
-    future_epoch = spec.get_current_epoch(state) + 1
-    prepare_builder_withdrawal(spec, state, 0, withdrawable_epoch=future_epoch)
+    withdrawal_amount = spec.Gwei(1_000_000_000)
+    set_builder_withdrawal_credential(spec, state, 0)
+    state.balances[0] = max(
+        state.balances[0],
+        withdrawal_amount + spec.MIN_ACTIVATION_BALANCE,
+    )
+    prepare_withdrawals(
+        spec,
+        state,
+        builder_indices=[0],
+        builder_withdrawal_amounts=[withdrawal_amount],
+        builder_withdrawable_offsets=[1],  # Future epoch (current + 1)
+    )
     pre_builder_count = len(state.builder_pending_withdrawals)
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=0)
     # Verify builder list unchanged (withdrawal not processed)
@@ -262,16 +256,32 @@ def test_builder_withdrawal_future_epoch(spec, state):
 def test_builder_withdrawal_slashed_validator(spec, state):
     """
     Test builder withdrawal with slashed validator.
+    Slashed validators cannot have builder withdrawals processed until
+    current_epoch >= withdrawable_epoch.
     """
     set_parent_block_full(spec, state)
-    state.validators[0].slashed = True
-    state.validators[0].withdrawable_epoch = spec.get_current_epoch(state) + 10
-    prepare_builder_withdrawal(spec, state, 0, spec.Gwei(1_000_000_000))
-    pre_builder_count = len(state.builder_pending_withdrawals)
-    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
+    withdrawal_amount = spec.Gwei(1_000_000_000)
+    current_epoch = spec.get_current_epoch(state)
 
-    # Verify builder withdrawal was processed despite validator being slashed
-    assert len(state.builder_pending_withdrawals) == pre_builder_count - 1
+    # Set up builder credentials and balance
+    set_builder_withdrawal_credential(spec, state, 0)
+    state.balances[0] = max(state.balances[0], withdrawal_amount + spec.MIN_ACTIVATION_BALANCE)
+
+    # Set validator as slashed with future withdrawable_epoch
+    state.validators[0].slashed = True
+    state.validators[0].withdrawable_epoch = current_epoch + 10
+
+    prepare_withdrawals(
+        spec,
+        state,
+        builder_indices=[0],
+        builder_withdrawal_amounts=[withdrawal_amount],
+    )
+    pre_builder_count = len(state.builder_pending_withdrawals)
+    yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=0)
+
+    # Verify builder withdrawal was NOT processed (slashed validator before withdrawable epoch)
+    assert len(state.builder_pending_withdrawals) == pre_builder_count
 
 
 @with_gloas_and_later
@@ -282,8 +292,22 @@ def test_builder_withdrawal_insufficient_balance(spec, state):
     """
     set_parent_block_full(spec, state)
     withdrawal_amount = spec.Gwei(5_000_000_000)  # 5 ETH
+
+    # Set up builder credentials with insufficient balance
+    set_builder_withdrawal_credential(spec, state, 0)
     state.balances[0] = spec.MIN_ACTIVATION_BALANCE + spec.Gwei(1_000_000_000)  # Only 1 ETH excess
-    prepare_builder_withdrawal(spec, state, 0, withdrawal_amount)
+
+    # Manually add builder withdrawal (bypassing prepare_withdrawals balance assertion)
+    address = state.validators[0].withdrawal_credentials[12:]
+    state.builder_pending_withdrawals.append(
+        spec.BuilderPendingWithdrawal(
+            fee_recipient=address,
+            amount=withdrawal_amount,
+            builder_index=0,
+            withdrawable_epoch=spec.get_current_epoch(state),
+        )
+    )
+
     pre_builder_count = len(state.builder_pending_withdrawals)
     yield from run_gloas_withdrawals_processing(spec, state, num_expected_withdrawals=1)
 
@@ -303,10 +327,24 @@ def test_mixed_withdrawal_types_priority_ordering(spec, state):
     pending_index = 1
     sweep_index = 2
 
-    # Prepare one of each type
-    prepare_builder_withdrawal(spec, state, builder_index, spec.Gwei(1_000_000_000))
-    prepare_pending_withdrawal(spec, state, pending_index)
-    set_validator_fully_withdrawable(spec, state, sweep_index)
+    # Set up builder credential and balance
+    builder_amount = spec.Gwei(1_000_000_000)
+    set_builder_withdrawal_credential(spec, state, builder_index)
+    state.balances[builder_index] = max(
+        state.balances[builder_index],
+        builder_amount + spec.MIN_ACTIVATION_BALANCE,
+    )
+
+    # Prepare all three withdrawal types
+    prepare_withdrawals(
+        spec,
+        state,
+        builder_indices=[builder_index],
+        builder_withdrawal_amounts=[builder_amount],
+        builder_withdrawable_offsets=[0],
+        pending_partial_indices=[pending_index],
+        full_withdrawal_indices=[sweep_index],
+    )
 
     pre_state = state.copy()
 
@@ -343,17 +381,29 @@ def test_maximum_withdrawals_per_payload_limit(spec, state):
     num_pending = spec.MAX_WITHDRAWALS_PER_PAYLOAD // 2
     num_sweep = spec.MAX_WITHDRAWALS_PER_PAYLOAD // 2
 
-    # Add builder withdrawals
-    for i in range(num_builders):
-        prepare_builder_withdrawal(spec, state, i, spec.Gwei(1_000_000_000))
+    builder_indices = list(range(num_builders))
+    pending_indices = list(range(num_builders, num_builders + num_pending))
+    sweep_indices = list(range(num_builders + num_pending, num_builders + num_pending + num_sweep))
 
-    # Add pending withdrawals
-    for i in range(num_builders, num_builders + num_pending):
-        prepare_pending_withdrawal(spec, state, i)
+    # Set up builder credentials and balances
+    withdrawal_amount = spec.Gwei(1_000_000_000)
+    for i in builder_indices:
+        set_builder_withdrawal_credential(spec, state, i)
+        state.balances[i] = max(
+            state.balances[i],
+            withdrawal_amount + spec.MIN_ACTIVATION_BALANCE,
+        )
 
-    # Add sweep withdrawals
-    for i in range(num_builders + num_pending, num_builders + num_pending + num_sweep):
-        set_validator_fully_withdrawable(spec, state, i)
+    # Add all withdrawal types
+    prepare_withdrawals(
+        spec,
+        state,
+        builder_indices=builder_indices,
+        builder_withdrawal_amounts=[withdrawal_amount] * num_builders,
+        builder_withdrawable_offsets=[0] * num_builders,
+        pending_partial_indices=pending_indices,
+        full_withdrawal_indices=sweep_indices,
+    )
 
     # Should not exceed MAX_WITHDRAWALS_PER_PAYLOAD
     yield from run_gloas_withdrawals_processing(
@@ -378,8 +428,8 @@ def test_pending_withdrawals_processing(spec, state):
     set_parent_block_full(spec, state)
 
     # Add enough pending withdrawals to test the limit
-    for i in range(spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP):
-        prepare_pending_withdrawal(spec, state, i)
+    pending_indices = list(range(spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP))
+    prepare_withdrawals(spec, state, pending_partial_indices=pending_indices)
 
     # EIP-7732 limits pending withdrawals to min(MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP, MAX_WITHDRAWALS_PER_PAYLOAD - 1)
     # In minimal config: min(2, 4-1) = 2, in mainnet config: min(8, 16-1) = 8
@@ -402,7 +452,14 @@ def test_early_return_empty_parent_block(spec, state):
 
     # Prepare withdrawals that would normally be processed
     prepare_expected_withdrawals(spec, state, rng=random.Random(42), num_full_withdrawals=2)
-    prepare_builder_withdrawal(spec, state, 0)
+
+    # Set up builder withdrawal
+    withdrawal_amount = spec.Gwei(1_000_000_000)
+    set_builder_withdrawal_credential(spec, state, 0)
+    state.balances[0] = max(state.balances[0], withdrawal_amount + spec.MIN_ACTIVATION_BALANCE)
+    prepare_withdrawals(
+        spec, state, builder_indices=[0], builder_withdrawal_amounts=[withdrawal_amount]
+    )
 
     pre_state = state.copy()
 
@@ -539,15 +596,27 @@ def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
 
     # Add more builder payments than the limit to test prioritization
     num_builders = spec.MAX_WITHDRAWALS_PER_PAYLOAD + 2  # 6 builders (more than limit of 4)
-    for i in range(num_builders):
-        prepare_builder_withdrawal(spec, state, i, spec.Gwei(1_000_000_000))
+    withdrawal_amount = spec.Gwei(1_000_000_000)
+
+    # Set up builder credentials and balances for all builders
+    builder_indices = list(range(num_builders))
+    for i in builder_indices:
+        set_builder_withdrawal_credential(spec, state, i)
+        state.balances[i] = max(state.balances[i], withdrawal_amount + spec.MIN_ACTIVATION_BALANCE)
+
+    prepare_withdrawals(
+        spec,
+        state,
+        builder_indices=builder_indices,
+        builder_withdrawal_amounts=[withdrawal_amount] * num_builders,
+    )
 
     # Don't add any pending withdrawals for this test
     # This test just verifies that builder payments work up to the limit
 
     # Ensure no validators are eligible for sweep withdrawals
     # by setting withdrawal credentials to non-withdrawable
-    for i in range(len(state.validators)):
+    for i in range(num_builders, len(state.validators)):
         validator = state.validators[i]
         if validator.withdrawal_credentials[0:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX:
             # Keep ETH1 credentials but ensure balance is not above max_effective_balance
@@ -582,14 +651,17 @@ def test_no_builders_max_pending_with_sweep_spillover(spec, state):
     """
     set_parent_block_full(spec, state)
 
-    # Add MAX_WITHDRAWALS_PER_PAYLOAD pending partial withdrawals
-    for i in range(spec.MAX_WITHDRAWALS_PER_PAYLOAD):
-        prepare_pending_withdrawal(spec, state, i)
-
-    # Add sweep withdrawals that should be processed due to pending limit
+    # Add MAX_WITHDRAWALS_PER_PAYLOAD pending partial withdrawals and sweep withdrawals
+    pending_indices = list(range(spec.MAX_WITHDRAWALS_PER_PAYLOAD))
     sweep_start = spec.MAX_WITHDRAWALS_PER_PAYLOAD
-    for i in range(sweep_start, sweep_start + 3):
-        set_validator_fully_withdrawable(spec, state, i)
+    sweep_indices = list(range(sweep_start, sweep_start + 3))
+
+    prepare_withdrawals(
+        spec,
+        state,
+        pending_partial_indices=pending_indices,
+        full_withdrawal_indices=sweep_indices,
+    )
 
     # Should process MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP pending + remaining slots for sweep
     expected_pending = spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
@@ -618,8 +690,8 @@ def test_no_builders_no_pending_max_sweep_withdrawals(spec, state):
     set_parent_block_full(spec, state)
 
     # Add MAX_WITHDRAWALS_PER_PAYLOAD sweep withdrawals
-    for i in range(spec.MAX_WITHDRAWALS_PER_PAYLOAD):
-        set_validator_fully_withdrawable(spec, state, i)
+    sweep_indices = list(range(spec.MAX_WITHDRAWALS_PER_PAYLOAD))
+    prepare_withdrawals(spec, state, full_withdrawal_indices=sweep_indices)
 
     # All should be processed since no higher priority withdrawals exist
     yield from run_gloas_withdrawals_processing(

@@ -1,4 +1,135 @@
-from tests.core.pyspec.eth2spec.test.helpers.forks import is_post_electra, is_post_gloas
+from eth2spec.test.helpers.forks import is_post_electra, is_post_gloas
+
+
+def prepare_withdrawals(
+    spec,
+    state,
+    builder_indices=[],
+    pending_partial_indices=[],
+    full_withdrawal_indices=[],
+    partial_withdrawal_indices=[],
+    builder_withdrawal_amounts=None,
+    pending_partial_amounts=None,
+    partial_excess_balances=None,
+    builder_withdrawable_offsets=None,
+    pending_partial_withdrawable_offsets=None,
+    full_withdrawable_offsets=None,
+):
+    """
+    Populate the state with all three types of withdrawals based on configuration.
+
+    Note: For builder withdrawals, validators must already have builder withdrawal credentials
+    set (0x03 prefix). Use set_builder_withdrawal_credential() or
+    set_builder_withdrawal_credential_with_balance() before calling this function.
+
+    Args:
+        spec: The spec object
+        state: The beacon state to modify
+        builder_indices: List of validator indices (must already have builder credentials)
+                        to add builder pending withdrawals for
+        pending_partial_indices: List of validator indices to set up with pending partial withdrawals
+        full_withdrawal_indices: List of validator indices to set up as fully withdrawable
+        partial_withdrawal_indices: List of validator indices to set up as partially withdrawable
+        builder_withdrawal_amounts: Single amount or list of amounts for builder withdrawals
+                                    (default: MIN_ACTIVATION_BALANCE for each)
+        pending_partial_amounts: Single amount or list of amounts for pending partial withdrawals
+                                 (default: 1_000_000_000 for each)
+        partial_excess_balances: Single amount or list of excess balances for partial withdrawals
+                                 (default: 1_000_000_000 for each)
+        builder_withdrawable_offsets: Single offset or list of epoch offsets for builder withdrawals
+                                      (default: 0, i.e., withdrawable immediately)
+        pending_partial_withdrawable_offsets: Single offset or list of epoch offsets for pending partial
+                                             withdrawals (default: 0, i.e., withdrawable immediately)
+        full_withdrawable_offsets: Single offset or list of epoch offsets for full withdrawals
+                                  (default: 0, i.e., withdrawable immediately)
+    """
+    # Import here to avoid circular imports
+    from tests.core.pyspec.eth2spec.test.helpers.withdrawals import (  # noqa: PLC0415
+        prepare_pending_withdrawal,
+        set_validator_fully_withdrawable,
+        set_validator_partially_withdrawable,
+    )
+
+    current_epoch = spec.get_current_epoch(state)
+
+    # Helper to get parameter value from single value, list, or None
+    def get_param_value(param, index, default):
+        """
+        Extract a value from a parameter that can be:
+        - None: returns the default value
+        - A single value: returns that value for all indices
+        - A list: returns the value at the given index (or default if out of bounds)
+        """
+        if param is None:
+            return default
+        if isinstance(param, (int, type(spec.Gwei(0)))):
+            return param
+        return param[index] if index < len(param) else default
+
+    # 1. Set up builder pending withdrawals (Gloas only)
+    if is_post_gloas(spec) and builder_indices:
+        for i, validator_index in enumerate(builder_indices):
+            amount = get_param_value(builder_withdrawal_amounts, i, spec.MIN_ACTIVATION_BALANCE)
+            epoch_offset = get_param_value(builder_withdrawable_offsets, i, 0)
+
+            # Verify the validator is already set up as a builder
+            validator = state.validators[validator_index]
+            assert spec.has_builder_withdrawal_credential(validator), (
+                f"Validator {validator_index} must have builder withdrawal credentials. "
+                f"Use set_builder_withdrawal_credential() or set_builder_withdrawal_credential_with_balance() first."
+            )
+
+            # Verify the builder has sufficient balance
+            assert state.balances[validator_index] >= amount + spec.MIN_ACTIVATION_BALANCE, (
+                f"Validator {validator_index} needs balance >= {amount + spec.MIN_ACTIVATION_BALANCE}, "
+                f"but has {state.balances[validator_index]}"
+            )
+
+            # Add builder pending withdrawal
+            address = validator.withdrawal_credentials[12:]
+            state.builder_pending_withdrawals.append(
+                spec.BuilderPendingWithdrawal(
+                    fee_recipient=address,
+                    amount=amount,
+                    builder_index=validator_index,
+                    withdrawable_epoch=current_epoch + epoch_offset,  # Can be in the future
+                )
+            )
+
+    # 2. Set up pending partial withdrawals (Electra+)
+    if is_post_electra(spec) and pending_partial_indices:
+        for i, validator_index in enumerate(pending_partial_indices):
+            amount = get_param_value(pending_partial_amounts, i, 1_000_000_000)
+            epoch_offset = get_param_value(pending_partial_withdrawable_offsets, i, 0)
+
+            prepare_pending_withdrawal(
+                spec,
+                state,
+                validator_index,
+                amount=amount,
+                withdrawable_epoch=current_epoch + epoch_offset,  # Can be in the future
+            )
+
+    # 3. Set up full withdrawals
+    for i, validator_index in enumerate(full_withdrawal_indices):
+        epoch_offset = get_param_value(full_withdrawable_offsets, i, 0)
+        set_validator_fully_withdrawable(
+            spec,
+            state,
+            validator_index,
+            withdrawable_epoch=current_epoch + epoch_offset,  # Can be in the future
+        )
+
+    # 4. Set up partial withdrawals
+    for i, validator_index in enumerate(partial_withdrawal_indices):
+        excess_balance = get_param_value(partial_excess_balances, i, 1_000_000_000)
+
+        set_validator_partially_withdrawable(
+            spec,
+            state,
+            validator_index,
+            excess_balance=excess_balance,
+        )
 
 
 def get_expected_withdrawals(spec, state):
