@@ -704,7 +704,7 @@ def process_builder_pending_payments(state: BeaconState) -> None:
     """
     quorum = get_builder_payment_quorum_threshold(state)
     for payment in state.builder_pending_payments[:SLOTS_PER_EPOCH]:
-        if payment.weight > quorum:
+        if payment.weight >= quorum:
             amount = payment.withdrawal.amount
             exit_queue_epoch = compute_exit_epoch_and_update_churn(state, amount)
             withdrawable_epoch = exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
