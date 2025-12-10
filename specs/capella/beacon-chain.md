@@ -30,6 +30,8 @@
     - [Historical summaries updates](#historical-summaries-updates)
   - [Block processing](#block-processing)
     - [New `get_expected_withdrawals`](#new-get_expected_withdrawals)
+    - [New `apply_withdrawals`](#new-apply_withdrawals)
+    - [New `update_next_withdrawal_indices`](#new-update_next_withdrawal_indices)
     - [New `process_withdrawals`](#new-process_withdrawals)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
     - [Modified `process_operations`](#modified-process_operations)
@@ -374,26 +376,28 @@ def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     return withdrawals
 ```
 
-#### New `process_withdrawals`
+#### New `apply_withdrawals`
 
 ```python
-def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
-    expected_withdrawals = get_expected_withdrawals(state)
-    assert payload.withdrawals == expected_withdrawals
-
-    for withdrawal in expected_withdrawals:
+def apply_withdrawals(state: BeaconState, withdrawals: Sequence[Withdrawal]) -> None:
+    for withdrawal in withdrawals:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
+```
 
+#### New `update_next_withdrawal_indices`
+
+```python
+def update_next_withdrawal_indices(state: BeaconState, withdrawals: Sequence[Withdrawal]) -> None:
     # Update the next withdrawal index if this block contained withdrawals
-    if len(expected_withdrawals) != 0:
-        latest_withdrawal = expected_withdrawals[-1]
+    if len(withdrawals) != 0:
+        latest_withdrawal = withdrawals[-1]
         state.next_withdrawal_index = WithdrawalIndex(latest_withdrawal.index + 1)
 
     # Update the next validator index to start the next withdrawal sweep
-    if len(expected_withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
+    if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
         # Next sweep starts after the latest withdrawal's validator index
         next_validator_index = ValidatorIndex(
-            (expected_withdrawals[-1].validator_index + 1) % len(state.validators)
+            (withdrawals[-1].validator_index + 1) % len(state.validators)
         )
         state.next_withdrawal_validator_index = next_validator_index
     else:
@@ -401,6 +405,19 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
         next_index = state.next_withdrawal_validator_index + MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
         next_validator_index = ValidatorIndex(next_index % len(state.validators))
         state.next_withdrawal_validator_index = next_validator_index
+```
+
+#### New `process_withdrawals`
+
+```python
+def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
+    # Apply expected withdrawals
+    withdrawals = get_expected_withdrawals(state)
+    assert payload.withdrawals == withdrawals
+    apply_withdrawals(state, withdrawals)
+
+    # Update withdrawals fields in the state
+    update_next_withdrawal_indices(state, withdrawals)
 ```
 
 #### Modified `process_execution_payload`
