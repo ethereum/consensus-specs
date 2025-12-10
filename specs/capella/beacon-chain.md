@@ -29,7 +29,7 @@
   - [Epoch processing](#epoch-processing)
     - [Historical summaries updates](#historical-summaries-updates)
   - [Block processing](#block-processing)
-    - [New `get_balance_minus_withdrawals`](#new-get_balance_minus_withdrawals)
+    - [New `get_balance_after_withdrawals`](#new-get_balance_after_withdrawals)
     - [New `get_sweep_withdrawals`](#new-get_sweep_withdrawals)
     - [New `get_expected_withdrawals`](#new-get_expected_withdrawals)
     - [New `process_withdrawals`](#new-process_withdrawals)
@@ -338,10 +338,10 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
-#### New `get_balance_minus_withdrawals`
+#### New `get_balance_after_withdrawals`
 
 ```python
-def get_balance_minus_withdrawals(
+def get_balance_after_withdrawals(
     state: BeaconState,
     validator_index: ValidatorIndex,
     withdrawals: Sequence[Withdrawal],
@@ -374,7 +374,7 @@ def get_sweep_withdrawals(
             break
 
         validator = state.validators[validator_index]
-        balance = get_balance_minus_withdrawals(state, validator_index, all_withdrawals)
+        balance = get_balance_after_withdrawals(state, validator_index, all_withdrawals)
         if is_fully_withdrawable_validator(validator, balance, epoch):
             withdrawals.append(
                 Withdrawal(

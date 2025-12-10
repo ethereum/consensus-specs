@@ -1227,7 +1227,7 @@ def get_pending_partial_withdrawals(
 
         validator_index = withdrawal.validator_index
         validator = state.validators[validator_index]
-        balance = get_balance_minus_withdrawals(state, validator_index, all_withdrawals)
+        balance = get_balance_after_withdrawals(state, validator_index, all_withdrawals)
         if is_eligible_for_partial_withdrawals(validator, balance):
             withdrawal_amount = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
             withdrawals.append(
@@ -1268,7 +1268,7 @@ def get_sweep_withdrawals(
             break
 
         validator = state.validators[validator_index]
-        balance = get_balance_minus_withdrawals(state, validator_index, all_withdrawals)
+        balance = get_balance_after_withdrawals(state, validator_index, all_withdrawals)
         if is_fully_withdrawable_validator(validator, balance, epoch):
             withdrawals.append(
                 Withdrawal(

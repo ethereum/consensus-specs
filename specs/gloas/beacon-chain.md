@@ -797,7 +797,7 @@ def get_builder_withdrawals(
         if is_builder_payment_withdrawable(state, withdrawal):
             builder_index = withdrawal.builder_index
             builder = state.validators[builder_index]
-            balance = get_balance_minus_withdrawals(state, builder_index, all_withdrawals)
+            balance = get_balance_after_withdrawals(state, builder_index, all_withdrawals)
             withdrawable_balance = get_builder_withdrawable_balance(builder, balance)
             withdrawal_amount = min(withdrawable_balance, withdrawal.amount)
             if withdrawal_amount > 0:
