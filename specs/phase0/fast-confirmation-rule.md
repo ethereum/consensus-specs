@@ -33,9 +33,10 @@
       - [`compute_honest_ffg_support`](#compute_honest_ffg_support)
       - [`will_no_conflicting_checkpoint_be_justified`](#will_no_conflicting_checkpoint_be_justified)
       - [`will_checkpoint_be_justified`](#will_checkpoint_be_justified)
+    - [`process_reconfirmation`](#process_reconfirmation)
+    - [`update_fast_confirmation_variables`](#update_fast_confirmation_variables)
     - [`find_latest_confirmed_descendant`](#find_latest_confirmed_descendant)
     - [`get_latest_confirmed`](#get_latest_confirmed)
-    - [`process_reconfirmation`](#process_reconfirmation)
   - [Handlers](#handlers)
     - [`on_slot_start_after_past_attestations_applied`](#on_slot_start_after_past_attestations_applied)
 
@@ -470,8 +471,8 @@ def is_one_confirmed(store: Store, block_root: Root) -> bool:
     head_checkpoint = get_checkpoint_for_block(store, head, get_block_epoch(store, head))
     shuffling_source = get_checkpoint_state(store, head_checkpoint)
 
-    # Use prev_epoch_unrealized_justified_checkpoint as a balance source
-    balance_source = store.checkpoint_states[store.prev_epoch_unrealized_justified_checkpoint]
+    # Use fast_confirmation_balance_source_checkpoint as a balance source
+    balance_source = store.checkpoint_states[store.fast_confirmation_balance_source_checkpoint]
 
     support = get_attestation_score(store, block_root, balance_source)
     proposer_score = compute_proposer_score(balance_source)
@@ -657,6 +658,67 @@ def will_checkpoint_be_justified(store: Store, checkpoint: Checkpoint) -> bool:
     return 3 * honest_ffg_support >= 2 * total_active_balance
 ```
 
+#### `process_reconfirmation`
+
+*Notes:*
+
+This function reverts `store.confirmed_root` to the
+`store.finalized_checkpoint.root` if the confirmed block is no longer safe.
+Execution steps are as the following:
+
+1. Check if the `store.confirmed_root` belongs to the canonical chain and is not
+   older than the previous epoch.
+2. Check if the confirmed chain starting from the
+   `store.prev_epoch_unrealized_justified_checkpoint` can be re-confirmed at the
+   start of the current epoch which resets GST to the start of the current
+   epoch.
+3. If any of the above checks fail, set `store.confirmed_root` to the
+   `store.finalized_checkpoint.root`. Either of the above conditions signify
+   that FCR assumptions (at least synchrony) are broken and the confirmed block
+   might not be safe.
+
+```python
+def process_reconfirmation(store: Store) -> None:
+    # Revert to finalized block if either of the following is true:
+    # 1) the latest confirmed block's epoch is older than the previous epoch,
+    # 2) the latest confirmed block doesn't belong to the canonical chain,
+    # 3) the confirmed chain starting from the previous epoch unrealized justified checkpoint
+    #    cannot be re-confirmed at the start of the current epoch.
+    head = get_head(store)
+    current_epoch = get_current_store_epoch(store)
+    if (
+        get_block_epoch(store, store.confirmed_root) + 1 < current_epoch
+        or not is_ancestor(store, head, store.confirmed_root)
+        or (
+            is_start_slot_at_epoch(get_current_slot(store))
+            and not is_confirmed_chain_safe(store, store.confirmed_root)
+        )
+    ):
+        store.confirmed_root = store.finalized_checkpoint.root
+```
+
+#### `update_fast_confirmation_variables`
+
+*Note:* This function updates variables used by the fast confirmation rule. It
+is important to do the balance source switch after `process_reconfirmation`.
+
+```python
+def update_fast_confirmation_variables(store: Store) -> None:
+    # Update prev and curr slot head.
+    store.prev_slot_head = store.curr_slot_head
+    store.curr_slot_head = get_head(store)
+
+    # Update prev_epoch unrealized justified checkpoint at the beginning of the last slot of an epoch.
+    if is_start_slot_at_epoch(Slot(get_current_slot(store) + 1)):
+        store.prev_epoch_unrealized_justified_checkpoint = store.unrealized_justified_checkpoint
+
+    # Switch the balance source at the start of an epoch.
+    if is_start_slot_at_epoch(get_current_slot(store)):
+        store.fast_confirmation_balance_source_checkpoint = (
+            store.prev_epoch_unrealized_justified_checkpoint
+        )
+```
+
 #### `find_latest_confirmed_descendant`
 
 *Notes*:
@@ -819,72 +881,33 @@ def get_latest_confirmed(store: Store) -> Root:
         return confirmed_root
 ```
 
-#### `process_reconfirmation`
-
-*Notes:*
-
-This function reverts `store.confirmed_root` to the
-`store.finalized_checkpoint.root` if the confirmed block is no longer safe.
-Execution steps are as the following:
-
-1. Check if the `store.confirmed_root` belongs to the canonical chain and is not
-   older than the previous epoch.
-2. Check if the confirmed chain starting from the
-   `store.prev_epoch_unrealized_justified_checkpoint` can be re-confirmed at the
-   start of the current epoch which resets GST to the start of the current
-   epoch.
-3. If any of the above checks fail, set `store.confirmed_root` to the
-   `store.finalized_checkpoint.root`. Either of the above conditions signify
-   that FCR assumptions (at least synchrony) are broken and the confirmed block
-   might not be safe.
-
-```python
-def process_reconfirmation(store: Store) -> None:
-    # Revert to finalized block if either of the following is true:
-    # 1) the latest confirmed block's epoch is older than the previous epoch,
-    # 2) the latest confirmed block doesn't belong to the canonical chain,
-    # 3) the confirmed chain starting from the previous epoch unrealized justified checkpoint
-    #    cannot be re-confirmed at the start of the current epoch.
-    head = get_head(store)
-    current_epoch = get_current_store_epoch(store)
-    if (
-        get_block_epoch(store, store.confirmed_root) + 1 < current_epoch
-        or not is_ancestor(store, head, store.confirmed_root)
-        or (
-            is_start_slot_at_epoch(get_current_slot(store))
-            and not is_confirmed_chain_safe(store, store.confirmed_root)
-        )
-    ):
-        store.confirmed_root = store.finalized_checkpoint.root
-```
-
 ### Handlers
 
 #### `on_slot_start_after_past_attestations_applied`
 
 *Notes:*
 
-This handler calls `get_latest_confirmed` and updates `store.confirmed_root`
-with the response of that call. It also updates `Store` variables used by the
-algorithm.
+This handler calls `process_reconfirmation` and then `get_latest_confirmed` to
+update `store.confirmed_root` with the response of that call. It also updates
+`Store` variables used by the algorithm.
 
-Implementations MUST update `Store` variables like `prev_slot_head` and
-`prev_epoch_unrealized_justified_checkpoint` at the start of a slot after
-attestations from past slots have been applied. The latter is important because
-past slots attestations may affect values of those variables. It is also
-important not to update those variables after the start of a slot, because then
-the synchrony assumption that the algorithm relies upon may not hold.
+Implementations MUST strictly follow the call sequence:
 
-Implementations MAY run the algorithm (i.e. call `get_latest_confirmed`) at any
-point in time throughout a slot. In this case the call MUST use values of
-`prev_slot_head` and `prev_epoch_unrealized_justified_checkpoint` assigned at
-the start of the *previous* slot because of the synchrony assumption.
+1. `process_reconfirmation`
+2. `update_fast_confirmation_variables`
+3. `get_latest_confirmed`
+
+Implementations MUST call `process_reconfirmation` and
+`update_fast_confirmation_variables` at the start of a slot after attestations
+from past slots have been applied. Otherwise, the synchrony assumption that the
+algorithm relies upon may not hold.
+
+Implementations MAY call `get_latest_confirmed` at any point in time throughout
+a slot.
 
 ```python
 def on_slot_start_after_past_attestations_applied(store: Store) -> None:
     process_reconfirmation(store)
+    update_fast_confirmation_variables(store)
     store.confirmed_root = get_latest_confirmed(store)
-    if is_start_slot_at_epoch(Slot(get_current_slot(store) + 1)):
-        store.prev_epoch_unrealized_justified_checkpoint = store.unrealized_justified_checkpoint
-    store.prev_slot_head = get_head(store)
 ```

@@ -166,8 +166,10 @@ The following fields are used by the Fast Confirmation Rule:
 - `prev_epoch_unrealized_justified_checkpoint`:
   `unrealized_justified_checkpoint` at the start of the last slot of the
   previous epoch.
-- `prev_slot_head`: the head of canonical chain at the start of the previous
-  slot.
+- `fast_confirmation_balance_source_checkpoint`: checkpoint which state is used
+  as a source of a validator balance distribution.
+- `prev_slot_head`: the head at the start of the previous slot.
+- `curr_slot_head`: the head at the start of the current slot.
 
 ```python
 @dataclass
@@ -181,7 +183,9 @@ class Store(object):
     proposer_boost_root: Root
     confirmed_root: Root
     prev_epoch_unrealized_justified_checkpoint: Checkpoint
+    fast_confirmation_balance_source_checkpoint: Checkpoint
     prev_slot_head: Root
+    curr_slot_head: Root
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
@@ -220,7 +224,9 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         proposer_boost_root=proposer_boost_root,
         confirmed_root=anchor_root,
         prev_epoch_unrealized_justified_checkpoint=justified_checkpoint,
+        fast_confirmation_balance_source_checkpoint=justified_checkpoint,
         prev_slot_head=anchor_root,
+        curr_slot_head=anchor_root,
         equivocating_indices=set(),
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
