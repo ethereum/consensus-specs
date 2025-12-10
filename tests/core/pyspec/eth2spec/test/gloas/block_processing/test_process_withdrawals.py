@@ -29,10 +29,7 @@ def run_gloas_withdrawals_processing(
     pre_withdrawal_index = state.next_withdrawal_index
 
     # Get expected withdrawals before processing
-    if is_post_gloas(spec):
-        expected_withdrawals, _, _ = spec.get_expected_withdrawals(state)
-    else:
-        expected_withdrawals = spec.get_expected_withdrawals(state)
+    expected_withdrawals, _, _ = spec.get_expected_withdrawals(state)
 
     if num_expected_withdrawals is not None:
         assert len(expected_withdrawals) == num_expected_withdrawals
@@ -47,12 +44,11 @@ def run_gloas_withdrawals_processing(
         post_balance = state.balances[validator_index]
         assert post_balance == pre_balance - withdrawal.amount
 
-    # Verify withdrawals root was set (only for Gloas)
-    if is_post_gloas(spec):
-        withdrawals_list = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](
-            expected_withdrawals
-        )
-        assert state.latest_withdrawals_root == spec.hash_tree_root(withdrawals_list)
+    # Verify expected withdrawals were set (only for Gloas)
+    withdrawals_list = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](
+        expected_withdrawals
+    )
+    assert list(state.payload_expected_withdrawals) == list(withdrawals_list)
 
     if verify_state_updates:
         # Verify state lists were updated correctly
@@ -125,24 +121,21 @@ def set_parent_block_full(spec, state):
     """
     Helper to set state indicating parent block was full.
     """
-    # For Gloas, set latest_block_hash to match latest_execution_payload_header.block_hash
-    if hasattr(state, "latest_block_hash"):
-        state.latest_block_hash = state.latest_execution_payload_header.block_hash
+
+    state.latest_block_hash = state.latest_execution_payload_bid.block_hash
+
     # For testing purposes, ensure we have a block hash
-    if not hasattr(state, "latest_block_hash") or state.latest_block_hash == b"\x00" * 32:
+    if state.latest_block_hash == b"\x00" * 32:
         state.latest_block_hash = b"\x01" * 32
+        state.latest_execution_payload_bid.block_hash = state.latest_block_hash
 
 
 def set_parent_block_empty(spec, state):
     """
     Helper to set state indicating parent block was empty.
     """
-    # Set latest_block_hash to differ from latest_execution_payload_header.block_hash
-    if hasattr(state, "latest_block_hash"):
-        state.latest_block_hash = b"\x00" * 32
-    else:
-        # For non-Gloas, this test doesn't apply
-        pass
+    state.latest_block_hash = b"\x00" * 32
+    state.latest_execution_payload_bid.block_hash = b"\x01" * 32
 
 
 @with_gloas_and_later
