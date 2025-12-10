@@ -781,13 +781,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
                 w.amount for w in withdrawals if w.validator_index == withdrawal.builder_index
             )
             balance = state.balances[withdrawal.builder_index] - total_withdrawn
-            builder = state.validators[withdrawal.builder_index]
-            if builder.slashed:
-                withdrawable_balance = min(balance, withdrawal.amount)
-            elif balance > MIN_ACTIVATION_BALANCE:
-                withdrawable_balance = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
-            else:
-                withdrawable_balance = 0
+            withdrawable_balance = min(balance, withdrawal.amount)
 
             if withdrawable_balance > 0:
                 withdrawals.append(
