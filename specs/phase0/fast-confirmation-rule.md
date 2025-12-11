@@ -35,7 +35,7 @@
       - [`is_confirmed_chain_safe`](#is_confirmed_chain_safe)
     - [FFG helpers](#ffg-helpers)
       - [`get_current_target_score`](#get_current_target_score)
-      - [`compute_honest_ffg_support`](#compute_honest_ffg_support)
+      - [`compute_honest_ffg_support_for_current_target`](#compute_honest_ffg_support_for_current_target)
       - [`will_no_conflicting_checkpoint_be_justified`](#will_no_conflicting_checkpoint_be_justified)
       - [`will_current_target_be_justified`](#will_current_target_be_justified)
     - [`update_fast_confirmation_variables`](#update_fast_confirmation_variables)
@@ -183,9 +183,11 @@ def get_ancestor_roots(store: Store, block_root: Root, terminal_root: Root) -> l
 
 #### State helpers
 
-This section encapsulates logic dependent on different beacon states used by the
-Fast Confirmation Rule. Implementations MAY override the logic of each of these
-functions if the semantics is preserved.
+This section encapsulates reads from different beacon states used by the Fast
+Confirmation Rule.
+
+Implementations MAY override the logic of each of these functions but the
+semantics MUST be preserved.
 
 ##### `get_slot_committee`
 
@@ -245,7 +247,7 @@ def get_current_balance_source(store: Store) -> BeaconState:
 *Notes:*
 
 Due to the algorithm logic, maximum distance between `balance_source` and
-shuffling is two epochs which is less than `MAX_SEED_LOOKAEAD` and thus the
+shuffling is two epochs which is less than `MAX_SEED_LOOKAHEAD` and thus the
 balances are always consistent with the shuffling.
 
 ```python
@@ -581,9 +583,8 @@ def is_confirmed_chain_safe(store: Store, confirmed_root: Root) -> bool:
 *Notes:*
 
 This function uses LMD-GHOST votes to estimate the FFG support of the current
-epoch target. Due to the way the computation happens, it must be used no later
-than the start of the next epoch. Otherwise, the estimation can be corrupted by
-the votes from the next epoch.
+epoch target. Due to the way the computation happens, it MUST be used no later
+than the end of the current epoch.
 
 ```python
 def get_current_target_score(store: Store) -> Gwei:
@@ -615,25 +616,25 @@ def get_current_target_score(store: Store) -> Gwei:
     )
 ```
 
-##### `compute_honest_ffg_support`
+##### `compute_honest_ffg_support_for_current_target`
 
 *Notes*:
 
 This function computes honest FFG support of the current epoch target by
 assuming `CONFIRMATION_BYZANTINE_THRESHOLD` and network synchrony, and taking
-into account votes supporting the checkpoint that have been received till now.
+into account votes supporting the target that have been received till now.
 
 ```python
 def compute_honest_ffg_support_for_current_target(store: Store) -> Gwei:
     """
-    Compute honest FFG support of the ``checkpoint``.
+    Compute honest FFG support of the current epoch target.
     """
     current_slot = get_current_slot(store)
     current_epoch = compute_epoch_at_slot(current_slot)
     target_state = get_current_target_state(store)
     total_active_balance = get_total_active_balance(target_state)
 
-    # Compute FFG support for checkpoint
+    # Compute FFG support for the target
     ffg_support_for_checkpoint = get_current_target_score(store)
 
     # Compute total FFG weight till current slot exclusive
