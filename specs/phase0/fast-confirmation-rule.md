@@ -39,7 +39,6 @@
       - [`will_no_conflicting_checkpoint_be_justified`](#will_no_conflicting_checkpoint_be_justified)
       - [`will_current_target_be_justified`](#will_current_target_be_justified)
     - [`update_fast_confirmation_variables`](#update_fast_confirmation_variables)
-    - [`process_reconfirmation`](#process_reconfirmation)
     - [`find_latest_confirmed_descendant`](#find_latest_confirmed_descendant)
     - [`get_latest_confirmed`](#get_latest_confirmed)
   - [Handlers](#handlers)
@@ -712,45 +711,6 @@ def update_fast_confirmation_variables(store: Store) -> None:
         store.current_epoch_observed_justified_checkpoint = store.unrealized_justified_checkpoint
 ```
 
-#### `process_reconfirmation`
-
-*Notes:*
-
-This function reverts `store.confirmed_root` to the
-`store.finalized_checkpoint.root` if the confirmed block is no longer safe.
-Execution steps are as the following:
-
-1. Check if the `store.confirmed_root` belongs to the canonical chain and is not
-   older than the previous epoch.
-2. Check if the confirmed chain starting from the
-   `store.current_epoch_observed_justified_checkpoint` can be re-confirmed at
-   the start of the current epoch which resets GST to the start of the current
-   epoch.
-3. If any of the above checks fail, set `store.confirmed_root` to the
-   `store.finalized_checkpoint.root`. Either of the above conditions signify
-   that FCR assumptions (at least synchrony) are broken and the confirmed block
-   might not be safe.
-
-```python
-def process_reconfirmation(store: Store) -> None:
-    # Revert to finalized block if either of the following is true:
-    # 1) the latest confirmed block's epoch is older than the previous epoch,
-    # 2) the latest confirmed block doesn't belong to the canonical chain,
-    # 3) the confirmed chain starting from the justified checkpoint observed
-    #    at the beginning of the current epoch cannot be re-confirmed at the start of the current epoch.
-    head = get_head(store)
-    current_epoch = get_current_store_epoch(store)
-    if (
-        get_block_epoch(store, store.confirmed_root) + 1 < current_epoch
-        or not is_ancestor(store, head, store.confirmed_root)
-        or (
-            is_start_slot_at_epoch(get_current_slot(store))
-            and not is_confirmed_chain_safe(store, store.confirmed_root)
-        )
-    ):
-        store.confirmed_root = store.finalized_checkpoint.root
-```
-
 #### `find_latest_confirmed_descendant`
 
 *Notes*:
@@ -866,14 +826,22 @@ def find_latest_confirmed_descendant(store: Store, latest_confirmed_root: Root) 
 This function executes the FCR algorithm which takes the following sequence of
 actions:
 
-1. Update `store.confirmed_root` with `store.finalized_checkpoint.root` if the
-   latter is more advanced.
-2. Restart the confirmation chain by setting `store.confirmed_root` to
+1. Check if the `store.confirmed_root` belongs to the canonical chain and is not
+   older than the previous epoch.
+2. Check if the confirmed chain starting from the
+   `store.current_epoch_observed_justified_checkpoint` can be re-confirmed at
+   the start of the current epoch which resets GST to the start of the current
+   epoch.
+3. If any of the above checks fail, set `store.confirmed_root` to the
+   `store.finalized_checkpoint.root`. Either of the above conditions signify
+   that FCR assumptions (at least synchrony) are broken and the confirmed block
+   might not be safe.
+4. Restart the confirmation chain by setting `store.confirmed_root` to
    `store.current_epoch_observed_justified_checkpoint.root` if the restart
    conditions are met. Under synchrony, such a checkpoint is for sure now the
    greatest justified checkpoint in the view of any honest validator and,
    therefore, any honest validator will keep voting for it for the entire epoch.
-3. Attempt to advance the `store.confirmed_root` by calling
+5. Attempt to advance the `store.confirmed_root` by calling
    `find_latest_confirmed_descendant`.
 
 ```python
@@ -884,9 +852,19 @@ def get_latest_confirmed(store: Store) -> Root:
     confirmed_root = store.confirmed_root
     current_epoch = get_current_store_epoch(store)
 
-    # Update confirmed block with the new finalized block.
-    if get_block_slot(store, confirmed_root) < get_block_slot(
-        store, store.finalized_checkpoint.root
+    # Revert to finalized block if either of the following is true:
+    # 1) the latest confirmed block's epoch is older than the previous epoch,
+    # 2) the latest confirmed block doesn't belong to the canonical chain,
+    # 3) the confirmed chain starting from the current epoch observed justified checkpoint
+    #    cannot be re-confirmed at the start of the current epoch.
+    head = get_head(store)
+    if (
+        get_block_epoch(store, confirmed_root) + 1 < current_epoch
+        or not is_ancestor(store, head, confirmed_root)
+        or (
+            is_start_slot_at_epoch(get_current_slot(store))
+            and not is_confirmed_chain_safe(store, confirmed_root)
+        )
     ):
         confirmed_root = store.finalized_checkpoint.root
 
@@ -915,20 +893,18 @@ def get_latest_confirmed(store: Store) -> Root:
 
 *Notes:*
 
-This handler calls `process_reconfirmation` and then `get_latest_confirmed` to
-update `store.confirmed_root` with the response of that call. It also updates
-`Store` variables used by the algorithm.
+This handler calls `update_fast_confirmation_variables` and then
+`get_latest_confirmed` to update `store.confirmed_root` with the response of
+that call.
 
 Implementations MUST strictly follow the call sequence:
 
 1. `update_fast_confirmation_variables`
-2. `process_reconfirmation`
-3. `get_latest_confirmed`
+2. `get_latest_confirmed`
 
-Implementations MUST call `update_fast_confirmation_variables` and
-`process_reconfirmation` at the start of a slot after attestations from past
-slots have been applied. Otherwise, the synchrony assumption that the algorithm
-relies upon may not hold.
+Implementations MUST call `update_fast_confirmation_variables` at the start of a
+slot after attestations from past slots have been applied. Otherwise, the
+synchrony assumption that the algorithm relies upon may not hold.
 
 Implementations MAY call `get_latest_confirmed` at any point in time throughout
 a slot.
@@ -936,6 +912,5 @@ a slot.
 ```python
 def on_slot_start_after_past_attestations_applied(store: Store) -> None:
     update_fast_confirmation_variables(store)
-    process_reconfirmation(store)
     store.confirmed_root = get_latest_confirmed(store)
 ```
