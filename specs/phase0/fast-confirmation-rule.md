@@ -11,12 +11,17 @@
       - [`get_block_slot`](#get_block_slot)
       - [`get_block_epoch`](#get_block_epoch)
       - [`get_checkpoint_for_block`](#get_checkpoint_for_block)
+      - [`get_current_target`](#get_current_target)
       - [`get_checkpoint_state`](#get_checkpoint_state)
       - [`is_start_slot_at_epoch`](#is_start_slot_at_epoch)
       - [`is_ancestor`](#is_ancestor)
       - [`get_ancestor_roots`](#get_ancestor_roots)
-    - [LMD-GHOST helpers](#lmd-ghost-helpers)
+    - [State helpers](#state-helpers)
       - [`get_slot_committee`](#get_slot_committee)
+      - [`get_current_target_state`](#get_current_target_state)
+      - [`get_previous_balance_source`](#get_previous_balance_source)
+      - [`get_current_balance_source`](#get_current_balance_source)
+    - [LMD-GHOST helpers](#lmd-ghost-helpers)
       - [`get_block_support_between_slots`](#get_block_support_between_slots)
       - [`is_full_validator_set_covered`](#is_full_validator_set_covered)
       - [`adjust_committee_weight_estimate_to_ensure_safety`](#adjust_committee_weight_estimate_to_ensure_safety)
@@ -29,10 +34,10 @@
       - [`is_one_confirmed`](#is_one_confirmed)
       - [`is_confirmed_chain_safe`](#is_confirmed_chain_safe)
     - [FFG helpers](#ffg-helpers)
-      - [`get_checkpoint_score`](#get_checkpoint_score)
+      - [`get_current_target_score`](#get_current_target_score)
       - [`compute_honest_ffg_support`](#compute_honest_ffg_support)
       - [`will_no_conflicting_checkpoint_be_justified`](#will_no_conflicting_checkpoint_be_justified)
-      - [`will_checkpoint_be_justified`](#will_checkpoint_be_justified)
+      - [`will_current_target_be_justified`](#will_current_target_be_justified)
     - [`update_fast_confirmation_variables`](#update_fast_confirmation_variables)
     - [`process_reconfirmation`](#process_reconfirmation)
     - [`find_latest_confirmed_descendant`](#find_latest_confirmed_descendant)
@@ -107,6 +112,18 @@ def get_checkpoint_for_block(store: Store, block_root: Root, epoch: Epoch) -> Ch
     return Checkpoint(epoch=epoch, root=get_checkpoint_block(store, block_root, epoch))
 ```
 
+##### `get_current_target`
+
+```python
+def get_current_target(store: Store) -> Checkpoint:
+    """
+    Return current epoch target.
+    """
+    head = get_head(store)
+    current_epoch = get_current_store_epoch(store)
+    return get_checkpoint_for_block(store, head, current_epoch)
+```
+
 ##### `get_checkpoint_state`
 
 ```python
@@ -164,15 +181,25 @@ def get_ancestor_roots(store: Store, block_root: Root, terminal_root: Root) -> l
     return []
 ```
 
-#### LMD-GHOST helpers
+#### State helpers
+
+This section encapsulates logic dependent on different beacon states used by the
+Fast Confirmation Rule. Implementations MAY override the logic of each of these
+functions if the semantics is preserved.
 
 ##### `get_slot_committee`
 
+*Note:* This function returns the committee for a specific slot and MUST only
+work for current and previous epoch.
+
 ```python
-def get_slot_committee(shuffling_source: BeaconState, slot: Slot) -> set[ValidatorIndex]:
+def get_slot_committee(store: Store, slot: Slot) -> set[ValidatorIndex]:
     """
     Return participants of all committees in ``slot``.
     """
+    head = get_head(store)
+    # Use head state as the source of shuffling.
+    shuffling_source = store.block_states[head]
     committees_count = get_committee_count_per_slot(shuffling_source, compute_epoch_at_slot(slot))
     participants: set[ValidatorIndex] = set()
     for i in range(committees_count):
@@ -180,12 +207,50 @@ def get_slot_committee(shuffling_source: BeaconState, slot: Slot) -> set[Validat
     return participants
 ```
 
+##### `get_current_target_state`
+
+```python
+def get_current_target_state(store: Store) -> BeaconState:
+    """
+    Return the state of the current epoch target.
+    """
+    return get_checkpoint_state(store, get_current_target(store))
+```
+
+##### `get_previous_balance_source`
+
+*Notes:*
+
+Reconfirmation is the only place where previous balance source is used.
+Implementations MAY switch to the current epoch balance source after they run
+reconfirmation and before the logic to confirm new blocks is called. In this
+case implementations will need to keep only a single balance source around.
+
+```python
+def get_previous_balance_source(store: Store) -> BeaconState:
+    return store.checkpoint_states[store.previous_epoch_observed_justified_checkpoint]
+```
+
+##### `get_current_balance_source`
+
+```python
+def get_current_balance_source(store: Store) -> BeaconState:
+    return store.checkpoint_states[store.current_epoch_observed_justified_checkpoint]
+```
+
+#### LMD-GHOST helpers
+
 ##### `get_block_support_between_slots`
+
+*Notes:*
+
+Due to the algorithm logic, maximum distance between `balance_source` and
+shuffling is two epochs which is less than `MAX_SEED_LOOKAEAD` and thus the
+balances are always consistent with the shuffling.
 
 ```python
 def get_block_support_between_slots(
     store: Store,
-    shuffling_source: BeaconState,
     balance_source: BeaconState,
     block_root: Root,
     start_slot: Slot,
@@ -196,7 +261,7 @@ def get_block_support_between_slots(
     """
     participants: set[ValidatorIndex] = set()
     for slot in range(start_slot, end_slot + 1):
-        participants.update(get_slot_committee(shuffling_source, Slot(slot)))
+        participants.update(get_slot_committee(store, Slot(slot)))
 
     return Gwei(
         sum(
@@ -299,14 +364,13 @@ def estimate_committee_weight_between_slots(
 
 ##### `get_equivocation_score`
 
-*Note:* For simplicity, this function doesn't seek neither `shuffling_source`
-nor `balance_source` for slashed validators as it is very unlikely that those
-validators aren't already in `store.equivocating_indices`.
+*Note:* For simplicity, this function doesn't seek `balance_source` for slashed
+validators as it is very unlikely that those validators aren't already in
+`store.equivocating_indices`.
 
 ```python
 def get_equivocation_score(
     store: Store,
-    shuffling_source: BeaconState,
     balance_source: BeaconState,
     start_slot: Slot,
     end_slot: Slot,
@@ -317,7 +381,7 @@ def get_equivocation_score(
     """
     committee_indices: set[ValidatorIndex] = set()
     for slot in range(start_slot, end_slot + 1):
-        committee_indices.update(get_slot_committee(shuffling_source, Slot(slot)))
+        committee_indices.update(get_slot_committee(store, Slot(slot)))
 
     equivocating_participants = committee_indices.intersection(store.equivocating_indices)
     return Gwei(
@@ -341,7 +405,6 @@ discounting already equivocated validators.
 ```python
 def compute_adversarial_weight(
     store: Store,
-    shuffling_source: BeaconState,
     balance_source: BeaconState,
     start_slot: Slot,
     end_slot: Slot,
@@ -354,9 +417,7 @@ def compute_adversarial_weight(
     max_adversarial_weight = maximum_weight // 100 * CONFIRMATION_BYZANTINE_THRESHOLD
 
     # Discount total weight of equivocating validators.
-    equivocation_score = get_equivocation_score(
-        store, shuffling_source, balance_source, start_slot, end_slot
-    )
+    equivocation_score = get_equivocation_score(store, balance_source, start_slot, end_slot)
     if max_adversarial_weight > equivocation_score:
         return Gwei(max_adversarial_weight - equivocation_score)
     else:
@@ -366,9 +427,7 @@ def compute_adversarial_weight(
 ##### `get_adversarial_weight`
 
 ```python
-def get_adversarial_weight(
-    store: Store, shuffling_source: BeaconState, balance_source: BeaconState, block_root: Root
-) -> Gwei:
+def get_adversarial_weight(store: Store, balance_source: BeaconState, block_root: Root) -> Gwei:
     """
     Return maximum adversarial weight that can support the block.
     """
@@ -377,20 +436,16 @@ def get_adversarial_weight(
     if get_block_epoch(store, block_root) > get_block_epoch(store, block.parent_root):
         # Use the first epoch slot as the start slot when crossing epoch boundary.
         start_slot = compute_start_slot_at_epoch(get_block_epoch(store, block_root))
-        return compute_adversarial_weight(
-            store, shuffling_source, balance_source, start_slot, Slot(current_slot - 1)
-        )
+        return compute_adversarial_weight(store, balance_source, start_slot, Slot(current_slot - 1))
     else:
-        return compute_adversarial_weight(
-            store, shuffling_source, balance_source, block.slot, Slot(current_slot - 1)
-        )
+        return compute_adversarial_weight(store, balance_source, block.slot, Slot(current_slot - 1))
 ```
 
 ##### `compute_empty_slot_support_discount`
 
 ```python
 def compute_empty_slot_support_discount(
-    store: Store, shuffling_source: BeaconState, balance_source: BeaconState, block_root: Root
+    store: Store, balance_source: BeaconState, block_root: Root
 ) -> Gwei:
     """
     Return weight that can be discounted during the safety threshold computation
@@ -405,7 +460,6 @@ def compute_empty_slot_support_discount(
     # Discount votes supporting the parent block if they are from the committees of empty slots.
     parent_support_in_empty_slots = get_block_support_between_slots(
         store,
-        shuffling_source,
         balance_source,
         block.parent_root,
         Slot(parent_block.slot + 1),
@@ -413,7 +467,7 @@ def compute_empty_slot_support_discount(
     )
     # Adversarial weight is not discounted.
     adversarial_weight = compute_adversarial_weight(
-        store, shuffling_source, balance_source, Slot(parent_block.slot + 1), Slot(block.slot - 1)
+        store, balance_source, Slot(parent_block.slot + 1), Slot(block.slot - 1)
     )
     if parent_support_in_empty_slots > adversarial_weight:
         return parent_support_in_empty_slots - adversarial_weight
@@ -424,15 +478,13 @@ def compute_empty_slot_support_discount(
 ##### `get_support_discount`
 
 ```python
-def get_support_discount(
-    store: Store, shuffling_source: BeaconState, balance_source: BeaconState, block_root: Root
-) -> Gwei:
+def get_support_discount(store: Store, balance_source: BeaconState, block_root: Root) -> Gwei:
     """
     Return weight that can be discounted during the safety threshold computation for the block.
     """
 
     # Empty slot support discount
-    return compute_empty_slot_support_discount(store, shuffling_source, balance_source, block_root)
+    return compute_empty_slot_support_discount(store, balance_source, block_root)
 ```
 
 ##### `is_one_confirmed`
@@ -453,12 +505,8 @@ the block would also have to pass this check.
 More details on this check can be found in the
 [paper](https://arxiv.org/abs/2405.00549).
 
-Due to the algorithm, `balance_source` lags behind `shuffling_source` by no more
-than two epochs which is less than `MAX_SEED_LOOKAHEAD` and thus the balances
-remain consistent with the shuffling.
-
 ```python
-def is_one_confirmed(store: Store, balance_source_checkpoint: Checkpoint, block_root: Root) -> bool:
+def is_one_confirmed(store: Store, balance_source: BeaconState, block_root: Root) -> bool:
     """
     Return ``True`` if and only if the block is LMD-GHOST safe.
     """
@@ -466,21 +514,13 @@ def is_one_confirmed(store: Store, balance_source_checkpoint: Checkpoint, block_
     block = store.blocks[block_root]
     parent_block = store.blocks[block.parent_root]
 
-    # Use head checkpoint as a shuffling source
-    head = get_head(store)
-    head_checkpoint = get_checkpoint_for_block(store, head, get_block_epoch(store, head))
-    shuffling_source = get_checkpoint_state(store, head_checkpoint)
-
-    # Use fast_confirmation_balance_source_checkpoint as a balance source
-    balance_source = store.checkpoint_states[balance_source_checkpoint]
-
     support = get_attestation_score(store, block_root, balance_source)
     proposer_score = compute_proposer_score(balance_source)
     maximum_support = estimate_committee_weight_between_slots(
         balance_source, Slot(parent_block.slot + 1), Slot(current_slot - 1)
     )
-    support_discount = get_support_discount(store, shuffling_source, balance_source, block_root)
-    adversarial_weight = get_adversarial_weight(store, shuffling_source, balance_source, block_root)
+    support_discount = get_support_discount(store, balance_source, block_root)
+    adversarial_weight = get_adversarial_weight(store, balance_source, block_root)
 
     # Returns whether the following condition is true using only integer arithmetic:
     # support / maximum_support >
@@ -527,43 +567,39 @@ def is_confirmed_chain_safe(store: Store, confirmed_root: Root) -> bool:
         checkpoint = get_checkpoint_for_block(store, confirmed_root, Epoch(current_epoch - 1))
         start_root = store.blocks[checkpoint.root].parent_root
 
-    # Run is_one_confirmed for each block in the confirmed chain.
+    # Run is_one_confirmed for each block in the confirmed chain with the previous epoch balance source.
     chain_roots = get_ancestor_roots(store, confirmed_root, start_root)
     return all(
-        is_one_confirmed(store, store.previous_epoch_observed_justified_checkpoint, root)
-        for root in chain_roots
+        is_one_confirmed(store, get_previous_balance_source(store), root) for root in chain_roots
     )
 ```
 
 #### FFG helpers
 
-##### `get_checkpoint_score`
+##### `get_current_target_score`
 
 *Notes:*
 
-This function uses LMD-GHOST votes to estimate the FFG support of a checkpoint.
-Due to the way the computation happens, it must be used no later than the start
-of the epoch next to the epoch of the checkpoint in question. Otherwise, the
-estimation can be corrupted by the votes from the next epoch.
+This function uses LMD-GHOST votes to estimate the FFG support of the current
+epoch target. Due to the way the computation happens, it must be used no later
+than the start of the next epoch. Otherwise, the estimation can be corrupted by
+the votes from the next epoch.
 
 ```python
-def get_checkpoint_score(store: Store, target: Checkpoint) -> Gwei:
+def get_current_target_score(store: Store) -> Gwei:
     """
-    Return the estimate of FFG support of the ``target`` by using LMD-GHOST votes.
+    Return the estimate of FFG support of the current epoch target by using LMD-GHOST votes.
     """
-    # No attestation with a vote for the target has yet been processed
-    if target not in store.checkpoint_states:
-        return Gwei(0)
-
-    state = store.checkpoint_states[target]
+    target = get_current_target(store)
+    target_state = get_current_target_state(store)
     unslashed_and_active_indices = [
         i
-        for i in get_active_validator_indices(state, get_current_epoch(state))
-        if not state.validators[i].slashed
+        for i in get_active_validator_indices(target_state, get_current_epoch(target_state))
+        if not target_state.validators[i].slashed
     ]
     return Gwei(
         sum(
-            state.validators[i].effective_balance
+            target_state.validators[i].effective_balance
             for i in unslashed_and_active_indices
             if (
                 i in store.latest_messages
@@ -583,30 +619,26 @@ def get_checkpoint_score(store: Store, target: Checkpoint) -> Gwei:
 
 *Notes*:
 
-This function computes honest FFG support of the checkpoint by assuming
-`CONFIRMATION_BYZANTINE_THRESHOLD` and network synchrony, and taking into
-account votes supporting the checkpoint that have been received till now.
-
-Works correctly for current epoch checkpoints only as it relies on the
-`get_checkpoint_score` function.
+This function computes honest FFG support of the current epoch target by
+assuming `CONFIRMATION_BYZANTINE_THRESHOLD` and network synchrony, and taking
+into account votes supporting the checkpoint that have been received till now.
 
 ```python
-def compute_honest_ffg_support(
-    store: Store, checkpoint: Checkpoint, checkpoint_state: BeaconState
-) -> Gwei:
+def compute_honest_ffg_support_for_current_target(store: Store) -> Gwei:
     """
     Compute honest FFG support of the ``checkpoint``.
     """
     current_slot = get_current_slot(store)
     current_epoch = compute_epoch_at_slot(current_slot)
-    total_active_balance = get_total_active_balance(checkpoint_state)
+    target_state = get_current_target_state(store)
+    total_active_balance = get_total_active_balance(target_state)
 
     # Compute FFG support for checkpoint
-    ffg_support_for_checkpoint = get_checkpoint_score(store, checkpoint)
+    ffg_support_for_checkpoint = get_current_target_score(store)
 
     # Compute total FFG weight till current slot exclusive
     ffg_weight_till_now = estimate_committee_weight_between_slots(
-        checkpoint_state, compute_start_slot_at_epoch(current_epoch), Slot(current_slot - 1)
+        target_state, compute_start_slot_at_epoch(current_epoch), Slot(current_slot - 1)
     )
 
     # Compute remaining honest FFG weight
@@ -627,37 +659,37 @@ def compute_honest_ffg_support(
 ##### `will_no_conflicting_checkpoint_be_justified`
 
 *Note:* This function assumes that all honest validators will be voting in
-support of the checkpoint in question starting from the current moment in time.
+support of the current epoch target starting from the current moment in time.
 
 ```python
-def will_no_conflicting_checkpoint_be_justified(store: Store, checkpoint: Checkpoint) -> bool:
+def will_no_conflicting_checkpoint_be_justified(store: Store) -> bool:
     """
-    Return ``True`` if and only if no checkpoint conflicting with the ``checkpoint`` can ever be justified.
+    Return ``True`` if and only if no checkpoint conflicting with the current target can ever be justified.
     """
 
-    # If checkpoint is unrealized justified then no conflicting checkpoint can be justified.
-    if checkpoint == store.unrealized_justified_checkpoint:
+    # If the target is unrealized justified then no conflicting checkpoint can be justified.
+    if get_current_target(store) == store.unrealized_justified_checkpoint:
         return True
 
-    state = get_checkpoint_state(store, checkpoint)
-    total_active_balance = get_total_active_balance(state)
-    honest_ffg_support = compute_honest_ffg_support(store, checkpoint, state)
+    target_state = get_current_target_state(store)
+    total_active_balance = get_total_active_balance(target_state)
+    honest_ffg_support = compute_honest_ffg_support_for_current_target(store)
     return 3 * honest_ffg_support >= 1 * total_active_balance
 ```
 
-##### `will_checkpoint_be_justified`
+##### `will_current_target_be_justified`
 
 *Note:* This function assumes that all honest validators will be voting in
-support of the checkpoint in question starting from the current moment in time.
+support of the current epoch target starting from the current moment in time.
 
 ```python
-def will_checkpoint_be_justified(store: Store, checkpoint: Checkpoint) -> bool:
+def will_current_target_be_justified(store: Store) -> bool:
     """
-    Return ``True`` if and only if the ``checkpoint`` will eventually be justified.
+    Return ``True`` if and only if the current target will eventually be justified.
     """
-    state = get_checkpoint_state(store, checkpoint)
-    total_active_balance = get_total_active_balance(state)
-    honest_ffg_support = compute_honest_ffg_support(store, checkpoint, state)
+    target_state = get_current_target_state(store)
+    total_active_balance = get_total_active_balance(target_state)
+    honest_ffg_support = compute_honest_ffg_support_for_current_target(store)
     return 3 * honest_ffg_support >= 2 * total_active_balance
 ```
 
@@ -753,9 +785,7 @@ def find_latest_confirmed_descendant(store: Store, latest_confirmed_root: Root) 
         and (
             is_start_slot_at_epoch(get_current_slot(store))
             or (
-                will_no_conflicting_checkpoint_be_justified(
-                    store, get_checkpoint_for_block(store, head, current_epoch)
-                )
+                will_no_conflicting_checkpoint_be_justified(store)
                 and (
                     store.unrealized_justifications[store.previous_slot_head].epoch + 1
                     >= current_epoch
@@ -783,9 +813,7 @@ def find_latest_confirmed_descendant(store: Store, latest_confirmed_root: Root) 
             if not is_ancestor(store, store.previous_slot_head, block_root):
                 break
 
-            if not is_one_confirmed(
-                store, store.current_epoch_observed_justified_checkpoint, block_root
-            ):
+            if not is_one_confirmed(store, get_current_balance_source(store), block_root):
                 break
 
             confirmed_root = block_root
@@ -807,14 +835,11 @@ def find_latest_confirmed_descendant(store: Store, latest_confirmed_root: Root) 
             # the algorithm advances to a block from the current epoch
             if block_epoch > tentative_confirmed_epoch:
                 # To confirm blocks from the current epoch ensure that
-                # current epoch checkpoint will be justified
-                checkpoint = get_checkpoint_for_block(store, block_root, block_epoch)
-                if not will_checkpoint_be_justified(store, checkpoint):
+                # current epoch target will be justified
+                if not will_current_target_be_justified(store):
                     break
 
-            if not is_one_confirmed(
-                store, store.current_epoch_observed_justified_checkpoint, block_root
-            ):
+            if not is_one_confirmed(store, get_current_balance_source(store), block_root):
                 break
 
             tentative_confirmed_root = block_root
@@ -825,9 +850,7 @@ def find_latest_confirmed_descendant(store: Store, latest_confirmed_root: Root) 
             get_voting_source(store, tentative_confirmed_root).epoch + 2 >= current_epoch
             and (
                 is_start_slot_at_epoch(get_current_slot(store))
-                or will_no_conflicting_checkpoint_be_justified(
-                    store, get_checkpoint_for_block(store, head, current_epoch)
-                )
+                or will_no_conflicting_checkpoint_be_justified(store)
             )
         ):
             confirmed_root = tentative_confirmed_root
