@@ -112,6 +112,7 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
 07. Set `bid.gas_limit` to be the gas limit of the constructed payload. The
     proposer's preferred gas limit can be obtained from their
     `SignedProposerPreferences` for `compute_epoch_at_slot(bid.slot)`.
+08. Set `bid.builder_index` to be the validator index of the builder performing
     these actions.
 09. Set `bid.slot` to be the slot for which this bid is aimed. This slot
     **MUST** be either the current slot or the next slot.
