@@ -104,20 +104,21 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
     execution engine via a call to `engine_getPayloadV5`.
 04. Set `bid.block_hash` to be the block hash of the constructed payload, that
     is `payload.block_hash`.
-05. Set `bid.fee_recipient` to be an execution address to receive the payment.
+05. Set `bid.prev_randao` to be the previous RANDAO of the constructed payload,
+    that is `payload.prev_randao`.
+06. Set `bid.fee_recipient` to be an execution address to receive the payment.
     The proposer's preferred fee recipient can be obtained from their
     `SignedProposerPreferences` for `compute_epoch_at_slot(bid.slot)`.
-06. Set `bid.gas_limit` to be the gas limit of the constructed payload. The
+07. Set `bid.gas_limit` to be the gas limit of the constructed payload. The
     proposer's preferred gas limit can be obtained from their
     `SignedProposerPreferences` for `compute_epoch_at_slot(bid.slot)`.
-07. Set `bid.builder_index` to be the validator index of the builder performing
     these actions.
-08. Set `bid.slot` to be the slot for which this bid is aimed. This slot
+09. Set `bid.slot` to be the slot for which this bid is aimed. This slot
     **MUST** be either the current slot or the next slot.
-09. Set `bid.value` to be the value (in gwei) that the builder will pay the
+10. Set `bid.value` to be the value (in gwei) that the builder will pay the
     proposer if the bid is accepted. The builder **MUST** have enough excess
     balance to fulfill this bid and all pending payments.
-10. Set `bid.kzg_commitments_root` to be the `hash_tree_root` of the
+11. Set `bid.blob_kzg_commitments_root` to be the `hash_tree_root` of the
     `blobsbundle.commitments` field returned by `engine_getPayloadV5`.
 
 After building the `bid`, the builder obtains a `signature` of the bid by using:
@@ -221,7 +222,7 @@ alias `bid` to be the committed `ExecutionPayloadBid` in
 
 1. Set `envelope.payload` to be the `ExecutionPayload` constructed when creating
    the corresponding bid. This payload **MUST** have the same block hash as
-   `envelope.bid.block_hash`.
+   `bid.block_hash`.
 2. Set `envelope.execution_requests` to be the `ExecutionRequests` associated
    with `payload`.
 3. Set `envelope.builder_index` to be the validator index of the builder
