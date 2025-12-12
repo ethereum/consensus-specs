@@ -808,71 +808,20 @@ def decrease_validator_balance(state: BeaconState, pubkey: BLSPubkey, delta: Gwe
         state.balances[validator_index] -= delta
 ```
 
-#### New `initiate_exit_for_builder`
+#### New `initiate_builder_exit`
 
 ```python
-def initiate_exit_for_builder(state: BeaconState, builder: Builder) -> None:
+def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> None:
     """
     Initiate the exit of the builder with index ``index``.
     """
+    builder = state.builders[builder_index]
     # Return if builder already initiated exit
     if builder.exit_epoch != FAR_FUTURE_EPOCH:
         return
 
     # Set builder exit epoch
     builder.exit_epoch = get_current_epoch(state)
-```
-
-#### New `initiate_exit_for_validator`
-
-```python
-def initiate_exit_for_validator(state: BeaconState, validator: Builder) -> None:
-    """
-    Initiate the exit of the builder with index ``index``.
-    """
-    # Return if validator already initiated exit
-    if validator.exit_epoch != FAR_FUTURE_EPOCH:
-        return
-
-    # Compute exit queue epoch
-    exit_queue_epoch = compute_exit_epoch_and_update_churn(state, validator.effective_balance)
-
-    # Set validator exit epoch and withdrawable epoch
-    validator.exit_epoch = exit_queue_epoch
-    validator.withdrawable_epoch = Epoch(validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
-```
-
-#### Modified `slash_validator`
-
-```python
-def slash_validator(
-    state: BeaconState, slashed_index: ValidatorIndex, whistleblower_index: ValidatorIndex = None
-) -> None:
-    """
-    Slash the validator with index ``slashed_index``.
-    """
-    epoch = get_current_epoch(state)
-    validator = state.validators[slashed_index]
-    # [Modified in Gloas:EIP7732]
-    initiate_exit_for_validator(state, validator)
-    validator.slashed = True
-    validator.withdrawable_epoch = max(
-        validator.withdrawable_epoch, Epoch(epoch + EPOCHS_PER_SLASHINGS_VECTOR)
-    )
-    state.slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] += validator.effective_balance
-    slashing_penalty = validator.effective_balance // MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA
-    decrease_balance(state, slashed_index, slashing_penalty)
-
-    # Apply proposer and whistleblower rewards
-    proposer_index = get_beacon_proposer_index(state)
-    if whistleblower_index is None:
-        whistleblower_index = proposer_index
-    whistleblower_reward = Gwei(
-        validator.effective_balance // WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA
-    )
-    proposer_reward = Gwei(whistleblower_reward * PROPOSER_WEIGHT // WEIGHT_DENOMINATOR)
-    increase_balance(state, proposer_index, proposer_reward)
-    increase_balance(state, whistleblower_index, Gwei(whistleblower_reward - proposer_reward))
 ```
 
 ## Beacon chain state transition function
@@ -935,34 +884,6 @@ def process_epoch(state: BeaconState) -> None:
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
     process_proposer_lookahead(state)
-```
-
-#### Modified `process_registry_updates`
-
-*Note*: The function `process_registry_updates` is modified to use the updated
-definitions of `initiate_validator_exit` and `is_eligible_for_activation_queue`,
-changes how the activation epochs are computed for eligible validators, and
-processes activations in the same loop as activation eligibility updates and
-ejections.
-
-```python
-def process_registry_updates(state: BeaconState) -> None:
-    current_epoch = get_current_epoch(state)
-    activation_epoch = compute_activation_exit_epoch(current_epoch)
-
-    # [Modified in Gloas:EIP7732]
-    # Process activation eligibility, ejections, and activations
-    for validator in state.validators:
-        if is_eligible_for_activation_queue(validator):
-            validator.activation_eligibility_epoch = current_epoch + 1
-        elif (
-            is_active_validator(validator, current_epoch)
-            and validator.effective_balance <= EJECTION_BALANCE
-        ):
-            # [Modified in Gloas:EIP7732]
-            initiate_exit_for_validator(state, validator)
-        elif is_eligible_for_activation(state, validator):
-            validator.activation_epoch = activation_epoch
 ```
 
 #### New `process_builder_pending_payments`
@@ -1328,7 +1249,9 @@ def process_withdrawal_request_for_builder(
     if withdrawal_request.amount == FULL_EXIT_REQUEST_AMOUNT:
         # Only exit builder if it has no pending withdrawals in the queue
         if pending_balance_to_withdraw == 0:
-            initiate_exit_for_builder(state, builder)
+            builder_pubkeys = [b.pubkey for b in state.builders]
+            builder_index = BuilderIndex(builder_pubkeys.index(builder.pubkey))
+            initiate_builder_exit(state, builder_index)
         return
 
     has_excess_balance = builder.balance > MIN_DEPOSIT_AMOUNT + pending_balance_to_withdraw
@@ -1377,7 +1300,7 @@ def process_withdrawal_request_for_validator(
     if withdrawal_request.amount == FULL_EXIT_REQUEST_AMOUNT:
         # Only exit validator if it has no pending withdrawals in the queue
         if pending_balance_to_withdraw == 0:
-            initiate_exit_for_validator(state, validator)
+            initiate_validator_exit(state, index)
         return
 
     has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
@@ -1636,35 +1559,7 @@ def apply_deposit(
         )
 ```
 
-##### Voluntary exits
 
-###### Modified `process_voluntary_exit`
-
-```python
-def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
-    voluntary_exit = signed_voluntary_exit.message
-    validator = state.validators[voluntary_exit.validator_index]
-    # Verify the validator is active
-    assert is_active_validator(validator, get_current_epoch(state))
-    # Verify exit has not been initiated
-    assert validator.exit_epoch == FAR_FUTURE_EPOCH
-    # Exits must specify an epoch when they become valid; they are not valid before then
-    assert get_current_epoch(state) >= voluntary_exit.epoch
-    # Verify the validator has been active long enough
-    assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
-    # [Modified in Gloas:EIP7732]
-    # Only exit validator if it has no pending withdrawals in the queue
-    assert get_pending_balance_to_withdraw(state, validator.pubkey) == 0
-    # Verify signature
-    domain = compute_domain(
-        DOMAIN_VOLUNTARY_EXIT, CAPELLA_FORK_VERSION, state.genesis_validators_root
-    )
-    signing_root = compute_signing_root(voluntary_exit, domain)
-    assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
-    # [Modified in Gloas:EIP7732]
-    # Initiate exit
-    initiate_exit_for_validator(state, validator)
-```
 
 ##### Payload Attestations
 
