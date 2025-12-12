@@ -49,7 +49,7 @@
   - [Misc](#misc-2)
     - [New `get_builder_index`](#new-get_builder_index)
     - [New `get_validator_index`](#new-get_validator_index)
-    - [Modified `get_pending_balance_to_withdraw`](#modified-get_pending_balance_to_withdraw)
+    - [New `get_pending_balance_to_withdraw_for_builder`](#new-get_pending_balance_to_withdraw_for_builder)
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
     - [New `compute_balance_weighted_acceptance`](#new-compute_balance_weighted_acceptance)
     - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
@@ -88,8 +88,6 @@
         - [New `apply_deposit_for_builder`](#new-apply_deposit_for_builder)
         - [New `apply_deposit_for_validator`](#new-apply_deposit_for_validator)
         - [Modified `apply_deposit`](#modified-apply_deposit)
-      - [Voluntary exits](#voluntary-exits)
-        - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
       - [Payload Attestations](#payload-attestations)
         - [New `process_payload_attestation`](#new-process_payload_attestation)
       - [Proposer Slashing](#proposer-slashing)
@@ -541,31 +539,31 @@ def get_validator_index(state: BeaconState, pubkey: BLSPubkey) -> ValidatorIndex
     return ValidatorIndex(validator_pubkeys.index(pubkey))
 ```
 
-#### Modified `get_pending_balance_to_withdraw`
+#### New `get_pending_balance_to_withdraw_for_builder`
 
 ```python
-def get_pending_balance_to_withdraw(state: BeaconState, pubkey: BLSPubkey) -> Gwei:
-    # [Modified in Gloas:EIP7732]
-    pending_balance_to_withdraw = sum(
-        withdrawal.amount
-        for withdrawal in state.pending_partial_withdrawals
-        if withdrawal.pubkey == pubkey
-    )
-
-    # [New in Gloas:EIP7732]
-    if is_builder(state, pubkey):
-        pending_balance_to_withdraw += sum(
+def get_pending_balance_to_withdraw_for_builder(
+    state: BeaconState, builder_index: BuilderIndex
+) -> Gwei:
+    return (
+        sum(
+            withdrawal.amount
+            for withdrawal in state.pending_partial_withdrawals
+            if withdrawal.pubkey == state.builders[builder_index].pubkey
+        )
+        # [New in Gloas:EIP7732]
+        + sum(
             withdrawal.amount
             for withdrawal in state.builder_pending_withdrawals
-            if withdrawal.builder_index == get_builder_index(state, pubkey)
+            if withdrawal.builder_index == builder_index
         )
-        pending_balance_to_withdraw += sum(
+        # [New in Gloas:EIP7732]
+        + sum(
             payment.withdrawal.amount
             for payment in state.builder_pending_payments
-            if payment.withdrawal.builder_index == get_builder_index(state, pubkey)
+            if payment.withdrawal.builder_index == builder_index
         )
-
-    return pending_balance_to_withdraw
+    )
 ```
 
 #### New `compute_balance_weighted_selection`
@@ -1115,7 +1113,7 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
         assert builder.exit_epoch != FAR_FUTURE_EPOCH
 
         # Check that the builder has funds to cover the bid
-        pending_withdrawals = get_pending_balance_to_withdraw(state, builder.pubkey)
+        pending_withdrawals = get_pending_balance_to_withdraw_for_builder(state, builder_index)
         assert builder.balance >= amount + pending_withdrawals + MIN_DEPOSIT_AMOUNT
 
     # Verify that the bid is for the current slot
@@ -1205,13 +1203,13 @@ def process_withdrawal_request_for_builder(
     if builder.exit_epoch != FAR_FUTURE_EPOCH:
         return
 
-    pending_balance_to_withdraw = get_pending_balance_to_withdraw(state, builder.pubkey)
+    builder_pubkeys = [b.pubkey for b in state.builders]
+    builder_index = BuilderIndex(builder_pubkeys.index(builder.pubkey))
+    pending_balance_to_withdraw = get_pending_balance_to_withdraw_for_builder(state, builder_index)
 
     if withdrawal_request.amount == FULL_EXIT_REQUEST_AMOUNT:
         # Only exit builder if it has no pending withdrawals in the queue
         if pending_balance_to_withdraw == 0:
-            builder_pubkeys = [b.pubkey for b in state.builders]
-            builder_index = BuilderIndex(builder_pubkeys.index(builder.pubkey))
             initiate_builder_exit(state, builder_index)
         return
 
@@ -1254,19 +1252,19 @@ def process_withdrawal_request_for_validator(
     if get_current_epoch(state) < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
         return
 
-    pending_balance_to_withdraw = get_pending_balance_to_withdraw(state, validator.pubkey)
     validator_pubkeys = [v.pubkey for v in state.validators]
-    index = ValidatorIndex(validator_pubkeys.index(withdrawal_request.pubkey))
+    validator_index = ValidatorIndex(validator_pubkeys.index(withdrawal_request.pubkey))
+    pending_balance_to_withdraw = get_pending_balance_to_withdraw(state, validator_index)
 
     if withdrawal_request.amount == FULL_EXIT_REQUEST_AMOUNT:
         # Only exit validator if it has no pending withdrawals in the queue
         if pending_balance_to_withdraw == 0:
-            initiate_validator_exit(state, index)
+            initiate_validator_exit(state, validator_index)
         return
 
     has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
     has_excess_balance = (
-        state.balances[index] > MIN_ACTIVATION_BALANCE + pending_balance_to_withdraw
+        state.balances[validator_index] > MIN_ACTIVATION_BALANCE + pending_balance_to_withdraw
     )
 
     # Only allow partial withdrawals with compounding withdrawal credentials
@@ -1276,7 +1274,7 @@ def process_withdrawal_request_for_validator(
         and has_excess_balance
     ):
         to_withdraw = min(
-            state.balances[index] - MIN_ACTIVATION_BALANCE - pending_balance_to_withdraw,
+            state.balances[validator_index] - MIN_ACTIVATION_BALANCE - pending_balance_to_withdraw,
             withdrawal_request.amount,
         )
         exit_queue_epoch = compute_exit_epoch_and_update_churn(state, to_withdraw)
@@ -1521,36 +1519,6 @@ def apply_deposit(
             amount,
             signature,
         )
-```
-
-##### Voluntary exits
-
-###### Modified `process_voluntary_exit`
-
-```python
-def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
-    voluntary_exit = signed_voluntary_exit.message
-    validator = state.validators[voluntary_exit.validator_index]
-    # Verify the validator is active
-    assert is_active_validator(validator, get_current_epoch(state))
-    # Verify exit has not been initiated
-    assert validator.exit_epoch == FAR_FUTURE_EPOCH
-    # Exits must specify an epoch when they become valid; they are not valid before then
-    assert get_current_epoch(state) >= voluntary_exit.epoch
-    # Verify the validator has been active long enough
-    assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
-    # [Modified in Gloas:EIP7732]
-    # Only exit validator if it has no pending withdrawals in the queue
-    validator_pubkey = state.validators[voluntary_exit.validator_index].pubkey
-    assert get_pending_balance_to_withdraw(state, validator_pubkey) == 0
-    # Verify signature
-    domain = compute_domain(
-        DOMAIN_VOLUNTARY_EXIT, CAPELLA_FORK_VERSION, state.genesis_validators_root
-    )
-    signing_root = compute_signing_root(voluntary_exit, domain)
-    assert bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature)
-    # Initiate exit
-    initiate_validator_exit(state, voluntary_exit.validator_index)
 ```
 
 ##### Payload Attestations
