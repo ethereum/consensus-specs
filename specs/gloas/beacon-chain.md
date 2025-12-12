@@ -510,24 +510,22 @@ def is_parent_block_full(state: BeaconState) -> bool:
 
 ### Misc
 
-#### New `get_builder`
+#### New `get_builder_index`
 
 ```python
-def get_builder(state: BeaconState, pubkey: BLSPubkey) -> Builder:
+def get_builder_index(state: BeaconState, pubkey: BLSPubkey) -> BuilderIndex:
     builder_pubkeys = [v.pubkey for v in state.builders]
     assert pubkey in builder_pubkeys
-    builder_index = BuilderIndex(builder_pubkeys.index(pubkey))
-    return state.builders[builder_index]
+    return BuilderIndex(builder_pubkeys.index(pubkey))
 ```
 
-#### New `get_validator`
+#### New `get_validator_index`
 
 ```python
-def get_validator(state: BeaconState, pubkey: BLSPubkey) -> Validator:
+def get_validator_index(state: BeaconState, pubkey: BLSPubkey) -> ValidatorIndex:
     validator_pubkeys = [v.pubkey for v in state.validators]
     assert pubkey in validator_pubkeys
-    validator_index = ValidatorIndex(validator_pubkeys.index(pubkey))
-    return state.validators[validator_index]
+    return ValidatorIndex(validator_pubkeys.index(pubkey))
 ```
 
 #### Modified `get_pending_balance_to_withdraw`
@@ -940,7 +938,7 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
         if len(withdrawals) + 1 == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
 
-        builder = get_builder(state, withdrawal.pubkey)
+        builder = state.builders[get_builder_index(state, withdrawal.pubkey)]
         total_withdrawn = sum(w.amount for w in withdrawals if w.pubkey == withdrawal.pubkey)
         balance = builder.balance - total_withdrawn
         withdrawable_balance = min(balance, withdrawal.amount)
@@ -964,29 +962,14 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
         if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == bound:
             break
 
-        if is_builder(state, withdrawal.pubkey):
-            builder = get_builder(state, withdrawal.pubkey)
-            total_withdrawn = sum(w.amount for w in withdrawals if w.pubkey == withdrawal.pubkey)
-            balance = builder.balance - total_withdrawn
-            has_excess_balance = balance > MIN_ACTIVATION_BALANCE
-            if builder.exit_epoch == FAR_FUTURE_EPOCH and has_excess_balance:
-                withdrawable_balance = min(balance - MIN_DEPOSIT_AMOUNT, withdrawal.amount)
-                withdrawals.append(
-                    Withdrawal(
-                        index=withdrawal_index,
-                        pubkey=withdrawal.pubkey,
-                        address=ExecutionAddress(builder.withdrawal_credentials[12:]),
-                        amount=withdrawable_balance,
-                    )
-                )
-                withdrawal_index += WithdrawalIndex(1)
-        elif is_validator(state, withdrawal.pubkey):
-            validator = get_validator(state, withdrawal.pubkey)
+        if is_validator(state, withdrawal.pubkey):
+            validator_index = get_validator_index(state, withdrawal.pubkey)
+            validator = state.validators[validator_index]
             has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
             total_withdrawn = sum(
-                w.amount for w in withdrawals if w.validator_index == withdrawal.validator_index
+                w.amount for w in withdrawals if w.pubkey == withdrawal.pubkey
             )
-            balance = state.balances[withdrawal.validator_index] - total_withdrawn
+            balance = state.balances[validator_index] - total_withdrawn
             has_excess_balance = balance > MIN_ACTIVATION_BALANCE
             if (
                 validator.exit_epoch == FAR_FUTURE_EPOCH
@@ -1340,11 +1323,11 @@ def process_withdrawal_request(state: BeaconState, withdrawal_request: Withdrawa
         return
 
     if is_builder(state, withdrawal_request.pubkey):
-        builder = get_builder(state, withdrawal_request.pubkey)
-        return process_withdrawal_request_for_builder(state, withdrawal_request, builder)
+        builder_index = get_builder_index(state, withdrawal_request.pubkey)
+        return process_withdrawal_request_for_builder(state, withdrawal_request, state.builders[builder_index])
     elif is_validator(state, withdrawal_request.pubkey):
-        validator = get_validator(state, withdrawal_request.pubkey)
-        return process_withdrawal_request_for_validator(state, withdrawal_request, validator)
+        validator_index = get_validator_index(state, withdrawal_request.pubkey)
+        return process_withdrawal_request_for_validator(state, withdrawal_request, state.validators[validator_index])
 ```
 
 ##### Attestations
@@ -1453,7 +1436,7 @@ def get_index_for_new_builder(state: BeaconState) -> BuilderIndex:
 ```python
 def get_builder_from_deposit(
     pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
-) -> Validator:
+) -> Builder:
     return Builder(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
