@@ -1054,13 +1054,15 @@ def process_withdrawals(
 
     # [New in Gloas:EIP7732]
     # Update the next builder index to start the next withdrawal sweep
-    builder_index = state.next_withdrawal_builder_index + processed_builders_sweep_count
-    state.next_withdrawal_builder_index = BuilderIndex(builder_index % len(state.builders))
+    next_index = state.next_withdrawal_builder_index + processed_builders_sweep_count
+    next_builder_index = BuilderIndex(next_index % len(state.builders))
+    state.next_withdrawal_builder_index = next_builder_index
 
     # [Modified in Gloas:EIP7732]
     # Update the next validator index to start the next withdrawal sweep
-    validator_index = state.next_withdrawal_validator_index + processed_validators_sweep_count
-    state.next_withdrawal_validator_index = ValidatorIndex(validator_index % len(state.validators))
+    next_index = state.next_withdrawal_validator_index + processed_validators_sweep_count
+    next_validator_index = ValidatorIndex(next_index % len(state.validators))
+    state.next_withdrawal_validator_index = next_validator_index
 ```
 
 #### Execution payload bid
