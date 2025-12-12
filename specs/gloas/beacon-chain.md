@@ -761,7 +761,7 @@ def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> No
         return
 
     # Set builder exit epoch
-    builder.exit_epoch = get_current_epoch(state)
+    builder.exit_epoch = get_current_epoch(state) + 2
 ```
 
 ## Beacon chain state transition function
@@ -904,34 +904,33 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
         if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == bound:
             break
 
-        if is_validator(state, withdrawal.pubkey):
-            validator_index = get_validator_index(state, withdrawal.pubkey)
-            validator = state.validators[validator_index]
-            has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
-            total_withdrawn = sum(
-                w.amount for w in withdrawals if w.pubkey == withdrawal.pubkey
-            )
-            balance = state.balances[validator_index] - total_withdrawn
-            has_excess_balance = balance > MIN_ACTIVATION_BALANCE
-            if (
-                validator.exit_epoch == FAR_FUTURE_EPOCH
-                and has_sufficient_effective_balance
-                and has_excess_balance
-            ):
-                withdrawable_balance = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
-                withdrawals.append(
-                    Withdrawal(
-                        index=withdrawal_index,
-                        pubkey=withdrawal.pubkey,
-                        address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                        amount=withdrawable_balance,
-                    )
+        validator_index = get_validator_index(state, withdrawal.pubkey)
+        validator = state.validators[validator_index]
+        has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
+        total_withdrawn = sum(
+            w.amount for w in withdrawals if w.pubkey == withdrawal.pubkey
+        )
+        balance = state.balances[validator_index] - total_withdrawn
+        has_excess_balance = balance > MIN_ACTIVATION_BALANCE
+        if (
+            validator.exit_epoch == FAR_FUTURE_EPOCH
+            and has_sufficient_effective_balance
+            and has_excess_balance
+        ):
+            withdrawable_balance = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
+            withdrawals.append(
+                Withdrawal(
+                    index=withdrawal_index,
+                    pubkey=withdrawal.pubkey,
+                    address=ExecutionAddress(validator.withdrawal_credentials[12:]),
+                    amount=withdrawable_balance,
                 )
-                withdrawal_index += WithdrawalIndex(1)
+            )
+            withdrawal_index += WithdrawalIndex(1)
 
         processed_partial_withdrawals_count += 1
 
-    # Sweep for remaining.
+    # Sweep validators
     bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
     for _ in range(bound):
         validator = state.validators[validator_index]
@@ -960,6 +959,23 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
         validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
+
+    # Sweep builders
+    bound = min(len(state.validators), MAX_BUILDERS_PER_WITHDRAWALS_SWEEP)
+    for _ in range(bound):
+        builder = state.builders[validator_index]
+        total_withdrawn = sum(w.amount for w in withdrawals if w.pubkey == builder.pubkey)
+        balance = builder.balance - total_withdrawn
+        if builder.exit_epoch == get_current_epoch(state):
+            withdrawals.append(
+                Withdrawal(
+                    index=withdrawal_index,
+                    pubkey=validator.pubkey,
+                    address=ExecutionAddress(validator.withdrawal_credentials[12:]),
+                    amount=balance,
+                )
+            )
+            withdrawal_index += WithdrawalIndex(1)
     return (
         withdrawals,
         processed_builder_withdrawals_count,
