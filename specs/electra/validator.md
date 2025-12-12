@@ -142,8 +142,8 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
     return Attestation(
         aggregation_bits=aggregation_bits,
         data=data,
-        committee_bits=committee_bits,
         signature=signature,
+        committee_bits=committee_bits,
     )
 ```
 

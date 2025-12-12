@@ -43,7 +43,6 @@
     - [New `is_parent_block_full`](#new-is_parent_block_full)
   - [Misc](#misc-2)
     - [Modified `get_pending_balance_to_withdraw`](#modified-get_pending_balance_to_withdraw)
-    - [New `remove_flag`](#new-remove_flag)
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
     - [New `compute_balance_weighted_acceptance`](#new-compute_balance_weighted_acceptance)
     - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
@@ -74,8 +73,6 @@
         - [New `process_payload_attestation`](#new-process_payload_attestation)
       - [Proposer Slashing](#proposer-slashing)
         - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
-    - [Modified `is_merge_transition_complete`](#modified-is_merge_transition_complete)
-    - [Modified `validate_merge_block`](#modified-validate_merge_block)
   - [Execution payload processing](#execution-payload-processing)
     - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
     - [New `process_execution_payload`](#new-process_execution_payload)
@@ -109,7 +106,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 | Name                    | Value                      |
 | ----------------------- | -------------------------- |
-| `DOMAIN_BEACON_BUILDER` | `DomainType('0x1B000000')` |
+| `DOMAIN_BEACON_BUILDER` | `DomainType('0x0B000000')` |
 | `DOMAIN_PTC_ATTESTER`   | `DomainType('0x0C000000')` |
 
 ### Misc
@@ -205,11 +202,13 @@ class ExecutionPayloadBid(Container):
     parent_block_hash: Hash32
     parent_block_root: Root
     block_hash: Hash32
+    prev_randao: Bytes32
     fee_recipient: ExecutionAddress
     gas_limit: uint64
     builder_index: ValidatorIndex
     slot: Slot
     value: Gwei
+    execution_payment: Gwei
     blob_kzg_commitments_root: Root
 ```
 
@@ -400,7 +399,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 43)):
     # [New in Gloas:EIP7732]
     latest_block_hash: Hash32
     # [New in Gloas:EIP7732]
-    latest_withdrawals_root: Root
+    payload_expected_withdrawals: ProgressiveList[Withdrawal]
 ```
 
 ## Helper functions
@@ -545,14 +544,6 @@ def get_pending_balance_to_withdraw(state: BeaconState, validator_index: Validat
             if payment.withdrawal.builder_index == validator_index
         )
     )
-```
-
-#### New `remove_flag`
-
-```python
-def remove_flag(flags: ParticipationFlags, flag_index: int) -> ParticipationFlags:
-    flag = ParticipationFlags(2**flag_index)
-    return flags & ~flag
 ```
 
 #### New `compute_balance_weighted_selection`
@@ -802,6 +793,8 @@ def process_epoch(state: BeaconState) -> None:
     process_eth1_data_reset(state)
     process_pending_deposits(state)
     process_pending_consolidations(state)
+    # [New in Gloas:EIP7732]
+    process_builder_pending_payments(state)
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
@@ -809,8 +802,6 @@ def process_epoch(state: BeaconState) -> None:
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
     process_proposer_lookahead(state)
-    # [New in Gloas:EIP7732]
-    process_builder_pending_payments(state)
 ```
 
 #### New `process_builder_pending_payments`
@@ -822,7 +813,7 @@ def process_builder_pending_payments(state: BeaconState) -> None:
     """
     quorum = get_builder_payment_quorum_threshold(state)
     for payment in state.builder_pending_payments[:SLOTS_PER_EPOCH]:
-        if payment.weight > quorum:
+        if payment.weight >= quorum:
             amount = payment.withdrawal.amount
             exit_queue_epoch = compute_exit_epoch_and_update_churn(state, amount)
             withdrawable_epoch = exit_queue_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
@@ -856,16 +847,23 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ##### New `is_builder_payment_withdrawable`
 
+*Note*: Builder payments are immediately withdrawable if the builder is not
+slashed; this allows the builder to submit bids as soon as it becomes active. On
+the other hand, if the builder is slashed, builder payments cannot be made until
+after the builder's withdrawable epoch (which is set by the `slash_validator`
+function); this is a security measure to prevent a slashed builder from sending
+its stake to a colluding proposer before the appropriate penalties are applied.
+
 ```python
 def is_builder_payment_withdrawable(
     state: BeaconState, withdrawal: BuilderPendingWithdrawal
 ) -> bool:
     """
-    Check if the builder is slashed and not yet withdrawable.
+    Check if a builder payment is withdrawable.
     """
     builder = state.validators[withdrawal.builder_index]
     current_epoch = compute_epoch_at_slot(state.slot)
-    return builder.withdrawable_epoch >= current_epoch or not builder.slashed
+    return not builder.slashed or current_epoch >= builder.withdrawable_epoch
 ```
 
 ##### Modified `get_expected_withdrawals`
@@ -1007,8 +1005,7 @@ def process_withdrawals(
     withdrawals, processed_builder_withdrawals_count, processed_partial_withdrawals_count = (
         get_expected_withdrawals(state)
     )
-    withdrawals_list = ProgressiveList[Withdrawal](withdrawals)
-    state.latest_withdrawals_root = hash_tree_root(withdrawals_list)
+    state.payload_expected_withdrawals = ProgressiveList[Withdrawal](withdrawals)
     for withdrawal in withdrawals:
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 
@@ -1103,6 +1100,7 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
     # Verify that the bid is for the right parent block
     assert bid.parent_block_hash == state.latest_block_hash
     assert bid.parent_block_root == block.parent_root
+    assert bid.prev_randao == get_randao_mix(state, get_current_epoch(state))
 
     # Record the pending payment if there is some payment
     if amount > 0:
@@ -1327,53 +1325,6 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     slash_validator(state, header_1.proposer_index)
 ```
 
-#### Modified `is_merge_transition_complete`
-
-*Note*: `is_merge_transition_complete` is modified only for testing purposes to
-add the blob kzg commitments root for an empty list
-
-```python
-def is_merge_transition_complete(state: BeaconState) -> bool:
-    bid = ExecutionPayloadBid()
-    kzgs = ProgressiveList[KZGCommitment]()
-    bid.blob_kzg_commitments_root = kzgs.hash_tree_root()
-
-    return state.latest_execution_payload_bid != bid
-```
-
-#### Modified `validate_merge_block`
-
-*Note*: `validate_merge_block` is modified to use the new
-`signed_execution_payload_bid` field in the `BeaconBlockBody`.
-
-```python
-def validate_merge_block(block: BeaconBlock) -> None:
-    """
-    Check the parent PoW block of execution payload is a valid terminal PoW block.
-
-    Note: Unavailable PoW block(s) may later become available,
-    and a client software MAY delay a call to ``validate_merge_block``
-    until the PoW block(s) become available.
-    """
-    if TERMINAL_BLOCK_HASH != Hash32():
-        # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
-        assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
-        assert (
-            block.body.signed_execution_payload_bid.message.parent_block_hash == TERMINAL_BLOCK_HASH
-        )
-        return
-
-    # [Modified in Gloas:EIP7732]
-    pow_block = get_pow_block(block.body.signed_execution_payload_bid.message.parent_block_hash)
-    # Check if `pow_block` is available
-    assert pow_block is not None
-    pow_parent = get_pow_block(pow_block.parent_hash)
-    # Check if `pow_parent` is available
-    assert pow_parent is not None
-    # Check if `pow_block` is a valid terminal PoW block
-    assert is_valid_terminal_pow_block(pow_block, pow_parent)
-```
-
 ### Execution payload processing
 
 #### New `verify_execution_payload_envelope_signature`
@@ -1426,9 +1377,10 @@ def process_execution_payload(
     committed_bid = state.latest_execution_payload_bid
     assert envelope.builder_index == committed_bid.builder_index
     assert committed_bid.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
+    assert committed_bid.prev_randao == payload.prev_randao
 
-    # Verify the withdrawals root
-    assert hash_tree_root(payload.withdrawals) == state.latest_withdrawals_root
+    # Verify consistency with expected withdrawals
+    assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
 
     # Verify the gas_limit
     assert committed_bid.gas_limit == payload.gas_limit
@@ -1436,8 +1388,6 @@ def process_execution_payload(
     assert committed_bid.block_hash == payload.block_hash
     # Verify consistency of the parent hash with respect to the previous execution payload
     assert payload.parent_hash == state.latest_block_hash
-    # Verify prev_randao
-    assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
     # Verify timestamp
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
     # Verify commitments are under limit

@@ -47,6 +47,7 @@ def prepare_signed_execution_payload_bid(
     gas_limit=None,
     block_hash=None,
     blob_kzg_commitments_root=None,
+    prev_randao=None,
     valid_signature=True,
 ):
     """
@@ -88,10 +89,14 @@ def prepare_signed_execution_payload_bid(
         kzg_list = spec.ProgressiveList[spec.KZGCommitment]()
         blob_kzg_commitments_root = kzg_list.hash_tree_root()
 
+    if prev_randao is None:
+        prev_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
+
     bid = spec.ExecutionPayloadBid(
         parent_block_hash=parent_block_hash,
         parent_block_root=parent_block_root,
         block_hash=block_hash,
+        prev_randao=prev_randao,
         fee_recipient=fee_recipient,
         gas_limit=gas_limit,
         builder_index=builder_index,
@@ -816,6 +821,33 @@ def test_process_execution_payload_bid_wrong_parent_block_root(spec, state):
     wrong_root = spec.Root(b"\x42" * 32)
     signed_bid = prepare_signed_execution_payload_bid(
         spec, state, builder_index=proposer_index, slot=block.slot, parent_block_root=wrong_root
+    )
+
+    block.body.signed_execution_payload_bid = signed_bid
+
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_execution_payload_bid_wrong_prev_randao(spec, state):
+    """
+    Test wrong prev_randao fails (bid.prev_randao != get_randao_mix)
+    """
+    proposer_index = spec.get_beacon_proposer_index(state)
+
+    # Create block first to advance slot
+    block = build_empty_block_for_next_slot(spec, state)
+
+    # Create bid with wrong prev_randao
+    wrong_prev_randao = spec.Bytes32(b"\x42" * 32)
+    signed_bid = prepare_signed_execution_payload_bid(
+        spec,
+        state,
+        builder_index=proposer_index,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
+        prev_randao=wrong_prev_randao,
     )
 
     block.body.signed_execution_payload_bid = signed_bid
