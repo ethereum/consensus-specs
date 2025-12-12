@@ -927,11 +927,11 @@ def get_expected_withdrawals(
         if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == bound:
             break
 
-        validator_index = get_validator_index(state, withdrawal.pubkey)
-        validator = state.validators[validator_index]
+        index = get_validator_index(state, withdrawal.pubkey)
+        validator = state.validators[index]
         has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
         total_withdrawn = sum(w.amount for w in withdrawals if w.pubkey == withdrawal.pubkey)
-        balance = state.balances[validator_index] - total_withdrawn
+        balance = state.balances[index] - total_withdrawn
         has_excess_balance = balance > MIN_ACTIVATION_BALANCE
         if (
             validator.exit_epoch == FAR_FUTURE_EPOCH
