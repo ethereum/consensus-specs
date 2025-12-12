@@ -71,6 +71,8 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         eth1_data=pre.eth1_data,
         eth1_data_votes=pre.eth1_data_votes,
         eth1_deposit_index=pre.eth1_deposit_index,
+        # [New in Gloas:EIP7732]
+        builders=[],
         validators=pre.validators,
         balances=pre.balances,
         randao_mixes=pre.randao_mixes,
@@ -91,6 +93,8 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
             block_hash=pre.latest_execution_payload_header.block_hash,
         ),
         next_withdrawal_index=pre.next_withdrawal_index,
+        # [New in Gloas:EIP7732]
+        next_withdrawal_builder_index=BuilderIndex(0),
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         historical_summaries=pre.historical_summaries,
         deposit_requests_start_index=pre.deposit_requests_start_index,
@@ -104,8 +108,6 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         pending_partial_withdrawals=new_pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
         proposer_lookahead=pre.proposer_lookahead,
-        # [New in Gloas:EIP7732]
-        builders=[],
         # [New in Gloas:EIP7732]
         execution_payload_availability=[0b1 for _ in range(SLOTS_PER_HISTORICAL_ROOT)],
         # [New in Gloas:EIP7732]
