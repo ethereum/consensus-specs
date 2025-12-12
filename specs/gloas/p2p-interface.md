@@ -277,10 +277,6 @@ The following validations MUST pass before forwarding the
 
 - _[REJECT]_ `bid.builder_index` is a valid, active, and non-slashed builder
   index.
-- _[REJECT]_ the builder's withdrawal credentials' prefix is
-  `BUILDER_WITHDRAWAL_PREFIX` -- i.e.
-  `is_builder_withdrawal_credential(state.validators[bid.builder_index].withdrawal_credentials)`
-  returns `True`.
 - _[REJECT]_ `bid.execution_payment` is zero.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
@@ -288,7 +284,7 @@ The following validations MUST pass before forwarding the
   and the given parent block hash.
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
   i.e.
-  `MIN_ACTIVATION_BALANCE + bid.value <= state.balances[bid.builder_index]`.
+  `MIN_DEPOSIT_AMOUNT + bid.value <= state.builders[bid.builder_index].balance`.
 - _[IGNORE]_ `bid.parent_block_hash` is the block hash of a known execution
   payload in fork choice.
 - _[IGNORE]_ `bid.parent_block_root` is the hash tree root of a known beacon

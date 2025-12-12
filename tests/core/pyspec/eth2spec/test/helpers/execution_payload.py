@@ -191,17 +191,29 @@ def compute_el_header_block_hash(
 
 
 # https://eips.ethereum.org/EIPS/eip-4895
-def get_withdrawal_rlp(withdrawal):
-    withdrawal_rlp = [
-        # index
-        (big_endian_int, withdrawal.index),
-        # validator_index
-        (big_endian_int, withdrawal.validator_index),
-        # address
-        (Binary(20, 20), withdrawal.address),
-        # amount
-        (big_endian_int, withdrawal.amount),
-    ]
+def get_withdrawal_rlp(spec, withdrawal):
+    if is_post_gloas(spec):
+        withdrawal_rlp = [
+            # index
+            (big_endian_int, withdrawal.index),
+            # pubkey
+            (Binary(48, 48), withdrawal.pubkey),
+            # address
+            (Binary(20, 20), withdrawal.address),
+            # amount
+            (big_endian_int, withdrawal.amount),
+        ]
+    else:
+        withdrawal_rlp = [
+            # index
+            (big_endian_int, withdrawal.index),
+            # validator_index
+            (big_endian_int, withdrawal.validator_index),
+            # address
+            (Binary(20, 20), withdrawal.address),
+            # amount
+            (big_endian_int, withdrawal.amount),
+        ]
 
     sedes = List([schema for schema, _ in withdrawal_rlp])
     values = [value for _, value in withdrawal_rlp]
@@ -228,13 +240,21 @@ def get_deposit_request_rlp_bytes(deposit_request):
 
 
 # https://eips.ethereum.org/EIPS/eip-7002
-def get_withdrawal_request_rlp_bytes(withdrawal_request):
-    withdrawal_request_rlp = [
-        # source_address
-        (Binary(20, 20), withdrawal_request.source_address),
-        # validator_pubkey
-        (Binary(48, 48), withdrawal_request.validator_pubkey),
-    ]
+def get_withdrawal_request_rlp_bytes(spec, withdrawal_request):
+    if is_post_gloas(spec):
+        withdrawal_request_rlp = [
+            # source_address
+            (Binary(20, 20), withdrawal_request.source_address),
+            # pubkey
+            (Binary(48, 48), withdrawal_request.pubkey),
+        ]
+    else:
+        withdrawal_request_rlp = [
+            # source_address
+            (Binary(20, 20), withdrawal_request.source_address),
+            # validator_pubkey
+            (Binary(48, 48), withdrawal_request.validator_pubkey),
+        ]
 
     sedes = List([schema for schema, _ in withdrawal_request_rlp])
     values = [value for _, value in withdrawal_request_rlp]
@@ -266,7 +286,9 @@ def compute_el_block_hash_with_new_fields(spec, payload, parent_beacon_block_roo
     withdrawals_trie_root = None
 
     if is_post_capella(spec):
-        withdrawals_encoded = [get_withdrawal_rlp(withdrawal) for withdrawal in payload.withdrawals]
+        withdrawals_encoded = [
+            get_withdrawal_rlp(spec, withdrawal) for withdrawal in payload.withdrawals
+        ]
         withdrawals_trie_root = compute_trie_root_from_indexed_data(withdrawals_encoded)
     if not is_post_deneb(spec):
         parent_beacon_block_root = None

@@ -41,6 +41,19 @@ change is made to upgrade to Gloas.
 def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
     epoch = fulu.get_current_epoch(pre)
 
+    # TODO: forcefully exit any existing 0x03 validator
+
+    validator_pubkeys = [v.pubkey for v in pre.validators]
+    new_pending_partial_withdrawals = []
+    for pending_partial_withdrawal in pre.pending_partial_withdrawals:
+        new_pending_partial_withdrawals.append(
+            PendingPartialWithdrawal(
+                pubkey=validator_pubkeys.index(pending_partial_withdrawal.validator_index),
+                amount=pending_partial_withdrawal.amount,
+                withdrawable_epoch=pending_partial_withdrawal.withdrawable_epoch,
+            )
+        )
+
     post = BeaconState(
         genesis_time=pre.genesis_time,
         genesis_validators_root=pre.genesis_validators_root,
@@ -87,9 +100,12 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         consolidation_balance_to_consume=pre.consolidation_balance_to_consume,
         earliest_consolidation_epoch=pre.earliest_consolidation_epoch,
         pending_deposits=pre.pending_deposits,
-        pending_partial_withdrawals=pre.pending_partial_withdrawals,
+        # [Modified in Gloas:EIP7732]
+        pending_partial_withdrawals=new_pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
         proposer_lookahead=pre.proposer_lookahead,
+        # [New in Gloas:EIP7732]
+        builders=[],
         # [New in Gloas:EIP7732]
         execution_payload_availability=[0b1 for _ in range(SLOTS_PER_HISTORICAL_ROOT)],
         # [New in Gloas:EIP7732]

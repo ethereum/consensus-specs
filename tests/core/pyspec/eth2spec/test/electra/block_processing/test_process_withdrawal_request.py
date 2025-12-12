@@ -7,6 +7,9 @@ from eth2spec.test.context import (
     with_presets,
 )
 from eth2spec.test.helpers.constants import MINIMAL
+from eth2spec.test.helpers.forks import (
+    is_post_gloas,
+)
 from eth2spec.test.helpers.state import (
     get_validator_index_by_pubkey,
 )
@@ -699,11 +702,19 @@ def test_insufficient_effective_balance(spec, state):
     state.balances[validator_index] += spec.EFFECTIVE_BALANCE_INCREMENT
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = spec.WithdrawalRequest(
-        source_address=address,
-        validator_pubkey=validator_pubkey,
-        amount=amount,
-    )
+
+    if is_post_gloas(spec):
+        withdrawal_request = spec.WithdrawalRequest(
+            source_address=address,
+            pubkey=validator_pubkey,
+            amount=amount,
+        )
+    else:
+        withdrawal_request = spec.WithdrawalRequest(
+            source_address=address,
+            validator_pubkey=validator_pubkey,
+            amount=amount,
+        )
 
     yield from run_withdrawal_request_processing(
         spec,
