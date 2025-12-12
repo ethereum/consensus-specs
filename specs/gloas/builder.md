@@ -36,7 +36,7 @@ bids. This document is a collection of guidelines for builders.
 
 When submitting a deposit to the deposit contract, the `withdrawal_credentials`
 field determines whether the staked actor will be a validator or a builder. To
-be recognized as a builder, a validator’s `withdrawal_credentials` must use the
+be recognized as a builder, the `withdrawal_credentials` must use the
 `BUILDER_WITHDRAWAL_PREFIX`.
 
 The `withdrawal_credentials` field must be:

@@ -244,7 +244,7 @@ def prepare_execution_payload(
 
     # [Modified in Gloas:EIP7732]
     # Set the forkchoice head and initiate the payload build process
-    withdrawals, _, _ = get_expected_withdrawals(state)
+    withdrawals, _, _, _, _ = get_expected_withdrawals(state)
 
     payload_attributes = PayloadAttributes(
         timestamp=compute_time_at_slot(state, state.slot),
