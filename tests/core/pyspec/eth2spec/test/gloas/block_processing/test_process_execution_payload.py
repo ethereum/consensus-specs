@@ -125,12 +125,7 @@ def prepare_execution_payload_envelope(
         payment = post_state.builder_pending_payments[
             spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
         ]
-        amount = payment.withdrawal.amount
-        if amount > 0:
-            exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(post_state, amount)
-            payment.withdrawal.withdrawable_epoch = spec.Epoch(
-                exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-            )
+        if payment.withdrawal.amount > 0:
             post_state.builder_pending_withdrawals.append(payment.withdrawal)
 
         # Clear the pending payment
@@ -247,13 +242,6 @@ def test_process_execution_payload_valid(spec, state):
     ]
     pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
 
-    # Pre-compute expected withdrawable epoch before processing
-    state_copy = state.copy()
-    exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(
-        state_copy, pre_payment.withdrawal.amount
-    )
-    expected_withdrawable_epoch = exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-
     yield from run_execution_payload_processing(spec, state, signed_envelope)
 
     # Verify state updates
@@ -264,9 +252,8 @@ def test_process_execution_payload_valid(spec, state):
     assert len(state.builder_pending_withdrawals) == pre_pending_withdrawals_len + 1
     new_withdrawal = state.builder_pending_withdrawals[len(state.builder_pending_withdrawals) - 1]
     assert new_withdrawal.amount == pre_payment.withdrawal.amount
-    assert new_withdrawal.builder_index == builder_index
+    assert new_withdrawal.pubkey == state.builders[builder_index].pubkey
     assert new_withdrawal.fee_recipient == pre_payment.withdrawal.fee_recipient
-    assert new_withdrawal.withdrawable_epoch == expected_withdrawable_epoch
 
     # Verify pending payment was cleared
     cleared_payment = state.builder_pending_payments[
@@ -276,7 +263,7 @@ def test_process_execution_payload_valid(spec, state):
     empty_payment = spec.BuilderPendingPayment()
     assert cleared_payment.weight == empty_payment.weight
     assert cleared_payment.withdrawal.amount == empty_payment.withdrawal.amount
-    assert cleared_payment.withdrawal.builder_index == empty_payment.withdrawal.builder_index
+    assert cleared_payment.withdrawal.pubkey == empty_payment.withdrawal.pubkey
 
 
 @with_gloas_and_later

@@ -87,7 +87,10 @@ def _verify_withdrawals_next_withdrawal_index(spec, pre_state, post_state, expec
         else:
             index = expected_withdrawals[-1].validator_index
         next_validator_index = (index + 1) % len(post_state.validators)
-        assert post_state.next_withdrawal_validator_index == next_validator_index
+        assert post_state.next_withdrawal_validator_index == next_validator_index, (
+            post_state.next_withdrawal_validator_index,
+            next_validator_index,
+        )
     else:
         # Advance sweep by the max length if there was not a full set of withdrawals
         next_index = (

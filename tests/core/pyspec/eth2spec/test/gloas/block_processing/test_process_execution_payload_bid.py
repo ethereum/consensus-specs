@@ -534,7 +534,7 @@ def test_process_execution_payload_bid_insufficient_balance_with_pending_payment
         withdrawal=spec.BuilderPendingWithdrawal(
             fee_recipient=spec.ExecutionAddress(),
             amount=existing_pending,
-            pubkey=state.builders[builder_index].pubkey,
+            builder_index=builder_index,
         ),
     )
 
@@ -576,7 +576,7 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_payments(
         withdrawal=spec.BuilderPendingWithdrawal(
             fee_recipient=spec.ExecutionAddress(),
             amount=existing_pending,
-            pubkey=state.builders[builder_index].pubkey,
+            builder_index=builder_index,
         ),
     )
 
@@ -642,7 +642,6 @@ def test_process_execution_payload_bid_insufficient_balance_with_pending_withdra
             fee_recipient=spec.ExecutionAddress(),
             amount=existing_withdrawal,
             builder_index=builder_index,
-            withdrawable_epoch=spec.Epoch(100),  # Future epoch
         )
     )
 
@@ -683,7 +682,6 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_withdrawa
             fee_recipient=spec.ExecutionAddress(),
             amount=existing_withdrawal,
             builder_index=builder_index,
-            withdrawable_epoch=spec.Epoch(100),  # Future epoch
         )
     )
 

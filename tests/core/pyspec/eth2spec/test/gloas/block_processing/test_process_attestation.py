@@ -194,7 +194,7 @@ def test_builder_payment_weight_tracking(spec, state):
         withdrawal=spec.BuilderPendingWithdrawal(
             fee_recipient=spec.ExecutionAddress(),
             amount=test_payment_amount,
-            pubkey=state.builders[0].pubkey,
+            builder_index=0,
         ),
     )
 
@@ -246,7 +246,7 @@ def test_builder_payment_weight_no_double_counting(spec, state):
         withdrawal=spec.BuilderPendingWithdrawal(
             fee_recipient=spec.ExecutionAddress(),
             amount=test_payment_amount,
-            pubkey=state.builders[0].pubkey,
+            builder_index=0,
         ),
     )
 

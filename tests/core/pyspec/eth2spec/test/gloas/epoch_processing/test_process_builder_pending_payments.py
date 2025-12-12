@@ -6,9 +6,7 @@ from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.helpers.state import next_epoch
 
 
-def create_builder_pending_payment(
-    spec, state, builder_index, amount, weight=0, fee_recipient=None
-):
+def create_builder_pending_payment(spec, builder_index, amount, weight=0, fee_recipient=None):
     """Create a BuilderPendingPayment for testing."""
     if fee_recipient is None:
         fee_recipient = spec.ExecutionAddress()
@@ -18,7 +16,7 @@ def create_builder_pending_payment(
         withdrawal=spec.BuilderPendingWithdrawal(
             fee_recipient=fee_recipient,
             amount=amount,
-            pubkey=state.builders[builder_index],
+            builder_index=builder_index,
         ),
     )
 
@@ -33,7 +31,7 @@ def test_process_builder_pending_payments_empty_queue(spec, state):
 
     # Populate the first SLOTS_PER_EPOCH with payments to ensure they're not empty
     for i in range(spec.SLOTS_PER_EPOCH):
-        payment = create_builder_pending_payment(spec, state, i, spec.MIN_ACTIVATION_BALANCE, 1)
+        payment = create_builder_pending_payment(spec, i, spec.MIN_ACTIVATION_BALANCE, 1)
         state.builder_pending_payments[i] = payment
 
     pre_builder_pending_withdrawals = len(state.builder_pending_withdrawals)
@@ -65,7 +63,7 @@ def test_process_builder_pending_payments_below_quorum(spec, state):
     weight = quorum - 1  # Below threshold
 
     # Add pending payment with weight below quorum
-    payment = create_builder_pending_payment(spec, state, builder_index, amount, weight)
+    payment = create_builder_pending_payment(spec, builder_index, amount, weight)
     state.builder_pending_payments[0] = payment
 
     pre_builder_pending_withdrawals = len(state.builder_pending_withdrawals)
@@ -94,9 +92,7 @@ def test_process_builder_pending_payments_equal_quorum(spec, state):
     fee_recipient = b"\x41" * 20
 
     # Add pending payment with weight equal to quorum
-    payment = create_builder_pending_payment(
-        spec, state, builder_index, amount, weight, fee_recipient
-    )
+    payment = create_builder_pending_payment(spec, builder_index, amount, weight, fee_recipient)
     state.builder_pending_payments[0] = payment
 
     pre_builder_pending_withdrawals = len(state.builder_pending_withdrawals)
@@ -130,9 +126,7 @@ def test_process_builder_pending_payments_above_quorum(spec, state):
     fee_recipient = b"\x42" * 20
 
     # Add pending payment with weight above quorum
-    payment = create_builder_pending_payment(
-        spec, state, builder_index, amount, weight, fee_recipient
-    )
+    payment = create_builder_pending_payment(spec, builder_index, amount, weight, fee_recipient)
     state.builder_pending_payments[0] = payment
 
     pre_builder_pending_withdrawals = len(state.builder_pending_withdrawals)
@@ -171,9 +165,7 @@ def test_process_builder_pending_payments_multiple_above_quorum(spec, state):
         amount = spec.MIN_ACTIVATION_BALANCE + i * spec.EFFECTIVE_BALANCE_INCREMENT
         fee_recipient = bytes([0x10 + i]) + b"\x00" * 19
 
-        payment = create_builder_pending_payment(
-            spec, state, builder_index, amount, weight, fee_recipient
-        )
+        payment = create_builder_pending_payment(spec, builder_index, amount, weight, fee_recipient)
         state.builder_pending_payments[i] = payment
 
     pre_builder_pending_withdrawals = len(state.builder_pending_withdrawals)
@@ -221,7 +213,7 @@ def test_process_builder_pending_payments_mixed_weights(spec, state):
     for i, (builder_index, amount, weight) in enumerate(payments_data):
         if i >= spec.SLOTS_PER_EPOCH:
             break
-        payment = create_builder_pending_payment(spec, state, builder_index, amount, weight)
+        payment = create_builder_pending_payment(spec, builder_index, amount, weight)
         state.builder_pending_payments[i] = payment
 
     pre_builder_pending_withdrawals = len(state.builder_pending_withdrawals)
@@ -261,7 +253,7 @@ def test_process_builder_pending_payments_queue_rotation(spec, state):
     # Fill both epochs of the queue with test data
     test_weight = 12345
     state.builder_pending_payments = [
-        create_builder_pending_payment(spec, state, i, spec.MIN_ACTIVATION_BALANCE, test_weight)
+        create_builder_pending_payment(spec, i, spec.MIN_ACTIVATION_BALANCE, test_weight)
         for i in range(2 * spec.SLOTS_PER_EPOCH)
     ]
 
@@ -301,7 +293,7 @@ def test_process_builder_pending_payments_large_amount_churn_impact(spec, state)
     quorum = spec.get_builder_payment_quorum_threshold(state)
     weight = quorum + 1
 
-    payment = create_builder_pending_payment(spec, state, builder_index, large_amount, weight)
+    payment = create_builder_pending_payment(spec, builder_index, large_amount, weight)
     state.builder_pending_payments[0] = payment
 
     # Store pre-processing state for churn verification
