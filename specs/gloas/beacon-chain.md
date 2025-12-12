@@ -57,10 +57,6 @@
     - [New `get_indexed_payload_attestation`](#new-get_indexed_payload_attestation)
     - [New `get_builder_payment_quorum_threshold`](#new-get_builder_payment_quorum_threshold)
   - [Beacon state mutators](#beacon-state-mutators)
-    - [New `increase_builder_balance`](#new-increase_builder_balance)
-    - [New `decrease_builder_balance`](#new-decrease_builder_balance)
-    - [New `increase_validator_balance`](#new-increase_validator_balance)
-    - [New `decrease_validator_balance`](#new-decrease_validator_balance)
     - [New `initiate_exit_for_builder`](#new-initiate_exit_for_builder)
     - [New `initiate_exit_for_validator`](#new-initiate_exit_for_validator)
     - [Modified `slash_validator`](#modified-slash_validator)
@@ -752,60 +748,6 @@ def get_builder_payment_quorum_threshold(state: BeaconState) -> uint64:
 
 ### Beacon state mutators
 
-#### New `increase_builder_balance`
-
-```python
-def increase_builder_balance(state: BeaconState, pubkey: BLSPubkey, delta: Gwei) -> None:
-    """
-    Increase the builder's balance associated with ``pubkey`` by ``delta``.
-    """
-    builder_pubkeys = [b.pubkey for b in state.builders]
-    builder_index = BuilderIndex(builder_pubkeys.index(pubkey))
-    state.builders[builder_index].balance += delta
-```
-
-#### New `decrease_builder_balance`
-
-```python
-def decrease_builder_balance(state: BeaconState, pubkey: BLSPubkey, delta: Gwei) -> None:
-    """
-    Decrease the builder's balance associated with ``pubkey`` by ``delta``, with underflow protection.
-    """
-    builder_pubkeys = [b.pubkey for b in state.builders]
-    builder_index = BuilderIndex(builder_pubkeys.index(pubkey))
-    if delta > state.builders[builder_index].balance:
-        state.builders[builder_index].balance = 0
-    else:
-        state.builders[builder_index].balance -= delta
-```
-
-#### New `increase_validator_balance`
-
-```python
-def increase_validator_balance(state: BeaconState, pubkey: BLSPubkey, delta: Gwei) -> None:
-    """
-    Increase the validator's balance associated with ``pubkey`` by ``delta``.
-    """
-    validator_pubkeys = [b.pubkey for b in state.validators]
-    validator_index = ValidatorIndex(validator_pubkeys.index(pubkey))
-    state.balances[validator_index] += delta
-```
-
-#### New `decrease_validator_balance`
-
-```python
-def decrease_validator_balance(state: BeaconState, pubkey: BLSPubkey, delta: Gwei) -> None:
-    """
-    Decrease the validator's balance associated with ``pubkey`` by ``delta``, with underflow protection.
-    """
-    validator_pubkeys = [b.pubkey for b in state.validators]
-    validator_index = ValidatorIndex(validator_pubkeys.index(pubkey))
-    if delta > state.balances[validator_index]:
-        state.balances[validator_index] = 0
-    else:
-        state.balances[validator_index] -= delta
-```
-
 #### New `initiate_builder_exit`
 
 ```python
@@ -1054,9 +996,11 @@ def process_withdrawals(
     for withdrawal in withdrawals:
         # [Modified in Gloas:EIP7732]
         if is_builder(state, withdrawal.pubkey):
-            decrease_builder_balance(state, withdrawal.pubkey, withdrawal.amount)
+            builder_index = get_builder_index(state, withdrawal.pubkey)
+            state.builders[builder_index].balance -= withdrawal.amount
         else:
-            decrease_validator_balance(state, withdrawal.pubkey, withdrawal.amount)
+            validator_index = get_validator_index(state, withdrawal.pubkey)
+            decrease_balance(state, validator_index, withdrawal.amount)
 
     # [New in Gloas:EIP7732]
     # Update the pending builder withdrawals
@@ -1478,9 +1422,8 @@ def apply_deposit_for_builder(
             return
 
     # Increase balance by deposit amount
-    builder_pubkeys = [b.pubkey for b in state.builders]
-    builder_index = BuilderIndex(builder_pubkeys.index(pubkey))
-    increase_builder_balance(state, builder_index, amount)
+    builder_index = get_builder_index(state, pubkey)
+    state.builders[builder_index].balance += delta
 ```
 
 ###### New `apply_deposit_for_validator`
