@@ -6,7 +6,6 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.withdrawals import (
-    set_builder_withdrawal_credential,
     set_builder_withdrawal_credential_with_balance,
 )
 
@@ -125,13 +124,6 @@ def prepare_signed_execution_payload_bid(
     )
 
 
-def make_validator_builder(spec, state, validator_index):
-    """
-    Helper to make a validator a builder by setting builder withdrawal credentials.
-    """
-    set_builder_withdrawal_credential(spec, state, validator_index)
-
-
 def prepare_block_with_execution_payload_bid(spec, state, **bid_kwargs):
     """
     Helper that properly creates a block with execution payload bid,
@@ -162,14 +154,7 @@ def prepare_block_with_non_proposer_builder(spec, state):
     """
     # Create block first (this advances state.slot)
     block = build_empty_block_for_next_slot(spec, state)
-
-    # Use a different validator as builder (clearly not self-building)
-    builder_index = (block.proposer_index + 1) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
-
-    # Ensure the contract is satisfied
-    assert builder_index != block.proposer_index, "Helper must return non-self-building scenario"
-
+    builder_index = block.proposer_index % len(state.builders)
     return block, builder_index
 
 
@@ -549,8 +534,7 @@ def test_process_execution_payload_bid_insufficient_balance_with_pending_payment
         withdrawal=spec.BuilderPendingWithdrawal(
             fee_recipient=spec.ExecutionAddress(),
             amount=existing_pending,
-            builder_index=builder_index,
-            withdrawable_epoch=spec.Epoch(0),
+            pubkey=state.builders[builder_index].pubkey,
         ),
     )
 
@@ -592,8 +576,7 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_payments(
         withdrawal=spec.BuilderPendingWithdrawal(
             fee_recipient=spec.ExecutionAddress(),
             amount=existing_pending,
-            builder_index=builder_index,
-            withdrawable_epoch=spec.Epoch(0),
+            pubkey=state.builders[builder_index].pubkey,
         ),
     )
 
