@@ -1257,10 +1257,11 @@ def get_sweep_withdrawals(
     validator_index: ValidatorIndex,
     epoch: Epoch,
     prior_withdrawals: Sequence[Withdrawal],
-) -> Sequence[Withdrawal]:
+) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
     withdrawals: List[Withdrawal] = []
     validators_limit = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
+    processed_validators_sweep_count: uint64 = 0
 
     for _ in range(validators_limit):
         all_withdrawals = prior_withdrawals + withdrawals
@@ -1292,8 +1293,9 @@ def get_sweep_withdrawals(
             withdrawal_index += WithdrawalIndex(1)
 
         validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
+        processed_validators_sweep_count += 1
 
-    return withdrawals
+    return withdrawals, withdrawal_index, processed_validators_sweep_count
 ```
 
 ##### Modified `get_expected_withdrawals`
@@ -1301,7 +1303,7 @@ def get_sweep_withdrawals(
 *Note*: The function `get_expected_withdrawals` is modified to support EIP7251.
 
 ```python
-def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], uint64]:
+def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], uint64, uint64]:
     epoch = get_current_epoch(state)
     withdrawal_index = state.next_withdrawal_index
     validator_index = state.next_withdrawal_validator_index
@@ -1315,13 +1317,13 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     withdrawals.extend(partial_withdrawals)
 
     # Get sweep withdrawals
-    sweep_withdrawals = get_sweep_withdrawals(
+    sweep_withdrawals, withdrawal_index, processed_validators_sweep_count = get_sweep_withdrawals(
         state, withdrawal_index, validator_index, epoch, withdrawals
     )
     withdrawals.extend(sweep_withdrawals)
 
     # [Modified in Electra:EIP7251]
-    return withdrawals, processed_partial_withdrawals_count
+    return withdrawals, processed_partial_withdrawals_count, processed_validators_sweep_count
 ```
 
 ##### Modified `process_withdrawals`
@@ -1331,7 +1333,9 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
 ```python
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     # [Modified in Electra:EIP7251]
-    expected_withdrawals, processed_partial_withdrawals_count = get_expected_withdrawals(state)
+    expected_withdrawals, processed_partial_withdrawals_count, processed_validators_sweep_count = (
+        get_expected_withdrawals(state)
+    )
 
     assert payload.withdrawals == expected_withdrawals
 
@@ -1350,17 +1354,9 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
         state.next_withdrawal_index = WithdrawalIndex(latest_withdrawal.index + 1)
 
     # Update the next validator index to start the next withdrawal sweep
-    if len(expected_withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
-        # Next sweep starts after the latest withdrawal's validator index
-        next_validator_index = ValidatorIndex(
-            (expected_withdrawals[-1].validator_index + 1) % len(state.validators)
-        )
-        state.next_withdrawal_validator_index = next_validator_index
-    else:
-        # Advance sweep by the max length of the sweep if there was not a full set of withdrawals
-        next_index = state.next_withdrawal_validator_index + MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
-        next_validator_index = ValidatorIndex(next_index % len(state.validators))
-        state.next_withdrawal_validator_index = next_validator_index
+    next_index = state.next_withdrawal_validator_index + processed_validators_sweep_count
+    next_validator_index = ValidatorIndex(next_index % len(state.validators))
+    state.next_withdrawal_validator_index = next_validator_index
 ```
 
 #### Execution payload
