@@ -3,7 +3,7 @@ from tests.core.pyspec.eth2spec.test.helpers.forks import is_post_electra, is_po
 
 def get_expected_withdrawals(spec, state):
     if is_post_gloas(spec):
-        withdrawals, _, _ = spec.get_expected_withdrawals(state)
+        withdrawals, _, _, _, _ = spec.get_expected_withdrawals(state)
         return withdrawals
     elif is_post_electra(spec):
         withdrawals, _ = spec.get_expected_withdrawals(state)
@@ -53,7 +53,7 @@ def verify_withdrawals_post_state(
 
     # Check withdrawal requests
     if pending_withdrawal_requests is not None:
-        _verify_withdrawals_requests(execution_payload, pending_withdrawal_requests)
+        _verify_withdrawals_requests(spec, execution_payload, pending_withdrawal_requests)
 
 
 def _verify_withdrawals_next_withdrawal_index(spec, pre_state, post_state, expected_withdrawals):
@@ -103,9 +103,19 @@ def _verify_withdrawals_post_state_balances(
     if len(expected_withdrawals) == 0:
         return
 
-    expected_withdrawals_validator_indices = [
-        withdrawal.validator_index for withdrawal in expected_withdrawals
-    ]
+    if is_post_gloas(spec):
+        expected_withdrawals_validator_indices = []
+        for withdrawal in expected_withdrawals:
+            if spec.is_builder(state, withdrawal.pubkey):
+                builder_index = spec.get_builder_index(state, withdrawal.pubkey)
+                expected_withdrawals_validator_indices.append(builder_index)
+            else:
+                validator_index = spec.get_validator_index(state, withdrawal.pubkey)
+                expected_withdrawals_validator_indices.append(validator_index)
+    else:
+        expected_withdrawals_validator_indices = [
+            withdrawal.validator_index for withdrawal in expected_withdrawals
+        ]
 
     for index in fully_withdrawable_indices:
         if index in expected_withdrawals_validator_indices:
@@ -124,9 +134,12 @@ def _verify_withdrawals_post_state_balances(
             assert state.balances[index] > max_effective_balance
 
 
-def _verify_withdrawals_requests(execution_payload, pending_withdrawal_requests):
+def _verify_withdrawals_requests(spec, execution_payload, pending_withdrawal_requests):
     assert len(pending_withdrawal_requests) <= len(execution_payload.withdrawals)
     for index, request in enumerate(pending_withdrawal_requests):
         withdrawal = execution_payload.withdrawals[index]
-        assert withdrawal.validator_index == request.validator_index
+        if is_post_gloas(spec):
+            assert withdrawal.pubkey == request.pubkey
+        else:
+            assert withdrawal.validator_index == request.validator_index
         assert withdrawal.amount == request.amount

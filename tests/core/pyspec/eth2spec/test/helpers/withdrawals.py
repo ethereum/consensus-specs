@@ -173,11 +173,19 @@ def prepare_pending_withdrawal(
         spec, state, validator_index, effective_balance, balance
     )
 
-    withdrawal = spec.PendingPartialWithdrawal(
-        validator_index=validator_index,
-        amount=amount,
-        withdrawable_epoch=withdrawable_epoch,
-    )
+    if is_post_gloas(spec):
+        withdrawal = spec.PendingPartialWithdrawal(
+            pubkey=state.validators[validator_index].pubkey,
+            amount=amount,
+            withdrawable_epoch=withdrawable_epoch,
+        )
+    else:
+        withdrawal = spec.PendingPartialWithdrawal(
+            validator_index=validator_index,
+            amount=amount,
+            withdrawable_epoch=withdrawable_epoch,
+        )
+
     state.pending_partial_withdrawals.append(withdrawal)
 
     return withdrawal
@@ -191,11 +199,33 @@ def prepare_withdrawal_request(spec, state, validator_index, address=None, amoun
     if amount is None:
         amount = spec.FULL_EXIT_REQUEST_AMOUNT
 
-    return spec.WithdrawalRequest(
-        source_address=state.validators[validator_index].withdrawal_credentials[12:],
-        validator_pubkey=state.validators[validator_index].pubkey,
-        amount=amount,
-    )
+    if is_post_gloas(spec):
+        return spec.WithdrawalRequest(
+            source_address=state.validators[validator_index].withdrawal_credentials[12:],
+            pubkey=state.validators[validator_index].pubkey,
+            amount=amount,
+        )
+    else:
+        return spec.WithdrawalRequest(
+            source_address=state.validators[validator_index].withdrawal_credentials[12:],
+            validator_pubkey=state.validators[validator_index].pubkey,
+            amount=amount,
+        )
+
+
+def prepare_withdrawal_request_2(spec, source_address, pubkey, amount):
+    if is_post_gloas(spec):
+        return spec.WithdrawalRequest(
+            source_address=source_address,
+            pubkey=pubkey,
+            amount=amount,
+        )
+    else:
+        return spec.WithdrawalRequest(
+            source_address=source_address,
+            validator_pubkey=pubkey,
+            amount=amount,
+        )
 
 
 #

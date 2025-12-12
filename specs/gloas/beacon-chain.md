@@ -1065,9 +1065,10 @@ def process_withdrawals(
 
     # [New in Gloas:EIP7732]
     # Update the next builder index to start the next withdrawal sweep
-    next_index = state.next_withdrawal_builder_index + processed_builders_sweep_count
-    next_builder_index = BuilderIndex(next_index % len(state.builders))
-    state.next_withdrawal_builder_index = next_builder_index
+    if len(state.builders) > 0:
+        next_index = state.next_withdrawal_builder_index + processed_builders_sweep_count
+        next_builder_index = BuilderIndex(next_index % len(state.builders))
+        state.next_withdrawal_builder_index = next_builder_index
 
     # [Modified in Gloas:EIP7732]
     # Update the next validator index to start the next withdrawal sweep
