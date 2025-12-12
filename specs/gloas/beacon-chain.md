@@ -49,6 +49,7 @@
   - [Misc](#misc-2)
     - [New `get_builder_index`](#new-get_builder_index)
     - [New `get_validator_index`](#new-get_validator_index)
+    - [Modified `get_pending_balance_to_withdraw`](#modified-get_pending_balance_to_withdraw)
     - [New `get_pending_balance_to_withdraw_for_builder`](#new-get_pending_balance_to_withdraw_for_builder)
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
     - [New `compute_balance_weighted_acceptance`](#new-compute_balance_weighted_acceptance)
@@ -539,6 +540,17 @@ def get_validator_index(state: BeaconState, pubkey: BLSPubkey) -> ValidatorIndex
     return ValidatorIndex(validator_pubkeys.index(pubkey))
 ```
 
+#### Modified `get_pending_balance_to_withdraw`
+
+```python
+def get_pending_balance_to_withdraw(state: BeaconState, validator_index: ValidatorIndex) -> Gwei:
+    return sum(
+        withdrawal.amount
+        for withdrawal in state.pending_partial_withdrawals
+        if withdrawal.pubkey == state.validators[validator_index].pubkey
+    )
+```
+
 #### New `get_pending_balance_to_withdraw_for_builder`
 
 ```python
@@ -551,13 +563,11 @@ def get_pending_balance_to_withdraw_for_builder(
             for withdrawal in state.pending_partial_withdrawals
             if withdrawal.pubkey == state.builders[builder_index].pubkey
         )
-        # [New in Gloas:EIP7732]
         + sum(
             withdrawal.amount
             for withdrawal in state.builder_pending_withdrawals
             if withdrawal.builder_index == builder_index
         )
-        # [New in Gloas:EIP7732]
         + sum(
             payment.withdrawal.amount
             for payment in state.builder_pending_payments

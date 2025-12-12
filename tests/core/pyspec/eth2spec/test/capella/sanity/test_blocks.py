@@ -345,7 +345,10 @@ def _perform_valid_withdrawal(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     signed_block_1 = state_transition_and_sign_block(spec, state, block)
 
-    withdrawn_indices = [withdrawal.validator_index for withdrawal in expected_withdrawals]
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    withdrawn_indices = [
+        validator_pubkeys.index(withdrawal.pubkey) for withdrawal in expected_withdrawals
+    ]
     fully_withdrawable_indices = list(
         set(fully_withdrawable_indices).difference(set(withdrawn_indices))
     )
@@ -364,7 +367,9 @@ def _perform_valid_withdrawal(spec, state):
             == pre_next_withdrawal_index + spec.MAX_WITHDRAWALS_PER_PAYLOAD
         )
 
-    withdrawn_indices = [withdrawal.validator_index for withdrawal in expected_withdrawals]
+    withdrawn_indices = [
+        validator_pubkeys.index(withdrawal.pubkey) for withdrawal in expected_withdrawals
+    ]
     fully_withdrawable_indices = list(
         set(fully_withdrawable_indices).difference(set(withdrawn_indices))
     )
