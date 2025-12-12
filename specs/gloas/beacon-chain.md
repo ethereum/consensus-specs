@@ -953,7 +953,7 @@ def get_expected_withdrawals(
     for _ in range(bound):
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
-        builder = state.builders[validator_index]
+        builder = state.builders[builder_index]
         if builder.exit_epoch <= epoch and builder.balance > 0:
             withdrawals.append(
                 Withdrawal(

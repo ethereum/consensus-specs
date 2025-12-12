@@ -7,11 +7,15 @@ from eth2spec.test.context import (
     with_presets,
 )
 from eth2spec.test.helpers.constants import MINIMAL
+from eth2spec.test.helpers.forks import (
+    is_post_gloas,
+)
 from eth2spec.test.helpers.state import (
     get_validator_index_by_pubkey,
 )
 from eth2spec.test.helpers.withdrawals import (
-    prepare_withdrawal_request_2,
+    prepare_pending_withdrawal_struct,
+    prepare_withdrawal_request_struct,
     set_compounding_withdrawal_credential,
     set_eth1_withdrawal_credential_with_balance,
 )
@@ -48,7 +52,11 @@ def run_withdrawal_request_processing(spec, state, withdrawal_request, valid=Tru
         # No-op
         assert pre_state == state
     else:
-        validator_index = get_validator_index_by_pubkey(state, withdrawal_request.validator_pubkey)
+        if is_post_gloas(spec):
+            pubkey = withdrawal_request.pubkey
+        else:
+            pubkey = withdrawal_request.validator_pubkey
+        validator_index = get_validator_index_by_pubkey(state, pubkey)
         pre_exit_epoch = pre_state.validators[validator_index].exit_epoch
         pre_pending_partial_withdrawals = pre_state.pending_partial_withdrawals.copy()
         pre_balance = pre_state.balances[validator_index]
@@ -70,7 +78,9 @@ def run_withdrawal_request_processing(spec, state, withdrawal_request, valid=Tru
             expected_withdrawable_epoch = (
                 state.earliest_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
             )
-            expected_partial_withdrawal = spec.PendingPartialWithdrawal(
+            expected_partial_withdrawal = prepare_pending_withdrawal_struct(
+                spec,
+                state,
                 validator_index=validator_index,
                 amount=expected_amount_to_withdraw,
                 withdrawable_epoch=expected_withdrawable_epoch,
@@ -103,7 +113,7 @@ def test_basic_withdrawal_request(spec, state):
     validator_pubkey = state.validators[validator_index].pubkey
     address = b"\x22" * 20
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(
+    withdrawal_request = prepare_withdrawal_request_struct(
         spec, address, validator_pubkey, spec.FULL_EXIT_REQUEST_AMOUNT
     )
 
@@ -121,7 +131,7 @@ def test_basic_withdrawal_request_with_first_validator(spec, state):
     validator_pubkey = state.validators[validator_index].pubkey
     address = b"\x22" * 20
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(
+    withdrawal_request = prepare_withdrawal_request_struct(
         spec, address, validator_pubkey, spec.FULL_EXIT_REQUEST_AMOUNT
     )
 
@@ -140,7 +150,7 @@ def test_basic_withdrawal_request_with_compounding_credentials(spec, state):
     validator_pubkey = state.validators[validator_index].pubkey
     address = b"\x22" * 20
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(
+    withdrawal_request = prepare_withdrawal_request_struct(
         spec, address, validator_pubkey, spec.FULL_EXIT_REQUEST_AMOUNT
     )
 
@@ -158,13 +168,13 @@ def test_basic_withdrawal_request_with_full_partial_withdrawal_queue(spec, state
     validator_pubkey = state.validators[validator_index].pubkey
     address = b"\x22" * 20
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(
+    withdrawal_request = prepare_withdrawal_request_struct(
         spec, address, validator_pubkey, spec.FULL_EXIT_REQUEST_AMOUNT
     )
 
     # Fill the partial withdrawal queue to the max (with a different validator index)
-    partial_withdrawal = spec.PendingPartialWithdrawal(
-        validator_index=1, amount=1, withdrawable_epoch=current_epoch
+    partial_withdrawal = prepare_pending_withdrawal_struct(
+        spec, state, validator_index=1, amount=1, withdrawable_epoch=current_epoch
     )
     state.pending_partial_withdrawals = [
         partial_withdrawal
@@ -194,7 +204,7 @@ def test_incorrect_source_address(spec, state):
     address = b"\x22" * 20
     incorrect_address = b"\x33" * 20
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(
+    withdrawal_request = prepare_withdrawal_request_struct(
         spec, incorrect_address, validator_pubkey, spec.FULL_EXIT_REQUEST_AMOUNT
     )
 
@@ -217,7 +227,7 @@ def test_incorrect_withdrawal_credential_prefix(spec, state):
     state.validators[validator_index].withdrawal_credentials = (
         spec.BLS_WITHDRAWAL_PREFIX + state.validators[validator_index].withdrawal_credentials[1:]
     )
-    withdrawal_request = prepare_withdrawal_request_2(
+    withdrawal_request = prepare_withdrawal_request_struct(
         spec, address, validator_pubkey, spec.FULL_EXIT_REQUEST_AMOUNT
     )
 
@@ -238,7 +248,7 @@ def test_on_withdrawal_request_initiated_exit_validator(spec, state):
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
     # Initiate exit earlier
     spec.initiate_validator_exit(state, validator_index)
-    withdrawal_request = prepare_withdrawal_request_2(
+    withdrawal_request = prepare_withdrawal_request_struct(
         spec, address, validator_pubkey, spec.FULL_EXIT_REQUEST_AMOUNT
     )
 
@@ -254,7 +264,7 @@ def test_activation_epoch_less_than_shard_committee_period(spec, state):
     validator_pubkey = state.validators[validator_index].pubkey
     address = b"\x22" * 20
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(
+    withdrawal_request = prepare_withdrawal_request_struct(
         spec, address, validator_pubkey, spec.FULL_EXIT_REQUEST_AMOUNT
     )
 
@@ -277,7 +287,7 @@ def test_unknown_pubkey(spec, state):
     address = b"\x22" * 20
     validator_pubkey = spec.BLSPubkey(b"\x23" * 48)
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(
+    withdrawal_request = prepare_withdrawal_request_struct(
         spec, address, validator_pubkey, spec.FULL_EXIT_REQUEST_AMOUNT
     )
 
@@ -302,7 +312,7 @@ def test_basic_partial_withdrawal_request(spec, state):
     state.balances[validator_index] += amount
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     yield from run_withdrawal_request_processing(
         spec,
@@ -329,7 +339,7 @@ def test_basic_partial_withdrawal_request_higher_excess_balance(spec, state):
     state.balances[validator_index] += 2 * amount
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     yield from run_withdrawal_request_processing(
         spec,
@@ -357,7 +367,7 @@ def test_basic_partial_withdrawal_request_lower_than_excess_balance(spec, state)
     state.balances[validator_index] += excess_balance
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     yield from run_withdrawal_request_processing(
         spec,
@@ -382,11 +392,15 @@ def test_partial_withdrawal_request_with_pending_withdrawals(spec, state):
     amount = spec.EFFECTIVE_BALANCE_INCREMENT
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     # Add pending withdrawals
-    partial_withdrawal = spec.PendingPartialWithdrawal(
-        validator_index=validator_index, amount=amount, withdrawable_epoch=current_epoch
+    partial_withdrawal = prepare_pending_withdrawal_struct(
+        spec,
+        state,
+        validator_index=validator_index,
+        amount=amount,
+        withdrawable_epoch=current_epoch,
     )
     state.pending_partial_withdrawals = [partial_withdrawal] * 2
 
@@ -416,10 +430,12 @@ def test_partial_withdrawal_request_with_pending_withdrawals_and_high_amount(spe
     amount = spec.UINT64_MAX
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     # Add many pending withdrawals
-    partial_withdrawal = spec.PendingPartialWithdrawal(
+    partial_withdrawal = prepare_pending_withdrawal_struct(
+        spec,
+        state,
         validator_index=validator_index,
         amount=spec.EFFECTIVE_BALANCE_INCREMENT,
         withdrawable_epoch=current_epoch,
@@ -453,7 +469,7 @@ def test_partial_withdrawal_request_with_high_balance(spec, state):
     state.validators[validator_index].effective_balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     churn_limit = spec.get_activation_exit_churn_limit(state)
 
@@ -484,7 +500,7 @@ def test_partial_withdrawal_request_with_high_amount(spec, state):
     state.balances[validator_index] += 1
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     yield from run_withdrawal_request_processing(
         spec,
@@ -511,7 +527,7 @@ def test_partial_withdrawal_request_with_low_amount(spec, state):
     state.balances[validator_index] += amount
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     yield from run_withdrawal_request_processing(
         spec,
@@ -540,11 +556,11 @@ def test_partial_withdrawal_queue_full(spec, state):
     # Ensure that the validator has sufficient excess balance
     state.balances[validator_index] += 2 * amount
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     # Fill the partial withdrawal queue to the max
-    partial_withdrawal = spec.PendingPartialWithdrawal(
-        validator_index=1, amount=1, withdrawable_epoch=current_epoch
+    partial_withdrawal = prepare_pending_withdrawal_struct(
+        spec, state, validator_index=1, amount=1, withdrawable_epoch=current_epoch
     )
     state.pending_partial_withdrawals = [
         partial_withdrawal
@@ -566,7 +582,7 @@ def test_no_compounding_credentials(spec, state):
     state.balances[validator_index] += 2 * amount
 
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     yield from run_withdrawal_request_processing(
         spec,
@@ -588,7 +604,7 @@ def test_no_excess_balance(spec, state):
     amount = spec.EFFECTIVE_BALANCE_INCREMENT
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     yield from run_withdrawal_request_processing(spec, state, withdrawal_request, success=False)
 
@@ -607,11 +623,15 @@ def test_pending_withdrawals_consume_all_excess_balance(spec, state):
     state.balances[validator_index] += 10 * amount
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     # Add pending withdrawals totalling an amount equal to the excess balance
-    partial_withdrawal = spec.PendingPartialWithdrawal(
-        validator_index=validator_index, amount=amount, withdrawable_epoch=current_epoch
+    partial_withdrawal = prepare_pending_withdrawal_struct(
+        spec,
+        state,
+        validator_index=validator_index,
+        amount=amount,
+        withdrawable_epoch=current_epoch,
     )
     state.pending_partial_withdrawals = [partial_withdrawal] * 10
 
@@ -634,7 +654,7 @@ def test_insufficient_effective_balance(spec, state):
     state.balances[validator_index] += spec.EFFECTIVE_BALANCE_INCREMENT
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     yield from run_withdrawal_request_processing(
         spec,
@@ -660,7 +680,7 @@ def test_partial_withdrawal_incorrect_source_address(spec, state):
     state.balances[validator_index] += 2 * amount
 
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(
+    withdrawal_request = prepare_withdrawal_request_struct(
         spec, incorrect_address, validator_pubkey, amount
     )
 
@@ -685,7 +705,7 @@ def test_partial_withdrawal_incorrect_withdrawal_credential_prefix(spec, state):
     state.validators[validator_index].withdrawal_credentials = (
         spec.BLS_WITHDRAWAL_PREFIX + state.validators[validator_index].withdrawal_credentials[1:]
     )
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     yield from run_withdrawal_request_processing(spec, state, withdrawal_request, success=False)
 
@@ -706,7 +726,7 @@ def test_partial_withdrawal_on_exit_initiated_validator(spec, state):
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
     # Initiate exit earlier
     spec.initiate_validator_exit(state, validator_index)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     yield from run_withdrawal_request_processing(spec, state, withdrawal_request, success=False)
 
@@ -722,7 +742,7 @@ def test_partial_withdrawal_activation_epoch_less_than_shard_committee_period(sp
     amount = spec.EFFECTIVE_BALANCE_INCREMENT
     state.balances[validator_index] += 2 * amount
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     assert spec.get_current_epoch(state) < (
         state.validators[validator_index].activation_epoch + spec.config.SHARD_COMMITTEE_PERIOD
@@ -744,7 +764,7 @@ def test_insufficient_balance(spec, state):
 
     # Validator will not be able to partial withdrawal because MIN_ACTIVATION_BALANCE + amount > balance
     set_compounding_withdrawal_credential(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(spec, address, validator_pubkey, amount)
+    withdrawal_request = prepare_withdrawal_request_struct(spec, address, validator_pubkey, amount)
 
     yield from run_withdrawal_request_processing(
         spec,
@@ -766,14 +786,16 @@ def test_full_exit_request_has_partial_withdrawal(spec, state):
     validator_pubkey = state.validators[validator_index].pubkey
     address = b"\x22" * 20
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(
+    withdrawal_request = prepare_withdrawal_request_struct(
         spec, address, validator_pubkey, spec.FULL_EXIT_REQUEST_AMOUNT
     )
 
     # Validator can only be exited if there's no pending partial withdrawals in state
     state.balances[validator_index] = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     state.pending_partial_withdrawals.append(
-        spec.PendingPartialWithdrawal(
+        prepare_pending_withdrawal_struct(
+            spec,
+            state,
             validator_index=validator_index,
             amount=1,
             withdrawable_epoch=spec.compute_activation_exit_epoch(current_epoch),
@@ -795,7 +817,7 @@ def test_incorrect_inactive_validator(spec, state):
     validator_pubkey = state.validators[validator_index].pubkey
     address = b"\x22" * 20
     set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
-    withdrawal_request = prepare_withdrawal_request_2(
+    withdrawal_request = prepare_withdrawal_request_struct(
         spec, address, validator_pubkey, spec.FULL_EXIT_REQUEST_AMOUNT
     )
 

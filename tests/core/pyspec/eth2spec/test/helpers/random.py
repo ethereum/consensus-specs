@@ -5,10 +5,12 @@ from eth2spec.test.helpers.deposits import mock_deposit
 from eth2spec.test.helpers.forks import (
     is_post_altair,
     is_post_electra,
-    is_post_gloas,
 )
 from eth2spec.test.helpers.state import next_epoch
-from eth2spec.test.helpers.withdrawals import set_compounding_withdrawal_credential_with_balance
+from eth2spec.test.helpers.withdrawals import (
+    prepare_pending_withdrawal_struct,
+    set_compounding_withdrawal_credential_with_balance,
+)
 
 
 def set_some_activations(spec, state, rng, activation_epoch=None):
@@ -237,18 +239,13 @@ def set_some_pending_partial_withdrawals(spec, state, rng):
             amount = spec.EFFECTIVE_BALANCE_INCREMENT * rng.randint(1, 4)
             withdrawable_epoch = current_epoch + rng.randint(0, 3)
 
-            if is_post_gloas(spec):
-                pending_withdrawal = spec.PendingPartialWithdrawal(
-                    pubkey=state.validators[index].pubkey,
-                    amount=amount,
-                    withdrawable_epoch=withdrawable_epoch,
-                )
-            else:
-                pending_withdrawal = spec.PendingPartialWithdrawal(
-                    validator_index=index,
-                    amount=amount,
-                    withdrawable_epoch=withdrawable_epoch,
-                )
+            pending_withdrawal = prepare_pending_withdrawal_struct(
+                spec,
+                state,
+                validator_index=index,
+                amount=amount,
+                withdrawable_epoch=withdrawable_epoch,
+            )
 
             state.pending_partial_withdrawals.append(pending_withdrawal)
             withdrawal_indices.append(index)

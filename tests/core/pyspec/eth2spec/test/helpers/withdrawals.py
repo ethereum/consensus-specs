@@ -173,22 +173,38 @@ def prepare_pending_withdrawal(
         spec, state, validator_index, effective_balance, balance
     )
 
+    withdrawal = prepare_pending_withdrawal_struct(
+        spec,
+        state,
+        validator_index=validator_index,
+        amount=amount,
+        withdrawable_epoch=withdrawable_epoch,
+    )
+
+    state.pending_partial_withdrawals.append(withdrawal)
+
+    return withdrawal
+
+
+def prepare_pending_withdrawal_struct(
+    spec,
+    state,
+    validator_index,
+    amount,
+    withdrawable_epoch,
+):
     if is_post_gloas(spec):
-        withdrawal = spec.PendingPartialWithdrawal(
+        return spec.PendingPartialWithdrawal(
             pubkey=state.validators[validator_index].pubkey,
             amount=amount,
             withdrawable_epoch=withdrawable_epoch,
         )
     else:
-        withdrawal = spec.PendingPartialWithdrawal(
+        return spec.PendingPartialWithdrawal(
             validator_index=validator_index,
             amount=amount,
             withdrawable_epoch=withdrawable_epoch,
         )
-
-    state.pending_partial_withdrawals.append(withdrawal)
-
-    return withdrawal
 
 
 def prepare_withdrawal_request(spec, state, validator_index, address=None, amount=None):
@@ -213,7 +229,7 @@ def prepare_withdrawal_request(spec, state, validator_index, address=None, amoun
         )
 
 
-def prepare_withdrawal_request_2(spec, source_address, pubkey, amount):
+def prepare_withdrawal_request_struct(spec, source_address, pubkey, amount):
     if is_post_gloas(spec):
         return spec.WithdrawalRequest(
             source_address=source_address,

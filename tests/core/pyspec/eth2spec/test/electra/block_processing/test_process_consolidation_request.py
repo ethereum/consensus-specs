@@ -10,6 +10,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.withdrawals import (
+    prepare_pending_withdrawal_struct,
     set_compounding_withdrawal_credential,
     set_compounding_withdrawal_credential_with_balance,
     set_eth1_withdrawal_credential_with_balance,
@@ -1119,8 +1120,8 @@ def test_incorrect_source_has_pending_withdrawal(spec, state):
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Create pending withdrawal
-    pending_withdrawal = spec.PendingPartialWithdrawal(
-        validator_index=0, amount=excess_balance, withdrawable_epoch=current_epoch
+    pending_withdrawal = prepare_pending_withdrawal_struct(
+        spec, state, validator_index=0, amount=excess_balance, withdrawable_epoch=current_epoch
     )
     state.pending_partial_withdrawals.append(pending_withdrawal)
 

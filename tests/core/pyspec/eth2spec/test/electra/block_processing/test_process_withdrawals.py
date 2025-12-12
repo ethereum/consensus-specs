@@ -14,6 +14,7 @@ from eth2spec.test.helpers.state import (
 from eth2spec.test.helpers.withdrawals import (
     prepare_expected_withdrawals,
     prepare_pending_withdrawal,
+    prepare_pending_withdrawal_struct,
     run_withdrawals_processing,
     set_compounding_withdrawal_credential_with_balance,
 )
@@ -211,7 +212,11 @@ def test_pending_withdrawals_exiting_validator(spec, state):
     validator_index = len(state.validators) // 2
 
     pending_withdrawal = prepare_pending_withdrawal(spec, state, validator_index)
-    spec.initiate_validator_exit(state, pending_withdrawal.validator_index)
+    if is_post_gloas(spec):
+        index = spec.get_validator_index(state, pending_withdrawal.pubkey)
+        spec.initiate_validator_exit(state, index)
+    else:
+        spec.initiate_validator_exit(state, pending_withdrawal.validator_index)
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -267,7 +272,11 @@ def test_pending_withdrawals_low_effective_balance(spec, state):
     validator_index = len(state.validators) // 2
 
     pending_withdrawal = prepare_pending_withdrawal(spec, state, validator_index)
-    state.validators[pending_withdrawal.validator_index].effective_balance = (
+    if is_post_gloas(spec):
+        validator_index = spec.get_validator_index(state, pending_withdrawal.pubkey)
+    else:
+        validator_index = pending_withdrawal.validator_index
+    state.validators[validator_index].effective_balance = (
         spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
     )
 
@@ -326,7 +335,11 @@ def test_pending_withdrawals_no_excess_balance(spec, state):
     validator_index = len(state.validators) // 2
 
     pending_withdrawal = prepare_pending_withdrawal(spec, state, validator_index)
-    state.balances[pending_withdrawal.validator_index] = spec.MIN_ACTIVATION_BALANCE
+    if is_post_gloas(spec):
+        validator_index = spec.get_validator_index(state, pending_withdrawal.pubkey)
+    else:
+        validator_index = pending_withdrawal.validator_index
+    state.balances[validator_index] = spec.MIN_ACTIVATION_BALANCE
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -884,7 +897,9 @@ def test_pending_withdrawals_two_partial_withdrawals_same_validator_1(spec, stat
     )
 
     # Add two pending withdrawals of 1 ETH each to the queue
-    withdrawal = spec.PendingPartialWithdrawal(
+    withdrawal = prepare_pending_withdrawal_struct(
+        spec,
+        state,
         validator_index=validator_index,
         amount=spec.Gwei(1_000_000_000),
         withdrawable_epoch=spec.get_current_epoch(state),
@@ -927,7 +942,9 @@ def test_pending_withdrawals_two_partial_withdrawals_same_validator_2(spec, stat
     )
 
     # Add two pending withdrawals of 1008 ETH each to the queue
-    withdrawal = spec.PendingPartialWithdrawal(
+    withdrawal = prepare_pending_withdrawal_struct(
+        spec,
+        state,
         validator_index=validator_index,
         amount=spec.Gwei(1008_000_000_000),
         withdrawable_epoch=spec.get_current_epoch(state),
