@@ -107,8 +107,9 @@ def get_random_attester_slashings(spec, state, rng, slashed_indices=[]):
     return slashings
 
 
-def get_random_attestations(spec, state, rng):
-    num_attestations = rng.randrange(1, get_max_attestations(spec))
+def get_random_attestations(spec, state, rng, num_attestations=None):
+    if num_attestations is None:
+        num_attestations = rng.randrange(1, get_max_attestations(spec))
 
     attestations = [
         get_valid_attestation(
