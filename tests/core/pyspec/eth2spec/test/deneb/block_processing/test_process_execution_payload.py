@@ -36,7 +36,7 @@ def run_execution_payload_processing(
             payload=execution_payload,
             blob_kzg_commitments=blob_kzg_commitments,
             slot=state.slot,
-            builder_index=spec.get_beacon_proposer_index(state),
+            builder_index=spec.BUILDER_INDEX_SELF_BUILD,
         )
         kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
             blob_kzg_commitments
@@ -58,10 +58,6 @@ def run_execution_payload_processing(
         ]
         amount = payment.withdrawal.amount
         if amount > 0:
-            exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(post_state, amount)
-            payment.withdrawal.withdrawable_epoch = spec.Epoch(
-                exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-            )
             post_state.builder_pending_withdrawals.append(payment.withdrawal)
         post_state.builder_pending_payments[
             spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH

@@ -43,12 +43,11 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
 
     # TODO: forcefully exit any existing 0x03 validator
 
-    validator_pubkeys = [v.pubkey for v in pre.validators]
     new_pending_partial_withdrawals = []
     for pending_partial_withdrawal in pre.pending_partial_withdrawals:
         new_pending_partial_withdrawals.append(
             PendingPartialWithdrawal(
-                pubkey=validator_pubkeys.index(pending_partial_withdrawal.validator_index),
+                pubkey=pre.validators[pending_partial_withdrawal.validator_index].pubkey,
                 amount=pending_partial_withdrawal.amount,
                 withdrawable_epoch=pending_partial_withdrawal.withdrawable_epoch,
             )

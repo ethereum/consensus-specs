@@ -218,7 +218,6 @@ def test_process_execution_payload_bid_valid_builder(spec, state):
     pending_payment = state.builder_pending_payments[slot_index]
     assert pending_payment.withdrawal.amount == value
     assert pending_payment.withdrawal.builder_index == builder_index
-    assert pending_payment.withdrawal.withdrawable_epoch == spec.FAR_FUTURE_EPOCH
     assert pending_payment.weight == 0
 
     # Verify pending payments count increased by 1
@@ -501,7 +500,6 @@ def test_process_execution_payload_bid_excess_balance(spec, state):
     pending_payment = state.builder_pending_payments[slot_index]
     assert pending_payment.withdrawal.amount == bid_value
     assert pending_payment.withdrawal.builder_index == builder_index
-    assert pending_payment.withdrawal.withdrawable_epoch == spec.FAR_FUTURE_EPOCH
     assert pending_payment.weight == 0
 
     # Verify pending payments count increased by 1
@@ -610,7 +608,6 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_payments(
     pending_payment = state.builder_pending_payments[slot_index_new]
     assert pending_payment.withdrawal.amount == bid_amount
     assert pending_payment.withdrawal.builder_index == builder_index
-    assert pending_payment.withdrawal.withdrawable_epoch == spec.FAR_FUTURE_EPOCH
     assert pending_payment.weight == 0
 
     # Verify pending payments count increased by 1 (now we have 2 total)
@@ -716,7 +713,6 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_withdrawa
     pending_payment = state.builder_pending_payments[slot_index_new]
     assert pending_payment.withdrawal.amount == bid_amount
     assert pending_payment.withdrawal.builder_index == builder_index
-    assert pending_payment.withdrawal.withdrawable_epoch == spec.FAR_FUTURE_EPOCH
     assert pending_payment.weight == 0
 
     # Verify pending payments count increased by 1

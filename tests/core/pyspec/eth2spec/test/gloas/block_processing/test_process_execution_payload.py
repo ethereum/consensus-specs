@@ -74,7 +74,7 @@ def prepare_execution_payload_envelope(
     Note: This should be called AFTER setting up the state with the committed bid.
     """
     if builder_index is None:
-        builder_index = spec.get_beacon_proposer_index(state)
+        builder_index = spec.BUILDER_INDEX_SELF_BUILD
 
     if slot is None:
         slot = state.slot
@@ -152,6 +152,7 @@ def prepare_execution_payload_envelope(
         if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
             signature = spec.bls.G2_POINT_AT_INFINITY
         else:
+            print(envelope.builder_index)
             privkey = builder_privkeys[envelope.builder_index]
             signature = spec.get_execution_payload_envelope_signature(
                 state,
