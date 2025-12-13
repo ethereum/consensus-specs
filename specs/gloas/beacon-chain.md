@@ -250,7 +250,7 @@ class ExecutionPayloadBid(Container):
     prev_randao: Bytes32
     fee_recipient: ExecutionAddress
     gas_limit: uint64
-    builder_index: ValidatorIndex
+    builder_index: BuilderIndex
     slot: Slot
     value: Gwei
     execution_payment: Gwei
