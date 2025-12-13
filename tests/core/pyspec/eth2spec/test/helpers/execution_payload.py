@@ -13,7 +13,7 @@ from eth2spec.test.helpers.forks import (
     is_post_electra,
     is_post_gloas,
 )
-from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.keys import builder_privkeys
 from eth2spec.test.helpers.withdrawals import get_expected_withdrawals
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
@@ -191,17 +191,29 @@ def compute_el_header_block_hash(
 
 
 # https://eips.ethereum.org/EIPS/eip-4895
-def get_withdrawal_rlp(withdrawal):
-    withdrawal_rlp = [
-        # index
-        (big_endian_int, withdrawal.index),
-        # validator_index
-        (big_endian_int, withdrawal.validator_index),
-        # address
-        (Binary(20, 20), withdrawal.address),
-        # amount
-        (big_endian_int, withdrawal.amount),
-    ]
+def get_withdrawal_rlp(spec, withdrawal):
+    if is_post_gloas(spec):
+        withdrawal_rlp = [
+            # index
+            (big_endian_int, withdrawal.index),
+            # pubkey
+            (Binary(48, 48), withdrawal.pubkey),
+            # address
+            (Binary(20, 20), withdrawal.address),
+            # amount
+            (big_endian_int, withdrawal.amount),
+        ]
+    else:
+        withdrawal_rlp = [
+            # index
+            (big_endian_int, withdrawal.index),
+            # validator_index
+            (big_endian_int, withdrawal.validator_index),
+            # address
+            (Binary(20, 20), withdrawal.address),
+            # amount
+            (big_endian_int, withdrawal.amount),
+        ]
 
     sedes = List([schema for schema, _ in withdrawal_rlp])
     values = [value for _, value in withdrawal_rlp]
@@ -228,13 +240,21 @@ def get_deposit_request_rlp_bytes(deposit_request):
 
 
 # https://eips.ethereum.org/EIPS/eip-7002
-def get_withdrawal_request_rlp_bytes(withdrawal_request):
-    withdrawal_request_rlp = [
-        # source_address
-        (Binary(20, 20), withdrawal_request.source_address),
-        # validator_pubkey
-        (Binary(48, 48), withdrawal_request.validator_pubkey),
-    ]
+def get_withdrawal_request_rlp_bytes(spec, withdrawal_request):
+    if is_post_gloas(spec):
+        withdrawal_request_rlp = [
+            # source_address
+            (Binary(20, 20), withdrawal_request.source_address),
+            # pubkey
+            (Binary(48, 48), withdrawal_request.pubkey),
+        ]
+    else:
+        withdrawal_request_rlp = [
+            # source_address
+            (Binary(20, 20), withdrawal_request.source_address),
+            # validator_pubkey
+            (Binary(48, 48), withdrawal_request.validator_pubkey),
+        ]
 
     sedes = List([schema for schema, _ in withdrawal_request_rlp])
     values = [value for _, value in withdrawal_request_rlp]
@@ -266,7 +286,9 @@ def compute_el_block_hash_with_new_fields(spec, payload, parent_beacon_block_roo
     withdrawals_trie_root = None
 
     if is_post_capella(spec):
-        withdrawals_encoded = [get_withdrawal_rlp(withdrawal) for withdrawal in payload.withdrawals]
+        withdrawals_encoded = [
+            get_withdrawal_rlp(spec, withdrawal) for withdrawal in payload.withdrawals
+        ]
         withdrawals_trie_root = compute_trie_root_from_indexed_data(withdrawals_encoded)
     if not is_post_deneb(spec):
         parent_beacon_block_root = None
@@ -318,7 +340,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
     parent_block_root = hash_tree_root(state.latest_block_header)
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
     # Use self-build: builder_index is the same as the beacon proposer index
-    builder_index = spec.get_beacon_proposer_index(state)
+    builder_index = spec.BUILDER_INDEX_SELF_BUILD
     # Set block_hash to a different value than spec.Hash32(),
     # to distinguish it from the genesis block hash and have
     # is_parent_node_full correctly return False
@@ -342,13 +364,12 @@ def build_empty_signed_execution_payload_bid(spec, state):
     if not is_post_gloas(spec):
         return
     message = build_empty_post_gloas_execution_payload_bid(spec, state)
-    proposer_index = spec.get_beacon_proposer_index(state)
 
     # For self-builds, use point at infinity signature as per spec
-    if message.builder_index == proposer_index:
+    if message.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
         signature = spec.G2_POINT_AT_INFINITY
     else:
-        privkey = privkeys[message.builder_index]
+        privkey = builder_privkeys[message.builder_index]
         signature = spec.get_execution_payload_bid_signature(state, message, privkey)
 
     return spec.SignedExecutionPayloadBid(

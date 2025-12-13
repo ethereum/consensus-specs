@@ -4,6 +4,9 @@ from eth2spec.test.context import (
     with_presets,
 )
 from eth2spec.test.helpers.constants import MAINNET
+from eth2spec.test.helpers.forks import (
+    is_post_gloas,
+)
 from eth2spec.test.helpers.keys import pubkey_to_privkey
 from eth2spec.test.helpers.voluntary_exits import (
     run_voluntary_exit_processing,
@@ -386,12 +389,21 @@ def test_invalid_validator_has_pending_withdrawal(spec, state):
     )
     signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, privkey)
 
-    state.pending_partial_withdrawals.append(
-        spec.PendingPartialWithdrawal(
-            validator_index=validator_index,
-            amount=1,
-            withdrawable_epoch=spec.compute_activation_exit_epoch(current_epoch),
+    if is_post_gloas(spec):
+        state.pending_partial_withdrawals.append(
+            spec.PendingPartialWithdrawal(
+                pubkey=state.validators[validator_index].pubkey,
+                amount=1,
+                withdrawable_epoch=spec.compute_activation_exit_epoch(current_epoch),
+            )
         )
-    )
+    else:
+        state.pending_partial_withdrawals.append(
+            spec.PendingPartialWithdrawal(
+                validator_index=validator_index,
+                amount=1,
+                withdrawable_epoch=spec.compute_activation_exit_epoch(current_epoch),
+            )
+        )
 
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)
