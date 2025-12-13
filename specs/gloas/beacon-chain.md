@@ -1430,10 +1430,8 @@ def get_builder_from_deposit(
     return Builder(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
-        effective_balance=amount,
-        slashed=False,
+        balance=amount,
         exit_epoch=FAR_FUTURE_EPOCH,
-        withdrawable_epoch=FAR_FUTURE_EPOCH,
     )
 ```
 
