@@ -20,7 +20,7 @@ from eth2spec.test.helpers.execution_payload import (
     get_execution_payload_header,
 )
 from eth2spec.test.helpers.forks import is_post_gloas
-from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.keys import builder_privkeys
 from eth2spec.test.helpers.state import next_slot
 
 
@@ -45,12 +45,15 @@ def run_execution_payload_processing(
         post_state = state.copy()
         post_state.latest_block_hash = execution_payload.block_hash
         envelope.state_root = post_state.hash_tree_root()
-        privkey = privkeys[envelope.builder_index]
-        signature = spec.get_execution_payload_envelope_signature(
-            state,
-            envelope,
-            privkey,
-        )
+        if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
+            signature = spec.bls.G2_POINT_AT_INFINITY
+        else:
+            privkey = builder_privkeys[envelope.builder_index]
+            signature = spec.get_execution_payload_envelope_signature(
+                state,
+                envelope,
+                privkey,
+            )
         signed_envelope = spec.SignedExecutionPayloadEnvelope(
             message=envelope,
             signature=signature,

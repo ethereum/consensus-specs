@@ -271,7 +271,7 @@ class SignedExecutionPayloadBid(Container):
 class ExecutionPayloadEnvelope(Container):
     payload: ExecutionPayload
     execution_requests: ExecutionRequests
-    builder_index: ValidatorIndex
+    builder_index: BuilderIndex
     beacon_block_root: Root
     slot: Slot
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
@@ -1630,7 +1630,10 @@ def process_execution_payload(
 
     # Verify signature
     if verify:
-        assert verify_execution_payload_envelope_signature(state, signed_envelope)
+        if signed_envelope.message.builder_index == BUILDER_INDEX_SELF_BUILD:
+            assert signed_envelope.signature == bls.G2_POINT_AT_INFINITY
+        else:
+            assert verify_execution_payload_envelope_signature(state, signed_envelope)
 
     # Cache latest block header state root
     previous_state_root = hash_tree_root(state)

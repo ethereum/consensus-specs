@@ -6,7 +6,7 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
 )
-from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.keys import builder_privkeys
 
 
 def run_execution_payload_processing(
@@ -149,8 +149,15 @@ def prepare_execution_payload_envelope(
     )
 
     if valid_signature:
-        privkey = privkeys[builder_index]
-        signature = spec.get_execution_payload_envelope_signature(state, envelope, privkey)
+        if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
+            signature = spec.bls.G2_POINT_AT_INFINITY
+        else:
+            privkey = builder_privkeys[envelope.builder_index]
+            signature = spec.get_execution_payload_envelope_signature(
+                state,
+                envelope,
+                privkey,
+            )
     else:
         # Invalid signature
         signature = spec.BLSSignature()
@@ -252,7 +259,7 @@ def test_process_execution_payload_valid(spec, state):
     assert len(state.builder_pending_withdrawals) == pre_pending_withdrawals_len + 1
     new_withdrawal = state.builder_pending_withdrawals[len(state.builder_pending_withdrawals) - 1]
     assert new_withdrawal.amount == pre_payment.withdrawal.amount
-    assert new_withdrawal.pubkey == state.builders[builder_index].pubkey
+    assert new_withdrawal.builder_index == builder_index
     assert new_withdrawal.fee_recipient == pre_payment.withdrawal.fee_recipient
 
     # Verify pending payment was cleared
@@ -263,7 +270,7 @@ def test_process_execution_payload_valid(spec, state):
     empty_payment = spec.BuilderPendingPayment()
     assert cleared_payment.weight == empty_payment.weight
     assert cleared_payment.withdrawal.amount == empty_payment.withdrawal.amount
-    assert cleared_payment.withdrawal.pubkey == empty_payment.withdrawal.pubkey
+    assert cleared_payment.withdrawal.builder_index == empty_payment.withdrawal.builder_index
 
 
 @with_gloas_and_later
@@ -341,13 +348,6 @@ def test_process_execution_payload_large_payment_churn_impact(spec, state):
     ]
     pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
 
-    # Pre-compute expected withdrawable epoch before processing
-    state_copy = state.copy()
-    exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(
-        state_copy, pre_payment.withdrawal.amount
-    )
-    expected_withdrawable_epoch = exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-
     yield from run_execution_payload_processing(spec, state, signed_envelope)
 
     # Verify builder payment was processed correctly
@@ -356,7 +356,6 @@ def test_process_execution_payload_large_payment_churn_impact(spec, state):
     assert new_withdrawal.amount == pre_payment.withdrawal.amount
     assert new_withdrawal.builder_index == builder_index
     assert new_withdrawal.fee_recipient == pre_payment.withdrawal.fee_recipient
-    assert new_withdrawal.withdrawable_epoch == expected_withdrawable_epoch
 
     # Verify pending payment was cleared
     cleared_payment = state.builder_pending_payments[
@@ -411,13 +410,6 @@ def test_process_execution_payload_with_blob_commitments(spec, state):
     ]
     pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
 
-    # Pre-compute expected withdrawable epoch before processing
-    state_copy = state.copy()
-    exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(
-        state_copy, pre_payment.withdrawal.amount
-    )
-    expected_withdrawable_epoch = exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-
     yield from run_execution_payload_processing(spec, state, signed_envelope)
 
     # Verify builder payment was processed correctly
@@ -427,7 +419,6 @@ def test_process_execution_payload_with_blob_commitments(spec, state):
     assert new_withdrawal.amount == pre_payment.withdrawal.amount
     assert new_withdrawal.builder_index == builder_index
     assert new_withdrawal.fee_recipient == pre_payment.withdrawal.fee_recipient
-    assert new_withdrawal.withdrawable_epoch == expected_withdrawable_epoch
 
     # Verify pending payment was cleared
     cleared_payment = state.builder_pending_payments[
@@ -467,7 +458,7 @@ def test_process_execution_payload_with_execution_requests(spec, state):
             [
                 spec.WithdrawalRequest(
                     source_address=spec.ExecutionAddress(b"\x04" * 20),
-                    validator_pubkey=spec.BLSPubkey(b"\x05" * 48),
+                    pubkey=spec.BLSPubkey(b"\x05" * 48),
                     amount=spec.Gwei(16000000000),  # 16 ETH
                 )
             ]
@@ -505,13 +496,6 @@ def test_process_execution_payload_with_execution_requests(spec, state):
     ]
     pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
 
-    # Pre-compute expected withdrawable epoch for builder payment before processing
-    state_copy = state.copy()
-    exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(
-        state_copy, pre_payment.withdrawal.amount
-    )
-    expected_withdrawable_epoch = exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-
     yield from run_execution_payload_processing(spec, state, signed_envelope)
 
     # Verify deposit request was processed - deposits are always added to pending queue
@@ -528,7 +512,6 @@ def test_process_execution_payload_with_execution_requests(spec, state):
     assert new_withdrawal.amount == pre_payment.withdrawal.amount
     assert new_withdrawal.builder_index == builder_index
     assert new_withdrawal.fee_recipient == pre_payment.withdrawal.fee_recipient
-    assert new_withdrawal.withdrawable_epoch == expected_withdrawable_epoch
 
     # Verify pending payment was cleared
     cleared_payment = state.builder_pending_payments[
