@@ -15,7 +15,7 @@ from eth2spec.test.helpers.execution_payload import (
     get_execution_payload_header,
 )
 from eth2spec.test.helpers.forks import is_post_gloas
-from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.keys import builder_privkeys
 
 
 def run_execution_payload_processing(
@@ -36,7 +36,7 @@ def run_execution_payload_processing(
             payload=execution_payload,
             blob_kzg_commitments=blob_kzg_commitments,
             slot=state.slot,
-            builder_index=spec.get_beacon_proposer_index(state),
+            builder_index=spec.BUILDER_INDEX_SELF_BUILD,
         )
         kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
             blob_kzg_commitments
@@ -58,10 +58,6 @@ def run_execution_payload_processing(
         ]
         amount = payment.withdrawal.amount
         if amount > 0:
-            exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(post_state, amount)
-            payment.withdrawal.withdrawable_epoch = spec.Epoch(
-                exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-            )
             post_state.builder_pending_withdrawals.append(payment.withdrawal)
         post_state.builder_pending_payments[
             spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
@@ -70,12 +66,15 @@ def run_execution_payload_processing(
         post_state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] = 0b1
         post_state.latest_block_hash = execution_payload.block_hash
         envelope.state_root = post_state.hash_tree_root()
-        privkey = privkeys[envelope.builder_index]
-        signature = spec.get_execution_payload_envelope_signature(
-            state,
-            envelope,
-            privkey,
-        )
+        if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
+            signature = spec.bls.G2_POINT_AT_INFINITY
+        else:
+            privkey = builder_privkeys[envelope.builder_index]
+            signature = spec.get_execution_payload_envelope_signature(
+                state,
+                envelope,
+                privkey,
+            )
         signed_envelope = spec.SignedExecutionPayloadEnvelope(
             message=envelope,
             signature=signature,
