@@ -1233,21 +1233,6 @@ def process_withdrawal_request_for_builder(
         if pending_balance_to_withdraw == 0:
             initiate_builder_exit(state, builder_index)
         return
-
-    has_excess_balance = builder.balance > MIN_DEPOSIT_AMOUNT + pending_balance_to_withdraw
-
-    if has_excess_balance:
-        to_withdraw = min(
-            builder.balance - MIN_DEPOSIT_AMOUNT - pending_balance_to_withdraw,
-            withdrawal_request.amount,
-        )
-        state.pending_partial_withdrawals.append(
-            PendingPartialWithdrawal(
-                pubkey=builder.pubkey,
-                amount=to_withdraw,
-                withdrawable_epoch=get_current_epoch(state),
-            )
-        )
 ```
 
 ###### New `process_withdrawal_request_for_validator`
