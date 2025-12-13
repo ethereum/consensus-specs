@@ -371,7 +371,8 @@ def get_sweep_withdrawals(
     withdrawals: List[Withdrawal] = []
     for _ in range(validators_limit):
         all_withdrawals = prior_withdrawals + withdrawals
-        if len(all_withdrawals) == withdrawals_limit:
+        has_reached_limit = len(all_withdrawals) == withdrawals_limit
+        if has_reached_limit:
             break
 
         validator = state.validators[validator_index]
