@@ -1120,8 +1120,7 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
         assert amount != 0
         assert verify_execution_payload_bid_signature(state, signed_bid)
         builder = state.builders[builder_index]
-        assert builder.exit_epoch != FAR_FUTURE_EPOCH
-
+        assert builder.exit_epoch == FAR_FUTURE_EPOCH
         # Check that the builder has funds to cover the bid
         pending_withdrawals = get_pending_balance_to_withdraw_for_builder(state, builder_index)
         assert builder.balance >= amount + pending_withdrawals + MIN_DEPOSIT_AMOUNT
