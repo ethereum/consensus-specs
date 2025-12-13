@@ -40,7 +40,6 @@
   - [Predicates](#predicates)
     - [New `is_builder`](#new-is_builder)
     - [New `is_validator`](#new-is_validator)
-    - [`is_active_builder`](#is_active_builder)
     - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
     - [New `has_builder_withdrawal_credential`](#new-has_builder_withdrawal_credential)
     - [Modified `has_compounding_withdrawal_credential`](#modified-has_compounding_withdrawal_credential)
@@ -434,16 +433,6 @@ def is_builder(state: BeaconState, pubkey: BLSPubkey) -> bool:
 def is_validator(state: BeaconState, pubkey: BLSPubkey) -> bool:
     validator_pubkeys = [v.pubkey for v in state.validators]
     return pubkey in validator_pubkeys
-```
-
-#### `is_active_builder`
-
-```python
-def is_active_builder(builder: Builder, epoch: Epoch) -> bool:
-    """
-    Check if ``builder`` is active.
-    """
-    return epoch < builder.exit_epoch
 ```
 
 #### New `is_builder_withdrawal_credential`
@@ -976,7 +965,7 @@ def get_expected_withdrawals(
         if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
             break
         builder = state.builders[builder_index]
-        if not is_active_builder(builder, epoch) and builder.balance > 0:
+        if builder.exit_epoch <= epoch and builder.balance > 0:
             withdrawals.append(
                 Withdrawal(
                     index=withdrawal_index,
@@ -1118,7 +1107,6 @@ def verify_execution_payload_bid_signature(
 
 ```python
 def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> None:
-    epoch = get_current_epoch(state)
     signed_bid = block.body.signed_execution_payload_bid
     bid = signed_bid.message
     builder_index = bid.builder_index
@@ -1132,7 +1120,7 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
         assert amount != 0
         assert verify_execution_payload_bid_signature(state, signed_bid)
         builder = state.builders[builder_index]
-        assert is_active_builder(builder, epoch)
+        assert builder.exit_epoch == FAR_FUTURE_EPOCH
         # Check that the builder has funds to cover the bid
         pending_withdrawals = get_pending_balance_to_withdraw_for_builder(state, builder_index)
         assert builder.balance >= amount + pending_withdrawals + MIN_DEPOSIT_AMOUNT
@@ -1142,7 +1130,7 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
     # Verify that the bid is for the right parent block
     assert bid.parent_block_hash == state.latest_block_hash
     assert bid.parent_block_root == block.parent_root
-    assert bid.prev_randao == get_randao_mix(state, epoch)
+    assert bid.prev_randao == get_randao_mix(state, get_current_epoch(state))
 
     # Record the pending payment if there is some payment
     if amount > 0:
