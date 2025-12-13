@@ -1211,13 +1211,13 @@ def get_pending_partial_withdrawals(
     epoch: Epoch,
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
-    withdrawals: List[Withdrawal] = []
-    processed_count = 0
     withdrawals_limit = min(
         len(prior_withdrawals) + MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
         MAX_WITHDRAWALS_PER_PAYLOAD - 1,
     )
 
+    processed_count = 0
+    withdrawals: List[Withdrawal] = []
     for withdrawal in state.pending_partial_withdrawals:
         all_withdrawals = prior_withdrawals + withdrawals
         is_withdrawable = withdrawal.withdrawable_epoch <= epoch
@@ -1258,11 +1258,11 @@ def get_sweep_withdrawals(
     epoch: Epoch,
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
-    withdrawals: List[Withdrawal] = []
     validators_limit = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
-    processed_validators_sweep_count: uint64 = 0
 
+    processed_count: uint64 = 0
+    withdrawals: List[Withdrawal] = []
     for _ in range(validators_limit):
         all_withdrawals = prior_withdrawals + withdrawals
         if len(all_withdrawals) == withdrawals_limit:
@@ -1293,9 +1293,9 @@ def get_sweep_withdrawals(
             withdrawal_index += WithdrawalIndex(1)
 
         validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
-        processed_validators_sweep_count += 1
+        processed_count += 1
 
-    return withdrawals, withdrawal_index, processed_validators_sweep_count
+    return withdrawals, withdrawal_index, processed_count
 ```
 
 ##### Modified `get_expected_withdrawals`
