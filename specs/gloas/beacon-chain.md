@@ -124,9 +124,9 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 ### Index flags
 
-| Name                 | Value                |
-| -------------------- | -------------------- |
-| `BUILDER_INDEX_FLAG` | `0x0100000000000000` |
+| Name                 | Value           | Description                                                                                |
+| -------------------- | --------------- | ------------------------------------------------------------------------------------------ |
+| `BUILDER_INDEX_FLAG` | `uint64(2**40)` | Bitwise flag which indicates that a `ValidatorIndex` should be treated as a `BuilderIndex` |
 
 ### Domain types
 
@@ -420,15 +420,15 @@ def is_builder_index(validator_index: ValidatorIndex) -> bool:
 #### New `convert_builder_index_to_validator_index`
 
 ```python
-def convert_builder_index_to_validator_index(index: BuilderIndex) -> ValidatorIndex:
-    return ValidatorIndex(index | BUILDER_INDEX_FLAG)
+def convert_builder_index_to_validator_index(builder_index: BuilderIndex) -> ValidatorIndex:
+    return ValidatorIndex(builder_index | BUILDER_INDEX_FLAG)
 ```
 
 #### New `convert_validator_index_to_builder_index`
 
 ```python
-def convert_validator_index_to_builder_index(index: ValidatorIndex) -> BuilderIndex:
-    return BuilderIndex(index & ~BUILDER_INDEX_FLAG)
+def convert_validator_index_to_builder_index(validator_index: ValidatorIndex) -> BuilderIndex:
+    return BuilderIndex(validator_index & ~BUILDER_INDEX_FLAG)
 ```
 
 #### New `is_builder_withdrawal_credential`
