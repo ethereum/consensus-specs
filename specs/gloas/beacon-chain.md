@@ -1372,6 +1372,9 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
 
 ```python
 def get_index_for_new_builder(state: BeaconState) -> BuilderIndex:
+    for index, builder in enumerate(state.builders):
+        if builder.exit_epoch <= get_current_epoch(state) and builder.balance == 0:
+            return BuilderIndex(index)
     return BuilderIndex(len(state.builders))
 ```
 
