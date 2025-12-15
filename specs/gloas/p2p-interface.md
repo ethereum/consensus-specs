@@ -116,6 +116,7 @@ class ProposerPreferences(Container):
     validator_index: ValidatorIndex
     fee_recipient: ExecutionAddress
     gas_limit: uint64
+    trusted_payments_accepted: boolean
 ```
 
 #### New `SignedProposerPreferences`
