@@ -766,8 +766,8 @@ def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> No
     """
     Initiate the exit of the builder with index ``index``.
     """
-    builder = state.builders[builder_index]
     # Return if builder already initiated exit
+    builder = state.builders[builder_index]
     if builder.exit_epoch != FAR_FUTURE_EPOCH:
         return
 
@@ -930,18 +930,13 @@ def get_builders_sweep_withdrawals(
             break
 
         builder = state.builders[builder_index]
-        validator_index = convert_builder_index_to_validator_index(builder_index)
-        total_withdrawn = sum(
-            w.amount for w in all_withdrawals if w.validator_index == validator_index
-        )
-        balance = builder.balance - total_withdrawn
         if builder.exit_epoch <= epoch and builder.balance > 0:
             withdrawals.append(
                 Withdrawal(
                     index=withdrawal_index,
-                    validator_index=validator_index,
+                    validator_index=convert_builder_index_to_validator_index(builder_index),
                     address=ExecutionAddress(builder.withdrawal_credentials[12:]),
-                    amount=balance,
+                    amount=builder.balance,
                 )
             )
             withdrawal_index += WithdrawalIndex(1)
@@ -1121,10 +1116,11 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
         assert amount != 0
         assert verify_execution_payload_bid_signature(state, signed_bid)
         builder = state.builders[builder_index]
+        # Verify that the builder has not initiated an exit
         assert builder.exit_epoch == FAR_FUTURE_EPOCH
-        # Check that the builder has funds to cover the bid
+        # Verify that the builder has funds to cover the bid
         pending_withdrawals = get_pending_balance_to_withdraw_for_builder(state, builder_index)
-        assert builder.balance >= amount + pending_withdrawals + MIN_DEPOSIT_AMOUNT
+        assert builder.balance >= MIN_DEPOSIT_AMOUNT + pending_withdrawals + amount
 
     # Verify that the bid is for the current slot
     assert bid.slot == block.slot
@@ -1201,25 +1197,20 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ```python
 def process_withdrawal_request_for_builder(
-    state: BeaconState, withdrawal_request: WithdrawalRequest, builder: Builder
+    state: BeaconState, withdrawal_request: WithdrawalRequest, builder_index: BuilderIndex
 ) -> None:
-    # Verify withdrawal credentials
-    is_correct_source_address = (
-        builder.withdrawal_credentials[12:] == withdrawal_request.source_address
-    )
-    if not is_correct_source_address:
+    builder = state.builders[builder_index]
+
+    # Verify withdrawal credentials source address
+    if builder.withdrawal_credentials[12:] != withdrawal_request.source_address:
         return
     # Verify exit has not been initiated
     if builder.exit_epoch != FAR_FUTURE_EPOCH:
         return
 
-    builder_pubkeys = [b.pubkey for b in state.builders]
-    builder_index = BuilderIndex(builder_pubkeys.index(builder.pubkey))
-    pending_balance_to_withdraw = get_pending_balance_to_withdraw_for_builder(state, builder_index)
-
     if withdrawal_request.amount == FULL_EXIT_REQUEST_AMOUNT:
         # Only exit builder if it has no pending withdrawals in the queue
-        if pending_balance_to_withdraw == 0:
+        if get_pending_balance_to_withdraw_for_builder(state, builder_index) == 0:
             initiate_builder_exit(state, builder_index)
         return
 ```
@@ -1228,8 +1219,10 @@ def process_withdrawal_request_for_builder(
 
 ```python
 def process_withdrawal_request_for_validator(
-    state: BeaconState, withdrawal_request: WithdrawalRequest, validator: Validator
+    state: BeaconState, withdrawal_request: WithdrawalRequest, validator_index: ValidatorIndex
 ) -> None:
+    validator = state.validators[validator_index]
+
     # Verify withdrawal credentials
     has_correct_credential = has_execution_withdrawal_credential(validator)
     is_correct_source_address = (
@@ -1247,10 +1240,7 @@ def process_withdrawal_request_for_validator(
     if get_current_epoch(state) < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
         return
 
-    validator_pubkeys = [v.pubkey for v in state.validators]
-    validator_index = ValidatorIndex(validator_pubkeys.index(withdrawal_request.validator_pubkey))
     pending_balance_to_withdraw = get_pending_balance_to_withdraw(state, validator_index)
-
     if withdrawal_request.amount == FULL_EXIT_REQUEST_AMOUNT:
         # Only exit validator if it has no pending withdrawals in the queue
         if pending_balance_to_withdraw == 0:
@@ -1295,14 +1285,10 @@ def process_withdrawal_request(state: BeaconState, withdrawal_request: Withdrawa
 
     if is_builder(state, withdrawal_request.validator_pubkey):
         builder_index = get_builder_index(state, withdrawal_request.validator_pubkey)
-        return process_withdrawal_request_for_builder(
-            state, withdrawal_request, state.builders[builder_index]
-        )
+        return process_withdrawal_request_for_builder(state, withdrawal_request, builder_index)
     elif is_validator(state, withdrawal_request.validator_pubkey):
         validator_index = get_validator_index(state, withdrawal_request.validator_pubkey)
-        return process_withdrawal_request_for_validator(
-            state, withdrawal_request, state.validators[validator_index]
-        )
+        return process_withdrawal_request_for_validator(state, withdrawal_request, validator_index)
 ```
 
 ##### Attestations
