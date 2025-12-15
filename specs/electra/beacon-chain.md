@@ -1217,7 +1217,7 @@ def get_pending_partial_withdrawals(
         MAX_WITHDRAWALS_PER_PAYLOAD - 1,
     )
 
-    processed_count = 0
+    processed_count: uint64 = 0
     withdrawals: List[Withdrawal] = []
     for withdrawal in state.pending_partial_withdrawals:
         all_withdrawals = prior_withdrawals + withdrawals
