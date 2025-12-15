@@ -39,8 +39,6 @@
     - [New `is_builder`](#new-is_builder)
     - [New `is_validator`](#new-is_validator)
     - [New `is_builder_index`](#new-is_builder_index)
-    - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
-    - [New `convert_validator_index_to_builder_index`](#new-convert_validator_index_to_builder_index)
     - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
     - [New `is_attestation_same_slot`](#new-is_attestation_same_slot)
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
@@ -48,6 +46,8 @@
   - [Misc](#misc-2)
     - [New `get_builder_index`](#new-get_builder_index)
     - [New `get_validator_index`](#new-get_validator_index)
+    - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
+    - [New `convert_validator_index_to_builder_index`](#new-convert_validator_index_to_builder_index)
     - [New `get_pending_balance_to_withdraw_for_builder`](#new-get_pending_balance_to_withdraw_for_builder)
     - [New `can_builder_cover_bid`](#new-can_builder_cover_bid)
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
@@ -416,20 +416,6 @@ def is_builder_index(validator_index: ValidatorIndex) -> bool:
     return (validator_index & BUILDER_INDEX_FLAG) != 0
 ```
 
-#### New `convert_builder_index_to_validator_index`
-
-```python
-def convert_builder_index_to_validator_index(builder_index: BuilderIndex) -> ValidatorIndex:
-    return ValidatorIndex(builder_index | BUILDER_INDEX_FLAG)
-```
-
-#### New `convert_validator_index_to_builder_index`
-
-```python
-def convert_validator_index_to_builder_index(validator_index: ValidatorIndex) -> BuilderIndex:
-    return BuilderIndex(validator_index & ~BUILDER_INDEX_FLAG)
-```
-
 #### New `is_builder_withdrawal_credential`
 
 ```python
@@ -506,6 +492,20 @@ def get_validator_index(state: BeaconState, pubkey: BLSPubkey) -> ValidatorIndex
     validator_pubkeys = [v.pubkey for v in state.validators]
     assert pubkey in validator_pubkeys
     return ValidatorIndex(validator_pubkeys.index(pubkey))
+```
+
+#### New `convert_builder_index_to_validator_index`
+
+```python
+def convert_builder_index_to_validator_index(builder_index: BuilderIndex) -> ValidatorIndex:
+    return ValidatorIndex(builder_index | BUILDER_INDEX_FLAG)
+```
+
+#### New `convert_validator_index_to_builder_index`
+
+```python
+def convert_validator_index_to_builder_index(validator_index: ValidatorIndex) -> BuilderIndex:
+    return BuilderIndex(validator_index & ~BUILDER_INDEX_FLAG)
 ```
 
 #### New `get_pending_balance_to_withdraw_for_builder`
