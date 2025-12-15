@@ -49,6 +49,7 @@
     - [New `get_builder_index`](#new-get_builder_index)
     - [New `get_validator_index`](#new-get_validator_index)
     - [New `get_pending_balance_to_withdraw_for_builder`](#new-get_pending_balance_to_withdraw_for_builder)
+    - [New `can_builder_cover_bid`](#new-can_builder_cover_bid)
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
     - [New `compute_balance_weighted_acceptance`](#new-compute_balance_weighted_acceptance)
     - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
@@ -530,6 +531,18 @@ def get_pending_balance_to_withdraw_for_builder(
             if payment.withdrawal.builder_index == builder_index
         )
     )
+```
+
+#### New `can_builder_cover_bid`
+
+```python
+def can_builder_cover_bid(
+    state: BeaconState, builder_index: BuilderIndex, bid_amount: Gwei
+) -> bool:
+    builder_balance = state.builders[builder_index].balance
+    pending_withdrawals_amount = get_pending_balance_to_withdraw_for_builder(state, builder_index)
+    required_balance = MIN_DEPOSIT_AMOUNT + pending_withdrawals_amount + bid_amount
+    return builder_balance >= required_balance
 ```
 
 #### New `compute_balance_weighted_selection`
@@ -1090,8 +1103,7 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
         # Verify that the builder has not initiated an exit
         assert builder.exit_epoch == FAR_FUTURE_EPOCH
         # Verify that the builder has funds to cover the bid
-        pending_withdrawals = get_pending_balance_to_withdraw_for_builder(state, builder_index)
-        assert builder.balance >= MIN_DEPOSIT_AMOUNT + pending_withdrawals + amount
+        assert can_builder_cover_bid(state, builder_index, amount)
 
     # Verify that the bid is for the current slot
     assert bid.slot == block.slot

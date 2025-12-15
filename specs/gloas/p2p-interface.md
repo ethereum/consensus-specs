@@ -283,8 +283,7 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
   and the given parent block hash.
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
-  i.e.
-  `MIN_DEPOSIT_AMOUNT + bid.value <= state.builders[bid.builder_index].balance`.
+  i.e. `can_builder_cover_bid(state, builder_index, amount)`.
 - _[IGNORE]_ `bid.parent_block_hash` is the block hash of a known execution
   payload in fork choice.
 - _[IGNORE]_ `bid.parent_block_root` is the hash tree root of a known beacon
