@@ -1355,11 +1355,11 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     # Apply expected withdrawals
     apply_withdrawals(state, withdrawals)
 
-    # [Modified in Electra:EIP7251]
     # Update withdrawals fields in the state
+    update_next_withdrawal_index(state, withdrawals)
+    # [New in Electra:EIP7251]
     update_pending_partial_withdrawals(state, processed_partial_withdrawals_count)
     update_next_withdrawal_validator_index(state, processed_validators_sweep_count)
-    update_next_withdrawal_index(state, withdrawals)
 ```
 
 #### Execution payload

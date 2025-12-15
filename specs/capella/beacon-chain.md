@@ -33,7 +33,7 @@
     - [New `get_sweep_withdrawals`](#new-get_sweep_withdrawals)
     - [New `get_expected_withdrawals`](#new-get_expected_withdrawals)
     - [New `apply_withdrawals`](#new-apply_withdrawals)
-    - [New `update_next_withdrawal_indices`](#new-update_next_withdrawal_indices)
+    - [New `update_next_withdrawal_index`](#new-update_next_withdrawal_index)
     - [New `update_next_withdrawal_validator_index`](#new-update_next_withdrawal_validator_index)
     - [New `process_withdrawals`](#new-process_withdrawals)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
@@ -433,7 +433,7 @@ def apply_withdrawals(state: BeaconState, withdrawals: Sequence[Withdrawal]) -> 
         decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 ```
 
-#### New `update_next_withdrawal_indices`
+#### New `update_next_withdrawal_index`
 
 ```python
 def update_next_withdrawal_index(state: BeaconState, withdrawals: Sequence[Withdrawal]) -> None:
@@ -467,8 +467,8 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
     apply_withdrawals(state, withdrawals)
 
     # Update withdrawals fields in the state
-    update_next_withdrawal_validator_index(state, processed_validators_sweep_count)
     update_next_withdrawal_index(state, withdrawals)
+    update_next_withdrawal_validator_index(state, processed_validators_sweep_count)
 ```
 
 #### Modified `process_execution_payload`
