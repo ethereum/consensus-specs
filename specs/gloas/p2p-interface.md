@@ -5,14 +5,15 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Configuration](#configuration)
 - [Modification in Gloas](#modification-in-gloas)
   - [Helper functions](#helper-functions)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-  - [Configuration](#configuration)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
   - [Helpers](#helpers)
     - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
+    - [New `is_higher_value_bid`](#new-is_higher_value_bid)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -40,6 +41,13 @@ This document contains the consensus-layer networking specification for Gloas.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
+
+## Configuration
+
+| Name                       | Value          | Description                                                       |
+| -------------------------- | -------------- | ----------------------------------------------------------------- |
+| `MAX_REQUEST_PAYLOADS`     | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
+| `MIN_BID_INCREASE_PERCENT` | `uint64(3)`    | Minimum percentage increase required to forward a new bid         |
 
 ## Modification in Gloas
 
@@ -69,14 +77,6 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-### Configuration
-
-*[New in Gloas:EIP7732]*
-
-| Name                   | Value          | Description                                                       |
-| ---------------------- | -------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
-
 ### Containers
 
 #### Modified `DataColumnSidecar`
@@ -105,7 +105,7 @@ class DataColumnSidecar(Container):
 
 ### Helpers
 
-##### Modified `verify_data_column_sidecar`
+#### Modified `verify_data_column_sidecar`
 
 ```python
 def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
@@ -133,6 +133,28 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
         return False
 
     return True
+```
+
+#### New `is_higher_value_bid`
+
+```python
+def is_higher_value_bid(
+    current_bid: ExecutionPayloadBid,
+    new_bid: ExecutionPayloadBid,
+) -> bool:
+    """
+    Return ``True`` if ``new_bid`` is at least MIN_BID_INCREASE_PERCENT
+    percent more profitable than ``current_bid``.
+    """
+    if new_bid.value < current_bid.value:
+        return False
+
+    quotient = current_bid.value // 100
+    remainder = current_bid.value % 100
+    min_increase = quotient * MIN_BID_INCREASE_PERCENT
+    min_increase += (remainder * MIN_BID_INCREASE_PERCENT + 99) // 100
+
+    return new_bid.value - current_bid.value >= min_increase
 ```
 
 ### The gossip domain: gossipsub
@@ -285,7 +307,8 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
-  and the given parent block hash.
+  and the given parent block hash -- i.e.
+  `is_higher_value_bid(current_bid, new_bid)` is `True`.
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
   i.e.
   `MIN_ACTIVATION_BALANCE + bid.value <= state.balances[bid.builder_index]`.
