@@ -30,7 +30,7 @@
     - [Historical summaries updates](#historical-summaries-updates)
   - [Block processing](#block-processing)
     - [New `get_balance_after_withdrawals`](#new-get_balance_after_withdrawals)
-    - [New `get_sweep_withdrawals`](#new-get_sweep_withdrawals)
+    - [New `get_validators_sweep_withdrawals`](#new-get_validators_sweep_withdrawals)
     - [New `get_expected_withdrawals`](#new-get_expected_withdrawals)
     - [New `apply_withdrawals`](#new-apply_withdrawals)
     - [New `update_next_withdrawal_index`](#new-update_next_withdrawal_index)
@@ -357,13 +357,12 @@ def get_balance_after_withdrawals(
     return state.balances[validator_index] - withdrawn
 ```
 
-#### New `get_sweep_withdrawals`
+#### New `get_validators_sweep_withdrawals`
 
 ```python
-def get_sweep_withdrawals(
+def get_validators_sweep_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
-    validator_index: ValidatorIndex,
     epoch: Epoch,
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
@@ -372,6 +371,7 @@ def get_sweep_withdrawals(
 
     processed_count: uint64 = 0
     withdrawals: List[Withdrawal] = []
+    validator_index = state.next_withdrawal_validator_index
     for _ in range(validators_limit):
         all_withdrawals = prior_withdrawals + withdrawals
         has_reached_limit = len(all_withdrawals) == withdrawals_limit
@@ -413,14 +413,13 @@ def get_sweep_withdrawals(
 def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
     epoch = get_current_epoch(state)
     withdrawal_index = state.next_withdrawal_index
-    validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
 
-    # Get sweep withdrawals
-    sweep_withdrawals, withdrawal_index, processed_validators_sweep_count = get_sweep_withdrawals(
-        state, withdrawal_index, validator_index, epoch, withdrawals
+    # Get validators sweep withdrawals
+    validators_sweep_withdrawals, withdrawal_index, processed_validators_sweep_count = (
+        get_validators_sweep_withdrawals(state, withdrawal_index, epoch, withdrawals)
     )
-    withdrawals.extend(sweep_withdrawals)
+    withdrawals.extend(validators_sweep_withdrawals)
 
     return withdrawals, processed_validators_sweep_count
 ```
