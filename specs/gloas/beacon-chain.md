@@ -826,7 +826,6 @@ def get_expected_withdrawals(
 ) -> Tuple[Sequence[Withdrawal], uint64, uint64, uint64]:
     epoch = get_current_epoch(state)
     withdrawal_index = state.next_withdrawal_index
-    validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
 
     # [New in Gloas:EIP7732]
@@ -842,11 +841,11 @@ def get_expected_withdrawals(
     )
     withdrawals.extend(partial_withdrawals)
 
-    # Get sweep withdrawals
-    sweep_withdrawals, withdrawal_index, processed_validators_sweep_count = get_sweep_withdrawals(
-        state, withdrawal_index, validator_index, epoch, withdrawals
+    # Get validators sweep withdrawals
+    validators_sweep_withdrawals, withdrawal_index, processed_validators_sweep_count = (
+        get_validators_sweep_withdrawals(state, withdrawal_index, epoch, withdrawals)
     )
-    withdrawals.extend(sweep_withdrawals)
+    withdrawals.extend(validators_sweep_withdrawals)
 
     # [Modified in Gloas:EIP7732]
     return (

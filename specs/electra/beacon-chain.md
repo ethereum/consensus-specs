@@ -81,7 +81,7 @@
   - [Block processing](#block-processing)
     - [Withdrawals](#withdrawals)
       - [New `get_pending_partial_withdrawals`](#new-get_pending_partial_withdrawals)
-      - [Modified `get_sweep_withdrawals`](#modified-get_sweep_withdrawals)
+      - [Modified `get_validators_sweep_withdrawals`](#modified-get_validators_sweep_withdrawals)
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
       - [New `update_pending_partial_withdrawals`](#new-update_pending_partial_withdrawals)
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
@@ -1246,16 +1246,15 @@ def get_pending_partial_withdrawals(
     return withdrawals, withdrawal_index, processed_count
 ```
 
-##### Modified `get_sweep_withdrawals`
+##### Modified `get_validators_sweep_withdrawals`
 
-*Note*: The function `get_sweep_withdrawals` is modified to use
+*Note*: The function `get_validators_sweep_withdrawals` is modified to use
 `get_max_effective_balance`.
 
 ```python
 def get_sweep_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
-    validator_index: ValidatorIndex,
     epoch: Epoch,
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
@@ -1264,6 +1263,7 @@ def get_sweep_withdrawals(
 
     processed_count: uint64 = 0
     withdrawals: List[Withdrawal] = []
+    validator_index = state.next_withdrawal_validator_index
     for _ in range(validators_limit):
         all_withdrawals = prior_withdrawals + withdrawals
         has_reached_limit = len(all_withdrawals) == withdrawals_limit
@@ -1308,7 +1308,6 @@ def get_sweep_withdrawals(
 def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], uint64, uint64]:
     epoch = get_current_epoch(state)
     withdrawal_index = state.next_withdrawal_index
-    validator_index = state.next_withdrawal_validator_index
     withdrawals: List[Withdrawal] = []
 
     # [New in Electra:EIP7251]
@@ -1318,11 +1317,11 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     )
     withdrawals.extend(partial_withdrawals)
 
-    # Get sweep withdrawals
-    sweep_withdrawals, withdrawal_index, processed_validators_sweep_count = get_sweep_withdrawals(
-        state, withdrawal_index, validator_index, epoch, withdrawals
+    # Get validators sweep withdrawals
+    validators_sweep_withdrawals, withdrawal_index, processed_validators_sweep_count = (
+        get_validators_sweep_withdrawals(state, withdrawal_index, epoch, withdrawals)
     )
-    withdrawals.extend(sweep_withdrawals)
+    withdrawals.extend(validators_sweep_withdrawals)
 
     # [Modified in Electra:EIP7251]
     return withdrawals, processed_partial_withdrawals_count, processed_validators_sweep_count
