@@ -42,8 +42,6 @@
     - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
     - [New `convert_validator_index_to_builder_index`](#new-convert_validator_index_to_builder_index)
     - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
-    - [New `has_builder_withdrawal_credential`](#new-has_builder_withdrawal_credential)
-    - [Modified `has_compounding_withdrawal_credential`](#modified-has_compounding_withdrawal_credential)
     - [New `is_attestation_same_slot`](#new-is_attestation_same_slot)
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
     - [New `is_parent_block_full`](#new-is_parent_block_full)
@@ -436,33 +434,6 @@ def convert_validator_index_to_builder_index(validator_index: ValidatorIndex) ->
 ```python
 def is_builder_withdrawal_credential(withdrawal_credentials: Bytes32) -> bool:
     return withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX
-```
-
-#### New `has_builder_withdrawal_credential`
-
-```python
-def has_builder_withdrawal_credential(validator: Validator) -> bool:
-    """
-    Check if ``validator`` has an 0x03 prefixed "builder" withdrawal credential.
-    """
-    return is_builder_withdrawal_credential(validator.withdrawal_credentials)
-```
-
-#### Modified `has_compounding_withdrawal_credential`
-
-*Note*: The function `has_compounding_withdrawal_credential` is modified to
-return true for builders.
-
-```python
-def has_compounding_withdrawal_credential(validator: Validator) -> bool:
-    """
-    Check if ``validator`` has an 0x02 or 0x03 prefixed withdrawal credential.
-    """
-    if is_compounding_withdrawal_credential(validator.withdrawal_credentials):
-        return True
-    if is_builder_withdrawal_credential(validator.withdrawal_credentials):
-        return True
-    return False
 ```
 
 #### New `is_attestation_same_slot`
