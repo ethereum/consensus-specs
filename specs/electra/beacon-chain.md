@@ -1252,7 +1252,7 @@ def get_pending_partial_withdrawals(
 `get_max_effective_balance`.
 
 ```python
-def get_sweep_withdrawals(
+def get_validators_sweep_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
     epoch: Epoch,
