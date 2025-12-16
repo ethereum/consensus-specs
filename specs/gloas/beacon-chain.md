@@ -1326,12 +1326,10 @@ def apply_deposit_for_builder(
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
             add_builder_to_registry(state, pubkey, withdrawal_credentials, amount)
-        else:
-            return
-
-    # Increase balance by deposit amount
-    builder_index = get_builder_index(state, pubkey)
-    state.builders[builder_index].balance += amount
+    else:
+        # Increase balance by deposit amount
+        builder_index = get_builder_index(state, pubkey)
+        state.builders[builder_index].balance += amount
 ```
 
 ###### Modified `process_deposit_request`
