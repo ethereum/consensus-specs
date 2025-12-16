@@ -19,8 +19,8 @@ def min_increase(spec, current_value):
     """Compute ceil(current_value * MIN_BID_INCREASE_PERCENT / 100)."""
     quotient = current_value // 100
     remainder = current_value % 100
-    result = quotient * spec.MIN_BID_INCREASE_PERCENT
-    result += (remainder * spec.MIN_BID_INCREASE_PERCENT + 99) // 100
+    result = quotient * spec.config.MIN_BID_INCREASE_PERCENT
+    result += (remainder * spec.config.MIN_BID_INCREASE_PERCENT + 99) // 100
     return result
 
 
