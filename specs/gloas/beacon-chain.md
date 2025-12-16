@@ -78,19 +78,18 @@
       - [New `process_execution_payload_bid`](#new-process_execution_payload_bid)
     - [Operations](#operations)
       - [Modified `process_operations`](#modified-process_operations)
-      - [Execution layer withdrawal requests](#execution-layer-withdrawal-requests)
+      - [Withdrawal requests](#withdrawal-requests)
         - [New `process_withdrawal_request_for_builder`](#new-process_withdrawal_request_for_builder)
         - [New `process_withdrawal_request_for_validator`](#new-process_withdrawal_request_for_validator)
         - [Modified `process_withdrawal_request`](#modified-process_withdrawal_request)
-      - [Attestations](#attestations)
-        - [Modified `process_attestation`](#modified-process_attestation)
-      - [Deposits](#deposits)
+      - [Deposit requests](#deposit-requests)
         - [New `get_index_for_new_builder`](#new-get_index_for_new_builder)
         - [New `get_builder_from_deposit`](#new-get_builder_from_deposit)
         - [New `add_validator_to_registry`](#new-add_validator_to_registry)
         - [New `apply_deposit_for_builder`](#new-apply_deposit_for_builder)
-        - [New `apply_deposit_for_validator`](#new-apply_deposit_for_validator)
-        - [Modified `apply_deposit`](#modified-apply_deposit)
+        - [Modified `process_deposit_request`](#modified-process_deposit_request)
+      - [Attestations](#attestations)
+        - [Modified `process_attestation`](#modified-process_attestation)
       - [Payload Attestations](#payload-attestations)
         - [New `process_payload_attestation`](#new-process_payload_attestation)
       - [Proposer Slashing](#proposer-slashing)
@@ -1122,7 +1121,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     for_ops(body.payload_attestations, process_payload_attestation)
 ```
 
-##### Execution layer withdrawal requests
+##### Withdrawal requests
 
 ###### New `process_withdrawal_request_for_builder`
 
@@ -1222,6 +1221,98 @@ def process_withdrawal_request(state: BeaconState, withdrawal_request: Withdrawa
         return process_withdrawal_request_for_validator(state, withdrawal_request, validator_index)
 ```
 
+##### Deposit requests
+
+###### New `get_index_for_new_builder`
+
+```python
+def get_index_for_new_builder(state: BeaconState) -> BuilderIndex:
+    for index, builder in enumerate(state.builders):
+        if builder.exit_epoch <= get_current_epoch(state) and builder.balance == 0:
+            return BuilderIndex(index)
+    return BuilderIndex(len(state.builders))
+```
+
+###### New `get_builder_from_deposit`
+
+```python
+def get_builder_from_deposit(
+    pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
+) -> Builder:
+    return Builder(
+        pubkey=pubkey,
+        withdrawal_credentials=withdrawal_credentials,
+        balance=amount,
+        exit_epoch=FAR_FUTURE_EPOCH,
+    )
+```
+
+###### New `add_validator_to_registry`
+
+```python
+def add_builder_to_registry(
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
+) -> None:
+    index = get_index_for_new_builder(state)
+    builder = get_builder_from_deposit(pubkey, withdrawal_credentials, amount)
+    set_or_append_list(state.builders, index, builder)
+```
+
+###### New `apply_deposit_for_builder`
+
+```python
+def apply_deposit_for_builder(
+    state: BeaconState,
+    pubkey: BLSPubkey,
+    withdrawal_credentials: Bytes32,
+    amount: uint64,
+    signature: BLSSignature,
+) -> None:
+    if is_validator(state, pubkey):
+        return
+    if not is_builder(state, pubkey):
+        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
+        if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
+            add_builder_to_registry(state, pubkey, withdrawal_credentials, amount)
+        else:
+            return
+
+    # Increase balance by deposit amount
+    builder_index = get_builder_index(state, pubkey)
+    state.builders[builder_index].balance += amount
+```
+
+###### Modified `process_deposit_request`
+
+```python
+def process_deposit_request(state: BeaconState, deposit_request: DepositRequest) -> None:
+    # Set deposit request start index
+    if state.deposit_requests_start_index == UNSET_DEPOSIT_REQUESTS_START_INDEX:
+        state.deposit_requests_start_index = deposit_request.index
+
+    # [Modified in Gloas:EIP7732]
+    if is_builder_withdrawal_credential(deposit_request.withdrawal_credentials):
+        # Apply builder deposits immediately
+        apply_deposit_for_builder(
+            state,
+            deposit_request.pubkey,
+            deposit_request.withdrawal_credentials,
+            deposit_request.amount,
+            deposit_request.signature,
+        )
+    else:
+        # Add validator deposits to the queue
+        state.pending_deposits.append(
+            PendingDeposit(
+                pubkey=deposit_request.pubkey,
+                withdrawal_credentials=deposit_request.withdrawal_credentials,
+                amount=deposit_request.amount,
+                signature=deposit_request.signature,
+                slot=state.slot,
+            )
+        )
+```
+
 ##### Attestations
 
 ###### Modified `process_attestation`
@@ -1312,126 +1403,6 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state.builder_pending_payments[SLOTS_PER_EPOCH + data.slot % SLOTS_PER_EPOCH] = payment
     else:
         state.builder_pending_payments[data.slot % SLOTS_PER_EPOCH] = payment
-```
-
-##### Deposits
-
-###### New `get_index_for_new_builder`
-
-```python
-def get_index_for_new_builder(state: BeaconState) -> BuilderIndex:
-    for index, builder in enumerate(state.builders):
-        if builder.exit_epoch <= get_current_epoch(state) and builder.balance == 0:
-            return BuilderIndex(index)
-    return BuilderIndex(len(state.builders))
-```
-
-###### New `get_builder_from_deposit`
-
-```python
-def get_builder_from_deposit(
-    pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
-) -> Builder:
-    return Builder(
-        pubkey=pubkey,
-        withdrawal_credentials=withdrawal_credentials,
-        balance=amount,
-        exit_epoch=FAR_FUTURE_EPOCH,
-    )
-```
-
-###### New `add_validator_to_registry`
-
-```python
-def add_builder_to_registry(
-    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
-) -> None:
-    index = get_index_for_new_builder(state)
-    builder = get_builder_from_deposit(pubkey, withdrawal_credentials, amount)
-    set_or_append_list(state.builders, index, builder)
-```
-
-###### New `apply_deposit_for_builder`
-
-```python
-def apply_deposit_for_builder(
-    state: BeaconState,
-    pubkey: BLSPubkey,
-    withdrawal_credentials: Bytes32,
-    amount: uint64,
-    signature: BLSSignature,
-) -> None:
-    if is_validator(state, pubkey):
-        return
-    if not is_builder(state, pubkey):
-        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
-        if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
-            add_builder_to_registry(state, pubkey, withdrawal_credentials, amount)
-        else:
-            return
-
-    # Increase balance by deposit amount
-    builder_index = get_builder_index(state, pubkey)
-    state.builders[builder_index].balance += amount
-```
-
-###### New `apply_deposit_for_validator`
-
-```python
-def apply_deposit_for_validator(
-    state: BeaconState,
-    pubkey: BLSPubkey,
-    withdrawal_credentials: Bytes32,
-    amount: uint64,
-    signature: BLSSignature,
-) -> None:
-    if is_builder(state, pubkey):
-        return
-    if not is_validator(state, pubkey):
-        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
-        if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
-            add_validator_to_registry(state, pubkey, withdrawal_credentials, Gwei(0))
-        else:
-            return
-
-    # Increase balance by deposit amount
-    state.pending_deposits.append(
-        PendingDeposit(
-            pubkey=pubkey,
-            withdrawal_credentials=withdrawal_credentials,
-            amount=amount,
-            signature=signature,
-            slot=GENESIS_SLOT,  # Use GENESIS_SLOT to distinguish from a pending deposit request
-        )
-    )
-```
-
-###### Modified `apply_deposit`
-
-```python
-def apply_deposit(
-    state: BeaconState,
-    pubkey: BLSPubkey,
-    withdrawal_credentials: Bytes32,
-    amount: uint64,
-    signature: BLSSignature,
-) -> None:
-    if is_builder_withdrawal_credential(withdrawal_credentials):
-        apply_deposit_for_builder(
-            state,
-            pubkey,
-            withdrawal_credentials,
-            amount,
-            signature,
-        )
-    else:
-        apply_deposit_for_validator(
-            state,
-            pubkey,
-            withdrawal_credentials,
-            amount,
-            signature,
-        )
 ```
 
 ##### Payload Attestations
