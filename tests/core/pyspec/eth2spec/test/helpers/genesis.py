@@ -247,9 +247,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     if is_post_gloas(spec):
         # TODO(jtraglia): make it so that the builder count is not hardcoded.
         builder_balance = 2 * spec.MIN_DEPOSIT_AMOUNT
-        state.builders = [
-            build_mock_builder(spec, i, builder_balance) for i in range(8)
-        ]
+        state.builders = [build_mock_builder(spec, i, builder_balance) for i in range(8)]
         state.execution_payload_availability = [0b1 for _ in range(spec.SLOTS_PER_HISTORICAL_ROOT)]
         state.payload_expected_withdrawals = spec.List[
             spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD

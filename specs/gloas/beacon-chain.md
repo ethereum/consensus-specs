@@ -39,6 +39,7 @@
     - [New `is_builder`](#new-is_builder)
     - [New `is_validator`](#new-is_validator)
     - [New `is_builder_index`](#new-is_builder_index)
+    - [New `is_active_builder`](#new-is_active_builder)
     - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
     - [New `is_attestation_same_slot`](#new-is_attestation_same_slot)
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
@@ -193,6 +194,7 @@ class Builder(Container):
     pubkey: BLSPubkey
     withdrawal_credentials: Bytes32
     balance: Gwei
+    deposit_epoch: Epoch
     exit_epoch: Epoch
 ```
 
@@ -413,6 +415,22 @@ def is_validator(state: BeaconState, pubkey: BLSPubkey) -> bool:
 ```python
 def is_builder_index(validator_index: ValidatorIndex) -> bool:
     return (validator_index & BUILDER_INDEX_FLAG) != 0
+```
+
+#### New `is_active_builder`
+
+```python
+def is_active_builder(state: BeaconState, builder_index: BuilderIndex) -> bool:
+    """
+    Check if the builder at ``builder_index`` is active for the given ``state``.
+    """
+    builder = state.builders[builder_index]
+    return (
+        # Placement in builder list is finalized
+        state.finalized_checkpoint.epoch <= builder.deposit_epoch
+        # Has not initiated exit
+        and builder.exit_epoch != FAR_FUTURE_EPOCH
+    )
 ```
 
 #### New `is_builder_withdrawal_credential`
@@ -1098,9 +1116,8 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
     else:
         assert amount != 0
         assert verify_execution_payload_bid_signature(state, signed_bid)
-        builder = state.builders[builder_index]
-        # Verify that the builder has not initiated an exit
-        assert builder.exit_epoch == FAR_FUTURE_EPOCH
+        # Verify that the builder is active
+        assert is_active_builder(state, builder_index)
         # Verify that the builder has funds to cover the bid
         assert can_builder_cover_bid(state, builder_index, amount)
 
@@ -1289,12 +1306,13 @@ def get_index_for_new_builder(state: BeaconState) -> BuilderIndex:
 
 ```python
 def get_builder_from_deposit(
-    pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
+    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
 ) -> Builder:
     return Builder(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
         balance=amount,
+        deposit_epoch=get_current_epoch(state),
         exit_epoch=FAR_FUTURE_EPOCH,
     )
 ```
@@ -1306,7 +1324,7 @@ def add_builder_to_registry(
     state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
 ) -> None:
     index = get_index_for_new_builder(state)
-    builder = get_builder_from_deposit(pubkey, withdrawal_credentials, amount)
+    builder = get_builder_from_deposit(state, pubkey, withdrawal_credentials, amount)
     set_or_append_list(state.builders, index, builder)
 ```
 

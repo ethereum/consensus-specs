@@ -275,8 +275,7 @@ The following validations MUST pass before forwarding the
 `signed_execution_payload_bid` on the network, assuming the alias
 `bid = signed_execution_payload_bid.message`:
 
-- _[REJECT]_ `bid.builder_index` is a valid, active, and non-slashed builder
-  index.
+- _[REJECT]_ `bid.builder_index` is a valid/active builder index.
 - _[REJECT]_ `bid.execution_payment` is zero.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
