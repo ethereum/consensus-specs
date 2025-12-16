@@ -72,7 +72,6 @@
       - [Modified `apply_withdrawals`](#modified-apply_withdrawals)
       - [New `update_payload_expected_withdrawals`](#new-update_payload_expected_withdrawals)
       - [New `update_builder_pending_withdrawals`](#new-update_builder_pending_withdrawals)
-      - [New `update_next_withdrawal_builder_index`](#new-update_next_withdrawal_builder_index)
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
     - [Execution payload bid](#execution-payload-bid)
       - [New `verify_execution_payload_bid_signature`](#new-verify_execution_payload_bid_signature)
@@ -972,19 +971,6 @@ def update_builder_pending_withdrawals(
     ]
 
     state.builder_pending_withdrawals = deferred_withdrawals + unprocessed_withdrawals
-```
-
-##### New `update_next_withdrawal_builder_index`
-
-```python
-def update_next_withdrawal_builder_index(
-    state: BeaconState, processed_builders_sweep_count: uint64
-) -> None:
-    if len(state.builders) > 0:
-        # Update the next builder index to start the next withdrawal sweep
-        next_index = state.next_withdrawal_builder_index + processed_builders_sweep_count
-        next_builder_index = BuilderIndex(next_index % len(state.builders))
-        state.next_withdrawal_builder_index = next_builder_index
 ```
 
 ##### Modified `process_withdrawals`
