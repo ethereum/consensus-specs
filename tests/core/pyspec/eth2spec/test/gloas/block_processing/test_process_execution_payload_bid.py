@@ -251,8 +251,8 @@ def test_process_execution_payload_bid_inactive_builder(spec, state):
     """
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
-    # Make builder inactive by setting exit epoch
-    state.builders[builder_index].exit_epoch = spec.get_current_epoch(state)
+    # Initiate builder exit by setting its withdrawable epoch
+    state.builders[builder_index].withdrawable_epoch = spec.get_current_epoch(state)
 
     # Ensure builder has sufficient balance for the bid to avoid balance check failure
     value = spec.Gwei(1000000)

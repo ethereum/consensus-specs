@@ -272,7 +272,7 @@ def test_process_deposit_request__reuses_exited_builder_slot(spec, state):
     next_epoch(spec, state)
 
     # Make builder 0 exited with zero balance
-    state.builders[0].exit_epoch = spec.get_current_epoch(state) - 1
+    state.builders[0].withdrawable_epoch = spec.get_current_epoch(state) - 1
     state.builders[0].balance = spec.Gwei(0)
 
     pre_builder_count = len(state.builders)

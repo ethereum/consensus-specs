@@ -37,7 +37,7 @@ def run_builder_withdrawal_request_processing(spec, state, withdrawal_request, s
                  If False, expect no changes (no-op).
     """
     builder_index = spec.get_builder_index(state, withdrawal_request.validator_pubkey)
-    pre_exit_epoch = state.builders[builder_index].exit_epoch
+    pre_withdrawable_epoch = state.builders[builder_index].withdrawable_epoch
 
     yield "pre", state
     yield "withdrawal_request", withdrawal_request
@@ -53,7 +53,7 @@ def run_builder_withdrawal_request_processing(spec, state, withdrawal_request, s
         assert pre_state == state
     else:
         # Exit should have been initiated
-        assert pre_exit_epoch == spec.FAR_FUTURE_EPOCH
+        assert pre_withdrawable_epoch == spec.FAR_FUTURE_EPOCH
         builder = state.builders[builder_index]
         assert builder.withdrawable_epoch == (
             spec.get_current_epoch(state) + spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
@@ -107,11 +107,11 @@ def test_process_withdrawal_request__builder_incorrect_source_address(spec, stat
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_withdrawal_request__builder_already_exited(spec, state):
-    """Test that withdrawal request for already exited builder is a no-op."""
+def test_process_withdrawal_request__builder_exiting(spec, state):
+    """Test that withdrawal request for exiting/exited builder is a no-op."""
     builder_index = 0
-    # Set exit epoch to something other than FAR_FUTURE_EPOCH
-    state.builders[builder_index].exit_epoch = spec.get_current_epoch(state) + 10
+    # Set withdrawable epoch to something other than FAR_FUTURE_EPOCH
+    state.builders[builder_index].withdrawable_epoch = spec.get_current_epoch(state) + 10
 
     withdrawal_request = prepare_builder_withdrawal_request(spec, state, builder_index)
 
