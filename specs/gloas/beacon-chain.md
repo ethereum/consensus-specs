@@ -15,7 +15,6 @@
   - [Misc](#misc-1)
   - [Max operations per block](#max-operations-per-block)
   - [State list lengths](#state-list-lengths)
-  - [Withdrawals processing](#withdrawals-processing)
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
 - [Containers](#containers)
@@ -167,12 +166,6 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 | ----------------------------------- | ------------------------------------- | --------------------------- |
 | `BUILDER_REGISTRY_LIMIT`            | `uint64(2**40)` (= 1,099,511,627,776) | Builders                    |
 | `BUILDER_PENDING_WITHDRAWALS_LIMIT` | `uint64(2**20)` (= 1,048,576)         | Builder pending withdrawals |
-
-### Withdrawals processing
-
-| Name                                 | Value              |
-| ------------------------------------ | ------------------ |
-| `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` | `2**14` (= 16,384) |
 
 ## Configuration
 
