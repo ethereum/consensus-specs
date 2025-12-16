@@ -69,7 +69,6 @@
   - [Block processing](#block-processing)
     - [Withdrawals](#withdrawals)
       - [New `get_builder_withdrawals`](#new-get_builder_withdrawals)
-      - [New `get_builders_sweep_withdrawals`](#new-get_builders_sweep_withdrawals)
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
       - [Modified `apply_withdrawals`](#modified-apply_withdrawals)
       - [New `update_payload_expected_withdrawals`](#new-update_payload_expected_withdrawals)
@@ -212,6 +211,7 @@ class BuilderPendingWithdrawal(Container):
     fee_recipient: ExecutionAddress
     amount: Gwei
     builder_index: BuilderIndex
+    withdrawable_epoch: Epoch
 ```
 
 #### `PayloadAttestationData`
@@ -375,8 +375,6 @@ class BeaconState(Container):
     proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
     # [New in Gloas:EIP7732]
     builders: List[Builder, BUILDER_REGISTRY_LIMIT]
-    # [New in Gloas:EIP7732]
-    next_withdrawal_builder_index: BuilderIndex
     # [New in Gloas:EIP7732]
     execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
     # [New in Gloas:EIP7732]
@@ -757,6 +755,16 @@ def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> No
 
     # Set builder exit epoch
     builder.exit_epoch = get_current_epoch(state) + MIN_BUILDER_WITHDRAWABILITY_DELAY
+
+    # Queue withdrawal of balance
+    state.builder_pending_withdrawals.append(
+        BuilderPendingWithdrawal(
+            fee_recipient=ExecutionAddress(builder.withdrawal_credentials[12:]),
+            amount=builder.balance,
+            builder_index=builder_index,
+            withdrawable_epoch=builder.exit_epoch,
+        )
+    )
 ```
 
 ## Beacon chain state transition function
@@ -877,55 +885,18 @@ def get_builder_withdrawals(
         if has_reached_limit:
             break
 
-        builder_index = withdrawal.builder_index
-        withdrawals.append(
-            Withdrawal(
-                index=withdrawal_index,
-                validator_index=convert_builder_index_to_validator_index(builder_index),
-                address=withdrawal.fee_recipient,
-                amount=withdrawal.amount,
-            )
-        )
-        withdrawal_index += WithdrawalIndex(1)
-        processed_count += 1
-
-    return withdrawals, withdrawal_index, processed_count
-```
-
-##### New `get_builders_sweep_withdrawals`
-
-```python
-def get_builders_sweep_withdrawals(
-    state: BeaconState,
-    withdrawal_index: WithdrawalIndex,
-    epoch: Epoch,
-    prior_withdrawals: Sequence[Withdrawal],
-) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
-    builders_limit = min(len(state.builders), MAX_BUILDERS_PER_WITHDRAWALS_SWEEP)
-    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
-
-    processed_count: uint64 = 0
-    withdrawals: List[Withdrawal] = []
-    builder_index = state.next_withdrawal_builder_index
-    for _ in range(builders_limit):
-        all_withdrawals = prior_withdrawals + withdrawals
-        has_reached_limit = len(all_withdrawals) == withdrawals_limit
-        if has_reached_limit:
-            break
-
-        builder = state.builders[builder_index]
-        if builder.exit_epoch <= epoch and builder.balance > 0:
+        if get_current_epoch(state) >= withdrawal.withdrawable_epoch:
+            builder_index = withdrawal.builder_index
             withdrawals.append(
                 Withdrawal(
                     index=withdrawal_index,
                     validator_index=convert_builder_index_to_validator_index(builder_index),
-                    address=ExecutionAddress(builder.withdrawal_credentials[12:]),
-                    amount=builder.balance,
+                    address=withdrawal.fee_recipient,
+                    amount=withdrawal.amount,
                 )
             )
             withdrawal_index += WithdrawalIndex(1)
 
-        builder_index = BuilderIndex((builder_index + 1) % len(state.builders))
         processed_count += 1
 
     return withdrawals, withdrawal_index, processed_count
@@ -936,7 +907,7 @@ def get_builders_sweep_withdrawals(
 ```python
 def get_expected_withdrawals(
     state: BeaconState,
-) -> Tuple[Sequence[Withdrawal], uint64, uint64, uint64, uint64]:
+) -> Tuple[Sequence[Withdrawal], uint64, uint64, uint64]:
     epoch = get_current_epoch(state)
     withdrawal_index = state.next_withdrawal_index
     withdrawals: List[Withdrawal] = []
@@ -954,13 +925,6 @@ def get_expected_withdrawals(
     )
     withdrawals.extend(partial_withdrawals)
 
-    # [New in Gloas:EIP7732]
-    # Get builders sweep withdrawals
-    builders_sweep_withdrawals, withdrawal_index, processed_builders_sweep_count = (
-        get_builders_sweep_withdrawals(state, withdrawal_index, epoch, withdrawals)
-    )
-    withdrawals.extend(builders_sweep_withdrawals)
-
     # Get validators sweep withdrawals
     validators_sweep_withdrawals, withdrawal_index, processed_validators_sweep_count = (
         get_validators_sweep_withdrawals(state, withdrawal_index, epoch, withdrawals)
@@ -972,7 +936,6 @@ def get_expected_withdrawals(
         withdrawals,
         processed_builder_withdrawals_count,
         processed_partial_withdrawals_count,
-        processed_builders_sweep_count,
         processed_validators_sweep_count,
     )
 ```
@@ -1005,9 +968,16 @@ def update_payload_expected_withdrawals(
 def update_builder_pending_withdrawals(
     state: BeaconState, processed_builder_withdrawals_count: uint64
 ) -> None:
-    state.builder_pending_withdrawals = state.builder_pending_withdrawals[
+    deferred_withdrawals = [
+        withdrawal
+        for withdrawal in state.builder_pending_withdrawals[:processed_builder_withdrawals_count]
+        if get_current_epoch(state) < withdrawal.withdrawable_epoch
+    ]
+    unprocessed_withdrawals = state.builder_pending_withdrawals[
         processed_builder_withdrawals_count:
     ]
+
+    state.builder_pending_withdrawals = deferred_withdrawals + unprocessed_withdrawals
 ```
 
 ##### New `update_next_withdrawal_builder_index`
@@ -1049,7 +1019,6 @@ def process_withdrawals(
         withdrawals,
         processed_builder_withdrawals_count,
         processed_partial_withdrawals_count,
-        processed_builders_sweep_count,
         processed_validators_sweep_count,
     ) = get_expected_withdrawals(state)
 
@@ -1063,8 +1032,6 @@ def process_withdrawals(
     # [New in Gloas:EIP7732]
     update_builder_pending_withdrawals(state, processed_builder_withdrawals_count)
     update_pending_partial_withdrawals(state, processed_partial_withdrawals_count)
-    # [New in Gloas:EIP7732]
-    update_next_withdrawal_builder_index(state, processed_builders_sweep_count)
     update_next_withdrawal_validator_index(state, processed_validators_sweep_count)
 ```
 
@@ -1120,6 +1087,7 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
                 fee_recipient=bid.fee_recipient,
                 amount=amount,
                 builder_index=builder_index,
+                withdrawable_epoch=get_current_epoch(state),
             ),
         )
         state.builder_pending_payments[SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH] = (
@@ -1647,6 +1615,7 @@ def process_execution_payload(
     payment = state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH]
     amount = payment.withdrawal.amount
     if amount > 0:
+        payment.withdrawal.withdrawable_epoch = get_current_epoch(state)
         state.builder_pending_withdrawals.append(payment.withdrawal)
     state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH] = (
         BuilderPendingPayment()
