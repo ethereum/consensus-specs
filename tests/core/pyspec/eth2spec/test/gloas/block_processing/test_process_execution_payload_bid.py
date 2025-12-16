@@ -245,7 +245,40 @@ def test_process_execution_payload_bid_invalid_signature(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_bid_inactive_builder(spec, state):
+def test_process_execution_payload_bid_inactive_builder_deposit_not_finalized(spec, state):
+    """
+    Test inactive builder fails
+    """
+    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+
+    # Set the builder's deposit epoch as a non-finalized (future) epoch
+    state.builders[builder_index].deposit_epoch = spec.get_current_epoch(state) + 1
+    assert state.builders[builder_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
+    assert spec.is_active_builder(state, builder_index) is False
+
+    # Ensure builder has sufficient balance for the bid to avoid balance check failure
+    value = spec.Gwei(1000000)
+    required_balance = value + spec.MIN_DEPOSIT_AMOUNT
+    state.builders[builder_index].balance = required_balance
+
+    # Create bid with this non-proposer builder
+    signed_bid = prepare_signed_execution_payload_bid(
+        spec,
+        state,
+        builder_index=builder_index,
+        value=value,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
+    )
+
+    block.body.signed_execution_payload_bid = signed_bid
+
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_execution_payload_bid_inactive_builder_exiting(spec, state):
     """
     Test inactive builder fails
     """
@@ -253,6 +286,7 @@ def test_process_execution_payload_bid_inactive_builder(spec, state):
 
     # Initiate builder exit by setting its withdrawable epoch
     state.builders[builder_index].withdrawable_epoch = spec.get_current_epoch(state)
+    assert spec.is_active_builder(state, builder_index) is False
 
     # Ensure builder has sufficient balance for the bid to avoid balance check failure
     value = spec.Gwei(1000000)
