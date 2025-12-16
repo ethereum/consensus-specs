@@ -195,7 +195,7 @@ class Builder(Container):
     withdrawal_credentials: Bytes32
     balance: Gwei
     deposit_epoch: Epoch
-    exit_epoch: Epoch
+    withdrawable_epoch: Epoch
 ```
 
 #### `BuilderPendingPayment`
@@ -429,7 +429,7 @@ def is_active_builder(state: BeaconState, builder_index: BuilderIndex) -> bool:
         # Placement in builder list is finalized
         state.finalized_checkpoint.epoch <= builder.deposit_epoch
         # Has not initiated exit
-        and builder.exit_epoch == FAR_FUTURE_EPOCH
+        and builder.withdrawable_epoch == FAR_FUTURE_EPOCH
     )
 ```
 
@@ -769,11 +769,11 @@ def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> No
     """
     # Return if builder already initiated exit
     builder = state.builders[builder_index]
-    if builder.exit_epoch != FAR_FUTURE_EPOCH:
+    if builder.withdrawable_epoch != FAR_FUTURE_EPOCH:
         return
 
     # Set builder exit epoch
-    builder.exit_epoch = get_current_epoch(state) + MIN_BUILDER_WITHDRAWABILITY_DELAY
+    builder.withdrawable_epoch = get_current_epoch(state) + MIN_BUILDER_WITHDRAWABILITY_DELAY
 ```
 
 ## Beacon chain state transition function
@@ -931,7 +931,7 @@ def get_builders_sweep_withdrawals(
             break
 
         builder = state.builders[builder_index]
-        if builder.exit_epoch <= epoch and builder.balance > 0:
+        if builder.withdrawable_epoch <= epoch and builder.balance > 0:
             withdrawals.append(
                 Withdrawal(
                     index=withdrawal_index,
@@ -1204,7 +1204,7 @@ def process_withdrawal_request_for_builder(
     if builder.withdrawal_credentials[12:] != withdrawal_request.source_address:
         return
     # Verify exit has not been initiated
-    if builder.exit_epoch != FAR_FUTURE_EPOCH:
+    if builder.withdrawable_epoch != FAR_FUTURE_EPOCH:
         return
 
     if withdrawal_request.amount == FULL_EXIT_REQUEST_AMOUNT:
@@ -1297,7 +1297,7 @@ def process_withdrawal_request(state: BeaconState, withdrawal_request: Withdrawa
 ```python
 def get_index_for_new_builder(state: BeaconState) -> BuilderIndex:
     for index, builder in enumerate(state.builders):
-        if builder.exit_epoch <= get_current_epoch(state) and builder.balance == 0:
+        if builder.withdrawable_epoch <= get_current_epoch(state) and builder.balance == 0:
             return BuilderIndex(index)
     return BuilderIndex(len(state.builders))
 ```
@@ -1313,7 +1313,7 @@ def get_builder_from_deposit(
         withdrawal_credentials=withdrawal_credentials,
         balance=amount,
         deposit_epoch=get_current_epoch(state),
-        exit_epoch=FAR_FUTURE_EPOCH,
+        withdrawable_epoch=FAR_FUTURE_EPOCH,
     )
 ```
 
