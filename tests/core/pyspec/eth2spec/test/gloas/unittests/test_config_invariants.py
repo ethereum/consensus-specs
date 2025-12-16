@@ -202,3 +202,16 @@ def test_is_higher_value_bid__ceil_999(spec):
     )
     # At threshold should pass
     assert spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold)) is True
+
+
+@with_gloas_and_later
+@spec_test
+@single_phase
+def test_is_higher_value_bid__uint64_max(spec):
+    """current=UINT64_MAX: no valid new bid can be higher."""
+    current_bid = make_bid(spec, spec.UINT64_MAX)
+
+    # Equal value should fail
+    assert spec.is_higher_value_bid(current_bid, make_bid(spec, spec.UINT64_MAX)) is False
+    # Lower value should fail
+    assert spec.is_higher_value_bid(current_bid, make_bid(spec, spec.UINT64_MAX - 1)) is False
