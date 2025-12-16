@@ -24,6 +24,20 @@ def min_increase(spec, current_value):
     return result
 
 
+def assert_threshold_boundary(spec, current_value):
+    """Assert that threshold - 1 fails and threshold passes."""
+    current_bid = make_bid(spec, current_value)
+    threshold = min_increase(spec, current_value)
+
+    # One below threshold should return false
+    new_bid_below_threshold = make_bid(spec, current_value + threshold - 1)
+    assert spec.is_higher_value_bid(current_bid, new_bid_below_threshold) is False
+
+    # At threshold should return true
+    new_bid_at_threshold = make_bid(spec, current_value + threshold)
+    assert spec.is_higher_value_bid(current_bid, new_bid_at_threshold) is True
+
+
 @with_gloas_and_later
 @spec_test
 @single_phase
@@ -35,119 +49,17 @@ def test_min_bid_increase_percent__greater_than_zero(spec):
 @with_gloas_and_later
 @spec_test
 @single_phase
-def test_is_higher_value_bid__lower(spec):
-    """Lower new bid should return False."""
-    current_bid = make_bid(spec, 100)
-
-    assert spec.is_higher_value_bid(current_bid, make_bid(spec, 99)) is False
+def test_is_higher_value_bid__ceil_1(spec):
+    """current=1: test ceiling behavior with small value."""
+    assert_threshold_boundary(spec, 1)
 
 
 @with_gloas_and_later
 @spec_test
 @single_phase
-def test_is_higher_value_bid__100(spec):
-    """current=100: test at and below threshold."""
-    current_value = 100
-    current_bid = make_bid(spec, current_value)
-    threshold = min_increase(spec, current_value)
-
-    # One below threshold should fail
-    assert (
-        spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold - 1))
-        is False
-    )
-    # At threshold should pass
-    assert spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold)) is True
-
-
-@with_gloas_and_later
-@spec_test
-@single_phase
-def test_is_higher_value_bid__ceil_101(spec):
-    """current=101: test ceiling behavior."""
-    current_value = 101
-    current_bid = make_bid(spec, current_value)
-    threshold = min_increase(spec, current_value)
-
-    # One below threshold should fail
-    assert (
-        spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold - 1))
-        is False
-    )
-    # At threshold should pass
-    assert spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold)) is True
-
-
-@with_gloas_and_later
-@spec_test
-@single_phase
-def test_is_higher_value_bid__ceil_150(spec):
-    """current=150: test ceiling behavior."""
-    current_value = 150
-    current_bid = make_bid(spec, current_value)
-    threshold = min_increase(spec, current_value)
-
-    # One below threshold should fail
-    assert (
-        spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold - 1))
-        is False
-    )
-    # At threshold should pass
-    assert spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold)) is True
-
-
-@with_gloas_and_later
-@spec_test
-@single_phase
-def test_is_higher_value_bid__ceil_33(spec):
-    """current=33: test ceiling behavior."""
-    current_value = 33
-    current_bid = make_bid(spec, current_value)
-    threshold = min_increase(spec, current_value)
-
-    # One below threshold should fail
-    assert (
-        spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold - 1))
-        is False
-    )
-    # At threshold should pass
-    assert spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold)) is True
-
-
-@with_gloas_and_later
-@spec_test
-@single_phase
-def test_is_higher_value_bid__ceil_34(spec):
-    """current=34: test ceiling behavior."""
-    current_value = 34
-    current_bid = make_bid(spec, current_value)
-    threshold = min_increase(spec, current_value)
-
-    # One below threshold should fail
-    assert (
-        spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold - 1))
-        is False
-    )
-    # At threshold should pass
-    assert spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold)) is True
-
-
-@with_gloas_and_later
-@spec_test
-@single_phase
-def test_is_higher_value_bid__large_values(spec):
-    """Test with large values to ensure no overflow."""
-    current_value = 10**18
-    current_bid = make_bid(spec, current_value)
-    threshold = min_increase(spec, current_value)
-
-    # One below threshold should fail
-    assert (
-        spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold - 1))
-        is False
-    )
-    # At threshold should pass
-    assert spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold)) is True
+def test_is_higher_value_bid__ceil_2(spec):
+    """current=2: test ceiling behavior with small value."""
+    assert_threshold_boundary(spec, 2)
 
 
 @with_gloas_and_later
@@ -155,35 +67,31 @@ def test_is_higher_value_bid__large_values(spec):
 @single_phase
 def test_is_higher_value_bid__ceil_prime_97(spec):
     """current=97 (prime): test ceiling behavior."""
-    current_value = 97
-    current_bid = make_bid(spec, current_value)
-    threshold = min_increase(spec, current_value)
-
-    # One below threshold should fail
-    assert (
-        spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold - 1))
-        is False
-    )
-    # At threshold should pass
-    assert spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold)) is True
+    assert_threshold_boundary(spec, 97)
 
 
 @with_gloas_and_later
 @spec_test
 @single_phase
-def test_is_higher_value_bid__ceil_1(spec):
-    """current=1: test ceiling behavior with small value."""
-    current_value = 1
-    current_bid = make_bid(spec, current_value)
-    threshold = min_increase(spec, current_value)
+def test_is_higher_value_bid__100(spec):
+    """current=100: test at and below threshold."""
+    assert_threshold_boundary(spec, 100)
 
-    # One below threshold should fail
-    assert (
-        spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold - 1))
-        is False
-    )
-    # At threshold should pass
-    assert spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold)) is True
+
+@with_gloas_and_later
+@spec_test
+@single_phase
+def test_is_higher_value_bid__ceil_101(spec):
+    """current=101: test ceiling behavior."""
+    assert_threshold_boundary(spec, 101)
+
+
+@with_gloas_and_later
+@spec_test
+@single_phase
+def test_is_higher_value_bid__ceil_150(spec):
+    """current=150: test ceiling behavior."""
+    assert_threshold_boundary(spec, 150)
 
 
 @with_gloas_and_later
@@ -191,17 +99,15 @@ def test_is_higher_value_bid__ceil_1(spec):
 @single_phase
 def test_is_higher_value_bid__ceil_999(spec):
     """current=999: test ceiling behavior."""
-    current_value = 999
-    current_bid = make_bid(spec, current_value)
-    threshold = min_increase(spec, current_value)
+    assert_threshold_boundary(spec, 999)
 
-    # One below threshold should fail
-    assert (
-        spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold - 1))
-        is False
-    )
-    # At threshold should pass
-    assert spec.is_higher_value_bid(current_bid, make_bid(spec, current_value + threshold)) is True
+
+@with_gloas_and_later
+@spec_test
+@single_phase
+def test_is_higher_value_bid__large_values(spec):
+    """Test with large values to ensure no overflow."""
+    assert_threshold_boundary(spec, 10**18)
 
 
 @with_gloas_and_later
@@ -211,7 +117,22 @@ def test_is_higher_value_bid__uint64_max(spec):
     """current=UINT64_MAX: no valid new bid can be higher."""
     current_bid = make_bid(spec, spec.UINT64_MAX)
 
-    # Equal value should fail
-    assert spec.is_higher_value_bid(current_bid, make_bid(spec, spec.UINT64_MAX)) is False
-    # Lower value should fail
-    assert spec.is_higher_value_bid(current_bid, make_bid(spec, spec.UINT64_MAX - 1)) is False
+    # Same value should return false
+    new_bid_same = make_bid(spec, spec.UINT64_MAX)
+    assert spec.is_higher_value_bid(current_bid, new_bid_same) is False
+
+    # Lower value should return false
+    new_bid_lower = make_bid(spec, spec.UINT64_MAX - 1)
+    assert spec.is_higher_value_bid(current_bid, new_bid_lower) is False
+
+
+@with_gloas_and_later
+@spec_test
+@single_phase
+def test_is_higher_value_bid__uint64_max_minus_one(spec):
+    """current=UINT64_MAX-1: increase of 1 to UINT64_MAX is insufficient."""
+    current_bid = make_bid(spec, spec.UINT64_MAX - 1)
+
+    # Increase of 1 is below the minimum required threshold
+    new_bid = make_bid(spec, spec.UINT64_MAX)
+    assert spec.is_higher_value_bid(current_bid, new_bid) is False
