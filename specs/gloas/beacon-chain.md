@@ -429,7 +429,7 @@ def is_active_builder(state: BeaconState, builder_index: BuilderIndex) -> bool:
         # Placement in builder list is finalized
         state.finalized_checkpoint.epoch <= builder.deposit_epoch
         # Has not initiated exit
-        and builder.exit_epoch != FAR_FUTURE_EPOCH
+        and builder.exit_epoch == FAR_FUTURE_EPOCH
     )
 ```
 
