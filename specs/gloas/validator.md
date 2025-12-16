@@ -13,6 +13,7 @@
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Attestation](#attestation)
   - [Sync Committee participations](#sync-committee-participations)
+  - [Validating a `SignedExecutionPayloadBid`](#validating-a-signedexecutionpayloadbid)
   - [Block proposal](#block-proposal)
     - [Constructing `signed_execution_payload_bid`](#constructing-signed_execution_payload_bid)
     - [Constructing `payload_attestations`](#constructing-payload_attestations)
@@ -111,6 +112,31 @@ alias `data = attestation.data`, the validator should set this field as follows:
 
 Sync committee duties are not changed for validators, however the submission
 deadline is changed with `SYNC_MESSAGE_DUE_BPS_GLOAS`.
+
+### Validating a `SignedExecutionPayloadBid`
+
+When the proposer receives a `SignedExecutionPayloadBid` from either the p2p
+gossip topic or from the Builder-API, it can validate the bid using
+`validate_bid`. It can discard the bid if the conditions are not satisfied.
+
+```python
+def validate_bid(
+    state: BeaconState, signed_bid: SignedExecutionPayloadBid, fee_recipient: ExecutionAddress
+) -> bool:
+    builder = state.builders[signed_bid.builder_index]
+
+    assert signed_bid.slot == state.slot
+    assert signed_bid.fee_recipient == fee_recipient
+    assert signed_bid.parent_block_hash == state.latest_block_hash
+    assert signed_bid.parent_block_root == hash_tree_root(state.latest_block_header)
+    assert signed_bid.prev_randao == get_randao_mix(state, get_current_epoch(state))
+    assert is_builder(state, builder.pubkey)
+
+    if signed_bid.value > 0:
+        assert can_builder_cover_bid(state, signed_bid.builder_index, signed_bid.value)
+
+    return verify_execution_payload_bid_signature(state, signed_bid)
+```
 
 ### Block proposal
 
