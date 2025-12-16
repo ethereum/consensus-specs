@@ -33,8 +33,9 @@ def build_mock_builder(spec, i: int, balance: int):
     return spec.Builder(
         pubkey=active_pubkey,
         withdrawal_credentials=withdrawal_credentials,
-        exit_epoch=spec.FAR_FUTURE_EPOCH,
         balance=balance,
+        deposit_epoch=0,
+        withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
     )
 
 
