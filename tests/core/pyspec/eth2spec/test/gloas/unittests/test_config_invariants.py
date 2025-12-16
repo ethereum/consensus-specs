@@ -27,6 +27,14 @@ def min_increase(spec, current_value):
 @with_gloas_and_later
 @spec_test
 @single_phase
+def test_min_bid_increase_percent__greater_than_zero(spec):
+    """Check that MIN_BID_INCREASE_PERCENT is a non-zero value."""
+    assert spec.config.MIN_BID_INCREASE_PERCENT > 0
+
+
+@with_gloas_and_later
+@spec_test
+@single_phase
 def test_is_higher_value_bid__lower(spec):
     """Lower new bid should return False."""
     current_bid = make_bid(spec, 100)
