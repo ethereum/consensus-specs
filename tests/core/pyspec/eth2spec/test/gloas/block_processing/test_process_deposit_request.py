@@ -54,7 +54,7 @@ def run_builder_deposit_request_processing(
         assert builder.pubkey == deposit_request.pubkey
         assert builder.withdrawal_credentials == deposit_request.withdrawal_credentials
         assert builder.balance == deposit_request.amount
-        assert builder.exit_epoch == spec.FAR_FUTURE_EPOCH
+        assert builder.withdrawable_epoch == spec.FAR_FUTURE_EPOCH
     else:
         # Top-up should increase balance
         assert len(state.builders) == pre_builder_count

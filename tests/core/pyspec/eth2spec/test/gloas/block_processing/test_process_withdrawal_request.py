@@ -55,8 +55,7 @@ def run_builder_withdrawal_request_processing(spec, state, withdrawal_request, s
         # Exit should have been initiated
         assert pre_exit_epoch == spec.FAR_FUTURE_EPOCH
         builder = state.builders[builder_index]
-        assert builder.exit_epoch != spec.FAR_FUTURE_EPOCH
-        assert builder.exit_epoch == (
+        assert builder.withdrawable_epoch == (
             spec.get_current_epoch(state) + spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
         )
 
