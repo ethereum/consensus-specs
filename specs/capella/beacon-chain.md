@@ -410,7 +410,7 @@ def get_validators_sweep_withdrawals(
 #### New `get_expected_withdrawals`
 
 ```python
-def get_expected_withdrawals(state: BeaconState) -> Sequence[Withdrawal]:
+def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], uint64]:
     epoch = get_current_epoch(state)
     withdrawal_index = state.next_withdrawal_index
     withdrawals: List[Withdrawal] = []
