@@ -1323,9 +1323,9 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     # Regardless of the withdrawal credentials, if a builder exists with this
     # pubkey, apply the deposit to their balance so that it's not lost forever
     builder_pubkeys = [b.pubkey for b in state.builders]
-    is_a_builder = deposit_request.pubkey in builder_pubkeys
+    is_builder = deposit_request.pubkey in builder_pubkeys
     is_builder_prefix = is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
-    if is_a_builder or is_builder_prefix:
+    if is_builder or is_builder_prefix:
         # Apply builder deposits immediately
         apply_deposit_for_builder(
             state,
