@@ -512,8 +512,10 @@ def can_builder_cover_bid(
 ) -> bool:
     builder_balance = state.builders[builder_index].balance
     pending_withdrawals_amount = get_pending_balance_to_withdraw_for_builder(state, builder_index)
-    required_balance = MIN_DEPOSIT_AMOUNT + pending_withdrawals_amount + bid_amount
-    return builder_balance >= required_balance
+    min_balance = MIN_DEPOSIT_AMOUNT + pending_withdrawals_amount
+    if builder_balance < min_balance:
+        return False
+    return builder_balance - min_balance >= bid_amount
 ```
 
 #### New `compute_balance_weighted_selection`
