@@ -1070,7 +1070,6 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
         assert amount == 0
         assert signed_bid.signature == bls.G2_POINT_AT_INFINITY
     else:
-        assert amount != 0
         # Verify that the builder is active
         assert is_active_builder(state, builder_index)
         # Verify that the builder has funds to cover the bid
