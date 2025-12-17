@@ -5,6 +5,9 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.keys import builder_privkeys
+from eth2spec.test.helpers.state import (
+    next_epoch_with_full_participation,
+)
 
 
 def run_execution_payload_bid_processing(spec, state, block, valid=True):
@@ -179,7 +182,15 @@ def test_process_execution_payload_bid_valid_builder(spec, state):
     """
     Test valid builder scenario with registered builder and non-zero value
     """
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    assert state.finalized_checkpoint.epoch == 2
+
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+    assert spec.is_active_builder(state, builder_index) is True
+
     pre_balance = state.builders[builder_index].balance
     pre_pending_payments_len = len(
         [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
@@ -420,7 +431,14 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_payments(
     """
     Test builder with sufficient balance for both bid and existing pending payments
     """
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    assert state.finalized_checkpoint.epoch == 2
+
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+    assert spec.is_active_builder(state, builder_index) is True
 
     # Set up scenario: balance=2000 ETH, bid=600, existing_pending=500, min_activation=32ETH
     # Total needed: 600 + 500 + 32000000000 = ~32.0011 ETH < 2000 ETH (should pass)
@@ -526,7 +544,14 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_withdrawa
     """
     Test builder with sufficient balance for both bid and existing pending withdrawals
     """
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    assert state.finalized_checkpoint.epoch == 2
+
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+    assert spec.is_active_builder(state, builder_index) is True
 
     # Set up scenario: balance=2000, bid=600, existing_withdrawal=500, min_activation=32ETH
     # Total needed: 600 + 500 + 32000000000 = ~32.0011 ETH < 2000 ETH (should pass)
