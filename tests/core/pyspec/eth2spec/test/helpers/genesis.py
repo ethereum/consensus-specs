@@ -25,14 +25,9 @@ from eth2spec.test.helpers.keys import builder_pubkeys, pubkeys
 
 
 def build_mock_builder(spec, i: int, balance: int):
-    active_pubkey = builder_pubkeys[i]
-    withdrawal_pubkey = builder_pubkeys[-1 - i]
-    withdrawal_credentials = (
-        spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.hash(withdrawal_pubkey)[12:]
-    )
     return spec.Builder(
-        pubkey=active_pubkey,
-        withdrawal_credentials=withdrawal_credentials,
+        pubkey=builder_pubkeys[i],
+        execution_address=spec.ExecutionAddress(spec.hash(builder_pubkeys[i])[12:]),
         balance=balance,
         deposit_epoch=0,
         withdrawable_epoch=spec.FAR_FUTURE_EPOCH,

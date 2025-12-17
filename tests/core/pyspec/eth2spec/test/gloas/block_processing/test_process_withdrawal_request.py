@@ -13,7 +13,7 @@ def prepare_builder_withdrawal_request(
     builder = state.builders[builder_index]
 
     if source_address is None:
-        source_address = builder.withdrawal_credentials[12:]
+        source_address = builder.execution_address
 
     if amount is None:
         amount = spec.FULL_EXIT_REQUEST_AMOUNT
@@ -145,9 +145,8 @@ def test_process_withdrawal_request__builder_with_pending_payment(spec, state):
     builder = state.builders[builder_index]
 
     # Add a pending payment for this builder
-    fee_recipient = builder.withdrawal_credentials[12:]
     pending_withdrawal = spec.BuilderPendingWithdrawal(
-        fee_recipient=fee_recipient,
+        fee_recipient=builder.execution_address,
         amount=spec.Gwei(1 * spec.ETH_TO_GWEI),
         builder_index=builder_index,
     )
@@ -172,9 +171,8 @@ def test_process_withdrawal_request__builder_with_pending_withdrawal(spec, state
     builder = state.builders[builder_index]
 
     # Add a pending withdrawal for this builder
-    fee_recipient = builder.withdrawal_credentials[12:]
     pending_withdrawal = spec.BuilderPendingWithdrawal(
-        fee_recipient=fee_recipient,
+        fee_recipient=builder.execution_address,
         amount=spec.Gwei(1 * spec.ETH_TO_GWEI),
         builder_index=builder_index,
     )

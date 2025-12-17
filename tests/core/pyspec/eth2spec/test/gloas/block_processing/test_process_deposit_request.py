@@ -54,7 +54,9 @@ def run_builder_deposit_request_processing(
         builder_index = builder_pubkeys.index(deposit_request.pubkey)
         builder = state.builders[builder_index]
         assert builder.pubkey == deposit_request.pubkey
-        assert builder.withdrawal_credentials == deposit_request.withdrawal_credentials
+        assert builder.execution_address == spec.ExecutionAddress(
+            deposit_request.withdrawal_credentials[12:]
+        )
         assert builder.balance == deposit_request.amount
         assert builder.withdrawable_epoch == spec.FAR_FUTURE_EPOCH
     else:

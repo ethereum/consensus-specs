@@ -188,7 +188,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 ```python
 class Builder(Container):
     pubkey: BLSPubkey
-    withdrawal_credentials: Bytes32
+    execution_address: ExecutionAddress
     balance: Gwei
     deposit_epoch: Epoch
     withdrawable_epoch: Epoch
@@ -892,7 +892,7 @@ def get_builders_sweep_withdrawals(
                 Withdrawal(
                     index=withdrawal_index,
                     validator_index=convert_builder_index_to_validator_index(builder_index),
-                    address=ExecutionAddress(builder.withdrawal_credentials[12:]),
+                    address=builder.execution_address,
                     amount=builder.balance,
                 )
             )
@@ -1156,8 +1156,8 @@ def process_withdrawal_request_for_builder(
 ) -> None:
     builder = state.builders[builder_index]
 
-    # Verify withdrawal credentials source address
-    if builder.withdrawal_credentials[12:] != withdrawal_request.source_address:
+    # Verify the source address
+    if builder.execution_address != withdrawal_request.source_address:
         return
     # Verify exit has not been initiated
     if builder.withdrawable_epoch != FAR_FUTURE_EPOCH:
@@ -1273,7 +1273,7 @@ def get_builder_from_deposit(
 ) -> Builder:
     return Builder(
         pubkey=pubkey,
-        withdrawal_credentials=withdrawal_credentials,
+        execution_address=ExecutionAddress(withdrawal_credentials[12:]),
         balance=amount,
         deposit_epoch=get_current_epoch(state),
         withdrawable_epoch=FAR_FUTURE_EPOCH,
