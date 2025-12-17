@@ -840,7 +840,7 @@ def get_builder_withdrawals(
     epoch: Epoch,
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
-    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
+    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
 
     processed_count: uint64 = 0
     withdrawals: List[Withdrawal] = []
