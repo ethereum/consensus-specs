@@ -331,7 +331,12 @@ container.
 
 ##### Validation
 
-TODO add full validation rules
+Because the column only contains the cells and the proof, validation is simpler.
+
+- _[REJECT]_ The cells present bitmap length corresponds to the number of KZG
+  commitments.
+- _[REJECT]_ The sidecar's cell and proof data is valid as verified by
+  `verify_data_column_sidecar_kzg_proofs(sidecar)`.
 
 ######  `verify_partial_data_column_sidecar_kzg_proofs`
 
