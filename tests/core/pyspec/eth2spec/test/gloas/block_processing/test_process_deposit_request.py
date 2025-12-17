@@ -28,7 +28,8 @@ def run_builder_deposit_request_processing(
 
     # For top-ups, get pre-balance
     if not is_new_builder:
-        builder_index = spec.get_builder_index(state, deposit_request.pubkey)
+        builder_pubkeys = [b.pubkey for b in state.builders]
+        builder_index = builder_pubkeys.index(deposit_request.pubkey)
         pre_balance = state.builders[builder_index].balance
 
     yield "pre", state
@@ -49,7 +50,8 @@ def run_builder_deposit_request_processing(
             assert state.builders[builder_index].balance == pre_balance
     elif is_new_builder:
         # New builder should be added to registry
-        builder_index = spec.get_builder_index(state, deposit_request.pubkey)
+        builder_pubkeys = [b.pubkey for b in state.builders]
+        builder_index = builder_pubkeys.index(deposit_request.pubkey)
         builder = state.builders[builder_index]
         assert builder.pubkey == deposit_request.pubkey
         assert builder.withdrawal_credentials == deposit_request.withdrawal_credentials
@@ -109,7 +111,8 @@ def test_process_deposit_request__new_builder_extra_gwei(spec, state):
     yield from run_builder_deposit_request_processing(spec, state, deposit_request)
 
     # Verify the exact amount was deposited
-    builder_index = spec.get_builder_index(state, deposit_request.pubkey)
+    builder_pubkeys = [b.pubkey for b in state.builders]
+    builder_index = builder_pubkeys.index(deposit_request.pubkey)
     assert state.builders[builder_index].balance == amount
 
 

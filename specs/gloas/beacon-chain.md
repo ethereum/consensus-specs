@@ -36,8 +36,6 @@
     - [`BeaconState`](#beaconstate)
 - [Helper functions](#helper-functions)
   - [Predicates](#predicates)
-    - [New `is_builder`](#new-is_builder)
-    - [New `is_validator`](#new-is_validator)
     - [New `is_builder_index`](#new-is_builder_index)
     - [New `is_active_builder`](#new-is_active_builder)
     - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
@@ -45,8 +43,6 @@
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
     - [New `is_parent_block_full`](#new-is_parent_block_full)
   - [Misc](#misc-2)
-    - [New `get_builder_index`](#new-get_builder_index)
-    - [New `get_validator_index`](#new-get_validator_index)
     - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
     - [New `convert_validator_index_to_builder_index`](#new-convert_validator_index_to_builder_index)
     - [New `get_pending_balance_to_withdraw_for_builder`](#new-get_pending_balance_to_withdraw_for_builder)
@@ -394,22 +390,6 @@ class BeaconState(Container):
 
 ### Predicates
 
-#### New `is_builder`
-
-```python
-def is_builder(state: BeaconState, pubkey: BLSPubkey) -> bool:
-    builder_pubkeys = [v.pubkey for v in state.builders]
-    return pubkey in builder_pubkeys
-```
-
-#### New `is_validator`
-
-```python
-def is_validator(state: BeaconState, pubkey: BLSPubkey) -> bool:
-    validator_pubkeys = [v.pubkey for v in state.validators]
-    return pubkey in validator_pubkeys
-```
-
 #### New `is_builder_index`
 
 ```python
@@ -492,24 +472,6 @@ def is_parent_block_full(state: BeaconState) -> bool:
 ```
 
 ### Misc
-
-#### New `get_builder_index`
-
-```python
-def get_builder_index(state: BeaconState, pubkey: BLSPubkey) -> BuilderIndex:
-    builder_pubkeys = [v.pubkey for v in state.builders]
-    assert pubkey in builder_pubkeys
-    return BuilderIndex(builder_pubkeys.index(pubkey))
-```
-
-#### New `get_validator_index`
-
-```python
-def get_validator_index(state: BeaconState, pubkey: BLSPubkey) -> ValidatorIndex:
-    validator_pubkeys = [v.pubkey for v in state.validators]
-    assert pubkey in validator_pubkeys
-    return ValidatorIndex(validator_pubkeys.index(pubkey))
-```
 
 #### New `convert_builder_index_to_validator_index`
 
@@ -1267,6 +1229,8 @@ def process_withdrawal_request_for_validator(
 
 ###### Modified `process_withdrawal_request`
 
+*Note*:
+
 ```python
 def process_withdrawal_request(state: BeaconState, withdrawal_request: WithdrawalRequest) -> None:
     # If partial withdrawal queue is full, only full exits are processed
@@ -1275,11 +1239,16 @@ def process_withdrawal_request(state: BeaconState, withdrawal_request: Withdrawa
     if is_queue_full and not is_full_exit_request:
         return
 
-    if is_builder(state, withdrawal_request.validator_pubkey):
-        builder_index = get_builder_index(state, withdrawal_request.validator_pubkey)
+    builder_pubkeys = [b.pubkey for b in state.builders]
+    if withdrawal_request.validator_pubkey in builder_pubkeys:
+        index = builder_pubkeys.index(withdrawal_request.validator_pubkey)
+        builder_index = BuilderIndex(index)
         return process_withdrawal_request_for_builder(state, withdrawal_request, builder_index)
-    elif is_validator(state, withdrawal_request.validator_pubkey):
-        validator_index = get_validator_index(state, withdrawal_request.validator_pubkey)
+
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    if withdrawal_request.validator_pubkey in validator_pubkeys:
+        index = validator_pubkeys.index(withdrawal_request.validator_pubkey)
+        validator_index = ValidatorIndex(index)
         return process_withdrawal_request_for_validator(state, withdrawal_request, validator_index)
 ```
 
@@ -1331,15 +1300,14 @@ def apply_deposit_for_builder(
     amount: uint64,
     signature: BLSSignature,
 ) -> None:
-    if is_validator(state, pubkey):
-        return
-    if not is_builder(state, pubkey):
+    builder_pubkeys = [b.pubkey for b in state.builders]
+    if pubkey not in builder_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
             add_builder_to_registry(state, pubkey, withdrawal_credentials, amount)
     else:
         # Increase balance by deposit amount
-        builder_index = get_builder_index(state, pubkey)
+        builder_index = builder_pubkeys.index(pubkey)
         state.builders[builder_index].balance += amount
 ```
 
@@ -1351,8 +1319,13 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     if state.deposit_requests_start_index == UNSET_DEPOSIT_REQUESTS_START_INDEX:
         state.deposit_requests_start_index = deposit_request.index
 
-    # [Modified in Gloas:EIP7732]
-    if is_builder_withdrawal_credential(deposit_request.withdrawal_credentials):
+    # [New in Gloas:EIP7732]
+    # Regardless of the withdrawal credentials, if a builder exists with this
+    # pubkey, apply the deposit to their balance so that it's not lost forever
+    builder_pubkeys = [b.pubkey for b in state.builders]
+    is_a_builder = deposit_request.pubkey in builder_pubkeys
+    is_builder_prefix = is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
+    if is_a_builder or is_builder_prefix:
         # Apply builder deposits immediately
         apply_deposit_for_builder(
             state,
@@ -1361,17 +1334,18 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
             deposit_request.amount,
             deposit_request.signature,
         )
-    else:
-        # Add validator deposits to the queue
-        state.pending_deposits.append(
-            PendingDeposit(
-                pubkey=deposit_request.pubkey,
-                withdrawal_credentials=deposit_request.withdrawal_credentials,
-                amount=deposit_request.amount,
-                signature=deposit_request.signature,
-                slot=state.slot,
-            )
+        return
+
+    # Add validator deposits to the queue
+    state.pending_deposits.append(
+        PendingDeposit(
+            pubkey=deposit_request.pubkey,
+            withdrawal_credentials=deposit_request.withdrawal_credentials,
+            amount=deposit_request.amount,
+            signature=deposit_request.signature,
+            slot=state.slot,
         )
+    )
 ```
 
 ##### Attestations

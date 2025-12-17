@@ -36,7 +36,8 @@ def run_builder_withdrawal_request_processing(spec, state, withdrawal_request, s
         success: If True, expect the exit to be initiated.
                  If False, expect no changes (no-op).
     """
-    builder_index = spec.get_builder_index(state, withdrawal_request.validator_pubkey)
+    builder_pubkeys = [b.pubkey for b in state.builders]
+    builder_index = builder_pubkeys.index(withdrawal_request.validator_pubkey)
     pre_withdrawable_epoch = state.builders[builder_index].withdrawable_epoch
 
     yield "pre", state
