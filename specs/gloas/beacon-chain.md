@@ -85,7 +85,7 @@
       - [Deposit requests](#deposit-requests)
         - [New `get_index_for_new_builder`](#new-get_index_for_new_builder)
         - [New `get_builder_from_deposit`](#new-get_builder_from_deposit)
-        - [New `add_validator_to_registry`](#new-add_validator_to_registry)
+        - [New `add_builder_to_registry`](#new-add_builder_to_registry)
         - [New `apply_deposit_for_builder`](#new-apply_deposit_for_builder)
         - [Modified `process_deposit_request`](#modified-process_deposit_request)
       - [Attestations](#attestations)
@@ -1280,7 +1280,7 @@ def get_builder_from_deposit(
     )
 ```
 
-###### New `add_validator_to_registry`
+###### New `add_builder_to_registry`
 
 ```python
 def add_builder_to_registry(
