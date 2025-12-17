@@ -314,7 +314,7 @@ class PartialDataColumnSidecar(Container):
 ```
 
 *Note*: The `PartialDataColumnSidecar` can not be validated until the
-corresponding block with the commitments is available. Implementations SHOULD
+corresponding block with the commitments is available. Implementations MAY
 maintain a bounded number (0 is a valid number) of messages until the block is
 available and the messages can be validated.
 
@@ -326,7 +326,7 @@ Bitlist.
 
 ##### Encoding and Decoding Responses
 
-All responses should be encoded and decoded with the PartialDataColumnSidecar
+All responses MUST be encoded and decoded with the PartialDataColumnSidecar
 container.
 
 ##### Validation
@@ -362,10 +362,13 @@ parts yet.
 This request can introduce extra latency compared to a peer unconditionally
 pushing messages, especially in the first hop of dissemination.
 
-To address this tradeoff a client may choose to eagerly push some (or all) of
+To address this tradeoff a client MAY choose to eagerly push some (or all) of
 the cells it has. clients SHOULD only do this when they are reasonably confident
 that a peer does not have the provided cells. For example, a proposer including
 private blobs SHOULD eagerly push the cells corresponding to the private blobs.
+
+The client SHOULD send the block before sending the partial message to give the
+peer all the information it needs to verify the column.
 
 ##### Interaction with standard Gossipsub
 
