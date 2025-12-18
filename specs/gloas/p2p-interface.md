@@ -339,8 +339,7 @@ The following validations MUST pass before forwarding the
 `signed_proposer_preferences` on the network, assuming the alias
 `preferences = signed_proposer_preferences.message`:
 
-- _[IGNORE]_ `preferences.proposal_slot` is in the next epoch (with a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e.
+- _[IGNORE]_ `preferences.proposal_slot` is in the next epoch -- i.e.
   `compute_epoch_at_slot(preferences.proposal_slot) == get_current_epoch(state) + 1`.
 - _[REJECT]_ `preferences.validator_index` is present at the correct slot in the
   next epoch's portion of `state.proposer_lookahead` -- i.e.
