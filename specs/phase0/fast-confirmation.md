@@ -1,4 +1,4 @@
-# Phase 0 -- Fast Confirmation Rule
+# Phase 0 -- Fast Confirmation
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
