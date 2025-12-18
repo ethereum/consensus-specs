@@ -1321,12 +1321,16 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
         state.deposit_requests_start_index = deposit_request.index
 
     # [New in Gloas:EIP7732]
-    # Regardless of the withdrawal credentials, if a builder exists with this
-    # pubkey, apply the deposit to their balance so that it's not lost forever
     builder_pubkeys = [b.pubkey for b in state.builders]
+    validator_pubkeys = [v.pubkey for v in state.validators]
+
+    # [New in Gloas:EIP7732]
+    # Regardless of the withdrawal credentials prefix, if a builder/validator
+    # already exists with this pubkey, apply the deposit to their balance
     is_builder = deposit_request.pubkey in builder_pubkeys
+    is_validator = deposit_request.pubkey in validator_pubkeys
     is_builder_prefix = is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
-    if is_builder or is_builder_prefix:
+    if is_builder or (is_builder_prefix and not is_validator):
         # Apply builder deposits immediately
         apply_deposit_for_builder(
             state,
