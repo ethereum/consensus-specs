@@ -837,7 +837,6 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 def get_builder_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
-    epoch: Epoch,
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
