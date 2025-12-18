@@ -363,9 +363,9 @@ def get_balance_after_withdrawals(
 def get_validators_sweep_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
-    epoch: Epoch,
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
+    epoch = get_current_epoch(state)
     validators_limit = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
 
@@ -411,13 +411,12 @@ def get_validators_sweep_withdrawals(
 
 ```python
 def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], uint64]:
-    epoch = get_current_epoch(state)
     withdrawal_index = state.next_withdrawal_index
     withdrawals: List[Withdrawal] = []
 
     # Get validators sweep withdrawals
     validators_sweep_withdrawals, withdrawal_index, processed_validators_sweep_count = (
-        get_validators_sweep_withdrawals(state, withdrawal_index, epoch, withdrawals)
+        get_validators_sweep_withdrawals(state, withdrawal_index, withdrawals)
     )
     withdrawals.extend(validators_sweep_withdrawals)
 
