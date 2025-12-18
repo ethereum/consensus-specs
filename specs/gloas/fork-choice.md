@@ -178,9 +178,7 @@ def notify_ptc_messages(
     if state.slot == 0:
         return
     for payload_attestation in payload_attestations:
-        indexed_payload_attestation = get_indexed_payload_attestation(
-            state, Slot(state.slot - 1), payload_attestation
-        )
+        indexed_payload_attestation = get_indexed_payload_attestation(state, payload_attestation)
         for idx in indexed_payload_attestation.attesting_indices:
             on_payload_attestation_message(
                 store,
