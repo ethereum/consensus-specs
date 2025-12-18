@@ -308,7 +308,7 @@ The following validations MUST pass before forwarding the
   given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
   and the given parent block hash -- i.e.
-  `is_higher_value_bid(current_bid, new_bid)` is `True`.
+  `is_higher_value_bid(highest_bid, new_bid)` is `True`.
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
   i.e.
   `MIN_ACTIVATION_BALANCE + bid.value <= state.balances[bid.builder_index]`.
