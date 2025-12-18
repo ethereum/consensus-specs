@@ -112,7 +112,7 @@ class DataColumnSidecar(Container):
 
 ```python
 class ProposerPreferences(Container):
-    proposal_epoch: Epoch
+    proposal_slot: Slot
     validator_index: ValidatorIndex
     fee_recipient: ExecutionAddress
     gas_limit: uint64
@@ -339,16 +339,25 @@ The following validations MUST pass before forwarding the
 `signed_proposer_preferences` on the network, assuming the alias
 `preferences = signed_proposer_preferences.message`:
 
-- _[IGNORE]_ `preferences.proposal_epoch` is the next epoch (with a
+- _[IGNORE]_ `preferences.proposal_slot` is in the next epoch (with a
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e.
-  `preferences.proposal_epoch == get_current_epoch(state) + 1`.
-- _[REJECT]_ `preferences.validator_index` is present in the next epoch's
-  portion of `state.proposer_lookahead` -- i.e.
-  `is_next_epoch_proposer(state, preferences.validator_index)` returns `True`.
+  `compute_epoch_at_slot(preferences.proposal_slot) == get_current_epoch(state) + 1`.
+- _[REJECT]_ `preferences.validator_index` is present at the correct slot in the
+  next epoch's portion of `state.proposer_lookahead` -- i.e.
+  `is_valid_proposal_slot(state, preferences)` returns `True`.
 - _[IGNORE]_ The `signed_proposer_preferences` is the first valid message
   received from the validator with index `preferences.validator_index`.
 - _[REJECT]_ `signed_proposer_preferences.signature` is valid with respect to
   the validator's public key.
+
+```python
+def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences) -> bool:
+    """
+    Check if the validator is the proposer for the given slot in the next epoch.
+    """
+    index = SLOTS_PER_EPOCH + preferences.proposal_slot % SLOTS_PER_EPOCH
+    return state.proposer_lookahead[index] == preferences.validator_index
+```
 
 ##### Blob subnets
 

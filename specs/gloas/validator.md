@@ -123,23 +123,28 @@ previous forks as follows
 #### Broadcasting `SignedProposerPreferences`
 
 At the beginning of each epoch, a validator MAY broadcast a
-`SignedProposerPreferences` message to the `proposer_preferences` gossip topic
-if `is_next_epoch_proposer(state, validator_index)` returns `True`. This allows
-builders to construct execution payloads with the validator's preferred
-`fee_recipient` and `gas_limit`.
+`SignedProposerPreferences` messages to the `proposer_preferences` gossip topic
+for each slot returned by `get_upcoming_proposal_slots(state, validator_index)`.
+This allows builders to construct execution payloads with the validator's
+preferred `fee_recipient` and `gas_limit`.
 
 ```python
-def is_next_epoch_proposer(state: BeaconState, validator_index: ValidatorIndex) -> bool:
+def get_upcoming_proposal_slots(
+    state: BeaconState, validator_index: ValidatorIndex
+) -> Sequence[Slot]:
     """
-    Check if ``validator_index`` is scheduled to propose in the next epoch.
+    Get the slots in the next epoch for which ``validator_index`` is proposing.
     """
-    next_epoch_proposers = state.proposer_lookahead[SLOTS_PER_EPOCH:]
-    return validator_index in next_epoch_proposers
+    return [
+        Slot(compute_start_slot_at_epoch(get_current_epoch(state) + Epoch(1)) + offset)
+        for offset, proposer_index in enumerate(state.proposer_lookahead[SLOTS_PER_EPOCH:])
+        if validator_index == proposer_index
+    ]
 ```
 
-To construct the `SignedProposerPreferences`:
+To construct each `SignedProposerPreferences`:
 
-1. Set `preferences.proposal_epoch` to `get_current_epoch(state) + 1`.
+1. Set `preferences.proposal_slot` to `upcoming_proposal_slots[i]`.
 2. Set `preferences.validator_index` to the validator's index.
 3. Set `preferences.fee_recipient` to the execution address where the validator
    wishes to receive builder payments.
