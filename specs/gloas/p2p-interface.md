@@ -143,7 +143,7 @@ def is_higher_value_bid(
     new_bid: ExecutionPayloadBid,
 ) -> bool:
     """
-    Return ``True`` if ``new_bid`` is at least MIN_BID_INCREASE_PERCENT
+    Return ``True`` if ``new_bid`` is at least ``MIN_BID_INCREASE_PERCENT``
     percent more profitable than ``current_bid``.
     """
     if new_bid.value <= current_bid.value:
