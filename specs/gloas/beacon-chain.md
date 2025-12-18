@@ -871,9 +871,9 @@ def get_builder_withdrawals(
 def get_builders_sweep_withdrawals(
     state: BeaconState,
     withdrawal_index: WithdrawalIndex,
-    epoch: Epoch,
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
+    epoch = get_current_epoch(state)
     builders_limit = min(len(state.builders), MAX_BUILDERS_PER_WITHDRAWALS_SWEEP)
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
 
@@ -910,33 +910,32 @@ def get_builders_sweep_withdrawals(
 def get_expected_withdrawals(
     state: BeaconState,
 ) -> Tuple[Sequence[Withdrawal], uint64, uint64, uint64, uint64]:
-    epoch = get_current_epoch(state)
     withdrawal_index = state.next_withdrawal_index
     withdrawals: List[Withdrawal] = []
 
     # [New in Gloas:EIP7732]
     # Get builder withdrawals
     builder_withdrawals, withdrawal_index, processed_builder_withdrawals_count = (
-        get_builder_withdrawals(state, withdrawal_index, epoch, withdrawals)
+        get_builder_withdrawals(state, withdrawal_index, withdrawals)
     )
     withdrawals.extend(builder_withdrawals)
 
     # Get partial withdrawals
     partial_withdrawals, withdrawal_index, processed_partial_withdrawals_count = (
-        get_pending_partial_withdrawals(state, withdrawal_index, epoch, withdrawals)
+        get_pending_partial_withdrawals(state, withdrawal_index, withdrawals)
     )
     withdrawals.extend(partial_withdrawals)
 
     # [New in Gloas:EIP7732]
     # Get builders sweep withdrawals
     builders_sweep_withdrawals, withdrawal_index, processed_builders_sweep_count = (
-        get_builders_sweep_withdrawals(state, withdrawal_index, epoch, withdrawals)
+        get_builders_sweep_withdrawals(state, withdrawal_index, withdrawals)
     )
     withdrawals.extend(builders_sweep_withdrawals)
 
     # Get validators sweep withdrawals
     validators_sweep_withdrawals, withdrawal_index, processed_validators_sweep_count = (
-        get_validators_sweep_withdrawals(state, withdrawal_index, epoch, withdrawals)
+        get_validators_sweep_withdrawals(state, withdrawal_index, withdrawals)
     )
     withdrawals.extend(validators_sweep_withdrawals)
 
