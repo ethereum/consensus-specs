@@ -1316,10 +1316,6 @@ def apply_deposit_for_builder(
 
 ```python
 def process_deposit_request(state: BeaconState, deposit_request: DepositRequest) -> None:
-    # Set deposit request start index
-    if state.deposit_requests_start_index == UNSET_DEPOSIT_REQUESTS_START_INDEX:
-        state.deposit_requests_start_index = deposit_request.index
-
     # [New in Gloas:EIP7732]
     builder_pubkeys = [b.pubkey for b in state.builders]
     validator_pubkeys = [v.pubkey for v in state.validators]

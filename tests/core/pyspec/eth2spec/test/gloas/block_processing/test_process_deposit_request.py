@@ -193,44 +193,6 @@ def test_process_deposit_request__builder_top_up_invalid_sig(spec, state):
 
 
 #
-# deposit_requests_start_index tests
-#
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_process_deposit_request__set_start_index(spec, state):
-    """Test that deposit_requests_start_index is set on first deposit request."""
-    assert state.deposit_requests_start_index == spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
-
-    amount = spec.MIN_DEPOSIT_AMOUNT
-    deposit_request = prepare_builder_deposit_request(spec, state, amount, signed=True)
-
-    yield from run_builder_deposit_request_processing(spec, state, deposit_request)
-
-    assert state.deposit_requests_start_index == deposit_request.index
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_process_deposit_request__set_start_index_only_once(spec, state):
-    """Test that deposit_requests_start_index is only set once."""
-    initial_start_index = 1
-    state.deposit_requests_start_index = initial_start_index
-
-    amount = spec.MIN_DEPOSIT_AMOUNT
-    deposit_request = prepare_builder_deposit_request(spec, state, amount, signed=True)
-
-    # Make sure our deposit request has a different index
-    assert initial_start_index != deposit_request.index
-
-    yield from run_builder_deposit_request_processing(spec, state, deposit_request)
-
-    # Start index should remain unchanged
-    assert state.deposit_requests_start_index == initial_start_index
-
-
-#
 # Edge cases
 #
 
