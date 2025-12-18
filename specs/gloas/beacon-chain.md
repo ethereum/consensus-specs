@@ -1167,7 +1167,6 @@ def process_withdrawal_request_for_builder(
         # Only exit builder if it has no pending withdrawals in the queue
         if get_pending_balance_to_withdraw_for_builder(state, builder_index) == 0:
             initiate_builder_exit(state, builder_index)
-        return
 ```
 
 ###### New `process_withdrawal_request_for_validator`
@@ -1229,8 +1228,6 @@ def process_withdrawal_request_for_validator(
 ```
 
 ###### Modified `process_withdrawal_request`
-
-*Note*:
 
 ```python
 def process_withdrawal_request(state: BeaconState, withdrawal_request: WithdrawalRequest) -> None:

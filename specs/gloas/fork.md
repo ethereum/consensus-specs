@@ -41,8 +41,6 @@ change is made to upgrade to Gloas.
 def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
     epoch = fulu.get_current_epoch(pre)
 
-    # TODO: forcefully exit any existing 0x03 validator
-
     post = BeaconState(
         genesis_time=pre.genesis_time,
         genesis_validators_root=pre.genesis_validators_root,
