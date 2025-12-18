@@ -6,7 +6,7 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
 )
-from eth2spec.test.helpers.keys import builder_privkeys
+from eth2spec.test.helpers.keys import builder_privkeys, privkeys
 
 
 def run_execution_payload_processing(
@@ -150,15 +150,14 @@ def prepare_execution_payload_envelope(
 
     if valid_signature:
         if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
-            signature = spec.bls.G2_POINT_AT_INFINITY
+            privkey = privkeys[state.latest_block_header.proposer_index]
         else:
-            print(envelope.builder_index)
             privkey = builder_privkeys[envelope.builder_index]
-            signature = spec.get_execution_payload_envelope_signature(
-                state,
-                envelope,
-                privkey,
-            )
+        signature = spec.get_execution_payload_envelope_signature(
+            state,
+            envelope,
+            privkey,
+        )
     else:
         # Invalid signature
         signature = spec.BLSSignature()

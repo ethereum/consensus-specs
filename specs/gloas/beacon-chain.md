@@ -1511,11 +1511,17 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
 def verify_execution_payload_envelope_signature(
     state: BeaconState, signed_envelope: SignedExecutionPayloadEnvelope
 ) -> bool:
-    builder = state.builders[signed_envelope.message.builder_index]
+    builder_index = signed_envelope.message.builder_index
+    if builder_index == BUILDER_INDEX_SELF_BUILD:
+        validator_index = state.latest_block_header.proposer_index
+        pubkey = state.validators[validator_index].pubkey
+    else:
+        pubkey = state.builders[builder_index].pubkey
+
     signing_root = compute_signing_root(
         signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER)
     )
-    return bls.Verify(builder.pubkey, signing_root, signed_envelope.signature)
+    return bls.Verify(pubkey, signing_root, signed_envelope.signature)
 ```
 
 #### New `process_execution_payload`
@@ -1540,10 +1546,7 @@ def process_execution_payload(
 
     # Verify signature
     if verify:
-        if signed_envelope.message.builder_index == BUILDER_INDEX_SELF_BUILD:
-            assert signed_envelope.signature == bls.G2_POINT_AT_INFINITY
-        else:
-            assert verify_execution_payload_envelope_signature(state, signed_envelope)
+        assert verify_execution_payload_envelope_signature(state, signed_envelope)
 
     # Cache latest block header state root
     previous_state_root = hash_tree_root(state)
