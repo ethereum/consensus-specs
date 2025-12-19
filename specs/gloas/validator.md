@@ -88,8 +88,8 @@ All validator responsibilities remain unchanged other than the following:
   this becomes a builder's duty.
 - Some attesters are selected per slot to become PTC members, these validators
   must broadcast `PayloadAttestationMessage` objects during the assigned slot
-  before the deadline of `get_payload_attestation_due_ms(epoch)` milliseconds into the
-  slot.
+  before the deadline of `get_payload_attestation_due_ms(epoch)` milliseconds
+  into the slot.
 
 ### Attestation
 
