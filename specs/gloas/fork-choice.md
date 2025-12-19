@@ -22,6 +22,7 @@
   - [New `is_supporting_vote`](#new-is_supporting_vote)
   - [New `should_extend_payload`](#new-should_extend_payload)
   - [New `get_payload_status_tiebreaker`](#new-get_payload_status_tiebreaker)
+  - [Modified `get_attestation_score`](#modified-get_attestation_score)
   - [Modified `get_weight`](#modified-get_weight)
   - [New `get_node_children`](#new-get_node_children)
   - [Modified `get_head`](#modified-get_head)
@@ -278,12 +279,12 @@ def is_supporting_vote(store: Store, node: ForkChoiceNode, message: LatestMessag
     if node.root == message.root:
         if node.payload_status == PAYLOAD_STATUS_PENDING:
             return True
-        if message.slot <= block.slot:
-            return False
-        if message.payload_present:
-            return node.payload_status == PAYLOAD_STATUS_FULL
-        else:
-            return node.payload_status == PAYLOAD_STATUS_EMPTY
+        if message.slot > block.slot:
+            if message.payload_present:
+                return node.payload_status == PAYLOAD_STATUS_FULL
+            else:
+                return node.payload_status == PAYLOAD_STATUS_EMPTY
+        return False
 
     else:
         ancestor = get_ancestor(store, message.root, block.slot)
@@ -329,6 +330,28 @@ def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> uint8:
             return 2 if should_extend_payload(store, node.root) else 0
 ```
 
+### Modified `get_attestation_score`
+
+```python
+def get_attestation_score(store: Store, node: ForkChoiceNode, state: BeaconState) -> Gwei:
+    unslashed_and_active_indices = [
+        i
+        for i in get_active_validator_indices(state, get_current_epoch(state))
+        if not state.validators[i].slashed
+    ]
+    return Gwei(
+        sum(
+            state.validators[i].effective_balance
+            for i in unslashed_and_active_indices
+            if (
+                i in store.latest_messages
+                and i not in store.equivocating_indices
+                and is_supporting_vote(store, node, store.latest_messages[i])
+            )
+        )
+    )
+```
+
 ### Modified `get_weight`
 
 ```python
@@ -337,23 +360,7 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
         node.root
     ].slot + 1 != get_current_slot(store):
         state = store.checkpoint_states[store.justified_checkpoint]
-        unslashed_and_active_indices = [
-            i
-            for i in get_active_validator_indices(state, get_current_epoch(state))
-            if not state.validators[i].slashed
-        ]
-        attestation_score = Gwei(
-            sum(
-                state.validators[i].effective_balance
-                for i in unslashed_and_active_indices
-                if (
-                    i in store.latest_messages
-                    and i not in store.equivocating_indices
-                    and is_supporting_vote(store, node, store.latest_messages[i])
-                )
-            )
-        )
-
+        attestation_score = get_attestation_score(store, node, state)
         if store.proposer_boost_root == Root():
             # Return only attestation score if `proposer_boost_root` is not set
             return attestation_score
@@ -596,7 +603,7 @@ def on_payload_attestation_message(
     store: Store, ptc_message: PayloadAttestationMessage, is_from_block: bool = False
 ) -> None:
     """
-    Run ``on_payload_attestation_message`` upon receiving a new ``ptc_message`` directly on the wire.
+    Run ``on_payload_attestation_message`` upon receiving a new ``ptc_message`` from either within a block or directly on the wire.
     """
     # The beacon block root must be known
     data = ptc_message.data
