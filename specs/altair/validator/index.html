@@ -1,0 +1,5503 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ethereum.github.io/consensus-specs/specs/altair/validator/">
+      
+      
+        <link rel="prev" href="../p2p-interface/">
+      
+      
+        <link rel="next" href="../light-client/full-node/">
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.20">
+    
+    
+      
+        <title>Validator - Ethereum Consensus Specs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.e53b48f4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#altair-honest-validator" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Ethereum Consensus Specs" class="md-header__button md-logo" aria-label="Ethereum Consensus Specs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ethereum Consensus Specs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Validator
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../phase0/beacon-chain/" class="md-tabs__link">
+          
+  
+  
+  Specs
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../docs/new-feature/" class="md-tabs__link">
+          
+  
+  
+  Docs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../fork_choice/safe-block/" class="md-tabs__link">
+          
+  
+  
+  Fork choice
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../light-client/" class="md-tabs__link">
+          
+  
+  
+  Light client
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../ssz/merkle-proofs/" class="md-tabs__link">
+          
+  
+  
+  Ssz
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../sync/optimistic/" class="md-tabs__link">
+          
+  
+  
+  Sync
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Ethereum Consensus Specs" class="md-nav__button md-logo" aria-label="Ethereum Consensus Specs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Ethereum Consensus Specs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Home
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Ethereum Proof-of-Stake Consensus Specifications
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Specs
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Specs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Phase0
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            Phase0
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../phase0/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../phase0/deposit-contract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Deposit Contract
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../phase0/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../phase0/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../phase0/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../phase0/weak-subjectivity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Weak Subjectivity
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Altair
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            Altair
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    BLS
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constants" class="md-nav__link">
+    <span class="md-ellipsis">
+      Constants
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Constants">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#misc" class="md-nav__link">
+    <span class="md-ellipsis">
+      Misc
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#time-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Time parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Containers
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Containers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#synccommitteemessage" class="md-nav__link">
+    <span class="md-ellipsis">
+      SyncCommitteeMessage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#synccommitteecontribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      SyncCommitteeContribution
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contributionandproof" class="md-nav__link">
+    <span class="md-ellipsis">
+      ContributionAndProof
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#signedcontributionandproof" class="md-nav__link">
+    <span class="md-ellipsis">
+      SignedContributionAndProof
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#syncaggregatorselectiondata" class="md-nav__link">
+    <span class="md-ellipsis">
+      SyncAggregatorSelectionData
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validator-assignments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validator assignments
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Validator assignments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sync-committee" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sync Committee
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lookahead" class="md-nav__link">
+    <span class="md-ellipsis">
+      Lookahead
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#beacon-chain-responsibilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      Beacon chain responsibilities
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Beacon chain responsibilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#block-proposal" class="md-nav__link">
+    <span class="md-ellipsis">
+      Block proposal
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Block proposal">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#preparing-a-beaconblock" class="md-nav__link">
+    <span class="md-ellipsis">
+      Preparing a BeaconBlock
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#constructing-the-beaconblockbody" class="md-nav__link">
+    <span class="md-ellipsis">
+      Constructing the BeaconBlockBody
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Constructing the BeaconBlockBody">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sync-committee_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sync committee
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#packaging-into-a-signedbeaconblock" class="md-nav__link">
+    <span class="md-ellipsis">
+      Packaging into a SignedBeaconBlock
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attesting-and-attestation-aggregation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Attesting and attestation aggregation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sync-committees" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sync committees
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sync committees">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sync-committee-messages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sync committee messages
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sync committee messages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prepare-sync-committee-message" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prepare sync committee message
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#broadcast-sync-committee-message" class="md-nav__link">
+    <span class="md-ellipsis">
+      Broadcast sync committee message
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sync-committee-contributions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sync committee contributions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sync committee contributions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#aggregation-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      Aggregation selection
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#construct-sync-committee-contribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Construct sync committee contribution
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Construct sync committee contribution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#slot" class="md-nav__link">
+    <span class="md-ellipsis">
+      Slot
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#beacon-block-root" class="md-nav__link">
+    <span class="md-ellipsis">
+      Beacon block root
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#subcommittee-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      Subcommittee index
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aggregation-bits" class="md-nav__link">
+    <span class="md-ellipsis">
+      Aggregation bits
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#signature" class="md-nav__link">
+    <span class="md-ellipsis">
+      Signature
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#broadcast-sync-committee-contribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Broadcast sync committee contribution
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sync-committee-subnet-stability" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sync committee subnet stability
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_7" id="__nav_2_2_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            Light Client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../light-client/full-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Full Node
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../light-client/light-client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sync Protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Bellatrix
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            Bellatrix
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bellatrix/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bellatrix/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bellatrix/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bellatrix/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bellatrix/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Capella
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            Capella
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4_6" id="__nav_2_4_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            Light Client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/light-client/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/light-client/full-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Full Node
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sync Protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Deneb
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            Deneb
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/polynomial-commitments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Polynomial Commitments
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5_7" id="__nav_2_5_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            Light Client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/light-client/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/light-client/full-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Full Node
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sync Protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Electra
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            Electra
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/weak-subjectivity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Weak Subjectivity
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6_6" id="__nav_2_6_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_6_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6_6">
+            <span class="md-nav__icon md-icon"></span>
+            Light Client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/light-client/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sync Protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Fulu
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            Fulu
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fulu/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fulu/das-core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DAS Core
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fulu/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fulu/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fulu/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fulu/polynomial-commitments-sampling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Polynomial Commitments Sampling
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fulu/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_8" id="__nav_2_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Gloas
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            Gloas
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gloas/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gloas/builder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Builder
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gloas/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gloas/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gloas/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gloas/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9" id="__nav_2_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Features
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            Features
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9_1" id="__nav_2_9_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Eip6800
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9_1">
+            <span class="md-nav__icon md-icon"></span>
+            Eip6800
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip6800/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip6800/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip6800/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9_2" id="__nav_2_9_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Eip6914
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9_2">
+            <span class="md-nav__icon md-icon"></span>
+            Eip6914
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip6914/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip6914/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9_3" id="__nav_2_9_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Eip7441
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9_3">
+            <span class="md-nav__icon md-icon"></span>
+            Eip7441
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7441/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7441/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9_4" id="__nav_2_9_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Eip7805
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9_4">
+            <span class="md-nav__icon md-icon"></span>
+            Eip7805
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7805/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7805/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7805/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7805/inclusion-list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Inclusion List
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7805/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7805/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9_5" id="__nav_2_9_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Eip7928
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9_5">
+            <span class="md-nav__icon md-icon"></span>
+            Eip7928
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7928/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7928/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7928/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9_6" id="__nav_2_9_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Eip8025
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9_6">
+            <span class="md-nav__icon md-icon"></span>
+            Eip8025
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip8025/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip8025/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip8025/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip8025/zkevm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Zkevm
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Docs
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Docs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../docs/new-feature/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    How to add a new feature proposal in consensus-specs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../docs/release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Release Procedure
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Fork choice
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Fork choice
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fork_choice/safe-block/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice -- Safe Block
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice -- Core
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            Fork Choice -- Core
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../phase0/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    phase0
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../bellatrix/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    bellatrix
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    capella
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    deneb
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Light client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../light-client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Index
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../light-client/sync-protocol" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Altair
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/light-client/sync-protocol" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Capella
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/light-client/sync-protocol" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Deneb
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Ssz
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Ssz
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ssz/merkle-proofs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Merkle proof formats
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ssz/simple-serialize/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    SimpleSerialize (SSZ)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Sync
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Sync
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../sync/optimistic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Optimistic Sync
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constants" class="md-nav__link">
+    <span class="md-ellipsis">
+      Constants
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Constants">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#misc" class="md-nav__link">
+    <span class="md-ellipsis">
+      Misc
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#time-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Time parameters
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Containers
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Containers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#synccommitteemessage" class="md-nav__link">
+    <span class="md-ellipsis">
+      SyncCommitteeMessage
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#synccommitteecontribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      SyncCommitteeContribution
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contributionandproof" class="md-nav__link">
+    <span class="md-ellipsis">
+      ContributionAndProof
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#signedcontributionandproof" class="md-nav__link">
+    <span class="md-ellipsis">
+      SignedContributionAndProof
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#syncaggregatorselectiondata" class="md-nav__link">
+    <span class="md-ellipsis">
+      SyncAggregatorSelectionData
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validator-assignments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validator assignments
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Validator assignments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sync-committee" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sync Committee
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lookahead" class="md-nav__link">
+    <span class="md-ellipsis">
+      Lookahead
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#beacon-chain-responsibilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      Beacon chain responsibilities
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Beacon chain responsibilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#block-proposal" class="md-nav__link">
+    <span class="md-ellipsis">
+      Block proposal
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Block proposal">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#preparing-a-beaconblock" class="md-nav__link">
+    <span class="md-ellipsis">
+      Preparing a BeaconBlock
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#constructing-the-beaconblockbody" class="md-nav__link">
+    <span class="md-ellipsis">
+      Constructing the BeaconBlockBody
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Constructing the BeaconBlockBody">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sync-committee_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sync committee
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#packaging-into-a-signedbeaconblock" class="md-nav__link">
+    <span class="md-ellipsis">
+      Packaging into a SignedBeaconBlock
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attesting-and-attestation-aggregation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Attesting and attestation aggregation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sync-committees" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sync committees
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sync committees">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sync-committee-messages" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sync committee messages
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sync committee messages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prepare-sync-committee-message" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prepare sync committee message
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#broadcast-sync-committee-message" class="md-nav__link">
+    <span class="md-ellipsis">
+      Broadcast sync committee message
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sync-committee-contributions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sync committee contributions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sync committee contributions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#aggregation-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      Aggregation selection
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#construct-sync-committee-contribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Construct sync committee contribution
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Construct sync committee contribution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#slot" class="md-nav__link">
+    <span class="md-ellipsis">
+      Slot
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#beacon-block-root" class="md-nav__link">
+    <span class="md-ellipsis">
+      Beacon block root
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#subcommittee-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      Subcommittee index
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aggregation-bits" class="md-nav__link">
+    <span class="md-ellipsis">
+      Aggregation bits
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#signature" class="md-nav__link">
+    <span class="md-ellipsis">
+      Signature
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#broadcast-sync-committee-contribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Broadcast sync committee contribution
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sync-committee-subnet-stability" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sync committee subnet stability
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="altair-honest-validator">Altair -- Honest Validator<a class="headerlink" href="#altair-honest-validator" title="Permanent link">&para;</a></h1>
+<p>This is an accompanying document to
+<a href="../beacon-chain/">Altair -- The Beacon Chain</a>, which describes the expected
+actions of a "validator" participating in the Ethereum proof-of-stake protocol.</p>
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
+
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#prerequisites">Prerequisites</a></li>
+<li><a href="#constants">Constants</a></li>
+<li><a href="#misc">Misc</a></li>
+<li><a href="#configuration">Configuration</a></li>
+<li><a href="#time-parameters">Time parameters</a></li>
+<li><a href="#containers">Containers</a></li>
+<li><a href="#synccommitteemessage"><code>SyncCommitteeMessage</code></a></li>
+<li><a href="#synccommitteecontribution"><code>SyncCommitteeContribution</code></a></li>
+<li><a href="#contributionandproof"><code>ContributionAndProof</code></a></li>
+<li><a href="#signedcontributionandproof"><code>SignedContributionAndProof</code></a></li>
+<li><a href="#syncaggregatorselectiondata"><code>SyncAggregatorSelectionData</code></a></li>
+<li><a href="#validator-assignments">Validator assignments</a></li>
+<li><a href="#sync-committee">Sync Committee</a></li>
+<li><a href="#lookahead">Lookahead</a></li>
+<li><a href="#beacon-chain-responsibilities">Beacon chain responsibilities</a></li>
+<li><a href="#block-proposal">Block proposal</a><ul>
+<li><a href="#preparing-a-beaconblock">Preparing a <code>BeaconBlock</code></a></li>
+<li><a href="#constructing-the-beaconblockbody">Constructing the <code>BeaconBlockBody</code></a></li>
+<li><a href="#sync-committee">Sync committee</a></li>
+<li><a href="#packaging-into-a-signedbeaconblock">Packaging into a <code>SignedBeaconBlock</code></a></li>
+</ul>
+</li>
+<li><a href="#attesting-and-attestation-aggregation">Attesting and attestation aggregation</a></li>
+<li><a href="#sync-committees">Sync committees</a><ul>
+<li><a href="#sync-committee-messages">Sync committee messages</a></li>
+<li><a href="#prepare-sync-committee-message">Prepare sync committee message</a></li>
+<li><a href="#broadcast-sync-committee-message">Broadcast sync committee message</a></li>
+<li><a href="#sync-committee-contributions">Sync committee contributions</a></li>
+<li><a href="#aggregation-selection">Aggregation selection</a></li>
+<li><a href="#construct-sync-committee-contribution">Construct sync committee contribution</a><ul>
+<li><a href="#slot">Slot</a></li>
+<li><a href="#beacon-block-root">Beacon block root</a></li>
+<li><a href="#subcommittee-index">Subcommittee index</a></li>
+<li><a href="#aggregation-bits">Aggregation bits</a></li>
+<li><a href="#signature">Signature</a></li>
+</ul>
+</li>
+<li><a href="#broadcast-sync-committee-contribution">Broadcast sync committee contribution</a></li>
+</ul>
+</li>
+<li><a href="#sync-committee-subnet-stability">Sync committee subnet stability</a></li>
+</ul>
+<!-- mdformat-toc end -->
+
+<h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h2>
+<p>This document represents the expected behavior of an "honest validator" with
+respect to the Altair upgrade of the Ethereum proof-of-stake protocol. It builds
+on the
+<a href="../../phase0/validator/">previous document for the behavior of an "honest validator" from Phase 0</a>
+of the Ethereum proof-of-stake protocol. This previous document is referred to
+below as the "Phase 0 document".</p>
+<p>Altair introduces a new type of committee: the sync committee. Sync committees
+are responsible for signing each block of the canonical chain and there exists
+an efficient algorithm for light clients to sync the chain using the output of
+the sync committees. See the <a href="../light-client/sync-protocol/">sync protocol</a>
+for further details on the light client sync. Under this network upgrade,
+validators track their participation in this new committee type and produce the
+relevant signatures as required. Block proposers incorporate the (aggregated)
+sync committee signatures into each block they produce.</p>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<p>All terminology, constants, functions, and protocol mechanics defined in the
+<a href="../beacon-chain/">Altair -- The Beacon Chain</a> doc are requisite for this
+document and used throughout. Please see this document before continuing and use
+as a reference throughout.</p>
+<h2 id="constants">Constants<a class="headerlink" href="#constants" title="Permanent link">&para;</a></h2>
+<h3 id="misc">Misc<a class="headerlink" href="#misc" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Value</th>
+<th style="text-align: center;">Unit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE</code></td>
+<td><code>2**4</code> (= 16)</td>
+<td style="text-align: center;">validators</td>
+</tr>
+<tr>
+<td><code>SYNC_COMMITTEE_SUBNET_COUNT</code></td>
+<td><code>4</code></td>
+<td style="text-align: center;">The number of sync committee subnets used in the gossipsub aggregation protocol.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="time-parameters">Time parameters<a class="headerlink" href="#time-parameters" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Value</th>
+<th style="text-align: center;">Unit</th>
+<th style="text-align: center;">Duration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SYNC_MESSAGE_DUE_BPS</code></td>
+<td><code>uint64(3333)</code></td>
+<td style="text-align: center;">basis points</td>
+<td style="text-align: center;">~33% of <code>SLOT_DURATION_MS</code></td>
+</tr>
+<tr>
+<td><code>CONTRIBUTION_DUE_BPS</code></td>
+<td><code>uint64(6667)</code></td>
+<td style="text-align: center;">basis points</td>
+<td style="text-align: center;">~67% of <code>SLOT_DURATION_MS</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="containers">Containers<a class="headerlink" href="#containers" title="Permanent link">&para;</a></h2>
+<h3 id="synccommitteemessage"><code>SyncCommitteeMessage</code><a class="headerlink" href="#synccommitteemessage" title="Permanent link">&para;</a></h3>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-5">5</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1"></a><span style="color: #66D9EF">class</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">SyncCommitteeMessage</span><span style="color: #F8F8F2">(Container):</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2"></a>    <span style="color: #F8F8F2">slot:</span> <span style="color: #F8F8F2">Slot</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3"></a>    <span style="color: #F8F8F2">beacon_block_root:</span> <span style="color: #F8F8F2">Root</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4"></a>    <span style="color: #F8F8F2">validator_index:</span> <span style="color: #F8F8F2">ValidatorIndex</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5"></a>    <span style="color: #F8F8F2">signature:</span> <span style="color: #F8F8F2">BLSSignature</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="synccommitteecontribution"><code>SyncCommitteeContribution</code><a class="headerlink" href="#synccommitteecontribution" title="Permanent link">&para;</a></h3>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-6">6</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1"></a><span style="color: #66D9EF">class</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">SyncCommitteeContribution</span><span style="color: #F8F8F2">(Container):</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2"></a>    <span style="color: #F8F8F2">slot:</span> <span style="color: #F8F8F2">Slot</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3"></a>    <span style="color: #F8F8F2">beacon_block_root:</span> <span style="color: #F8F8F2">Root</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4"></a>    <span style="color: #F8F8F2">subcommittee_index:</span> <span style="color: #F8F8F2">uint64</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5"></a>    <span style="color: #F8F8F2">aggregation_bits:</span> <span style="color: #F8F8F2">Bitvector[SYNC_COMMITTEE_SIZE</span> <span style="color: #FF4689">//</span> <span style="color: #F8F8F2">SYNC_COMMITTEE_SUBNET_COUNT]</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6"></a>    <span style="color: #F8F8F2">signature:</span> <span style="color: #F8F8F2">BLSSignature</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="contributionandproof"><code>ContributionAndProof</code><a class="headerlink" href="#contributionandproof" title="Permanent link">&para;</a></h3>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-4">4</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1"></a><span style="color: #66D9EF">class</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">ContributionAndProof</span><span style="color: #F8F8F2">(Container):</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2"></a>    <span style="color: #F8F8F2">aggregator_index:</span> <span style="color: #F8F8F2">ValidatorIndex</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3"></a>    <span style="color: #F8F8F2">contribution:</span> <span style="color: #F8F8F2">SyncCommitteeContribution</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4"></a>    <span style="color: #F8F8F2">selection_proof:</span> <span style="color: #F8F8F2">BLSSignature</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="signedcontributionandproof"><code>SignedContributionAndProof</code><a class="headerlink" href="#signedcontributionandproof" title="Permanent link">&para;</a></h3>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-3">3</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1"></a><span style="color: #66D9EF">class</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">SignedContributionAndProof</span><span style="color: #F8F8F2">(Container):</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2"></a>    <span style="color: #F8F8F2">message:</span> <span style="color: #F8F8F2">ContributionAndProof</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3"></a>    <span style="color: #F8F8F2">signature:</span> <span style="color: #F8F8F2">BLSSignature</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="syncaggregatorselectiondata"><code>SyncAggregatorSelectionData</code><a class="headerlink" href="#syncaggregatorselectiondata" title="Permanent link">&para;</a></h3>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-3">3</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1"></a><span style="color: #66D9EF">class</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">SyncAggregatorSelectionData</span><span style="color: #F8F8F2">(Container):</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2"></a>    <span style="color: #F8F8F2">slot:</span> <span style="color: #F8F8F2">Slot</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3"></a>    <span style="color: #F8F8F2">subcommittee_index:</span> <span style="color: #F8F8F2">uint64</span>
+</code></pre></div></td></tr></table></div>
+<h2 id="validator-assignments">Validator assignments<a class="headerlink" href="#validator-assignments" title="Permanent link">&para;</a></h2>
+<p>A validator determines beacon committee assignments and beacon block proposal
+duties as defined in the Phase 0 document.</p>
+<h3 id="sync-committee">Sync Committee<a class="headerlink" href="#sync-committee" title="Permanent link">&para;</a></h3>
+<p>To determine sync committee assignments, a validator can run the following
+function: <code>is_assigned_to_sync_committee(state, epoch, validator_index)</code> where
+<code>epoch</code> is an epoch number within the current or next sync committee period.
+This function is a predicate indicating the presence or absence of the validator
+in the corresponding sync committee for the queried sync committee period.</p>
+<p><em>Note</em>: Being assigned to a sync committee for a given <code>slot</code> means that the
+validator produces and broadcasts signatures for <code>slot - 1</code> for inclusion in
+<code>slot</code>. This means that when assigned to an <code>epoch</code> sync committee signatures
+must be produced and broadcast for slots on range
+<code>[compute_start_slot_at_epoch(epoch) - 1, compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH - 1)</code>
+rather than for the range
+<code>[compute_start_slot_at_epoch(epoch), compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH)</code>.
+To reduce complexity during the Altair fork, sync committees are not expected to
+produce signatures for <code>compute_start_slot_at_epoch(ALTAIR_FORK_EPOCH) - 1</code>.</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-2">2</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">compute_sync_committee_period</span><span style="color: #F8F8F2">(epoch:</span> <span style="color: #F8F8F2">Epoch)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">uint64:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">epoch</span> <span style="color: #FF4689">//</span> <span style="color: #F8F8F2">EPOCHS_PER_SYNC_COMMITTEE_PERIOD</span>
+</code></pre></div></td></tr></table></div>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-14">14</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">is_assigned_to_sync_committee</span><span style="color: #F8F8F2">(</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2"></a>    <span style="color: #F8F8F2">state:</span> <span style="color: #F8F8F2">BeaconState,</span> <span style="color: #F8F8F2">epoch:</span> <span style="color: #F8F8F2">Epoch,</span> <span style="color: #F8F8F2">validator_index:</span> <span style="color: #F8F8F2">ValidatorIndex</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3"></a><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">bool:</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4"></a>    <span style="color: #F8F8F2">sync_committee_period</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">compute_sync_committee_period(epoch)</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5"></a>    <span style="color: #F8F8F2">current_epoch</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">get_current_epoch(state)</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6"></a>    <span style="color: #F8F8F2">current_sync_committee_period</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">compute_sync_committee_period(current_epoch)</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7"></a>    <span style="color: #F8F8F2">next_sync_committee_period</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">current_sync_committee_period</span> <span style="color: #FF4689">+</span> <span style="color: #AE81FF">1</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">sync_committee_period</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">(current_sync_committee_period,</span> <span style="color: #F8F8F2">next_sync_committee_period)</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10"></a>    <span style="color: #F8F8F2">pubkey</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">validators[validator_index]</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">pubkey</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11"></a>    <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">sync_committee_period</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">current_sync_committee_period:</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12"></a>        <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">pubkey</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">current_sync_committee</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">pubkeys</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13"></a>    <span style="color: #66D9EF">else</span><span style="color: #F8F8F2">:</span>  <span style="color: #959077"># sync_committee_period == next_sync_committee_period</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14"></a>        <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">pubkey</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">next_sync_committee</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">pubkeys</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="lookahead">Lookahead<a class="headerlink" href="#lookahead" title="Permanent link">&para;</a></h3>
+<p>The sync committee shufflings give validators 1 sync committee period of
+lookahead which amounts to <code>EPOCHS_PER_SYNC_COMMITTEE_PERIOD</code> epochs. At any
+given <code>epoch</code>, the <code>BeaconState</code> contains the current <code>SyncCommittee</code> and the
+next <code>SyncCommittee</code>. Once every <code>EPOCHS_PER_SYNC_COMMITTEE_PERIOD</code> epochs, the
+next <code>SyncCommittee</code> becomes the current <code>SyncCommittee</code> and the next committee
+is computed and stored.</p>
+<p><em>Note</em>: The data required to compute a given committee is not cached in the
+<code>BeaconState</code> after committees are calculated at the period boundaries. For this
+reason, <em>always</em> get committee assignments via the fields of the <code>BeaconState</code>
+(<code>current_sync_committee</code> and <code>next_sync_committee</code>) or use the above reference
+code.</p>
+<p>A validator should plan for future sync committee assignments by noting which
+sync committee periods they are selected for participation. Specifically, a
+validator should:</p>
+<ul>
+<li>Upon (re)syncing the chain and upon sync committee period boundaries, check
+  for assignments in the current and next sync committee periods.</li>
+<li>If the validator is in the current sync committee period, then they perform
+  the responsibilities below for sync committee rewards.</li>
+<li>If the validator is in the next sync committee period, they should wait until
+  the next <code>EPOCHS_PER_SYNC_COMMITTEE_PERIOD</code> boundary and then perform the
+  responsibilities throughout that period.</li>
+</ul>
+<h2 id="beacon-chain-responsibilities">Beacon chain responsibilities<a class="headerlink" href="#beacon-chain-responsibilities" title="Permanent link">&para;</a></h2>
+<p>A validator maintains the responsibilities given in the Phase 0 document.</p>
+<p>Block proposals are modified to incorporate the sync committee signatures as
+detailed below.</p>
+<p>When assigned to a sync committee, validators have a new responsibility to sign
+and broadcast beacon block roots during each slot of the sync committee period.
+These signatures are aggregated and routed to the proposer over gossip for
+inclusion into a beacon block. Assignments to a particular sync committee are
+infrequent at normal validator counts; however, an action every slot is required
+when in the current active sync committee.</p>
+<h3 id="block-proposal">Block proposal<a class="headerlink" href="#block-proposal" title="Permanent link">&para;</a></h3>
+<p>Refer to the phase 0 document for the majority of the
+<a href="../../phase0/validator/#block-proposal">block proposal responsibility</a>. The
+validator should follow those instructions to prepare a <code>SignedBeaconBlock</code> for
+inclusion into the chain. All changes are additive to phase 0 and noted below.</p>
+<h4 id="preparing-a-beaconblock">Preparing a <code>BeaconBlock</code><a class="headerlink" href="#preparing-a-beaconblock" title="Permanent link">&para;</a></h4>
+<p>No change to
+<a href="../../phase0/validator/#preparing-for-a-beaconblock">Preparing for a <code>BeaconBlock</code></a>.</p>
+<h4 id="constructing-the-beaconblockbody">Constructing the <code>BeaconBlockBody</code><a class="headerlink" href="#constructing-the-beaconblockbody" title="Permanent link">&para;</a></h4>
+<p>Each section of
+<a href="../../phase0/validator/#constructing-the-beaconblockbody">Constructing the <code>BeaconBlockBody</code></a>
+should be followed. After constructing the <code>BeaconBlockBody</code> as per that
+section, the proposer has an additional task to include the sync committee
+signatures:</p>
+<h5 id="sync-committee_1">Sync committee<a class="headerlink" href="#sync-committee_1" title="Permanent link">&para;</a></h5>
+<p>The proposer receives a number of <code>SyncCommitteeContribution</code>s (wrapped in
+<code>SignedContributionAndProof</code>s on the wire) from validators in the sync committee
+who are selected to partially aggregate signatures from independent
+subcommittees formed by breaking the full sync committee into
+<code>SYNC_COMMITTEE_SUBNET_COUNT</code> pieces (see below for details).</p>
+<p>The proposer collects the contributions that match their local view of the chain
+(i.e. <code>contribution.beacon_block_root == block.parent_root</code>) for further
+aggregation when preparing a block. Of these contributions, proposers should
+select the best contribution seen across all aggregators for each
+subnet/subcommittee. A contribution with more valid signatures is better than a
+contribution with fewer signatures.</p>
+<p>Recall <code>block.body.sync_aggregate.sync_committee_bits</code> is a <code>Bitvector</code> where
+the <code>i</code>th bit is <code>True</code> if the corresponding validator in the sync committee has
+produced a valid signature, and that
+<code>block.body.sync_aggregate.sync_committee_signature</code> is the aggregate BLS
+signature combining all of the valid signatures.</p>
+<p>Given a collection of the best seen <code>contributions</code> (with no repeating
+<code>subcommittee_index</code> values) and the <code>BeaconBlock</code> under construction, the
+proposer processes them as follows:</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-14">14</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-15">15</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-16">16</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-17">17</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-18">18</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">process_sync_committee_contributions</span><span style="color: #F8F8F2">(</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2"></a>    <span style="color: #F8F8F2">block:</span> <span style="color: #F8F8F2">BeaconBlock,</span> <span style="color: #F8F8F2">contributions:</span> <span style="color: #F8F8F2">Set[SyncCommitteeContribution]</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3"></a><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #66D9EF">None</span><span style="color: #F8F8F2">:</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4"></a>    <span style="color: #F8F8F2">sync_aggregate</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">SyncAggregate()</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5"></a>    <span style="color: #F8F8F2">signatures</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[]</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6"></a>    <span style="color: #F8F8F2">sync_subcommittee_size</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">SYNC_COMMITTEE_SIZE</span> <span style="color: #FF4689">//</span> <span style="color: #F8F8F2">SYNC_COMMITTEE_SUBNET_COUNT</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7"></a>
+<a id="__codelineno-7-8" name="__codelineno-7-8"></a>    <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">contribution</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">contributions:</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9"></a>        <span style="color: #F8F8F2">subcommittee_index</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">contribution</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">subcommittee_index</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10"></a>        <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">index,</span> <span style="color: #F8F8F2">participated</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">enumerate(contribution</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">aggregation_bits):</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11"></a>            <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">participated:</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12"></a>                <span style="color: #F8F8F2">participant_index</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">sync_subcommittee_size</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">subcommittee_index</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">index</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13"></a>                <span style="color: #F8F8F2">sync_aggregate</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">sync_committee_bits[participant_index]</span> <span style="color: #FF4689">=</span> <span style="color: #66D9EF">True</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14"></a>        <span style="color: #F8F8F2">signatures</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">append(contribution</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">signature)</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15"></a>
+<a id="__codelineno-7-16" name="__codelineno-7-16"></a>    <span style="color: #F8F8F2">sync_aggregate</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">sync_committee_signature</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">bls</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">Aggregate(signatures)</span>
+<a id="__codelineno-7-17" name="__codelineno-7-17"></a>
+<a id="__codelineno-7-18" name="__codelineno-7-18"></a>    <span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">body</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">sync_aggregate</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">sync_aggregate</span>
+</code></pre></div></td></tr></table></div>
+<p><em>Note</em>: The resulting block must pass the validations for the <code>SyncAggregate</code>
+defined in <code>process_sync_aggregate</code> defined in the
+<a href="../beacon-chain/#sync-aggregate-processing">state transition document</a>. In
+particular, this means <code>SyncCommitteeContribution</code>s received from gossip must
+have a <code>beacon_block_root</code> that matches the proposer's local view of the chain.</p>
+<h4 id="packaging-into-a-signedbeaconblock">Packaging into a <code>SignedBeaconBlock</code><a class="headerlink" href="#packaging-into-a-signedbeaconblock" title="Permanent link">&para;</a></h4>
+<p>No change to
+<a href="../../phase0/validator/#packaging-into-a-signedbeaconblock">Packaging into a <code>SignedBeaconBlock</code></a>.</p>
+<h3 id="attesting-and-attestation-aggregation">Attesting and attestation aggregation<a class="headerlink" href="#attesting-and-attestation-aggregation" title="Permanent link">&para;</a></h3>
+<p>Refer to the phase 0 document for the
+<a href="../../phase0/validator/#attesting">attesting</a> and
+<a href="../../phase0/validator/#attestation-aggregation">attestation aggregation</a>
+responsibilities. There is no change compared to the phase 0 document.</p>
+<h3 id="sync-committees">Sync committees<a class="headerlink" href="#sync-committees" title="Permanent link">&para;</a></h3>
+<p>Sync committee members employ an aggregation scheme to reduce load on the global
+proposer channel that is monitored by all potential proposers to be able to
+include the full output of the sync committee every slot. Sync committee members
+produce individual signatures on subnets (similar to the attestation subnets)
+via <code>SyncCommitteeMessage</code>s which are then collected by aggregators sampled from
+the sync subcommittees to produce a <code>SyncCommitteeContribution</code> which is
+gossiped to proposers. This process occurs each slot.</p>
+<h4 id="sync-committee-messages">Sync committee messages<a class="headerlink" href="#sync-committee-messages" title="Permanent link">&para;</a></h4>
+<h5 id="prepare-sync-committee-message">Prepare sync committee message<a class="headerlink" href="#prepare-sync-committee-message" title="Permanent link">&para;</a></h5>
+<p>If a validator is in the current sync committee (i.e.
+<code>is_assigned_to_sync_committee()</code> above returns <code>True</code>), then for every <code>slot</code>
+in the current sync committee period, the validator should prepare a
+<code>SyncCommitteeMessage</code> for the previous slot (<code>slot - 1</code>) according to the logic
+in <code>get_sync_committee_message</code> as soon as they have determined the head block
+of <code>slot - 1</code>. This means that when assigned to <code>slot</code> a <code>SyncCommitteeMessage</code>
+is prepared and broadcast in <code>slot-1</code> instead of <code>slot</code>.</p>
+<p>This logic is triggered upon the same conditions as when producing an
+attestation. Meaning, a sync committee member should produce and broadcast a
+<code>SyncCommitteeMessage</code> either when (a) the validator has received a valid block
+from the expected block proposer for the current <code>slot</code> or (b)
+<code>get_sync_message_due_ms(epoch)</code> milliseconds has transpired since the start of
+the slot -- whichever comes first.</p>
+<p><code>get_sync_committee_message(state, block_root, validator_index, privkey)</code>
+assumes the parameter <code>state</code> is the head state corresponding to processing the
+block up to the current slot as determined by the fork choice (including any
+empty slots up to the current slot processed with <code>process_slots</code> on top of the
+latest block), <code>block_root</code> is the root of the head block, <code>validator_index</code> is
+the index of the validator in the registry <code>state.validators</code> controlled by
+<code>privkey</code>, and <code>privkey</code> is the BLS private key for the validator.</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-14">14</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">get_sync_committee_message</span><span style="color: #F8F8F2">(</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2"></a>    <span style="color: #F8F8F2">state:</span> <span style="color: #F8F8F2">BeaconState,</span> <span style="color: #F8F8F2">block_root:</span> <span style="color: #F8F8F2">Root,</span> <span style="color: #F8F8F2">validator_index:</span> <span style="color: #F8F8F2">ValidatorIndex,</span> <span style="color: #F8F8F2">privkey:</span> <span style="color: #F8F8F2">int</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3"></a><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">SyncCommitteeMessage:</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4"></a>    <span style="color: #F8F8F2">epoch</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">get_current_epoch(state)</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5"></a>    <span style="color: #F8F8F2">domain</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">get_domain(state,</span> <span style="color: #F8F8F2">DOMAIN_SYNC_COMMITTEE,</span> <span style="color: #F8F8F2">epoch)</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6"></a>    <span style="color: #F8F8F2">signing_root</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">compute_signing_root(block_root,</span> <span style="color: #F8F8F2">domain)</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7"></a>    <span style="color: #F8F8F2">signature</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">bls</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">Sign(privkey,</span> <span style="color: #F8F8F2">signing_root)</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">SyncCommitteeMessage(</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10"></a>        <span style="color: #F8F8F2">slot</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot,</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11"></a>        <span style="color: #F8F8F2">beacon_block_root</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">block_root,</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12"></a>        <span style="color: #F8F8F2">validator_index</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">validator_index,</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13"></a>        <span style="color: #F8F8F2">signature</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">signature,</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14"></a>    <span style="color: #F8F8F2">)</span>
+</code></pre></div></td></tr></table></div>
+<h5 id="broadcast-sync-committee-message">Broadcast sync committee message<a class="headerlink" href="#broadcast-sync-committee-message" title="Permanent link">&para;</a></h5>
+<p>The validator broadcasts the assembled signature to the assigned subnet, the
+<code>sync_committee_{subnet_id}</code> pubsub topic.</p>
+<p>The <code>subnet_id</code> is derived from the position in the sync committee such that the
+sync committee is divided into "subcommittees". <code>subnet_id</code> can be computed via
+<code>compute_subnets_for_sync_committee(state, validator_index)</code> where <code>state</code> is a
+<code>BeaconState</code> during the matching sync committee period.</p>
+<p><em>Note</em>: This function returns multiple deduplicated subnets if a given validator
+index is included multiple times in a given sync committee across multiple
+subcommittees.</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-14">14</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-15">15</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-16">16</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-17">17</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-18">18</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-19">19</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-20">20</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-9-21">21</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">compute_subnets_for_sync_committee</span><span style="color: #F8F8F2">(</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2"></a>    <span style="color: #F8F8F2">state:</span> <span style="color: #F8F8F2">BeaconState,</span> <span style="color: #F8F8F2">validator_index:</span> <span style="color: #F8F8F2">ValidatorIndex</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3"></a><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">Set[SubnetID]:</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4"></a>    <span style="color: #F8F8F2">next_slot_epoch</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">compute_epoch_at_slot(Slot(state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span> <span style="color: #FF4689">+</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">))</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5"></a>    <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">compute_sync_committee_period(get_current_epoch(state))</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">compute_sync_committee_period(</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6"></a>        <span style="color: #F8F8F2">next_slot_epoch</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7"></a>    <span style="color: #F8F8F2">):</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8"></a>        <span style="color: #F8F8F2">sync_committee</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">current_sync_committee</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9"></a>    <span style="color: #66D9EF">else</span><span style="color: #F8F8F2">:</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10"></a>        <span style="color: #F8F8F2">sync_committee</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">next_sync_committee</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11"></a>
+<a id="__codelineno-9-12" name="__codelineno-9-12"></a>    <span style="color: #F8F8F2">target_pubkey</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">validators[validator_index]</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">pubkey</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13"></a>    <span style="color: #F8F8F2">sync_committee_indices</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14"></a>        <span style="color: #F8F8F2">index</span> <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">index,</span> <span style="color: #F8F8F2">pubkey</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">enumerate(sync_committee</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">pubkeys)</span> <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">pubkey</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">target_pubkey</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15"></a>    <span style="color: #F8F8F2">]</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">set(</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17"></a>        <span style="color: #F8F8F2">[</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18"></a>            <span style="color: #F8F8F2">SubnetID(index</span> <span style="color: #FF4689">//</span> <span style="color: #F8F8F2">(SYNC_COMMITTEE_SIZE</span> <span style="color: #FF4689">//</span> <span style="color: #F8F8F2">SYNC_COMMITTEE_SUBNET_COUNT))</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19"></a>            <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">index</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">sync_committee_indices</span>
+<a id="__codelineno-9-20" name="__codelineno-9-20"></a>        <span style="color: #F8F8F2">]</span>
+<a id="__codelineno-9-21" name="__codelineno-9-21"></a>    <span style="color: #F8F8F2">)</span>
+</code></pre></div></td></tr></table></div>
+<p><em>Note</em>: Subnet assignment does not change during the duration of a validator's
+assignment to a given sync committee.</p>
+<p><em>Note</em>: If a validator has multiple <code>subnet_id</code> results from
+<code>compute_subnets_for_sync_committee</code>, the validator should broadcast a copy of
+the <code>sync_committee_message</code> on each of the distinct subnets.</p>
+<h4 id="sync-committee-contributions">Sync committee contributions<a class="headerlink" href="#sync-committee-contributions" title="Permanent link">&para;</a></h4>
+<p>Each slot, some sync committee members in each subcommittee are selected to
+aggregate the <code>SyncCommitteeMessage</code>s into a <code>SyncCommitteeContribution</code> which
+is broadcast on a global channel for inclusion into the next block.</p>
+<h5 id="aggregation-selection">Aggregation selection<a class="headerlink" href="#aggregation-selection" title="Permanent link">&para;</a></h5>
+<p>A validator is selected to aggregate based on the value returned by
+<code>is_sync_committee_aggregator()</code> where <code>signature</code> is the BLS signature returned
+by <code>get_sync_committee_selection_proof()</code>. The signature function takes a
+<code>BeaconState</code> with the relevant sync committees for the queried <code>slot</code> (i.e.
+<code>state.slot</code> is within the span covered by the current or next sync committee
+period), the <code>subcommittee_index</code> equal to the <code>subnet_id</code>, and the <code>privkey</code> is
+the BLS private key associated with the validator.</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-10-10">10</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">get_sync_committee_selection_proof</span><span style="color: #F8F8F2">(</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2"></a>    <span style="color: #F8F8F2">state:</span> <span style="color: #F8F8F2">BeaconState,</span> <span style="color: #F8F8F2">slot:</span> <span style="color: #F8F8F2">Slot,</span> <span style="color: #F8F8F2">subcommittee_index:</span> <span style="color: #F8F8F2">uint64,</span> <span style="color: #F8F8F2">privkey:</span> <span style="color: #F8F8F2">int</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3"></a><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">BLSSignature:</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4"></a>    <span style="color: #F8F8F2">domain</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">get_domain(state,</span> <span style="color: #F8F8F2">DOMAIN_SYNC_COMMITTEE_SELECTION_PROOF,</span> <span style="color: #F8F8F2">compute_epoch_at_slot(slot))</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5"></a>    <span style="color: #F8F8F2">signing_data</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">SyncAggregatorSelectionData(</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6"></a>        <span style="color: #F8F8F2">slot</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">slot,</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7"></a>        <span style="color: #F8F8F2">subcommittee_index</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">subcommittee_index,</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8"></a>    <span style="color: #F8F8F2">)</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9"></a>    <span style="color: #F8F8F2">signing_root</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">compute_signing_root(signing_data,</span> <span style="color: #F8F8F2">domain)</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">bls</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">Sign(privkey,</span> <span style="color: #F8F8F2">signing_root)</span>
+</code></pre></div></td></tr></table></div>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-6">6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-7">7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-11-8">8</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">is_sync_committee_aggregator</span><span style="color: #F8F8F2">(signature:</span> <span style="color: #F8F8F2">BLSSignature)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">bool:</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2"></a>    <span style="color: #F8F8F2">modulo</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">max(</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3"></a>        <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">,</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4"></a>        <span style="color: #F8F8F2">SYNC_COMMITTEE_SIZE</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5"></a>        <span style="color: #FF4689">//</span> <span style="color: #F8F8F2">SYNC_COMMITTEE_SUBNET_COUNT</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6"></a>        <span style="color: #FF4689">//</span> <span style="color: #F8F8F2">TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE,</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7"></a>    <span style="color: #F8F8F2">)</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">bytes_to_uint64(hash(signature)[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">:</span><span style="color: #AE81FF">8</span><span style="color: #F8F8F2">])</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">modulo</span> <span style="color: #FF4689">==</span> <span style="color: #AE81FF">0</span>
+</code></pre></div></td></tr></table></div>
+<p><em>Note</em>: The set of aggregators generally changes every slot; however, the
+assignments can be computed ahead of time as soon as the committee is known.</p>
+<h5 id="construct-sync-committee-contribution">Construct sync committee contribution<a class="headerlink" href="#construct-sync-committee-contribution" title="Permanent link">&para;</a></h5>
+<p>If a validator is selected to aggregate the <code>SyncCommitteeMessage</code>s produced on
+a subnet during a given <code>slot</code>, they construct an aggregated
+<code>SyncCommitteeContribution</code>.</p>
+<p>Collect all of the (valid) <code>sync_committee_messages: Set[SyncCommitteeMessage]</code>
+from the <code>sync_committee_{subnet_id}</code> gossip during the selected <code>slot</code> with an
+equivalent <code>beacon_block_root</code> to that of the aggregator. If
+<code>len(sync_committee_messages) &gt; 0</code>, the aggregator creates a
+<code>contribution: SyncCommitteeContribution</code> with the following fields:</p>
+<h6 id="slot">Slot<a class="headerlink" href="#slot" title="Permanent link">&para;</a></h6>
+<p>Set <code>contribution.slot = state.slot</code> where <code>state</code> is the <code>BeaconState</code> for the
+slot in question.</p>
+<h6 id="beacon-block-root">Beacon block root<a class="headerlink" href="#beacon-block-root" title="Permanent link">&para;</a></h6>
+<p>Set <code>contribution.beacon_block_root = beacon_block_root</code> from the
+<code>beacon_block_root</code> found in the <code>sync_committee_messages</code>.</p>
+<h6 id="subcommittee-index">Subcommittee index<a class="headerlink" href="#subcommittee-index" title="Permanent link">&para;</a></h6>
+<p>Set <code>contribution.subcommittee_index</code> to the index for the subcommittee index
+corresponding to the subcommittee assigned to this subnet. This index matches
+the <code>subnet_id</code> used to derive the topic name.</p>
+<h6 id="aggregation-bits">Aggregation bits<a class="headerlink" href="#aggregation-bits" title="Permanent link">&para;</a></h6>
+<p>Let <code>contribution.aggregation_bits</code> be a
+<code>Bitvector[SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT]</code>, where the
+<code>index</code>th bit is set in the <code>Bitvector</code> for each corresponding validator
+included in this aggregate from the corresponding subcommittee. An aggregator
+finds the index in the sync committee (as determined by a reverse pubkey lookup
+on <code>state.current_sync_committee.pubkeys</code>) for a given validator referenced by
+<code>sync_committee_message.validator_index</code> and maps the sync committee index to an
+index in the subcommittee (along with the prior <code>subcommittee_index</code>). This
+index within the subcommittee is set in <code>contribution.aggregation_bits</code>.</p>
+<p>For example, if a validator with index <code>2044</code> is pseudo-randomly sampled to sync
+committee index <code>135</code>. This sync committee index maps to <code>subcommittee_index</code>
+<code>1</code> with position <code>7</code> in the <code>Bitvector</code> for the contribution.</p>
+<p><em>Note</em>: A validator <strong>could be included multiple times</strong> in a given subcommittee
+such that multiple bits are set for a single <code>SyncCommitteeMessage</code>.</p>
+<h6 id="signature">Signature<a class="headerlink" href="#signature" title="Permanent link">&para;</a></h6>
+<p>Set <code>contribution.signature = aggregate_signature</code> where <code>aggregate_signature</code>
+is obtained by assembling the appropriate collection of <code>BLSSignature</code>s from the
+set of <code>sync_committee_messages</code> and using the <code>bls.Aggregate()</code> function to
+produce an aggregate <code>BLSSignature</code>.</p>
+<p>The collection of input signatures should include one signature per validator
+who had a bit set in the <code>aggregation_bits</code> bitfield, with repeated signatures
+if one validator maps to multiple indices within the subcommittee.</p>
+<h5 id="broadcast-sync-committee-contribution">Broadcast sync committee contribution<a class="headerlink" href="#broadcast-sync-committee-contribution" title="Permanent link">&para;</a></h5>
+<p>If the validator is selected to aggregate (<code>is_sync_committee_aggregator()</code>),
+then they broadcast their best aggregate as a <code>SignedContributionAndProof</code> to
+the global aggregate channel (<code>sync_committee_contribution_and_proof</code> topic)
+<code>get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS)</code> milliseconds into the
+slot.</p>
+<p>Selection proofs are provided in <code>ContributionAndProof</code> to prove to the gossip
+channel that the validator has been selected as an aggregator.</p>
+<p><code>ContributionAndProof</code> messages are signed by the aggregator and broadcast
+inside of <code>SignedContributionAndProof</code> objects to prevent a class of DoS attacks
+and message forgeries.</p>
+<p>First,
+<code>contribution_and_proof = get_contribution_and_proof(state, validator_index, contribution, privkey)</code>
+is constructed.</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-14">14</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-15">15</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-16">16</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-12-17">17</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">get_contribution_and_proof</span><span style="color: #F8F8F2">(</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2"></a>    <span style="color: #F8F8F2">state:</span> <span style="color: #F8F8F2">BeaconState,</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3"></a>    <span style="color: #F8F8F2">aggregator_index:</span> <span style="color: #F8F8F2">ValidatorIndex,</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4"></a>    <span style="color: #F8F8F2">contribution:</span> <span style="color: #F8F8F2">SyncCommitteeContribution,</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5"></a>    <span style="color: #F8F8F2">privkey:</span> <span style="color: #F8F8F2">int,</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6"></a><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">ContributionAndProof:</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7"></a>    <span style="color: #F8F8F2">selection_proof</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">get_sync_committee_selection_proof(</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8"></a>        <span style="color: #F8F8F2">state,</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9"></a>        <span style="color: #F8F8F2">contribution</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot,</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10"></a>        <span style="color: #F8F8F2">contribution</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">subcommittee_index,</span>
+<a id="__codelineno-12-11" name="__codelineno-12-11"></a>        <span style="color: #F8F8F2">privkey,</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12"></a>    <span style="color: #F8F8F2">)</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">ContributionAndProof(</span>
+<a id="__codelineno-12-14" name="__codelineno-12-14"></a>        <span style="color: #F8F8F2">aggregator_index</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">aggregator_index,</span>
+<a id="__codelineno-12-15" name="__codelineno-12-15"></a>        <span style="color: #F8F8F2">contribution</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">contribution,</span>
+<a id="__codelineno-12-16" name="__codelineno-12-16"></a>        <span style="color: #F8F8F2">selection_proof</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">selection_proof,</span>
+<a id="__codelineno-12-17" name="__codelineno-12-17"></a>    <span style="color: #F8F8F2">)</span>
+</code></pre></div></td></tr></table></div>
+<p>Then
+<code>signed_contribution_and_proof = SignedContributionAndProof(message=contribution_and_proof, signature=signature)</code>
+is constructed and broadcast. Where <code>signature</code> is obtained from:</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-6">6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-7">7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-8">8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-13-9">9</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">get_contribution_and_proof_signature</span><span style="color: #F8F8F2">(</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2"></a>    <span style="color: #F8F8F2">state:</span> <span style="color: #F8F8F2">BeaconState,</span> <span style="color: #F8F8F2">contribution_and_proof:</span> <span style="color: #F8F8F2">ContributionAndProof,</span> <span style="color: #F8F8F2">privkey:</span> <span style="color: #F8F8F2">int</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3"></a><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">BLSSignature:</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4"></a>    <span style="color: #F8F8F2">contribution</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">contribution_and_proof</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">contribution</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5"></a>    <span style="color: #F8F8F2">domain</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">get_domain(</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6"></a>        <span style="color: #F8F8F2">state,</span> <span style="color: #F8F8F2">DOMAIN_CONTRIBUTION_AND_PROOF,</span> <span style="color: #F8F8F2">compute_epoch_at_slot(contribution</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot)</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7"></a>    <span style="color: #F8F8F2">)</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8"></a>    <span style="color: #F8F8F2">signing_root</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">compute_signing_root(contribution_and_proof,</span> <span style="color: #F8F8F2">domain)</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">bls</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">Sign(privkey,</span> <span style="color: #F8F8F2">signing_root)</span>
+</code></pre></div></td></tr></table></div>
+<h2 id="sync-committee-subnet-stability">Sync committee subnet stability<a class="headerlink" href="#sync-committee-subnet-stability" title="Permanent link">&para;</a></h2>
+<p>The sync committee subnets need special care to ensure stability given the
+relatively low number of validators involved in the sync committee at any
+particular time. To provide this stability, a validator must do the following:</p>
+<ul>
+<li>Maintain advertisement of the subnet the validator in the sync committee is
+  assigned to in their node's ENR as soon as they have joined the subnet. Subnet
+  assignments are known <code>EPOCHS_PER_SYNC_COMMITTEE_PERIOD</code> epochs in advance and
+  can be computed with <code>compute_subnets_for_sync_committee</code> defined above. ENR
+  advertisement is indicated by setting the appropriate bit(s) of the bitfield
+  found under the <code>syncnets</code> key in the ENR corresponding to the derived
+  <code>subnet_id</code>(s). Any bits modified for the sync committee responsibilities are
+  unset in the ENR once the node no longer has any validators in the
+  subcommittee.</li>
+</ul>
+<p><em>Note</em>: The first sync committee from phase 0 to the Altair fork will not be
+  known until the fork happens, which implies subnet assignments are not known
+  until then. Early sync committee members should listen for topic subscriptions
+  from peers and employ discovery via the ENR advertisements near the fork
+  boundary to form initial subnets. Some early sync committee rewards may be
+  missed while the initial subnets form.</p>
+<ul>
+<li>To join a sync committee subnet, select a random number of epochs before the
+  end of the current sync committee period between 1 and
+  <code>SYNC_COMMITTEE_SUBNET_COUNT</code>, inclusive. Validators should join their member
+  subnet at the beginning of the epoch they have randomly selected. For example,
+  if the next sync committee period starts at epoch <code>853,248</code> and the validator
+  randomly selects an offset of <code>3</code>, they should join the subnet at the
+  beginning of epoch <code>853,245</code>. Validators should leverage the lookahead period
+  on sync committee assignments so that they can join the appropriate subnets
+  ahead of their assigned sync committee period.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/ethereum/consensus-specs" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.tabs", "search"], "search": "../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>
