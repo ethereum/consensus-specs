@@ -1,1 +1,1 @@
-from tests.infra.trace.decorator import spec_trace  # noqa: F401
+from .decorator import spec_trace  # noqa: F401

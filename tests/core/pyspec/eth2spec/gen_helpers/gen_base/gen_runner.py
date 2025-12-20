@@ -101,7 +101,7 @@ def execute_test(test_case: TestCase, dumper: Dumper):
                 ] + [
                     (name, "ssz", value)
                     # ssz artifacts are already serialized and will be compressed by the dumper
-                    for name, value in data._artifacts.items()
+                    for name, value in data.artifacts.items()
                 ]
             else:
                 method = getattr(dumper, f"dump_{kind}", None)

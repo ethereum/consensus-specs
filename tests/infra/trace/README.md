@@ -1,8 +1,8 @@
 ## Spec trace framework
 
 This is an implementation of #4603 a new testing framework for the Ethereum
-consensus spec tests, based on tracing spec method calls and recording them in
-a structured trace file.
+consensus spec tests, based on tracing spec method calls and recording them in a
+structured trace file.
 
 The basic idea is make tests more simple and linear and hide the minutiae of
 dumping data into the test harness (`@spec_trace` decorator) and automate

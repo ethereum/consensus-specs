@@ -21,8 +21,9 @@ def test_linear_sanity_slots_222(spec, state):
     This demonstrates the simplest possible state transition.
     """
     # Advance the state by one slot
-    # We must re-assign the `state` variable, as `process_slot`
-    # is a pure function that returns a new, modified state.
+    # The `process_slot` function mutates the state object in-place,
+    # so there is no need to re-assign the `state` variable.
+
     spec.process_slot(state)
 
 

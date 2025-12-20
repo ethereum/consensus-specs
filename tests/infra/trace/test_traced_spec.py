@@ -9,7 +9,8 @@ from remerkleable.basic import uint64
 from remerkleable.complex import Container
 
 from eth2spec.utils.ssz.ssz_impl import serialize as ssz_serialize
-from tests.infra.trace.traced_spec import RecordingSpec
+
+from .traced_spec import RecordingSpec
 
 # --- Mocks for eth2spec objects ---
 # We rename these to match the expected class names in CLASS_NAME_MAP
@@ -165,7 +166,6 @@ def test_basic_function_call(recording_spec):
 
     assert assert_step.model_dump(mode="json").get("state_root") == f"{root_hex_str}.ssz_snappy"
     assert proxy._model._artifacts[root_hex_str] == ssz_serialize(state)
-
 
 
 def test_argument_sanitization(recording_spec):
