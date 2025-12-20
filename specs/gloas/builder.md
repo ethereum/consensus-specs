@@ -107,11 +107,11 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
 05. Set `bid.prev_randao` to be the previous RANDAO of the constructed payload,
     that is `payload.prev_randao`.
 06. Set `bid.fee_recipient` to be an execution address to receive the payment.
-    The proposer's preferred fee recipient can be obtained from their
-    `SignedProposerPreferences` for `compute_epoch_at_slot(bid.slot)`.
+    The proposer's preferred fee recipient can be obtained from the
+    `SignedProposerPreferences` associated with `bid.slot`.
 07. Set `bid.gas_limit` to be the gas limit of the constructed payload. The
-    proposer's preferred gas limit can be obtained from their
-    `SignedProposerPreferences` for `compute_epoch_at_slot(bid.slot)`.
+    proposer's preferred gas limit can be obtained from the
+    `SignedProposerPreferences` associated with `bid.slot`.
 08. Set `bid.builder_index` to be the validator index of the builder performing
     these actions.
 09. Set `bid.slot` to be the slot for which this bid is aimed. This slot

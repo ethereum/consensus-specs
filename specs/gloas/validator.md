@@ -144,13 +144,29 @@ def get_upcoming_proposal_slots(
 
 To construct each `SignedProposerPreferences`:
 
-1. Set `preferences.proposal_slot` to `upcoming_proposal_slots[i]`.
-2. Set `preferences.validator_index` to the validator's index.
-3. Set `preferences.fee_recipient` to the execution address where the validator
-   wishes to receive builder payments.
-4. Set `preferences.gas_limit` to the validator's preferred gas limit for
-   execution payloads.
-5. Sign the `ProposerPreferences` with the validator's signing key.
+1. Instantiate a new `ProposerPreferences` object as `preferences`.
+2. Set `preferences.proposal_slot` to `upcoming_proposal_slots[i]`.
+3. Set `preferences.validator_index` to the validator's index.
+4. Set `preferences.fee_recipient` to the execution address where the validator
+   wishes to receive the builder payment.
+5. Set `preferences.gas_limit` to the validator's preferred gas limit for this
+   execution payload.
+6.
+7. Instantiate a new `SignedProposerPreferences` object as `signed_preferences`.
+8. Set `signed_preferences.message` to `preferences`.
+9. Set `signed_preferences.signature` to the result of
+   `get_proposer_preferences_signature(state, preferences, privkey)`.
+
+```python
+def get_proposer_preferences_signature(
+    state: BeaconState, preferences: ProposerPreferences, privkey: int
+) -> BLSSignature:
+    domain = get_domain(
+        state, DOMAIN_PROPOSER_PREFERENCES, compute_epoch_at_slot(preferences.proposal_slot)
+    )
+    signing_root = compute_signing_root(preferences, domain)
+    return bls.Sign(privkey, signing_root)
+```
 
 #### Constructing `signed_execution_payload_bid`
 
