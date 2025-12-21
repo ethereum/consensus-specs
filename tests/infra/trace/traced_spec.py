@@ -11,7 +11,7 @@ It uses `wrapt.ObjectProxy` to intercept function calls, recording their:
 
 import inspect
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, Generic
 
 import wrapt
 
@@ -49,7 +49,7 @@ def is_serializable(value: RAW) -> bool:
     return True
 
 
-class RecordingSpec(wrapt.ObjectProxy):
+class RecordingSpec(wrapt.ObjectProxy, Generic[STATE]):
     """
     A proxy that wraps the 'spec' object to record execution traces.
 
@@ -67,7 +67,7 @@ class RecordingSpec(wrapt.ObjectProxy):
         """The trace model containing all recorded steps and artifacts."""
         return self._model
 
-    def __init__(self, wrapped_spec: Any):
+    def __init__(self, wrapped_spec: Any) -> None:
         super().__init__(wrapped_spec)
 
         self._last_state_root = None
@@ -90,16 +90,12 @@ class RecordingSpec(wrapt.ObjectProxy):
         if name.startswith("_") or not name.islower() or not callable(real_attr):
             return real_attr
 
-        if name in ["finalize_trace", "model"]:
-            # avoid wrapping our own methods
-            return real_attr
-
         # 3. Decorate: Apply the decorator factory and return
         return self._spec_call_hook(real_attr)
 
     @wrapt.decorator
     def _spec_call_hook(
-        self, wrapped: Callable, instance: "RecordingSpec", args: tuple, kwargs: dict
+        self, wrapped: Callable, instance: Any, args: tuple, kwargs: dict
     ) -> RAW_ARGS:
         """
         The main hook that records the execution step.
@@ -110,11 +106,10 @@ class RecordingSpec(wrapt.ObjectProxy):
             args/kwargs: Arguments passed to the function.
         """
         method_name = wrapped.__name__
-        op_name = "spec_call"
-        state: STATE | None = None
 
         # A. Prepare arguments: bind to signature and serialize
         bound_args = self._bind_args(wrapped, args, kwargs)
+        state: STATE | None = bound_args.arguments.get("state")
 
         # Process arguments and auto-register any new SSZ objects as artifacts
         serial_params: SERIALIZED_KWARGS = {
@@ -122,18 +117,17 @@ class RecordingSpec(wrapt.ObjectProxy):
         }
 
         # B. Identify State object and handle external state mutations
-        self._capture_pre_state(state := bound_args.arguments.get("state"))
+        self._capture_pre_state(state)
 
         # C. Execute the real function with original args/kwargs
         result: RAW_ARGS = wrapped(*args, **kwargs)
         serial_result: SERIALIZED_ARGS = self._process_arg(result)
 
         # D. Record the successful step
-        self._record_step(op_name, method_name, serial_params, serial_result)
+        self._record_spec_call_step(method_name, serial_params, serial_result)
 
         # E. Update tracked state if mutated
-        if state is not None:
-            self._capture_post_state(state)
+        self._capture_post_state(state)
 
         return result
 
@@ -153,21 +147,21 @@ class RecordingSpec(wrapt.ObjectProxy):
         """Finds the BeaconState argument (if any) and captures its root hash."""
         if not isinstance(state, View):
             return
-        if state is None:
-            # unnecessary safeguard/type hint
-            return
-        if (old_root := self._last_state_root) != (new_root := state.hash_tree_root().hex()):
+
+        new_root = state.hash_tree_root().hex()
+        if self._last_state_root != new_root:
             # Assert last output state (was serialized in capture_post_state)
-            if old_root:
-                self._model.trace.append(AssertStateOp(state_root=old_root))
+            if self._last_state_root:
+                self._model.trace.append(
+                    AssertStateOp(state_root=f"{self._last_state_root}.ssz_snappy")
+                )
             # Handle out-of-band mutation / add LoadState:
             # note: this is always serialized before so no process_arg
-            self._model.trace.append(LoadStateOp(state_root=new_root))
+            self._model.trace.append(LoadStateOp(state_root=f"{new_root}.ssz_snappy"))
             self._last_state_root = new_root
 
-    def _record_step(
+    def _record_spec_call_step(
         self,
-        op: str,
         method: str,
         params: SERIALIZED_KWARGS,
         result: SERIALIZED_ARGS,
@@ -184,17 +178,14 @@ class RecordingSpec(wrapt.ObjectProxy):
     def _capture_post_state(self, state: STATE | None) -> None:
         """Updates the internal state tracker if the state object was mutated."""
         if not isinstance(state, View) or self._last_state_root is None:
-            # it's not possible to get a new state here that wasn't registered
-            # as pre_state before the call so maybe this check is excessive
-            return
-        if state is None:
-            # unnecessary safeguard/type hint
+            # This check handles cases where no state has been tracked yet,
+            # or where the 'state' argument is not a valid state object.
             return
 
         if self._last_state_root == (new_root := state.hash_tree_root().hex()):
             return  # No content change
 
-        self._process_arg(state)
+        self._process_arg(state)  # Side effect: registers mutated state as artifact
         self._last_state_root = new_root
 
     def _save_artifact(self, arg: View) -> str:
@@ -212,11 +203,26 @@ class RecordingSpec(wrapt.ObjectProxy):
         Returns the root hash of container or the original primitive.
         The idea is that after passing this we either have a hash or something
         that we can assume is serializable.
+
+        Note: Dictionaries are currently not expected to be passed as arguments
+        to spec methods in a way that requires their internal values to be
+        recursively processed for serialization (e.g., for nested View objects
+        or bytes needing hex encoding). If a dictionary is encountered,
+        a TypeError will be raised to prevent silent data loss or incorrect tracing.
         """
+        # Explicitly disallow dictionaries as arguments to _process_arg for now,
+        # as their recursive value processing is not implemented and not expected.
+        if isinstance(arg, dict):
+            raise TypeError(
+                f"Dictionary argument found for tracing: {arg}. "
+                "Recursive processing of dictionary values is not currently supported "
+                "and not expected in spec method arguments. "
+                "If this is an intended use case, `_process_arg` needs to be updated."
+            )
 
         # recursively handle lists and tuples
         if isinstance(arg, Sequence) and not isinstance(arg, str | bytes):
-            return [self._process_arg(elem) for elem in arg]  # type: ignore[return-value]
+            return [self._process_arg(elem) for elem in arg]
 
         if is_serializable(arg):
             return self._save_artifact(arg)
@@ -228,9 +234,9 @@ class RecordingSpec(wrapt.ObjectProxy):
         # Auto-register last state root in assert_state step
 
         if self._last_state_root:
-            step_model = AssertStateOp(state_root=self._last_state_root)
+            step_model = AssertStateOp(state_root=f"{self._last_state_root}.ssz_snappy")
             self._model.trace.append(step_model)
 
-    def _finalize_trace(self) -> None:
+    def finalize_trace(self) -> None:
         """Finalize the trace for saving."""
         self._record_auto_assert_step()

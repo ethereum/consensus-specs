@@ -95,14 +95,12 @@ def execute_test(test_case: TestCase, dumper: Dumper):
                 meta[name] = data
             elif kind == "pydantic":
                 # new data type for spec traces
-                outputs += [
-                    # dump trace data for yaml serialization
-                    ("trace", "data", data.model_dump(mode="json", exclude_none=True)),
-                ] + [
+                outputs.append(("trace", "data", data.model_dump(mode="json", exclude_none=True)))
+                outputs.extend(
                     (name, "ssz", value)
                     # ssz artifacts are already serialized and will be compressed by the dumper
                     for name, value in data.artifacts.items()
-                ]
+                )
             else:
                 method = getattr(dumper, f"dump_{kind}", None)
                 if method is None:

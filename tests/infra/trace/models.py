@@ -15,13 +15,20 @@ from .typing import SERIALIZED_ARGS, SERIALIZED_KWARGS
 
 
 def simple_sanitize_data(value: SERIALIZED_ARGS) -> SERIALIZED_ARGS:
+    if isinstance(value, dict):
+        raise TypeError(
+            f"Dictionary argument found for tracing: {value}. "
+            "Recursive processing of dictionary values is not currently supported "
+            "and not expected in spec method arguments. "
+            "If this is an intended use case, tracing models and logic need to be updated."
+        )
+
     # convert raw bytes to 0x-prefixed hex
     if isinstance(value, bytes):
         return f"0x{value.hex()}"
     # recursively clean lists
     if isinstance(value, list):
-        # typing hint: nesting never added
-        return [simple_sanitize_data(x) for x in value]  # type: ignore[return-value]
+        return [simple_sanitize_data(x) for x in value]
     return value
 
 
@@ -38,13 +45,7 @@ class StateOp(TraceStepModel):
     Abstract base class for operations involving a state root.
     """
 
-    state_root: str = Field(pattern=r"^[0-9a-f]{64}$")
-
-    @field_serializer("state_root", mode="plain", when_used="always")
-    @classmethod
-    def sanitize_data(cls, v: str) -> str:
-        # add ssz_snappy suffix (dumper handles the actual compression)
-        return f"{v}.ssz_snappy"
+    state_root: str = Field(pattern=r"^[0-9a-f]{64}\.ssz_snappy$")
 
 
 class LoadStateOp(StateOp):
@@ -101,6 +102,8 @@ class TraceConfig(BaseModel):
     The root schema for the trace file.
     Contains metadata, context, and the execution trace.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     default_fork: str = Field(default="")
     trace: list[Annotated[AssertStateOp | LoadStateOp | SpecCallOp, Field(discriminator="op")]] = (

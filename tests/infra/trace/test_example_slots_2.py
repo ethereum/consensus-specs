@@ -9,7 +9,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.epoch_processing import run_epoch_processing_with
 from eth2spec.test.helpers.state import next_epoch
-from tests.infra.trace import spec_trace
+from tests.infra.trace.decorator import spec_trace
 
 
 @with_all_phases
@@ -61,6 +61,6 @@ def test_builder_333(spec, state):
 
     for _ in run_epoch_processing_with(spec, state, "process_builder_pending_payments"):
         pass
-    # this is just to get weird enough inputs and outputs
+    # The following calls demonstrate tracing of diverse inputs/outputs
     epoch = spec.get_current_epoch(state)
-    spec.get_seed(state, epoch, spec.DOMAIN_BEACON_PROPOSER)
+    spec.get_seed(state, epoch, spec.DOMAIN_BEACON_PROPOSER)  # result unused; traced

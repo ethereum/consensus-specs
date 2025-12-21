@@ -1,22 +1,24 @@
-## Spec trace framework
+# Spec trace framework
 
-This is an implementation of #4603 a new testing framework for the Ethereum
-consensus spec tests, based on tracing spec method calls and recording them in a
-structured trace file.
+This is an implementation of ethereum/consensus-specs#4603, a new testing
+framework for the Ethereum consensus spec tests, based on tracing spec method
+calls and recording them in a structured trace file.
 
-The basic idea is make tests more simple and linear and hide the minutiae of
+The basic idea is to make tests simpler and more linear and hide the minutiae of
 dumping data into the test harness (`@spec_trace` decorator) and automate
 everything that doesn't have to be manual.
 
-Spec is being wrapped into a transparent proxy object and all method calls are
+The spec is wrapped into a transparent proxy object and all method calls are
 being tracked including any state mutations before and after. Final state is
-recorded and all relevant artifacts including all states are being saved into
+recorded and all relevant artifacts, including all states, are being saved into
 SSZ artifacts (hash-addressed to avoid duplication).
 
-### Usage and example test
+## Usage and example test
+
+You can find this example in `tests/infra/trace/test_example_slots_2.py`:
 
 ```python
-from tests.infra.trace import spec_trace
+from tests.infra.trace.decorator import spec_trace
 
 
 @with_all_phases
@@ -29,18 +31,17 @@ def test_linear_sanity_slots_222(
     spec.process_slot(state)
 ```
 
-this is for example purposes put into
-`tests/core/pyspec/eth2spec/test/gloas/sanity/test_slots_2.py` and can be run
-with something like
+Example of using example test with reftests:
 
-```
+```bash
+cp -v tests/infra/trace/test_example_slots_2.py tests/core/pyspec/eth2spec/test/gloas/sanity/test_slots_2.py
 make reftests fork=gloas runner=sanity k=linear_sanity_slots_222 verbose=true
 ```
 
 that produces a trace in
 `../consensus-spec-tests/tests/minimal/gloas/sanity/slots_2/pyspec_tests/linear_sanity_slots_222/trace.yaml`
 
-### Spec trace file example
+## Spec trace file example
 
 ```yaml
 default_fork: gloas
@@ -93,8 +94,8 @@ results. A decorator is used to set things up. Some simple pydantic models are
 used for the trace file structure and some sanitation/formatting.
 
 From a consumer standpoint (i.e. test runner) new tests using this decorator
-behave differently and are being detected by a new data type (a pydantic model
-instance). Some logic was added to `execute_test` in
+behave differently and are being detected by a new data type yielded (a pydantic
+model instance). Some logic was added to `execute_test` in
 `tests/core/pyspec/eth2spec/gen_helpers/gen_base/gen_runner.py` to catch that
 new case and apply new serialization method.
 
@@ -107,21 +108,21 @@ the method calls it gets automatically tracked and then it's checked again after
 each method call to check for mutations. Everything is saved in a pydantic model
 object for further dumping using existing reftest tooling.
 
-### TODO
+## TODO
 
 This is still being cooked.
-
-Integration with test runner is done by yielding pydantic model as a new data
-type and very simple change in the runner. It would be more natural to just
-return the value but that would require supporting non-generator functions as
-tests which would require much more code than seems reasonable here.
 
 I tried my best to separate core logic from the boilerplate needed but it could
 be improved upon.
 
-Some cleanup and polishing is still required. Typing could be improved.
+Some cleanup and polishing is still required.
 
-### Credits
+Typing could be improved.
+
+More example tests showcasing new features (or potentially some actually needed
+tests that were waiting for this) could be added.
+
+## Credits
 
 Thanks to Leo for the initial idea and guidance, and to all the reviewers who
 helped refine this.

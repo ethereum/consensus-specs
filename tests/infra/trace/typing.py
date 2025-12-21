@@ -1,5 +1,7 @@
-from collections.abc import Sequence
-from typing import TypeAlias
+from collections.abc import Sequence  # noqa: F401
+from typing import TypeAlias, TypeVar
+
+from typing_extensions import TypeAliasType
 
 from eth2spec.utils.ssz.ssz_typing import View
 
@@ -8,13 +10,14 @@ PRIMITIVES: TypeAlias = bool | int | str | bytes
 
 # typing aliases for serialized values and arguments
 SERIALIZED: TypeAlias = PRIMITIVES | None  # optional primitives
-# two recursion levels max
-SERIALIZED_ARGS: TypeAlias = SERIALIZED | list[SERIALIZED] | list[list[SERIALIZED] | SERIALIZED]
+# recursive lists, allows arbitrary nesting
+# (definition compatible with pydantic schema)
+SERIALIZED_ARGS = TypeAliasType("SERIALIZED_ARGS", "SERIALIZED | list[SERIALIZED_ARGS]")
 SERIALIZED_KWARGS: TypeAlias = dict[str, SERIALIZED_ARGS]
-
 # typing aliases for non-serialized values and arguments
 RAW: TypeAlias = View | None  # allowed simple argument types (View is wide!)
-RAW_ARGS: TypeAlias = RAW | Sequence[RAW] | Sequence[Sequence[RAW] | RAW]
+# recursive sequences, allows arbitrary nesting
+RAW_ARGS = TypeAliasType("RAW_ARGS", "RAW | Sequence[RAW_ARGS]")
 RAW_KWARGS: TypeAlias = dict[str, RAW_ARGS]
 
-STATE: TypeAlias = View  # this could be generic
+STATE = TypeVar("STATE", bound=View)

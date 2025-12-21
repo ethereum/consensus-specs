@@ -24,7 +24,7 @@ def spec_trace(fn: Callable) -> Callable:
             bound_args = inspect.signature(fn).bind(*args, **kwargs)
             bound_args.apply_defaults()
         except TypeError as e:
-            raise ValueError(
+            raise TypeError(
                 f"Failed to bind arguments for test function '{fn.__name__}': {e}"
             ) from e
 
@@ -37,17 +37,15 @@ def spec_trace(fn: Callable) -> Callable:
         real_spec = bound_args.arguments["spec"]
 
         # 3. Inject the recorder
-        recorder = RecordingSpec(real_spec)
+        recorder: RecordingSpec = RecordingSpec(real_spec)
         bound_args.arguments["spec"] = recorder
 
         # 4. Run test & Save trace
-        try:
-            fn(*bound_args.args, **bound_args.kwargs)
-        finally:
-            # we need to do this after execution is done before returning data
-            recorder._finalize_trace()
+        fn(*bound_args.args, **bound_args.kwargs)
+        # we need to do this after execution is done before returning data
+        recorder.finalize_trace()
 
-            # yield data so that runner can pick it up and dump
-            yield "trace", "pydantic", recorder.model
+        # yield data so that runner can pick it up and dump
+        yield "trace", "pydantic", recorder.model
 
     return wrapper

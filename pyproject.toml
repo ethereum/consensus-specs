@@ -24,7 +24,6 @@ dependencies = [
   "ruamel.yaml==0.18.15",
   "setuptools==80.9.0",
   "trie==3.1.0",
-  "wrapt==2.0.1",
 ]
 
 [project.optional-dependencies]
@@ -34,6 +33,7 @@ test = [
   "pytest-html==4.1.1",
   "pytest-xdist==3.8.0",
   "pytest==8.4.2",
+  "wrapt==2.0.1",
 ]
 lint = [
   "codespell==2.4.1",

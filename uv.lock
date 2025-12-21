@@ -453,7 +453,6 @@ dependencies = [
     { name = "ruamel-yaml" },
     { name = "setuptools" },
     { name = "trie" },
-    { name = "wrapt" },
 ]
 
 [package.optional-dependencies]
@@ -490,6 +489,7 @@ test = [
     { name = "pytest-cov" },
     { name = "pytest-html" },
     { name = "pytest-xdist" },
+    { name = "wrapt" },
 ]
 
 [package.metadata]
@@ -534,7 +534,7 @@ requires-dist = [
     { name = "setuptools", specifier = "==80.9.0" },
     { name = "tqdm", marker = "extra == 'generator'", specifier = "==4.67.1" },
     { name = "trie", specifier = "==3.1.0" },
-    { name = "wrapt", specifier = "==2.0.1" },
+    { name = "wrapt", marker = "extra == 'test'", specifier = "==2.0.1" },
 ]
 provides-extras = ["test", "lint", "generator", "docs"]
 
