@@ -402,6 +402,7 @@ def is_active_builder(state: BeaconState, builder_index: BuilderIndex) -> bool:
     """
     Check if the builder at ``builder_index`` is active for the given ``state``.
     """
+    assert builder_index < len(state.builders)
     builder = state.builders[builder_index]
     return (
         # Placement in builder list is finalized
@@ -1257,15 +1258,16 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     # [New in Gloas:EIP7732]
     if is_builder_index(voluntary_exit.validator_index):
         builder_index = convert_validator_index_to_builder_index(voluntary_exit.validator_index)
-        builder = state.builders[builder_index]
         # Verify the builder is active
         assert is_active_builder(state, builder_index)
         # Only exit builder if it has no pending withdrawals in the queue
         assert get_pending_balance_to_withdraw_for_builder(state, builder_index) == 0
         # Verify signature
-        assert bls.Verify(builder.pubkey, signing_root, signed_voluntary_exit.signature)
+        pubkey = state.builders[builder_index].pubkey
+        assert bls.Verify(pubkey, signing_root, signed_voluntary_exit.signature)
         # Initiate exit
         initiate_builder_exit(state, builder_index)
+        return
 
     validator = state.validators[voluntary_exit.validator_index]
     # Verify the validator is active

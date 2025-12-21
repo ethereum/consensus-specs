@@ -276,7 +276,7 @@ The following validations MUST pass before forwarding the
 `bid = signed_execution_payload_bid.message`:
 
 - _[REJECT]_ `bid.builder_index` is a valid/active builder index -- i.e.
-  `bid.builder_index < len(state.builders) and is_active_builder(state, bid.builder_index)`.
+  `is_active_builder(state, bid.builder_index)` returns `True`.
 - _[REJECT]_ `bid.execution_payment` is zero.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
