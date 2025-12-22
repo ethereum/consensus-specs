@@ -25,6 +25,7 @@
   - [Modified `get_weight`](#modified-get_weight)
   - [New `get_node_children`](#new-get_node_children)
   - [Modified `get_head`](#modified-get_head)
+  - [Modified `get_latest_message_epoch`](#modified-get_latest_message_epoch)
 - [Updated fork-choice helpers](#updated-fork-choice-helpers)
   - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
   - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
@@ -123,6 +124,11 @@ class Store(object):
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
+    confirmed_root: Root
+    previous_epoch_observed_justified_checkpoint: Checkpoint
+    current_epoch_observed_justified_checkpoint: Checkpoint
+    previous_slot_head: Root
+    current_slot_head: Root
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
@@ -154,6 +160,11 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         unrealized_justified_checkpoint=justified_checkpoint,
         unrealized_finalized_checkpoint=finalized_checkpoint,
         proposer_boost_root=proposer_boost_root,
+        confirmed_root=anchor_root,
+        previous_epoch_observed_justified_checkpoint=justified_checkpoint,
+        current_epoch_observed_justified_checkpoint=justified_checkpoint,
+        previous_slot_head=anchor_root,
+        current_slot_head=anchor_root,
         equivocating_indices=set(),
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
@@ -427,6 +438,13 @@ def get_head(store: Store) -> ForkChoiceNode:
                 get_payload_status_tiebreaker(store, child),
             ),
         )
+```
+
+### Modified `get_latest_message_epoch`
+
+```python
+def get_latest_message_epoch(latest_message: LatestMessage) -> Epoch:
+    return compute_epoch_at_slot(latest_message.slot)
 ```
 
 ## Updated fork-choice helpers
