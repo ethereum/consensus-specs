@@ -81,7 +81,7 @@ def test_process_builder_pending_payments_below_quorum(spec, state):
 @with_gloas_and_later
 @spec_state_test
 def test_process_builder_pending_payments_equal_quorum(spec, state):
-    """Test payment equal to quorum threshold - should NOT be processed."""
+    """Test payment equal to quorum threshold - should be processed."""
     # Advance past genesis epochs
     next_epoch(spec, state)
     next_epoch(spec, state)
@@ -100,9 +100,14 @@ def test_process_builder_pending_payments_equal_quorum(spec, state):
 
     yield from run_epoch_processing_with(spec, state, "process_builder_pending_payments")
 
-    # No withdrawal should be added since weight must be > quorum, not >= quorum
-    assert len(state.builder_pending_withdrawals) == pre_builder_pending_withdrawals
+    # Withdrawal should be added since weight must be >= quorum
+    assert len(state.builder_pending_withdrawals) == pre_builder_pending_withdrawals + 1
 
+    # Check the withdrawal details
+    withdrawal = state.builder_pending_withdrawals[len(state.builder_pending_withdrawals) - 1]
+    assert withdrawal.fee_recipient == fee_recipient
+    assert withdrawal.amount == amount
+    assert withdrawal.builder_index == builder_index
     # Payment should be rotated out
     assert state.builder_pending_payments[0].weight == 0
 
@@ -216,12 +221,12 @@ def test_process_builder_pending_payments_mixed_weights(spec, state):
 
     yield from run_epoch_processing_with(spec, state, "process_builder_pending_payments")
 
-    # Only payments with weight > quorum should be processed
-    # Count how many payments were actually added and have weight > quorum
+    # Only payments with weight >= quorum should be processed
+    # Count how many payments were actually added and have weight >= quorum
     expected_processed = 0
     num_payments_added = min(len(payments_data), spec.SLOTS_PER_EPOCH)
     for i in range(num_payments_added):
-        if payments_data[i][2] > quorum:  # weight > quorum
+        if payments_data[i][2] >= quorum:  # weight >= quorum
             expected_processed += 1
     assert (
         len(state.builder_pending_withdrawals)
@@ -231,11 +236,11 @@ def test_process_builder_pending_payments_mixed_weights(spec, state):
     # Check the processed withdrawals
     processed_withdrawals = state.builder_pending_withdrawals[pre_builder_pending_withdrawals:]
     processed_builder_indices = [w.builder_index for w in processed_withdrawals]
+    assert 2 in processed_builder_indices  # Equal to threshold
     assert 3 in processed_builder_indices  # Above threshold
     assert 4 in processed_builder_indices  # Above threshold
     assert 0 not in processed_builder_indices  # Below threshold
     assert 1 not in processed_builder_indices  # Below threshold
-    assert 2 not in processed_builder_indices  # Equal to threshold (not processed)
 
 
 @with_gloas_and_later

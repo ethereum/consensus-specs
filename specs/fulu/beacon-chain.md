@@ -254,7 +254,7 @@ def compute_proposer_indices(
 #### Modified `get_beacon_proposer_index`
 
 *Note*: The function `get_beacon_proposer_index` is modified to use the
-pre-calculated `current_proposer_lookahead` instead of calculating it on-demand.
+pre-calculated `proposer_lookahead` instead of calculating it on-demand.
 
 ```python
 def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:

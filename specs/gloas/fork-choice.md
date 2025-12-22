@@ -38,7 +38,6 @@
   - [New `on_execution_payload`](#new-on_execution_payload)
   - [New `on_payload_attestation_message`](#new-on_payload_attestation_message)
   - [Modified `validate_on_attestation`](#modified-validate_on_attestation)
-  - [Modified `validate_merge_block`](#modified-validate_merge_block)
 
 <!-- mdformat-toc end -->
 
@@ -179,9 +178,7 @@ def notify_ptc_messages(
     if state.slot == 0:
         return
     for payload_attestation in payload_attestations:
-        indexed_payload_attestation = get_indexed_payload_attestation(
-            state, Slot(state.slot - 1), payload_attestation
-        )
+        indexed_payload_attestation = get_indexed_payload_attestation(state, payload_attestation)
         for idx in indexed_payload_attestation.attesting_indices:
             on_payload_attestation_message(
                 store,
@@ -670,35 +667,4 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
     # Attestations can only affect the fork-choice of subsequent slots.
     # Delay consideration in the fork-choice until their slot is in the past.
     assert get_current_slot(store) >= attestation.data.slot + 1
-```
-
-### Modified `validate_merge_block`
-
-The function `validate_merge_block` is modified for test purposes
-
-```python
-def validate_merge_block(block: BeaconBlock) -> None:
-    """
-    Check the parent PoW block of execution payload is a valid terminal PoW block.
-
-    Note: Unavailable PoW block(s) may later become available,
-    and a client software MAY delay a call to ``validate_merge_block``
-    until the PoW block(s) become available.
-    """
-    if TERMINAL_BLOCK_HASH != Hash32():
-        # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
-        assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
-        assert (
-            block.body.signed_execution_payload_bid.message.parent_block_hash == TERMINAL_BLOCK_HASH
-        )
-        return
-
-    pow_block = get_pow_block(block.body.signed_execution_payload_bid.message.parent_block_hash)
-    # Check if `pow_block` is available
-    assert pow_block is not None
-    pow_parent = get_pow_block(pow_block.parent_hash)
-    # Check if `pow_parent` is available
-    assert pow_parent is not None
-    # Check if `pow_block` is a valid terminal PoW block
-    assert is_valid_terminal_pow_block(pow_block, pow_parent)
 ```

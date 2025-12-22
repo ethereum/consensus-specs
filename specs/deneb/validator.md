@@ -127,11 +127,13 @@ def prepare_execution_payload(
     parent_hash = state.latest_execution_payload_header.block_hash
 
     # Set the forkchoice head and initiate the payload build process
+    withdrawals, _ = get_expected_withdrawals(state)
+
     payload_attributes = PayloadAttributes(
         timestamp=compute_time_at_slot(state, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
-        withdrawals=get_expected_withdrawals(state),
+        withdrawals=withdrawals,
         # [New in Deneb:EIP4788]
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
     )
