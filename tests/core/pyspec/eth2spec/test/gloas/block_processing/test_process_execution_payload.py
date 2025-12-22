@@ -991,6 +991,7 @@ def test_process_execution_payload_execution_engine_invalid(spec, state):
         spec, state, signed_envelope, valid=False, execution_valid=False
     )
 
+
 @with_gloas_and_later
 @spec_state_test
 @always_bls
