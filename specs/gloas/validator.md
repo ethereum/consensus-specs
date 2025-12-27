@@ -132,6 +132,7 @@ top of a `state` MUST take the following actions in order to construct the
   found in `process_execution_payload_bid` with the alias
   `bid = signed_execution_payload_bid.message`, that is:
   - For external builders, the signature MUST be valid.
+  - For self-builds, set `bid.builder_index` to `BUILDER_INDEX_SELF_BUILD`.
   - For self-builds, the signature MUST be `bls.G2_POINT_AT_INFINITY` and the
     `bid.value` MUST be zero.
   - The builder balance can cover the `bid.value`.
@@ -243,7 +244,7 @@ def prepare_execution_payload(
 
     # [Modified in Gloas:EIP7732]
     # Set the forkchoice head and initiate the payload build process
-    withdrawals, _, _, _ = get_expected_withdrawals(state)
+    withdrawals, _, _, _, _ = get_expected_withdrawals(state)
 
     payload_attributes = PayloadAttributes(
         timestamp=compute_time_at_slot(state, state.slot),

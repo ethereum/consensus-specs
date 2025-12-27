@@ -1,4 +1,13 @@
-from eth2spec.test.context import always_bls, spec_state_test, with_electra_and_later
+from eth2spec.test.context import (
+    always_bls,
+    spec_state_test,
+    with_all_phases_from_to,
+    with_electra_and_later,
+)
+from eth2spec.test.helpers.constants import (
+    ELECTRA,
+    GLOAS,
+)
 from eth2spec.test.helpers.deposits import (
     prepare_deposit_request,
     run_deposit_request_processing,
@@ -149,7 +158,7 @@ def test_process_deposit_request_top_up_invalid_sig(spec, state):
     yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
 
 
-@with_electra_and_later
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_process_deposit_request_set_start_index(spec, state):
     assert state.deposit_requests_start_index == spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
