@@ -402,7 +402,6 @@ def is_active_builder(state: BeaconState, builder_index: BuilderIndex) -> bool:
     """
     Check if the builder at ``builder_index`` is active for the given ``state``.
     """
-    assert builder_index < len(state.builders)
     builder = state.builders[builder_index]
     return (
         # Placement in builder list is finalized
