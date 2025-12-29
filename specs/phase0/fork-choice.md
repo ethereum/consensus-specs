@@ -41,6 +41,7 @@
       - [`is_proposing_on_time`](#is_proposing_on_time)
       - [`is_head_weak`](#is_head_weak)
       - [`is_parent_strong`](#is_parent_strong)
+      - [`is_proposer_equivocation`](#is_proposer_equivocation)
       - [`get_proposer_head`](#get_proposer_head)
     - [Pull-up tip helpers](#pull-up-tip-helpers)
       - [`compute_pulled_up_tip`](#compute_pulled_up_tip)
@@ -578,6 +579,22 @@ def is_parent_strong(store: Store, parent_root: Root) -> bool:
     return parent_weight > parent_threshold
 ```
 
+##### `is_proposer_equivocation`
+
+```python
+def is_proposer_equivocation(store: Store, root: Root) -> bool:
+    block = store.blocks[root]
+    proposer_index = block.proposer_index
+    slot = block.slot
+    # roots from the same slot and proposer
+    matching_roots = [
+        root
+        for root, block in store.blocks.items()
+        if (block.proposer_index == proposer_index and block.slot == slot)
+    ]
+    return len(matching_roots) > 1
+```
+
 ##### `get_proposer_head`
 
 ```python
@@ -613,6 +630,9 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
     # Check that the missing votes are assigned to the parent and not being hoarded.
     parent_strong = is_parent_strong(store, parent_root)
 
+    # Reorg more aggressively if there is a proposer equivocation in the previous slot.
+    proposer_equivocation = is_proposer_equivocation(store, head_root)
+
     if all(
         [
             head_late,
@@ -626,6 +646,8 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
         ]
     ):
         # We can re-org the current head by building upon its parent block.
+        return parent_root
+    elif all([head_weak, current_time_ok, proposer_equivocation]):
         return parent_root
     else:
         return head_root
