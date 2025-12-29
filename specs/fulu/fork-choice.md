@@ -78,7 +78,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
-    update_proposer_boost_root(store, block)
+    record_block_timeliness(store, block_root)
+    update_proposer_boost_root(store, block_root)
 
     # Update checkpoints in store if necessary
     update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
