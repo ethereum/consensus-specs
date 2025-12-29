@@ -783,8 +783,12 @@ def update_latest_messages(
 
 ```python
 def update_proposer_boost_root(store: Store, block: BeaconBlock) -> None:
-    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
-    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    # Add block timeliness to the store
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    epoch = get_current_store_epoch(store)
+    attestation_threshold_ms = get_attestation_due_ms(epoch)
+    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[hash_tree_root(block)] = is_timely
 
