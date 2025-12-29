@@ -22,6 +22,7 @@
   - [New `is_supporting_vote`](#new-is_supporting_vote)
   - [New `should_extend_payload`](#new-should_extend_payload)
   - [New `get_payload_status_tiebreaker`](#new-get_payload_status_tiebreaker)
+  - [New `should_apply_proposer_boost`](#new-should_apply_proposer_boost)
   - [Modified `get_weight`](#modified-get_weight)
   - [New `get_node_children`](#new-get_node_children)
   - [Modified `get_head`](#modified-get_head)
@@ -329,6 +330,41 @@ def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> uint8:
             return 2 if should_extend_payload(store, node.root) else 0
 ```
 
+### New `should_apply_proposer_boost`
+
+```python
+def should_apply_proposer_boost(store: Store) -> bool:
+    if store.proposer_boost_root == Root():
+        return False
+
+    block = store.blocks[store.proposer_boost_root]
+    parent_root = block.parent_root
+    parent = store.blocks[parent_root]
+    slot = block.slot
+
+    # Apply proposer boost if `parent` is not from the previous slot
+    if parent.slot + 1 < slot:
+        return True
+
+    # Apply proposer boost if `parent` is not weak
+    if not is_head_weak(store, parent_root):
+        return True
+
+    # If `parent` is weak and from the previous slot,
+    # apply proposer boost if there are no equivocations,
+    # or all equivocations are weak
+    equivocations = [
+        root
+        for root, block in store.blocks.items()
+        if (
+            block.proposer_index == parent.proposer_index
+            and block.slot + 1 == slot
+            and root != parent_root
+        )
+    ]
+    return all([is_head_weak(store, root) for root in equivocations])
+```
+
 ### Modified `get_weight`
 
 ```python
@@ -354,8 +390,9 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
             )
         )
 
-        if store.proposer_boost_root == Root():
-            # Return only attestation score if `proposer_boost_root` is not set
+        if not should_apply_proposer_boost(store):
+            # Return only attestation score if
+            # proposer boost should not apply
             return attestation_score
 
         # Calculate proposer score if `proposer_boost_root` is set
@@ -538,19 +575,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Notify the store about the payload_attestations in the block
     notify_ptc_messages(store, state, block.body.payload_attestations)
-    # Add proposer score boost if the block is timely
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    epoch = get_current_store_epoch(store)
-    attestation_threshold_ms = get_attestation_due_ms(epoch)
-    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
-    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
-    store.block_timeliness[hash_tree_root(block)] = is_timely
 
-    # Add proposer score boost if the block is timely and not conflicting with an existing block
-    is_first_block = store.proposer_boost_root == Root()
-    if is_timely and is_first_block:
-        store.proposer_boost_root = hash_tree_root(block)
+    update_proposer_boost_root(store, block)
 
     # Update checkpoints in store if necessary
     update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
