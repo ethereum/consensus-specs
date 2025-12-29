@@ -42,6 +42,7 @@
   - [New `on_payload_attestation_message`](#new-on_payload_attestation_message)
   - [Modified `validate_on_attestation`](#modified-validate_on_attestation)
   - [Modified `is_head_late`](#modified-is_head_late)
+    - [Modified `is_head_weak`](#modified-is_head_weak)
 
 <!-- mdformat-toc end -->
 
@@ -562,7 +563,7 @@ def record_block_timeliness(store: Store, root: Root) -> None:
     attestation_threshold_ms = get_attestation_due_ms(epoch)
     ptc_threshold_ms = get_payload_attestation_due_ms(epoch)
     store.block_timeliness[root] = [
-        is_current_slot and time_into_slot_ms < deadline
+        is_current_slot and time_into_slot_ms < threshold
         for threshold in [attestation_threshold_ms, ptc_threshold_ms]
     ]
 ```
@@ -746,8 +747,8 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
 
 ### Modified `is_head_late`
 
-*Note*: the only change is that `store.block_timeliness[root]` now records 
-timeliness with respect to two different deadlines. `is_head_late` takes into 
+*Note*: the only change is that `store.block_timeliness[root]` now records
+timeliness with respect to two different deadlines. `is_head_late` takes into
 account timeliness with respect to the attestation deadline, which is retrieved
 at `ATTESTATION_TIMELINESS_INDEX`.
 
@@ -758,10 +759,11 @@ def is_head_late(store: Store, head_root: Root) -> bool:
 
 ##### Modified `is_head_weak`
 
-*Note*: the function `is_head_weak` now also counts weight from equivocating 
+*Note*: the function `is_head_weak` now also counts weight from equivocating
 validators from the committees of the head slot. This ensures that the counted
-weight and the output of `is_head_weak` are monotonic: more attestations can only 
-increase the weight and change the output from `False` to `True`, not viceversa. 
+weight and the output of `is_head_weak` are monotonic: more attestations can
+only increase the weight and change the output from `False` to `True`, not
+vice-versa.
 
 ```python
 def is_head_weak(store: Store, head_root: Root) -> bool:
@@ -775,11 +777,12 @@ def is_head_weak(store: Store, head_root: Root) -> bool:
     epoch = compute_epoch_at_slot(head_block.slot)
     head_weight = get_weight(store, head_root)
     for index in range(get_committee_count_per_slot(head_state, epoch)):
-        committee = get_beacon_committee(head_state, head_block.slot, index)
+        committee = get_beacon_committee(head_state, head_block.slot, CommitteeIndex(index))
         head_weight += Gwei(
             sum(
-                state.validators[i].effective_balance
-                for i in committee if i in store.equivocating_indices
+                justified_state.validators[i].effective_balance
+                for i in committee
+                if i in store.equivocating_indices
             )
         )
 
