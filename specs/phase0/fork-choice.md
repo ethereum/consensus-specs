@@ -41,7 +41,6 @@
       - [`is_proposing_on_time`](#is_proposing_on_time)
       - [`is_head_weak`](#is_head_weak)
       - [`is_parent_strong`](#is_parent_strong)
-      - [`is_proposer_equivocation`](#is_proposer_equivocation)
       - [`get_proposer_head`](#get_proposer_head)
     - [Pull-up tip helpers](#pull-up-tip-helpers)
       - [`compute_pulled_up_tip`](#compute_pulled_up_tip)
@@ -778,6 +777,30 @@ def update_latest_messages(
             store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=beacon_block_root)
 ```
 
+#### `on_block` helpers
+
+##### `update_proposer_boost_root`
+
+```python
+def update_proposer_boost_root(store: Store, block: BeaconBlock) -> None:
+    time_into_slot = (store.time - store.genesis_time) % SECONDS_PER_SLOT
+    is_before_attesting_interval = time_into_slot < SECONDS_PER_SLOT // INTERVALS_PER_SLOT
+    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
+    store.block_timeliness[hash_tree_root(block)] = is_timely
+
+    # Add proposer score boost if the block is timely, not conflicting with an
+    # existing block, with the same the proposer as the canonical chain.
+    is_first_block = store.proposer_boost_root == Root()
+    if is_timely and is_first_block:
+        head_state = copy(store.block_states[get_head(store)])
+        slot = get_current_slot(store)
+        if head_state.slot < slot:
+            process_slots(head_state, slot)
+        # Only update if the proposer is the same as on the canonical chain
+        if block.proposer_index == get_beacon_proposer_index(head_state):
+            store.proposer_boost_root = hash_tree_root(block)
+```
+
 ### Handlers
 
 #### `on_tick`
@@ -825,19 +848,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
-    # Add block timeliness to the store
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    epoch = get_current_store_epoch(store)
-    attestation_threshold_ms = get_attestation_due_ms(epoch)
-    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
-    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
-    store.block_timeliness[hash_tree_root(block)] = is_timely
-
-    # Add proposer score boost if the block is timely and not conflicting with an existing block
-    is_first_block = store.proposer_boost_root == Root()
-    if is_timely and is_first_block:
-        store.proposer_boost_root = hash_tree_root(block)
+    update_proposer_boost_root(store, block)
 
     # Update checkpoints in store if necessary
     update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
