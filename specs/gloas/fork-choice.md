@@ -746,7 +746,42 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
 
 ### Modified `is_head_late`
 
+*Note*: the only change is that `store.block_timeliness[root]` now records 
+timeliness with respect to two different deadlines. `is_head_late` takes into 
+account timeliness with respect to the attestation deadline, which is retrieved
+at `ATTESTATION_TIMELINESS_INDEX`.
+
 ```python
 def is_head_late(store: Store, head_root: Root) -> bool:
     return not store.block_timeliness[head_root][ATTESTATION_TIMELINESS_INDEX]
+```
+
+##### Modified `is_head_weak`
+
+*Note*: the function `is_head_weak` now also counts weight from equivocating 
+validators from the committees of the head slot. This ensures that the counted
+weight and the output of `is_head_weak` are monotonic: more attestations can only 
+increase the weight and change the output from `False` to `True`, not viceversa. 
+
+```python
+def is_head_weak(store: Store, head_root: Root) -> bool:
+    # Calculate weight threshold for weak head
+    justified_state = store.checkpoint_states[store.justified_checkpoint]
+    reorg_threshold = calculate_committee_fraction(justified_state, REORG_HEAD_WEIGHT_THRESHOLD)
+
+    # Compute head weight including equivocations
+    head_state = store.block_states[head_root]
+    head_block = store.blocks[head_root]
+    epoch = compute_epoch_at_slot(head_block.slot)
+    head_weight = get_weight(store, head_root)
+    for index in range(get_committee_count_per_slot(head_state, epoch)):
+        committee = get_beacon_committee(head_state, head_block.slot, index)
+        head_weight += Gwei(
+            sum(
+                state.validators[i].effective_balance
+                for i in committee if i in store.equivocating_indices
+            )
+        )
+
+    return head_weight < reorg_threshold
 ```
