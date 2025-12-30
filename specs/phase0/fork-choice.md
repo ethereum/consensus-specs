@@ -107,7 +107,6 @@ handlers must not modify `store`.
 
 | Name                              | Value           |
 | --------------------------------- | --------------- |
-| `INTERVALS_PER_SLOT` *deprecated* | `uint64(3)`     |
 | `BASIS_POINTS`                    | `uint64(10000)` |
 
 ### Configuration
