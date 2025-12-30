@@ -274,7 +274,7 @@ def get_data_column_sidecars_from_column_sidecar(
     ],
 ) -> Sequence[DataColumnSidecar]:
     """
-    Given a DataColumnSidecar and the cells/proofs associated with each blob corresponding
+    Given a data column sidecar and the cells/proofs associated with each blob corresponding
     to the commitments it contains, assemble all sidecars for distribution to peers.
     """
     assert len(cells_and_kzg_proofs) == len(sidecar.kzg_commitments)
