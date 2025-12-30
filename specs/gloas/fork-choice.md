@@ -771,7 +771,7 @@ def is_head_late(store: Store, head_root: Root) -> bool:
 *Note*: the function `is_head_weak` now also counts weight from equivocating
 validators from the committees of the head slot. This ensures that the counted
 weight and the output of `is_head_weak` are monotonic: more attestations can
-only increase the weight and change the output from `False` to `True`, not
+only increase the weight and change the output from `True` to `False`, not
 vice-versa.
 
 ```python
