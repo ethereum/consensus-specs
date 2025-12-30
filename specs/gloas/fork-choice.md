@@ -36,7 +36,7 @@
   - [New `get_payload_attestation_due_ms`](#new-get_payload_attestation_due_ms)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [Modified `update_proposer_boost_root`](#modified-update_proposer_boost_root)
-  - [Modified `record_block_timeliness`](#new-record_block_timeliness)
+  - [Modified `record_block_timeliness`](#modified-record_block_timeliness)
   - [Modified `on_block`](#modified-on_block)
 - [New fork-choice handlers](#new-fork-choice-handlers)
   - [New `on_execution_payload`](#new-on_execution_payload)
