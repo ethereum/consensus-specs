@@ -186,6 +186,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 ```python
 class Builder(Container):
     pubkey: BLSPubkey
+    version: uint8
     execution_address: ExecutionAddress
     balance: Gwei
     deposit_epoch: Epoch
@@ -1163,6 +1164,7 @@ def get_builder_from_deposit(
 ) -> Builder:
     return Builder(
         pubkey=pubkey,
+        version=uint8(withdrawal_credentials[0]),
         execution_address=ExecutionAddress(withdrawal_credentials[12:]),
         balance=amount,
         deposit_epoch=get_current_epoch(state),
