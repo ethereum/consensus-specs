@@ -172,6 +172,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         # [New in Gloas:EIP7732]
         execution_payload_states={anchor_root: copy(anchor_state)},
         ptc_vote={anchor_root: Vector[boolean, PTC_SIZE]()},
+        block_timeliness={anchor_root: [True, True]},
     )
 ```
 
@@ -375,6 +376,30 @@ def should_apply_proposer_boost(store: Store) -> bool:
     return len(equivocations) == 0
 ```
 
+### New `get_attestation_weight`
+
+```python
+def get_attestation_weight(store: Store, node: ForkChoiceNode) -> Gwei:
+    state = store.checkpoint_states[store.justified_checkpoint]
+    unslashed_and_active_indices = [
+        i
+        for i in get_active_validator_indices(state, get_current_epoch(state))
+        if not state.validators[i].slashed
+    ]
+    attestation_score = Gwei(
+        sum(
+            state.validators[i].effective_balance
+            for i in unslashed_and_active_indices
+            if (
+                i in store.latest_messages
+                and i not in store.equivocating_indices
+                and is_supporting_vote(store, node, store.latest_messages[i])
+            )
+        )
+    )
+    return attestation_score
+```
+
 ### Modified `get_weight`
 
 ```python
@@ -382,23 +407,7 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
     if node.payload_status == PAYLOAD_STATUS_PENDING or store.blocks[
         node.root
     ].slot + 1 != get_current_slot(store):
-        state = store.checkpoint_states[store.justified_checkpoint]
-        unslashed_and_active_indices = [
-            i
-            for i in get_active_validator_indices(state, get_current_epoch(state))
-            if not state.validators[i].slashed
-        ]
-        attestation_score = Gwei(
-            sum(
-                state.validators[i].effective_balance
-                for i in unslashed_and_active_indices
-                if (
-                    i in store.latest_messages
-                    and i not in store.equivocating_indices
-                    and is_supporting_vote(store, node, store.latest_messages[i])
-                )
-            )
-        )
+        attestation_score = get_attestation_weight(store, node)
 
         if not should_apply_proposer_boost(store):
             # Return only attestation score if
@@ -776,7 +785,7 @@ def is_head_weak(store: Store, head_root: Root) -> bool:
     head_block = store.blocks[head_root]
     epoch = compute_epoch_at_slot(head_block.slot)
     head_node = ForkChoiceNode(root=head_root, payload_status=PAYLOAD_STATUS_PENDING)
-    head_weight = get_weight(store, head_node)
+    head_weight = get_attestation_weight(store, head_node)
     for index in range(get_committee_count_per_slot(head_state, epoch)):
         committee = get_beacon_committee(head_state, head_block.slot, CommitteeIndex(index))
         head_weight += Gwei(
