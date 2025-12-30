@@ -474,7 +474,7 @@ We define the following variables for convenience:
 - `aggregate_and_proof = signed_aggregate_and_proof.message`
 - `aggregate = aggregate_and_proof.aggregate`
 - `index = aggregate.data.index`
-- `aggregation_bits = attestation.aggregation_bits`
+- `aggregation_bits = aggregate.aggregation_bits`
 
 The following validations MUST pass before forwarding the
 `signed_aggregate_and_proof` on the network.

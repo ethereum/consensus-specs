@@ -60,7 +60,11 @@
   - [Block processing](#block-processing)
     - [Withdrawals](#withdrawals)
       - [New `is_builder_payment_withdrawable`](#new-is_builder_payment_withdrawable)
+      - [New `get_builder_withdrawable_balance`](#new-get_builder_withdrawable_balance)
+      - [New `get_builder_withdrawals`](#new-get_builder_withdrawals)
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
+      - [New `update_payload_expected_withdrawals`](#new-update_payload_expected_withdrawals)
+      - [New `update_builder_pending_withdrawals`](#new-update_builder_pending_withdrawals)
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
     - [Execution payload bid](#execution-payload-bid)
       - [New `verify_execution_payload_bid_signature`](#new-verify_execution_payload_bid_signature)
@@ -714,11 +718,12 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
 
 ```python
 def get_indexed_payload_attestation(
-    state: BeaconState, slot: Slot, payload_attestation: PayloadAttestation
+    state: BeaconState, payload_attestation: PayloadAttestation
 ) -> IndexedPayloadAttestation:
     """
     Return the indexed payload attestation corresponding to ``payload_attestation``.
     """
+    slot = payload_attestation.data.slot
     ptc = get_ptc(state, slot)
     bits = payload_attestation.aggregation_bits
     attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
@@ -866,118 +871,125 @@ def is_builder_payment_withdrawable(
     return not builder.slashed or current_epoch >= builder.withdrawable_epoch
 ```
 
-##### Modified `get_expected_withdrawals`
+##### New `get_builder_withdrawable_balance`
 
 ```python
-def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], uint64, uint64]:
+def get_builder_withdrawable_balance(builder: Validator, balance: Gwei) -> Gwei:
+    """
+    Get the withdrawable balance for a builder payment.
+    """
+    if builder.slashed:
+        return balance
+    elif balance > MIN_ACTIVATION_BALANCE:
+        return balance - MIN_ACTIVATION_BALANCE
+    else:
+        return Gwei(0)
+```
+
+##### New `get_builder_withdrawals`
+
+```python
+def get_builder_withdrawals(
+    state: BeaconState,
+    withdrawal_index: WithdrawalIndex,
+    prior_withdrawals: Sequence[Withdrawal],
+) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
     epoch = get_current_epoch(state)
-    withdrawal_index = state.next_withdrawal_index
-    validator_index = state.next_withdrawal_validator_index
+    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
+
+    processed_count: uint64 = 0
     withdrawals: List[Withdrawal] = []
-    processed_partial_withdrawals_count = 0
-    processed_builder_withdrawals_count = 0
-
-    # [New in Gloas:EIP7732]
-    # Sweep for builder payments
     for withdrawal in state.builder_pending_withdrawals:
-        if (
-            withdrawal.withdrawable_epoch > epoch
-            or len(withdrawals) + 1 == MAX_WITHDRAWALS_PER_PAYLOAD
-        ):
+        all_withdrawals = prior_withdrawals + withdrawals
+        is_withdrawable = withdrawal.withdrawable_epoch <= epoch
+        has_reached_limit = len(all_withdrawals) == withdrawals_limit
+        if not is_withdrawable or has_reached_limit:
             break
-        if is_builder_payment_withdrawable(state, withdrawal):
-            total_withdrawn = sum(
-                w.amount for w in withdrawals if w.validator_index == withdrawal.builder_index
-            )
-            balance = state.balances[withdrawal.builder_index] - total_withdrawn
-            builder = state.validators[withdrawal.builder_index]
-            if builder.slashed:
-                withdrawable_balance = min(balance, withdrawal.amount)
-            elif balance > MIN_ACTIVATION_BALANCE:
-                withdrawable_balance = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
-            else:
-                withdrawable_balance = 0
 
-            if withdrawable_balance > 0:
+        if is_builder_payment_withdrawable(state, withdrawal):
+            builder_index = withdrawal.builder_index
+            builder = state.validators[builder_index]
+            balance = get_balance_after_withdrawals(state, builder_index, all_withdrawals)
+            withdrawable_balance = get_builder_withdrawable_balance(builder, balance)
+            withdrawal_amount = min(withdrawable_balance, withdrawal.amount)
+            if withdrawal_amount > 0:
                 withdrawals.append(
                     Withdrawal(
                         index=withdrawal_index,
-                        validator_index=withdrawal.builder_index,
+                        validator_index=builder_index,
                         address=withdrawal.fee_recipient,
-                        amount=withdrawable_balance,
+                        amount=withdrawal_amount,
                     )
                 )
                 withdrawal_index += WithdrawalIndex(1)
-        processed_builder_withdrawals_count += 1
 
-    # Sweep for pending partial withdrawals
-    bound = min(
-        len(withdrawals) + MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
-        MAX_WITHDRAWALS_PER_PAYLOAD - 1,
+        processed_count += 1
+
+    return withdrawals, withdrawal_index, processed_count
+```
+
+##### Modified `get_expected_withdrawals`
+
+```python
+def get_expected_withdrawals(
+    state: BeaconState,
+) -> Tuple[Sequence[Withdrawal], uint64, uint64, uint64]:
+    withdrawal_index = state.next_withdrawal_index
+    withdrawals: List[Withdrawal] = []
+
+    # [New in Gloas:EIP7732]
+    # Get builder withdrawals
+    builder_withdrawals, withdrawal_index, processed_builder_withdrawals_count = (
+        get_builder_withdrawals(state, withdrawal_index, withdrawals)
     )
-    for withdrawal in state.pending_partial_withdrawals:
-        if withdrawal.withdrawable_epoch > epoch or len(withdrawals) == bound:
-            break
+    withdrawals.extend(builder_withdrawals)
 
-        validator = state.validators[withdrawal.validator_index]
-        has_sufficient_effective_balance = validator.effective_balance >= MIN_ACTIVATION_BALANCE
-        total_withdrawn = sum(
-            w.amount for w in withdrawals if w.validator_index == withdrawal.validator_index
-        )
-        balance = state.balances[withdrawal.validator_index] - total_withdrawn
-        has_excess_balance = balance > MIN_ACTIVATION_BALANCE
-        if (
-            validator.exit_epoch == FAR_FUTURE_EPOCH
-            and has_sufficient_effective_balance
-            and has_excess_balance
-        ):
-            withdrawable_balance = min(balance - MIN_ACTIVATION_BALANCE, withdrawal.amount)
-            withdrawals.append(
-                Withdrawal(
-                    index=withdrawal_index,
-                    validator_index=withdrawal.validator_index,
-                    address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                    amount=withdrawable_balance,
-                )
-            )
-            withdrawal_index += WithdrawalIndex(1)
+    # Get partial withdrawals
+    partial_withdrawals, withdrawal_index, processed_partial_withdrawals_count = (
+        get_pending_partial_withdrawals(state, withdrawal_index, withdrawals)
+    )
+    withdrawals.extend(partial_withdrawals)
 
-        processed_partial_withdrawals_count += 1
+    # Get validators sweep withdrawals
+    validators_sweep_withdrawals, withdrawal_index, processed_validators_sweep_count = (
+        get_validators_sweep_withdrawals(state, withdrawal_index, withdrawals)
+    )
+    withdrawals.extend(validators_sweep_withdrawals)
 
-    # Sweep for remaining.
-    bound = min(len(state.validators), MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP)
-    for _ in range(bound):
-        validator = state.validators[validator_index]
-        total_withdrawn = sum(w.amount for w in withdrawals if w.validator_index == validator_index)
-        balance = state.balances[validator_index] - total_withdrawn
-        if is_fully_withdrawable_validator(validator, balance, epoch):
-            withdrawals.append(
-                Withdrawal(
-                    index=withdrawal_index,
-                    validator_index=validator_index,
-                    address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                    amount=balance,
-                )
-            )
-            withdrawal_index += WithdrawalIndex(1)
-        elif is_partially_withdrawable_validator(validator, balance):
-            withdrawals.append(
-                Withdrawal(
-                    index=withdrawal_index,
-                    validator_index=validator_index,
-                    address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                    amount=balance - get_max_effective_balance(validator),
-                )
-            )
-            withdrawal_index += WithdrawalIndex(1)
-        if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
-            break
-        validator_index = ValidatorIndex((validator_index + 1) % len(state.validators))
+    # [Modified in Gloas:EIP7732]
     return (
         withdrawals,
         processed_builder_withdrawals_count,
         processed_partial_withdrawals_count,
+        processed_validators_sweep_count,
     )
+```
+
+##### New `update_payload_expected_withdrawals`
+
+```python
+def update_payload_expected_withdrawals(
+    state: BeaconState, withdrawals: Sequence[Withdrawal]
+) -> None:
+    state.payload_expected_withdrawals = ProgressiveList[Withdrawal](withdrawals)
+```
+
+##### New `update_builder_pending_withdrawals`
+
+```python
+def update_builder_pending_withdrawals(
+    state: BeaconState, processed_builder_withdrawals_count: uint64
+) -> None:
+    deferred_withdrawals = [
+        withdrawal
+        for withdrawal in state.builder_pending_withdrawals[:processed_builder_withdrawals_count]
+        if not is_builder_payment_withdrawable(state, withdrawal)
+    ]
+    unprocessed_withdrawals = state.builder_pending_withdrawals[
+        processed_builder_withdrawals_count:
+    ]
+
+    state.builder_pending_withdrawals = deferred_withdrawals + unprocessed_withdrawals
 ```
 
 ##### Modified `process_withdrawals`
@@ -1001,44 +1013,25 @@ def process_withdrawals(
         return
 
     # [Modified in Gloas:EIP7732]
-    # Get information about the expected withdrawals
-    withdrawals, processed_builder_withdrawals_count, processed_partial_withdrawals_count = (
-        get_expected_withdrawals(state)
-    )
-    state.payload_expected_withdrawals = ProgressiveList[Withdrawal](withdrawals)
-    for withdrawal in withdrawals:
-        decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
+    # Get expected withdrawals
+    (
+        withdrawals,
+        processed_builder_withdrawals_count,
+        processed_partial_withdrawals_count,
+        processed_validators_sweep_count,
+    ) = get_expected_withdrawals(state)
 
+    # Apply expected withdrawals
+    apply_withdrawals(state, withdrawals)
+
+    # Update withdrawals fields in the state
+    update_next_withdrawal_index(state, withdrawals)
     # [New in Gloas:EIP7732]
-    # Update the pending builder withdrawals
-    state.builder_pending_withdrawals = [
-        w
-        for w in state.builder_pending_withdrawals[:processed_builder_withdrawals_count]
-        if not is_builder_payment_withdrawable(state, w)
-    ] + state.builder_pending_withdrawals[processed_builder_withdrawals_count:]
-
-    # Update pending partial withdrawals
-    state.pending_partial_withdrawals = state.pending_partial_withdrawals[
-        processed_partial_withdrawals_count:
-    ]
-
-    # Update the next withdrawal index if this block contained withdrawals
-    if len(withdrawals) != 0:
-        latest_withdrawal = withdrawals[-1]
-        state.next_withdrawal_index = WithdrawalIndex(latest_withdrawal.index + 1)
-
-    # Update the next validator index to start the next withdrawal sweep
-    if len(withdrawals) == MAX_WITHDRAWALS_PER_PAYLOAD:
-        # Next sweep starts after the latest withdrawal's validator index
-        next_validator_index = ValidatorIndex(
-            (withdrawals[-1].validator_index + 1) % len(state.validators)
-        )
-        state.next_withdrawal_validator_index = next_validator_index
-    else:
-        # Advance sweep by the max length of the sweep if there was not a full set of withdrawals
-        next_index = state.next_withdrawal_validator_index + MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
-        next_validator_index = ValidatorIndex(next_index % len(state.validators))
-        state.next_withdrawal_validator_index = next_validator_index
+    update_payload_expected_withdrawals(state, withdrawals)
+    # [New in Gloas:EIP7732]
+    update_builder_pending_withdrawals(state, processed_builder_withdrawals_count)
+    update_pending_partial_withdrawals(state, processed_partial_withdrawals_count)
+    update_next_withdrawal_validator_index(state, processed_validators_sweep_count)
 ```
 
 #### Execution payload bid
@@ -1278,9 +1271,7 @@ def process_payload_attestation(
     # Check that the attestation is for the previous slot
     assert data.slot + 1 == state.slot
     # Verify signature
-    indexed_payload_attestation = get_indexed_payload_attestation(
-        state, data.slot, payload_attestation
-    )
+    indexed_payload_attestation = get_indexed_payload_attestation(state, payload_attestation)
     assert is_valid_indexed_payload_attestation(state, indexed_payload_attestation)
 ```
 
