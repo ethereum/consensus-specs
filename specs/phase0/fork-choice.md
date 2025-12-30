@@ -105,9 +105,9 @@ handlers must not modify `store`.
 
 ### Constant
 
-| Name                              | Value           |
-| --------------------------------- | --------------- |
-| `BASIS_POINTS`                    | `uint64(10000)` |
+| Name           | Value           |
+| -------------- | --------------- |
+| `BASIS_POINTS` | `uint64(10000)` |
 
 ### Configuration
 
