@@ -1,0 +1,4855 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ethereum.github.io/consensus-specs/specs/bellatrix/fork-choice/">
+      
+      
+        <link rel="prev" href="../beacon-chain/">
+      
+      
+        <link rel="next" href="../fork/">
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.20">
+    
+    
+      
+        <title>Fork Choice - Ethereum Consensus Specs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.e53b48f4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#bellatrix-fork-choice" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Ethereum Consensus Specs" class="md-header__button md-logo" aria-label="Ethereum Consensus Specs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ethereum Consensus Specs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Fork Choice
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../phase0/beacon-chain/" class="md-tabs__link">
+          
+  
+  
+  Specs
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../docs/new-feature/" class="md-tabs__link">
+          
+  
+  
+  Docs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../fork_choice/safe-block/" class="md-tabs__link">
+          
+  
+  
+  Fork choice
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../light-client/" class="md-tabs__link">
+          
+  
+  
+  Light client
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../ssz/merkle-proofs/" class="md-tabs__link">
+          
+  
+  
+  Ssz
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../sync/optimistic/" class="md-tabs__link">
+          
+  
+  
+  Sync
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Ethereum Consensus Specs" class="md-nav__button md-logo" aria-label="Ethereum Consensus Specs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Ethereum Consensus Specs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Home
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Ethereum Proof-of-Stake Consensus Specifications
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Specs
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Specs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Phase0
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            Phase0
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../phase0/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../phase0/deposit-contract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Deposit Contract
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../phase0/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../phase0/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../phase0/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../phase0/weak-subjectivity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Weak Subjectivity
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Altair
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            Altair
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../altair/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../altair/bls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    BLS
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../altair/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../altair/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../altair/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../altair/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_7" id="__nav_2_2_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            Light Client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../altair/light-client/full-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Full Node
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../altair/light-client/light-client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../altair/light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../altair/light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sync Protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Bellatrix
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            Bellatrix
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom types
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#protocols" class="md-nav__link">
+    <span class="md-ellipsis">
+      Protocols
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Protocols">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#executionengine" class="md-nav__link">
+    <span class="md-ellipsis">
+      ExecutionEngine
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ExecutionEngine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#notify_forkchoice_updated" class="md-nav__link">
+    <span class="md-ellipsis">
+      notify_forkchoice_updated
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="notify_forkchoice_updated">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#safe_block_hash" class="md-nav__link">
+    <span class="md-ellipsis">
+      safe_block_hash
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#should_override_forkchoice_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      should_override_forkchoice_update
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Helpers
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Helpers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#payloadattributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      PayloadAttributes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#powblock" class="md-nav__link">
+    <span class="md-ellipsis">
+      PowBlock
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_pow_block" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_pow_block
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#is_valid_terminal_pow_block" class="md-nav__link">
+    <span class="md-ellipsis">
+      is_valid_terminal_pow_block
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validate_merge_block" class="md-nav__link">
+    <span class="md-ellipsis">
+      validate_merge_block
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#updated-fork-choice-handlers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Updated fork-choice handlers
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Updated fork-choice handlers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#on_block" class="md-nav__link">
+    <span class="md-ellipsis">
+      on_block
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Capella
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            Capella
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4_6" id="__nav_2_4_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            Light Client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/light-client/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/light-client/full-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Full Node
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sync Protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Deneb
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            Deneb
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/polynomial-commitments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Polynomial Commitments
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5_7" id="__nav_2_5_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            Light Client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/light-client/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/light-client/full-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Full Node
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sync Protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Electra
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            Electra
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/weak-subjectivity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Weak Subjectivity
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6_6" id="__nav_2_6_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light Client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_6_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6_6">
+            <span class="md-nav__icon md-icon"></span>
+            Light Client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/light-client/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../electra/light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Sync Protocol
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Fulu
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            Fulu
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fulu/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fulu/das-core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DAS Core
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fulu/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fulu/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fulu/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fulu/polynomial-commitments-sampling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Polynomial Commitments Sampling
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fulu/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_8" id="__nav_2_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Gloas
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            Gloas
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gloas/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gloas/builder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Builder
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gloas/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gloas/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gloas/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../gloas/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9" id="__nav_2_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Features
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            Features
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9_1" id="__nav_2_9_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Eip6800
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9_1">
+            <span class="md-nav__icon md-icon"></span>
+            Eip6800
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip6800/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip6800/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip6800/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9_2" id="__nav_2_9_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Eip6914
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9_2">
+            <span class="md-nav__icon md-icon"></span>
+            Eip6914
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip6914/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip6914/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9_3" id="__nav_2_9_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Eip7441
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9_3">
+            <span class="md-nav__icon md-icon"></span>
+            Eip7441
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7441/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7441/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9_4" id="__nav_2_9_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Eip7805
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9_4">
+            <span class="md-nav__icon md-icon"></span>
+            Eip7805
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7805/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7805/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7805/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7805/inclusion-list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Inclusion List
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7805/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7805/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9_5" id="__nav_2_9_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Eip7928
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9_5">
+            <span class="md-nav__icon md-icon"></span>
+            Eip7928
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7928/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7928/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip7928/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9_6" id="__nav_2_9_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Eip8025
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_9_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9_6">
+            <span class="md-nav__icon md-icon"></span>
+            Eip8025
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip8025/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Beacon Chain
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip8025/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    P2P Interface
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip8025/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../_features/eip8025/zkevm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Zkevm
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Docs
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Docs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../docs/new-feature/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    How to add a new feature proposal in consensus-specs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../docs/release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Release Procedure
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Fork choice
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Fork choice
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../fork_choice/safe-block/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice -- Safe Block
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Fork Choice -- Core
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            Fork Choice -- Core
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../phase0/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    phase0
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    bellatrix
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    capella
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    deneb
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Light client
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Light client
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../light-client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Index
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../altair/light-client/sync-protocol" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Altair
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../capella/light-client/sync-protocol" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Capella
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deneb/light-client/sync-protocol" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Deneb
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Ssz
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Ssz
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ssz/merkle-proofs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Merkle proof formats
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ssz/simple-serialize/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    SimpleSerialize (SSZ)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Sync
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Sync
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../sync/optimistic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Optimistic Sync
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom types
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#protocols" class="md-nav__link">
+    <span class="md-ellipsis">
+      Protocols
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Protocols">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#executionengine" class="md-nav__link">
+    <span class="md-ellipsis">
+      ExecutionEngine
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ExecutionEngine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#notify_forkchoice_updated" class="md-nav__link">
+    <span class="md-ellipsis">
+      notify_forkchoice_updated
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="notify_forkchoice_updated">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#safe_block_hash" class="md-nav__link">
+    <span class="md-ellipsis">
+      safe_block_hash
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#should_override_forkchoice_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      should_override_forkchoice_update
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Helpers
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Helpers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#payloadattributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      PayloadAttributes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#powblock" class="md-nav__link">
+    <span class="md-ellipsis">
+      PowBlock
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_pow_block" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_pow_block
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#is_valid_terminal_pow_block" class="md-nav__link">
+    <span class="md-ellipsis">
+      is_valid_terminal_pow_block
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validate_merge_block" class="md-nav__link">
+    <span class="md-ellipsis">
+      validate_merge_block
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#updated-fork-choice-handlers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Updated fork-choice handlers
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Updated fork-choice handlers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#on_block" class="md-nav__link">
+    <span class="md-ellipsis">
+      on_block
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="bellatrix-fork-choice">Bellatrix -- Fork Choice<a class="headerlink" href="#bellatrix-fork-choice" title="Permanent link">&para;</a></h1>
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
+
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#custom-types">Custom types</a></li>
+<li><a href="#protocols">Protocols</a></li>
+<li><a href="#executionengine"><code>ExecutionEngine</code></a><ul>
+<li><a href="#notify_forkchoice_updated"><code>notify_forkchoice_updated</code></a></li>
+<li><a href="#safe_block_hash"><code>safe_block_hash</code></a></li>
+<li><a href="#should_override_forkchoice_update"><code>should_override_forkchoice_update</code></a></li>
+</ul>
+</li>
+<li><a href="#helpers">Helpers</a></li>
+<li><a href="#payloadattributes"><code>PayloadAttributes</code></a></li>
+<li><a href="#powblock"><code>PowBlock</code></a></li>
+<li><a href="#get_pow_block"><code>get_pow_block</code></a></li>
+<li><a href="#is_valid_terminal_pow_block"><code>is_valid_terminal_pow_block</code></a></li>
+<li><a href="#validate_merge_block"><code>validate_merge_block</code></a></li>
+<li><a href="#updated-fork-choice-handlers">Updated fork-choice handlers</a></li>
+<li><a href="#on_block"><code>on_block</code></a></li>
+</ul>
+<!-- mdformat-toc end -->
+
+<h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h2>
+<p>This is the modification of the fork choice according to the executable beacon
+chain proposal.</p>
+<p>Unless stated explicitly, all prior functionality from
+<a href="../../altair/fork-choice/">Altair</a> is inherited.</p>
+<p><em>Note</em>: It introduces the process of transition from the last PoW block to the
+first PoS block.</p>
+<h2 id="custom-types">Custom types<a class="headerlink" href="#custom-types" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>SSZ equivalent</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PayloadId</code></td>
+<td><code>Bytes8</code></td>
+<td>Identifier of a payload building process</td>
+</tr>
+</tbody>
+</table>
+<h2 id="protocols">Protocols<a class="headerlink" href="#protocols" title="Permanent link">&para;</a></h2>
+<h3 id="executionengine"><code>ExecutionEngine</code><a class="headerlink" href="#executionengine" title="Permanent link">&para;</a></h3>
+<p><em>Note</em>: The <code>notify_forkchoice_updated</code> function is added to the
+<code>ExecutionEngine</code> protocol to signal the fork choice updates.</p>
+<p>The body of this function is implementation dependent. The Engine API may be
+used to implement it with an external execution engine.</p>
+<h4 id="notify_forkchoice_updated"><code>notify_forkchoice_updated</code><a class="headerlink" href="#notify_forkchoice_updated" title="Permanent link">&para;</a></h4>
+<p>This function performs three actions <em>atomically</em>:</p>
+<ul>
+<li>Re-organizes the execution payload chain and corresponding state to make
+  <code>head_block_hash</code> the head.</li>
+<li>Updates safe block hash with the value provided by <code>safe_block_hash</code>
+  parameter.</li>
+<li>Applies finality to the execution state: it irreversibly persists the chain of
+  all execution payloads and corresponding state, up to and including
+  <code>finalized_block_hash</code>.</li>
+</ul>
+<p>Additionally, if <code>payload_attributes</code> is provided, this function sets in motion
+a payload build process on top of <code>head_block_hash</code> and returns an identifier of
+initiated process.</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-6">6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-7">7</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">notify_forkchoice_updated</span><span style="color: #F8F8F2">(</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2"></a>    <span style="color: #F8F8F2">self:</span> <span style="color: #F8F8F2">ExecutionEngine,</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3"></a>    <span style="color: #F8F8F2">head_block_hash:</span> <span style="color: #F8F8F2">Hash32,</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4"></a>    <span style="color: #F8F8F2">safe_block_hash:</span> <span style="color: #F8F8F2">Hash32,</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5"></a>    <span style="color: #F8F8F2">finalized_block_hash:</span> <span style="color: #F8F8F2">Hash32,</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6"></a>    <span style="color: #F8F8F2">payload_attributes:</span> <span style="color: #F8F8F2">Optional[PayloadAttributes],</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7"></a><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">Optional[PayloadId]:</span> <span style="color: #FF4689">...</span>
+</code></pre></div></td></tr></table></div>
+<p><em>Note</em>: The <code>(head_block_hash, finalized_block_hash)</code> values of the
+<code>notify_forkchoice_updated</code> function call maps on the <code>POS_FORKCHOICE_UPDATED</code>
+event defined in the
+<a href="https://eips.ethereum.org/EIPS/eip-3675#definitions">EIP-3675</a>. As per
+EIP-3675, before a post-transition block is finalized,
+<code>notify_forkchoice_updated</code> MUST be called with
+<code>finalized_block_hash = Hash32()</code>.</p>
+<p><em>Note</em>: Client software MUST NOT call this function until the transition
+conditions are met on the PoW network, i.e. there exists a block for which
+<code>is_valid_terminal_pow_block</code> function returns <code>True</code>.</p>
+<p><em>Note</em>: Client software MUST call this function to initiate the payload build
+process to produce the merge transition block; the <code>head_block_hash</code> parameter
+MUST be set to the hash of a terminal PoW block in this case.</p>
+<h5 id="safe_block_hash"><code>safe_block_hash</code><a class="headerlink" href="#safe_block_hash" title="Permanent link">&para;</a></h5>
+<p>The <code>safe_block_hash</code> parameter MUST be set to return value of
+<a href="../../../fork_choice/safe-block/#get_safe_execution_block_hash"><code>get_safe_execution_block_hash(store: Store)</code></a>
+function.</p>
+<h5 id="should_override_forkchoice_update"><code>should_override_forkchoice_update</code><a class="headerlink" href="#should_override_forkchoice_update" title="Permanent link">&para;</a></h5>
+<p>If proposer boost re-orgs are implemented and enabled (see <code>get_proposer_head</code>)
+then additional care must be taken to ensure that the proposer is able to build
+an execution payload.</p>
+<p>If a beacon node knows it will propose the next block then it SHOULD NOT call
+<code>notify_forkchoice_updated</code> if it detects the current head to be weak and
+potentially capable of being re-orged. Complete information for evaluating
+<code>get_proposer_head</code> <em>will not</em> be available immediately after the receipt of a
+new block, so an approximation of those conditions should be used when deciding
+whether to send or suppress a fork choice notification. The exact conditions
+used may be implementation-specific, a suggested implementation is below.</p>
+<p>Let <code>validator_is_connected(validator_index: ValidatorIndex) -&gt; bool</code> be a
+function that indicates whether the validator with <code>validator_index</code> is
+connected to the node (e.g. has sent an unexpired proposer preparation message).</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-14">14</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-15">15</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-16">16</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-17">17</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-18">18</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-19">19</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-20">20</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-21">21</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-22">22</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-23">23</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-24">24</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-25">25</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-26">26</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-27">27</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-28">28</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-29">29</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-30">30</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-31">31</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-32">32</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-33">33</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-34">34</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-35">35</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-36">36</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-37">37</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-38">38</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-39">39</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-40">40</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-41">41</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-42">42</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-43">43</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-44">44</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-45">45</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-46">46</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-47">47</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-48">48</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-49">49</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-50">50</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-51">51</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-52">52</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-53">53</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-54">54</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-55">55</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-56">56</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-57">57</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">should_override_forkchoice_update</span><span style="color: #F8F8F2">(store:</span> <span style="color: #F8F8F2">Store,</span> <span style="color: #F8F8F2">head_root:</span> <span style="color: #F8F8F2">Root)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">bool:</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2"></a>    <span style="color: #F8F8F2">head_block</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">blocks[head_root]</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3"></a>    <span style="color: #F8F8F2">parent_root</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">head_block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">parent_root</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4"></a>    <span style="color: #F8F8F2">parent_block</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">blocks[parent_root]</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5"></a>    <span style="color: #F8F8F2">current_slot</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">get_current_slot(store)</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6"></a>    <span style="color: #F8F8F2">proposal_slot</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">head_block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">Slot(</span><span style="color: #AE81FF">1</span><span style="color: #F8F8F2">)</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7"></a>
+<a id="__codelineno-1-8" name="__codelineno-1-8"></a>    <span style="color: #959077"># Only re-org the head_block block if it arrived later than the attestation deadline.</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9"></a>    <span style="color: #F8F8F2">head_late</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">is_head_late(store,</span> <span style="color: #F8F8F2">head_root)</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10"></a>
+<a id="__codelineno-1-11" name="__codelineno-1-11"></a>    <span style="color: #959077"># Shuffling stable.</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12"></a>    <span style="color: #F8F8F2">shuffling_stable</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">is_shuffling_stable(proposal_slot)</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13"></a>
+<a id="__codelineno-1-14" name="__codelineno-1-14"></a>    <span style="color: #959077"># FFG information of the new head_block will be competitive with the current head.</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15"></a>    <span style="color: #F8F8F2">ffg_competitive</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">is_ffg_competitive(store,</span> <span style="color: #F8F8F2">head_root,</span> <span style="color: #F8F8F2">parent_root)</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16"></a>
+<a id="__codelineno-1-17" name="__codelineno-1-17"></a>    <span style="color: #959077"># Do not re-org if the chain is not finalizing with acceptable frequency.</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18"></a>    <span style="color: #F8F8F2">finalization_ok</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">is_finalization_ok(store,</span> <span style="color: #F8F8F2">proposal_slot)</span>
+<a id="__codelineno-1-19" name="__codelineno-1-19"></a>
+<a id="__codelineno-1-20" name="__codelineno-1-20"></a>    <span style="color: #959077"># Only suppress the fork choice update if we are confident that we will propose the next block.</span>
+<a id="__codelineno-1-21" name="__codelineno-1-21"></a>    <span style="color: #F8F8F2">parent_state_advanced</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">block_states[parent_root]</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">copy()</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22"></a>    <span style="color: #F8F8F2">process_slots(parent_state_advanced,</span> <span style="color: #F8F8F2">proposal_slot)</span>
+<a id="__codelineno-1-23" name="__codelineno-1-23"></a>    <span style="color: #F8F8F2">proposer_index</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">get_beacon_proposer_index(parent_state_advanced)</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24"></a>    <span style="color: #F8F8F2">proposing_reorg_slot</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">validator_is_connected(proposer_index)</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25"></a>
+<a id="__codelineno-1-26" name="__codelineno-1-26"></a>    <span style="color: #959077"># Single slot re-org.</span>
+<a id="__codelineno-1-27" name="__codelineno-1-27"></a>    <span style="color: #F8F8F2">parent_slot_ok</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">parent_block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span> <span style="color: #FF4689">+</span> <span style="color: #AE81FF">1</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">head_block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span>
+<a id="__codelineno-1-28" name="__codelineno-1-28"></a>    <span style="color: #F8F8F2">proposing_on_time</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">is_proposing_on_time(store)</span>
+<a id="__codelineno-1-29" name="__codelineno-1-29"></a>
+<a id="__codelineno-1-30" name="__codelineno-1-30"></a>    <span style="color: #959077"># Note that this condition is different from `get_proposer_head`</span>
+<a id="__codelineno-1-31" name="__codelineno-1-31"></a>    <span style="color: #F8F8F2">current_time_ok</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">head_block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">current_slot</span> <span style="color: #FF4689">or</span> <span style="color: #F8F8F2">(</span>
+<a id="__codelineno-1-32" name="__codelineno-1-32"></a>        <span style="color: #F8F8F2">proposal_slot</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">current_slot</span> <span style="color: #FF4689">and</span> <span style="color: #F8F8F2">proposing_on_time</span>
+<a id="__codelineno-1-33" name="__codelineno-1-33"></a>    <span style="color: #F8F8F2">)</span>
+<a id="__codelineno-1-34" name="__codelineno-1-34"></a>    <span style="color: #F8F8F2">single_slot_reorg</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">parent_slot_ok</span> <span style="color: #FF4689">and</span> <span style="color: #F8F8F2">current_time_ok</span>
+<a id="__codelineno-1-35" name="__codelineno-1-35"></a>
+<a id="__codelineno-1-36" name="__codelineno-1-36"></a>    <span style="color: #959077"># Check the head weight only if the attestations from the head slot have already been applied.</span>
+<a id="__codelineno-1-37" name="__codelineno-1-37"></a>    <span style="color: #959077"># Implementations may want to do this in different ways, e.g. by advancing</span>
+<a id="__codelineno-1-38" name="__codelineno-1-38"></a>    <span style="color: #959077"># `store.time` early, or by counting queued attestations during the head block&#39;s slot.</span>
+<a id="__codelineno-1-39" name="__codelineno-1-39"></a>    <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">current_slot</span> <span style="color: #FF4689">&gt;</span> <span style="color: #F8F8F2">head_block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot:</span>
+<a id="__codelineno-1-40" name="__codelineno-1-40"></a>        <span style="color: #F8F8F2">head_weak</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">is_head_weak(store,</span> <span style="color: #F8F8F2">head_root)</span>
+<a id="__codelineno-1-41" name="__codelineno-1-41"></a>        <span style="color: #F8F8F2">parent_strong</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">is_parent_strong(store,</span> <span style="color: #F8F8F2">parent_root)</span>
+<a id="__codelineno-1-42" name="__codelineno-1-42"></a>    <span style="color: #66D9EF">else</span><span style="color: #F8F8F2">:</span>
+<a id="__codelineno-1-43" name="__codelineno-1-43"></a>        <span style="color: #F8F8F2">head_weak</span> <span style="color: #FF4689">=</span> <span style="color: #66D9EF">True</span>
+<a id="__codelineno-1-44" name="__codelineno-1-44"></a>        <span style="color: #F8F8F2">parent_strong</span> <span style="color: #FF4689">=</span> <span style="color: #66D9EF">True</span>
+<a id="__codelineno-1-45" name="__codelineno-1-45"></a>
+<a id="__codelineno-1-46" name="__codelineno-1-46"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">all(</span>
+<a id="__codelineno-1-47" name="__codelineno-1-47"></a>        <span style="color: #F8F8F2">[</span>
+<a id="__codelineno-1-48" name="__codelineno-1-48"></a>            <span style="color: #F8F8F2">head_late,</span>
+<a id="__codelineno-1-49" name="__codelineno-1-49"></a>            <span style="color: #F8F8F2">shuffling_stable,</span>
+<a id="__codelineno-1-50" name="__codelineno-1-50"></a>            <span style="color: #F8F8F2">ffg_competitive,</span>
+<a id="__codelineno-1-51" name="__codelineno-1-51"></a>            <span style="color: #F8F8F2">finalization_ok,</span>
+<a id="__codelineno-1-52" name="__codelineno-1-52"></a>            <span style="color: #F8F8F2">proposing_reorg_slot,</span>
+<a id="__codelineno-1-53" name="__codelineno-1-53"></a>            <span style="color: #F8F8F2">single_slot_reorg,</span>
+<a id="__codelineno-1-54" name="__codelineno-1-54"></a>            <span style="color: #F8F8F2">head_weak,</span>
+<a id="__codelineno-1-55" name="__codelineno-1-55"></a>            <span style="color: #F8F8F2">parent_strong,</span>
+<a id="__codelineno-1-56" name="__codelineno-1-56"></a>        <span style="color: #F8F8F2">]</span>
+<a id="__codelineno-1-57" name="__codelineno-1-57"></a>    <span style="color: #F8F8F2">)</span>
+</code></pre></div></td></tr></table></div>
+<p><em>Note</em>: The ordering of conditions is a suggestion only. Implementations are
+free to optimize by re-ordering the conditions from least to most expensive and
+by returning early if any of the early conditions are <code>False</code>.</p>
+<p>In case <code>should_override_forkchoice_update</code> returns <code>True</code>, a node SHOULD
+instead call <code>notify_forkchoice_updated</code> with parameters appropriate for
+building upon the parent block. Care must be taken to compute the correct
+<code>payload_attributes</code>, as they may change depending on the slot of the block to
+be proposed (due to withdrawals).</p>
+<p>If <code>should_override_forkchoice_update</code> returns <code>True</code> but <code>get_proposer_head</code>
+later chooses the canonical head rather than its parent, then this is a
+misprediction that will cause the node to construct a payload with less notice.
+The result of <code>get_proposer_head</code> MUST be preferred over the result of
+<code>should_override_forkchoice_update</code> (when proposer reorgs are enabled).</p>
+<h2 id="helpers">Helpers<a class="headerlink" href="#helpers" title="Permanent link">&para;</a></h2>
+<h3 id="payloadattributes"><code>PayloadAttributes</code><a class="headerlink" href="#payloadattributes" title="Permanent link">&para;</a></h3>
+<p>Used to signal to initiate the payload build process via
+<code>notify_forkchoice_updated</code>.</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-5">5</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1"></a><span style="color: #A6E22E">@dataclass</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2"></a><span style="color: #66D9EF">class</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">PayloadAttributes</span><span style="color: #F8F8F2">(object):</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3"></a>    <span style="color: #F8F8F2">timestamp:</span> <span style="color: #F8F8F2">uint64</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4"></a>    <span style="color: #F8F8F2">prev_randao:</span> <span style="color: #F8F8F2">Bytes32</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5"></a>    <span style="color: #F8F8F2">suggested_fee_recipient:</span> <span style="color: #F8F8F2">ExecutionAddress</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="powblock"><code>PowBlock</code><a class="headerlink" href="#powblock" title="Permanent link">&para;</a></h3>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-4">4</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1"></a><span style="color: #66D9EF">class</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">PowBlock</span><span style="color: #F8F8F2">(Container):</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2"></a>    <span style="color: #F8F8F2">block_hash:</span> <span style="color: #F8F8F2">Hash32</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3"></a>    <span style="color: #F8F8F2">parent_hash:</span> <span style="color: #F8F8F2">Hash32</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4"></a>    <span style="color: #F8F8F2">total_difficulty:</span> <span style="color: #F8F8F2">uint256</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="get_pow_block"><code>get_pow_block</code><a class="headerlink" href="#get_pow_block" title="Permanent link">&para;</a></h3>
+<p>Let <code>get_pow_block(block_hash: Hash32) -&gt; Optional[PowBlock]</code> be the function
+that given the hash of the PoW block returns its data. It may result in <code>None</code>
+if the requested block is not yet available.</p>
+<p><em>Note</em>: The <code>eth_getBlockByHash</code> JSON-RPC method may be used to pull this
+information from an execution client.</p>
+<h3 id="is_valid_terminal_pow_block"><code>is_valid_terminal_pow_block</code><a class="headerlink" href="#is_valid_terminal_pow_block" title="Permanent link">&para;</a></h3>
+<p>Used by fork-choice handler, <code>on_block</code>.</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-4">4</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">is_valid_terminal_pow_block</span><span style="color: #F8F8F2">(block:</span> <span style="color: #F8F8F2">PowBlock,</span> <span style="color: #F8F8F2">parent:</span> <span style="color: #F8F8F2">PowBlock)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #F8F8F2">bool:</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2"></a>    <span style="color: #F8F8F2">is_total_difficulty_reached</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">total_difficulty</span> <span style="color: #FF4689">&gt;=</span> <span style="color: #F8F8F2">TERMINAL_TOTAL_DIFFICULTY</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3"></a>    <span style="color: #F8F8F2">is_parent_total_difficulty_valid</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">parent</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">total_difficulty</span> <span style="color: #FF4689">&lt;</span> <span style="color: #F8F8F2">TERMINAL_TOTAL_DIFFICULTY</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">is_total_difficulty_reached</span> <span style="color: #FF4689">and</span> <span style="color: #F8F8F2">is_parent_total_difficulty_valid</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="validate_merge_block"><code>validate_merge_block</code><a class="headerlink" href="#validate_merge_block" title="Permanent link">&para;</a></h3>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-14">14</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-15">15</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-16">16</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-17">17</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-18">18</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-19">19</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-20">20</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-21">21</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-22">22</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">validate_merge_block</span><span style="color: #F8F8F2">(block:</span> <span style="color: #F8F8F2">BeaconBlock)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #66D9EF">None</span><span style="color: #F8F8F2">:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3"></a><span style="color: #E6DB74">    Check the parent PoW block of execution payload is a valid terminal PoW block.</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5"></a><span style="color: #E6DB74">    Note: Unavailable PoW block(s) may later become available,</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6"></a><span style="color: #E6DB74">    and a client software MAY delay a call to ``validate_merge_block``</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7"></a><span style="color: #E6DB74">    until the PoW block(s) become available.</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9"></a>    <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">TERMINAL_BLOCK_HASH</span> <span style="color: #FF4689">!=</span> <span style="color: #F8F8F2">Hash32():</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10"></a>        <span style="color: #959077"># If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11"></a>        <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">compute_epoch_at_slot(block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot)</span> <span style="color: #FF4689">&gt;=</span> <span style="color: #F8F8F2">TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12"></a>        <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">body</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">execution_payload</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">parent_hash</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">TERMINAL_BLOCK_HASH</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13"></a>        <span style="color: #66D9EF">return</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14"></a>
+<a id="__codelineno-5-15" name="__codelineno-5-15"></a>    <span style="color: #F8F8F2">pow_block</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">get_pow_block(block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">body</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">execution_payload</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">parent_hash)</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16"></a>    <span style="color: #959077"># Check if `pow_block` is available</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">pow_block</span> <span style="color: #FF4689">is</span> <span style="color: #FF4689">not</span> <span style="color: #66D9EF">None</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18"></a>    <span style="color: #F8F8F2">pow_parent</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">get_pow_block(pow_block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">parent_hash)</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19"></a>    <span style="color: #959077"># Check if `pow_parent` is available</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">pow_parent</span> <span style="color: #FF4689">is</span> <span style="color: #FF4689">not</span> <span style="color: #66D9EF">None</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21"></a>    <span style="color: #959077"># Check if `pow_block` is a valid terminal PoW block</span>
+<a id="__codelineno-5-22" name="__codelineno-5-22"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">is_valid_terminal_pow_block(pow_block,</span> <span style="color: #F8F8F2">pow_parent)</span>
+</code></pre></div></td></tr></table></div>
+<h2 id="updated-fork-choice-handlers">Updated fork-choice handlers<a class="headerlink" href="#updated-fork-choice-handlers" title="Permanent link">&para;</a></h2>
+<h3 id="on_block"><code>on_block</code><a class="headerlink" href="#on_block" title="Permanent link">&para;</a></h3>
+<p><em>Note</em>: The only modification is the addition of the verification of transition
+block conditions.</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-14">14</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-15">15</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-16">16</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-17">17</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-18">18</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-19">19</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-20">20</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-21">21</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-22">22</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-23">23</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-24">24</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-25">25</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-26">26</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-27">27</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-28">28</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-29">29</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-30">30</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-31">31</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-32">32</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-33">33</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-34">34</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-35">35</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-36">36</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-37">37</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-38">38</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-39">39</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-40">40</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-41">41</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-42">42</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-43">43</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-44">44</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-45">45</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-46">46</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-47">47</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-48">48</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-49">49</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-50">50</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-51">51</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-52">52</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-53">53</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-54">54</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-55">55</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-56">56</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-57">57</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-58">58</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-59">59</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1"></a><span style="color: #66D9EF">def</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">on_block</span><span style="color: #F8F8F2">(store:</span> <span style="color: #F8F8F2">Store,</span> <span style="color: #F8F8F2">signed_block:</span> <span style="color: #F8F8F2">SignedBeaconBlock)</span> <span style="color: #FF4689">-&gt;</span> <span style="color: #66D9EF">None</span><span style="color: #F8F8F2">:</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2"></a><span style="color: #F8F8F2">    </span><span style="color: #E6DB74">&quot;&quot;&quot;</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3"></a><span style="color: #E6DB74">    Run ``on_block`` upon receiving a new block.</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4"></a>
+<a id="__codelineno-6-5" name="__codelineno-6-5"></a><span style="color: #E6DB74">    A block that is asserted as invalid due to unavailable PoW block may be valid at a later time,</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6"></a><span style="color: #E6DB74">    consider scheduling it for later processing in such case.</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7"></a><span style="color: #E6DB74">    &quot;&quot;&quot;</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8"></a>    <span style="color: #F8F8F2">block</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">signed_block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">message</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9"></a>    <span style="color: #959077"># Parent block must be known</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">parent_root</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">block_states</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11"></a>    <span style="color: #959077"># Make a copy of the state to avoid mutability issues</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12"></a>    <span style="color: #F8F8F2">pre_state</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">copy(store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">block_states[block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">parent_root])</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13"></a>    <span style="color: #959077"># Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">get_current_slot(store)</span> <span style="color: #FF4689">&gt;=</span> <span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15"></a>
+<a id="__codelineno-6-16" name="__codelineno-6-16"></a>    <span style="color: #959077"># Check that block is later than the finalized epoch slot (optimization to reduce calls to get_ancestor)</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17"></a>    <span style="color: #F8F8F2">finalized_slot</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">compute_start_slot_at_epoch(store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">finalized_checkpoint</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">epoch)</span>
+<a id="__codelineno-6-18" name="__codelineno-6-18"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span> <span style="color: #FF4689">&gt;</span> <span style="color: #F8F8F2">finalized_slot</span>
+<a id="__codelineno-6-19" name="__codelineno-6-19"></a>    <span style="color: #959077"># Check block is a descendant of the finalized block at the checkpoint finalized slot</span>
+<a id="__codelineno-6-20" name="__codelineno-6-20"></a>    <span style="color: #F8F8F2">finalized_checkpoint_block</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">get_checkpoint_block(</span>
+<a id="__codelineno-6-21" name="__codelineno-6-21"></a>        <span style="color: #F8F8F2">store,</span>
+<a id="__codelineno-6-22" name="__codelineno-6-22"></a>        <span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">parent_root,</span>
+<a id="__codelineno-6-23" name="__codelineno-6-23"></a>        <span style="color: #F8F8F2">store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">finalized_checkpoint</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">epoch,</span>
+<a id="__codelineno-6-24" name="__codelineno-6-24"></a>    <span style="color: #F8F8F2">)</span>
+<a id="__codelineno-6-25" name="__codelineno-6-25"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">finalized_checkpoint</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">root</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">finalized_checkpoint_block</span>
+<a id="__codelineno-6-26" name="__codelineno-6-26"></a>
+<a id="__codelineno-6-27" name="__codelineno-6-27"></a>    <span style="color: #959077"># Check the block is valid and compute the post-state</span>
+<a id="__codelineno-6-28" name="__codelineno-6-28"></a>    <span style="color: #F8F8F2">state</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">pre_state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">copy()</span>
+<a id="__codelineno-6-29" name="__codelineno-6-29"></a>    <span style="color: #F8F8F2">block_root</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">hash_tree_root(block)</span>
+<a id="__codelineno-6-30" name="__codelineno-6-30"></a>    <span style="color: #F8F8F2">state_transition(state,</span> <span style="color: #F8F8F2">signed_block,</span> <span style="color: #66D9EF">True</span><span style="color: #F8F8F2">)</span>
+<a id="__codelineno-6-31" name="__codelineno-6-31"></a>
+<a id="__codelineno-6-32" name="__codelineno-6-32"></a>    <span style="color: #959077"># [New in Bellatrix]</span>
+<a id="__codelineno-6-33" name="__codelineno-6-33"></a>    <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">is_merge_transition_block(pre_state,</span> <span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">body):</span>
+<a id="__codelineno-6-34" name="__codelineno-6-34"></a>        <span style="color: #F8F8F2">validate_merge_block(block)</span>
+<a id="__codelineno-6-35" name="__codelineno-6-35"></a>
+<a id="__codelineno-6-36" name="__codelineno-6-36"></a>    <span style="color: #959077"># Add new block to the store</span>
+<a id="__codelineno-6-37" name="__codelineno-6-37"></a>    <span style="color: #F8F8F2">store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">blocks[block_root]</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">block</span>
+<a id="__codelineno-6-38" name="__codelineno-6-38"></a>    <span style="color: #959077"># Add new state for this block to the store</span>
+<a id="__codelineno-6-39" name="__codelineno-6-39"></a>    <span style="color: #F8F8F2">store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">block_states[block_root]</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">state</span>
+<a id="__codelineno-6-40" name="__codelineno-6-40"></a>
+<a id="__codelineno-6-41" name="__codelineno-6-41"></a>    <span style="color: #959077"># Add block timeliness to the store</span>
+<a id="__codelineno-6-42" name="__codelineno-6-42"></a>    <span style="color: #F8F8F2">seconds_since_genesis</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">time</span> <span style="color: #FF4689">-</span> <span style="color: #F8F8F2">store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">genesis_time</span>
+<a id="__codelineno-6-43" name="__codelineno-6-43"></a>    <span style="color: #F8F8F2">time_into_slot_ms</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">seconds_to_milliseconds(seconds_since_genesis)</span> <span style="color: #FF4689">%</span> <span style="color: #F8F8F2">SLOT_DURATION_MS</span>
+<a id="__codelineno-6-44" name="__codelineno-6-44"></a>    <span style="color: #F8F8F2">epoch</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">get_current_store_epoch(store)</span>
+<a id="__codelineno-6-45" name="__codelineno-6-45"></a>    <span style="color: #F8F8F2">attestation_threshold_ms</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">get_attestation_due_ms(epoch)</span>
+<a id="__codelineno-6-46" name="__codelineno-6-46"></a>    <span style="color: #F8F8F2">is_before_attesting_interval</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">time_into_slot_ms</span> <span style="color: #FF4689">&lt;</span> <span style="color: #F8F8F2">attestation_threshold_ms</span>
+<a id="__codelineno-6-47" name="__codelineno-6-47"></a>    <span style="color: #F8F8F2">is_timely</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">get_current_slot(store)</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">block</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">slot</span> <span style="color: #FF4689">and</span> <span style="color: #F8F8F2">is_before_attesting_interval</span>
+<a id="__codelineno-6-48" name="__codelineno-6-48"></a>    <span style="color: #F8F8F2">store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">block_timeliness[hash_tree_root(block)]</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">is_timely</span>
+<a id="__codelineno-6-49" name="__codelineno-6-49"></a>
+<a id="__codelineno-6-50" name="__codelineno-6-50"></a>    <span style="color: #959077"># Add proposer score boost if the block is timely and not conflicting with an existing block</span>
+<a id="__codelineno-6-51" name="__codelineno-6-51"></a>    <span style="color: #F8F8F2">is_first_block</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">proposer_boost_root</span> <span style="color: #FF4689">==</span> <span style="color: #F8F8F2">Root()</span>
+<a id="__codelineno-6-52" name="__codelineno-6-52"></a>    <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">is_timely</span> <span style="color: #FF4689">and</span> <span style="color: #F8F8F2">is_first_block:</span>
+<a id="__codelineno-6-53" name="__codelineno-6-53"></a>        <span style="color: #F8F8F2">store</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">proposer_boost_root</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">hash_tree_root(block)</span>
+<a id="__codelineno-6-54" name="__codelineno-6-54"></a>
+<a id="__codelineno-6-55" name="__codelineno-6-55"></a>    <span style="color: #959077"># Update checkpoints in store if necessary</span>
+<a id="__codelineno-6-56" name="__codelineno-6-56"></a>    <span style="color: #F8F8F2">update_checkpoints(store,</span> <span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">current_justified_checkpoint,</span> <span style="color: #F8F8F2">state</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">finalized_checkpoint)</span>
+<a id="__codelineno-6-57" name="__codelineno-6-57"></a>
+<a id="__codelineno-6-58" name="__codelineno-6-58"></a>    <span style="color: #959077"># Eagerly compute unrealized justification and finality.</span>
+<a id="__codelineno-6-59" name="__codelineno-6-59"></a>    <span style="color: #F8F8F2">compute_pulled_up_tip(store,</span> <span style="color: #F8F8F2">block_root)</span>
+</code></pre></div></td></tr></table></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/ethereum/consensus-specs" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["navigation.tabs", "search"], "search": "../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>
