@@ -275,20 +275,15 @@ The following validations MUST pass before forwarding the
 `signed_execution_payload_bid` on the network, assuming the alias
 `bid = signed_execution_payload_bid.message`:
 
-- _[REJECT]_ `bid.builder_index` is a valid, active, and non-slashed builder
-  index.
-- _[REJECT]_ the builder's withdrawal credentials' prefix is
-  `BUILDER_WITHDRAWAL_PREFIX` -- i.e.
-  `is_builder_withdrawal_credential(state.validators[bid.builder_index].withdrawal_credentials)`
-  returns `True`.
+- _[REJECT]_ `bid.builder_index` is a valid/active builder index -- i.e.
+  `is_active_builder(state, bid.builder_index)` returns `True`.
 - _[REJECT]_ `bid.execution_payment` is zero.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
   and the given parent block hash.
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
-  i.e.
-  `MIN_ACTIVATION_BALANCE + bid.value <= state.balances[bid.builder_index]`.
+  i.e. `can_builder_cover_bid(state, builder_index, amount)` returns `True`.
 - _[IGNORE]_ `bid.parent_block_hash` is the block hash of a known execution
   payload in fork choice.
 - _[IGNORE]_ `bid.parent_block_root` is the hash tree root of a known beacon

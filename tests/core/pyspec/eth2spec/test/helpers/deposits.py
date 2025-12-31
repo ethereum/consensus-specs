@@ -7,7 +7,12 @@ from eth2spec.test.helpers.epoch_processing import (
     run_process_slots_up_to_epoch_boundary,
 )
 from eth2spec.test.helpers.forks import is_post_altair, is_post_electra
-from eth2spec.test.helpers.keys import privkeys, pubkeys
+from eth2spec.test.helpers.keys import (
+    builder_pubkey_to_privkey,
+    builder_pubkeys,
+    privkeys,
+    pubkeys,
+)
 from eth2spec.test.helpers.state import get_balance
 from eth2spec.utils import bls
 from eth2spec.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
@@ -222,6 +227,53 @@ def prepare_deposit_request(
         amount=deposit_data.amount,
         signature=deposit_data.signature,
         index=index,
+    )
+
+
+def prepare_builder_deposit_request(
+    spec,
+    state,
+    amount,
+    pubkey=None,
+    withdrawal_credentials=None,
+    signed=False,
+):
+    """
+    Create a deposit request for a builder, depositing the given amount.
+
+    If pubkey is None, finds an unused keypair from builder_pubkeys for a new builder.
+    If pubkey is provided, creates a top-up deposit for an existing builder.
+    """
+    if pubkey is None:
+        # Find a pubkey that doesn't exist in state.builders
+        existing_pubkeys = {builder.pubkey for builder in state.builders}
+        for pk in builder_pubkeys:
+            if pk not in existing_pubkeys:
+                pubkey = pk
+                break
+        if pubkey is None:
+            raise ValueError("No unused builder pubkeys available")
+
+    # Look up privkey from the pubkey->privkey map
+    privkey = builder_pubkey_to_privkey[pubkey]
+
+    # Use builder withdrawal prefix (0x03)
+    if withdrawal_credentials is None:
+        withdrawal_credentials = (
+            spec.BUILDER_WITHDRAWAL_PREFIX
+            + b"\x00" * 11
+            + spec.hash(pubkey)[12:]  # a 20-byte eth1 address derived from pubkey
+        )
+
+    deposit_data = build_deposit_data(
+        spec, pubkey, privkey, amount, withdrawal_credentials, signed=signed
+    )
+    return spec.DepositRequest(
+        pubkey=deposit_data.pubkey,
+        withdrawal_credentials=deposit_data.withdrawal_credentials,
+        amount=deposit_data.amount,
+        signature=deposit_data.signature,
+        index=spec.uint64(0),
     )
 
 
