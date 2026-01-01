@@ -10,6 +10,8 @@
   - [Multiplexing](#multiplexing)
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
   - [Types](#types)
+    - [`get_attestation_subnet_prefix_bits`](#get_attestation_subnet_prefix_bits)
+  - [Custom types](#custom-types)
   - [Constants](#constants)
   - [Configuration](#configuration)
   - [Helpers](#helpers)
@@ -198,6 +200,23 @@ the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
 ### Types
 
+#### `get_attestation_subnet_prefix_bits`
+
+```python
+def get_attestation_subnet_prefix_bits(
+    attestation_subnet_count: int, attestation_subnet_extra_bits: int
+) -> int:
+    """
+    Return the number of NodeId bits to use when mapping to a subscribed subnet
+    """
+    return ceillog2(attestation_subnet_count) + attestation_subnet_extra_bits
+```
+
+### Custom types
+
+> > > > > > > e95e26cdb (nit: added get_attestation_subnet_prefix_bits helper
+> > > > > > > method)
+
 We define the following Python custom types for type hinting and readability:
 
 | Name       | SSZ equivalent | Description       |
@@ -228,7 +247,6 @@ This section outlines configurations that are used in this specification.
 | `SUBNETS_PER_NODE`                   | `2`                                                                          | The number of long-lived subnets a beacon node should be subscribed to                |
 | `ATTESTATION_SUBNET_COUNT`           | `2**6` (= 64)                                                                | The number of attestation subnets used in the gossipsub protocol                      |
 | `ATTESTATION_SUBNET_EXTRA_BITS`      | `0`                                                                          | The number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
-| `ATTESTATION_SUBNET_PREFIX_BITS`     | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)`    |                                                                                       |
 | `MAX_CONCURRENT_REQUESTS`            | `2`                                                                          | Maximum number of concurrent requests per protocol ID that a client may issue         |
 
 ### Helpers
@@ -1342,14 +1360,17 @@ should:
 
 ```python
 def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
-    node_id_prefix = node_id >> (NODE_ID_BITS - ATTESTATION_SUBNET_PREFIX_BITS)
+    prefix_bits = get_attestation_subnet_prefix_bits(
+        ATTESTATION_SUBNET_COUNT, ATTESTATION_SUBNET_EXTRA_BITS
+    )
+    node_id_prefix = node_id >> (NODE_ID_BITS - prefix_bits)
     node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
     permutation_seed = hash(
         uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
     )
     permutated_prefix = compute_shuffled_index(
         node_id_prefix,
-        1 << ATTESTATION_SUBNET_PREFIX_BITS,
+        1 << prefix_bits,
         permutation_seed,
     )
     return SubnetID((permutated_prefix + index) % ATTESTATION_SUBNET_COUNT)
