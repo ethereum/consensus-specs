@@ -35,8 +35,8 @@
 - [New fork-choice helpers](#new-fork-choice-helpers)
   - [New `get_payload_attestation_due_ms`](#new-get_payload_attestation_due_ms)
 - [Updated fork-choice handlers](#updated-fork-choice-handlers)
-  - [Modified `update_proposer_boost_root`](#modified-update_proposer_boost_root)
   - [Modified `record_block_timeliness`](#modified-record_block_timeliness)
+  - [Modified `update_proposer_boost_root`](#modified-update_proposer_boost_root)
   - [Modified `on_block`](#modified-on_block)
 - [New fork-choice handlers](#new-fork-choice-handlers)
   - [New `on_execution_payload`](#new-on_execution_payload)
@@ -539,6 +539,25 @@ def get_payload_attestation_due_ms(epoch: Epoch) -> uint64:
 
 ## Updated fork-choice handlers
 
+### Modified `record_block_timeliness`
+
+```python
+def record_block_timeliness(store: Store, root: Root) -> None:
+    block = store.blocks[root]
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    epoch = get_current_store_epoch(store)
+    attestation_threshold_ms = get_attestation_due_ms(epoch)
+    # [New in Gloas:EIP7732]
+    is_current_slot = get_current_slot(store) == block.slot
+    ptc_threshold_ms = get_payload_attestation_due_ms(epoch)
+    # [Modified in Gloas:EIP7732]
+    store.block_timeliness[root] = [
+        is_current_slot and time_into_slot_ms < threshold
+        for threshold in [attestation_threshold_ms, ptc_threshold_ms]
+    ]
+```
+
 ### Modified `update_proposer_boost_root`
 
 ```python
@@ -558,24 +577,6 @@ def update_proposer_boost_root(store: Store, root: Root) -> None:
         # Only update if the proposer is the same as on the canonical chain
         if block.proposer_index == get_beacon_proposer_index(head_state):
             store.proposer_boost_root = root
-```
-
-### Modified `record_block_timeliness`
-
-```python
-def record_block_timeliness(store: Store, root: Root) -> None:
-    # Record timeliness
-    block = store.blocks[root]
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    is_current_slot = get_current_slot(store) == block.slot
-    epoch = get_current_store_epoch(store)
-    attestation_threshold_ms = get_attestation_due_ms(epoch)
-    ptc_threshold_ms = get_payload_attestation_due_ms(epoch)
-    store.block_timeliness[root] = [
-        is_current_slot and time_into_slot_ms < threshold
-        for threshold in [attestation_threshold_ms, ptc_threshold_ms]
-    ]
 ```
 
 ### Modified `on_block`
