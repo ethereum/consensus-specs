@@ -178,9 +178,7 @@ def notify_ptc_messages(
     if state.slot == 0:
         return
     for payload_attestation in payload_attestations:
-        indexed_payload_attestation = get_indexed_payload_attestation(
-            state, Slot(state.slot - 1), payload_attestation
-        )
+        indexed_payload_attestation = get_indexed_payload_attestation(state, payload_attestation)
         for idx in indexed_payload_attestation.attesting_indices:
             on_payload_attestation_message(
                 store,
@@ -246,13 +244,14 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> ForkChoiceNode:
         return ForkChoiceNode(root=root, payload_status=PAYLOAD_STATUS_PENDING)
 
     parent = store.blocks[block.parent_root]
-    if parent.slot > slot:
-        return get_ancestor(store, block.parent_root, slot)
-    else:
-        return ForkChoiceNode(
-            root=block.parent_root,
-            payload_status=get_parent_payload_status(store, block),
-        )
+    while parent.slot > slot:
+        block = parent
+        parent = store.blocks[block.parent_root]
+
+    return ForkChoiceNode(
+        root=block.parent_root,
+        payload_status=get_parent_payload_status(store, block),
+    )
 ```
 
 ### Modified `get_checkpoint_block`

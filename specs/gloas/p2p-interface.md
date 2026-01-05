@@ -304,12 +304,8 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
 - _[IGNORE]_ the `SignedProposerPreferences` where `preferences.proposal_slot`
   is equal to `bid.slot` has been seen.
-- _[REJECT]_ `bid.builder_index` is a valid, active, and non-slashed builder
-  index.
-- _[REJECT]_ the builder's withdrawal credentials' prefix is
-  `BUILDER_WITHDRAWAL_PREFIX` -- i.e.
-  `is_builder_withdrawal_credential(state.validators[bid.builder_index].withdrawal_credentials)`
-  returns `True`.
+- _[REJECT]_ `bid.builder_index` is a valid/active builder index -- i.e.
+  `is_active_builder(state, bid.builder_index)` returns `True`.
 - _[REJECT]_ `bid.execution_payment` is zero.
 - _[REJECT]_ `bid.fee_recipient` matches the `fee_recipient` from the proposer's
   `SignedProposerPreferences` associated with `bid.slot`.
@@ -320,8 +316,7 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
   and the given parent block hash.
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
-  i.e.
-  `MIN_ACTIVATION_BALANCE + bid.value <= state.balances[bid.builder_index]`.
+  i.e. `can_builder_cover_bid(state, builder_index, amount)` returns `True`.
 - _[IGNORE]_ `bid.parent_block_hash` is the block hash of a known execution
   payload in fork choice.
 - _[IGNORE]_ `bid.parent_block_root` is the hash tree root of a known beacon

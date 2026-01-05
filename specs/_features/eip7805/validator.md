@@ -162,7 +162,7 @@ def prepare_execution_payload(
     parent_hash = state.latest_execution_payload_header.block_hash
 
     # Set the forkchoice head and initiate the payload build process
-    withdrawals, _ = get_expected_withdrawals(state)
+    withdrawals, _, _ = get_expected_withdrawals(state)
 
     # [New in EIP7805]
     # Get the inclusion list store
