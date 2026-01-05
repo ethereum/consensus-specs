@@ -418,7 +418,8 @@ def get_weight(
     if node.payload_status == PAYLOAD_STATUS_PENDING or store.blocks[
         node.root
     ].slot + 1 != get_current_slot(store):
-        attestation_score = get_attestation_score(store, node)
+        state = store.checkpoint_states[store.justified_checkpoint]
+        attestation_score = get_attestation_score(store, node, state)
         if not should_apply_proposer_boost(store):
             # Return only attestation score if
             # proposer boost should not apply
@@ -797,7 +798,7 @@ def is_head_weak(store: Store, head_root: Root) -> bool:
     head_block = store.blocks[head_root]
     epoch = compute_epoch_at_slot(head_block.slot)
     head_node = ForkChoiceNode(root=head_root, payload_status=PAYLOAD_STATUS_PENDING)
-    head_weight = get_attestation_weight(store, head_node)
+    head_weight = get_attestation_score(store, head_node, justified_state)
     for index in range(get_committee_count_per_slot(head_state, epoch)):
         committee = get_beacon_committee(head_state, head_block.slot, CommitteeIndex(index))
         head_weight += Gwei(
