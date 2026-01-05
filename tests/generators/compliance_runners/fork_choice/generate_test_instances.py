@@ -258,7 +258,7 @@ gen_params = {
         "params": [
             (
                 {"anchor_epoch": 0, "number_of_epochs": 6, "number_of_links": 4},
-                {"number_of_blocks": 16, "max_children": 2, "number_of_solutions": 5},
+                {"number_of_blocks": 15, "max_children": 2, "number_of_solutions": 5},
             ),
             (
                 [{"sm_links": [[0, 1], [0, 2], [2, 3], [3, 4]]}],
@@ -280,7 +280,7 @@ gen_params = {
         "params": [
             (
                 {"anchor_epoch": 0, "number_of_epochs": 6, "number_of_links": 4},
-                {"number_of_blocks": 16, "max_children": 2, "number_of_solutions": 5},
+                {"number_of_blocks": 15, "max_children": 2, "number_of_solutions": 5},
             ),
             (
                 [{"sm_links": [[0, 1], [0, 2], [2, 3], [3, 4]]}],
