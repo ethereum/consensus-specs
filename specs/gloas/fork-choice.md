@@ -279,13 +279,12 @@ def is_supporting_vote(store: Store, node: ForkChoiceNode, message: LatestMessag
     if node.root == message.root:
         if node.payload_status == PAYLOAD_STATUS_PENDING:
             return True
-        if message.slot > block.slot:
-            if message.payload_present:
-                return node.payload_status == PAYLOAD_STATUS_FULL
-            else:
-                return node.payload_status == PAYLOAD_STATUS_EMPTY
-        return False
-
+        if message.slot <= block.slot:
+            return False
+        if message.payload_present:
+            return node.payload_status == PAYLOAD_STATUS_FULL
+        else:
+            return node.payload_status == PAYLOAD_STATUS_EMPTY
     else:
         ancestor = get_ancestor(store, message.root, block.slot)
         return node.root == ancestor.root and (
@@ -333,7 +332,14 @@ def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> uint8:
 ### Modified `get_attestation_score`
 
 ```python
-def get_attestation_score(store: Store, node: ForkChoiceNode, state: BeaconState) -> Gwei:
+def get_attestation_score(
+    store: Store,
+    # [Modified in Gloas:EIP7732]
+    # Removed `root`
+    # [New in Gloas:EIP7732]
+    node: ForkChoiceNode,
+    state: BeaconState,
+) -> Gwei:
     unslashed_and_active_indices = [
         i
         for i in get_active_validator_indices(state, get_current_epoch(state))
@@ -346,6 +352,7 @@ def get_attestation_score(store: Store, node: ForkChoiceNode, state: BeaconState
             if (
                 i in store.latest_messages
                 and i not in store.equivocating_indices
+                # [Modified in Gloas:EIP7732]
                 and is_supporting_vote(store, node, store.latest_messages[i])
             )
         )
@@ -355,7 +362,11 @@ def get_attestation_score(store: Store, node: ForkChoiceNode, state: BeaconState
 ### Modified `get_weight`
 
 ```python
-def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
+def get_weight(
+    store: Store,
+    # [Modified in Gloas:EIP7732]
+    node: ForkChoiceNode,
+) -> Gwei:
     if node.payload_status == PAYLOAD_STATUS_PENDING or store.blocks[
         node.root
     ].slot + 1 != get_current_slot(store):
@@ -603,7 +614,8 @@ def on_payload_attestation_message(
     store: Store, ptc_message: PayloadAttestationMessage, is_from_block: bool = False
 ) -> None:
     """
-    Run ``on_payload_attestation_message`` upon receiving a new ``ptc_message`` from either within a block or directly on the wire.
+    Run ``on_payload_attestation_message`` upon receiving a new ``ptc_message`` from
+    either within a block or directly on the wire.
     """
     # The beacon block root must be known
     data = ptc_message.data
