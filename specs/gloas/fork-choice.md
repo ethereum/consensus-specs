@@ -548,7 +548,7 @@ def update_proposer_boost_root(store: Store, root: Root) -> None:
     is_timely = store.block_timeliness[root][ATTESTATION_TIMELINESS_INDEX]
 
     # Add proposer score boost if the block is the first timely block
-    # for this slot, with the same the proposer as the canonical chain.
+    # for this slot, with the same proposer as the canonical chain.
     if is_timely and is_first_block:
         head_state = copy(store.block_states[get_head(store).root])
         slot = get_current_slot(store)
