@@ -120,8 +120,8 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
     proposer if the bid is accepted. The builder **MUST** have enough excess
     balance to fulfill this bid and all pending payments.
 11. Set `bid.execution_payment` to zero. A non-zero value indicates a trusted
-    execution layer payment. Bids with non-zero `execution_payment` **MUST NOT**
-    be broadcast.
+    execution-layer payment. Bids with non-zero `execution_payment` **MUST NOT**
+    be broadcast to the `execution_payload_bid` gossip topic.
 12. Set `bid.blob_kzg_commitments_root` to be the `hash_tree_root` of the
     `blobsbundle.commitments` field returned by `engine_getPayloadV5`.
 
