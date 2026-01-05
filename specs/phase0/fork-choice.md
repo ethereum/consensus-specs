@@ -633,7 +633,7 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
     # Check that the missing votes are assigned to the parent and not being hoarded.
     parent_strong = is_parent_strong(store, parent_root)
 
-    # Reorg more aggressively if there is a proposer equivocation in the previous slot.
+    # Re-org more aggressively if there is a proposer equivocation in the previous slot.
     proposer_equivocation = is_proposer_equivocation(store, head_root)
 
     if all(

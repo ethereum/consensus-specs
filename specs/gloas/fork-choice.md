@@ -757,7 +757,7 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
 
 ### Modified `is_head_late`
 
-*Note*: the only change is that `store.block_timeliness[root]` now records
+*Note*: The only change is that `store.block_timeliness[root]` now records
 timeliness with respect to two different deadlines. `is_head_late` takes into
 account timeliness with respect to the attestation deadline, which is retrieved
 at `ATTESTATION_TIMELINESS_INDEX`.
@@ -769,7 +769,7 @@ def is_head_late(store: Store, head_root: Root) -> bool:
 
 ##### Modified `is_head_weak`
 
-*Note*: the function `is_head_weak` now also counts weight from equivocating
+*Note*: The function `is_head_weak` now also counts weight from equivocating
 validators from the committees of the head slot. This ensures that the counted
 weight and the output of `is_head_weak` are monotonic: more attestations can
 only increase the weight and change the output from `True` to `False`, not
