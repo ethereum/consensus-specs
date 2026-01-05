@@ -244,13 +244,14 @@ def get_ancestor(store: Store, root: Root, slot: Slot) -> ForkChoiceNode:
         return ForkChoiceNode(root=root, payload_status=PAYLOAD_STATUS_PENDING)
 
     parent = store.blocks[block.parent_root]
-    if parent.slot > slot:
-        return get_ancestor(store, block.parent_root, slot)
-    else:
-        return ForkChoiceNode(
-            root=block.parent_root,
-            payload_status=get_parent_payload_status(store, block),
-        )
+    while parent.slot > slot:
+        block = parent
+        parent = store.blocks[block.parent_root]
+
+    return ForkChoiceNode(
+        root=block.parent_root,
+        payload_status=get_parent_payload_status(store, block),
+    )
 ```
 
 ### Modified `get_checkpoint_block`
