@@ -43,7 +43,7 @@
   - [New `on_payload_attestation_message`](#new-on_payload_attestation_message)
   - [Modified `validate_on_attestation`](#modified-validate_on_attestation)
   - [Modified `is_head_late`](#modified-is_head_late)
-    - [Modified `is_head_weak`](#modified-is_head_weak)
+  - [Modified `is_head_weak`](#modified-is_head_weak)
 
 <!-- mdformat-toc end -->
 
@@ -768,7 +768,7 @@ def is_head_late(store: Store, head_root: Root) -> bool:
     return not store.block_timeliness[head_root][ATTESTATION_TIMELINESS_INDEX]
 ```
 
-##### Modified `is_head_weak`
+### Modified `is_head_weak`
 
 *Note*: The function `is_head_weak` now also counts weight from equivocating
 validators from the committees of the head slot. This ensures that the counted
