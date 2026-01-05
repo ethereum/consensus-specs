@@ -1,4 +1,5 @@
-from collections.abc import Iterable
+from collections import Counter
+from collections.abc import Collection, Iterable
 from itertools import product
 from os import path
 
@@ -8,6 +9,34 @@ from toolz.dicttoolz import merge
 
 base_dir = path.dirname(__file__)
 model_dir = path.join(base_dir, "model")
+
+
+def to_hashable(obj):
+    if isinstance(obj, dict):
+        return frozenset((to_hashable(k), to_hashable(v)) for k, v in obj.items())
+    elif isinstance(obj, list):
+        return tuple(map(to_hashable, obj))
+    elif isinstance(obj, set):
+        return frozenset(map(to_hashable, obj))
+    else:
+        return obj
+
+
+def check_uniqueness(solutions: Collection[dict]):
+    """
+    Checks that each solution is unique.
+    Throws an exception, if any duplicate found.
+    """
+
+    hashable_solutions = list(map(to_hashable, solutions))
+    solution_counter = Counter(hashable_solutions)
+    if solution_counter.total() != len(solution_counter):
+        print(f"duplicate solutions found: {solution_counter.total()} vs {len(solution_counter)}")
+        for sol, count in solution_counter.most_common(5):
+            if count >= 1:
+                print(f"{count} solutions: {sol}")
+
+        assert False
 
 
 def solve_sm_links(
@@ -301,5 +330,7 @@ if __name__ == "__main__":
                     assert False
             results = [merge(*sol) for sol in product(*model_solutions)]
             solutions.extend(results)
+
+        check_uniqueness(solutions)
         with open(out_path, "w") as f:
             yaml.dump(solutions, f)
