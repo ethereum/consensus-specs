@@ -154,7 +154,7 @@ def should_override_forkchoice_update(store: Store, head_root: Root) -> bool:
     # `store.time` early, or by counting queued attestations during the head block's slot.
     if current_slot > head_block.slot:
         head_weak = is_head_weak(store, head_root)
-        parent_strong = is_parent_strong(store, parent_root)
+        parent_strong = is_parent_strong(store, head_root)
     else:
         head_weak = True
         parent_strong = True

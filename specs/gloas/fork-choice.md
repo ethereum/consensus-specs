@@ -43,7 +43,8 @@
   - [New `on_payload_attestation_message`](#new-on_payload_attestation_message)
   - [Modified `validate_on_attestation`](#modified-validate_on_attestation)
   - [Modified `is_head_late`](#modified-is_head_late)
-  - [Modified `is_head_weak`](#modified-is_head_weak)
+    - [Modified `is_head_weak`](#modified-is_head_weak)
+    - [Modified `is_parent_strong`](#modified-is_parent_strong)
 
 <!-- mdformat-toc end -->
 
@@ -810,4 +811,17 @@ def is_head_weak(store: Store, head_root: Root) -> bool:
         )
 
     return head_weight < reorg_threshold
+```
+
+##### Modified `is_parent_strong`
+
+```python
+def is_parent_strong(store: Store, root: Root) -> bool:
+    justified_state = store.checkpoint_states[store.justified_checkpoint]
+    parent_threshold = calculate_committee_fraction(justified_state, REORG_PARENT_WEIGHT_THRESHOLD)
+    block = store.blocks[root]
+    parent_payload_status = get_parent_payload_status(store, block)
+    parent_node = ForkChoiceNode(root=block.parent_root, payload_status=parent_payload_status)
+    parent_weight = get_attestation_weight(store, parent_node)
+    return parent_weight > parent_threshold
 ```

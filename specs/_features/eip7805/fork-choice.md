@@ -232,7 +232,7 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
     head_weak = is_head_weak(store, head_root)
 
     # Check that the missing votes are assigned to the parent and not being hoarded.
-    parent_strong = is_parent_strong(store, parent_root)
+    parent_strong = is_parent_strong(store, head_root)
 
     reorg_prerequisites = all(
         [

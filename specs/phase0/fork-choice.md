@@ -574,9 +574,10 @@ def is_head_weak(store: Store, head_root: Root) -> bool:
 ##### `is_parent_strong`
 
 ```python
-def is_parent_strong(store: Store, parent_root: Root) -> bool:
+def is_parent_strong(store: Store, root: Root) -> bool:
     justified_state = store.checkpoint_states[store.justified_checkpoint]
     parent_threshold = calculate_committee_fraction(justified_state, REORG_PARENT_WEIGHT_THRESHOLD)
+    parent_root = store.blocks[root].parent_root
     parent_weight = get_weight(store, parent_root)
     return parent_weight > parent_threshold
 ```
@@ -630,7 +631,7 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
     head_weak = is_head_weak(store, head_root)
 
     # Check that the missing votes are assigned to the parent and not being hoarded.
-    parent_strong = is_parent_strong(store, parent_root)
+    parent_strong = is_parent_strong(store, head_root)
 
     # Re-org more aggressively if there is a proposer equivocation in the previous slot.
     proposer_equivocation = is_proposer_equivocation(store, head_root)
