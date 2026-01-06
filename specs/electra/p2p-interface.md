@@ -75,9 +75,9 @@ def compute_max_request_blob_sidecars_electra() -> int:
 
 *[New in Electra:EIP7691]*
 
-| Name                                | Value                                                    | Description                                                       |
-| ----------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
-| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                      | The number of blob sidecar subnets used in the gossipsub protocol |
+| Name                                | Value | Description                                                       |
+| ----------------------------------- | ----- | ----------------------------------------------------------------- |
+| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`   | The number of blob sidecar subnets used in the gossipsub protocol |
 
 ### The gossip domain: gossipsub
 
@@ -249,4 +249,5 @@ Response Content:
 
 *Updated validation*
 
-No more than `compute_max_request_blob_sidecars_electra()` may be requested at a time.
+No more than `compute_max_request_blob_sidecars_electra()` may be requested at a
+time.

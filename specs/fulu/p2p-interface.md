@@ -91,10 +91,10 @@ def compute_max_request_data_column_sidecars() -> int:
 
 *[New in Fulu:EIP7594]*
 
-| Name                                           | Value                                          | Description                                                               |
-| ---------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                                          | The number of data column sidecar subnets used in the gossipsub protocol  |
-| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)              | The minimum epoch range over which a node must serve data column sidecars |
+| Name                                           | Value                             | Description                                                               |
+| ---------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------- |
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                             | The number of data column sidecar subnets used in the gossipsub protocol  |
+| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve data column sidecars |
 
 ### Containers
 
@@ -534,7 +534,8 @@ valid inclusion proof through `verify_data_column_sidecar_inclusion_proof`, and
 is correct w.r.t. the expected KZG commitments through
 `verify_data_column_sidecar_kzg_proofs`.
 
-No more than `compute_max_request_data_column_sidecars()` may be requested at a time.
+No more than `compute_max_request_data_column_sidecars()` may be requested at a
+time.
 
 The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `DataColumnSidecar` payload.

@@ -4,6 +4,10 @@
 
 - [Introduction](#introduction)
 - [Modifications in Deneb](#modifications-in-deneb)
+  - [Helper functions](#helper-functions)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
+    - [compute_max_request_blob_sidecars](#compute_max_request_blob_sidecars)
+  - [Constant](#constant)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
@@ -89,11 +93,11 @@ def compute_max_request_blob_sidecars() -> int:
 
 *[New in Deneb:EIP4844]*
 
-| Name                                    | Value                                            | Description                                                        |
-| --------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------ |
-| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)                                   | Maximum number of blocks in a single request                       |
-| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                | The minimum epoch range over which a node must serve blob sidecars |
-| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                                              | The number of blob sidecar subnets used in the gossipsub protocol. |
+| Name                                    | Value                             | Description                                                        |
+| --------------------------------------- | --------------------------------- | ------------------------------------------------------------------ |
+| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)                    | Maximum number of blocks in a single request                       |
+| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days) | The minimum epoch range over which a node must serve blob sidecars |
+| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                               | The number of blob sidecar subnets used in the gossipsub protocol. |
 
 ### Containers
 
