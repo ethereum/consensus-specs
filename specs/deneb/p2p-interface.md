@@ -43,6 +43,40 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Deneb
 
+### Helper functions
+
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
+
+#### compute_max_request_blob_sidecars
+
+```python
+def compute_max_request_blob_sidecars() -> int:
+    """
+    Return the maximum number of blob sidecars in a single request.
+    """
+    return MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK
+```
+
+### Constant
+
+*[New in Deneb:EIP4844]*
+
 ### Preset
 
 *[New in Deneb:EIP4844]*
@@ -58,7 +92,6 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | Name                                    | Value                                            | Description                                                        |
 | --------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------ |
 | `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)                                   | Maximum number of blocks in a single request                       |
-| `MAX_REQUEST_BLOB_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK` | Maximum number of blob sidecars in a single request                |
 | `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                | The minimum epoch range over which a node must serve blob sidecars |
 | `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                                              | The number of blob sidecar subnets used in the gossipsub protocol. |
 
@@ -365,7 +398,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS]
+  List[BlobSidecar, compute_max_request_blob_sidecars()]
 )
 ```
 
@@ -406,7 +439,7 @@ and/or temporarily ban such an un-synced or semi-synced client.
 
 Clients MUST respond with at least the blob sidecars of the first blob-carrying
 block that exists in the range, if they have it, and no more than
-`MAX_REQUEST_BLOB_SIDECARS` sidecars.
+`compute_max_request_blob_sidecars()` sidecars.
 
 Clients MUST include all blob sidecars of each block from which they include
 blob sidecars.
@@ -456,7 +489,7 @@ Request Content:
 
 ```
 (
-  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS]
+  List[BlobIdentifier, compute_max_request_blob_sidecars()]
 )
 ```
 
@@ -464,7 +497,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS]
+  List[BlobSidecar, compute_max_request_blob_sidecars()]
 )
 ```
 
@@ -476,7 +509,7 @@ Before consuming the next response chunk, the response reader SHOULD verify the
 blob sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t.
 the expected KZG commitments through `verify_blob_kzg_proof`.
 
-No more than `MAX_REQUEST_BLOB_SIDECARS` may be requested at a time.
+No more than `compute_max_request_blob_sidecars()` may be requested at a time.
 
 `BlobSidecarsByRoot` is primarily used to recover recent blobs (e.g. when
 receiving a block with a transaction whose corresponding blob is missing).
