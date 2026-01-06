@@ -7,6 +7,7 @@
   - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Configuration](#configuration-1)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -63,7 +64,22 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
+
+
+def compute_max_request_blob_sidecars_electra() -> int:
+    """
+    Return the maximum number of blob sidecars in a single request.
+    """
+    return MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA
 ```
+
+### Configuration
+
+*[New in Electra:EIP7691]*
+
+| Name                                | Value | Description                                                       |
+| ----------------------------------- | ----- | ----------------------------------------------------------------- |
+| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`   | The number of blob sidecar subnets used in the gossipsub protocol |
 
 ### The gossip domain: gossipsub
 
@@ -200,7 +216,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
+  List[BlobSidecar, compute_max_request_blob_sidecars_electra()]
 )
 ```
 
@@ -208,7 +224,7 @@ Response Content:
 
 Clients MUST respond with at least the blob sidecars of the first blob-carrying
 block that exists in the range, if they have it, and no more than
-`MAX_REQUEST_BLOB_SIDECARS_ELECTRA` sidecars.
+`compute_max_request_blob_sidecars_electra()` sidecars.
 
 ##### BlobSidecarsByRoot v1
 
@@ -220,7 +236,7 @@ Request Content:
 
 ```
 (
-  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
+  List[BlobIdentifier, compute_max_request_blob_sidecars_electra()]
 )
 ```
 
@@ -228,10 +244,11 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
+  List[BlobSidecar, compute_max_request_blob_sidecars_electra()]
 )
 ```
 
 *Updated validation*
 
-No more than `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` may be requested at a time.
+No more than `compute_max_request_blob_sidecars_electra()` may be requested at a
+time.
