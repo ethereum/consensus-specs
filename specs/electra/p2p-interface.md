@@ -65,12 +65,16 @@ def compute_fork_version(epoch: Epoch) -> Version:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
 
+```
 
-def compute_max_request_blob_sidecars_electra() -> int:
+#### compute_max_request_blob_sidecars_electra
+
+```python 
+def compute_max_request_blob_sidecars_electra() -> uint64:
     """
     Return the maximum number of blob sidecars in a single request.
     """
-    return MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA
+    return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA)
 ```
 
 ### Configuration

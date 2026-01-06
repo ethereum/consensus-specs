@@ -70,11 +70,11 @@ def compute_fork_version(epoch: Epoch) -> Version:
 #### compute_max_request_blob_sidecars
 
 ```python
-def compute_max_request_blob_sidecars() -> int:
+def compute_max_request_blob_sidecars() -> uint64:
     """
     Return the maximum number of blob sidecars in a single request.
     """
-    return MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK
+    return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK)
 ```
 
 ### Constant

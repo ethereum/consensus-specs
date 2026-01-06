@@ -74,13 +74,16 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
+```
 
+#### compute_max_request_data_column_sidecars
 
-def compute_max_request_data_column_sidecars() -> int:
+```python
+def compute_max_request_data_column_sidecars() -> uint64:
     """
     Return the maximum number of data column sidecars in a single request.
     """
-    return MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS
+    return uint64(MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS)
 ```
 
 ### Preset

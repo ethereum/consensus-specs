@@ -239,11 +239,11 @@ def compute_fork_digest(
 #### `compute_attestation_subnet_prefix_bits`
 
 ```python
-def compute_attestation_subnet_prefix_bits() -> int:
+def compute_attestation_subnet_prefix_bits() -> uint64:
     """
     Return the number of NodeId bits to use when mapping to a subscribed subnet
     """
-    return ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS
+    return uint64(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)
 ```
 
 ### Custom types
@@ -1394,7 +1394,7 @@ should:
 
 ```python
 def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
-    prefix_bits = compute_attestation_subnet_prefix_bits()
+    prefix_bits = int(compute_attestation_subnet_prefix_bits())
     node_id_prefix = node_id >> (NODE_ID_BITS - prefix_bits)
     node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
     permutation_seed = hash(
