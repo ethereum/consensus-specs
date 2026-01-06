@@ -19,6 +19,7 @@ def test_invariants(spec):
     assert spec.config.CUSTODY_REQUIREMENT <= spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
     assert spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT <= spec.NUMBER_OF_COLUMNS
     assert spec.NUMBER_OF_COLUMNS % spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT == 0
+    assert spec.compute_max_request_data_column_sidecars() == 16384
 
 
 @with_fulu_and_later
