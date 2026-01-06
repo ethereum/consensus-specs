@@ -26,18 +26,21 @@
 This is an accompanying document which describes the expected actions of a
 "builder" participating in the Ethereum proof-of-stake protocol.
 
-With the Gloas fork, the protocol introduces a new type of validator called a
-*builder*. Builders have the option to produce execution payloads by submitting
-bids. This document is a collection of guidelines for builders.
+With the Gloas fork, the protocol introduces a new type of staked actor (not a
+validator) called a *builder*. Since builders are not validators, they do not
+perform validator duties (e.g., attesting and proposing) and therefore do not
+earn yield on their stake. Builders have the option to produce execution
+payloads by submitting bids. This document is a collection of guidelines for
+builders.
 
 ## Becoming a builder
 
 ### Builder withdrawal credentials
 
-The `withdrawal_credentials` field determines whether a validator is registered
-as a builder on the network. To be recognized as a builder, a validator’s
-`withdrawal_credentials` must use the `BUILDER_WITHDRAWAL_PREFIX`. This prefix
-distinguishes builders from other validator types.
+When submitting a deposit to the deposit contract, the `withdrawal_credentials`
+field determines whether the staked actor will be a validator or a builder. To
+be recognized as a builder, the `withdrawal_credentials` must use the
+`BUILDER_WITHDRAWAL_PREFIX`.
 
 The `withdrawal_credentials` field must be:
 
@@ -50,7 +53,7 @@ receive withdrawals.
 
 ### Submit deposit
 
-Builders follow the same deposit process as regular validators, but with the
+Builders follow the same deposit process as validators, but with the
 builder-specific withdrawal credentials. The deposit must include:
 
 - `pubkey`: The builder's BLS public key.
@@ -66,15 +69,13 @@ with the withdrawal credentials using `BUILDER_WITHDRAWAL_PREFIX`.
 
 ### Builder index
 
-Once the deposit is processed, the builder is assigned a unique
-`validator_index` within the validator registry. This index is used to identify
-the builder in execution payload bids and envelopes.
+Once the deposit is processed, the builder is assigned a unique `builder_index`
+within the builder registry. This index is used to identify the builder in
+execution payload bids and envelopes.
 
 ### Activation
 
-Builder activation follows the same process as other validators. Note that the
-validator must have a balance of at least `MIN_ACTIVATION_BALANCE` to become
-eligible for activation.
+Builders are active as soon as the deposit is processed on the consensus layer.
 
 ## Builder activities
 
@@ -107,19 +108,22 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
 05. Set `bid.prev_randao` to be the previous RANDAO of the constructed payload,
     that is `payload.prev_randao`.
 06. Set `bid.fee_recipient` to be an execution address to receive the payment.
-    This address can be obtained from the proposer directly via a request or can
-    be set from the withdrawal credentials of the proposer. The burn address can
-    be used as a fallback.
-07. Set `bid.gas_limit` to be the gas limit of the constructed payload, that is
-    `payload.gas_limit`.
-08. Set `bid.builder_index` to be the validator index of the builder performing
-    these actions.
+    The proposer's preferred fee recipient can be obtained from the
+    `SignedProposerPreferences` associated with `bid.slot`.
+07. Set `bid.gas_limit` to be the gas limit of the constructed payload. The
+    proposer's preferred gas limit can be obtained from the
+    `SignedProposerPreferences` associated with `bid.slot`.
+08. Set `bid.builder_index` to be the index of the builder performing these
+    actions.
 09. Set `bid.slot` to be the slot for which this bid is aimed. This slot
     **MUST** be either the current slot or the next slot.
 10. Set `bid.value` to be the value (in gwei) that the builder will pay the
     proposer if the bid is accepted. The builder **MUST** have enough excess
     balance to fulfill this bid and all pending payments.
-11. Set `bid.blob_kzg_commitments_root` to be the `hash_tree_root` of the
+11. Set `bid.execution_payment` to zero. A non-zero value indicates a trusted
+    execution-layer payment. Bids with non-zero `execution_payment` **MUST NOT**
+    be broadcast to the `execution_payload_bid` gossip topic.
+12. Set `bid.blob_kzg_commitments_root` to be the `hash_tree_root` of the
     `blobsbundle.commitments` field returned by `engine_getPayloadV5`.
 
 After building the `bid`, the builder obtains a `signature` of the bid by using:
@@ -226,8 +230,8 @@ alias `bid` to be the committed `ExecutionPayloadBid` in
    `bid.block_hash`.
 2. Set `envelope.execution_requests` to be the `ExecutionRequests` associated
    with `payload`.
-3. Set `envelope.builder_index` to be the validator index of the builder
-   performing these steps. This field **MUST** be `bid.builder_index`.
+3. Set `envelope.builder_index` to be the index of the builder performing these
+   steps. This field **MUST** be `bid.builder_index`.
 4. Set `envelope.beacon_block_root` to be `hash_tree_root(block)`.
 5. Set `envelope.slot` to be `block.slot`.
 6. Set `envelope.blob_kzg_commitments` to be the `commitments` field of the

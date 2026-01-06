@@ -9,3 +9,8 @@ PTC_SIZE: 2
 # ---------------------------------------------------------------
 # 2**2 (= 4) attestations
 MAX_PAYLOAD_ATTESTATIONS: 4
+
+# Withdrawals processing
+# ---------------------------------------------------------------
+# [customized] 2**4 (= 16) builders
+MAX_BUILDERS_PER_WITHDRAWALS_SWEEP: 16

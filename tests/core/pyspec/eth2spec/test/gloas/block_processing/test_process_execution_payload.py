@@ -5,13 +5,10 @@ from eth2spec.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
-from eth2spec.test.gloas.block_processing.test_process_execution_payload_bid import (
-    make_validator_builder,
-)
 from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
 )
-from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.keys import builder_privkeys, privkeys
 from eth2spec.test.helpers.multi_operations import (
     get_random_consolidation_requests,
     get_random_deposit_requests,
@@ -84,7 +81,7 @@ def prepare_execution_payload_envelope(
     Note: This should be called AFTER setting up the state with the committed bid.
     """
     if builder_index is None:
-        builder_index = spec.get_beacon_proposer_index(state)
+        builder_index = spec.BUILDER_INDEX_SELF_BUILD
 
     if slot is None:
         slot = state.slot
@@ -127,12 +124,7 @@ def prepare_execution_payload_envelope(
         payment = post_state.builder_pending_payments[
             spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
         ]
-        amount = payment.withdrawal.amount
-        if amount > 0:
-            exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(post_state, amount)
-            payment.withdrawal.withdrawable_epoch = spec.Epoch(
-                exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-            )
+        if payment.withdrawal.amount > 0:
             post_state.builder_pending_withdrawals.append(payment.withdrawal)
 
         # Clear the pending payment
@@ -156,8 +148,15 @@ def prepare_execution_payload_envelope(
     )
 
     if valid_signature:
-        privkey = privkeys[builder_index]
-        signature = spec.get_execution_payload_envelope_signature(state, envelope, privkey)
+        if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
+            privkey = privkeys[state.latest_block_header.proposer_index]
+        else:
+            privkey = builder_privkeys[envelope.builder_index]
+        signature = spec.get_execution_payload_envelope_signature(
+            state,
+            envelope,
+            privkey,
+        )
     else:
         # Invalid signature
         signature = spec.BLSSignature()
@@ -174,7 +173,7 @@ def setup_state_with_payload_bid(spec, state, builder_index=None, value=None, pr
     This simulates the state after process_execution_payload_bid has run.
     """
     if builder_index is None:
-        builder_index = spec.get_beacon_proposer_index(state)
+        builder_index = spec.BUILDER_INDEX_SELF_BUILD
 
     if value is None:
         value = spec.Gwei(0)
@@ -228,10 +227,7 @@ def test_process_execution_payload_valid(spec, state):
     """
     Test valid execution payload processing with separate builder and non-zero payment
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder (not the proposer)
-    builder_index = (proposer_index + 1) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(50000000))
 
@@ -250,13 +246,6 @@ def test_process_execution_payload_valid(spec, state):
     ]
     pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
 
-    # Pre-compute expected withdrawable epoch before processing
-    state_copy = state.copy()
-    exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(
-        state_copy, pre_payment.withdrawal.amount
-    )
-    expected_withdrawable_epoch = exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-
     yield from run_execution_payload_processing(spec, state, signed_envelope)
 
     # Verify state updates
@@ -269,7 +258,6 @@ def test_process_execution_payload_valid(spec, state):
     assert new_withdrawal.amount == pre_payment.withdrawal.amount
     assert new_withdrawal.builder_index == builder_index
     assert new_withdrawal.fee_recipient == pre_payment.withdrawal.fee_recipient
-    assert new_withdrawal.withdrawable_epoch == expected_withdrawable_epoch
 
     # Verify pending payment was cleared
     cleared_payment = state.builder_pending_payments[
@@ -289,10 +277,8 @@ def test_process_execution_payload_self_build_zero_value(spec, state):
     """
     Test valid self-building scenario (zero value)
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-
     # Setup state with committed bid (self-build, zero value)
-    setup_state_with_payload_bid(spec, state, proposer_index, spec.Gwei(0))
+    setup_state_with_payload_bid(spec, state, spec.BUILDER_INDEX_SELF_BUILD, spec.Gwei(0))
 
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.block_hash = state.latest_execution_payload_bid.block_hash
@@ -300,7 +286,10 @@ def test_process_execution_payload_self_build_zero_value(spec, state):
     execution_payload.parent_hash = state.latest_block_hash
 
     signed_envelope = prepare_execution_payload_envelope(
-        spec, state, builder_index=proposer_index, execution_payload=execution_payload
+        spec,
+        state,
+        builder_index=spec.BUILDER_INDEX_SELF_BUILD,
+        execution_payload=execution_payload,
     )
 
     # Capture pre-state for verification
@@ -332,10 +321,7 @@ def test_process_execution_payload_large_payment_churn_impact(spec, state):
     """
     Test execution payload processing with large payment that impacts exit churn state
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 1) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     # Use a very large payment (500 ETH) to ensure it impacts churn tracking
     large_payment_amount = spec.Gwei(500000000000)
@@ -359,13 +345,6 @@ def test_process_execution_payload_large_payment_churn_impact(spec, state):
     ]
     pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
 
-    # Pre-compute expected withdrawable epoch before processing
-    state_copy = state.copy()
-    exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(
-        state_copy, pre_payment.withdrawal.amount
-    )
-    expected_withdrawable_epoch = exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-
     yield from run_execution_payload_processing(spec, state, signed_envelope)
 
     # Verify builder payment was processed correctly
@@ -374,7 +353,6 @@ def test_process_execution_payload_large_payment_churn_impact(spec, state):
     assert new_withdrawal.amount == pre_payment.withdrawal.amount
     assert new_withdrawal.builder_index == builder_index
     assert new_withdrawal.fee_recipient == pre_payment.withdrawal.fee_recipient
-    assert new_withdrawal.withdrawable_epoch == expected_withdrawable_epoch
 
     # Verify pending payment was cleared
     cleared_payment = state.builder_pending_payments[
@@ -393,10 +371,7 @@ def test_process_execution_payload_with_blob_commitments(spec, state):
     """
     Test execution payload processing with blob KZG commitments and separate builder
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 2) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(3000000))
 
@@ -432,13 +407,6 @@ def test_process_execution_payload_with_blob_commitments(spec, state):
     ]
     pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
 
-    # Pre-compute expected withdrawable epoch before processing
-    state_copy = state.copy()
-    exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(
-        state_copy, pre_payment.withdrawal.amount
-    )
-    expected_withdrawable_epoch = exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-
     yield from run_execution_payload_processing(spec, state, signed_envelope)
 
     # Verify builder payment was processed correctly
@@ -448,7 +416,6 @@ def test_process_execution_payload_with_blob_commitments(spec, state):
     assert new_withdrawal.amount == pre_payment.withdrawal.amount
     assert new_withdrawal.builder_index == builder_index
     assert new_withdrawal.fee_recipient == pre_payment.withdrawal.fee_recipient
-    assert new_withdrawal.withdrawable_epoch == expected_withdrawable_epoch
 
     # Verify pending payment was cleared
     cleared_payment = state.builder_pending_payments[
@@ -467,10 +434,7 @@ def test_process_execution_payload_with_execution_requests(spec, state):
     """
     Test execution payload processing with execution requests and separate builder
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 3) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(4000000))
 
@@ -527,13 +491,6 @@ def test_process_execution_payload_with_execution_requests(spec, state):
     ]
     pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
 
-    # Pre-compute expected withdrawable epoch for builder payment before processing
-    state_copy = state.copy()
-    exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(
-        state_copy, pre_payment.withdrawal.amount
-    )
-    expected_withdrawable_epoch = exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-
     yield from run_execution_payload_processing(spec, state, signed_envelope)
 
     # Verify deposit request was processed - deposits are always added to pending queue
@@ -550,7 +507,6 @@ def test_process_execution_payload_with_execution_requests(spec, state):
     assert new_withdrawal.amount == pre_payment.withdrawal.amount
     assert new_withdrawal.builder_index == builder_index
     assert new_withdrawal.fee_recipient == pre_payment.withdrawal.fee_recipient
-    assert new_withdrawal.withdrawable_epoch == expected_withdrawable_epoch
 
     # Verify pending payment was cleared
     cleared_payment = state.builder_pending_payments[
@@ -566,12 +522,7 @@ def run_execution_payload_with_invalid_execution_requests_test(spec, state, exec
     """
     Test execution payload processing with invalid execution requests
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 3) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
-
-    setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(4000000))
+    setup_state_with_payload_bid(spec, state, spec.BUILDER_INDEX_SELF_BUILD, spec.Gwei(0))
 
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.block_hash = state.latest_execution_payload_bid.block_hash
@@ -581,7 +532,7 @@ def run_execution_payload_with_invalid_execution_requests_test(spec, state, exec
     signed_envelope = prepare_execution_payload_envelope(
         spec,
         state,
-        builder_index=builder_index,
+        builder_index=spec.BUILDER_INDEX_SELF_BUILD,
         execution_payload=execution_payload,
         execution_requests=execution_requests,
     )
@@ -645,10 +596,7 @@ def test_process_execution_payload_invalid_signature(spec, state):
     """
     Test invalid signature fails with separate builder and non-zero payment
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 1) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(2000000))
 
@@ -675,10 +623,7 @@ def test_process_execution_payload_wrong_beacon_block_root(spec, state):
     """
     Test wrong beacon block root fails with separate builder
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 1) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(1500000))
 
@@ -706,10 +651,7 @@ def test_process_execution_payload_wrong_slot(spec, state):
     """
     Test wrong slot fails with separate builder
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 2) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(2500000))
 
@@ -736,15 +678,12 @@ def test_process_execution_payload_wrong_builder_index(spec, state):
     """
     Test wrong builder index fails with separate builders
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    builder_index = (proposer_index + 1) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(3500000))
 
     # Use different builder index in envelope
-    other_builder_index = (builder_index + 1) % len(state.validators)
-    make_validator_builder(spec, state, other_builder_index)
+    other_builder_index = 1
 
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.block_hash = state.latest_execution_payload_bid.block_hash
@@ -768,10 +707,7 @@ def test_process_execution_payload_wrong_blob_commitments_root(spec, state):
     """
     Test wrong blob KZG commitments root fails with separate builder
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 3) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(2800000))
     original_blob_commitments = spec.ProgressiveList[spec.KZGCommitment](
@@ -809,10 +745,7 @@ def test_process_execution_payload_wrong_gas_limit(spec, state):
     """
     Test wrong gas limit fails with separate builder
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 1) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(1800000))
 
@@ -837,10 +770,7 @@ def test_process_execution_payload_wrong_block_hash(spec, state):
     """
     Test wrong block hash fails with separate builder
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 2) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(2200000))
 
@@ -863,10 +793,7 @@ def test_process_execution_payload_wrong_parent_hash(spec, state):
     """
     Test wrong parent hash fails with separate builder
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 3) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(1600000))
 
@@ -889,10 +816,7 @@ def test_process_execution_payload_wrong_prev_randao(spec, state):
     """
     Test wrong prev_randao fails with separate builder
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 1) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(2100000))
 
@@ -916,10 +840,7 @@ def test_process_execution_payload_bid_prev_randao_mismatch(spec, state):
     """
     Test that committed_bid.prev_randao must equal payload.prev_randao
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 1) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     # Setup bid with one prev_randao value
     bid_prev_randao = spec.Bytes32(b"\x11" * 32)
@@ -948,10 +869,7 @@ def test_process_execution_payload_wrong_timestamp(spec, state):
     """
     Test wrong timestamp fails with separate builder
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 2) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(1900000))
 
@@ -975,10 +893,7 @@ def test_process_execution_payload_max_blob_commitments_valid(spec, state):
     """
     Test max blob commitments is valid with separate builder (edge case)
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 1) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(6000000))
 
@@ -1036,10 +951,7 @@ def test_process_execution_payload_execution_engine_invalid(spec, state):
     """
     Test execution engine returns invalid with separate builder
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    # Use a different validator as builder
-    builder_index = (proposer_index + 1) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
+    builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(3200000))
 

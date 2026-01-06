@@ -21,7 +21,17 @@ from eth2spec.test.helpers.forks import (
     is_post_fulu,
     is_post_gloas,
 )
-from eth2spec.test.helpers.keys import pubkeys
+from eth2spec.test.helpers.keys import builder_pubkeys, pubkeys
+
+
+def build_mock_builder(spec, i: int, balance: int):
+    return spec.Builder(
+        pubkey=builder_pubkeys[i],
+        execution_address=spec.ExecutionAddress(spec.hash(builder_pubkeys[i])[12:]),
+        balance=balance,
+        deposit_epoch=0,
+        withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
+    )
 
 
 def build_mock_validator(spec, i: int, balance: int):
@@ -231,6 +241,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.pending_consolidations = []
 
     if is_post_gloas(spec):
+        # TODO(jtraglia): make it so that the builder count is not hardcoded.
+        builder_balance = 2 * spec.MIN_DEPOSIT_AMOUNT
+        state.builders = [build_mock_builder(spec, i, builder_balance) for i in range(8)]
         state.execution_payload_availability = [0b1 for _ in range(spec.SLOTS_PER_HISTORICAL_ROOT)]
         state.payload_expected_withdrawals = spec.ProgressiveList[spec.Withdrawal]()
         state.builder_pending_payments = [
