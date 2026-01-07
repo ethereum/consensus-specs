@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 
 REQUIRED_APPROVAL_PERCENT = 51
 BOT_USERNAME = "cl-quorum-bot"
+REQUIRED_LABEL = "cl-quorum-bot"
 PROTOCOL_GUILD_URL = "https://protocol-guild.readthedocs.io/en/latest/01-membership.html"
 
 
@@ -227,6 +228,16 @@ def post_or_update_comment(repo, pr_number, token, body):
     return response.json()
 
 
+def delete_bot_comment(repo, pr_number, token):
+    """Delete the bot's comment if it exists."""
+    existing_id = find_bot_comment(repo, pr_number, token)
+    if existing_id:
+        url = f"https://api.github.com/repos/{repo}/issues/comments/{existing_id}"
+        api_request("DELETE", url, token)
+        return True
+    return False
+
+
 def merge_pr(repo, pr_number, token):
     """Squash merge the PR."""
     url = f"https://api.github.com/repos/{repo}/pulls/{pr_number}/merge"
@@ -263,6 +274,14 @@ def main():
     pr = get_pr(repo, pr_number, token)
     pr_author = pr["user"]["login"]
     print(f"PR author: {pr_author}")
+
+    # Check for required label
+    pr_labels = [label["name"] for label in pr.get("labels", [])]
+    if REQUIRED_LABEL not in pr_labels:
+        print(f"Label '{REQUIRED_LABEL}' not found. Skipping.")
+        if delete_bot_comment(repo, pr_number, token):
+            print("Deleted bot comment.")
+        return
 
     # Check PR state
     if pr["state"] != "open":
