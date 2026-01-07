@@ -167,43 +167,53 @@ def get_team_review_states(reviews, user_to_team, pr_author):
     Determine each team's review state based on the latest review from any team member.
     Reviews are processed in chronological order, so the last relevant review wins.
     The PR author is excluded - another team member must approve.
-    Returns dict: team_name -> "APPROVED" | "CHANGES_REQUESTED"
+    Returns dict: team_name -> {"state": "APPROVED" | "CHANGES_REQUESTED", "user": username}
     """
     team_states = {}
     pr_author_lower = pr_author.lower()
     for review in reviews:
         state = review["state"]
         if state in ("APPROVED", "CHANGES_REQUESTED"):
-            username = review["user"]["login"].lower()
+            username = review["user"]["login"]
             # Skip the PR author - they can't approve their own PR for their team
-            if username == pr_author_lower:
+            if username.lower() == pr_author_lower:
                 continue
-            team = user_to_team.get(username)
+            team = user_to_team.get(username.lower())
             if team:
-                team_states[team] = state
+                team_states[team] = {"state": state, "user": username}
     return team_states
 
 
 def build_status_comment(team_states, teams, required_approvals):
     """Build the status comment markdown."""
-    lines = [
-        "This bot checks for approvals from consensus-layer client teams. "
-        "Each team's status reflects the most recent review from any of its members. "
-        f"Once {required_approvals}/{len(teams)} teams have approved, this PR will be automatically merged.",
-        "",
-        "| Team | Status |",
-        "|------|:------:|",
-    ]
+    # Build the table rows
+    table_rows = []
     for team in sorted(teams):
-        state = team_states.get(team)
-        if state == "APPROVED":
-            status = "✅"
-        elif state == "CHANGES_REQUESTED":
-            status = "❌"
-        else:
+        review = team_states.get(team)
+        if review is None:
             status = "❓"
-        lines.append(f"| {team.capitalize()} | {status} |")
-    return "\n".join(lines)
+            reviewer = ""
+        elif review["state"] == "APPROVED":
+            status = "✅"
+            reviewer = f"@{review['user']}"
+        else:  # CHANGES_REQUESTED
+            status = "❌"
+            reviewer = f"@{review['user']}"
+        table_rows.append(f"| {team.capitalize()} | {status} | {reviewer} |")
+
+    table = "\n".join(table_rows)
+
+    return f"""
+*Note*: A maintainer has requested approvals from consensus-layer client teams.
+
+I am a bot that tracks reviews. Each team's status reflects the most recent review
+from any of its members. Once {required_approvals}/{len(teams)} teams have approved,
+this PR will be automatically merged.
+
+| Team | Status | Reviewer |
+|------|:------:|----------|
+{table}
+""".strip()
 
 
 def find_bot_comment(repo, pr_number, token):
@@ -295,7 +305,7 @@ def main():
     reviews = get_reviews(repo, pr_number, token)
     team_states = get_team_review_states(reviews, user_to_team, pr_author)
 
-    approved_teams = [t for t, s in team_states.items() if s == "APPROVED"]
+    approved_teams = [t for t, r in team_states.items() if r["state"] == "APPROVED"]
     print(f"Approving teams: {approved_teams}")
 
     # Post status comment
