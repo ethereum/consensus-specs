@@ -186,14 +186,12 @@ def get_team_review_states(reviews, user_to_team, pr_author):
 def build_status_comment(team_states, teams, required_approvals):
     """Build the status comment markdown."""
     lines = [
-        "## Quorum Bot",
-        "",
-        "This bot checks for approvals from consensus layer client teams. "
+        "This bot checks for approvals from consensus-layer client teams. "
         "Each team's status reflects the most recent review from any of its members. "
         f"Once {required_approvals}/{len(teams)} teams have approved, this PR will be automatically merged.",
         "",
         "| Team | Status |",
-        "|------|--------|",
+        "|------|:------:|",
     ]
     for team in sorted(teams):
         state = team_states.get(team)
