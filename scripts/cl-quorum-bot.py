@@ -11,15 +11,15 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
-REQUIRED_APPROVAL_PERCENT = 51
+QUORUM_PERCENT = 51
 BOT_USERNAME = "cl-quorum-bot"
 REQUIRED_LABEL = "cl-quorum-bot"
 PROTOCOL_GUILD_URL = "https://protocol-guild.readthedocs.io/en/latest/01-membership.html"
 
 
-def calculate_required_approvals(num_teams):
+def calculate_quorum(num_teams):
     """Calculate required approvals (51% of teams, rounded up)."""
-    return math.ceil(num_teams * REQUIRED_APPROVAL_PERCENT / 100)
+    return math.ceil(num_teams * QUORUM_PERCENT / 100)
 
 
 def fetch_teams_from_protocol_guild():
@@ -184,7 +184,7 @@ def get_team_review_states(reviews, user_to_team, pr_author):
     return team_states
 
 
-def build_status_comment(team_states, teams, required_approvals):
+def build_status_comment(team_states, teams, quorum):
     """Build the status comment markdown."""
     # Build the table rows
     table_rows = []
@@ -203,12 +203,16 @@ def build_status_comment(team_states, teams, required_approvals):
 
     table = "\n".join(table_rows)
 
-    return f"""
-*Note*: A maintainer has requested approvals from consensus-layer client teams.
+    note = f"""
+*Note*: A maintainer has requested reviews from consensus-layer client teams. I am a bot that tracks
+these reviews. Each team's status reflects the most recent review from any of its members. If a
+majority of teams ({QUORUM_PERCENT}% or {quorum}/{len(teams)}) approve, the PR will be merged. If a
+majority of teams reject (request changes), the PR will be closed. If reviews are changed after a PR
+is closed and there is no longer a majority rejection, the PR will be reopened.
+""".strip().replace("\n", " ")
 
-I am a bot that tracks reviews. Each team's status reflects the most recent review
-from any of its members. Once {required_approvals}/{len(teams)} teams have approved,
-this PR will be automatically merged.
+    return f"""
+{note}
 
 | Team | Status | Reviewer |
 |------|:------:|----------|
@@ -255,6 +259,20 @@ def merge_pr(repo, pr_number, token):
     return response.json()
 
 
+def close_pr(repo, pr_number, token):
+    """Close the PR."""
+    url = f"https://api.github.com/repos/{repo}/pulls/{pr_number}"
+    response = api_request("PATCH", url, token, json={"state": "closed"})
+    return response.json()
+
+
+def reopen_pr(repo, pr_number, token):
+    """Re-open the PR."""
+    url = f"https://api.github.com/repos/{repo}/pulls/{pr_number}"
+    response = api_request("PATCH", url, token, json={"state": "open"})
+    return response.json()
+
+
 def main():
     # Get environment variables
     token = os.environ.get("GITHUB_TOKEN")
@@ -274,11 +292,11 @@ def main():
     for team, members in teams.items():
         print(f"  {team}: {len(members)} members")
 
-    required_approvals = calculate_required_approvals(len(teams))
+    quorum = calculate_quorum(len(teams))
     user_to_team = build_user_to_team_map(teams)
 
     print(f"Processing PR #{pr_number} in {repo}")
-    print(f"Required approvals: {required_approvals}/{len(teams)} teams ({REQUIRED_APPROVAL_PERCENT}%)")
+    print(f"Required approvals: {quorum}/{len(teams)} teams ({QUORUM_PERCENT}%)")
 
     # Fetch PR details
     pr = get_pr(repo, pr_number, token)
@@ -294,8 +312,9 @@ def main():
         return
 
     # Check PR state
-    if pr["state"] != "open":
-        print(f"PR is not open (state: {pr['state']}).")
+    pr_state = pr["state"]
+    if pr_state == "merged":
+        print("PR is already merged.")
         sys.exit(1)
     if pr.get("draft", False):
         print("PR is a draft.")
@@ -306,22 +325,36 @@ def main():
     team_states = get_team_review_states(reviews, user_to_team, pr_author)
 
     approved_teams = [t for t, r in team_states.items() if r["state"] == "APPROVED"]
+    rejected_teams = [t for t, r in team_states.items() if r["state"] == "CHANGES_REQUESTED"]
     print(f"Approving teams: {approved_teams}")
+    print(f"Rejecting teams: {rejected_teams}")
 
     # Post status comment
-    comment_body = build_status_comment(team_states, teams, required_approvals)
+    comment_body = build_status_comment(team_states, teams, quorum)
     post_or_update_comment(repo, pr_number, token, comment_body)
     print("Status comment updated")
 
+    # Check if majority rejected
+    if len(rejected_teams) >= quorum:
+        print(f"Majority rejected ({len(rejected_teams)}/{quorum}). Closing PR.")
+        if pr_state == "open":
+            close_pr(repo, pr_number, token)
+        sys.exit(1)
+
+    # Re-open if previously closed but no longer majority rejected
+    if pr_state == "closed":
+        print("No longer majority rejected. Re-opening PR.")
+        reopen_pr(repo, pr_number, token)
+
     # Check if we have quorum
-    if len(approved_teams) < required_approvals:
+    if len(approved_teams) < quorum:
         print(
-            f"Quorum not reached ({len(approved_teams)}/{required_approvals}). "
+            f"Quorum not reached ({len(approved_teams)}/{quorum}). "
             f"Waiting for more approvals."
         )
         sys.exit(1)
 
-    print(f"Quorum reached ({len(approved_teams)}/{required_approvals})!")
+    print(f"Quorum reached ({len(approved_teams)}/{quorum})!")
 
     # Wait for status checks to pass (poll for up to 1 hour)
     head_sha = pr["head"]["sha"]
