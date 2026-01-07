@@ -162,14 +162,14 @@ def get_check_runs_status(repo, sha, token):
     return "success"
 
 
-def get_team_review_states(reviews, user_to_team, pr_author):
+def get_team_reviews(reviews, user_to_team, pr_author):
     """
-    Determine each team's review state based on the latest review from any team member.
-    Reviews are processed in chronological order, so the last relevant review wins.
+    Collect each team member's most recent review.
+    Reviews are processed in chronological order, so the last review from each user wins.
     The PR author is excluded - another team member must approve.
-    Returns dict: team_name -> {"state": "APPROVED" | "CHANGES_REQUESTED", "user": username}
+    Returns dict: team_name -> {username: "APPROVED" | "CHANGES_REQUESTED", ...}
     """
-    team_states = {}
+    team_reviews = {}
     pr_author_lower = pr_author.lower()
     for review in reviews:
         state = review["state"]
@@ -180,42 +180,73 @@ def get_team_review_states(reviews, user_to_team, pr_author):
                 continue
             team = user_to_team.get(username.lower())
             if team:
-                team_states[team] = {"state": state, "user": username}
-    return team_states
+                if team not in team_reviews:
+                    team_reviews[team] = {}
+                # Latest review from this user wins
+                team_reviews[team][username] = state
+    return team_reviews
 
 
-def build_status_comment(team_states, teams, quorum):
+def calculate_team_status(member_reviews):
+    """
+    Calculate team status based on member reviews.
+    Requires strict majority (more approvals than rejections or vice versa).
+    Returns "APPROVED", "CHANGES_REQUESTED", or None (undecided/tied).
+    """
+    if not member_reviews:
+        return None
+
+    approvals = sum(1 for s in member_reviews.values() if s == "APPROVED")
+    rejections = sum(1 for s in member_reviews.values() if s == "CHANGES_REQUESTED")
+
+    if approvals > rejections:
+        return "APPROVED"
+    elif rejections > approvals:
+        return "CHANGES_REQUESTED"
+    else:
+        return None  # Tied
+
+
+def build_status_comment(team_reviews, teams, quorum):
     """Build the status comment markdown."""
     # Build the table rows
     table_rows = []
     for team in sorted(teams):
-        review = team_states.get(team)
-        if review is None:
-            status = "❓"
-            reviewer = ""
-        elif review["state"] == "APPROVED":
+        member_reviews = team_reviews.get(team, {})
+        team_status = calculate_team_status(member_reviews)
+
+        if team_status == "APPROVED":
             status = "✅"
-            reviewer = f"@{review['user']}"
-        else:  # CHANGES_REQUESTED
+        elif team_status == "CHANGES_REQUESTED":
             status = "❌"
-            reviewer = f"@{review['user']}"
-        table_rows.append(f"| {team.capitalize()} | {status} | {reviewer} |")
+        else:
+            status = "❓"
+
+        if member_reviews:
+            reviewers = ", ".join(
+                f"@{user} {'✅' if state == 'APPROVED' else '❌'}"
+                for user, state in member_reviews.items()
+            )
+        else:
+            reviewers = ""
+
+        table_rows.append(f"| {team.capitalize()} | {status} | {reviewers} |")
 
     table = "\n".join(table_rows)
 
     note = f"""
 *Note*: A maintainer has requested reviews from consensus-layer client teams. I am a bot that tracks
-these reviews. Each team's status reflects the most recent review from any of its members. If a
-majority of teams ({QUORUM_PERCENT}% or {quorum}/{len(teams)}) approve, the PR will be merged. If a
-majority of teams reject (request changes), the PR will be closed. If reviews are changed after a PR
-is closed and there is no longer a majority rejection, the PR will be reopened.
+these reviews. Each team's status is determined by majority vote of its reviewers. If a majority of
+teams ({QUORUM_PERCENT}% or {quorum}/{len(teams)}) approve, the PR will be merged. If a majority of
+teams reject (request changes), the PR will be closed. If reviews are changed after a PR is closed
+and there is no longer a majority rejection, the PR will be reopened.
 """.strip().replace("\n", " ")
 
     return f"""
 {note}
 
-| Team | Status | Reviewer |
-|------|:------:|----------|
+| Team | Status | Reviewers |
+|------|:------:|-----------|
 {table}
 """.strip()
 
@@ -322,15 +353,22 @@ def main():
 
     # Fetch and process reviews (excluding PR author)
     reviews = get_reviews(repo, pr_number, token)
-    team_states = get_team_review_states(reviews, user_to_team, pr_author)
+    team_reviews = get_team_reviews(reviews, user_to_team, pr_author)
 
-    approved_teams = [t for t, r in team_states.items() if r["state"] == "APPROVED"]
-    rejected_teams = [t for t, r in team_states.items() if r["state"] == "CHANGES_REQUESTED"]
+    # Calculate team statuses based on sub-team quorum
+    approved_teams = []
+    rejected_teams = []
+    for team, member_reviews in team_reviews.items():
+        status = calculate_team_status(member_reviews)
+        if status == "APPROVED":
+            approved_teams.append(team)
+        elif status == "CHANGES_REQUESTED":
+            rejected_teams.append(team)
     print(f"Approving teams: {approved_teams}")
     print(f"Rejecting teams: {rejected_teams}")
 
     # Post status comment
-    comment_body = build_status_comment(team_states, teams, quorum)
+    comment_body = build_status_comment(team_reviews, teams, quorum)
     post_or_update_comment(repo, pr_number, token, comment_body)
     print("Status comment updated")
 
