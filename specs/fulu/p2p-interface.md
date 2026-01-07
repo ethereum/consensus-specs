@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Modifications in Fulu](#modifications-in-fulu)
+    - [compute_max_request_data_column_sidecars](#compute_max_request_data_column_sidecars)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
