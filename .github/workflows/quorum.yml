@@ -1,0 +1,28 @@
+name: Quorum Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  quorum:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Run quorum check
+        env:
+          GITHUB_TOKEN: ${{ secrets.CL_QUORUM_BOT_PAT }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python scripts/cl-quorum-bot.py
