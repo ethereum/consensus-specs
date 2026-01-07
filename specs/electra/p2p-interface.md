@@ -7,7 +7,7 @@
   - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-  - [Configuration](#configuration-1)
+    - [compute_max_request_blob_sidecars_electra](#compute_max_request_blob_sidecars_electra)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -64,12 +64,11 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
-
 ```
 
 #### compute_max_request_blob_sidecars_electra
 
-```python 
+```python
 def compute_max_request_blob_sidecars_electra() -> uint64:
     """
     Return the maximum number of blob sidecars in a single request.

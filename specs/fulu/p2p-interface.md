@@ -6,6 +6,7 @@
 - [Modifications in Fulu](#modifications-in-fulu)
   - [Helper functions](#helper-functions)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
+    - [compute_max_request_data_column_sidecars](#compute_max_request_data_column_sidecars)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
