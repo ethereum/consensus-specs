@@ -1,4 +1,4 @@
-name: Quorum Check
+name: Quorum
 
 on:
   pull_request:
