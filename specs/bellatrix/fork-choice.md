@@ -15,7 +15,7 @@
   - [`get_pow_block`](#get_pow_block)
   - [`is_valid_terminal_pow_block`](#is_valid_terminal_pow_block)
   - [`validate_merge_block`](#validate_merge_block)
-- [Updated fork-choice handlers](#updated-fork-choice-handlers)
+- [Handlers](#handlers)
   - [`on_block`](#on_block)
 
 <!-- mdformat-toc end -->
@@ -260,7 +260,7 @@ def validate_merge_block(block: BeaconBlock) -> None:
     assert is_valid_terminal_pow_block(pow_block, pow_parent)
 ```
 
-## Updated fork-choice handlers
+## Handlers
 
 ### `on_block`
 

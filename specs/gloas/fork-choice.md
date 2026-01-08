@@ -27,22 +27,19 @@
   - [Modified `get_weight`](#modified-get_weight)
   - [New `get_node_children`](#new-get_node_children)
   - [Modified `get_head`](#modified-get_head)
-- [Updated fork-choice helpers](#updated-fork-choice-helpers)
-  - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
-  - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
-  - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
-  - [Modified `get_contribution_due_ms`](#modified-get_contribution_due_ms)
   - [Modified `record_block_timeliness`](#modified-record_block_timeliness)
   - [Modified `update_proposer_boost_root`](#modified-update_proposer_boost_root)
   - [Modified `validate_on_attestation`](#modified-validate_on_attestation)
   - [Modified `is_head_late`](#modified-is_head_late)
   - [Modified `is_head_weak`](#modified-is_head_weak)
   - [Modified `is_parent_strong`](#modified-is_parent_strong)
-- [New fork-choice helpers](#new-fork-choice-helpers)
+  - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
+  - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
+  - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
+  - [Modified `get_contribution_due_ms`](#modified-get_contribution_due_ms)
   - [New `get_payload_attestation_due_ms`](#new-get_payload_attestation_due_ms)
-- [Updated fork-choice handlers](#updated-fork-choice-handlers)
+- [Handlers](#handlers)
   - [Modified `on_block`](#modified-on_block)
-- [New fork-choice handlers](#new-fork-choice-handlers)
   - [New `on_execution_payload`](#new-on_execution_payload)
   - [New `on_payload_attestation_message`](#new-on_payload_attestation_message)
 
@@ -497,48 +494,6 @@ def get_head(store: Store) -> ForkChoiceNode:
         )
 ```
 
-## Updated fork-choice helpers
-
-### Modified `get_attestation_due_ms`
-
-```python
-def get_attestation_due_ms(epoch: Epoch) -> uint64:
-    # [New in Gloas]
-    if epoch >= GLOAS_FORK_EPOCH:
-        return get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
-    return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
-```
-
-### Modified `get_aggregate_due_ms`
-
-```python
-def get_aggregate_due_ms(epoch: Epoch) -> uint64:
-    # [New in Gloas]
-    if epoch >= GLOAS_FORK_EPOCH:
-        return get_slot_component_duration_ms(AGGREGATE_DUE_BPS_GLOAS)
-    return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
-```
-
-### Modified `get_sync_message_due_ms`
-
-```python
-def get_sync_message_due_ms(epoch: Epoch) -> uint64:
-    # [New in Gloas]
-    if epoch >= GLOAS_FORK_EPOCH:
-        return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS_GLOAS)
-    return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)
-```
-
-### Modified `get_contribution_due_ms`
-
-```python
-def get_contribution_due_ms(epoch: Epoch) -> uint64:
-    # [New in Gloas]
-    if epoch >= GLOAS_FORK_EPOCH:
-        return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS_GLOAS)
-    return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS)
-```
-
 ### Modified `record_block_timeliness`
 
 ```python
@@ -678,7 +633,45 @@ def is_parent_strong(store: Store, root: Root) -> bool:
     return parent_weight > parent_threshold
 ```
 
-## New fork-choice helpers
+### Modified `get_attestation_due_ms`
+
+```python
+def get_attestation_due_ms(epoch: Epoch) -> uint64:
+    # [New in Gloas]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
+    return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+```
+
+### Modified `get_aggregate_due_ms`
+
+```python
+def get_aggregate_due_ms(epoch: Epoch) -> uint64:
+    # [New in Gloas]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return get_slot_component_duration_ms(AGGREGATE_DUE_BPS_GLOAS)
+    return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
+```
+
+### Modified `get_sync_message_due_ms`
+
+```python
+def get_sync_message_due_ms(epoch: Epoch) -> uint64:
+    # [New in Gloas]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS_GLOAS)
+    return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)
+```
+
+### Modified `get_contribution_due_ms`
+
+```python
+def get_contribution_due_ms(epoch: Epoch) -> uint64:
+    # [New in Gloas]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS_GLOAS)
+    return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS)
+```
 
 ### New `get_payload_attestation_due_ms`
 
@@ -687,7 +680,7 @@ def get_payload_attestation_due_ms(epoch: Epoch) -> uint64:
     return get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)
 ```
 
-## Updated fork-choice handlers
+## Handlers
 
 ### Modified `on_block`
 
@@ -755,8 +748,6 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Eagerly compute unrealized justification and finality.
     compute_pulled_up_tip(store, block_root)
 ```
-
-## New fork-choice handlers
 
 ### New `on_execution_payload`
 
