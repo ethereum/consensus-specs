@@ -248,7 +248,7 @@ class BeaconState(Container):
 
 ### New dataclasses
 
-##### `ExpectedWithdrawals`
+#### `ExpectedWithdrawals`
 
 ```python
 @dataclass
