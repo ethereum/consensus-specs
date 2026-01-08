@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Modifications in Fulu](#modifications-in-fulu)
-    - [compute_max_request_data_column_sidecars](#compute_max_request_data_column_sidecars)
+    - [New `compute_max_request_data_column_sidecars`](#new-compute_max_request_data_column_sidecars)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
@@ -75,7 +75,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-#### compute_max_request_data_column_sidecars
+#### New `compute_max_request_data_column_sidecars`
 
 ```python
 def compute_max_request_data_column_sidecars() -> uint64:
