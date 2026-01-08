@@ -38,6 +38,29 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and
 change is made to upgrade to Gloas.
 
 ```python
+def onboard_builders_at_fork(state: BeaconState) -> None:
+    """
+    applies any pending deposit for builders
+    """
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    pending_deposits = []
+    for deposit in state.pending_deposits:
+        if deposit.pubkey in validator_pubkeys:
+            pending_deposits.append(deposit)
+            continue
+        if is_builder_withdrawal_credential(deposit.withdrawal_credentials):
+            apply_deposit_for_builder(
+                state,
+                deposit.pubkey,
+                deposit.withdrawal_credentials,
+                deposit.amount,
+                deposit.signature,
+            )
+            continue
+        pending_deposits.append(deposit)
+```
+
+```python
 def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
     epoch = fulu.get_current_epoch(pre)
 
@@ -105,6 +128,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         # [New in Gloas:EIP7732]
         payload_expected_withdrawals=[],
     )
+    onboard_builders_at_fork(post)
 
     return post
 ```
