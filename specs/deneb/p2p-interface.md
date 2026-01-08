@@ -6,7 +6,7 @@
 - [Modifications in Deneb](#modifications-in-deneb)
   - [Helper functions](#helper-functions)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-    - [compute_max_request_blob_sidecars](#compute_max_request_blob_sidecars)
+    - [New `compute_max_request_blob_sidecars`](#new-compute_max_request_blob_sidecars)
   - [Constant](#constant)
   - [Preset](#preset)
   - [Configuration](#configuration)
@@ -67,7 +67,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-#### compute_max_request_blob_sidecars
+#### New `compute_max_request_blob_sidecars`
 
 ```python
 def compute_max_request_blob_sidecars() -> uint64:

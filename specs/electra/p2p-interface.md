@@ -7,7 +7,7 @@
   - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
-    - [compute_max_request_blob_sidecars_electra](#compute_max_request_blob_sidecars_electra)
+    - [Modified `compute_max_request_blob_sidecars`](#modified-compute_max_request_blob_sidecars)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -66,13 +66,14 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
-#### compute_max_request_blob_sidecars_electra
+#### Modified `compute_max_request_blob_sidecars`
 
 ```python
-def compute_max_request_blob_sidecars_electra() -> uint64:
+def compute_max_request_blob_sidecars() -> uint64:
     """
     Return the maximum number of blob sidecars in a single request.
     """
+    # [Modified in Electra:EIP7691]
     return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA)
 ```
 
@@ -206,28 +207,8 @@ beacon block type.
 
 *[Modified in Electra:EIP7691]*
 
-Request Content:
-
-```
-(
-  start_slot: Slot
-  count: uint64
-)
-```
-
-Response Content:
-
-```
-(
-  List[BlobSidecar, compute_max_request_blob_sidecars_electra()]
-)
-```
-
-*Updated validation*
-
-Clients MUST respond with at least the blob sidecars of the first blob-carrying
-block that exists in the range, if they have it, and no more than
-`compute_max_request_blob_sidecars_electra()` sidecars.
+*Note*: The `compute_max_request_blob_sidecars` function has been modified which
+affects the request, response, and validation logic.
 
 ##### BlobSidecarsByRoot v1
 
@@ -235,23 +216,5 @@ block that exists in the range, if they have it, and no more than
 
 *[Modified in Electra:EIP7691]*
 
-Request Content:
-
-```
-(
-  List[BlobIdentifier, compute_max_request_blob_sidecars_electra()]
-)
-```
-
-Response Content:
-
-```
-(
-  List[BlobSidecar, compute_max_request_blob_sidecars_electra()]
-)
-```
-
-*Updated validation*
-
-No more than `compute_max_request_blob_sidecars_electra()` may be requested at a
-time.
+*Note*: The `compute_max_request_blob_sidecars` function has been modified which
+affects the request, response, and validation logic.
