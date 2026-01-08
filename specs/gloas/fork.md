@@ -40,7 +40,7 @@ change is made to upgrade to Gloas.
 ```python
 def onboard_builders_at_fork(state: BeaconState) -> None:
     """
-    applies any pending deposit for builders
+    Applies any pending deposit for builders.
     """
     validator_pubkeys = [v.pubkey for v in state.validators]
     pending_deposits = []
