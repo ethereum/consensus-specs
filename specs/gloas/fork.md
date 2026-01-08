@@ -58,6 +58,7 @@ def onboard_builders_at_fork(state: BeaconState) -> None:
             )
             continue
         pending_deposits.append(deposit)
+    state.pending_deposits = pending_deposits
 ```
 
 ```python
