@@ -18,6 +18,7 @@ cryptography:
 forkchoice:
   - ericsson49            # Alex Vlasov
   - fradamt               # Francesco D'Amato
+  - mkalinin              # Mikhail Kalinin
   - potuz                 # Potuz
   - saltiniroberto        # Roberto Saltini
 lightclients:
