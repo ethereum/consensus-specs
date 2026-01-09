@@ -130,7 +130,7 @@ class SignedProposerPreferences(Container):
 
 ### Helpers
 
-##### Modified `verify_data_column_sidecar`
+#### Modified `verify_data_column_sidecar`
 
 ```python
 def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
