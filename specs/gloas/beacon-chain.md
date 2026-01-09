@@ -72,7 +72,6 @@
       - [New `get_builders_sweep_withdrawals`](#new-get_builders_sweep_withdrawals)
       - [Modified `get_expected_withdrawals`](#modified-get_expected_withdrawals)
       - [Modified `apply_withdrawals`](#modified-apply_withdrawals)
-      - [Modified `update_next_withdrawal_validator_index`](#modified-update_next_withdrawal_validator_index)
       - [New `update_payload_expected_withdrawals`](#new-update_payload_expected_withdrawals)
       - [New `update_builder_pending_withdrawals`](#new-update_builder_pending_withdrawals)
       - [New `update_next_withdrawal_builder_index`](#new-update_next_withdrawal_builder_index)
@@ -984,23 +983,6 @@ def apply_withdrawals(state: BeaconState, withdrawals: Sequence[Withdrawal]) -> 
             decrease_balance(state, withdrawal.validator_index, withdrawal.amount)
 ```
 
-##### Modified `update_next_withdrawal_validator_index`
-
-```python
-def update_next_withdrawal_validator_index(
-    state: BeaconState,
-    # [Modified in Gloas]
-    # Removed `withdrawals`
-    # [New in Gloas]
-    processed_validators_sweep_count: uint64,
-) -> None:
-    # [Modified in Gloas]
-    # Update the next validator index to start the next withdrawal sweep
-    next_index = state.next_withdrawal_validator_index + processed_validators_sweep_count
-    next_validator_index = ValidatorIndex(next_index % len(state.validators))
-    state.next_withdrawal_validator_index = next_validator_index
-```
-
 ##### New `update_payload_expected_withdrawals`
 
 ```python
@@ -1069,8 +1051,7 @@ def process_withdrawals(
     update_pending_partial_withdrawals(state, expected.processed_partial_withdrawals_count)
     # [New in Gloas:EIP7732]
     update_next_withdrawal_builder_index(state, expected.processed_builders_sweep_count)
-    # [Modified in Gloas]
-    update_next_withdrawal_validator_index(state, expected.processed_sweep_withdrawals_count)
+    update_next_withdrawal_validator_index(state, expected.withdrawals)
 ```
 
 #### Execution payload bid
