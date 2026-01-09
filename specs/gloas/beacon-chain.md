@@ -1051,7 +1051,7 @@ def process_withdrawals(
     update_pending_partial_withdrawals(state, expected.processed_partial_withdrawals_count)
     # [New in Gloas:EIP7732]
     update_next_withdrawal_builder_index(state, expected.processed_builders_sweep_count)
-    update_next_withdrawal_validator_index(state, expected.processed_sweep_withdrawals_count)
+    update_next_withdrawal_validator_index(state, expected.withdrawals)
 ```
 
 #### Execution payload bid
