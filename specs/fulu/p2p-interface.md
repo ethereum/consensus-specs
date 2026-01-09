@@ -132,7 +132,7 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     return True
 ```
 
-##### `verify_data_column_sidecar_kzg_proofs`
+#### `verify_data_column_sidecar_kzg_proofs`
 
 ```python
 def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
@@ -151,7 +151,7 @@ def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     )
 ```
 
-##### `verify_data_column_sidecar_inclusion_proof`
+#### `verify_data_column_sidecar_inclusion_proof`
 
 ```python
 def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bool:
@@ -167,7 +167,7 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
     )
 ```
 
-##### `compute_subnet_for_data_column_sidecar`
+#### `compute_subnet_for_data_column_sidecar`
 
 ```python
 def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetID:

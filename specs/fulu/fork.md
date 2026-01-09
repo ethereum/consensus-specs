@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-- [New `initialize_proposer_lookahead`](#new-initialize_proposer_lookahead)
+  - [New `initialize_proposer_lookahead`](#new-initialize_proposer_lookahead)
 - [Fork to Fulu](#fork-to-fulu)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
