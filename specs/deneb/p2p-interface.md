@@ -4,7 +4,6 @@
 
 - [Introduction](#introduction)
 - [Modifications in Deneb](#modifications-in-deneb)
-  - [Constant](#constant)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
@@ -43,10 +42,6 @@ The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Deneb
-
-### Constant
-
-*[New in Deneb:EIP4844]*
 
 ### Preset
 
