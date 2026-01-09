@@ -23,6 +23,7 @@ forkchoice:
   - saltiniroberto        # Roberto Saltini
 lightclients:
   - Inspector-Butters     # Bastin
+  - wemeetagain           # Cayman Nava
   - etan-status           # Etan Kissling
   - rkapka                # Radosław Kapka
 networking:
@@ -41,7 +42,7 @@ ssz:
   - wemeetagain           # Cayman Nava
   - etan-status           # Etan Kissling
 testing:
-  - danceratopz           # danceratopz
+  - danceratopz           # Dan
   - leolara               # Leo Lara
 
 #
