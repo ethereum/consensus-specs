@@ -173,9 +173,9 @@ the `context` enum to specify Bellatrix block type.
 
 # Design decision rationale
 
-### Gossipsub
+## Gossipsub
 
-#### Why was the max gossip message size increased at Bellatrix?
+### Why was the max gossip message size increased at Bellatrix?
 
 With the addition of `ExecutionPayload` to `BeaconBlock`s, there is a dynamic
 field -- `transactions` -- which can validly exceed the `MAX_PAYLOAD_SIZE` limit

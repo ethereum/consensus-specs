@@ -103,7 +103,7 @@ class DataColumnsByRootIdentifier(Container):
 
 ### Helpers
 
-##### `verify_data_column_sidecar`
+#### `verify_data_column_sidecar`
 
 ```python
 def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:

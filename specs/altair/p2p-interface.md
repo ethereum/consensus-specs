@@ -42,7 +42,7 @@ domain. Some Phase 0 features will be deprecated, but not removed immediately.
 
 ## Modifications in Altair
 
-#### Modified `compute_fork_version`
+### Modified `compute_fork_version`
 
 ```python
 def compute_fork_version(epoch: Epoch) -> Version:
