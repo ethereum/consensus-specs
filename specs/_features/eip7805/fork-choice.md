@@ -16,14 +16,12 @@
   - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
   - [New `get_attester_head`](#new-get_attester_head)
   - [Modified `get_proposer_head`](#modified-get_proposer_head)
-- [Updated fork-choice helpers](#updated-fork-choice-helpers)
   - [Modified `update_proposer_boost_root`](#modified-update_proposer_boost_root)
-- [New fork-choice helpers](#new-fork-choice-helpers)
+  - [New `record_block_inclusion_list_satisfaction`](#new-record_block_inclusion_list_satisfaction)
   - [New `get_view_freeze_cutoff_ms`](#new-get_view_freeze_cutoff_ms)
   - [New `get_inclusion_list_submission_due_ms`](#new-get_inclusion_list_submission_due_ms)
   - [New `get_proposer_inclusion_list_cutoff_ms`](#new-get_proposer_inclusion_list_cutoff_ms)
-  - [New `record_block_inclusion_list_satisfaction`](#new-record_block_inclusion_list_satisfaction)
-- [Updated fork-choice handlers](#updated-fork-choice-handlers)
+- [Handlers](#handlers)
   - [New `on_inclusion_list`](#new-on_inclusion_list)
   - [Modified `on_block`](#modified-on_block)
 
@@ -264,8 +262,6 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
         return head_root
 ```
 
-## Updated fork-choice helpers
-
 ### Modified `update_proposer_boost_root`
 
 ```python
@@ -289,7 +285,16 @@ def update_proposer_boost_root(store: Store, root: Root) -> None:
             store.proposer_boost_root = root
 ```
 
-## New fork-choice helpers
+### New `record_block_inclusion_list_satisfaction`
+
+```python
+def record_block_inclusion_list_satisfaction(store: Store, root: Root) -> None:
+    # Check if block satisfies the inclusion list constraints
+    # If not, add this block to the store as inclusion list constraints unsatisfied
+    is_inclusion_list_satisfied = validate_inclusion_lists(store, root, EXECUTION_ENGINE)
+    if not is_inclusion_list_satisfied:
+        store.unsatisfied_inclusion_list_blocks.add(root)
+```
 
 ### New `get_view_freeze_cutoff_ms`
 
@@ -312,18 +317,7 @@ def get_proposer_inclusion_list_cutoff_ms(epoch: Epoch) -> uint64:
     return get_slot_component_duration_ms(PROPOSER_INCLUSION_LIST_CUTOFF_BPS)
 ```
 
-### New `record_block_inclusion_list_satisfaction`
-
-```python
-def record_block_inclusion_list_satisfaction(store: Store, root: Root) -> None:
-    # Check if block satisfies the inclusion list constraints
-    # If not, add this block to the store as inclusion list constraints unsatisfied
-    is_inclusion_list_satisfied = validate_inclusion_lists(store, root, EXECUTION_ENGINE)
-    if not is_inclusion_list_satisfied:
-        store.unsatisfied_inclusion_list_blocks.add(root)
-```
-
-## Updated fork-choice handlers
+## Handlers
 
 ### New `on_inclusion_list`
 

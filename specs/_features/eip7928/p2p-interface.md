@@ -6,14 +6,14 @@ EIP-7928.
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Modifications in EIP-7928](#modifications-in-eip-7928)
-  - [Helper functions](#helper-functions)
+  - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
 
 <!-- mdformat-toc end -->
 
 ## Modifications in EIP-7928
 
-### Helper functions
+### Helpers
 
 #### Modified `compute_fork_version`
 

@@ -12,7 +12,7 @@
   - [Containers](#containers)
     - [`DataColumnSidecar`](#datacolumnsidecar)
     - [`MatrixEntry`](#matrixentry)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [`get_custody_groups`](#get_custody_groups)
   - [`compute_columns_for_custody_group`](#compute_columns_for_custody_group)
   - [`compute_matrix`](#compute_matrix)
@@ -93,7 +93,7 @@ class MatrixEntry(Container):
     row_index: RowIndex
 ```
 
-## Helper functions
+## Helpers
 
 ### `get_custody_groups`
 
