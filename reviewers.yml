@@ -41,6 +41,7 @@ security:
 ssz:
   - wemeetagain           # Cayman Nava
   - etan-status           # Etan Kissling
+  - potuz                 # Potuz
 testing:
   - danceratopz           # Dan
   - leolara               # Leo Lara
