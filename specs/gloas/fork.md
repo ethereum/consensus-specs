@@ -6,6 +6,7 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
+- [Helpers](#helpers)
   - [New `onboard_builders_from_pending_deposits`](#new-onboard_builders_from_pending_deposits)
 - [Fork to Gloas](#fork-to-gloas)
   - [Fork trigger](#fork-trigger)
@@ -25,6 +26,8 @@ Warning: this configuration is not definitive.
 | -------------------- | ------------------------------------- |
 | `GLOAS_FORK_VERSION` | `Version('0x07000000')`               |
 | `GLOAS_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+
+## Helpers
 
 ### New `onboard_builders_from_pending_deposits`
 
