@@ -181,10 +181,11 @@ def build_status_comment(active_labels, all_reviewers, reviews, pr_author):
         "This PR has been flagged for review by subject matter experts. "
         "It will be automatically merged once at least one maintainer approves, "
         "at least one reviewer from each labeled group approves, "
-        "all CI checks pass, and the branch is up-to-date with the base branch."
+        "all CI checks pass, the PR is ready to review, and the branch "
+        "is up-to-date with the base branch. "
     )
 
-    body = f"{note}\n\n" + "\n\n---\n\n".join(sections)
+    body = f"{note}\n\n" + "\n\n".join(sections)
     return body, results
 
 
