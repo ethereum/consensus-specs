@@ -6,6 +6,7 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
+  - [New `onboard_builders_from_pending_deposits`](#new-onboard_builders_from_pending_deposits)
 - [Fork to Gloas](#fork-to-gloas)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -25,22 +26,13 @@ Warning: this configuration is not definitive.
 | `GLOAS_FORK_VERSION` | `Version('0x07000000')`               |
 | `GLOAS_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
-## Fork to Gloas
-
-### Fork trigger
-
-The fork is triggered at epoch `GLOAS_FORK_EPOCH`.
-
-### Upgrading the state
-
-If `state.slot % SLOTS_PER_EPOCH == 0` and
-`compute_epoch_at_slot(state.slot) == GLOAS_FORK_EPOCH`, an irregular state
-change is made to upgrade to Gloas.
+### New `onboard_builders_from_pending_deposits`
 
 ```python
-def onboard_builders_at_fork(state: BeaconState) -> None:
+def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
     """
-    Applies any pending deposit for builders.
+    Applies any pending deposit for builders, effectively
+    onboarding builders at the fork.
     """
     validator_pubkeys = [v.pubkey for v in state.validators]
     pending_deposits = []
@@ -60,6 +52,18 @@ def onboard_builders_at_fork(state: BeaconState) -> None:
         pending_deposits.append(deposit)
     state.pending_deposits = pending_deposits
 ```
+
+## Fork to Gloas
+
+### Fork trigger
+
+The fork is triggered at epoch `GLOAS_FORK_EPOCH`.
+
+### Upgrading the state
+
+If `state.slot % SLOTS_PER_EPOCH == 0` and
+`compute_epoch_at_slot(state.slot) == GLOAS_FORK_EPOCH`, an irregular state
+change is made to upgrade to Gloas.
 
 ```python
 def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
@@ -129,7 +133,9 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         # [New in Gloas:EIP7732]
         payload_expected_withdrawals=[],
     )
-    onboard_builders_at_fork(post)
+
+    # [New in Gloas:EIP7732]
+    onboard_builders_from_pending_deposits(post)
 
     return post
 ```
