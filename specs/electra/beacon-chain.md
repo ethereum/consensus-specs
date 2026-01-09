@@ -38,7 +38,7 @@
 - [Dataclasses](#dataclasses)
   - [Modified dataclasses](#modified-dataclasses)
     - [`ExpectedWithdrawals`](#expectedwithdrawals)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Predicates](#predicates)
     - [Modified `compute_proposer_index`](#modified-compute_proposer_index)
     - [Modified `is_eligible_for_activation_queue`](#modified-is_eligible_for_activation_queue)
@@ -441,7 +441,7 @@ class ExpectedWithdrawals(object):
     processed_sweep_withdrawals_count: uint64
 ```
 
-## Helper functions
+## Helpers
 
 ### Predicates
 

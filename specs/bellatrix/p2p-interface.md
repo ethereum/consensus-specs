@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Modifications in Bellatrix](#modifications-in-bellatrix)
-  - [Helper functions](#helper-functions)
+  - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -38,7 +38,7 @@ understand the changes outlined in this document.
 
 ## Modifications in Bellatrix
 
-### Helper functions
+### Helpers
 
 #### Modified `compute_fork_version`
 

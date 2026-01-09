@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
+- [Helpers](#helpers)
   - [New `initialize_proposer_lookahead`](#new-initialize_proposer_lookahead)
 - [Fork to Fulu](#fork-to-fulu)
   - [Fork trigger](#fork-trigger)
@@ -23,6 +24,8 @@ Warning: this configuration is not definitive.
 | ------------------- | -------------------------------------------------- |
 | `FULU_FORK_VERSION` | `Version('0x06000000')`                            |
 | `FULU_FORK_EPOCH`   | `Epoch(411392)` (December 3, 2025, 09:49:11pm UTC) |
+
+## Helpers
 
 ### New `initialize_proposer_lookahead`
 

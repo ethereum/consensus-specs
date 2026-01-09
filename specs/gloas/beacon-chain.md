@@ -37,7 +37,7 @@
 - [Dataclasses](#dataclasses)
   - [Modified dataclasses](#modified-dataclasses)
     - [`ExpectedWithdrawals`](#expectedwithdrawals)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Predicates](#predicates)
     - [New `is_builder_index`](#new-is_builder_index)
     - [New `is_active_builder`](#new-is_active_builder)
@@ -407,7 +407,7 @@ class ExpectedWithdrawals(object):
     processed_sweep_withdrawals_count: uint64
 ```
 
-## Helper functions
+## Helpers
 
 ### Predicates
 

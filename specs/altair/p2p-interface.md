@@ -4,7 +4,8 @@
 
 - [Introduction](#introduction)
 - [Modifications in Altair](#modifications-in-altair)
-  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Helpers](#helpers)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -42,7 +43,9 @@ domain. Some Phase 0 features will be deprecated, but not removed immediately.
 
 ## Modifications in Altair
 
-### Modified `compute_fork_version`
+### Helpers
+
+#### Modified `compute_fork_version`
 
 ```python
 def compute_fork_version(epoch: Epoch) -> Version:
