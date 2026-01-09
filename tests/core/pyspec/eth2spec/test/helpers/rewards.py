@@ -2,7 +2,6 @@ from random import Random
 
 from lru import LRU
 
-from eth2spec.phase0.mainnet import VALIDATOR_REGISTRY_LIMIT  # equal everywhere, fine to import
 from eth2spec.test.helpers.attestations import (
     cached_prepare_state_with_attestations,
 )
@@ -16,12 +15,12 @@ from eth2spec.test.helpers.random import (
 from eth2spec.test.helpers.state import (
     next_epoch,
 )
-from eth2spec.utils.ssz.ssz_typing import Container, List, uint64
+from eth2spec.utils.ssz.ssz_typing import Container, ProgressiveList, uint64
 
 
 class Deltas(Container):
-    rewards: List[uint64, VALIDATOR_REGISTRY_LIMIT]
-    penalties: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    rewards: ProgressiveList[uint64]
+    penalties: ProgressiveList[uint64]
 
 
 def get_inactivity_penalty_quotient(spec):
