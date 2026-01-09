@@ -32,10 +32,13 @@ networking:
   - arnetheduck           # Jacek Sieka
   - raulk                 # Raúl Kripalani
 security:
-  - nethoxa               # Andrés Láinez
-  - 0xMushow              # Antoine James
-  - fredrik0x             # Fredrik
+  - tbenr                 # Enrico Del Fante
+  - fradamt               # Francesco D'Amato
   - jtraglia              # Justin Traglia
+  - dapplion              # Lion
+  - michaelsproul         # Michael Sproul
+  - mkalinin              # Mikhail Kalinin
+  - paulhauner            # Paul Hauner
   - 0xTylerHolmes         # Tyler Holmes
   - gitToki               # Yassine Ferhane
 ssz:
