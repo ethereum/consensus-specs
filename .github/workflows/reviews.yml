@@ -1,0 +1,29 @@
+name: Reviews
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened, labeled, unlabeled]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  reviewers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install dependencies
+        run: pip install requests pyyaml
+
+      - name: Run reviewer check
+        env:
+          GITHUB_TOKEN: ${{ secrets.CONSENSUS_SPECS_BOT_PAT }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CHECK_NAME: reviews
+        run: python scripts/consensus-specs-bot.py

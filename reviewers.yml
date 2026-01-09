@@ -1,0 +1,110 @@
+#
+# Maintainers
+#
+
+maintainers:
+  - jihoonsong              # Jihoon Song
+  - jtraglia                # Justin Traglia
+
+#
+# Domains
+#
+
+cryptography:
+  - asanso                # Antonio Sanso
+  - b-wagn                # Benedikt Wagner
+  - asn-d6                # George Kadianakis
+  - kevaundray            # Kevaundray Wedderburn
+forkchoice:
+  - ericsson49            # Alex Vlasov
+  - fradamt               # Francesco D'Amato
+  - potuz                 # Potuz
+  - saltiniroberto        # Roberto Saltini
+lightclients:
+  - etan-status           # Etan Kissling
+networking:
+  - AgeManning            # Age Manning
+  - Nashatyrev            # Anton Nashatyrev
+  - arnetheduck           # Jacek Sieka
+  - raulk                 # Raúl Kripalani
+security:
+  - nethoxa               # Andrés Láinez
+  - 0xMushow              # Antoine James
+  - fredrik0x             # Fredrik
+  - jtraglia              # Justin Traglia
+  - 0xTylerHolmes         # Tyler Holmes
+  - gitToki               # Yassine Ferhane
+ssz:
+  - wemeetagain           # Cayman Nava
+  - etan-status           # Etan Kissling
+testing:
+  - danceratopz           # danceratopz
+  - leolara               # Leo Lara
+
+#
+# EIPs
+#
+
+eip6110:
+  - djrtwo                # Danny Ryan
+  - mkalinin              # Mikhail Kalinin
+  - petertdavies          # Peter Davies
+eip6800:
+  - dankrad               # Dankrad Feist
+  - shemnon               # Danno Ferrin
+  - g11tech               # Gajinder Singh
+  - GottfriedHerold       # Gottfried Herold
+  - gballet               # Guillaume Ballet
+  - jsign                 # Ignacio Hagopian
+  - kevaundray            # Kevaundray Wedderburn
+  - pipermerriam          # Piper Merriam
+  - tanishqjasoria        # Tanishq Jasoria
+  - vbuterin              # Vitalik Buterin
+eip6914:
+  - djrtwo                # Danny Ryan
+  - dapplion              # Lion
+eip7441:
+  - dapplion              # Dapplion
+  - asn-d6                # George Kadianakis
+  - JustinDrake           # Justin Drake
+eip7495:
+  - wemeetagain           # Cayman Nava
+  - etan-status           # Etan Kissling
+eip7594:
+  - ralexstokes           # Alex Stokes
+  - dankrad               # Dankrad Feist
+  - djrtwo                # Danny Ryan
+  - fradamt               # Francesco D'Amato
+  - hwwhww                # Hsiao-Wei Wang
+eip7732:
+  - barnabemonnot         # Barnabé Monnot
+  - fradamt               # Francesco D'Amato
+  - michaelneuder         # Michael Neuder
+  - potuz                 # Potuz
+  - terencechain          # Terence Tsao
+eip7782:
+  - benaadams             # Ben Adams
+  - dankrad               # Dankrad Feist
+  - misilva73             # Maria Inês Silva
+  - rolfyone              # Paul Harris
+eip7805:
+  - barnabemonnot         # Barnabé Monnot
+  - fradamt               # Francesco D'Amato
+  - jacobkaufmann         # Jacob Kaufmann
+  - jihoonsong            # Jihoon Song
+  - Ma-Julian             # Julian Ma
+  - terencechain          # Terence Tsao
+  - soispoke              # Thomas Thiery
+eip7916:
+  - wemeetagain           # Cayman Nava
+  - etan-status           # Etan Kissling
+  - zsfelfoldi            # Zsolt Felföldi
+eip7928:
+  - dankrad               # Dankrad Feist
+  - fradamt               # Francesco D'Amato
+  - jsign                 # Ignacio Hagopian
+  - jochem-brouwer        # Jochem Brouwer
+  - nerolation            # Toni Wahrstätter
+eip8025:
+  - JustinDrake           # Justin Drake
+  - kevaundray            # Kevaundray Wedderburn
