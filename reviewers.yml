@@ -22,7 +22,9 @@ forkchoice:
   - potuz                 # Potuz
   - saltiniroberto        # Roberto Saltini
 lightclients:
+  - Inspector-Butters     # Bastin
   - etan-status           # Etan Kissling
+  - rkapka                # Radosław Kapka
 networking:
   - AgeManning            # Age Manning
   - Nashatyrev            # Anton Nashatyrev
