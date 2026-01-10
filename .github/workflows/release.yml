@@ -41,6 +41,7 @@ jobs:
           name: ${{ steps.tag.outputs.name }}
           tag: ${{ steps.tag.outputs.name }}
           commitish: ${{ github.sha }}
+          prerelease: ${{ contains(steps.tag.outputs.name, '-') }}
           publish: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -98,8 +99,7 @@ jobs:
             consensus-spec-tests/general.tar.gz \
             consensus-spec-tests/minimal.tar.gz \
             consensus-spec-tests/mainnet.tar.gz
-          prerelease=$([[ "$tag" == *-* ]] && echo "--prerelease" || echo "")
-          gh release edit "$tag" --draft=false $prerelease
+          gh release edit "$tag" --draft=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
