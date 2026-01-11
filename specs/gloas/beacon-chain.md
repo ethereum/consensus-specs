@@ -173,14 +173,6 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 | ------------------------------------ | ------------------ |
 | `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` | `2**14` (= 16,384) |
 
-## Configuration
-
-### Time parameters
-
-| Name                                | Value                     |  Unit  | Duration |
-| ----------------------------------- | ------------------------- | :----: | :------: |
-| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `uint64(2**12)` (= 4,096) | epochs | ~18 days |
-
 ## Containers
 
 ### New containers
@@ -751,7 +743,7 @@ def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> No
         return
 
     # Set builder exit epoch
-    builder.withdrawable_epoch = get_current_epoch(state) + MIN_BUILDER_WITHDRAWABILITY_DELAY
+    builder.withdrawable_epoch = get_current_epoch(state)
 ```
 
 ## Beacon chain state transition function
