@@ -84,7 +84,7 @@ class ZKEVMProof(Container):
 
 ```python
 class PrivateInput(Container):
-    execution_payload: ExecutionPayload
+    new_payload_request: NewPayloadRequest
     execution_witness: ZKExecutionWitness
 ```
 
@@ -92,8 +92,7 @@ class PrivateInput(Container):
 
 ```python
 class PublicInput(Container):
-    block_hash: Hash32
-    parent_hash: Hash32
+    new_payload_request_root: Root  # hash_tree_root(NewPayloadRequest)
 ```
 
 ## Helpers
@@ -155,10 +154,10 @@ def generate_execution_proof_impl(
     public_inputs: PublicInput,
 ) -> ZKEVMProof:
     """
-    Generate a zkEVM execution proof using the proving key, private inputs and public inputs
+    Generate a zkEVM execution proof using the proving key, private inputs and public inputs.
     """
     proof_data = hash(
-        public_inputs.block_hash + public_inputs.parent_hash + proof_id.to_bytes(1, "little")
+        public_inputs.new_payload_request_root + proof_id.to_bytes(1, "little")
     )
 
     return ZKEVMProof(
@@ -180,17 +179,12 @@ def generate_proving_key(program_bytecode: ProgramBytecode, proof_id: ProofID) -
 
 ```python
 def verify_zkevm_proof(
-    zk_proof: ZKEVMProof, parent_hash: Hash32, block_hash: Hash32, program_bytecode: ProgramBytecode
+    zk_proof: ZKEVMProof,
+    program_bytecode: ProgramBytecode,
 ) -> bool:
     """
-    Public method to verify a zkEVM execution proof against block hashes.
+    Public method to verify a zkEVM execution proof against NewPayloadRequest root.
     """
-    # Validate that public inputs match the provided parent and current block hash
-    if zk_proof.public_inputs.block_hash != block_hash:
-        return False
-    if zk_proof.public_inputs.parent_hash != parent_hash:
-        return False
-
     _, verification_key = generate_keys(program_bytecode, zk_proof.proof_type)
 
     return verify_execution_proof_impl(zk_proof, verification_key)
@@ -200,21 +194,21 @@ def verify_zkevm_proof(
 
 ```python
 def generate_zkevm_proof(
-    execution_payload: ExecutionPayload,
+    new_payload_request: NewPayloadRequest,
     execution_witness: ZKExecutionWitness,
     program_bytecode: ProgramBytecode,
     proof_id: ProofID,
 ) -> Optional[ZKEVMProof]:
     """
-    Public method to generate an execution proof for a payload.
+    Public method to generate an execution proof for a NewPayloadRequest.
     """
     proving_key, _ = generate_keys(program_bytecode, proof_id)
 
     public_inputs = PublicInput(
-        block_hash=execution_payload.block_hash, parent_hash=execution_payload.parent_hash
+        new_payload_request_root=hash_tree_root(new_payload_request)
     )
     private_input = PrivateInput(
-        execution_payload=execution_payload, execution_witness=execution_witness
+        new_payload_request=new_payload_request, execution_witness=execution_witness
     )
 
     return generate_execution_proof_impl(private_input, proving_key, proof_id, public_inputs)
