@@ -14,16 +14,21 @@
 - [Configuration](#configuration)
 - [Containers](#containers)
   - [New containers](#new-containers)
-    - [`ExecutionProof`](#executionproof)
     - [`SignedExecutionProof`](#signedexecutionproof)
+    - [`NewPayloadRequestHeader`](#newpayloadrequestheader)
+    - [`ExecutionPayloadHeaderEnvelope`](#executionpayloadheaderenvelope)
+    - [`SignedExecutionPayloadHeaderEnvelope`](#signedexecutionpayloadheaderenvelope)
+    - [`ExecutionProofStoreEntry`](#executionproofstoreentry)
   - [Extended Containers](#extended-containers)
+    - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
   - [Execution proof functions](#execution-proof-functions)
-    - [`verify_execution_proof`](#verify_execution_proof)
     - [`verify_execution_proofs`](#verify_execution_proofs)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution payload processing](#execution-payload-processing)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
+  - [Execution proof handlers](#execution-proof-handlers)
+    - [New `process_signed_execution_proof`](#new-process_signed_execution_proof)
 
 <!-- mdformat-toc end -->
 
@@ -32,7 +37,7 @@
 This document contains the consensus specs for EIP-8025. This enables stateless
 validation of execution payloads through cryptographic proofs.
 
-*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md).
+*Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
 
 *Note*: This specification assumes the reader is familiar with the
 [public zkEVM methods exposed](./zkevm.md).
@@ -60,86 +65,107 @@ validation of execution payloads through cryptographic proofs.
 | ------------------------------- | ----------- |
 | `MIN_REQUIRED_EXECUTION_PROOFS` | `uint64(1)` |
 
+```python
+WHITELISTED_PROVERS: List[BLSPubkey] = [
+    # List of allowed prover public keys
+]
+```
+
 ## Containers
 
 ### New containers
-
-#### `ExecutionProof`
-
-```python
-class ExecutionProof(Container):
-    beacon_root: Root
-    zk_proof: ZKEVMProof
-    validator_index: ValidatorIndex
-```
 
 #### `SignedExecutionProof`
 
 ```python
 class SignedExecutionProof(Container):
     message: ExecutionProof
+    prover_id: Union[BuilderIndex, BLSPubkey]
     signature: BLSSignature
+```
+
+#### `NewPayloadRequestHeader`
+
+```python
+@dataclass
+class NewPayloadRequestHeader(object):
+    execution_payload_header: ExecutionPayloadHeader
+    versioned_hashes: Sequence[VersionedHash]
+    parent_beacon_block_root: Root
+    execution_requests: ExecutionRequests
+```
+
+#### `ExecutionPayloadHeaderEnvelope`
+
+```python
+class ExecutionPayloadHeaderEnvelope(Container):
+    payload: ExecutionPayloadHeader
+    execution_requests: ExecutionRequests
+    builder_index: BuilderIndex
+    beacon_block_root: Root
+    slot: Slot
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    state_root: Root
+```
+
+#### `SignedExecutionPayloadHeaderEnvelope`
+
+```python
+class SignedExecutionPayloadHeaderEnvelope(Container):
+    message: ExecutionPayloadHeaderEnvelope
+    signature: BLSSignature
+```
+
+#### `ExecutionProofStoreEntry`
+
+```python
+class ExecutionProofStoreEntry(Container):
+    header: Optional[NewPayloadRequestHeader]
+    proofs: List[SignedExecutionProof, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
 ```
 
 ### Extended Containers
 
-*Note*: `BeaconState` and `BeaconBlockBody` remain the same. No modifications
-are required for execution proofs since they are handled externally.
+#### `BeaconState`
+
+```python
+class BeaconState(Container):
+    # ... existing fields ...
+    # [New in EIP-8025]
+    execution_proof_store: Map[Root, ExecutionProofStoreEntry]
+```
+
+*Note*: `BeaconBlockBody` remains unchanged.
 
 ## Helpers
 
 ### Execution proof functions
 
-#### `verify_execution_proof`
-
-```python
-def verify_execution_proof(
-    signed_proof: SignedExecutionProof,
-    parent_hash: Hash32,
-    block_hash: Hash32,
-    state: BeaconState,
-    el_program: ProgramBytecode,
-) -> bool:
-    """
-    Verify an execution proof against a payload header using zkEVM verification.
-    """
-
-    # Note: signed_proof.message.beacon_root verification will be done at a higher level
-
-    # Verify the validator signature
-    proof_message = signed_proof.message
-    validator = state.validators[proof_message.validator_index]
-    signing_root = compute_signing_root(proof_message, get_domain(state, DOMAIN_EXECUTION_PROOF))
-    if not bls.Verify(validator.pubkey, signing_root, signed_proof.signature):
-        return False
-
-    # Derive program bytecode from the EL program identifier and proof type
-    program_bytecode = ProgramBytecode(
-        el_program + proof_message.zk_proof.proof_type.to_bytes(1, "little")
-    )
-
-    return verify_zkevm_proof(proof_message.zk_proof, parent_hash, block_hash, program_bytecode)
-```
-
 #### `verify_execution_proofs`
 
 ```python
-def verify_execution_proofs(parent_hash: Hash32, block_hash: Hash32, state: BeaconState) -> bool:
+def verify_execution_proofs(
+    state: BeaconState,
+    new_payload_request_header: NewPayloadRequestHeader,
+) -> bool:
     """
-    Verify that execution proofs are available and valid for an execution payload.
+    Verify that execution proofs are available for an execution payload.
+    Sets the header in the store entry to mark it as received.
     """
-    # `retrieve_execution_proofs` is implementation and context dependent.
-    # It returns all execution proofs for the given payload block hash.
-    signed_execution_proofs = retrieve_execution_proofs(block_hash)
+    new_payload_request_root = hash_tree_root(new_payload_request_header)
+
+    if new_payload_request_root not in state.execution_proof_store:
+        state.execution_proof_store[new_payload_request_root] = ExecutionProofStoreEntry(
+            header=new_payload_request_header,
+            proofs=[],
+        )
+    else:
+        # Set header (proofs were pending)
+        state.execution_proof_store[new_payload_request_root].header = new_payload_request_header
 
     # Verify there are sufficient proofs
-    if len(signed_execution_proofs) < MIN_REQUIRED_EXECUTION_PROOFS:
+    if len(state.execution_proof_store[new_payload_request_root].proofs) < MIN_REQUIRED_EXECUTION_PROOFS:
         return False
-
-    # Verify all execution proofs
-    for signed_proof in signed_execution_proofs:
-        if not verify_execution_proof(signed_proof, parent_hash, block_hash, state, PROGRAM):
-            return False
 
     return True
 ```
@@ -153,64 +179,160 @@ def verify_execution_proofs(parent_hash: Hash32, block_hash: Hash32, state: Beac
 ```python
 def process_execution_payload(
     state: BeaconState,
-    body: BeaconBlockBody,
+    # [Modified in EIP-8025]
+    # Accept either full envelope or header-only envelope
+    signed_envelope: Union[SignedExecutionPayloadEnvelope, SignedExecutionPayloadHeaderEnvelope],
     execution_engine: ExecutionEngine,
-    stateless_validation: bool = False,
+    verify: bool = True,
 ) -> None:
     """
-    Note: This function is modified to support optional stateless validation with execution proofs.
+    Process an execution payload envelope or header.
+    When a header is provided, validation uses execution proofs.
     """
-    payload = body.execution_payload
 
-    # Verify consistency of the parent hash with respect to the previous execution payload header
-    assert payload.parent_hash == state.latest_execution_payload_header.block_hash
-    # Verify prev_randao
-    assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
+    envelope = signed_envelope.message
+    payload = envelope.payload
+
+    # Verify signature
+    if verify:
+        assert verify_execution_payload_envelope_signature(state, signed_envelope)
+
+    # Cache latest block header state root
+    previous_state_root = hash_tree_root(state)
+    if state.latest_block_header.state_root == Root():
+        state.latest_block_header.state_root = previous_state_root
+
+    # Verify consistency with the beacon block
+    assert envelope.beacon_block_root == hash_tree_root(state.latest_block_header)
+    assert envelope.slot == state.slot
+
+    # Verify consistency with the committed bid
+    committed_bid = state.latest_execution_payload_bid
+    assert envelope.builder_index == committed_bid.builder_index
+    assert committed_bid.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
+    assert committed_bid.prev_randao == payload.prev_randao
+
+    # Verify consistency with expected withdrawals
+    assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
+
+    # Verify the gas_limit
+    assert committed_bid.gas_limit == payload.gas_limit
+    # Verify the block hash
+    assert committed_bid.block_hash == payload.block_hash
+    # Verify consistency of the parent hash with respect to the previous execution payload
+    assert payload.parent_hash == state.latest_block_hash
     # Verify timestamp
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
     # Verify commitments are under limit
     assert (
-        len(body.blob_kzg_commitments)
+        len(envelope.blob_kzg_commitments)
         <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
     )
+    # Verify the execution payload is valid
+    versioned_hashes = [
+        kzg_commitment_to_versioned_hash(commitment) for commitment in envelope.blob_kzg_commitments
+    ]
+    requests = envelope.execution_requests
 
-    if stateless_validation:
-        # Stateless validation using execution proofs
-        assert verify_execution_proofs(payload.parent_hash, payload.block_hash, state)
+    if isinstance(signed_envelope, SignedExecutionPayloadHeaderEnvelope):
+        # Header-only validation using execution proofs
+        new_payload_request_header = NewPayloadRequestHeader(
+            execution_payload_header=payload,
+            versioned_hashes=versioned_hashes,
+            parent_beacon_block_root=state.latest_block_header.parent_root,
+            execution_requests=requests,
+        )
+        assert verify_execution_proofs(state, new_payload_request_header)
     else:
-        # Compute list of versioned hashes
-        versioned_hashes = [
-            kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
-        ]
-
-        # Verify the execution payload is valid
+        # Full payload validation via ExecutionEngine
         assert execution_engine.verify_and_notify_new_payload(
             NewPayloadRequest(
                 execution_payload=payload,
                 versioned_hashes=versioned_hashes,
                 parent_beacon_block_root=state.latest_block_header.parent_root,
-                execution_requests=body.execution_requests,
+                execution_requests=requests,
             )
         )
 
-    # Cache execution payload header
-    state.latest_execution_payload_header = ExecutionPayloadHeader(
-        parent_hash=payload.parent_hash,
-        fee_recipient=payload.fee_recipient,
-        state_root=payload.state_root,
-        receipts_root=payload.receipts_root,
-        logs_bloom=payload.logs_bloom,
-        prev_randao=payload.prev_randao,
-        block_number=payload.block_number,
-        gas_limit=payload.gas_limit,
-        gas_used=payload.gas_used,
-        timestamp=payload.timestamp,
-        extra_data=payload.extra_data,
-        base_fee_per_gas=payload.base_fee_per_gas,
-        block_hash=payload.block_hash,
-        transactions_root=hash_tree_root(payload.transactions),
-        withdrawals_root=hash_tree_root(payload.withdrawals),
-        blob_gas_used=payload.blob_gas_used,
-        excess_blob_gas=payload.excess_blob_gas,
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(requests.deposits, process_deposit_request)
+    for_ops(requests.withdrawals, process_withdrawal_request)
+    for_ops(requests.consolidations, process_consolidation_request)
+
+    # Queue the builder payment
+    payment = state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH]
+    amount = payment.withdrawal.amount
+    if amount > 0:
+        state.builder_pending_withdrawals.append(payment.withdrawal)
+    state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH] = (
+        BuilderPendingPayment()
     )
+
+    # Cache the execution payload hash
+    state.execution_payload_availability[state.slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
+    state.latest_block_hash = payload.block_hash
+
+    # Verify the state root
+    if verify:
+        assert envelope.state_root == hash_tree_root(state)
+```
+
+### Execution proof handlers
+
+#### New `process_signed_execution_proof`
+
+```python
+def process_signed_execution_proof(
+    state: BeaconState,
+    signed_proof: SignedExecutionProof,
+) -> None:
+    """
+    Handler for SignedExecutionProof.
+    Supports both builders (via BuilderIndex) and provers (via BLSPubkey).
+    """
+    proof_message = signed_proof.message
+    prover_id = signed_proof.prover_id
+
+    # Determine pubkey based on prover_id type
+    if isinstance(prover_id, BLSPubkey):
+        # Prover path - verify whitelist
+        assert prover_id in WHITELISTED_PROVERS
+        pubkey = prover_id
+    else:
+        # Builder path
+        if prover_id == BUILDER_INDEX_SELF_BUILD:
+            validator_index = state.latest_block_header.proposer_index
+            pubkey = state.validators[validator_index].pubkey
+        else:
+            pubkey = state.builders[prover_id].pubkey
+
+    domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
+    signing_root = compute_signing_root(proof_message, domain)
+    assert bls.Verify(pubkey, signing_root, signed_proof.signature)
+
+    # Verify the execution proof
+    program_bytecode = ProgramBytecode(PROGRAM + proof_message.proof_type.to_bytes(1, "little"))
+    assert verify_execution_proof(proof_message, program_bytecode)
+
+    # Store proof in execution_proof_store
+    new_payload_request_root = proof_message.public_inputs.new_payload_request_root
+
+    if new_payload_request_root not in state.execution_proof_store:
+        # Header not yet received, create entry with header=None
+        state.execution_proof_store[new_payload_request_root] = ExecutionProofStoreEntry(
+            header=None,
+            proofs=[signed_proof],
+        )
+    else:
+        # Entry exists, append proof
+        state.execution_proof_store[new_payload_request_root].proofs.append(signed_proof)
+
+    entry = state.execution_proof_store[new_payload_request_root]
+
+    # Mark payload as available if header received and sufficient proofs gathered
+    if entry.header is not None and len(entry.proofs) >= MIN_REQUIRED_EXECUTION_PROOFS:
+        state.execution_payload_availability[state.slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
 ```
