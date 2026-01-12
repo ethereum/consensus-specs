@@ -164,7 +164,7 @@ def test_basic_is_parent_root(spec, state):
     assert single_slot_reorg
 
     assert spec.is_head_weak(store, head_root)
-    assert spec.is_parent_strong(store, parent_root)
+    assert spec.is_parent_strong(store, head_root)
 
     proposer_head = spec.get_proposer_head(store, head_root, state.slot)
     assert proposer_head == parent_root

@@ -474,7 +474,7 @@ value. Parsers may ignore additional JSON fields.
 | `ProgressiveList[byte]`               | hex-byte-string | `"0x1122"`                               |
 | `Bitlist[N]`                          | hex-byte-string | `"0x1122"`                               |
 | `ProgressiveBitlist`                  | hex-byte-string | `"0x1122"`                               |
-| `Union[type_0, type_1, ...]`          | selector-object | `{ "selector": number, "data": type_N }` |
+| `Union[type_0, type_1, ...]`          | selector-object | `{ "selector": string, "data": type_N }` |
 | `CompatibleUnion({selector: type})`   | selector-object | `{ "selector": string, "data": type }`   |
 
 Integers are encoded as strings to avoid loss of precision in 64-bit values.

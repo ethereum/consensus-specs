@@ -9,12 +9,12 @@
   - [Protocol Negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
-  - [Helper functions](#helper-functions)
-    - [`compute_fork_version`](#compute_fork_version)
-    - [`compute_fork_digest`](#compute_fork_digest)
   - [Custom types](#custom-types)
   - [Constants](#constants)
   - [Configuration](#configuration)
+  - [Helpers](#helpers)
+    - [`compute_fork_version`](#compute_fork_version)
+    - [`compute_fork_digest`](#compute_fork_digest)
   - [MetaData](#metadata)
   - [Maximum message sizes](#maximum-message-sizes)
     - [`max_compressed_len`](#max_compressed_len)
@@ -196,36 +196,6 @@ the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
 ## Consensus-layer network interaction domains
 
-### Helper functions
-
-#### `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    return GENESIS_FORK_VERSION
-```
-
-#### `compute_fork_digest`
-
-```python
-def compute_fork_digest(
-    genesis_validators_root: Root,
-    epoch: Epoch,
-) -> ForkDigest:
-    """
-    Return the 4-byte fork digest for the ``genesis_validators_root`` at a given ``epoch``.
-
-    This is a digest primarily used for domain separation on the p2p layer.
-    4-bytes suffices for practical separation of forks/chains.
-    """
-    fork_version = compute_fork_version(epoch)
-    base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
-    return ForkDigest(base_digest[:4])
-```
-
 ### Custom types
 
 We define the following Python custom types for type hinting and readability:
@@ -260,6 +230,36 @@ This section outlines configurations that are used in this spec.
 | `ATTESTATION_SUBNET_EXTRA_BITS`      | `0`                                                                                    | The number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
 | `ATTESTATION_SUBNET_PREFIX_BITS`     | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)`              |                                                                                       |
 | `MAX_CONCURRENT_REQUESTS`            | `2`                                                                                    | Maximum number of concurrent requests per protocol ID that a client may issue         |
+
+### Helpers
+
+#### `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    return GENESIS_FORK_VERSION
+```
+
+#### `compute_fork_digest`
+
+```python
+def compute_fork_digest(
+    genesis_validators_root: Root,
+    epoch: Epoch,
+) -> ForkDigest:
+    """
+    Return the 4-byte fork digest for the ``genesis_validators_root`` at a given ``epoch``.
+
+    This is a digest primarily used for domain separation on the p2p layer.
+    4-bytes suffices for practical separation of forks/chains.
+    """
+    fork_version = compute_fork_version(epoch)
+    base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
+    return ForkDigest(base_digest[:4])
+```
 
 ### MetaData
 
@@ -474,7 +474,7 @@ We define the following variables for convenience:
 - `aggregate_and_proof = signed_aggregate_and_proof.message`
 - `aggregate = aggregate_and_proof.aggregate`
 - `index = aggregate.data.index`
-- `aggregation_bits = attestation.aggregation_bits`
+- `aggregation_bits = aggregate.aggregation_bits`
 
 The following validations MUST pass before forwarding the
 `signed_aggregate_and_proof` on the network.

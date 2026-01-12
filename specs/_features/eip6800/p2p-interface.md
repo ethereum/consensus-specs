@@ -6,7 +6,7 @@
 
 - [Introduction](#introduction)
 - [Modification in EIP-6800](#modification-in-eip-6800)
-  - [Helper functions](#helper-functions)
+  - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
 
 <!-- mdformat-toc end -->
@@ -21,7 +21,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modification in EIP-6800
 
-### Helper functions
+### Helpers
 
 #### Modified `compute_fork_version`
 
