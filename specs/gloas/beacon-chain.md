@@ -867,7 +867,7 @@ def get_builder_withdrawals(
     withdrawals: List[Withdrawal] = []
     for withdrawal in state.builder_pending_withdrawals:
         all_withdrawals = prior_withdrawals + withdrawals
-        has_reached_limit = len(all_withdrawals) == withdrawals_limit
+        has_reached_limit = len(all_withdrawals) >= withdrawals_limit
         if has_reached_limit:
             break
 
@@ -903,7 +903,7 @@ def get_builders_sweep_withdrawals(
     builder_index = state.next_withdrawal_builder_index
     for _ in range(builders_limit):
         all_withdrawals = prior_withdrawals + withdrawals
-        has_reached_limit = len(all_withdrawals) == withdrawals_limit
+        has_reached_limit = len(all_withdrawals) >= withdrawals_limit
         if has_reached_limit:
             break
 

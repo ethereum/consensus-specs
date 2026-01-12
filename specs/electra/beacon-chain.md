@@ -1240,7 +1240,7 @@ def get_pending_partial_withdrawals(
     for withdrawal in state.pending_partial_withdrawals:
         all_withdrawals = prior_withdrawals + withdrawals
         is_withdrawable = withdrawal.withdrawable_epoch <= epoch
-        has_reached_limit = len(all_withdrawals) == withdrawals_limit
+        has_reached_limit = len(all_withdrawals) >= withdrawals_limit
         if not is_withdrawable or has_reached_limit:
             break
 
@@ -1284,7 +1284,7 @@ def get_validators_sweep_withdrawals(
     validator_index = state.next_withdrawal_validator_index
     for _ in range(validators_limit):
         all_withdrawals = prior_withdrawals + withdrawals
-        has_reached_limit = len(all_withdrawals) == withdrawals_limit
+        has_reached_limit = len(all_withdrawals) >= withdrawals_limit
         if has_reached_limit:
             break
 
