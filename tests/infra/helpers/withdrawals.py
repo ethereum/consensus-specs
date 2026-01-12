@@ -29,12 +29,17 @@ def prepare_process_withdrawals(
     full_withdrawal_indices=[],
     partial_withdrawal_indices=[],
     builder_withdrawal_amounts=None,
+    builder_balances=None,
+    builder_execution_addresses=None,
     pending_partial_amounts=None,
     partial_excess_balances=None,
-    builder_withdrawable_offsets=None,
     pending_partial_withdrawable_offsets=None,
     full_withdrawable_offsets=None,
-    builder_credentials=None,
+    validator_balances=None,
+    validator_effective_balances=None,
+    validator_activation_epoch_offsets=None,
+    validator_exit_epoch_offsets=None,
+    next_withdrawal_validator_index=None,
     parent_block_full=True,
     parent_block_empty=False,
 ):
@@ -44,24 +49,35 @@ def prepare_process_withdrawals(
     Args:
         spec: The spec object
         state: The beacon state to modify
-        builder_indices: List of validator indices to add builder pending withdrawals for
+        builder_indices: List of builder indices (BuilderIndex) to add builder pending withdrawals for.
+                        Builders must already exist in state.builders registry.
         pending_partial_indices: List of validator indices to set up with pending partial withdrawals
         full_withdrawal_indices: List of validator indices to set up as fully withdrawable
         partial_withdrawal_indices: List of validator indices to set up as partially withdrawable
-        builder_withdrawal_amounts: Single amount or dict[ValidatorIndex, Gwei] for builder withdrawals
+        builder_withdrawal_amounts: Single amount or dict[BuilderIndex, Gwei] for builder withdrawals
                                     (default: MIN_ACTIVATION_BALANCE for each)
+        builder_balances: Single balance or dict[BuilderIndex, Gwei] to set builder balances.
+                         Applied before adding builder pending withdrawals.
+        builder_execution_addresses: dict[BuilderIndex, ExecutionAddress] to set builder execution addresses.
+                                    Applied before adding builder pending withdrawals.
         pending_partial_amounts: Single amount or dict[ValidatorIndex, Gwei] for pending partial withdrawals
                                  (default: 1_000_000_000 for each)
         partial_excess_balances: Single amount or dict[ValidatorIndex, Gwei] for partial withdrawals
                                  (default: 1_000_000_000 for each)
-        builder_withdrawable_offsets: Single offset or dict[ValidatorIndex, int] for builder withdrawals
-                                      (default: 0, i.e., withdrawable immediately)
         pending_partial_withdrawable_offsets: Single offset or dict[ValidatorIndex, int] for pending partial
                                              withdrawals (default: 0, i.e., withdrawable immediately)
         full_withdrawable_offsets: Single offset or dict[ValidatorIndex, int] for full withdrawals
                                   (default: 0, i.e., withdrawable immediately)
-        builder_credentials: List of validator indices to set builder withdrawal credentials on
-                            (default: None, which uses builder_indices)
+        validator_balances: dict[ValidatorIndex, Gwei] to set validator balances.
+                           Applied AFTER withdrawal setup (allows overriding for edge case tests).
+        validator_effective_balances: dict[ValidatorIndex, Gwei] to set validator effective balances.
+                                     Applied AFTER withdrawal setup (allows overriding for edge case tests).
+        validator_activation_epoch_offsets: dict[ValidatorIndex, int] to set activation_epoch = current_epoch + offset.
+                                           Applied at the start before any withdrawal setup.
+        validator_exit_epoch_offsets: dict[ValidatorIndex, int] to set exit_epoch = current_epoch + offset.
+                                     Applied at the start before any withdrawal setup.
+        next_withdrawal_validator_index: ValidatorIndex to set state.next_withdrawal_validator_index.
+                                        Applied at the start before any withdrawal setup.
         parent_block_full: If True, set state to indicate parent block was full (default: True)
         parent_block_empty: If True, set state to indicate parent block was empty (default: False)
                            Takes precedence over parent_block_full if both are True
@@ -73,10 +89,25 @@ def prepare_process_withdrawals(
         elif parent_block_full:
             set_parent_block_full(spec, state)
 
+    # Set next_withdrawal_validator_index if provided
+    if next_withdrawal_validator_index is not None:
+        state.next_withdrawal_validator_index = next_withdrawal_validator_index
+
+    # Set validator activation epoch offsets if provided (before withdrawal setup)
+    if validator_activation_epoch_offsets is not None:
+        current_epoch = spec.get_current_epoch(state)
+        for validator_index, offset in validator_activation_epoch_offsets.items():
+            state.validators[validator_index].activation_epoch = current_epoch + offset
+
+    # Set validator exit epoch offsets if provided (before withdrawal setup)
+    if validator_exit_epoch_offsets is not None:
+        current_epoch = spec.get_current_epoch(state)
+        for validator_index, offset in validator_exit_epoch_offsets.items():
+            state.validators[validator_index].exit_epoch = current_epoch + offset
+
     # Import here to avoid circular imports
     from tests.core.pyspec.eth2spec.test.helpers.withdrawals import (  # noqa: PLC0415
         prepare_pending_withdrawal,
-        set_builder_withdrawal_credential,
         set_validator_fully_withdrawable,
         set_validator_partially_withdrawable,
     )
@@ -84,56 +115,51 @@ def prepare_process_withdrawals(
     current_epoch = spec.get_current_epoch(state)
 
     # Helper to get parameter value from single value, dict, or None
-    def get_param_value(param, validator_index, default):
+    def get_param_value(param, index, default):
         """
         Extract a value from a parameter that can be:
         - None: returns the default value
-        - A single value (int/Gwei): returns that value for all validator indices
-        - A dict: returns the value for the given validator_index (or default if not present)
+        - A single value (int/Gwei): returns that value for all indices
+        - A dict: returns the value for the given index (or default if not present)
         """
         if param is None:
             return default
         if isinstance(param, (int, type(spec.Gwei(0)))):
             return param
-        return param.get(validator_index, default)
-
-    # Set builder withdrawal credentials (Gloas+)
-    if is_post_gloas(spec):
-        credentials_indices = (
-            builder_credentials if builder_credentials is not None else builder_indices
-        )
-        for validator_index in credentials_indices:
-            set_builder_withdrawal_credential(spec, state, validator_index)
+        return param.get(index, default)
 
     # Set up builder pending withdrawals (Gloas+)
     if is_post_gloas(spec) and builder_indices:
-        for validator_index in builder_indices:
+        for builder_index in builder_indices:
             amount = get_param_value(
-                builder_withdrawal_amounts, validator_index, spec.MIN_ACTIVATION_BALANCE
-            )
-            epoch_offset = get_param_value(builder_withdrawable_offsets, validator_index, 0)
-
-            # Verify the validator is already set up as a builder
-            validator = state.validators[validator_index]
-            assert spec.has_builder_withdrawal_credential(validator), (
-                f"Validator {validator_index} must have builder withdrawal credentials. "
-                f"Use set_builder_withdrawal_credential() or set_builder_withdrawal_credential_with_balance() first."
+                builder_withdrawal_amounts, builder_index, spec.MIN_ACTIVATION_BALANCE
             )
 
-            # Verify the builder has sufficient balance
-            assert state.balances[validator_index] >= amount + spec.MIN_ACTIVATION_BALANCE, (
-                f"Validator {validator_index} needs balance >= {amount + spec.MIN_ACTIVATION_BALANCE}, "
-                f"but has {state.balances[validator_index]}"
+            # Verify the builder exists in registry
+            assert builder_index < len(state.builders), (
+                f"Builder {builder_index} does not exist in state.builders registry"
             )
+
+            builder = state.builders[builder_index]
+
+            # Set builder balance if provided
+            if builder_balances is not None:
+                balance = get_param_value(builder_balances, builder_index, None)
+                if balance is not None:
+                    builder.balance = balance
+
+            # Set builder execution address if provided
+            if builder_execution_addresses is not None:
+                address = builder_execution_addresses.get(builder_index)
+                if address is not None:
+                    builder.execution_address = spec.ExecutionAddress(address)
 
             # Add builder pending withdrawal
-            address = validator.withdrawal_credentials[12:]
             state.builder_pending_withdrawals.append(
                 spec.BuilderPendingWithdrawal(
-                    fee_recipient=address,
+                    fee_recipient=builder.execution_address,
                     amount=amount,
-                    builder_index=validator_index,
-                    withdrawable_epoch=current_epoch + epoch_offset,  # Can be in the future
+                    builder_index=builder_index,
                 )
             )
 
@@ -148,7 +174,7 @@ def prepare_process_withdrawals(
                 state,
                 validator_index,
                 amount=amount,
-                withdrawable_epoch=current_epoch + epoch_offset,  # Can be in the future
+                withdrawable_epoch=current_epoch + epoch_offset,
             )
 
     # Set up full withdrawals
@@ -172,6 +198,16 @@ def prepare_process_withdrawals(
             excess_balance=excess_balance,
         )
 
+    # Apply validator balance overrides AFTER withdrawal setup (allows tests to set edge cases)
+    if validator_balances is not None:
+        for validator_index, balance in validator_balances.items():
+            state.balances[validator_index] = balance
+
+    # Apply validator effective balance overrides AFTER withdrawal setup
+    if validator_effective_balances is not None:
+        for validator_index, effective_balance in validator_effective_balances.items():
+            state.validators[validator_index].effective_balance = effective_balance
+
 
 def assert_process_withdrawals(
     spec,
@@ -180,13 +216,17 @@ def assert_process_withdrawals(
     withdrawal_count=None,
     balances=None,
     balance_deltas=None,
+    builder_balances=None,
+    builder_balance_deltas=None,
     builder_pending_delta=None,
     pending_partial_delta=None,
     withdrawal_index_delta=None,
     validator_index_delta=None,
     withdrawal_order=None,
     withdrawal_amounts=None,
+    withdrawal_amounts_builders=None,
     withdrawal_addresses=None,
+    withdrawal_addresses_builders=None,
     no_withdrawal_indices=None,
     all_state_unchanged=None,
 ):
@@ -197,12 +237,18 @@ def assert_process_withdrawals(
     - Balance decreases match withdrawal amounts for ALL withdrawals
     - state.payload_expected_withdrawals matches spec.get_expected_withdrawals()
     - Queue lengths never increase inappropriately
+    - Withdrawal indices are sequential from pre_state.next_withdrawal_index
+    - next_withdrawal_validator_index advances per spec rules (conditional on full/partial payload)
+    - Post-state expected withdrawals differ from pre-state (when withdrawals > 0)
+    - Post-state expected withdrawals count is bounded
 
     TEST-SPECIFIC CHECKS (controlled by parameters):
     - withdrawal_count: Exact number of withdrawals
     - balances/balance_deltas: Specific validator balance checks
+    - builder_balances/builder_balance_deltas: Specific builder balance checks
     - builder_pending_delta/pending_partial_delta: Exact queue changes
-    - withdrawal_index_delta/validator_index_delta: Index advancement
+    - withdrawal_index_delta/validator_index_delta: Index advancement (note: validator_index_delta
+      is now redundant with invariant check but kept for backward compatibility)
     - withdrawal_order/amounts/addresses: Withdrawal content verification
 
     Naming convention:
@@ -219,27 +265,84 @@ def assert_process_withdrawals(
         return
 
     # Get expected withdrawals for invariant checks
-    expected_withdrawals, _, _ = spec.get_expected_withdrawals(pre_state)
+    expected_result = spec.get_expected_withdrawals(pre_state)
+    expected_withdrawals = expected_result.withdrawals
     withdrawals = list(state.payload_expected_withdrawals)
 
     # INVARIANT: Verify payload_expected_withdrawals matches expected
-    expected_list = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](expected_withdrawals)
-    assert list(withdrawals) == list(expected_list), \
+    expected_list = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](
+        expected_withdrawals
+    )
+    assert list(withdrawals) == list(expected_list), (
         "state.payload_expected_withdrawals must match spec.get_expected_withdrawals()"
+    )
 
     # INVARIANT: Balance decreases for all withdrawals
     for withdrawal in expected_withdrawals:
         validator_index = withdrawal.validator_index
-        pre_balance = pre_state.balances[validator_index]
-        post_balance = state.balances[validator_index]
-        assert post_balance == pre_balance - withdrawal.amount, \
-            f"Validator {validator_index} balance must decrease by withdrawal amount"
+        if is_post_gloas(spec) and spec.is_builder_index(validator_index):
+            builder_index = spec.convert_validator_index_to_builder_index(validator_index)
+            pre_balance = pre_state.builders[builder_index].balance
+            post_balance = state.builders[builder_index].balance
+            # Builder withdrawals cap at available balance (spec uses min())
+            expected_deduction = min(withdrawal.amount, pre_balance)
+        else:
+            pre_balance = pre_state.balances[validator_index]
+            post_balance = state.balances[validator_index]
+            expected_deduction = withdrawal.amount
+        assert post_balance == pre_balance - expected_deduction, (
+            f"Index {validator_index} balance must decrease by withdrawal amount"
+        )
 
     # INVARIANT: Queue lengths never increase
-    assert len(state.pending_partial_withdrawals) <= len(pre_state.pending_partial_withdrawals), \
+    assert len(state.pending_partial_withdrawals) <= len(pre_state.pending_partial_withdrawals), (
         "pending_partial_withdrawals queue must not grow"
-    assert len(state.builder_pending_withdrawals) <= len(pre_state.builder_pending_withdrawals), \
+    )
+    assert len(state.builder_pending_withdrawals) <= len(pre_state.builder_pending_withdrawals), (
         "builder_pending_withdrawals queue must not grow"
+    )
+
+    # INVARIANT: Withdrawal indices are sequential from pre_state.next_withdrawal_index
+    for i, withdrawal in enumerate(expected_withdrawals):
+        expected_index = pre_state.next_withdrawal_index + i
+        assert withdrawal.index == expected_index, (
+            f"Withdrawal {i}: expected index {expected_index}, got {withdrawal.index}"
+        )
+
+    # INVARIANT: next_withdrawal_validator_index advancement per spec
+    num_validators = len(pre_state.validators)
+    if len(expected_withdrawals) == spec.MAX_WITHDRAWALS_PER_PAYLOAD:
+        # Full payload: next validator is after last withdrawal's validator index
+        # Note: For builders, validator_index has BUILDER_INDEX_FLAG set, which wraps correctly
+        last_validator_index = expected_withdrawals[-1].validator_index
+        if is_post_gloas(spec) and spec.is_builder_index(last_validator_index):
+            # Builder index wraps differently - use sweep advancement for full builder payloads
+            expected_next = (
+                pre_state.next_withdrawal_validator_index
+                + spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
+            ) % num_validators
+        else:
+            expected_next = (last_validator_index + 1) % num_validators
+    else:
+        # Partial payload: advance by sweep size
+        expected_next = (
+            pre_state.next_withdrawal_validator_index + spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
+        ) % num_validators
+    assert state.next_withdrawal_validator_index == expected_next, (
+        f"next_withdrawal_validator_index: expected {expected_next}, "
+        f"got {state.next_withdrawal_validator_index}"
+    )
+
+    # INVARIANT: Post-state expected withdrawals differ and are bounded (when withdrawals > 0)
+    if len(expected_withdrawals) > 0:
+        post_expected = spec.get_expected_withdrawals(state).withdrawals
+        assert list(post_expected) != list(expected_withdrawals), (
+            "Post-state expected withdrawals must differ from pre-state"
+        )
+        bound = min(spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP, spec.MAX_WITHDRAWALS_PER_PAYLOAD)
+        assert len(post_expected) <= bound, (
+            f"Post-state expected withdrawals ({len(post_expected)}) exceeds bound ({bound})"
+        )
 
     # Withdrawal count verification
     if withdrawal_count is not None:
@@ -248,15 +351,32 @@ def assert_process_withdrawals(
     # Balance verification - explicit values
     if balances is not None:
         for validator_idx, expected_balance in balances.items():
-            assert state.balances[validator_idx] == expected_balance, \
+            assert state.balances[validator_idx] == expected_balance, (
                 f"Validator {validator_idx}: expected balance {expected_balance}, got {state.balances[validator_idx]}"
+            )
 
     # Balance verification - deltas
     if balance_deltas is not None:
         for validator_idx, delta in balance_deltas.items():
             expected = pre_state.balances[validator_idx] + delta
-            assert state.balances[validator_idx] == expected, \
+            assert state.balances[validator_idx] == expected, (
                 f"Validator {validator_idx}: expected balance {expected}, got {state.balances[validator_idx]}"
+            )
+
+    # Builder balance verification - explicit values
+    if builder_balances is not None:
+        for builder_idx, expected_balance in builder_balances.items():
+            assert state.builders[builder_idx].balance == expected_balance, (
+                f"Builder {builder_idx}: expected balance {expected_balance}, got {state.builders[builder_idx].balance}"
+            )
+
+    # Builder balance verification - deltas
+    if builder_balance_deltas is not None:
+        for builder_idx, delta in builder_balance_deltas.items():
+            expected = int(pre_state.builders[builder_idx].balance) + delta
+            assert int(state.builders[builder_idx].balance) == expected, (
+                f"Builder {builder_idx}: expected balance {expected}, got {state.builders[builder_idx].balance}"
+            )
 
     # Queue state - deltas from pre_state
     if builder_pending_delta is not None:
@@ -274,7 +394,9 @@ def assert_process_withdrawals(
 
     if validator_index_delta is not None:
         num_validators = len(pre_state.validators)
-        expected = (pre_state.next_withdrawal_validator_index + validator_index_delta) % num_validators
+        expected = (
+            pre_state.next_withdrawal_validator_index + validator_index_delta
+        ) % num_validators
         assert state.next_withdrawal_validator_index == expected
 
     # Withdrawal ordering
@@ -286,7 +408,17 @@ def assert_process_withdrawals(
     if withdrawal_amounts is not None:
         for validator_idx, expected_amount in withdrawal_amounts.items():
             matching = [w for w in withdrawals if w.validator_index == validator_idx]
-            assert len(matching) == 1, f"Expected exactly 1 withdrawal for validator {validator_idx}"
+            assert len(matching) == 1, (
+                f"Expected exactly 1 withdrawal for validator {validator_idx}"
+            )
+            assert matching[0].amount == expected_amount
+
+    if withdrawal_amounts_builders is not None:
+        for builder_idx, expected_amount in withdrawal_amounts_builders.items():
+            # Convert builder index to validator index (with BUILDER_INDEX_FLAG)
+            builder_validator_idx = spec.convert_builder_index_to_validator_index(builder_idx)
+            matching = [w for w in withdrawals if w.validator_index == builder_validator_idx]
+            assert len(matching) == 1, f"Expected exactly 1 withdrawal for builder {builder_idx}"
             assert matching[0].amount == expected_amount
 
     if withdrawal_addresses is not None:
@@ -295,18 +427,27 @@ def assert_process_withdrawals(
             assert len(matching) == 1
             assert matching[0].address == expected_address
 
+    if withdrawal_addresses_builders is not None:
+        for builder_idx, expected_address in withdrawal_addresses_builders.items():
+            # Convert builder index to validator index (with BUILDER_INDEX_FLAG)
+            builder_validator_idx = spec.convert_builder_index_to_validator_index(builder_idx)
+            matching = [w for w in withdrawals if w.validator_index == builder_validator_idx]
+            assert len(matching) == 1, f"Expected exactly 1 withdrawal for builder {builder_idx}"
+            assert matching[0].address == expected_address
+
     # No withdrawal verification
     if no_withdrawal_indices is not None:
         for idx in no_withdrawal_indices:
-            assert not any(w.validator_index == idx for w in withdrawals), \
+            assert not any(w.validator_index == idx for w in withdrawals), (
                 f"Validator {idx} should not have a withdrawal"
+            )
 
 
 def get_expected_withdrawals(spec, state):
     return spec.get_expected_withdrawals(state).withdrawals
 
 
-def verify_withdrawals_post_state(
+def assert_process_withdrawals_pre_gloas(
     spec,
     pre_state,
     post_state,
