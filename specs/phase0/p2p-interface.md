@@ -9,17 +9,14 @@
   - [Protocol Negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
-    - [`get_attestation_subnet_prefix_bits`](#get_attestation_subnet_prefix_bits)
-  - [Helper functions](#helper-functions)
-    - [`compute_fork_version`](#compute_fork_version)
-    - [`compute_fork_digest`](#compute_fork_digest)
-    - [`compute_attestation_subnet_prefix_bits`](#compute_attestation_subnet_prefix_bits)
+  - [`get_attestation_subnet_prefix_bits`](#get_attestation_subnet_prefix_bits)
   - [Custom types](#custom-types)
   - [Constants](#constants)
   - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [`compute_fork_version`](#compute_fork_version)
     - [`compute_fork_digest`](#compute_fork_digest)
+    - [`compute_attestation_subnet_prefix_bits`](#compute_attestation_subnet_prefix_bits)
   - [MetaData](#metadata)
   - [Maximum message sizes](#maximum-message-sizes)
     - [`max_compressed_len`](#max_compressed_len)
@@ -202,45 +199,6 @@ the [Rationale](#design-decision-rationale) section below for tradeoffs.
 ## Consensus-layer network interaction domains
 
 #### `get_attestation_subnet_prefix_bits`
-### Helper functions
-
-#### `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    return GENESIS_FORK_VERSION
-```
-
-#### `compute_fork_digest`
-
-```python
-def compute_fork_digest(
-    genesis_validators_root: Root,
-    epoch: Epoch,
-) -> ForkDigest:
-    """
-    Return the 4-byte fork digest for the ``genesis_validators_root`` at a given ``epoch``.
-
-    This is a digest primarily used for domain separation on the p2p layer.
-    4-bytes suffices for practical separation of forks/chains.
-    """
-    fork_version = compute_fork_version(epoch)
-    base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
-    return ForkDigest(base_digest[:4])
-```
-
-#### `compute_attestation_subnet_prefix_bits`
-
-```python
-def compute_attestation_subnet_prefix_bits() -> uint64:
-    """
-    Return the number of NodeId bits to use when mapping to a subscribed subnet
-    """
-    return uint64(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)
-```
 
 ### Custom types
 
@@ -304,6 +262,16 @@ def compute_fork_digest(
     fork_version = compute_fork_version(epoch)
     base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
     return ForkDigest(base_digest[:4])
+```
+
+#### `compute_attestation_subnet_prefix_bits`
+
+```python
+def compute_attestation_subnet_prefix_bits() -> uint64:
+    """
+    Return the number of NodeId bits to use when mapping to a subscribed subnet
+    """
+    return uint64(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)
 ```
 
 ### MetaData
