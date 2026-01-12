@@ -9,7 +9,6 @@
   - [Protocol Negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
-  - [`get_attestation_subnet_prefix_bits`](#get_attestation_subnet_prefix_bits)
   - [Custom types](#custom-types)
   - [Constants](#constants)
   - [Configuration](#configuration)
@@ -197,8 +196,6 @@ are supported by the client, yamux MUST take precedence during negotiation. See
 the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
 ## Consensus-layer network interaction domains
-
-#### `get_attestation_subnet_prefix_bits`
 
 ### Custom types
 
