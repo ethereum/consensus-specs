@@ -79,18 +79,17 @@ After producing an `ExecutionPayloadEnvelope` the builder constructs a set of
 1. Extract the `NewPayloadRequest` from the envelope.
 2. Obtain the `ZKExecutionWitness` from the execution layer.
 3. Select a `proof_id` corresponding to the proof system being used.
-4. Call `generate_zkevm_proof(new_payload_request, execution_witness, PROGRAM, proof_id)`
-   to produce the `ZKEVMProof`.
-5. Set `proof.zk_proof` to the generated `ZKEVMProof`.
-6. Set `proof.builder_index` to the builder's index.
-7. Set `signed_proof.message` to `proof`.
-8. Set `signed_proof.signature` to the result of
+4. Call `generate_execution_proof(new_payload_request, execution_witness, PROGRAM, proof_id)`
+   to produce the `ExecutionProof`.
+5. Set `signed_proof.message` to the generated `ExecutionProof`.
+6. Set `signed_proof.prover_id` to the builder's `BuilderIndex`.
+7. Set `signed_proof.signature` to the result of
    `get_execution_proof_signature(state, proof, privkey)`.
 
 Then the builder assembles
-`signed_execution_proof = SignedExecutionProof(message=proof, signature=signature)`
+`signed_execution_proof = SignedExecutionProof(message=proof, prover_id=builder_index, signature=signature)`
 and broadcasts it on the `execution_proof_{subnet_id}` gossip topic, where
-`subnet_id = proof.zk_proof.proof_type`.
+`subnet_id = proof.proof_type`.
 
 *Note*: The `proof_id` determines which subnet the proof is broadcast on. Each
 proof system has a dedicated subnet to allow validators to subscribe to proofs
