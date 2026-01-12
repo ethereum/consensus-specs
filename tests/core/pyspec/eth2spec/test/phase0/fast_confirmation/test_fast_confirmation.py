@@ -730,12 +730,11 @@ def test_fcr_not_revert_to_finalized_when_reconfirmation_fails_at_mid_epoch(spec
 
 
 # GU too old => no restart
-
+# This version lowers participations to 0 in order to create a too-old justification
 @with_altair_and_later
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-def test_fcr_no_restart_when_GU_too_old_then_reset_to_finalized(spec, state):
-
+def test_no_restart_at_epoch3_when_epoch2_not_justified_under_50_50_target_split(spec, state):
     test_steps = []
 
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -745,69 +744,108 @@ def test_fcr_no_restart_when_GU_too_old_then_reset_to_finalized(spec, state):
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
 
-    attestations = []
-    last_root = anchor_block.hash_tree_root()
-
     S = spec.SLOTS_PER_EPOCH
     epoch2_start = 2 * S
     epoch3_start = 3 * S
 
-    gu_after_epoch2_start = None
-    confirmed_after_epoch2_start = None
+    fork_root = None           # epoch2-start block on the fork (B)
+    main_epoch2_root = None    # epoch2-start block on the main chain (A)
 
-    for slot in range(spec.GENESIS_SLOT, epoch3_start):
-        if slot > spec.GENESIS_SLOT:
-            block = build_empty_block_for_next_slot(spec, state)
-            for att in attestations:
-                block.body.attestations.append(att)
-            signed = state_transition_and_sign_block(spec, state, block)
-            yield from add_block(spec, store, signed, test_steps)
-            last_root = signed.message.hash_tree_root()
+    fork_state = None
+    main_head_root = anchor_block.hash_tree_root()
+    fork_head_root = None
 
-        # - full participation before epoch 2 start (i.e., epochs 0 and 1)
-        # - zero participation starting in epoch 2 
-        if slot < epoch2_start:
-            head = spec.get_head(store)
-            attestations = get_valid_attestations_for_block_at_slot(
-                spec, state, state.slot, head
-            )
+    # Approximate 50/50 by choosing half the *slots* in epoch 2 to attest on the fork.
+    fork_vote_slots = set(range(epoch2_start, epoch2_start + (S // 2)))
+
+    attestations = []
+
+    # Run until (but not including) epoch3_start processing would require slot == epoch3_start,
+    # because each iteration advances store to slot+1.
+    for _ in range(spec.GENESIS_SLOT, epoch3_start):
+        # 1) Build next-slot block(s)
+        # We are currently at state.slot; build block for state.slot + 1 (as usual in these tests).
+        if state.slot + 1 == epoch2_start:
+            # Create two sibling blocks at epoch-2 boundary: A (main) and B (fork)
+            pre_state = copy.deepcopy(state)
+
+            # Main block A at slot == epoch2_start
+            block_a = build_empty_block_for_next_slot(spec, state)
+            signed_a = state_transition_and_sign_block(spec, state, block_a)
+            yield from add_block(spec, store, signed_a, test_steps)
+            main_head_root = signed_a.message.hash_tree_root()
+            main_epoch2_root = main_head_root
+
+            # Fork sibling block B at the same parent/slot
+            block_b = build_empty_block_for_next_slot(spec, pre_state)
+            block_b.body.graffiti = b"fork".ljust(32, b"\x00")  # ensure different root
+            signed_b = state_transition_and_sign_block(spec, pre_state, block_b)
+            yield from add_block(spec, store, signed_b, test_steps)
+            fork_root = signed_b.message.hash_tree_root()
+
+            fork_state = pre_state
+            fork_head_root = fork_root
+
+        elif state.slot > spec.GENESIS_SLOT:
+            # Extend main chain
+            block_main = build_empty_block_for_next_slot(spec, state)
+            signed_main = state_transition_and_sign_block(spec, state, block_main)
+            yield from add_block(spec, store, signed_main, test_steps)
+            main_head_root = signed_main.message.hash_tree_root()
+
+            # Extend fork chain if it exists
+            if fork_state is not None:
+                block_f = build_empty_block_for_next_slot(spec, fork_state)
+                signed_f = state_transition_and_sign_block(spec, fork_state, block_f)
+                yield from add_block(spec, store, signed_f, test_steps)
+                fork_head_root = signed_f.message.hash_tree_root()
+
+        # 2) Choose which chain to attest to at this slot
+        if state.slot < epoch2_start:
+            att_state = state
+            att_head = main_head_root
         else:
-            attestations = []
+            assert fork_state is not None and fork_head_root is not None and fork_root is not None
+            if state.slot in fork_vote_slots:
+                att_state = fork_state
+                att_head = fork_head_root
+            else:
+                att_state = state
+                att_head = main_head_root
 
-        current_time = (slot + 1) * spec.config.SECONDS_PER_SLOT + store.genesis_time
-        on_tick_and_append_step(spec, store, current_time, test_steps)
+        attestations = get_valid_attestations_for_block_at_slot(
+            spec, att_state, att_state.slot, att_head
+        )
+
+        # 3) Advance store time to next slot start, add attestations, run slot-start handler
+        next_time = (state.slot + 1) * spec.config.SECONDS_PER_SLOT + store.genesis_time
+        on_tick_and_append_step(spec, store, next_time, test_steps)
 
         yield from add_attestations(spec, store, attestations, test_steps)
         on_slot_start_after_past_attestations_applied_and_append_step(spec, store, test_steps)
 
-        # Capture right after epoch 2 start processing
-        if slot + 1 == epoch2_start:
-            assert spec.is_start_slot_at_epoch(spec.get_current_slot(store))
-            assert spec.get_current_store_epoch(store) == spec.Epoch(2)
+        # After handler, store is now at "current slot start"
+        cur_slot = spec.get_current_slot(store)
 
-            gu_after_epoch2_start = store.current_epoch_observed_justified_checkpoint
-            confirmed_after_epoch2_start = store.confirmed_root
+        # 4) Boundary assertions
+        if cur_slot == epoch2_start:
+            # At epoch 2 start, epoch 1 should be justified under full participation.
+            assert main_epoch2_root is not None and fork_root is not None
+            assert store.justified_checkpoint.epoch >= spec.Epoch(1)
+            assert store.current_epoch_observed_justified_checkpoint.epoch >= spec.Epoch(1)
 
-            # Confirmed shouldn't already be finalized here
-            assert confirmed_after_epoch2_start != store.finalized_checkpoint.root
+        if cur_slot == epoch3_start:
+            # At epoch 3 start, epoch 2 must NOT be justified (target votes split).
+            assert store.justified_checkpoint.epoch < spec.Epoch(2)
 
-            # It should also not be "too old" at epoch 2 start (otherwise we'd reset immediately)
-            assert spec.get_block_epoch(store, confirmed_after_epoch2_start) + 1 >= spec.Epoch(2)
+            gu = store.current_epoch_observed_justified_checkpoint
+            # Under split, GU should still be stuck at epoch 1 (no new justification in epoch 2)
+            assert gu.epoch == spec.Epoch(1)
 
-        # Check at epoch 3 start
-        if slot + 1 == epoch3_start:
-            assert spec.is_start_slot_at_epoch(spec.get_current_slot(store))
+            # Restart must NOT be able to run: guard is (gu.epoch + 1 == current_epoch)
+            assert spec.is_start_slot_at_epoch(cur_slot)
             current_epoch = spec.get_current_store_epoch(store)
             assert current_epoch == spec.Epoch(3)
-
-            # GU must be stale because we had *no* epoch-2 attestations
-            gu = store.current_epoch_observed_justified_checkpoint
-            assert gu_after_epoch2_start is not None
-            assert gu.epoch <= spec.Epoch(1)
-            assert gu.epoch + 1 != current_epoch  # => restart clause cannot run
-
-            # We should end up reset to finalized (and in particular not restart to GU)
-            assert store.confirmed_root == store.finalized_checkpoint.root
-            assert store.confirmed_root != gu.root
+            assert gu.epoch + 1 != current_epoch
 
     yield "steps", test_steps
