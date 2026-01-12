@@ -5,7 +5,7 @@
 - [Introduction](#introduction)
 - [Helpers](#helpers)
   - [Modified `is_data_available`](#modified-is_data_available)
-- [Updated fork-choice handlers](#updated-fork-choice-handlers)
+- [Handlers](#handlers)
   - [Modified `on_block`](#modified-on_block)
 
 <!-- mdformat-toc end -->
@@ -33,7 +33,7 @@ def is_data_available(beacon_block_root: Root) -> bool:
     )
 ```
 
-## Updated fork-choice handlers
+## Handlers
 
 ### Modified `on_block`
 

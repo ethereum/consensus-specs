@@ -14,7 +14,7 @@
   - [`LightClientFinalityUpdate`](#lightclientfinalityupdate)
   - [`LightClientOptimisticUpdate`](#lightclientoptimisticupdate)
   - [`LightClientStore`](#lightclientstore)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [`finalized_root_gindex_at_slot`](#finalized_root_gindex_at_slot)
   - [`current_sync_committee_gindex_at_slot`](#current_sync_committee_gindex_at_slot)
   - [`next_sync_committee_gindex_at_slot`](#next_sync_committee_gindex_at_slot)
@@ -170,7 +170,7 @@ class LightClientStore(object):
     current_max_active_participants: uint64
 ```
 
-## Helper functions
+## Helpers
 
 ### `finalized_root_gindex_at_slot`
 

@@ -8,7 +8,7 @@
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
 - [Helpers](#helpers)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
-- [Updated fork-choice handlers](#updated-fork-choice-handlers)
+- [Handlers](#handlers)
   - [`on_block`](#on_block)
 
 <!-- mdformat-toc end -->
@@ -59,7 +59,7 @@ class PayloadAttributes(object):
     withdrawals: Sequence[Withdrawal]
 ```
 
-## Updated fork-choice handlers
+## Handlers
 
 ### `on_block`
 

@@ -23,7 +23,7 @@ from eth2spec.test.helpers.forks import (
     is_post_gloas,
 )
 
-# Helper functions
+# Helpers
 
 
 def compute_data_column_sidecar(spec, state):

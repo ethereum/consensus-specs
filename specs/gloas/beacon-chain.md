@@ -37,7 +37,10 @@
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionRequests`](#executionrequests)
     - [`BeaconState`](#beaconstate)
-- [Helper functions](#helper-functions)
+- [Dataclasses](#dataclasses)
+  - [Modified dataclasses](#modified-dataclasses)
+    - [`ExpectedWithdrawals`](#expectedwithdrawals)
+- [Helpers](#helpers)
   - [Predicates](#predicates)
     - [Modified `is_valid_indexed_attestation`](#modified-is_valid_indexed_attestation)
     - [New `is_builder_index`](#new-is_builder_index)
@@ -461,7 +464,25 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 45)):
     payload_expected_withdrawals: ProgressiveList[Withdrawal]
 ```
 
-## Helper functions
+## Dataclasses
+
+### Modified dataclasses
+
+#### `ExpectedWithdrawals`
+
+```python
+@dataclass
+class ExpectedWithdrawals(object):
+    withdrawals: Sequence[Withdrawal]
+    # [New in Gloas:EIP7732]
+    processed_builder_withdrawals_count: uint64
+    processed_partial_withdrawals_count: uint64
+    # [New in Gloas:EIP7732]
+    processed_builders_sweep_count: uint64
+    processed_sweep_withdrawals_count: uint64
+```
+
+## Helpers
 
 ### Predicates
 
@@ -1007,9 +1028,7 @@ def get_builders_sweep_withdrawals(
 ##### Modified `get_expected_withdrawals`
 
 ```python
-def get_expected_withdrawals(
-    state: BeaconState,
-) -> Tuple[Sequence[Withdrawal], uint64, uint64, uint64, uint64]:
+def get_expected_withdrawals(state: BeaconState) -> ExpectedWithdrawals:
     withdrawal_index = state.next_withdrawal_index
     withdrawals: List[Withdrawal] = []
 
@@ -1039,11 +1058,12 @@ def get_expected_withdrawals(
     )
     withdrawals.extend(validators_sweep_withdrawals)
 
-    # [Modified in Gloas:EIP7732]
-    return (
+    return ExpectedWithdrawals(
         withdrawals,
+        # [New in Gloas:EIP7732]
         processed_builder_withdrawals_count,
         processed_partial_withdrawals_count,
+        # [New in Gloas:EIP7732]
         processed_builders_sweep_count,
         processed_validators_sweep_count,
     )
@@ -1116,29 +1136,22 @@ def process_withdrawals(
     if not is_parent_block_full(state):
         return
 
-    # [Modified in Gloas:EIP7732]
     # Get expected withdrawals
-    (
-        withdrawals,
-        processed_builder_withdrawals_count,
-        processed_partial_withdrawals_count,
-        processed_builders_sweep_count,
-        processed_validators_sweep_count,
-    ) = get_expected_withdrawals(state)
+    expected = get_expected_withdrawals(state)
 
     # Apply expected withdrawals
-    apply_withdrawals(state, withdrawals)
+    apply_withdrawals(state, expected.withdrawals)
 
     # Update withdrawals fields in the state
-    update_next_withdrawal_index(state, withdrawals)
+    update_next_withdrawal_index(state, expected.withdrawals)
     # [New in Gloas:EIP7732]
-    update_payload_expected_withdrawals(state, withdrawals)
+    update_payload_expected_withdrawals(state, expected.withdrawals)
     # [New in Gloas:EIP7732]
-    update_builder_pending_withdrawals(state, processed_builder_withdrawals_count)
-    update_pending_partial_withdrawals(state, processed_partial_withdrawals_count)
+    update_builder_pending_withdrawals(state, expected.processed_builder_withdrawals_count)
+    update_pending_partial_withdrawals(state, expected.processed_partial_withdrawals_count)
     # [New in Gloas:EIP7732]
-    update_next_withdrawal_builder_index(state, processed_builders_sweep_count)
-    update_next_withdrawal_validator_index(state, processed_validators_sweep_count)
+    update_next_withdrawal_builder_index(state, expected.processed_builders_sweep_count)
+    update_next_withdrawal_validator_index(state, expected.withdrawals)
 ```
 
 #### Execution payload bid

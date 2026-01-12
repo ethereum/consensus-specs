@@ -6,7 +6,7 @@
 - [Helpers](#helpers)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [`is_data_available`](#is_data_available)
-- [Updated fork-choice handlers](#updated-fork-choice-handlers)
+- [Handlers](#handlers)
   - [`on_block`](#on_block)
 
 <!-- mdformat-toc end -->
@@ -63,7 +63,7 @@ def is_data_available(
     return verify_blob_kzg_proof_batch(blobs, blob_kzg_commitments, proofs)
 ```
 
-## Updated fork-choice handlers
+## Handlers
 
 ### `on_block`
 

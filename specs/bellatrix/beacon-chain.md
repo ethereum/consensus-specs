@@ -16,7 +16,7 @@
   - [New containers](#new-containers)
     - [`ExecutionPayload`](#executionpayload)
     - [`ExecutionPayloadHeader`](#executionpayloadheader)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Predicates](#predicates)
     - [`is_merge_transition_complete`](#is_merge_transition_complete)
     - [`is_merge_transition_block`](#is_merge_transition_block)
@@ -196,7 +196,7 @@ class ExecutionPayloadHeader(Container):
     transactions_root: Root
 ```
 
-## Helper functions
+## Helpers
 
 ### Predicates
 

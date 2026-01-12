@@ -12,7 +12,7 @@
 - [Containers](#containers)
   - [Extended Containers](#extended-containers)
     - [`BeaconState`](#beaconstate)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Misc](#misc)
     - [New `BlobParameters`](#new-blobparameters)
     - [New `get_blob_parameters`](#new-get_blob_parameters)
@@ -174,7 +174,7 @@ class BeaconState(Container):
     proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
 ```
 
-## Helper functions
+## Helpers
 
 ### Misc
 

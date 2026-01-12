@@ -36,7 +36,10 @@
     - [`Attestation`](#attestation)
     - [`IndexedAttestation`](#indexedattestation)
     - [`BeaconState`](#beaconstate)
-- [Helper functions](#helper-functions)
+- [Dataclasses](#dataclasses)
+  - [Modified dataclasses](#modified-dataclasses)
+    - [`ExpectedWithdrawals`](#expectedwithdrawals)
+- [Helpers](#helpers)
   - [Predicates](#predicates)
     - [Modified `compute_proposer_index`](#modified-compute_proposer_index)
     - [Modified `is_eligible_for_activation_queue`](#modified-is_eligible_for_activation_queue)
@@ -434,7 +437,22 @@ class BeaconState(Container):
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
 ```
 
-## Helper functions
+## Dataclasses
+
+### Modified dataclasses
+
+#### `ExpectedWithdrawals`
+
+```python
+@dataclass
+class ExpectedWithdrawals(object):
+    withdrawals: Sequence[Withdrawal]
+    # [New in Electra:EIP7251]
+    processed_partial_withdrawals_count: uint64
+    processed_sweep_withdrawals_count: uint64
+```
+
+## Helpers
 
 ### Predicates
 
@@ -1316,7 +1334,7 @@ def get_validators_sweep_withdrawals(
 *Note*: The function `get_expected_withdrawals` is modified to support EIP7251.
 
 ```python
-def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], uint64, uint64]:
+def get_expected_withdrawals(state: BeaconState) -> ExpectedWithdrawals:
     withdrawal_index = state.next_withdrawal_index
     withdrawals: List[Withdrawal] = []
 
@@ -1333,8 +1351,12 @@ def get_expected_withdrawals(state: BeaconState) -> Tuple[Sequence[Withdrawal], 
     )
     withdrawals.extend(validators_sweep_withdrawals)
 
-    # [Modified in Electra:EIP7251]
-    return withdrawals, processed_partial_withdrawals_count, processed_validators_sweep_count
+    return ExpectedWithdrawals(
+        withdrawals,
+        # [New in Electra:EIP7251]
+        processed_partial_withdrawals_count,
+        processed_validators_sweep_count,
+    )
 ```
 
 ##### New `update_pending_partial_withdrawals`
@@ -1354,21 +1376,18 @@ def update_pending_partial_withdrawals(
 
 ```python
 def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
-    # [Modified in Electra:EIP7251]
     # Get expected withdrawals
-    withdrawals, processed_partial_withdrawals_count, processed_validators_sweep_count = (
-        get_expected_withdrawals(state)
-    )
-    assert payload.withdrawals == withdrawals
+    expected = get_expected_withdrawals(state)
+    assert payload.withdrawals == expected.withdrawals
 
     # Apply expected withdrawals
-    apply_withdrawals(state, withdrawals)
+    apply_withdrawals(state, expected.withdrawals)
 
     # Update withdrawals fields in the state
-    update_next_withdrawal_index(state, withdrawals)
+    update_next_withdrawal_index(state, expected.withdrawals)
     # [New in Electra:EIP7251]
-    update_pending_partial_withdrawals(state, processed_partial_withdrawals_count)
-    update_next_withdrawal_validator_index(state, processed_validators_sweep_count)
+    update_pending_partial_withdrawals(state, expected.processed_partial_withdrawals_count)
+    update_next_withdrawal_validator_index(state, expected.withdrawals)
 ```
 
 #### Execution payload
