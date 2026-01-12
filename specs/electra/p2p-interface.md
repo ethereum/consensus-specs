@@ -8,7 +8,6 @@
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
     - [Modified `compute_max_request_blob_sidecars`](#modified-compute_max_request_blob_sidecars)
-  - [Configuration](#configuration-1)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -75,6 +74,7 @@ def compute_max_request_blob_sidecars() -> uint64:
     # [Modified in Electra:EIP7691]
     return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA)
 ```
+
 ### The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in the fork of Electra to support upgraded
