@@ -13,7 +13,8 @@
 ## Introduction
 
 This is the modification of the fork choice accompanying the EIP-8025 upgrade,
-enabling stateless validation of execution payloads through cryptographic proofs.
+enabling stateless validation of execution payloads through cryptographic
+proofs.
 
 *Note*: This specification is built upon [Gloas](../../gloas/fork-choice.md).
 
