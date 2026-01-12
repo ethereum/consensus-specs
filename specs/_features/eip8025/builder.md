@@ -79,7 +79,8 @@ After producing an `ExecutionPayloadEnvelope` the builder constructs a set of
 1. Extract the `NewPayloadRequest` from the envelope.
 2. Obtain the `ZKExecutionWitness` from the execution layer.
 3. Select a `proof_id` corresponding to the proof system being used.
-4. Call `generate_execution_proof(new_payload_request, execution_witness, PROGRAM, proof_id)`
+4. Call
+   `generate_execution_proof(new_payload_request, execution_witness, PROGRAM, proof_id)`
    to produce the `ExecutionProof`.
 5. Set `signed_proof.message` to the generated `ExecutionProof`.
 6. Set `signed_proof.prover_id` to the builder's `BuilderIndex`.

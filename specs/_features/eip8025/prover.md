@@ -29,7 +29,8 @@ All terminology, constants, functions, and protocol mechanics defined in the
 [EIP-8025 -- Beacon Chain](./beacon-chain.md) and
 [EIP-8025 -- zkEVM](./zkevm.md) documents are requisite for this document.
 
-The prover MUST have their public key included in `WHITELISTED_PROVERS` or alternatively use a whitelisted community proof relay.
+The prover MUST have their public key included in `WHITELISTED_PROVERS` or
+alternatively use a whitelisted community proof relay.
 
 ## Execution proof signature
 
@@ -52,7 +53,8 @@ To construct a `SignedExecutionProof`:
 1. Extract the `NewPayloadRequest` from the `SignedExecutionPayloadEnvelope`.
 2. Obtain the `ZKExecutionWitness` from the execution layer.
 3. Select a `proof_id` corresponding to the proof system being used.
-4. Call `generate_execution_proof(new_payload_request, execution_witness, PROGRAM, proof_id)`
+4. Call
+   `generate_execution_proof(new_payload_request, execution_witness, PROGRAM, proof_id)`
    to produce the `ExecutionProof`.
 5. Set `signed_proof.message` to the generated `ExecutionProof`.
 6. Set `signed_proof.prover_id` to the prover's public key.
@@ -81,7 +83,8 @@ The relay exposes an API endpoint that accepts unsigned `ExecutionProof`
 submissions from community provers. Upon receiving a proof, the relay MUST:
 
 1. Verify the `proof.proof_data` is non-empty.
-2. Verify the execution proof is valid using `verify_execution_proof(proof, program_bytecode)`.
+2. Verify the execution proof is valid using
+   `verify_execution_proof(proof, program_bytecode)`.
 3. Verify a proof for the same `(new_payload_request_root, proof_type)` has not
    already been signed and broadcast.
 

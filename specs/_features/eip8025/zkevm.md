@@ -9,7 +9,7 @@
 - [Types](#types)
 - [Cryptographic types](#cryptographic-types)
 - [Containers](#containers)
-  - [`ExecutionProof`](#zkevmproof)
+  - [`ExecutionProof`](#executionproof)
   - [`PrivateInput`](#privateinput)
   - [`PublicInput`](#publicinput)
 - [Helpers](#helpers)
@@ -50,8 +50,8 @@ for a payload with a maximum gas limit of 30M gas.
 
 ## Types
 
-| Name         | SSZ equivalent | Description                     |
-| ------------ | -------------- | ------------------------------- |
+| Name             | SSZ equivalent | Description                     |
+| ---------------- | -------------- | ------------------------------- |
 | `ExecutionProof` | `Container`    | Proof of execution of a program |
 
 ## Cryptographic types
@@ -156,9 +156,7 @@ def generate_execution_proof_impl(
     """
     Generate a zkEVM execution proof using the proving key, private inputs and public inputs.
     """
-    proof_data = hash(
-        public_inputs.new_payload_request_root + proof_id.to_bytes(1, "little")
-    )
+    proof_data = hash(public_inputs.new_payload_request_root + proof_id.to_bytes(1, "little"))
 
     return ExecutionProof(
         proof_data=ByteList(proof_data), proof_type=proof_id, public_inputs=public_inputs
@@ -204,9 +202,7 @@ def generate_execution_proof(
     """
     proving_key, _ = generate_keys(program_bytecode, proof_id)
 
-    public_inputs = PublicInput(
-        new_payload_request_root=hash_tree_root(new_payload_request)
-    )
+    public_inputs = PublicInput(new_payload_request_root=hash_tree_root(new_payload_request))
     private_input = PrivateInput(
         new_payload_request=new_payload_request, execution_witness=execution_witness
     )

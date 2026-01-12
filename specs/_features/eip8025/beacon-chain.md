@@ -164,7 +164,10 @@ def verify_execution_proofs(
         state.execution_proof_store[new_payload_request_root].header = new_payload_request_header
 
     # Verify there are sufficient proofs
-    if len(state.execution_proof_store[new_payload_request_root].proofs) < MIN_REQUIRED_EXECUTION_PROOFS:
+    if (
+        len(state.execution_proof_store[new_payload_request_root].proofs)
+        < MIN_REQUIRED_EXECUTION_PROOFS
+    ):
         return False
 
     return True

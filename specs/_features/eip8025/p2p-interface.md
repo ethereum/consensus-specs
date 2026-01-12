@@ -49,12 +49,13 @@ The following validations MUST pass before forwarding the
 `signed_execution_payload_envelope_header` on the network:
 
 - _[IGNORE]_ The header is the first valid header received for the tuple
-  `(signed_execution_payload_envelope_header.message.beacon_block_root,
-  signed_execution_payload_envelope_header.message.slot)`.
-- _[REJECT]_ The `signed_execution_payload_envelope_header.message.beacon_block_root`
-  refers to a known beacon block.
-- _[REJECT]_ The `signed_execution_payload_envelope_header.message.builder_index`
-  is within the known builder registry.
+  `(signed_execution_payload_envelope_header.message.beacon_block_root, signed_execution_payload_envelope_header.message.slot)`.
+- _[REJECT]_ The
+  `signed_execution_payload_envelope_header.message.beacon_block_root` refers to
+  a known beacon block.
+- _[REJECT]_ The
+  `signed_execution_payload_envelope_header.message.builder_index` is within the
+  known builder registry.
 - _[REJECT]_ The `signed_execution_payload_envelope_header.signature` is valid
   with respect to the builder's public key.
 - _[REJECT]_ The `signed_execution_payload_envelope_header.message.slot` matches
@@ -74,8 +75,8 @@ def compute_subnet_for_execution_proof(proof_id: ProofID) -> SubnetID:
     return SubnetID(proof_id)
 ```
 
-The following validations MUST pass before forwarding a
-`signed_execution_proof` on the network:
+The following validations MUST pass before forwarding a `signed_execution_proof`
+on the network:
 
 - _[IGNORE]_ The proof is the first valid proof received for the tuple
   `(signed_execution_proof.message.public_inputs.new_payload_request_root, subnet_id)`.
@@ -85,8 +86,7 @@ The following validations MUST pass before forwarding a
   is in `WHITELISTED_PROVERS`.
 - _[REJECT]_ The `signed_execution_proof.signature` is valid with respect to the
   prover's public key.
-- _[REJECT]_ The `signed_execution_proof.message.proof_data` is
-  non-empty.
+- _[REJECT]_ The `signed_execution_proof.message.proof_data` is non-empty.
 - _[REJECT]_ The proof system ID matches the subnet:
   `signed_execution_proof.message.proof_type == subnet_id`.
 - _[REJECT]_ The execution proof is valid as verified by
@@ -119,8 +119,8 @@ Response Content:
 )
 ```
 
-Requests execution proofs for the given `new_payload_request_root`. The
-response MUST contain all available proofs for the requested root, up to
+Requests execution proofs for the given `new_payload_request_root`. The response
+MUST contain all available proofs for the requested root, up to
 `MAX_EXECUTION_PROOFS_PER_PAYLOAD`.
 
 The following validations MUST pass:
