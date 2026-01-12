@@ -1,0 +1,106 @@
+default_fork: gloas
+trace:
+- {op: load_state, state_root: 
+    95d19311d30804985b06c40cc437bdfbb126209ad9ea8253ba33e0ff0af74c40.ssz_snappy}
+- op: spec_call
+  method: process_slots
+  input: {state: 
+      95d19311d30804985b06c40cc437bdfbb126209ad9ea8253ba33e0ff0af74c40.ssz_snappy,
+    slot: 8}
+- op: spec_call
+  method: process_slots
+  input: {state: 
+      5eda5f14e032cc1821dd272f3fcbdf031f1bb7ea0a56eda0b247e9eabb09dd53.ssz_snappy,
+    slot: 16}
+- {op: assert_state, state_root: 
+    94921c903a7696c239dc749d38a1963dfc062fb08885340f39279a5346bdea62.ssz_snappy}
+- {op: load_state, state_root: 
+    f766adc187b97a82f93e93d282198353b3aea83a74a91d94c992535cb1a9bb28.ssz_snappy}
+- op: spec_call
+  method: process_slots
+  input: {state: 
+      f766adc187b97a82f93e93d282198353b3aea83a74a91d94c992535cb1a9bb28.ssz_snappy,
+    slot: 23}
+- op: spec_call
+  method: process_slot
+  input: {state: 
+      d0c2247f19af245cf9822678aa3ab52cc076e784f23b1146372cf41433a0a395.ssz_snappy}
+- op: spec_call
+  method: process_justification_and_finalization
+  input: {state: 
+      6e2a5be5877d15d253fa89ebc2143d2ee6e5c0a4777aea8ea6a197e60185c7f9.ssz_snappy}
+- op: spec_call
+  method: process_inactivity_updates
+  input: {state: 
+      6e2a5be5877d15d253fa89ebc2143d2ee6e5c0a4777aea8ea6a197e60185c7f9.ssz_snappy}
+- op: spec_call
+  method: process_rewards_and_penalties
+  input: {state: 
+      6e2a5be5877d15d253fa89ebc2143d2ee6e5c0a4777aea8ea6a197e60185c7f9.ssz_snappy}
+- op: spec_call
+  method: process_registry_updates
+  input: {state: 
+      a7f798e2212b92d0e2185444ecb5785c60e2548f2e95cb4d5518ed26e8dc017f.ssz_snappy}
+- op: spec_call
+  method: process_slashings
+  input: {state: 
+      a7f798e2212b92d0e2185444ecb5785c60e2548f2e95cb4d5518ed26e8dc017f.ssz_snappy}
+- op: spec_call
+  method: process_eth1_data_reset
+  input: {state: 
+      a7f798e2212b92d0e2185444ecb5785c60e2548f2e95cb4d5518ed26e8dc017f.ssz_snappy}
+- op: spec_call
+  method: process_pending_deposits
+  input: {state: 
+      a7f798e2212b92d0e2185444ecb5785c60e2548f2e95cb4d5518ed26e8dc017f.ssz_snappy}
+- op: spec_call
+  method: process_pending_consolidations
+  input: {state: 
+      a7f798e2212b92d0e2185444ecb5785c60e2548f2e95cb4d5518ed26e8dc017f.ssz_snappy}
+- op: spec_call
+  method: process_effective_balance_updates
+  input: {state: 
+      a7f798e2212b92d0e2185444ecb5785c60e2548f2e95cb4d5518ed26e8dc017f.ssz_snappy}
+- op: spec_call
+  method: process_slashings_reset
+  input: {state: 
+      a7f798e2212b92d0e2185444ecb5785c60e2548f2e95cb4d5518ed26e8dc017f.ssz_snappy}
+- op: spec_call
+  method: process_randao_mixes_reset
+  input: {state: 
+      a7f798e2212b92d0e2185444ecb5785c60e2548f2e95cb4d5518ed26e8dc017f.ssz_snappy}
+- op: spec_call
+  method: process_historical_summaries_update
+  input: {state: 
+      a7f798e2212b92d0e2185444ecb5785c60e2548f2e95cb4d5518ed26e8dc017f.ssz_snappy}
+- op: spec_call
+  method: process_participation_flag_updates
+  input: {state: 
+      a7f798e2212b92d0e2185444ecb5785c60e2548f2e95cb4d5518ed26e8dc017f.ssz_snappy}
+- op: spec_call
+  method: process_sync_committee_updates
+  input: {state: 
+      a7f798e2212b92d0e2185444ecb5785c60e2548f2e95cb4d5518ed26e8dc017f.ssz_snappy}
+- op: spec_call
+  method: process_proposer_lookahead
+  input: {state: 
+      a7f798e2212b92d0e2185444ecb5785c60e2548f2e95cb4d5518ed26e8dc017f.ssz_snappy}
+- op: spec_call
+  method: process_builder_pending_payments
+  input: {state: 
+      216dcc57820542ed089ebc0a7cf482272af284e4b750f72c5b217154d4caf425.ssz_snappy}
+- op: spec_call
+  method: get_current_epoch
+  input: {state: 
+      0740b3ecc6fb1bdc20c4f2d792da51dc7aaaa506e445ee7ba7ef1dd7ed900443.ssz_snappy}
+  assert_output: 2
+- op: spec_call
+  method: get_seed
+  input:
+    state: 
+      0740b3ecc6fb1bdc20c4f2d792da51dc7aaaa506e445ee7ba7ef1dd7ed900443.ssz_snappy
+    epoch: 2
+    domain_type: '0x00000000'
+  assert_output: '0x79edc6cbb9ffac34477afe87d8569b7afab320241ce69d70c6d0c0a1839379df'
+- {op: assert_state, state_root: 
+    0740b3ecc6fb1bdc20c4f2d792da51dc7aaaa506e445ee7ba7ef1dd7ed900443.ssz_snappy}
