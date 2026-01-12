@@ -12,7 +12,7 @@
   - [`ZKEVMProof`](#zkevmproof)
   - [`PrivateInput`](#privateinput)
   - [`PublicInput`](#publicinput)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Preprocessing](#preprocessing)
     - [`generate_keys`](#generate_keys)
   - [Proof verification](#proof-verification)
@@ -96,7 +96,7 @@ class PublicInput(Container):
     parent_hash: Hash32
 ```
 
-## Helper functions
+## Helpers
 
 ### Preprocessing
 

@@ -27,24 +27,21 @@
   - [Modified `get_weight`](#modified-get_weight)
   - [New `get_node_children`](#new-get_node_children)
   - [Modified `get_head`](#modified-get_head)
-- [Updated fork-choice helpers](#updated-fork-choice-helpers)
-  - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
-  - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
-  - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
-  - [Modified `get_contribution_due_ms`](#modified-get_contribution_due_ms)
-- [New fork-choice helpers](#new-fork-choice-helpers)
-  - [New `get_payload_attestation_due_ms`](#new-get_payload_attestation_due_ms)
-- [Updated fork-choice handlers](#updated-fork-choice-handlers)
   - [Modified `record_block_timeliness`](#modified-record_block_timeliness)
   - [Modified `update_proposer_boost_root`](#modified-update_proposer_boost_root)
-  - [Modified `on_block`](#modified-on_block)
-- [New fork-choice handlers](#new-fork-choice-handlers)
-  - [New `on_execution_payload`](#new-on_execution_payload)
-  - [New `on_payload_attestation_message`](#new-on_payload_attestation_message)
   - [Modified `validate_on_attestation`](#modified-validate_on_attestation)
   - [Modified `is_head_late`](#modified-is_head_late)
   - [Modified `is_head_weak`](#modified-is_head_weak)
   - [Modified `is_parent_strong`](#modified-is_parent_strong)
+  - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
+  - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
+  - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
+  - [Modified `get_contribution_due_ms`](#modified-get_contribution_due_ms)
+  - [New `get_payload_attestation_due_ms`](#new-get_payload_attestation_due_ms)
+- [Handlers](#handlers)
+  - [Modified `on_block`](#modified-on_block)
+  - [New `on_execution_payload`](#new-on_execution_payload)
+  - [New `on_payload_attestation_message`](#new-on_payload_attestation_message)
 
 <!-- mdformat-toc end -->
 
@@ -497,59 +494,6 @@ def get_head(store: Store) -> ForkChoiceNode:
         )
 ```
 
-## Updated fork-choice helpers
-
-### Modified `get_attestation_due_ms`
-
-```python
-def get_attestation_due_ms(epoch: Epoch) -> uint64:
-    # [New in Gloas]
-    if epoch >= GLOAS_FORK_EPOCH:
-        return get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
-    return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
-```
-
-### Modified `get_aggregate_due_ms`
-
-```python
-def get_aggregate_due_ms(epoch: Epoch) -> uint64:
-    # [New in Gloas]
-    if epoch >= GLOAS_FORK_EPOCH:
-        return get_slot_component_duration_ms(AGGREGATE_DUE_BPS_GLOAS)
-    return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
-```
-
-### Modified `get_sync_message_due_ms`
-
-```python
-def get_sync_message_due_ms(epoch: Epoch) -> uint64:
-    # [New in Gloas]
-    if epoch >= GLOAS_FORK_EPOCH:
-        return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS_GLOAS)
-    return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)
-```
-
-### Modified `get_contribution_due_ms`
-
-```python
-def get_contribution_due_ms(epoch: Epoch) -> uint64:
-    # [New in Gloas]
-    if epoch >= GLOAS_FORK_EPOCH:
-        return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS_GLOAS)
-    return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS)
-```
-
-## New fork-choice helpers
-
-### New `get_payload_attestation_due_ms`
-
-```python
-def get_payload_attestation_due_ms(epoch: Epoch) -> uint64:
-    return get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)
-```
-
-## Updated fork-choice handlers
-
 ### Modified `record_block_timeliness`
 
 ```python
@@ -588,143 +532,6 @@ def update_proposer_boost_root(store: Store, root: Root) -> None:
         # Only update if the proposer is the same as on the canonical chain
         if block.proposer_index == get_beacon_proposer_index(head_state):
             store.proposer_boost_root = root
-```
-
-### Modified `on_block`
-
-*Note*: The handler `on_block` is modified to consider the pre `state` of the
-given consensus beacon block depending not only on the parent block root, but
-also on the parent blockhash. In addition we delay the checking of blob data
-availability until the processing of the execution payload.
-
-```python
-def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
-    """
-    Run ``on_block`` upon receiving a new block.
-    """
-    block = signed_block.message
-    # Parent block must be known
-    assert block.parent_root in store.block_states
-
-    # Check if this blocks builds on empty or full parent block
-    parent_block = store.blocks[block.parent_root]
-    bid = block.body.signed_execution_payload_bid.message
-    parent_bid = parent_block.body.signed_execution_payload_bid.message
-    # Make a copy of the state to avoid mutability issues
-    if is_parent_node_full(store, block):
-        assert block.parent_root in store.execution_payload_states
-        state = copy(store.execution_payload_states[block.parent_root])
-    else:
-        assert bid.parent_block_hash == parent_bid.parent_block_hash
-        state = copy(store.block_states[block.parent_root])
-
-    # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
-    current_slot = get_current_slot(store)
-    assert current_slot >= block.slot
-
-    # Check that block is later than the finalized epoch slot (optimization to reduce calls to get_ancestor)
-    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-    assert block.slot > finalized_slot
-    # Check block is a descendant of the finalized block at the checkpoint finalized slot
-    finalized_checkpoint_block = get_checkpoint_block(
-        store,
-        block.parent_root,
-        store.finalized_checkpoint.epoch,
-    )
-    assert store.finalized_checkpoint.root == finalized_checkpoint_block
-
-    # Check the block is valid and compute the post-state
-    block_root = hash_tree_root(block)
-    state_transition(state, signed_block, True)
-
-    # Add new block to the store
-    store.blocks[block_root] = block
-    # Add new state for this block to the store
-    store.block_states[block_root] = state
-    # Add a new PTC voting for this block to the store
-    store.ptc_vote[block_root] = [False] * PTC_SIZE
-
-    # Notify the store about the payload_attestations in the block
-    notify_ptc_messages(store, state, block.body.payload_attestations)
-
-    record_block_timeliness(store, block_root)
-    update_proposer_boost_root(store, block_root)
-
-    # Update checkpoints in store if necessary
-    update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
-
-    # Eagerly compute unrealized justification and finality.
-    compute_pulled_up_tip(store, block_root)
-```
-
-## New fork-choice handlers
-
-### New `on_execution_payload`
-
-The handler `on_execution_payload` is called when the node receives a
-`SignedExecutionPayloadEnvelope` to sync.
-
-```python
-def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEnvelope) -> None:
-    """
-    Run ``on_execution_payload`` upon receiving a new execution payload.
-    """
-    envelope = signed_envelope.message
-    # The corresponding beacon block root needs to be known
-    assert envelope.beacon_block_root in store.block_states
-
-    # Check if blob data is available
-    # If not, this payload MAY be queued and subsequently considered when blob data becomes available
-    assert is_data_available(envelope.beacon_block_root)
-
-    # Make a copy of the state to avoid mutability issues
-    state = copy(store.block_states[envelope.beacon_block_root])
-
-    # Process the execution payload
-    process_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
-
-    # Add new state for this payload to the store
-    store.execution_payload_states[envelope.beacon_block_root] = state
-```
-
-### New `on_payload_attestation_message`
-
-```python
-def on_payload_attestation_message(
-    store: Store, ptc_message: PayloadAttestationMessage, is_from_block: bool = False
-) -> None:
-    """
-    Run ``on_payload_attestation_message`` upon receiving a new ``ptc_message`` from
-    either within a block or directly on the wire.
-    """
-    # The beacon block root must be known
-    data = ptc_message.data
-    # PTC attestation must be for a known block. If block is unknown, delay consideration until the block is found
-    state = store.block_states[data.beacon_block_root]
-    ptc = get_ptc(state, data.slot)
-    # PTC votes can only change the vote for their assigned beacon block, return early otherwise
-    if data.slot != state.slot:
-        return
-    # Check that the attester is from the PTC
-    assert ptc_message.validator_index in ptc
-
-    # Verify the signature and check that its for the current slot if it is coming from the wire
-    if not is_from_block:
-        # Check that the attestation is for the current slot
-        assert data.slot == get_current_slot(store)
-        # Verify the signature
-        assert is_valid_indexed_payload_attestation(
-            state,
-            IndexedPayloadAttestation(
-                attesting_indices=[ptc_message.validator_index],
-                data=data,
-                signature=ptc_message.signature,
-            ),
-        )
-    # Update the ptc vote for the block
-    ptc_index = ptc.index(ptc_message.validator_index)
-    ptc_vote = store.ptc_vote[data.beacon_block_root]
-    ptc_vote[ptc_index] = data.payload_present
 ```
 
 ### Modified `validate_on_attestation`
@@ -824,4 +631,188 @@ def is_parent_strong(store: Store, root: Root) -> bool:
     parent_node = ForkChoiceNode(root=block.parent_root, payload_status=parent_payload_status)
     parent_weight = get_attestation_score(store, parent_node, justified_state)
     return parent_weight > parent_threshold
+```
+
+### Modified `get_attestation_due_ms`
+
+```python
+def get_attestation_due_ms(epoch: Epoch) -> uint64:
+    # [New in Gloas]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
+    return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+```
+
+### Modified `get_aggregate_due_ms`
+
+```python
+def get_aggregate_due_ms(epoch: Epoch) -> uint64:
+    # [New in Gloas]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return get_slot_component_duration_ms(AGGREGATE_DUE_BPS_GLOAS)
+    return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
+```
+
+### Modified `get_sync_message_due_ms`
+
+```python
+def get_sync_message_due_ms(epoch: Epoch) -> uint64:
+    # [New in Gloas]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS_GLOAS)
+    return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)
+```
+
+### Modified `get_contribution_due_ms`
+
+```python
+def get_contribution_due_ms(epoch: Epoch) -> uint64:
+    # [New in Gloas]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS_GLOAS)
+    return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS)
+```
+
+### New `get_payload_attestation_due_ms`
+
+```python
+def get_payload_attestation_due_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)
+```
+
+## Handlers
+
+### Modified `on_block`
+
+*Note*: The handler `on_block` is modified to consider the pre `state` of the
+given consensus beacon block depending not only on the parent block root, but
+also on the parent blockhash. In addition we delay the checking of blob data
+availability until the processing of the execution payload.
+
+```python
+def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
+    """
+    Run ``on_block`` upon receiving a new block.
+    """
+    block = signed_block.message
+    # Parent block must be known
+    assert block.parent_root in store.block_states
+
+    # Check if this blocks builds on empty or full parent block
+    parent_block = store.blocks[block.parent_root]
+    bid = block.body.signed_execution_payload_bid.message
+    parent_bid = parent_block.body.signed_execution_payload_bid.message
+    # Make a copy of the state to avoid mutability issues
+    if is_parent_node_full(store, block):
+        assert block.parent_root in store.execution_payload_states
+        state = copy(store.execution_payload_states[block.parent_root])
+    else:
+        assert bid.parent_block_hash == parent_bid.parent_block_hash
+        state = copy(store.block_states[block.parent_root])
+
+    # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
+    current_slot = get_current_slot(store)
+    assert current_slot >= block.slot
+
+    # Check that block is later than the finalized epoch slot (optimization to reduce calls to get_ancestor)
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    assert block.slot > finalized_slot
+    # Check block is a descendant of the finalized block at the checkpoint finalized slot
+    finalized_checkpoint_block = get_checkpoint_block(
+        store,
+        block.parent_root,
+        store.finalized_checkpoint.epoch,
+    )
+    assert store.finalized_checkpoint.root == finalized_checkpoint_block
+
+    # Check the block is valid and compute the post-state
+    block_root = hash_tree_root(block)
+    state_transition(state, signed_block, True)
+
+    # Add new block to the store
+    store.blocks[block_root] = block
+    # Add new state for this block to the store
+    store.block_states[block_root] = state
+    # Add a new PTC voting for this block to the store
+    store.ptc_vote[block_root] = [False] * PTC_SIZE
+
+    # Notify the store about the payload_attestations in the block
+    notify_ptc_messages(store, state, block.body.payload_attestations)
+
+    record_block_timeliness(store, block_root)
+    update_proposer_boost_root(store, block_root)
+
+    # Update checkpoints in store if necessary
+    update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
+
+    # Eagerly compute unrealized justification and finality.
+    compute_pulled_up_tip(store, block_root)
+```
+
+### New `on_execution_payload`
+
+The handler `on_execution_payload` is called when the node receives a
+`SignedExecutionPayloadEnvelope` to sync.
+
+```python
+def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEnvelope) -> None:
+    """
+    Run ``on_execution_payload`` upon receiving a new execution payload.
+    """
+    envelope = signed_envelope.message
+    # The corresponding beacon block root needs to be known
+    assert envelope.beacon_block_root in store.block_states
+
+    # Check if blob data is available
+    # If not, this payload MAY be queued and subsequently considered when blob data becomes available
+    assert is_data_available(envelope.beacon_block_root)
+
+    # Make a copy of the state to avoid mutability issues
+    state = copy(store.block_states[envelope.beacon_block_root])
+
+    # Process the execution payload
+    process_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
+
+    # Add new state for this payload to the store
+    store.execution_payload_states[envelope.beacon_block_root] = state
+```
+
+### New `on_payload_attestation_message`
+
+```python
+def on_payload_attestation_message(
+    store: Store, ptc_message: PayloadAttestationMessage, is_from_block: bool = False
+) -> None:
+    """
+    Run ``on_payload_attestation_message`` upon receiving a new ``ptc_message`` from
+    either within a block or directly on the wire.
+    """
+    # The beacon block root must be known
+    data = ptc_message.data
+    # PTC attestation must be for a known block. If block is unknown, delay consideration until the block is found
+    state = store.block_states[data.beacon_block_root]
+    ptc = get_ptc(state, data.slot)
+    # PTC votes can only change the vote for their assigned beacon block, return early otherwise
+    if data.slot != state.slot:
+        return
+    # Check that the attester is from the PTC
+    assert ptc_message.validator_index in ptc
+
+    # Verify the signature and check that its for the current slot if it is coming from the wire
+    if not is_from_block:
+        # Check that the attestation is for the current slot
+        assert data.slot == get_current_slot(store)
+        # Verify the signature
+        assert is_valid_indexed_payload_attestation(
+            state,
+            IndexedPayloadAttestation(
+                attesting_indices=[ptc_message.validator_index],
+                data=data,
+                signature=ptc_message.signature,
+            ),
+        )
+    # Update the ptc vote for the block
+    ptc_index = ptc.index(ptc_message.validator_index)
+    ptc_vote = store.ptc_vote[data.beacon_block_root]
+    ptc_vote[ptc_index] = data.payload_present
 ```
