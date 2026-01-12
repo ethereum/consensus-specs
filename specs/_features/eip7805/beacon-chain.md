@@ -11,7 +11,7 @@
   - [New containers](#new-containers)
     - [`InclusionList`](#inclusionlist)
     - [`SignedInclusionList`](#signedinclusionlist)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Predicates](#predicates)
     - [New `is_valid_inclusion_list_signature`](#new-is_valid_inclusion_list_signature)
   - [Beacon State accessors](#beacon-state-accessors)
@@ -68,7 +68,7 @@ class SignedInclusionList(Container):
     signature: BLSSignature
 ```
 
-## Helper functions
+## Helpers
 
 ### Predicates
 
