@@ -30,8 +30,8 @@ mapping with proof systems. Each proof system gets its own dedicated subnet.
 
 ## Containers
 
-*Note*: Execution proofs are broadcast directly as `SignedExecutionProof`
-containers. No additional message wrapper is needed.
+*Note*: Execution proofs are broadcast as `SignedExecutionProof` containers. No
+additional message wrapper is needed.
 
 ## The gossip domain: gossipsub
 
@@ -63,7 +63,8 @@ The following validations MUST pass before forwarding the
 ##### `execution_proof_{subnet_id}`
 
 Execution proof subnets are used to propagate execution proofs for specific
-proof systems.
+proof systems. `SignedExecutionProof` messages from both builders and provers
+are propagated on these subnets.
 
 The execution proof subnet for a given `proof_id` is:
 
@@ -73,19 +74,21 @@ def compute_subnet_for_execution_proof(proof_id: ProofID) -> SubnetID:
     return SubnetID(proof_id)
 ```
 
-The following validations MUST pass before forwarding the
+The following validations MUST pass before forwarding a
 `signed_execution_proof` on the network:
 
 - _[IGNORE]_ The proof is the first valid proof received for the tuple
-  `(signed_execution_proof.message.zk_proof.public_inputs.new_payload_request_root, subnet_id)`.
-- _[REJECT]_ The `signed_execution_proof.message.builder_index` is within the
-  known builder registry.
+  `(signed_execution_proof.message.public_inputs.new_payload_request_root, subnet_id)`.
+- _[REJECT]_ If `signed_execution_proof.prover_id` is a `BuilderIndex`: the
+  index is within the known builder registry.
+- _[REJECT]_ If `signed_execution_proof.prover_id` is a `BLSPubkey`: the pubkey
+  is in `WHITELISTED_PROVERS`.
 - _[REJECT]_ The `signed_execution_proof.signature` is valid with respect to the
-  builder's public key.
-- _[REJECT]_ The `signed_execution_proof.message.zk_proof.proof_data` is
+  prover's public key.
+- _[REJECT]_ The `signed_execution_proof.message.proof_data` is
   non-empty.
 - _[REJECT]_ The proof system ID matches the subnet:
-  `signed_execution_proof.message.zk_proof.proof_type == subnet_id`.
+  `signed_execution_proof.message.proof_type == subnet_id`.
 - _[REJECT]_ The execution proof is valid as verified by
   `process_signed_execution_proof()`.
 

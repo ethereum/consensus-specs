@@ -24,5 +24,5 @@ This document is an extension of the
 definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
-*Note*: Execution proof generation is handled by builders. See
-[builder.md](./builder.md).
+*Note*: Execution proof generation is handled by builders and provers. See
+[builder.md](./builder.md) and [prover.md](./prover.md).

@@ -9,7 +9,7 @@
 - [Types](#types)
 - [Cryptographic types](#cryptographic-types)
 - [Containers](#containers)
-  - [`ZKEVMProof`](#zkevmproof)
+  - [`ExecutionProof`](#zkevmproof)
   - [`PrivateInput`](#privateinput)
   - [`PublicInput`](#publicinput)
 - [Helpers](#helpers)
@@ -21,8 +21,8 @@
   - [Proof generation](#proof-generation)
     - [`generate_execution_proof_impl`](#generate_execution_proof_impl)
     - [`generate_proving_key`](#generate_proving_key)
-  - [`verify_zkevm_proof`](#verify_zkevm_proof)
-  - [`generate_zkevm_proof`](#generate_zkevm_proof)
+  - [`verify_execution_proof`](#verify_execution_proof)
+  - [`generate_execution_proof`](#generate_execution_proof)
 
 <!-- mdformat-toc end -->
 
@@ -52,7 +52,7 @@ for a payload with a maximum gas limit of 30M gas.
 
 | Name         | SSZ equivalent | Description                     |
 | ------------ | -------------- | ------------------------------- |
-| `ZKEVMProof` | `Container`    | Proof of execution of a program |
+| `ExecutionProof` | `Container`    | Proof of execution of a program |
 
 ## Cryptographic types
 
@@ -71,10 +71,10 @@ layer client. The size depends on the client; `16` is a placeholder.
 
 ## Containers
 
-### `ZKEVMProof`
+### `ExecutionProof`
 
 ```python
-class ZKEVMProof(Container):
+class ExecutionProof(Container):
     proof_data: ByteList[MAX_PROOF_SIZE]
     proof_type: ProofID
     public_inputs: PublicInput
@@ -119,7 +119,7 @@ def generate_keys(
 #### `verify_execution_proof_impl`
 
 ```python
-def verify_execution_proof_impl(proof: ZKEVMProof, verification_key: VerificationKey) -> bool:
+def verify_execution_proof_impl(proof: ExecutionProof, verification_key: VerificationKey) -> bool:
     """
     Verify a zkEVM execution proof using the verification key.
     """
@@ -152,7 +152,7 @@ def generate_execution_proof_impl(
     proving_key: ProvingKey,
     proof_id: ProofID,
     public_inputs: PublicInput,
-) -> ZKEVMProof:
+) -> ExecutionProof:
     """
     Generate a zkEVM execution proof using the proving key, private inputs and public inputs.
     """
@@ -160,7 +160,7 @@ def generate_execution_proof_impl(
         public_inputs.new_payload_request_root + proof_id.to_bytes(1, "little")
     )
 
-    return ZKEVMProof(
+    return ExecutionProof(
         proof_data=ByteList(proof_data), proof_type=proof_id, public_inputs=public_inputs
     )
 ```
@@ -175,30 +175,30 @@ def generate_proving_key(program_bytecode: ProgramBytecode, proof_id: ProofID) -
     return ProvingKey(program_bytecode + proof_id.to_bytes(1, "little"))
 ```
 
-### `verify_zkevm_proof`
+### `verify_execution_proof`
 
 ```python
-def verify_zkevm_proof(
-    zk_proof: ZKEVMProof,
+def verify_execution_proof(
+    proof: ExecutionProof,
     program_bytecode: ProgramBytecode,
 ) -> bool:
     """
-    Public method to verify a zkEVM execution proof against NewPayloadRequest root.
+    Public method to verify an execution proof against NewPayloadRequest root.
     """
-    _, verification_key = generate_keys(program_bytecode, zk_proof.proof_type)
+    _, verification_key = generate_keys(program_bytecode, proof.proof_type)
 
-    return verify_execution_proof_impl(zk_proof, verification_key)
+    return verify_execution_proof_impl(proof, verification_key)
 ```
 
-### `generate_zkevm_proof`
+### `generate_execution_proof`
 
 ```python
-def generate_zkevm_proof(
+def generate_execution_proof(
     new_payload_request: NewPayloadRequest,
     execution_witness: ZKExecutionWitness,
     program_bytecode: ProgramBytecode,
     proof_id: ProofID,
-) -> Optional[ZKEVMProof]:
+) -> ExecutionProof:
     """
     Public method to generate an execution proof for a NewPayloadRequest.
     """
