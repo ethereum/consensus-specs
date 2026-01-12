@@ -4,16 +4,13 @@
 
 - [Introduction](#introduction)
 - [Modifications in Fulu](#modifications-in-fulu)
-  - [Helper functions](#helper-functions)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
-    - [New `compute_max_request_data_column_sidecars`](#new-compute_max_request_data_column_sidecars)
->>>>>>> a04e3f5d8 (Fix some nits)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`DataColumnsByRootIdentifier`](#datacolumnsbyrootidentifier)
   - [Helpers](#helpers)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version-1)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
+    - [New `compute_max_request_data_column_sidecars`](#new-compute_max_request_data_column_sidecars)
     - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
     - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
     - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
@@ -53,40 +50,6 @@ The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Fulu
-
-### Helper functions
-
-#### Modified `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= FULU_FORK_EPOCH:
-        return FULU_FORK_VERSION
-    if epoch >= ELECTRA_FORK_EPOCH:
-        return ELECTRA_FORK_VERSION
-    if epoch >= DENEB_FORK_EPOCH:
-        return DENEB_FORK_VERSION
-    if epoch >= CAPELLA_FORK_EPOCH:
-        return CAPELLA_FORK_VERSION
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
-
-#### New `compute_max_request_data_column_sidecars`
-
-```python
-def compute_max_request_data_column_sidecars() -> uint64:
-    """
-    Return the maximum number of data column sidecars in a single request.
-    """
-    return uint64(MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS)
-```
 
 ### Preset
 
@@ -135,6 +98,16 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
+```
+
+#### New `compute_max_request_data_column_sidecars`
+
+```python
+def compute_max_request_data_column_sidecars() -> uint64:
+    """
+    Return the maximum number of data column sidecars in a single request.
+    """
+    return uint64(MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS)
 ```
 
 #### `verify_data_column_sidecar`
