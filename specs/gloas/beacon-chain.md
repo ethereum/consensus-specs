@@ -862,6 +862,7 @@ def get_builder_withdrawals(
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
+    assert len(prior_withdrawals) <= withdrawals_limit
 
     processed_count: uint64 = 0
     withdrawals: List[Withdrawal] = []
@@ -897,6 +898,7 @@ def get_builders_sweep_withdrawals(
     epoch = get_current_epoch(state)
     builders_limit = min(len(state.builders), MAX_BUILDERS_PER_WITHDRAWALS_SWEEP)
     withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
+    assert len(prior_withdrawals) <= withdrawals_limit
 
     processed_count: uint64 = 0
     withdrawals: List[Withdrawal] = []
