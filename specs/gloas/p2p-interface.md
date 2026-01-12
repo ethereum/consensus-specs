@@ -321,6 +321,12 @@ The following validations MUST pass before forwarding the
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
 
+*Note*: Implementations SHOULD include DoS prevention measures to mitigate spam
+from malicious builders submitting numerous bids with minimal value increments.
+Possible strategies include: (1) only forwarding bids that exceed the current
+highest bid by a minimum threshold, or (2) forwarding only the highest observed
+bid at regular time intervals.
+
 ###### `proposer_preferences`
 
 *[New in Gloas:EIP7732]*
