@@ -76,15 +76,6 @@ def compute_max_request_blob_sidecars() -> uint64:
     # [Modified in Electra:EIP7691]
     return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA)
 ```
-
-### Configuration
-
-*[New in Electra:EIP7691]*
-
-| Name                                | Value | Description                                                       |
-| ----------------------------------- | ----- | ----------------------------------------------------------------- |
-| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`   | The number of blob sidecar subnets used in the gossipsub protocol |
-
 ### The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in Electra to support upgraded types.
