@@ -123,7 +123,8 @@ class SignedExecutionPayloadHeaderEnvelope(Container):
 class BeaconState(Container):
     # ... existing fields ...
     # [New in EIP-8025]
-    execution_proof_store: Map[Root, List[ExecutionProof, MAX_EXECUTION_PROOFS_PER_PAYLOAD]]
+    execution_proof_store: Map[Root, List[SignedExecutionProof, MAX_EXECUTION_PROOFS_PER_PAYLOAD]]
+    pending_execution_proof_store: Map[Root, List[SignedExecutionProof, MAX_EXECUTION_PROOFS_PER_PAYLOAD]]
 ```
 
 *Note*: `BeaconBlockBody` remains unchanged.
@@ -220,7 +221,19 @@ def process_execution_payload(
             parent_beacon_block_root=state.latest_block_header.parent_root,
             execution_requests=requests,
         )
-        assert verify_execution_proofs(state, hash_tree_root(new_payload_request_header))
+        new_payload_request_root = hash_tree_root(new_payload_request_header)
+
+        # Create entry in execution_proof_store (marks header as received)
+        state.execution_proof_store[new_payload_request_root] = []
+
+        # Move pending proofs to execution_proof_store
+        if new_payload_request_root in state.pending_execution_proof_store:
+            state.execution_proof_store[new_payload_request_root].extend(
+                state.pending_execution_proof_store[new_payload_request_root]
+            )
+            del state.pending_execution_proof_store[new_payload_request_root]
+
+        assert verify_execution_proofs(state, new_payload_request_root)
     else:
         # Full payload validation via ExecutionEngine
         assert execution_engine.verify_and_notify_new_payload(
@@ -295,13 +308,19 @@ def process_signed_execution_proof(
     program_bytecode = ProgramBytecode(PROGRAM + proof_message.proof_type.to_bytes(1, "little"))
     assert verify_execution_proof(proof_message, program_bytecode)
 
-    # Store the valid proof in state
+    # Store proof based on whether header has been received
     new_payload_request_root = proof_message.public_inputs.new_payload_request_root
-    if new_payload_request_root not in state.execution_proof_store:
-        state.execution_proof_store[new_payload_request_root] = []
-    state.execution_proof_store[new_payload_request_root].append(proof_message)
 
-    # Mark payload as available if sufficient proofs gathered
-    if len(state.execution_proof_store[new_payload_request_root]) >= MIN_REQUIRED_EXECUTION_PROOFS:
-        state.execution_payload_availability[state.slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
+    if new_payload_request_root in state.execution_proof_store:
+        # Header already received, store directly
+        state.execution_proof_store[new_payload_request_root].append(signed_proof)
+
+        # Mark payload as available if sufficient proofs gathered
+        if len(state.execution_proof_store[new_payload_request_root]) >= MIN_REQUIRED_EXECUTION_PROOFS:
+            state.execution_payload_availability[state.slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
+    else:
+        # Header not yet received, cache in pending store
+        if new_payload_request_root not in state.pending_execution_proof_store:
+            state.pending_execution_proof_store[new_payload_request_root] = []
+        state.pending_execution_proof_store[new_payload_request_root].append(signed_proof)
 ```
