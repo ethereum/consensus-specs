@@ -161,18 +161,16 @@ def prepare_execution_payload(
     # Verify consistency of the parent hash with respect to the previous execution payload header
     parent_hash = state.latest_execution_payload_header.block_hash
 
-    # Set the forkchoice head and initiate the payload build process
-    withdrawals, _ = get_expected_withdrawals(state)
-
     # [New in EIP7805]
     # Get the inclusion list store
     inclusion_list_store = get_inclusion_list_store()
 
+    # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
         timestamp=compute_time_at_slot(state, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
-        withdrawals=withdrawals,
+        withdrawals=get_expected_withdrawals(state).withdrawals,
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
         # [New in EIP7805]
         inclusion_list_transactions=get_inclusion_list_transactions(

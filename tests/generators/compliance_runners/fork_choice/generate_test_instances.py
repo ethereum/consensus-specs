@@ -1,13 +1,43 @@
-from collections.abc import Iterable
+import asyncio
+from collections import Counter, OrderedDict
+from collections.abc import Collection, Iterable
 from itertools import product
 from os import path
 
-from minizinc import Instance, Model, Solver
+from minizinc import Instance, Model, Solver, Status
 from ruamel.yaml import YAML
 from toolz.dicttoolz import merge
 
 base_dir = path.dirname(__file__)
 model_dir = path.join(base_dir, "model")
+
+
+def to_hashable(obj):
+    if isinstance(obj, dict):
+        return frozenset((to_hashable(k), to_hashable(v)) for k, v in obj.items())
+    elif isinstance(obj, list):
+        return tuple(map(to_hashable, obj))
+    elif isinstance(obj, set):
+        return frozenset(map(to_hashable, obj))
+    else:
+        return obj
+
+
+def check_uniqueness(solutions: Collection[dict]):
+    """
+    Checks that each solution is unique.
+    Throws an exception, if any duplicate found.
+    """
+
+    hashable_solutions = list(map(to_hashable, solutions))
+    solution_counter = Counter(hashable_solutions)
+    if solution_counter.total() != len(solution_counter):
+        print(f"duplicate solutions found: {solution_counter.total()} vs {len(solution_counter)}")
+        for sol, count in solution_counter.most_common(5):
+            if count >= 1:
+                print(f"{count} solutions: {sol}")
+
+        assert False
 
 
 def solve_sm_links(
@@ -79,14 +109,13 @@ def solve_block_cover(
     instance["block_is_leaf"] = block_is_leaf
 
     assert number_of_solutions is not None
-    result = instance.solve(nr_solutions=number_of_solutions)
 
     if anchor_epoch == 0 and not store_justified_epoch_equal_zero:
         return
 
-    for s in result.solution:
+    def extract_values(s):
         max_block = s.max_block
-        yield {
+        return {
             "block_epochs": s.es[: max_block + 1],
             "parents": s.parents[: max_block + 1],
             "previous_justifications": s.prevs[: max_block + 1],
@@ -101,6 +130,22 @@ def solve_block_cover(
                 "block_is_leaf": block_is_leaf,
             },
         }
+
+    async def get_unique_solutions(number_of_solutions):
+        solution_map = OrderedDict()
+        async for res in instance.solutions(all_solutions=True):
+            if res.status == Status.SATISFIED:
+                sol = extract_values(res.solution)
+                key = to_hashable(sol)
+                if key not in solution_map:
+                    solution_map[key] = sol
+                    if len(solution_map) >= number_of_solutions:
+                        break
+            else:
+                break
+        return solution_map.values()
+
+    yield from asyncio.run(get_unique_solutions(number_of_solutions))
 
 
 def generate_block_cover(params):
@@ -213,7 +258,7 @@ gen_params = {
         "params": [
             (
                 {"anchor_epoch": 0, "number_of_epochs": 6, "number_of_links": 4},
-                {"number_of_blocks": 16, "max_children": 2, "number_of_solutions": 5},
+                {"number_of_blocks": 15, "max_children": 2, "number_of_solutions": 5},
             ),
             (
                 [{"sm_links": [[0, 1], [0, 2], [2, 3], [3, 4]]}],
@@ -235,7 +280,7 @@ gen_params = {
         "params": [
             (
                 {"anchor_epoch": 0, "number_of_epochs": 6, "number_of_links": 4},
-                {"number_of_blocks": 16, "max_children": 2, "number_of_solutions": 5},
+                {"number_of_blocks": 15, "max_children": 2, "number_of_solutions": 5},
             ),
             (
                 [{"sm_links": [[0, 1], [0, 2], [2, 3], [3, 4]]}],
@@ -301,5 +346,7 @@ if __name__ == "__main__":
                     assert False
             results = [merge(*sol) for sol in product(*model_solutions)]
             solutions.extend(results)
+
+        check_uniqueness(solutions)
         with open(out_path, "w") as f:
             yaml.dump(solutions, f)

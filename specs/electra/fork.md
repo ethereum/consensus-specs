@@ -29,8 +29,8 @@ Warning: this configuration is not definitive.
 
 The fork is triggered at epoch `ELECTRA_FORK_EPOCH`.
 
-Note that for the pure Electra networks, we don't apply `upgrade_to_electra`
-since it starts with Electra version logic.
+*Note*: For the pure Electra networks, the `upgrade_to_electra` function is
+applied to transition the genesis state to this fork.
 
 ### Upgrading the state
 

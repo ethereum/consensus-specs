@@ -9,6 +9,7 @@ on:
     branches:
       - master
   pull_request:
+    types: [opened, edited, reopened, synchronize]
     branches:
       - master
 
@@ -17,13 +18,13 @@ jobs:
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Set up Python
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         with:
           python-version-file: "pyproject.toml"
       - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7.1.2
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7.1.6
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
@@ -36,7 +37,7 @@ jobs:
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Check for trailing whitespace
         run: |
           if git grep -n '[[:blank:]]$'; then
@@ -48,25 +49,37 @@ jobs:
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Set up Python
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         with:
           python-version-file: "pyproject.toml"
       - name: Check fork comments
         run: python3 scripts/check_fork_comments.py
 
+  headings:
+    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - name: Set up Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version-file: "pyproject.toml"
+      - name: Check markdown headings
+        run: python3 scripts/check_markdown_headings.py
+
   framework:
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Set up Python
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         with:
           python-version-file: "pyproject.toml"
       - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7.1.2
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7.1.6
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
@@ -76,14 +89,69 @@ jobs:
         if: always()
         run: cp -r ./tests/core/pyspec/test-reports ./tests/core/pyspec/test-results-framework-${{ github.run_number }}
       - name: Upload framework test results
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: test-results-framework-${{ github.run_number }}
           path: ./tests/core/pyspec/test-results-framework-${{ github.run_number }}
 
+  title:
+    if: github.event_name == 'pull_request'
+    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    steps:
+      - name: Check PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+
+          echo "Checking PR title: $PR_TITLE"
+
+          # Check length (must be <= 68 characters)
+          if [ ${#PR_TITLE} -gt 68 ]; then
+            echo "PR title (${#PR_TITLE} characters) must be <= 68 characters"
+            exit 1
+          fi
+
+          # Check for leading or trailing whitespace
+          if [[ "$PR_TITLE" =~ ^[[:space:]] ]] || [[ "$PR_TITLE" =~ [[:space:]]$ ]]; then
+            echo "PR title must not have leading or trailing whitespace"
+            exit 1
+          fi
+
+          # Check for double spaces
+          if [[ "$PR_TITLE" =~ [[:space:]]{2,} ]]; then
+            echo "PR title must not contain double spaces"
+            exit 1
+          fi
+
+          # Check if starts with capital letter
+          if ! [[ "$PR_TITLE" =~ ^[A-Z] ]]; then
+            echo "PR title must start with a capital letter"
+            exit 1
+          fi
+
+          # Check if ends with punctuation
+          if [[ "$PR_TITLE" =~ [.!?,\;]$ ]]; then
+            echo "PR title must not end with punctuation"
+            exit 1
+          fi
+
+          # Check for correct tense (imperative mood)
+          first_word=$(echo "$PR_TITLE" | awk '{print $1}')
+          if [[ ! "$first_word" =~ ^(Embed|Shed)$ ]]; then
+            if [[ "$first_word" =~ [^e]ed$ ]] || \
+               [[ "$first_word" =~ ies$ ]] || \
+               [[ "$first_word" =~ [^s]es$ ]] || \
+               [[ "$first_word" =~ [^s]s$ ]]; then
+              echo "PR title must use imperative mood"
+              exit 1
+            fi
+          fi
+
+          echo "PR title is valid"
+
   tests:
-    needs: [lint, whitespace, comments, framework]
+    needs: [lint, whitespace, comments, headings, framework, title]
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     strategy:
       matrix:
@@ -100,13 +168,13 @@ jobs:
           - eip7928
     steps:
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Set up Python
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         with:
           python-version-file: "pyproject.toml"
       - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v7.1.2
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7.1.6
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
@@ -116,7 +184,7 @@ jobs:
         if: always()
         run: cp -r ./tests/core/pyspec/test-reports ./tests/core/pyspec/test-results-minimal-${{ matrix.fork }}-${{ github.run_number }}
       - name: Upload ${{ matrix.fork }} test results
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: test-results-minimal-${{ matrix.fork }}-${{ github.run_number }}

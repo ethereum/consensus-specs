@@ -9,7 +9,7 @@
 - [Preset](#preset)
   - [Blob](#blob)
   - [Trusted setup](#trusted-setup)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Bit-reversal permutation](#bit-reversal-permutation)
     - [`is_power_of_two`](#is_power_of_two)
     - [`reverse_bits`](#reverse_bits)
@@ -107,7 +107,7 @@ cryptographic normalization before invoking any internal functions.
 | `KZG_SETUP_G1_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
 | `KZG_SETUP_G2_MONOMIAL` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]`     |
 
-## Helper functions
+## Helpers
 
 ### Bit-reversal permutation
 
@@ -327,7 +327,7 @@ def evaluate_polynomial_in_evaluation_form(
     - When ``z`` is in the domain, the evaluation can be found by indexing the polynomial at the
     position that ``z`` is in the domain.
     - When ``z`` is not in the domain, the barycentric formula is used:
-       f(z) = (z**WIDTH - 1) / WIDTH  *  sum_(i=0)^WIDTH  (f(DOMAIN[i]) * DOMAIN[i]) / (z - DOMAIN[i])
+       f(z) = (z**WIDTH - 1) / WIDTH  *  sum_(i=0)^(WIDTH-1) (f(DOMAIN[i]) * DOMAIN[i]) / (z - DOMAIN[i])
     """
     width = len(polynomial)
     assert width == FIELD_ELEMENTS_PER_BLOB
