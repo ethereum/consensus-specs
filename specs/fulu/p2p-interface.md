@@ -479,6 +479,9 @@ which blobs are included in this block, and therefore which cells they are
 missing. Clients SHOULD NOT send a `PartialDataColumnHeader` non-eagerly, as
 this is wasted bandwidth.
 
+Clients MAY choose to not eagerly push the `PartialDataColumnHeader` if it has
+previously sent the header to the peer on another topic.
+
 Clients SHOULD request cell data from peers after validating a
 `PartialDataColumnHeader`, even if the corresponding block has not been seen
 yet.
