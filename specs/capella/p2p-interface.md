@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Modifications in Capella](#modifications-in-capella)
-  - [Helper functions](#helper-functions)
+  - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -28,7 +28,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Capella
 
-### Helper functions
+### Helpers
 
 #### Modified `compute_fork_version`
 

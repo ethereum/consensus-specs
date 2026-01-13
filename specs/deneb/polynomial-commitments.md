@@ -9,7 +9,7 @@
 - [Preset](#preset)
   - [Blob](#blob)
   - [Trusted setup](#trusted-setup)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Bit-reversal permutation](#bit-reversal-permutation)
     - [`is_power_of_two`](#is_power_of_two)
     - [`reverse_bits`](#reverse_bits)
@@ -107,7 +107,7 @@ cryptographic normalization before invoking any internal functions.
 | `KZG_SETUP_G1_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
 | `KZG_SETUP_G2_MONOMIAL` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]`     |
 
-## Helper functions
+## Helpers
 
 ### Bit-reversal permutation
 

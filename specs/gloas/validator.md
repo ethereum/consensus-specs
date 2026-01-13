@@ -14,14 +14,13 @@
   - [Attestation](#attestation)
   - [Sync Committee participations](#sync-committee-participations)
   - [Block proposal](#block-proposal)
+    - [Broadcasting `SignedProposerPreferences`](#broadcasting-signedproposerpreferences)
     - [Constructing `signed_execution_payload_bid`](#constructing-signed_execution_payload_bid)
     - [Constructing `payload_attestations`](#constructing-payload_attestations)
     - [Blob sidecars](#blob-sidecars)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing a payload attestation](#constructing-a-payload-attestation)
 - [Modified functions](#modified-functions)
-  - [Modified `prepare_execution_payload`](#modified-prepare_execution_payload)
-- [Data column sidecars](#data-column-sidecars)
   - [Modified `get_data_column_sidecars_from_column_sidecar`](#modified-get_data_column_sidecars_from_column_sidecar)
 
 <!-- mdformat-toc end -->
@@ -119,6 +118,56 @@ any slot during which `is_proposer(state, validator_index)` returns `True`. The
 mechanism to prepare this beacon block and related sidecars differs from
 previous forks as follows
 
+#### Broadcasting `SignedProposerPreferences`
+
+At the beginning of each epoch, a validator MAY broadcast
+`SignedProposerPreferences` messages to the `proposer_preferences` gossip topic
+for each slot returned by `get_upcoming_proposal_slots(state, validator_index)`.
+This allows builders to construct execution payloads with the validator's
+preferred `fee_recipient` and `gas_limit`. If a validator does not broadcast a
+`SignedProposerPreferences` message, this implies that the validator will not
+accept any trustless bids for that slot.
+
+```python
+def get_upcoming_proposal_slots(
+    state: BeaconState, validator_index: ValidatorIndex
+) -> Sequence[Slot]:
+    """
+    Get the slots in the next epoch for which ``validator_index`` is proposing.
+    """
+    return [
+        Slot(compute_start_slot_at_epoch(get_current_epoch(state) + Epoch(1)) + offset)
+        for offset, proposer_index in enumerate(state.proposer_lookahead[SLOTS_PER_EPOCH:])
+        if validator_index == proposer_index
+    ]
+```
+
+To construct each `SignedProposerPreferences`:
+
+1. Instantiate a new `ProposerPreferences` object as `preferences`.
+2. Set `preferences.proposal_slot` to `upcoming_proposal_slots[i]`.
+3. Set `preferences.validator_index` to the validator's index.
+4. Set `preferences.fee_recipient` to the execution address where the validator
+   wishes to receive the builder payment.
+5. Set `preferences.gas_limit` to the validator's preferred gas limit for this
+   execution payload.
+6.
+7. Instantiate a new `SignedProposerPreferences` object as `signed_preferences`.
+8. Set `signed_preferences.message` to `preferences`.
+9. Set `signed_preferences.signature` to the result of
+   `get_proposer_preferences_signature(state, preferences, privkey)`.
+
+```python
+def get_proposer_preferences_signature(
+    state: BeaconState, preferences: ProposerPreferences, privkey: int
+) -> BLSSignature:
+    domain = get_domain(
+        state, DOMAIN_PROPOSER_PREFERENCES, compute_epoch_at_slot(preferences.proposal_slot)
+    )
+    signing_root = compute_signing_root(preferences, domain)
+    return bls.Sign(privkey, signing_root)
+```
+
 #### Constructing `signed_execution_payload_bid`
 
 To obtain `signed_execution_payload_bid`, a block proposer building a block on
@@ -132,6 +181,7 @@ top of a `state` MUST take the following actions in order to construct the
   found in `process_execution_payload_bid` with the alias
   `bid = signed_execution_payload_bid.message`, that is:
   - For external builders, the signature MUST be valid.
+  - For self-builds, set `bid.builder_index` to `BUILDER_INDEX_SELF_BUILD`.
   - For self-builds, the signature MUST be `bls.G2_POINT_AT_INFINITY` and the
     `bid.value` MUST be zero.
   - The builder balance can cover the `bid.value`.
@@ -224,45 +274,6 @@ def get_payload_attestation_message_signature(
 `SignedExecutionPayloadEnvelope`.
 
 ## Modified functions
-
-### Modified `prepare_execution_payload`
-
-*Note*: The function `prepare_execution_payload` is modified to handle the
-updated `get_expected_withdrawals` return signature.
-
-```python
-def prepare_execution_payload(
-    state: BeaconState,
-    safe_block_hash: Hash32,
-    finalized_block_hash: Hash32,
-    suggested_fee_recipient: ExecutionAddress,
-    execution_engine: ExecutionEngine,
-) -> Optional[PayloadId]:
-    # Verify consistency of the parent hash with respect to the previous execution payload bid
-    parent_hash = state.latest_execution_payload_bid.block_hash
-
-    # [Modified in Gloas:EIP7732]
-    # Set the forkchoice head and initiate the payload build process
-    withdrawals, _, _, _ = get_expected_withdrawals(state)
-
-    payload_attributes = PayloadAttributes(
-        timestamp=compute_time_at_slot(state, state.slot),
-        prev_randao=get_randao_mix(state, get_current_epoch(state)),
-        suggested_fee_recipient=suggested_fee_recipient,
-        withdrawals=withdrawals,
-        parent_beacon_block_root=hash_tree_root(state.latest_block_header),
-    )
-    return execution_engine.notify_forkchoice_updated(
-        head_block_hash=parent_hash,
-        safe_block_hash=safe_block_hash,
-        finalized_block_hash=finalized_block_hash,
-        payload_attributes=payload_attributes,
-    )
-```
-
-## Data column sidecars
-
-*[Modified in Gloas]*
 
 ### Modified `get_data_column_sidecars_from_column_sidecar`
 

@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Modified `get_lc_execution_root`](#modified-get_lc_execution_root)
   - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
@@ -22,7 +22,7 @@ Additional documents describes the impact of the upgrade on certain roles:
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 
-## Helper functions
+## Helpers
 
 ### Modified `get_lc_execution_root`
 

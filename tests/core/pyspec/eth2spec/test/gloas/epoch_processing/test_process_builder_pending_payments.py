@@ -17,7 +17,6 @@ def create_builder_pending_payment(spec, builder_index, amount, weight=0, fee_re
             fee_recipient=fee_recipient,
             amount=amount,
             builder_index=builder_index,
-            withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
         ),
     )
 
@@ -142,7 +141,6 @@ def test_process_builder_pending_payments_above_quorum(spec, state):
     assert withdrawal.fee_recipient == fee_recipient
     assert withdrawal.amount == amount
     assert withdrawal.builder_index == builder_index
-    assert withdrawal.withdrawable_epoch > spec.get_current_epoch(state)
 
     # Payment should be rotated out
     assert state.builder_pending_payments[0].weight == 0
@@ -185,7 +183,6 @@ def test_process_builder_pending_payments_multiple_above_quorum(spec, state):
         assert withdrawal.amount == expected_amount
         assert withdrawal.builder_index == i
         assert withdrawal.fee_recipient == expected_fee_recipient
-        assert withdrawal.withdrawable_epoch > spec.get_current_epoch(state)
 
     # All payments should be cleared (weights set to 0)
     for i in range(num_payments):
@@ -325,13 +322,3 @@ def test_process_builder_pending_payments_large_amount_churn_impact(spec, state)
     assert state.exit_balance_to_consume == expected_exit_balance_to_consume, (
         f"Expected exit_balance_to_consume {expected_exit_balance_to_consume}, got {state.exit_balance_to_consume}"
     )
-
-    earliest_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
-    balance_to_process = large_amount - per_epoch_churn
-    additional_epochs = (balance_to_process - 1) // per_epoch_churn + 1
-    expected_exit_queue_epoch = earliest_exit_epoch + additional_epochs
-    expected_withdrawable_epoch = (
-        expected_exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-    )
-
-    assert withdrawal.withdrawable_epoch == expected_withdrawable_epoch

@@ -17,7 +17,7 @@
     - [`ExecutionProof`](#executionproof)
     - [`SignedExecutionProof`](#signedexecutionproof)
   - [Extended Containers](#extended-containers)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Execution proof functions](#execution-proof-functions)
     - [`verify_execution_proof`](#verify_execution_proof)
     - [`verify_execution_proofs`](#verify_execution_proofs)
@@ -86,7 +86,7 @@ class SignedExecutionProof(Container):
 *Note*: `BeaconState` and `BeaconBlockBody` remain the same. No modifications
 are required for execution proofs since they are handled externally.
 
-## Helper functions
+## Helpers
 
 ### Execution proof functions
 
