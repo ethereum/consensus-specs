@@ -9,6 +9,7 @@
 - [Extended Containers](#extended-containers)
   - [`ExecutionPayload`](#executionpayload)
   - [`ExecutionPayloadHeader`](#executionpayloadheader)
+  - [`BeaconState`](#beaconstate)
   - [`NewPayloadRequest`](#newpayloadrequest)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
@@ -19,8 +20,7 @@
 
 ## Introduction
 
-*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md) and
-is under active development.
+*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md).
 
 ## Custom types
 
@@ -80,6 +80,54 @@ class ExecutionPayloadHeader(Container):
     block_access_list_root: Root
 ```
 
+### `BeaconState`
+
+*Note*: The `BeaconState` container is extended with the modified
+`latest_execution_payload_header` field.
+
+```python
+class BeaconState(Container):
+    genesis_time: uint64
+    genesis_validators_root: Root
+    slot: Slot
+    fork: Fork
+    latest_block_header: BeaconBlockHeader
+    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
+    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
+    eth1_data: Eth1Data
+    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
+    eth1_deposit_index: uint64
+    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
+    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
+    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
+    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
+    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
+    previous_justified_checkpoint: Checkpoint
+    current_justified_checkpoint: Checkpoint
+    finalized_checkpoint: Checkpoint
+    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    current_sync_committee: SyncCommittee
+    next_sync_committee: SyncCommittee
+    # [Modified in EIP7928]
+    latest_execution_payload_header: ExecutionPayloadHeader
+    next_withdrawal_index: WithdrawalIndex
+    next_withdrawal_validator_index: ValidatorIndex
+    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
+    deposit_requests_start_index: uint64
+    deposit_balance_to_consume: Gwei
+    exit_balance_to_consume: Gwei
+    earliest_exit_epoch: Epoch
+    consolidation_balance_to_consume: Gwei
+    earliest_consolidation_epoch: Epoch
+    pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
+    pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
+    pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
+    proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
+```
+
 ### `NewPayloadRequest`
 
 *Note*: The `NewPayloadRequest` is unchanged. The `block_access_list` is
@@ -110,10 +158,13 @@ def process_execution_payload(
         len(body.blob_kzg_commitments)
         <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
     )
-    # Verify the execution payload is valid
+
+    # Compute list of versioned hashes
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
     ]
+
+    # Verify the execution payload is valid
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
@@ -122,6 +173,7 @@ def process_execution_payload(
             execution_requests=body.execution_requests,
         )
     )
+
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,

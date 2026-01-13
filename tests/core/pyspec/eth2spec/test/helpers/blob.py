@@ -12,7 +12,7 @@ from eth2spec.test.helpers.forks import (
     is_post_fulu,
     is_post_gloas,
 )
-from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.keys import builder_privkeys
 from eth2spec.test.helpers.state import state_transition_and_sign_block
 
 
@@ -149,14 +149,21 @@ def get_block_with_blob(spec, state, rng: Random | None = None, blob_count=1):
             blob_kzg_commitments
         )
         kzg_root = blob_kzg_commitments.hash_tree_root()
-        block.body.signed_execution_payload_header.message.blob_kzg_commitments_root = kzg_root
-        block.body.signed_execution_payload_header.signature = (
-            spec.get_execution_payload_header_signature(
-                state,
-                block.body.signed_execution_payload_header.message,
-                privkeys[block.body.signed_execution_payload_header.message.builder_index],
+        block.body.signed_execution_payload_bid.message.blob_kzg_commitments_root = kzg_root
+        # For self-builds, use point at infinity signature as per spec
+        if (
+            block.body.signed_execution_payload_bid.message.builder_index
+            == spec.BUILDER_INDEX_SELF_BUILD
+        ):
+            block.body.signed_execution_payload_bid.signature = spec.G2_POINT_AT_INFINITY
+        else:
+            block.body.signed_execution_payload_bid.signature = (
+                spec.get_execution_payload_bid_signature(
+                    state,
+                    block.body.signed_execution_payload_bid.message,
+                    builder_privkeys[block.body.signed_execution_payload_bid.message.builder_index],
+                )
             )
-        )
     else:
         block.body.execution_payload.transactions = [opaque_tx]
         block.body.execution_payload.block_hash = compute_el_block_hash(
@@ -180,6 +187,7 @@ def get_block_with_blob_and_sidecars(spec, state, rng=None, blob_count=1):
             signed_block, blob_kzg_commitments, cells_and_kzg_proofs
         )
     else:
+        # For Fulu and earlier, use 2-parameter version
         sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
     return block, blobs, blob_kzg_proofs, signed_block, sidecars
 

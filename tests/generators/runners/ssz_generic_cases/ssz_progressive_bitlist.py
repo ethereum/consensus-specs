@@ -67,16 +67,20 @@ def valid_cases():
                 yield (
                     f"progbitlist_{mode.to_name()}_{length}_{variation}",
                     valid_test_case(
-                        lambda rng=rng,
+                        lambda rng,
                         mode=mode,
                         length=length,
                         variation=variation: progressive_bitlist_case_fn(
                             rng, mode, length, force_final_bit=[None, True, False][variation % 3]
-                        )
+                        ),
+                        rng,
                     ),
                 )
 
 
 def invalid_cases():
     for description, data in INVALID_BITLIST_CASES:
-        yield f"progbitlist_{description}", invalid_test_case(lambda data=data: data)
+        yield (
+            f"progbitlist_{description}",
+            invalid_test_case(ProgressiveBitlist, lambda data=data: data),
+        )

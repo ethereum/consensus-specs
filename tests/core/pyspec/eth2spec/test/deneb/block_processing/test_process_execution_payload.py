@@ -15,7 +15,7 @@ from eth2spec.test.helpers.execution_payload import (
     get_execution_payload_header,
 )
 from eth2spec.test.helpers.forks import is_post_gloas
-from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.keys import builder_privkeys, privkeys
 
 
 def run_execution_payload_processing(
@@ -36,13 +36,17 @@ def run_execution_payload_processing(
             payload=execution_payload,
             blob_kzg_commitments=blob_kzg_commitments,
             slot=state.slot,
-            builder_index=spec.get_beacon_proposer_index(state),
+            builder_index=spec.BUILDER_INDEX_SELF_BUILD,
         )
         kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
             blob_kzg_commitments
         )
-        state.latest_execution_payload_header.blob_kzg_commitments_root = kzg_list.hash_tree_root()
-        state.latest_execution_payload_header.builder_index = envelope.builder_index
+        # In Gloas, blob_kzg_commitments_root is stored in latest_execution_payload_bid, not latest_execution_payload_header
+        state.latest_execution_payload_bid.blob_kzg_commitments_root = kzg_list.hash_tree_root()
+        state.latest_execution_payload_bid.builder_index = envelope.builder_index
+        # Ensure bid fields match payload for assertions to pass
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
         post_state = state.copy()
         previous_state_root = state.hash_tree_root()
         if post_state.latest_block_header.state_root == spec.Root():
@@ -52,13 +56,9 @@ def run_execution_payload_processing(
         payment = post_state.builder_pending_payments[
             spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
         ]
-        exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(
-            post_state, payment.withdrawal.amount
-        )
-        payment.withdrawal.withdrawable_epoch = spec.Epoch(
-            exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-        )
-        post_state.builder_pending_withdrawals.append(payment.withdrawal)
+        amount = payment.withdrawal.amount
+        if amount > 0:
+            post_state.builder_pending_withdrawals.append(payment.withdrawal)
         post_state.builder_pending_payments[
             spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
         ] = spec.BuilderPendingPayment()
@@ -66,7 +66,10 @@ def run_execution_payload_processing(
         post_state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] = 0b1
         post_state.latest_block_hash = execution_payload.block_hash
         envelope.state_root = post_state.hash_tree_root()
-        privkey = privkeys[envelope.builder_index]
+        if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
+            privkey = privkeys[state.latest_block_header.proposer_index]
+        else:
+            privkey = builder_privkeys[envelope.builder_index]
         signature = spec.get_execution_payload_envelope_signature(
             state,
             envelope,
@@ -76,16 +79,16 @@ def run_execution_payload_processing(
             message=envelope,
             signature=signature,
         )
-        body = spec.BeaconBlockBody()
+        yield "signed_envelope", signed_envelope
     else:
         body = spec.BeaconBlockBody(
             blob_kzg_commitments=blob_kzg_commitments,
             execution_payload=execution_payload,
         )
+        yield "body", body
 
     yield "pre", state
     yield "execution", {"execution_valid": execution_valid}
-    yield "body", body
 
     called_new_block = False
 
@@ -150,9 +153,11 @@ def test_incorrect_blob_tx_type(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in Gloas
+    # Make the parent block full in Gloas and set up bid to match payload
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
 
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
@@ -173,9 +178,11 @@ def test_incorrect_transaction_length_1_extra_byte(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in Gloas
+    # Make the parent block full in Gloas and set up bid to match payload
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
     )
@@ -195,9 +202,11 @@ def test_incorrect_transaction_length_1_byte_short(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in Gloas
+    # Make the parent block full in Gloas and set up bid to match payload
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
     )
@@ -217,9 +226,11 @@ def test_incorrect_transaction_length_empty(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in Gloas
+    # Make the parent block full in Gloas and set up bid to match payload
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
     )
@@ -239,9 +250,11 @@ def test_incorrect_transaction_length_32_extra_bytes(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in Gloas
+    # Make the parent block full in Gloas and set up bid to match payload
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
     )
@@ -260,9 +273,11 @@ def test_no_transactions_with_commitments(spec, state):
     execution_payload.transactions = []
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in Gloas
+    # Make the parent block full in Gloas and set up bid to match payload
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
     )
@@ -282,9 +297,11 @@ def test_incorrect_commitment(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in Gloas
+    # Make the parent block full in Gloas and set up bid to match payload
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
     )
@@ -305,7 +322,7 @@ def test_no_commitments_for_transactions(spec, state):
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
 
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
@@ -326,9 +343,11 @@ def test_incorrect_commitments_order(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in Gloas
+    # Make the parent block full in Gloas and set up bid to match payload
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
     )
@@ -351,7 +370,7 @@ def test_incorrect_transaction_no_blobs_but_with_commitments(spec, state):
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
 
     # the transaction doesn't contain any blob, but commitments are provided
     yield from run_execution_payload_processing(
@@ -373,9 +392,11 @@ def test_incorrect_block_hash(spec, state):
     execution_payload.block_hash = b"\x12" * 32  # incorrect block hash
 
     # CL itself doesn't verify EL block hash
-    # Make the first block full in Gloas
+    # Make the parent block full in Gloas and set up bid to match payload
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
     )
@@ -397,9 +418,11 @@ def test_zeroed_commitment(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in Gloas
+    # Make the parent block full in Gloas and set up bid to match payload
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments
     )
@@ -418,9 +441,11 @@ def test_invalid_correct_input__execution_invalid(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in Gloas
+    # Make the parent block full in Gloas and set up bid to match payload
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments, valid=False, execution_valid=False
     )
@@ -441,9 +466,11 @@ def test_invalid_exceed_max_blobs_per_block(spec, state):
     execution_payload.transactions = [opaque_tx]
     execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
 
-    # Make the first block full in Gloas
+    # Make the parent block full in Gloas and set up bid to match payload
     if is_post_gloas(spec):
-        state.latest_execution_payload_header.block_hash = execution_payload.block_hash
+        state.latest_block_hash = execution_payload.parent_hash
+        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
+        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments, valid=False
     )

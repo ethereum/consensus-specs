@@ -15,7 +15,7 @@
   - [`get_pow_block`](#get_pow_block)
   - [`is_valid_terminal_pow_block`](#is_valid_terminal_pow_block)
   - [`validate_merge_block`](#validate_merge_block)
-- [Updated fork-choice handlers](#updated-fork-choice-handlers)
+- [Handlers](#handlers)
   - [`on_block`](#on_block)
 
 <!-- mdformat-toc end -->
@@ -24,6 +24,9 @@
 
 This is the modification of the fork choice according to the executable beacon
 chain proposal.
+
+Unless stated explicitly, all prior functionality from
+[Altair](../altair/fork-choice.md) is inherited.
 
 *Note*: It introduces the process of transition from the last PoW block to the
 first PoS block.
@@ -151,7 +154,7 @@ def should_override_forkchoice_update(store: Store, head_root: Root) -> bool:
     # `store.time` early, or by counting queued attestations during the head block's slot.
     if current_slot > head_block.slot:
         head_weak = is_head_weak(store, head_root)
-        parent_strong = is_parent_strong(store, parent_root)
+        parent_strong = is_parent_strong(store, head_root)
     else:
         head_weak = True
         parent_strong = True
@@ -257,7 +260,7 @@ def validate_merge_block(block: BeaconBlock) -> None:
     assert is_valid_terminal_pow_block(pow_block, pow_parent)
 ```
 
-## Updated fork-choice handlers
+## Handlers
 
 ### `on_block`
 
@@ -305,18 +308,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
-    # Add block timeliness to the store
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
-    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
-    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
-    store.block_timeliness[hash_tree_root(block)] = is_timely
-
-    # Add proposer score boost if the block is timely and not conflicting with an existing block
-    is_first_block = store.proposer_boost_root == Root()
-    if is_timely and is_first_block:
-        store.proposer_boost_root = hash_tree_root(block)
+    record_block_timeliness(store, block_root)
+    update_proposer_boost_root(store, block_root)
 
     # Update checkpoints in store if necessary
     update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)

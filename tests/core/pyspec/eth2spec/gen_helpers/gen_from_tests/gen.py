@@ -1,12 +1,13 @@
 from collections.abc import Iterable
 from importlib import import_module
 from inspect import getmembers, isfunction
-from pkgutil import walk_packages
+from pkgutil import ModuleInfo, walk_packages
 from typing import Any
 
 from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
 from eth2spec.test.helpers.constants import ALL_PRESETS, TESTGEN_FORKS
 from eth2spec.test.helpers.typing import PresetBaseName, SpecForkName
+from tests.infra.manifest import Manifest
 
 
 def generate_case_fn(tfn, generator_mode, phase, preset, bls_active):
@@ -50,35 +51,60 @@ def generate_from_tests(
         if case_name.startswith("test_"):
             case_name = case_name[5:]
 
-        yield TestCase(
+        manifest = Manifest(
             fork_name=fork_name,
             preset_name=preset_name,
             runner_name=runner_name,
             handler_name=handler_name,
             suite_name=getattr(tfn, "suite_name", "pyspec_tests"),
             case_name=case_name,
-            # TODO: with_all_phases and other per-phase tooling, should be replaced with per-fork equivalent.
+        )
+
+        if hasattr(tfn, "manifest") and tfn.manifest is not None:
+            manifest = tfn.manifest.override(manifest)
+
+        yield TestCase.from_manifest(
+            manifest,
             case_fn=generate_case_fn(
                 tfn, generator_mode=True, phase=phase, preset=preset_name, bls_active=bls_active
             ),
         )
 
 
-def get_expected_modules(package, absolute=False):
+CACHED_WALK_PACKAGES: list[ModuleInfo] | None = None
+
+
+def get_expected_modules(module, absolute=False):
     """
     Return all modules (which are not packages) inside the given package.
     """
+
+    def _cached_walk_packages() -> list[ModuleInfo]:
+        """Walk the packages in the eth2spec module. Cache the result for future calls."""
+        global CACHED_WALK_PACKAGES
+
+        if CACHED_WALK_PACKAGES is None:
+            eth2spec = import_module("eth2spec")
+            path = eth2spec.__path__
+            prefix = eth2spec.__name__ + "."
+            CACHED_WALK_PACKAGES = list(walk_packages(path, prefix))
+
+        return CACHED_WALK_PACKAGES
+
     modules = []
-    eth2spec = import_module("eth2spec")
-    prefix = eth2spec.__name__ + "."
-    for _, modname, ispkg in walk_packages(eth2spec.__path__, prefix):
-        s = package if absolute else f".{package}."
+    find_mod_name = module if absolute else f".{module}."
+
+    for _, cur_mod_name, is_pkg in _cached_walk_packages():
+        # Skip packages.
+        if is_pkg:
+            continue
         # Skip modules in the unittests package.
         # These are not associated with generators.
-        if ".unittests." in modname:
+        if ".unittests." in cur_mod_name:
             continue
-        if s in modname and not ispkg:
-            modules.append(modname)
+        if find_mod_name in cur_mod_name:
+            modules.append(cur_mod_name)
+
     return modules
 
 

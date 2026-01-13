@@ -1,18 +1,15 @@
 # Fulu -- Networking
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Modifications in Fulu](#modifications-in-fulu)
-  - [Helper functions](#helper-functions)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`DataColumnsByRootIdentifier`](#datacolumnsbyrootidentifier)
   - [Helpers](#helpers)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
     - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
     - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
     - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
@@ -53,30 +50,6 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Fulu
 
-### Helper functions
-
-#### Modified `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= FULU_FORK_EPOCH:
-        return FULU_FORK_VERSION
-    if epoch >= ELECTRA_FORK_EPOCH:
-        return ELECTRA_FORK_VERSION
-    if epoch >= DENEB_FORK_EPOCH:
-        return DENEB_FORK_VERSION
-    if epoch >= CAPELLA_FORK_EPOCH:
-        return CAPELLA_FORK_VERSION
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
-
 ### Preset
 
 | Name                                    | Value                                                                                     | Description                                                       |
@@ -105,7 +78,29 @@ class DataColumnsByRootIdentifier(Container):
 
 ### Helpers
 
-##### `verify_data_column_sidecar`
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
+
+#### `verify_data_column_sidecar`
 
 ```python
 def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
@@ -120,6 +115,11 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     if len(sidecar.kzg_commitments) == 0:
         return False
 
+    # Check that the sidecar respects the blob limit
+    epoch = compute_epoch_at_slot(sidecar.signed_block_header.message.slot)
+    if len(sidecar.kzg_commitments) > get_blob_parameters(epoch).max_blobs_per_block:
+        return False
+
     # The column length must be equal to the number of commitments/proofs
     if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(
         sidecar.kzg_proofs
@@ -129,7 +129,7 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     return True
 ```
 
-##### `verify_data_column_sidecar_kzg_proofs`
+#### `verify_data_column_sidecar_kzg_proofs`
 
 ```python
 def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
@@ -148,7 +148,7 @@ def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     )
 ```
 
-##### `verify_data_column_sidecar_inclusion_proof`
+#### `verify_data_column_sidecar_inclusion_proof`
 
 ```python
 def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bool:
@@ -164,7 +164,7 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
     )
 ```
 
-##### `verify_partial_data_column_header_inclusion_proof`
+#### `verify_partial_data_column_header_inclusion_proof`
 
 ```python
 def verify_partial_data_column_header_inclusion_proof(header: PartialDataColumnHeader) -> bool:
@@ -180,7 +180,7 @@ def verify_partial_data_column_header_inclusion_proof(header: PartialDataColumnH
     )
 ```
 
-##### `verify_partial_data_column_sidecar_kzg_proofs`
+#### `verify_partial_data_column_sidecar_kzg_proofs`
 
 ```python
 def verify_partial_data_column_sidecar_kzg_proofs(sidecar: PartialDataColumnSidecar, all_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]) -> bool:
@@ -199,7 +199,7 @@ def verify_partial_data_column_sidecar_kzg_proofs(sidecar: PartialDataColumnSide
     )
 ```
 
-##### `compute_subnet_for_data_column_sidecar`
+#### `compute_subnet_for_data_column_sidecar`
 
 ```python
 def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetID:
@@ -516,6 +516,18 @@ As seen by the client at the time of sending the message:
 
 - `earliest_available_slot`: The slot of earliest available block
   (`SignedBeaconBlock`).
+
+*Note*: According the the definition of `earliest_available_slot`:
+
+- If the node is able to serve all blocks throughout the entire sidecars
+  retention period (as defined by both `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
+  and `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`), but is NOT able to serve
+  all sidecars during this period, it should advertise the earliest slot from
+  which it can serve all sidecars.
+- If the node is able to serve all sidecars throughout the entire sidecars
+  retention period (as defined by both `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
+  and `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS`), it should advertise the
+  earliest slot from which it can serve all blocks.
 
 ##### BlobSidecarsByRange v1
 

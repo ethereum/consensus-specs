@@ -3,11 +3,11 @@ from eth_utils import (
     int_to_big_endian,
 )
 
-from eth2spec.fulu import spec
+from eth2spec.fulu import mainnet as spec
 from eth2spec.utils import bls
 
 ###############################################################################
-# Helper functions
+# Helpers
 ###############################################################################
 
 

@@ -1,13 +1,23 @@
 # Minimal preset - Gloas
 
-# Networking
-# ---------------------------------------------------------------
-# floorlog2(get_generalized_index(BeaconBlockBody, "signed_execution_payload_header", "message", "blob_kzg_commitments_root")) (= 9)
-KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH_GLOAS: 9
-
-# Execution
+# Misc
 # ---------------------------------------------------------------
 # [customized] 2**1 (= 2) validators
 PTC_SIZE: 2
+
+# Max operations per block
+# ---------------------------------------------------------------
 # 2**2 (= 4) attestations
 MAX_PAYLOAD_ATTESTATIONS: 4
+
+# State list lengths
+# ---------------------------------------------------------------
+# 2**40 (= 1,099,511,627,776) builder spots
+BUILDER_REGISTRY_LIMIT: 1099511627776
+# 2**20 (= 1,048,576) builder pending withdrawals
+BUILDER_PENDING_WITHDRAWALS_LIMIT: 1048576
+
+# Withdrawals processing
+# ---------------------------------------------------------------
+# [customized] 2**4 (= 16) builders
+MAX_BUILDERS_PER_WITHDRAWALS_SWEEP: 16

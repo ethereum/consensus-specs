@@ -21,7 +21,7 @@
   - [New containers](#new-containers)
     - [`SyncAggregate`](#syncaggregate)
     - [`SyncCommittee`](#synccommittee)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Crypto](#crypto)
   - [Misc](#misc-1)
     - [`add_flag`](#add_flag)
@@ -209,7 +209,7 @@ class SyncCommittee(Container):
     aggregate_pubkey: BLSPubkey
 ```
 
-## Helper functions
+## Helpers
 
 ### Crypto
 
@@ -365,19 +365,23 @@ def get_attestation_participation_flag_indices(
     """
     Return the flag indices that are satisfied by an attestation.
     """
+    # Matching source
     if data.target.epoch == get_current_epoch(state):
         justified_checkpoint = state.current_justified_checkpoint
     else:
         justified_checkpoint = state.previous_justified_checkpoint
-
-    # Matching roots
     is_matching_source = data.source == justified_checkpoint
-    is_matching_target = is_matching_source and data.target.root == get_block_root(
-        state, data.target.epoch
-    )
-    is_matching_head = is_matching_target and data.beacon_block_root == get_block_root_at_slot(
-        state, data.slot
-    )
+
+    # Matching target
+    target_root = get_block_root(state, data.target.epoch)
+    target_root_matches = data.target.root == target_root
+    is_matching_target = is_matching_source and target_root_matches
+
+    # Matching head
+    head_root = get_block_root_at_slot(state, data.slot)
+    head_root_matches = data.beacon_block_root == head_root
+    is_matching_head = is_matching_target and head_root_matches
+
     assert is_matching_source
 
     participation_flag_indices = []
@@ -571,12 +575,36 @@ def add_validator_to_registry(
 def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) -> None:
     # Verify sync committee aggregate signature signing over the previous slot block root
     committee_pubkeys = state.current_sync_committee.pubkeys
-    participant_pubkeys = [
-        pubkey for pubkey, bit in zip(committee_pubkeys, sync_aggregate.sync_committee_bits) if bit
-    ]
+    committee_bits = sync_aggregate.sync_committee_bits
+    if sum(committee_bits) == SYNC_COMMITTEE_SIZE:
+        # All members participated - use precomputed aggregate key
+        participant_pubkeys = [state.current_sync_committee.aggregate_pubkey]
+    elif sum(committee_bits) > SYNC_COMMITTEE_SIZE // 2:
+        # More than half participated - subtract non-participant keys.
+        # First determine nonparticipating members
+        non_participant_pubkeys = [
+            pubkey for pubkey, bit in zip(committee_pubkeys, committee_bits) if not bit
+        ]
+        # Compute aggregate of non-participants
+        non_participant_aggregate = eth_aggregate_pubkeys(non_participant_pubkeys)
+        # Subtract non-participants from the full aggregate
+        # This is equivalent to: aggregate_pubkey + (-non_participant_aggregate)
+        participant_pubkey = bls.add(
+            bls.bytes48_to_G1(state.current_sync_committee.aggregate_pubkey),
+            bls.neg(bls.bytes48_to_G1(non_participant_aggregate)),
+        )
+        participant_pubkeys = [BLSPubkey(bls.G1_to_bytes48(participant_pubkey))]
+    else:
+        # Less than half participated - aggregate participant keys
+        participant_pubkeys = [
+            pubkey
+            for pubkey, bit in zip(committee_pubkeys, sync_aggregate.sync_committee_bits)
+            if bit
+        ]
     previous_slot = max(state.slot, Slot(1)) - Slot(1)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
+    # Note: eth_fast_aggregate_verify works with a singleton list containing an aggregated key
     assert eth_fast_aggregate_verify(
         participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature
     )

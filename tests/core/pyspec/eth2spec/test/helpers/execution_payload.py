@@ -13,21 +13,38 @@ from eth2spec.test.helpers.forks import (
     is_post_electra,
     is_post_gloas,
 )
-from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.keys import builder_privkeys
 from eth2spec.test.helpers.withdrawals import get_expected_withdrawals
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
 
 def get_execution_payload_header(spec, state, execution_payload):
     if is_post_gloas(spec):
-        return spec.ExecutionPayloadHeader(
-            parent_block_hash=execution_payload.parent_hash,
-            parent_block_root=state.latest_block_header.hash_tree_root(),
-            block_hash=execution_payload.block_hash,
+        # For Gloas, create a standard ExecutionPayloadHeader
+        payload_header = spec.ExecutionPayloadHeader(
+            parent_hash=execution_payload.parent_hash,
+            fee_recipient=execution_payload.fee_recipient,
+            state_root=execution_payload.state_root,
+            receipts_root=execution_payload.receipts_root,
+            logs_bloom=execution_payload.logs_bloom,
+            prev_randao=execution_payload.prev_randao,
+            block_number=execution_payload.block_number,
             gas_limit=execution_payload.gas_limit,
-            slot=state.slot,
-            blob_kzg_commitments_root=state.latest_execution_payload_header.blob_kzg_commitments_root,
+            gas_used=execution_payload.gas_used,
+            timestamp=execution_payload.timestamp,
+            extra_data=execution_payload.extra_data,
+            base_fee_per_gas=execution_payload.base_fee_per_gas,
+            block_hash=execution_payload.block_hash,
+            transactions_root=execution_payload.transactions.hash_tree_root(),
         )
+        # Add version-specific fields
+        if hasattr(execution_payload, "withdrawals"):
+            payload_header.withdrawals_root = execution_payload.withdrawals.hash_tree_root()
+        if hasattr(execution_payload, "blob_gas_used"):
+            payload_header.blob_gas_used = execution_payload.blob_gas_used
+        if hasattr(execution_payload, "excess_blob_gas"):
+            payload_header.excess_blob_gas = execution_payload.excess_blob_gas
+        return payload_header
 
     payload_header = spec.ExecutionPayloadHeader(
         parent_hash=execution_payload.parent_hash,
@@ -55,6 +72,27 @@ def get_execution_payload_header(spec, state, execution_payload):
             execution_payload.block_access_list
         )
     return payload_header
+
+
+def get_execution_payload_bid(spec, state, execution_payload):
+    if not is_post_gloas(spec):
+        raise ValueError("get_execution_payload_bid only available for gloas and later")
+
+    parent_block_root = hash_tree_root(state.latest_block_header)
+    kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+    builder_index = spec.get_beacon_proposer_index(state)
+
+    return spec.ExecutionPayloadBid(
+        parent_block_hash=execution_payload.parent_hash,
+        parent_block_root=parent_block_root,
+        block_hash=execution_payload.block_hash,
+        fee_recipient=execution_payload.fee_recipient,
+        gas_limit=execution_payload.gas_limit,
+        builder_index=builder_index,
+        slot=state.slot,
+        value=spec.Gwei(0),
+        blob_kzg_commitments_root=kzg_list.hash_tree_root(),
+    )
 
 
 # https://eips.ethereum.org/EIPS/eip-2718
@@ -274,17 +312,24 @@ def compute_el_block_hash_for_block(spec, block):
     )
 
 
-def build_empty_post_gloas_execution_payload_header(spec, state):
+def build_empty_post_gloas_execution_payload_bid(spec, state):
     if not is_post_gloas(spec):
         return
     parent_block_root = hash_tree_root(state.latest_block_header)
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
     # Use self-build: builder_index is the same as the beacon proposer index
-    builder_index = spec.get_beacon_proposer_index(state)
-    return spec.ExecutionPayloadHeader(
+    builder_index = spec.BUILDER_INDEX_SELF_BUILD
+    # Set block_hash to a different value than spec.Hash32(),
+    # to distinguish it from the genesis block hash and have
+    # is_parent_node_full correctly return False
+    empty_payload_hash = spec.Hash32(b"\x01" + b"\x00" * 31)
+    prev_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
+    return spec.ExecutionPayloadBid(
         parent_block_hash=state.latest_block_hash,
         parent_block_root=parent_block_root,
-        block_hash=spec.Hash32(),
+        block_hash=empty_payload_hash,
+        prev_randao=prev_randao,
+        fee_recipient=spec.ExecutionAddress(),
         gas_limit=spec.uint64(0),
         builder_index=builder_index,
         slot=state.slot,
@@ -293,13 +338,19 @@ def build_empty_post_gloas_execution_payload_header(spec, state):
     )
 
 
-def build_empty_signed_execution_payload_header(spec, state):
+def build_empty_signed_execution_payload_bid(spec, state):
     if not is_post_gloas(spec):
         return
-    message = build_empty_post_gloas_execution_payload_header(spec, state)
-    privkey = privkeys[message.builder_index]
-    signature = spec.get_execution_payload_header_signature(state, message, privkey)
-    return spec.SignedExecutionPayloadHeader(
+    message = build_empty_post_gloas_execution_payload_bid(spec, state)
+
+    # For self-builds, use point at infinity signature as per spec
+    if message.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
+        signature = spec.G2_POINT_AT_INFINITY
+    else:
+        privkey = builder_privkeys[message.builder_index]
+        signature = spec.get_execution_payload_bid_signature(state, message, privkey)
+
+    return spec.SignedExecutionPayloadBid(
         message=message,
         signature=signature,
     )
@@ -309,15 +360,21 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     """
     Assuming a pre-state of the same slot, build a valid ExecutionPayload without any transactions.
     """
-    latest = state.latest_execution_payload_header
+    if is_post_gloas(spec):
+        latest = state.latest_execution_payload_bid
+        parent_hash = latest.parent_block_hash
+        if randao_mix is None:
+            randao_mix = state.latest_execution_payload_bid.prev_randao
+    else:
+        latest = state.latest_execution_payload_header
+        parent_hash = latest.block_hash
+        if randao_mix is None:
+            randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
     timestamp = spec.compute_time_at_slot(state, state.slot)
     empty_txs = spec.List[spec.Transaction, spec.MAX_TRANSACTIONS_PER_PAYLOAD]()
 
-    if randao_mix is None:
-        randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
-
     payload = spec.ExecutionPayload(
-        parent_hash=latest.block_hash,
+        parent_hash=parent_hash,
         fee_recipient=spec.ExecutionAddress(),
         receipts_root=spec.Bytes32(
             bytes.fromhex("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")
@@ -377,23 +434,32 @@ def build_randomized_execution_payload(spec, state, rng):
 
 
 def build_state_with_incomplete_transition(spec, state):
-    header = spec.ExecutionPayloadHeader()
     if is_post_gloas(spec):
+        # In Gloas, we need to set up the execution payload bid instead
         kzgs = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
-        header.blob_kzg_commitments_root = kzgs.hash_tree_root()
-
-    state = build_state_with_execution_payload_header(spec, state, header)
-    assert not spec.is_merge_transition_complete(state)
+        bid = spec.ExecutionPayloadBid(
+            slot=state.slot,
+            value=spec.Gwei(0),
+            blob_kzg_commitments_root=kzgs.hash_tree_root(),
+        )
+        state = build_state_with_execution_payload_bid(spec, state, bid)
+    else:
+        header = spec.ExecutionPayloadHeader()
+        state = build_state_with_execution_payload_header(spec, state, header)
+        assert not spec.is_merge_transition_complete(state)
 
     return state
 
 
 def build_state_with_complete_transition(spec, state):
     pre_state_payload = build_empty_execution_payload(spec, state)
-    payload_header = get_execution_payload_header(spec, state, pre_state_payload)
-
-    state = build_state_with_execution_payload_header(spec, state, payload_header)
-    assert spec.is_merge_transition_complete(state)
+    if is_post_gloas(spec):
+        payload_bid = get_execution_payload_bid(spec, state, pre_state_payload)
+        state = build_state_with_execution_payload_bid(spec, state, payload_bid)
+    else:
+        payload_header = get_execution_payload_header(spec, state, pre_state_payload)
+        state = build_state_with_execution_payload_header(spec, state, payload_header)
+        assert spec.is_merge_transition_complete(state)
 
     return state
 
@@ -401,6 +467,12 @@ def build_state_with_complete_transition(spec, state):
 def build_state_with_execution_payload_header(spec, state, execution_payload_header):
     pre_state = state.copy()
     pre_state.latest_execution_payload_header = execution_payload_header
+    return pre_state
+
+
+def build_state_with_execution_payload_bid(spec, state, execution_payload_bid):
+    pre_state = state.copy()
+    pre_state.latest_execution_payload_bid = execution_payload_bid
     return pre_state
 
 

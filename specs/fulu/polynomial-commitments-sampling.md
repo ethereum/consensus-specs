@@ -1,7 +1,5 @@
 # Fulu -- Polynomial Commitments Sampling
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
@@ -10,7 +8,7 @@
 - [Cryptographic types](#cryptographic-types)
 - [Preset](#preset)
   - [Blob](#blob)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [BLS12-381 helpers](#bls12-381-helpers)
     - [`cell_to_coset_evals`](#cell_to_coset_evals)
     - [`coset_evals_to_cell`](#coset_evals_to_cell)
@@ -102,7 +100,7 @@ cell or line).
 | `CELLS_PER_EXT_BLOB`                     | `FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL` | The number of cells in an extended blob                  |
 | `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` | `b'RCKZGCBATCH__V1_'`                                    |                                                          |
 
-## Helper functions
+## Helpers
 
 ### BLS12-381 helpers
 

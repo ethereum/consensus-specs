@@ -4,9 +4,9 @@
 
 - [Introduction](#introduction)
 - [Modifications in Electra](#modifications-in-electra)
-  - [Helper functions](#helper-functions)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Configuration](#configuration)
+  - [Helpers](#helpers)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -33,7 +33,16 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Electra
 
-### Helper functions
+### Configuration
+
+*[New in Electra:EIP7691]*
+
+| Name                                | Value                                                    | Description                                                       |
+| ----------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
+| `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA` | Maximum number of blob sidecars in a single request               |
+| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                      | The number of blob sidecar subnets used in the gossipsub protocol |
+
+### Helpers
 
 #### Modified `compute_fork_version`
 
@@ -54,15 +63,6 @@ def compute_fork_version(epoch: Epoch) -> Version:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
 ```
-
-### Configuration
-
-*[New in Electra:EIP7691]*
-
-| Name                                | Value                                                    | Description                                                       |
-| ----------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA` | Maximum number of blob sidecars in a single request               |
-| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                      | The number of blob sidecar subnets used in the gossipsub protocol |
 
 ### The gossip domain: gossipsub
 
@@ -98,14 +98,16 @@ The derivation of the `message-id` remains stable.
 
 ###### `beacon_aggregate_and_proof`
 
-The following convenience variables are re-defined
+Assuming the alias `aggregate = signed_aggregate_and_proof.message.aggregate`:
+
+The following convenience variables are re-defined:
 
 - `index = get_committee_indices(aggregate.committee_bits)[0]`
 
 The following validations are added:
 
 - [REJECT] `len(committee_indices) == 1`, where
-  `committee_indices = get_committee_indices(aggregate)`.
+  `committee_indices = get_committee_indices(aggregate.committee_bits)`.
 - [REJECT] `aggregate.data.index == 0`
 
 ###### `blob_sidecar_{subnet_id}`

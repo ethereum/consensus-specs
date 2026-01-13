@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Bump the Version](#bump-the-version)
-- [Tag the Release](#tag-the-release)
+- [Publish the Release](#publish-the-release)
 - [Make an Announcement](#make-an-announcement)
 
 <!-- mdformat-toc end -->
@@ -16,7 +16,7 @@ release.
 
 ## Bump the Version
 
-Next, update the `VERSION.txt` file which contains the eth2spec version.
+First, update the `VERSION.txt` file which contains the eth2spec version.
 
 > [!TIP]
 > Click on the following link to open the GitHub editor for this file:
@@ -31,20 +31,24 @@ to 1.5.0-alpha.10").
 
 Next, click the "Propose changes" button and proceed to make the PR.
 
-## Tag the Release
+## Publish the Release
 
-Next, tag the latest commit to master. This will trigger the
-[automated release process](../../.github/workflows/release.yml).
+First, go to
+[Actions > Release](https://github.com/ethereum/consensus-specs/actions/workflows/release.yml).
 
-```bash
-git clone git@github.com:ethereum/consensus-specs.git
-cd consensus-specs
-git tag <version>
-git push origin <version>
-```
+Next, click the "Run workflow" dropdown box at the top right-hand corner.
 
-Approximately 12 hours later, the releases for consensus-specs and
-consensus-spec-tests will be available on GitHub.
+Next, click the green "Run workflow" button.
+
+> [!NOTE]
+> The release workflow will create a tag from `VERSION.txt` and fail if the tag
+> already exists. Many hours later, if successful, the consensus-specs release
+> will be automatically published on GitHub. The release action can take up to
+> 24 hours to run.
+
+> [!TIP]
+> If the release fails, delete the tag, delete the draft release, fix the issue,
+> and re-run the release workflow.
 
 ## Make an Announcement
 
@@ -62,6 +66,4 @@ Use the following template for your announcement:
 Consensus layer specs <version> -- <release-name> -- released!
 
 https://github.com/ethereum/consensus-specs/releases/tag/<version>
-
-Test vectors: https://github.com/ethereum/consensus-spec-tests/releases/tag/<version>
 ```

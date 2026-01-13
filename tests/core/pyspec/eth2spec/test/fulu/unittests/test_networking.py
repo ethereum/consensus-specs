@@ -23,7 +23,7 @@ from eth2spec.test.helpers.forks import (
     is_post_gloas,
 )
 
-# Helper functions
+# Helpers
 
 
 def compute_data_column_sidecar(spec, state):
@@ -41,7 +41,7 @@ def compute_data_column_sidecar(spec, state):
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
 
     if is_post_gloas(spec):
-        block.body.signed_execution_payload_header.message.blob_kzg_commitments_root = spec.List[
+        block.body.signed_execution_payload_bid.message.blob_kzg_commitments_root = spec.List[
             spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
         ](blob_kzg_commitments).hash_tree_root()
         signed_block = sign_block(spec, state, block, proposer_index=0)
@@ -110,9 +110,29 @@ def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_commitments(spec, 
 @with_fulu_and_later
 @spec_state_test
 @single_phase
-def test_verify_data_column_sidecars__invalid_mismatch_len_kzg_proofs(spec, state):
+def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_proofs(spec, state):
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_proofs = sidecar.kzg_proofs[1:]
+    assert not spec.verify_data_column_sidecar(sidecar)
+
+
+@with_fulu_and_later
+@spec_state_test
+@single_phase
+def test_verify_data_column_sidecar__invalid_kzg_commitments_over_max_blobs(spec, state):
+    sidecar = compute_data_column_sidecar(spec, state)
+
+    if is_post_gloas(spec):
+        slot = sidecar.slot
+    else:
+        slot = sidecar.signed_block_header.message.slot
+    epoch = spec.compute_epoch_at_slot(slot)
+    max_blobs = spec.get_blob_parameters(epoch).max_blobs_per_block
+
+    for _ in range(max_blobs - len(sidecar.kzg_commitments) + 1):
+        sidecar.kzg_commitments.append(sidecar.kzg_commitments[0])
+    assert len(sidecar.kzg_commitments) > max_blobs
+
     assert not spec.verify_data_column_sidecar(sidecar)
 
 
@@ -161,6 +181,9 @@ def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_proof(spec, state)
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__valid(spec, state):
+    if is_post_gloas(spec):
+        # Skip for Gloas as inclusion proof fields were removed
+        return
     sidecar = compute_data_column_sidecar(spec, state)
     assert spec.verify_data_column_sidecar_inclusion_proof(sidecar)
 
@@ -169,6 +192,9 @@ def test_verify_data_column_sidecar_inclusion_proof__valid(spec, state):
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__invalid_missing_commitment(spec, state):
+    if is_post_gloas(spec):
+        # Skip for Gloas as inclusion proof fields were removed
+        return
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
     assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
@@ -178,6 +204,9 @@ def test_verify_data_column_sidecar_inclusion_proof__invalid_missing_commitment(
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__invalid_duplicate_commitment(spec, state):
+    if is_post_gloas(spec):
+        # Skip for Gloas as inclusion proof fields were removed
+        return
     sidecar = compute_data_column_sidecar(spec, state)
     sidecar.kzg_commitments = sidecar.kzg_commitments + [sidecar.kzg_commitments[0]]
     assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
@@ -200,3 +229,172 @@ def test_compute_subnet_for_data_column_sidecar(spec):
         spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
     )
     assert next_subnet == subnet_results[0]
+
+
+# Tests for get_validators_custody_requirement
+
+
+@with_fulu_and_later
+@spec_state_test
+@single_phase
+def test_get_validators_custody_requirement__zero_validators(spec, state):
+    validator_indices = []
+    result = spec.get_validators_custody_requirement(state, validator_indices)
+    # With 0 balance, count = 0, so max(0, VALIDATOR_CUSTODY_REQUIREMENT) = VALIDATOR_CUSTODY_REQUIREMENT
+    assert result == spec.config.VALIDATOR_CUSTODY_REQUIREMENT
+
+
+@with_fulu_and_later
+@spec_state_test
+@single_phase
+def test_get_validators_custody_requirement__single_validator(spec, state):
+    validator_indices = [0]
+
+    state.validators[0].effective_balance = spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
+
+    result = spec.get_validators_custody_requirement(state, validator_indices)
+
+    assert result == spec.config.VALIDATOR_CUSTODY_REQUIREMENT
+
+
+@with_fulu_and_later
+@spec_state_test
+@single_phase
+def test_get_validators_custody_requirement__multiple_validators(spec, state):
+    assert len(state.validators) > 10, "Test requires more than 10 validators"
+    assert 10 < spec.config.NUMBER_OF_CUSTODY_GROUPS, (
+        "Test requires NUMBER_OF_CUSTODY_GROUPS to be more than 10"
+    )
+
+    # Use enough validators to get above minimum but below maximum
+    # Need balance >= VALIDATOR_CUSTODY_REQUIREMENT * BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
+    # That's 8 * 32 ETH = 256 ETH = 8 validators at 32 ETH each
+    validator_indices = range(10)
+
+    for validator_index in validator_indices:
+        state.validators[
+            validator_index
+        ].effective_balance = spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
+
+    result = spec.get_validators_custody_requirement(state, validator_indices)
+
+    # Calculate expected: total_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
+    total_balance = sum(state.validators[i].effective_balance for i in validator_indices)
+    expected_count = total_balance // spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
+    expected = min(
+        max(expected_count, spec.config.VALIDATOR_CUSTODY_REQUIREMENT),
+        spec.config.NUMBER_OF_CUSTODY_GROUPS,
+    )
+
+    assert result == expected
+
+
+def _run_get_validators_custody_requirement__maximum(spec, state, validator_indices):
+    # This will force count to be more than NUMBER_OF_CUSTODY_GROUPS
+    for validator_index in validator_indices:
+        state.validators[validator_index].effective_balance = (
+            (
+                (
+                    spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
+                    * spec.config.NUMBER_OF_CUSTODY_GROUPS
+                )
+                // len(validator_indices)
+            )
+            + spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
+            + 1
+        )
+
+    # Check here that it is
+    total_node_balance = sum(
+        state.validators[index].effective_balance for index in validator_indices
+    )
+    assert total_node_balance > (
+        spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP * spec.config.NUMBER_OF_CUSTODY_GROUPS
+    )
+    count = total_node_balance // spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
+    assert count > spec.config.NUMBER_OF_CUSTODY_GROUPS
+
+    result = spec.get_validators_custody_requirement(state, validator_indices)
+
+    assert result == spec.config.NUMBER_OF_CUSTODY_GROUPS
+
+
+@with_fulu_and_later
+@spec_state_test
+@single_phase
+def test_get_validators_custody_requirement__maximum_one_validator(spec, state):
+    validator_indices = [0]
+
+    _run_get_validators_custody_requirement__maximum(spec, state, validator_indices)
+
+
+@with_fulu_and_later
+@spec_state_test
+@single_phase
+def test_get_validators_custody_requirement__maximum_ten_validators(spec, state):
+    assert len(state.validators) > 10, "Test requires more than 10 validators"
+
+    validator_indices = range(10)
+
+    _run_get_validators_custody_requirement__maximum(spec, state, validator_indices)
+
+
+@with_fulu_and_later
+@spec_state_test
+@single_phase
+def test_get_validators_custody_requirement__maximum_all_validators(spec, state):
+    validator_indices = list(range(len(state.validators)))
+
+    _run_get_validators_custody_requirement__maximum(spec, state, validator_indices)
+
+
+def _run_get_validators_custody_requirement__minimum(spec, state, validator_indices):
+    # This will force count to be more than NUMBER_OF_CUSTODY_GROUPS
+    for validator_index in validator_indices:
+        state.validators[validator_index].effective_balance = (
+            (spec.config.VALIDATOR_CUSTODY_REQUIREMENT * spec.config.NUMBER_OF_CUSTODY_GROUPS)
+            // len(validator_indices)
+        ) - 1
+
+    # Check here that it is
+    total_node_balance = sum(
+        state.validators[index].effective_balance for index in validator_indices
+    )
+    assert total_node_balance < (
+        spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP * spec.config.VALIDATOR_CUSTODY_REQUIREMENT
+    )
+    count = total_node_balance // spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
+    assert count < spec.config.VALIDATOR_CUSTODY_REQUIREMENT
+
+    result = spec.get_validators_custody_requirement(state, validator_indices)
+
+    assert result == spec.config.VALIDATOR_CUSTODY_REQUIREMENT
+
+
+@with_fulu_and_later
+@spec_state_test
+@single_phase
+def test_get_validators_custody_requirement__minimum_one_validator(spec, state):
+    validator_indices = [0]
+
+    _run_get_validators_custody_requirement__minimum(spec, state, validator_indices)
+
+
+@with_fulu_and_later
+@spec_state_test
+@single_phase
+def test_get_validators_custody_requirement__minimum_ten_validators(spec, state):
+    assert len(state.validators) > 10, "Test requires more than 10 validators"
+
+    validator_indices = range(10)
+
+    _run_get_validators_custody_requirement__minimum(spec, state, validator_indices)
+
+
+@with_fulu_and_later
+@spec_state_test
+@single_phase
+def test_get_validators_custody_requirement__minimum_all_validators(spec, state):
+    validator_indices = list(range(len(state.validators)))
+
+    _run_get_validators_custody_requirement__minimum(spec, state, validator_indices)

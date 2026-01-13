@@ -18,6 +18,7 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 
 # A list of fake targets.
 .PHONY: \
+	_sync         \
 	clean         \
 	coverage      \
 	help          \
@@ -66,10 +67,11 @@ help-verbose:
 	@echo "  by default using pytest with the minimal preset and fastest BLS library."
 	@echo ""
 	@echo "  Parameters:"
-	@echo "    k=<test>        Run specific test by name"
-	@echo "    fork=<fork>     Test specific fork (phase0, altair, bellatrix, capella, etc.)"
-	@echo "    preset=<preset> Use specific preset (mainnet or minimal; default: minimal)"
-	@echo "    bls=<type>      BLS library type (py_ecc, milagro, arkworks, fastest; default: fastest)"
+	@echo "    k=<test>          Run specific test by name"
+	@echo "    fork=<fork>       Test specific fork (phase0, altair, bellatrix, capella, etc.)"
+	@echo "    preset=<preset>   Use specific preset (mainnet or minimal; default: minimal)"
+	@echo "    bls=<type>        BLS library type (py_ecc, milagro, arkworks, fastest; default: fastest)"
+	@echo "    component=<value> Test component: (all, pyspec, fw; default: all)"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make test"
@@ -78,6 +80,7 @@ help-verbose:
 	@echo "    make test preset=mainnet"
 	@echo "    make test preset=mainnet fork=deneb k=test_verify_kzg_proof"
 	@echo "    make test bls=arkworks"
+	@echo "    make test component=fw"
 	@echo ""
 	@echo "$(BOLD)make coverage$(NORM)"
 	@echo ""
@@ -147,6 +150,7 @@ help-verbose:
 	@echo "    fork=<fork>            Generate for specific fork (comma-separated)"
 	@echo "    preset=<preset>        Generate for specific preset (comma-separated)"
 	@echo "    threads=N              Number of threads to use"
+	@echo "    seed=N                 Override test seeds (fuzzing mode)"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make comptests"
@@ -170,7 +174,7 @@ help-verbose:
 	@echo "$(BOLD)make clean$(NORM)"
 	@echo ""
 	@echo "  Removes all untracked files. This includes:"
-	@echo "    - Virtual environment (venv/)"
+	@echo "    - Virtual environment (.venv/)"
 	@echo "    - Build artifacts"
 	@echo "    - Cache files"
 	@echo ""
@@ -184,18 +188,22 @@ help-verbose:
 # Virtual Environment
 ###############################################################################
 
-VENV = venv
-PYTHON_VENV = $(VENV)/bin/python3
-PIP_VENV = $(VENV)/bin/pip3
-CODESPELL_VENV = $(VENV)/bin/codespell
-MDFORMAT_VENV = $(VENV)/bin/mdformat
-MKDOCS_VENV = $(VENV)/bin/mkdocs
+VENV = .venv
 
-# Make a virtual environment.
-$(VENV):
-	@echo "Creating virtual environment"
-	@python3 -m venv $(VENV)
-	@$(PIP_VENV) install --quiet --upgrade uv
+# Use editable installs for all non-generation targets, but use non-editable
+# installs for generators. More details: ethereum/consensus-specs#4633.
+UV_RUN    = uv run
+UV_RUN_NE = uv run --no-editable --reinstall-package=eth2spec
+
+# Sync dependencies using uv.
+_sync: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
+_sync: pyproject.toml
+	@command -v uv >/dev/null 2>&1 || { \
+		echo "Error: uv is required but not installed."; \
+		echo "Install with: curl -LsSf https://astral.sh/uv/install.sh | sh"; \
+		exit 1; \
+	}
+	@uv sync --all-extras $(MAYBE_VERBOSE)
 
 ###############################################################################
 # Specification
@@ -205,13 +213,9 @@ TEST_LIBS_DIR = $(CURDIR)/tests/core
 PYSPEC_DIR = $(TEST_LIBS_DIR)/pyspec
 
 # Create the pyspec for all phases.
-_pyspec: $(VENV) setup.py pyproject.toml
-	@$(PYTHON_VENV) -m uv pip install --reinstall-package=eth2spec .[docs,lint,test,generator]
-	@for dir in $(ALL_EXECUTABLE_SPEC_NAMES); do \
-	    mkdir -p "./tests/core/pyspec/eth2spec/$$dir"; \
-	    cp "./build/lib/eth2spec/$$dir/mainnet.py" "./tests/core/pyspec/eth2spec/$$dir/mainnet.py"; \
-	    cp "./build/lib/eth2spec/$$dir/minimal.py" "./tests/core/pyspec/eth2spec/$$dir/minimal.py"; \
-	done
+_pyspec: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
+_pyspec: _sync
+	@$(UV_RUN) python -m pysetup.generate_specs --all-forks $(MAYBE_VERBOSE)
 
 ###############################################################################
 # Testing
@@ -221,15 +225,17 @@ TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 
 # Run pyspec tests.
 test: MAYBE_TEST := $(if $(k),-k=$(k))
-# Disable parallelism which running a specific test.
+# Disable parallelism when running a specific test.
 # Parallelism makes debugging difficult (print doesn't work).
 test: MAYBE_PARALLEL := $(if $(k),,-n auto)
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
-test: PRESET := --preset=$(if $(preset),$(preset),minimal)
-test: BLS := --bls-type=$(if $(bls),$(bls),fastest)
+test: PRESET := $(if $(filter fw,$(component)),,--preset=$(if $(preset),$(preset),minimal))
+test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),fastest))
+test: MAYBE_ETH2SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth2spec)
+test: MAYBE_INFRA := $(if $(filter pyspec,$(component)),,$(CURDIR)/tests/infra)
 test: _pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
-	@$(PYTHON_VENV) -m pytest \
+	@$(UV_RUN) pytest \
 		$(MAYBE_PARALLEL) \
 		--capture=no \
 		$(MAYBE_TEST) \
@@ -237,8 +243,10 @@ test: _pyspec
 		$(PRESET) \
 		$(BLS) \
 		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
-		$(CURDIR)/tests/infra \
-		$(PYSPEC_DIR)/eth2spec
+		--html=$(TEST_REPORT_DIR)/test_results.html \
+		--self-contained-html \
+		$(MAYBE_INFRA) \
+		$(MAYBE_ETH2SPEC)
 
 ###############################################################################
 # Coverage
@@ -253,7 +261,7 @@ COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth2spec.$S.$(
 _test_with_coverage: MAYBE_TEST := $(if $(k),-k=$(k))
 _test_with_coverage: MAYBE_FORK := $(if $(fork),--fork=$(fork))
 _test_with_coverage: _pyspec
-	@$(PYTHON_VENV) -m pytest \
+	@$(UV_RUN) pytest \
 		-n auto \
 		$(MAYBE_TEST) \
 		$(MAYBE_FORK) \
@@ -283,7 +291,6 @@ SYNC_DIR = ./sync
 _copy_docs:
 	@cp -r $(SPEC_DIR) $(DOCS_DIR)
 	@rm -rf $(DOCS_DIR)/specs/_deprecated
-	@rm -rf $(DOCS_DIR)/specs/_features
 	@cp -r $(SYNC_DIR) $(DOCS_DIR)
 	@cp -r $(SSZ_DIR) $(DOCS_DIR)
 	@cp -r $(FORK_CHOICE_DIR) $(DOCS_DIR)
@@ -291,27 +298,25 @@ _copy_docs:
 
 # Start a local documentation server.
 serve_docs: _pyspec _copy_docs
-	@$(MKDOCS_VENV) build
-	@$(MKDOCS_VENV) serve
+	@$(UV_RUN) mkdocs build
+	@$(UV_RUN) mkdocs serve
 
 ###############################################################################
 # Checks
 ###############################################################################
 
-MYPY_CONFIG = $(CURDIR)/mypy.ini
-PYLINT_CONFIG = $(CURDIR)/pylint.ini
-
-PYLINT_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), $(PYSPEC_DIR)/eth2spec/$S)
-MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p eth2spec.$S)
 MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md')
+MYPY_PACKAGE_BASE := $(subst /,.,$(PYSPEC_DIR:$(CURDIR)/%=%))
+MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p $(MYPY_PACKAGE_BASE).eth2spec.$S)
 
 # Check for mistakes.
 lint: _pyspec
-	@$(MDFORMAT_VENV) --number --wrap=80 $(MARKDOWN_FILES)
-	@$(CODESPELL_VENV) . --skip "./.git,$(VENV),$(PYSPEC_DIR)/.mypy_cache" -I .codespell-whitelist
-	@$(PYTHON_VENV) -m ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
-	@$(PYTHON_VENV) -m ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
-	@$(PYTHON_VENV) -m mypy --config-file $(MYPY_CONFIG) $(MYPY_SCOPE)
+	@uv --quiet lock --check
+	@$(UV_RUN) mdformat --number --wrap=80 $(MARKDOWN_FILES)
+	@$(UV_RUN) codespell
+	@$(UV_RUN) ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
+	@$(UV_RUN) ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
+	@$(UV_RUN) mypy $(MYPY_SCOPE)
 
 ###############################################################################
 # Generators
@@ -329,7 +334,7 @@ reftests: MAYBE_TESTS := $(if $(k),--cases $(subst ${COMMA}, ,$(k)))
 reftests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
 reftests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
 reftests: _pyspec
-	@$(PYTHON_VENV) -m tests.generators.main \
+	@$(UV_RUN_NE) python -m tests.generators.main \
 		--output $(TEST_VECTOR_DIR) \
 		$(MAYBE_VERBOSE) \
 		$(MAYBE_THREADS) \
@@ -343,13 +348,15 @@ comptests: FC_GEN_CONFIG := $(if $(fc_gen_config),$(fc_gen_config),tiny)
 comptests: MAYBE_THREADS := $(if $(threads),--threads=$(threads),--fc-gen-multi-processing)
 comptests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
 comptests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
+comptests: MAYBE_SEED := $(if $(seed),--fc-gen-seed $(seed))
 comptests: _pyspec
-	@$(PYTHON_VENV) -m tests.generators.compliance_runners.fork_choice.test_gen \
+	@$(UV_RUN_NE) python -m tests.generators.compliance_runners.fork_choice.test_gen \
 		--output $(COMP_TEST_VECTOR_DIR) \
 		--fc-gen-config $(FC_GEN_CONFIG) \
 		$(MAYBE_THREADS) \
 		$(MAYBE_FORKS) \
-		$(MAYBE_PRESETS)
+		$(MAYBE_PRESETS) \
+		$(MAYBE_SEED)
 
 ###############################################################################
 # Cleaning

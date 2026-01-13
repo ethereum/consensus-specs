@@ -16,7 +16,12 @@
   - [New `validate_inclusion_lists`](#new-validate_inclusion_lists)
   - [New `get_attester_head`](#new-get_attester_head)
   - [Modified `get_proposer_head`](#modified-get_proposer_head)
-- [Updated fork-choice handlers](#updated-fork-choice-handlers)
+  - [Modified `update_proposer_boost_root`](#modified-update_proposer_boost_root)
+  - [New `record_block_inclusion_list_satisfaction`](#new-record_block_inclusion_list_satisfaction)
+  - [New `get_view_freeze_cutoff_ms`](#new-get_view_freeze_cutoff_ms)
+  - [New `get_inclusion_list_submission_due_ms`](#new-get_inclusion_list_submission_due_ms)
+  - [New `get_proposer_inclusion_list_cutoff_ms`](#new-get_proposer_inclusion_list_cutoff_ms)
+- [Handlers](#handlers)
   - [New `on_inclusion_list`](#new-on_inclusion_list)
   - [Modified `on_block`](#modified-on_block)
 
@@ -228,7 +233,14 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
     head_weak = is_head_weak(store, head_root)
 
     # Check that the missing votes are assigned to the parent and not being hoarded.
-    parent_strong = is_parent_strong(store, parent_root)
+    parent_strong = is_parent_strong(store, head_root)
+
+    # Re-org more aggressively if there is a proposer equivocation in the previous slot.
+    proposer_equivocation = is_proposer_equivocation(store, head_root)
+
+    # [New in EIP7805]
+    # Check that the head block is in the unsatisfied inclusion list blocks
+    inclusion_list_unsatisfied = head_root in store.unsatisfied_inclusion_list_blocks
 
     reorg_prerequisites = all(
         [
@@ -242,17 +254,70 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
         ]
     )
 
-    # [New in EIP7805]
-    # Check that the head block is in the unsatisfied inclusion list blocks
-    inclusion_list_unsatisfied = head_root in store.unsatisfied_inclusion_list_blocks
-
     if reorg_prerequisites and (head_late or inclusion_list_unsatisfied):
+        return parent_root
+    elif all([head_weak, current_time_ok, proposer_equivocation]):
         return parent_root
     else:
         return head_root
 ```
 
-## Updated fork-choice handlers
+### Modified `update_proposer_boost_root`
+
+```python
+def update_proposer_boost_root(store: Store, root: Root) -> None:
+    is_first_block = store.proposer_boost_root == Root()
+    is_timely = store.block_timeliness[root]
+    is_inclusion_list_satisfied = root not in store.unsatisfied_inclusion_list_blocks
+
+    # [Modified in EIP7805]
+    # Add proposer score boost if the block is timely, not conflicting with an
+    # existing block, with the same the proposer as the canonical chain
+    # and satisfies the inclusion list constraints.
+    if is_timely and is_first_block and is_inclusion_list_satisfied:
+        head_state = copy(store.block_states[get_head(store)])
+        slot = get_current_slot(store)
+        if head_state.slot < slot:
+            process_slots(head_state, slot)
+        block = store.blocks[root]
+        # Only update if the proposer is the same as on the canonical chain
+        if block.proposer_index == get_beacon_proposer_index(head_state):
+            store.proposer_boost_root = root
+```
+
+### New `record_block_inclusion_list_satisfaction`
+
+```python
+def record_block_inclusion_list_satisfaction(store: Store, root: Root) -> None:
+    # Check if block satisfies the inclusion list constraints
+    # If not, add this block to the store as inclusion list constraints unsatisfied
+    is_inclusion_list_satisfied = validate_inclusion_lists(store, root, EXECUTION_ENGINE)
+    if not is_inclusion_list_satisfied:
+        store.unsatisfied_inclusion_list_blocks.add(root)
+```
+
+### New `get_view_freeze_cutoff_ms`
+
+```python
+def get_view_freeze_cutoff_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(VIEW_FREEZE_CUTOFF_BPS)
+```
+
+### New `get_inclusion_list_submission_due_ms`
+
+```python
+def get_inclusion_list_submission_due_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS)
+```
+
+### New `get_proposer_inclusion_list_cutoff_ms`
+
+```python
+def get_proposer_inclusion_list_cutoff_ms(epoch: Epoch) -> uint64:
+    return get_slot_component_duration_ms(PROPOSER_INCLUSION_LIST_CUTOFF_BPS)
+```
+
+## Handlers
 
 ### New `on_inclusion_list`
 
@@ -272,7 +337,8 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    view_freeze_cutoff_ms = get_slot_component_duration_ms(VIEW_FREEZE_CUTOFF_BPS)
+    epoch = get_current_store_epoch(store)
+    view_freeze_cutoff_ms = get_view_freeze_cutoff_ms(epoch)
     is_before_view_freeze_cutoff = time_into_slot_ms < view_freeze_cutoff_ms
 
     process_inclusion_list(inclusion_list_store, inclusion_list, is_before_view_freeze_cutoff)
@@ -292,6 +358,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block = signed_block.message
     # Parent block must be known
     assert block.parent_root in store.block_states
+    # Make a copy of the state to avoid mutability issues
+    state = copy(store.block_states[block.parent_root])
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
     assert get_current_slot(store) >= block.slot
 
@@ -311,8 +379,6 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert is_data_available(hash_tree_root(block))
 
     # Check the block is valid and compute the post-state
-    # Make a copy of the state to avoid mutability issues
-    state = copy(store.block_states[block.parent_root])
     block_root = hash_tree_root(block)
     state_transition(state, signed_block, True)
 
@@ -321,27 +387,10 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
-    # Add block timeliness to the store
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
-    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
-    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
-    store.block_timeliness[hash_tree_root(block)] = is_timely
-
+    record_block_timeliness(store, block_root)
     # [New in EIP7805]
-    # Check if block satisfies the inclusion list constraints
-    # If not, add this block to the store as inclusion list constraints unsatisfied
-    is_inclusion_list_satisfied = validate_inclusion_lists(store, block_root, EXECUTION_ENGINE)
-    if not is_inclusion_list_satisfied:
-        store.unsatisfied_inclusion_list_blocks.add(block_root)
-
-    # Add proposer score boost if the block is timely, not conflicting with an existing block
-    # and satisfies the inclusion list constraints.
-    is_first_block = store.proposer_boost_root == Root()
-    # [Modified in EIP7805]
-    if is_timely and is_first_block and is_inclusion_list_satisfied:
-        store.proposer_boost_root = hash_tree_root(block)
+    record_block_inclusion_list_satisfaction(store, block_root)
+    update_proposer_boost_root(store, block_root)
 
     # Update checkpoints in store if necessary
     update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)

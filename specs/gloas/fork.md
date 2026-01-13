@@ -72,7 +72,11 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # [Modified in Gloas:EIP7732]
-        latest_execution_payload_header=ExecutionPayloadHeader(),
+        # Removed `latest_execution_payload_header`
+        # [New in Gloas:EIP7732]
+        latest_execution_payload_bid=ExecutionPayloadBid(
+            block_hash=pre.latest_execution_payload_header.block_hash,
+        ),
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         historical_summaries=pre.historical_summaries,
@@ -87,6 +91,10 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         pending_consolidations=pre.pending_consolidations,
         proposer_lookahead=pre.proposer_lookahead,
         # [New in Gloas:EIP7732]
+        builders=[],
+        # [New in Gloas:EIP7732]
+        next_withdrawal_builder_index=BuilderIndex(0),
+        # [New in Gloas:EIP7732]
         execution_payload_availability=[0b1 for _ in range(SLOTS_PER_HISTORICAL_ROOT)],
         # [New in Gloas:EIP7732]
         builder_pending_payments=[BuilderPendingPayment() for _ in range(2 * SLOTS_PER_EPOCH)],
@@ -95,7 +103,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         # [New in Gloas:EIP7732]
         latest_block_hash=pre.latest_execution_payload_header.block_hash,
         # [New in Gloas:EIP7732]
-        latest_withdrawals_root=Root(),
+        payload_expected_withdrawals=[],
     )
 
     return post

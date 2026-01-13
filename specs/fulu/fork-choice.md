@@ -1,13 +1,11 @@
 # Fulu -- Fork Choice
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
 - [Helpers](#helpers)
   - [Modified `is_data_available`](#modified-is_data_available)
-- [Updated fork-choice handlers](#updated-fork-choice-handlers)
+- [Handlers](#handlers)
   - [Modified `on_block`](#modified-on_block)
 
 <!-- mdformat-toc end -->
@@ -35,7 +33,7 @@ def is_data_available(beacon_block_root: Root) -> bool:
     )
 ```
 
-## Updated fork-choice handlers
+## Handlers
 
 ### Modified `on_block`
 
@@ -80,18 +78,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
-    # Add block timeliness to the store
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    attestation_threshold_ms = get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
-    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
-    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
-    store.block_timeliness[hash_tree_root(block)] = is_timely
-
-    # Add proposer score boost if the block is timely and not conflicting with an existing block
-    is_first_block = store.proposer_boost_root == Root()
-    if is_timely and is_first_block:
-        store.proposer_boost_root = hash_tree_root(block)
+    record_block_timeliness(store, block_root)
+    update_proposer_boost_root(store, block_root)
 
     # Update checkpoints in store if necessary
     update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)

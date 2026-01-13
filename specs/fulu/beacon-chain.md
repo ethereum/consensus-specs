@@ -1,7 +1,5 @@
 # Fulu -- The Beacon Chain
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
@@ -14,7 +12,7 @@
 - [Containers](#containers)
   - [Extended Containers](#extended-containers)
     - [`BeaconState`](#beaconstate)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Misc](#misc)
     - [New `BlobParameters`](#new-blobparameters)
     - [New `get_blob_parameters`](#new-get_blob_parameters)
@@ -31,8 +29,7 @@
 
 ## Introduction
 
-*Note*: This specification is built upon [Electra](../electra/beacon-chain.md)
-and is under active development.
+*Note*: This specification is built upon [Electra](../electra/beacon-chain.md).
 
 ## Configuration
 
@@ -47,12 +44,12 @@ The epoch value in each entry MUST be greater than or equal to
 than or equal to `MAX_BLOB_COMMITMENTS_PER_BLOCK`. The blob schedule entries
 SHOULD be sorted by epoch in ascending order. The blob schedule MAY be empty.
 
-*Note*: The blob schedule is to be determined.
-
 <!-- list-of-records:blob_schedule -->
 
-| Epoch | Max Blobs Per Block | Description |
-| ----- | ------------------- | ----------- |
+|  Epoch | Max Blobs Per Block |                             Date |
+| -----: | ------------------: | -------------------------------: |
+| 412672 |                  15 | December 9, 2025, 02:21:11pm UTC |
+| 419072 |                  21 |  January 7, 2026, 01:01:11am UTC |
 
 ## Beacon chain state transition function
 
@@ -80,10 +77,13 @@ def process_execution_payload(
         len(body.blob_kzg_commitments)
         <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
     )
-    # Verify the execution payload is valid
+
+    # Compute list of versioned hashes
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
     ]
+
+    # Verify the execution payload is valid
     assert execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
@@ -92,6 +92,7 @@ def process_execution_payload(
             execution_requests=body.execution_requests,
         )
     )
+
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
         parent_hash=payload.parent_hash,
@@ -173,7 +174,7 @@ class BeaconState(Container):
     proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
 ```
 
-## Helper functions
+## Helpers
 
 ### Misc
 
@@ -253,7 +254,7 @@ def compute_proposer_indices(
 #### Modified `get_beacon_proposer_index`
 
 *Note*: The function `get_beacon_proposer_index` is modified to use the
-pre-calculated `current_proposer_lookahead` instead of calculating it on-demand.
+pre-calculated `proposer_lookahead` instead of calculating it on-demand.
 
 ```python
 def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:

@@ -12,7 +12,6 @@ from eth2spec.test.helpers.keys import privkeys
 from eth2spec.test.helpers.state import (
     next_epoch,
     next_slot,
-    payload_state_transition_no_store,
     state_transition_and_sign_block,
 )
 from eth2spec.utils import bls
@@ -303,7 +302,6 @@ def next_slots_with_attestations(
             participation_fn,
         )
         signed_blocks.append(signed_block)
-        payload_state_transition_no_store(spec, post_state, signed_block.message)
 
     return state, signed_blocks, post_state
 

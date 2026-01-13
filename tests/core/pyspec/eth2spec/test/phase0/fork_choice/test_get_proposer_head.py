@@ -121,7 +121,8 @@ def test_basic_is_parent_root(spec, state):
 
     # Make the head block late
     # Round up to nearest second
-    attestation_due_ms = spec.get_slot_component_duration_ms(spec.config.ATTESTATION_DUE_BPS)
+    epoch = spec.get_current_store_epoch(store)
+    attestation_due_ms = spec.get_attestation_due_ms(epoch)
     attesting_cutoff = (attestation_due_ms + 999) // 1000
     current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time + attesting_cutoff
     on_tick_and_append_step(spec, store, current_time, test_steps)
@@ -163,7 +164,7 @@ def test_basic_is_parent_root(spec, state):
     assert single_slot_reorg
 
     assert spec.is_head_weak(store, head_root)
-    assert spec.is_parent_strong(store, parent_root)
+    assert spec.is_parent_strong(store, head_root)
 
     proposer_head = spec.get_proposer_head(store, head_root, state.slot)
     assert proposer_head == parent_root

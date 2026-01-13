@@ -31,16 +31,17 @@ def get_cfg_yaml():
     cfg_yaml = YAML(pure=True)
     cfg_yaml.default_flow_style = False  # Emit separate line for each key
     cfg_yaml.width = 1024  # Do not wrap long lines
+    cfg_yaml.indent(mapping=2, sequence=4, offset=2)  # Indent BLOB_SCHEDULE
 
     def cfg_represent_bytes(self, data):
         return self.represent_int(encode_hex(data))
 
-    cfg_yaml.representer.add_representer(bytes, cfg_represent_bytes)
-
     def cfg_represent_quoted_str(self, data):
         return self.represent_scalar("tag:yaml.org,2002:str", data, style="'")
 
+    cfg_yaml.representer.add_representer(bytes, cfg_represent_bytes)
     cfg_yaml.representer.add_representer(context.quoted_str, cfg_represent_quoted_str)
+
     return cfg_yaml
 
 
@@ -68,6 +69,20 @@ class Dumper:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("wb") as f:
             f.write(compress(data))
+
+    def dump_manifest(self, test_case: TestCase) -> None:
+        """Write manifest.yml file containing test case metadata."""
+        manifest_data = {
+            "preset": test_case.preset_name,
+            "fork": test_case.fork_name,
+            "runner": test_case.runner_name,
+            "handler": test_case.handler_name,
+            "suite": test_case.suite_name,
+            "case": test_case.case_name,
+        }
+        # Use cfg_yaml which has block style formatting (default_flow_style=False)
+        # This ensures each field appears on a separate line, matching data.yaml format
+        self._dump_yaml(test_case, "manifest", manifest_data, self.cfg_yaml)
 
     def _dump_yaml(self, test_case: TestCase, name: str, data: any, yaml_encoder: YAML) -> None:
         """Helper to write YAML files for test case."""

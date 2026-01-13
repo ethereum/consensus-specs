@@ -6,9 +6,9 @@ EIP-7805.
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Modifications in EIP-7805](#modifications-in-eip-7805)
-  - [Helper functions](#helper-functions)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Configuration](#configuration)
+  - [Helpers](#helpers)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -21,7 +21,14 @@ EIP-7805.
 
 ## Modifications in EIP-7805
 
-### Helper functions
+### Configuration
+
+| Name                           | Value            | Description                                                |
+| ------------------------------ | ---------------- | ---------------------------------------------------------- |
+| `MAX_REQUEST_INCLUSION_LIST`   | `2**4` (= 16)    | Maximum number of inclusion list in a single request       |
+| `MAX_BYTES_PER_INCLUSION_LIST` | `2**13` (= 8192) | Maximum size of the inclusion list's transactions in bytes |
+
+### Helpers
 
 #### Modified `compute_fork_version`
 
@@ -46,13 +53,6 @@ def compute_fork_version(epoch: Epoch) -> Version:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
 ```
-
-### Configuration
-
-| Name                           | Value            | Description                                                |
-| ------------------------------ | ---------------- | ---------------------------------------------------------- |
-| `MAX_REQUEST_INCLUSION_LIST`   | `2**4` (= 16)    | Maximum number of inclusion list in a single request       |
-| `MAX_BYTES_PER_INCLUSION_LIST` | `2**13` (= 8192) | Maximum size of the inclusion list's transactions in bytes |
 
 ### The gossip domain: gossipsub
 
@@ -80,8 +80,7 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
 - _[REJECT]_ The slot `message.slot` is equal to the previous or current slot.
 - _[IGNORE]_ The slot `message.slot` is equal to the current slot, or it is
   equal to the previous slot and the current time is less than
-  `get_slot_component_duration_ms(ATTESTATION_DUE_BPS)` milliseconds into the
-  slot.
+  `get_attestation_due_ms(epoch)` milliseconds into the slot.
 - _[IGNORE]_ The `inclusion_list_committee` for slot `message.slot` on the
   current branch corresponds to `message.inclusion_list_committee_root`, as
   determined by

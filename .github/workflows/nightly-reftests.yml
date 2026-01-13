@@ -1,0 +1,75 @@
+name: Nightly Reference Tests
+
+defaults:
+  run:
+    shell: zsh -e {0}
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: The repository to use (e.g. user/consensus-specs)
+        default: ethereum/consensus-specs
+        type: string
+        required: true
+      ref:
+        description: The branch, tag or SHA to checkout and build from
+        default: master
+        type: string
+        required: true
+  schedule:
+    - cron: "0 2 * * *"
+
+jobs:
+  generate-tests:
+    timeout-minutes: 720 # 12 hours
+    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          repository: ${{ inputs.repo }}
+          path: "consensus-specs"
+          ref: ${{ inputs.ref }}
+      - name: Set up Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version-file: "consensus-specs/pyproject.toml"
+      - name: Install uv ${{ vars.UV_VERSION }}
+        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
+        with:
+          enable-cache: true
+          version: ${{ vars.UV_VERSION }}
+      - name: Generate tests
+        run: |
+          cd consensus-specs
+          set -o pipefail
+          make reftests verbose=true 2>&1 | tee ../consensustestgen.log
+          cp -r presets/ ../consensus-spec-tests/presets
+          cp -r configs/ ../consensus-spec-tests/configs
+      - name: Archive configurations
+        run: |
+          cd consensus-spec-tests
+          tar -czvf general.tar.gz tests/general
+          tar -czvf minimal.tar.gz tests/minimal
+          tar -czvf mainnet.tar.gz tests/mainnet
+      - name: Upload general.tar.gz
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: General Test Configuration
+          path: consensus-spec-tests/general.tar.gz
+      - name: Upload minimal.tar.gz
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: Minimal Test Configuration
+          path: consensus-spec-tests/minimal.tar.gz
+      - name: Upload mainnet.tar.gz
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: Mainnet Test Configuration
+          path: consensus-spec-tests/mainnet.tar.gz
+      - name: Upload consensustestgen
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: consensustestgen.log
+          path: consensustestgen.log
