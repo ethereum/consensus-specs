@@ -202,16 +202,20 @@ def verify_partial_data_column_header_inclusion_proof(header: PartialDataColumnH
 def verify_partial_data_column_sidecar_kzg_proofs(
     sidecar: PartialDataColumnSidecar,
     all_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    column_index: ColumnIndex,
 ) -> bool:
     """
     Verify the KZG proofs.
     """
-    # The column index also represents the cell index
-    cell_indices = [CellIndex(i) for i, b in enumerate(sidecar.cells_present_bitmap) if b]
+    # Get the blob indices from the bitmap
+    blob_indices = [i for i, b in enumerate(sidecar.cells_present_bitmap) if b]
+
+    # The cell index is the column index for all cells in this column
+    cell_indices = [CellIndex(column_index)] * len(blob_indices)
 
     # Batch verify that the cells match the corresponding commitments and proofs
     return verify_cell_kzg_proof_batch(
-        commitments_bytes=[all_commitments[i] for i in cell_indices],
+        commitments_bytes=[all_commitments[i] for i in blob_indices],
         cell_indices=cell_indices,
         cells=sidecar.partial_column,
         proofs_bytes=sidecar.kzg_proofs,
@@ -453,7 +457,7 @@ For verifying the cells in a partial message:
 - _[REJECT]_ The cells present bitmap length is equal to the number of KZG
   commitments in the `PartialDataColumnHeader`.
 - _[REJECT]_ The sidecar's cell and proof data is valid as verified by
-  `verify_partial_data_column_sidecar_kzg_proofs(sidecar, header.kzg_commitments)`.
+  `verify_partial_data_column_sidecar_kzg_proofs(sidecar, header.kzg_commitments, column_index)`.
 
 ##### Eager pushing
 
