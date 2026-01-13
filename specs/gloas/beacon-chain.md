@@ -462,22 +462,22 @@ def is_attestation_same_slot(state: BeaconState, data: AttestationData) -> bool:
 
 ```python
 def is_valid_indexed_payload_attestation(
-    state: BeaconState, indexed_payload_attestation: IndexedPayloadAttestation
+    state: BeaconState, attestation: IndexedPayloadAttestation
 ) -> bool:
     """
-    Check if ``indexed_payload_attestation`` is non-empty, has sorted indices, and has
+    Check if ``attestation`` is non-empty, has sorted indices, and has
     a valid aggregate signature.
     """
     # Verify indices are non-empty and sorted
-    indices = indexed_payload_attestation.attesting_indices
+    indices = attestation.attesting_indices
     if len(indices) == 0 or not indices == sorted(indices):
         return False
 
     # Verify aggregate signature
     pubkeys = [state.validators[i].pubkey for i in indices]
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, None)
-    signing_root = compute_signing_root(indexed_payload_attestation.data, domain)
-    return bls.FastAggregateVerify(pubkeys, signing_root, indexed_payload_attestation.signature)
+    signing_root = compute_signing_root(attestation.data, domain)
+    return bls.FastAggregateVerify(pubkeys, signing_root, attestation.signature)
 ```
 
 #### New `is_parent_block_full`
