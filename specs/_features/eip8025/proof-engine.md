@@ -44,7 +44,7 @@ stateless validation of execution payloads through execution proofs.
 | Name         | SSZ equivalent | Description                              |
 | ------------ | -------------- | ---------------------------------------- |
 | `ProofGenId` | `Bytes8`       | Identifier for tracking proof generation |
-| `ProofType`  | `uint8`        | Type type identifier for the proof       |
+| `ProofType`  | `uint8`        | The type identifier for the proof        |
 
 ### Domain types
 
