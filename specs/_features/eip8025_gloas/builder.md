@@ -1,4 +1,4 @@
-# EIP-8025 (Gloas) -- Honest Builder
+# EIP-8025 -- Honest Builder
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -11,17 +11,16 @@
 - [Prerequisites](#prerequisites)
 - [Constructing the `SignedExecutionPayloadHeaderEnvelope`](#constructing-the-signedexecutionpayloadheaderenvelope)
 - [Execution proof signature](#execution-proof-signature)
-- [Constructing the `BuilderSignedExecutionProof`](#constructing-the-buildersignedexecutionproof)
+- [Constructing the `SignedExecutionProof`](#constructing-the-signedexecutionproof)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This document represents the changes to the builder guide accompanying EIP-8025
-on Gloas.
+This document represents the changes to the builder guide accompanying EIP-8025.
 
 *Note*: This specification imports proof types from
-[eip8025_fulu/proof-engine.md](../eip8025_fulu/proof-engine.md).
+[eip8025/proof-engine.md](../eip8025/proof-engine.md).
 
 ## Prerequisites
 
@@ -31,8 +30,8 @@ definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the
-[EIP-8025 (Gloas) -- Beacon Chain](./beacon-chain.md) document are requisite for
-this document.
+[EIP-8025 -- Beacon Chain](./beacon-chain.md) document are requisite for this
+document.
 
 ## Constructing the `SignedExecutionPayloadHeaderEnvelope`
 
@@ -68,10 +67,10 @@ def get_execution_proof_signature(
     return bls.Sign(privkey, signing_root)
 ```
 
-## Constructing the `BuilderSignedExecutionProof`
+## Constructing the `SignedExecutionProof`
 
 After producing an `ExecutionPayloadEnvelope` the builder constructs a set of
-`BuilderSignedExecutionProof` as follows:
+`SignedExecutionProof` as follows:
 
 1. Extract the `NewPayloadRequest` from the envelope.
 2. Select proof types and create `ProofAttributes`.
@@ -85,5 +84,4 @@ After producing an `ExecutionPayloadEnvelope` the builder constructs a set of
    - Set `signed_proof.builder_index` to the builder's `BuilderIndex`.
    - Set `signed_proof.signature` to the result of
      `get_execution_proof_signature(state, proof, privkey)`.
-   - Broadcast the `BuilderSignedExecutionProof` on the `execution_proof` gossip
-     topic.
+   - Broadcast the `SignedExecutionProof` on the `execution_proof` gossip topic.

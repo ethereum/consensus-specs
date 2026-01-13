@@ -1,4 +1,4 @@
-# EIP-8025 (Gloas) -- Fork Choice
+# EIP-8025 -- Fork Choice
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -13,13 +13,11 @@
 
 ## Introduction
 
-This is the modification of the fork choice accompanying the EIP-8025 upgrade
-for Gloas, enabling stateless validation of execution payloads through
-cryptographic proofs.
+This is the modification of the fork choice accompanying the EIP-8025 upgrade,
+enabling stateless validation of execution payloads through execution proofs.
 
 *Note*: This specification is built upon [Gloas](../../gloas/fork-choice.md) and
-imports proof types from
-[eip8025_fulu/proof-engine.md](../eip8025_fulu/proof-engine.md).
+imports proof types from [eip8025/proof-engine.md](../eip8025/proof-engine.md).
 
 ## Handlers
 

@@ -1,4 +1,4 @@
-# EIP-8025 (Gloas) -- The Beacon Chain
+# EIP-8025 -- The Beacon Chain
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -10,64 +10,39 @@
 - [Introduction](#introduction)
 - [Containers](#containers)
   - [New containers](#new-containers)
-    - [`BuilderSignedExecutionProof`](#buildersignedexecutionproof)
-    - [`ProverSignedExecutionProof`](#proversignedexecutionproof)
-    - [`NewPayloadRequestHeader`](#newpayloadrequestheader)
+    - [`SignedExecutionProof`](#signedexecutionproof)
     - [`ExecutionPayloadHeaderEnvelope`](#executionpayloadheaderenvelope)
     - [`SignedExecutionPayloadHeaderEnvelope`](#signedexecutionpayloadheaderenvelope)
-  - [Extended Containers](#extended-containers)
-    - [`BeaconState`](#beaconstate)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution payload processing](#execution-payload-processing)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
     - [New `verify_execution_payload_header_envelope_signature`](#new-verify_execution_payload_header_envelope_signature)
     - [New `process_execution_payload_header`](#new-process_execution_payload_header)
   - [Execution proof handlers](#execution-proof-handlers)
-    - [New `process_builder_signed_execution_proof`](#new-process_builder_signed_execution_proof)
-    - [New `process_prover_signed_execution_proof`](#new-process_prover_signed_execution_proof)
+    - [New `process_signed_execution_proof`](#new-process_signed_execution_proof)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This document contains the Gloas-specific consensus specs for EIP-8025. This
-enables stateless validation of execution payloads through cryptographic proofs.
+This document contains the consensus specs for EIP-8025, enabling stateless
+validation of execution payloads through execution proofs.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md)
 and imports proof types from
-[eip8025_fulu/proof-engine.md](../eip8025_fulu/proof-engine.md).
+[eip8025/proof-engine.md](../eip8025/proof-engine.md).
 
 ## Containers
 
 ### New containers
 
-#### `BuilderSignedExecutionProof`
+#### `SignedExecutionProof`
 
 ```python
-class BuilderSignedExecutionProof(Container):
+class SignedExecutionProof(Container):
     message: ExecutionProof
     builder_index: BuilderIndex
     signature: BLSSignature
-```
-
-#### `ProverSignedExecutionProof`
-
-```python
-class ProverSignedExecutionProof(Container):
-    message: ExecutionProof
-    prover_pubkey: BLSPubkey
-    signature: BLSSignature
-```
-
-#### `NewPayloadRequestHeader`
-
-```python
-@dataclass
-class NewPayloadRequestHeader(object):
-    execution_payload_header: ExecutionPayloadHeader
-    versioned_hashes: Sequence[VersionedHash]
-    parent_beacon_block_root: Root
-    execution_requests: ExecutionRequests
 ```
 
 #### `ExecutionPayloadHeaderEnvelope`
@@ -90,73 +65,6 @@ class SignedExecutionPayloadHeaderEnvelope(Container):
     message: ExecutionPayloadHeaderEnvelope
     signature: BLSSignature
 ```
-
-### Extended Containers
-
-#### `BeaconState`
-
-```python
-class BeaconState(Container):
-    genesis_time: uint64
-    genesis_validators_root: Root
-    slot: Slot
-    fork: Fork
-    latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    # [New in EIP-8025]
-    prover_whitelist: List[BLSPubkey, MAX_WHITELISTED_PROVERS]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
-    eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
-    eth1_deposit_index: uint64
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
-    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
-    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
-    previous_justified_checkpoint: Checkpoint
-    current_justified_checkpoint: Checkpoint
-    finalized_checkpoint: Checkpoint
-    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
-    current_sync_committee: SyncCommittee
-    next_sync_committee: SyncCommittee
-    # [Modified in Gloas:EIP7732]
-    # Removed `latest_execution_payload_header`
-    # [New in Gloas:EIP7732]
-    latest_execution_payload_bid: ExecutionPayloadBid
-    next_withdrawal_index: WithdrawalIndex
-    next_withdrawal_validator_index: ValidatorIndex
-    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
-    deposit_requests_start_index: uint64
-    deposit_balance_to_consume: Gwei
-    exit_balance_to_consume: Gwei
-    earliest_exit_epoch: Epoch
-    consolidation_balance_to_consume: Gwei
-    earliest_consolidation_epoch: Epoch
-    pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
-    pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
-    pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
-    proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
-    # [New in Gloas:EIP7732]
-    builders: List[Builder, BUILDER_REGISTRY_LIMIT]
-    # [New in Gloas:EIP7732]
-    next_withdrawal_builder_index: BuilderIndex
-    # [New in Gloas:EIP7732]
-    execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
-    # [New in Gloas:EIP7732]
-    builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
-    # [New in Gloas:EIP7732]
-    builder_pending_withdrawals: List[BuilderPendingWithdrawal, BUILDER_PENDING_WITHDRAWALS_LIMIT]
-    # [New in Gloas:EIP7732]
-    latest_block_hash: Hash32
-    # [New in Gloas:EIP7732]
-    payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-```
-
-*Note*: `BeaconBlockBody` remains unchanged.
 
 ## Beacon chain state transition function
 
@@ -213,7 +121,7 @@ def process_execution_payload(
         len(envelope.blob_kzg_commitments)
         <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
     )
-    # Verify the execution payload is valid
+    # Verify the execution payload is valid via ExecutionEngine
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment) for commitment in envelope.blob_kzg_commitments
     ]
@@ -393,20 +301,18 @@ def process_execution_payload_header(
 
 ### Execution proof handlers
 
-*Note*: Proof storage and availability is implementation-dependent, managed by
-the `ProofEngine`. Implementations may cache proofs that arrive before their
-corresponding payload headers and apply them once the header is received.
+*Note*: Proof storage is implementation-dependent, managed by the `ProofEngine`.
 
-#### New `process_builder_signed_execution_proof`
+#### New `process_signed_execution_proof`
 
 ```python
-def process_builder_signed_execution_proof(
+def process_signed_execution_proof(
     state: BeaconState,
-    signed_proof: BuilderSignedExecutionProof,
+    signed_proof: SignedExecutionProof,
     proof_engine: ProofEngine,
 ) -> None:
     """
-    Handler for BuilderSignedExecutionProof.
+    Handler for SignedExecutionProof.
     """
     proof_message = signed_proof.message
     builder_index = signed_proof.builder_index
@@ -421,31 +327,6 @@ def process_builder_signed_execution_proof(
     domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
     signing_root = compute_signing_root(proof_message, domain)
     assert bls.Verify(pubkey, signing_root, signed_proof.signature)
-
-    # Verify the execution proof
-    assert proof_engine.verify_execution_proof(proof_message)
-```
-
-#### New `process_prover_signed_execution_proof`
-
-```python
-def process_prover_signed_execution_proof(
-    state: BeaconState,
-    signed_proof: ProverSignedExecutionProof,
-    proof_engine: ProofEngine,
-) -> None:
-    """
-    Handler for ProverSignedExecutionProof.
-    """
-    proof_message = signed_proof.message
-    prover_pubkey = signed_proof.prover_pubkey
-
-    # Verify prover is whitelisted
-    assert prover_pubkey in state.prover_whitelist
-
-    domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
-    signing_root = compute_signing_root(proof_message, domain)
-    assert bls.Verify(prover_pubkey, signing_root, signed_proof.signature)
 
     # Verify the execution proof
     assert proof_engine.verify_execution_proof(proof_message)
