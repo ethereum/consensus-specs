@@ -418,7 +418,7 @@ Due to the nature of partial messages, it is possible to get the
 For all partial messages:
 
 - _[IGNORE]_ If the received partial message contains only cell data, the node
-  has not yet seen the corresponding `PartialDataColumnHeader`.
+  has seen the corresponding `PartialDataColumnHeader`.
 
 For verifying the `PartialDataColumnHeader` in a partial message:
 
