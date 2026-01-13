@@ -1,17 +1,16 @@
-# EIP-8025 (Gloas) -- Networking
+# EIP-8025 -- Networking
 
-This document contains the networking specification for EIP-8025 on Gloas.
+This document contains the networking specification for EIP-8025.
 
 *Note*: This specification is built upon [Gloas](../../gloas/p2p-interface.md)
 and imports proof types from
-[eip8025_fulu/proof-engine.md](../eip8025_fulu/proof-engine.md).
+[eip8025/proof-engine.md](../eip8025/proof-engine.md).
 
 ## Table of contents
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Table of contents](#table-of-contents)
-- [Containers](#containers)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -23,17 +22,6 @@ and imports proof types from
 
 <!-- mdformat-toc end -->
 
-## Containers
-
-*Note*: Execution proofs are broadcast as either `BuilderSignedExecutionProof`
-or `ProverSignedExecutionProof` containers on the same topic.
-
-<!-- TODO: Define proper union type for SSZ -->
-
-```python
-SignedExecutionProof = Union[BuilderSignedExecutionProof, ProverSignedExecutionProof]
-```
-
 ## The gossip domain: gossipsub
 
 ### Topics and messages
@@ -43,8 +31,6 @@ SignedExecutionProof = Union[BuilderSignedExecutionProof, ProverSignedExecutionP
 ##### `signed_execution_payload_header_envelope`
 
 This topic is used to propagate `SignedExecutionPayloadHeaderEnvelope` messages.
-Provers subscribe to this topic to receive execution payload headers for which
-they can generate execution proofs.
 
 The following validations MUST pass before forwarding the
 `signed_execution_payload_header_envelope` on the network, assuming the alias
@@ -72,31 +58,21 @@ Let `block` be the block with `envelope.beacon_block_root`. Let `bid` alias
 
 ##### `execution_proof`
 
-This topic is used to propagate execution proofs. Both
-`BuilderSignedExecutionProof` and `ProverSignedExecutionProof` messages are
-propagated on this topic.
+This topic is used to propagate `SignedExecutionProof` messages.
 
 The following validations MUST pass before forwarding a proof on the network:
 
 - _[IGNORE]_ The proof's corresponding new payload request (identified by
-  `proof.message.public_inputs.new_payload_request_root`) has been seen (via
+  `proof.message.public_input.new_payload_request_root`) has been seen (via
   gossip or non-gossip sources) (a client MAY queue proofs for processing once
   the new payload request is retrieved).
 - _[IGNORE]_ The proof is the first valid proof received for the tuple
-  `(proof.message.public_inputs.new_payload_request_root, proof.message.proof_type, signer)`.
+  `(proof.message.public_input.new_payload_request_root, proof.message.proof_type, builder_index)`.
 
-For `BuilderSignedExecutionProof`:
+For `SignedExecutionProof`:
 
 - _[REJECT]_ The `builder_index` is within the known builder registry.
 - _[REJECT]_ The signature is valid with respect to the builder's public key.
-
-For `ProverSignedExecutionProof`:
-
-- _[REJECT]_ The `prover_pubkey` is in the prover whitelist.
-- _[REJECT]_ The signature is valid with respect to the prover's public key.
-
-For both types:
-
 - _[REJECT]_ The `proof.message.proof_data` is non-empty.
 - _[REJECT]_ The `proof.message.proof_data` is not larger than `MAX_PROOF_SIZE`.
 - _[REJECT]_ The execution proof is valid as verified by the appropriate

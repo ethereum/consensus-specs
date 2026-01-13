@@ -8,31 +8,30 @@
 
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
-- [Prerequisites](#prerequisites)
-- [Execution proof signature](#execution-proof-signature)
-- [Constructing the `ProverSignedExecutionProof`](#constructing-the-proversignedexecutionproof)
-- [Honest Prover Relay](#honest-prover-relay)
-  - [Accepting proofs](#accepting-proofs)
-  - [Signing and broadcasting](#signing-and-broadcasting)
+- [Helpers](#helpers)
+  - [`get_execution_proof_signature`](#get_execution_proof_signature)
+- [Constructing `ProverSignedExecutionProof`](#constructing-proversignedexecutionproof)
+- [Honest prover relay](#honest-prover-relay)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
 This document represents the prover guide accompanying EIP-8025. Provers are
-whitelisted network operators who generate execution proofs during the optional
-proof phase.
+whitelisted network participants who voluntarily generate and submit execution
+proofs without direct protocol-level compensation. They provide a public good by
+enabling stateless validation during the optional proof phase.
 
-## Prerequisites
+*Note*: Provers are a transitional mechanism. In future mandatory proof forks,
+builders will be required to produce and gossip execution proofs as part of
+their block production duties, and the prover role will be deprecated.
 
-All terminology, constants, functions, and protocol mechanics defined in the
-[EIP-8025 -- Beacon Chain](./beacon-chain.md) document are requisite for this
-document.
+*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md) and
+imports proof types from [proof-engine.md](./proof-engine.md).
 
-The prover MUST have their public key included in `WHITELISTED_PROVERS` or
-alternatively use a whitelisted community proof relay.
+## Helpers
 
-## Execution proof signature
+### `get_execution_proof_signature`
 
 ```python
 def get_execution_proof_signature(
@@ -43,59 +42,44 @@ def get_execution_proof_signature(
     return bls.Sign(privkey, signing_root)
 ```
 
-## Constructing the `ProverSignedExecutionProof`
+## Constructing `ProverSignedExecutionProof`
 
-Provers subscribe to the `signed_execution_payload_envelope` gossip topic
-(defined in [Gloas](../../gloas/p2p-interface.md)) to receive execution payloads
-for which they can generate execution proofs.
+An honest prover who has been whitelisted and wants to generate execution proofs
+for a `BeaconBlockBody` performs the following steps:
 
-To construct a `ProverSignedExecutionProof`:
-
-1. Extract the `NewPayloadRequest` from the `SignedExecutionPayloadEnvelope`.
-2. Select proof types and create `ProofAttributes`.
+1. Extract `NewPayloadRequest` from `BeaconBlockBody`:
+   - `execution_payload = body.execution_payload`
+   - `versioned_hashes = [kzg_commitment_to_versioned_hash(c) for c in body.blob_kzg_commitments]`
+   - `parent_beacon_block_root = state.latest_block_header.parent_root`
+   - `execution_requests = body.execution_requests`
+2. Create `ProofAttributes` with desired proof types.
 3. Call
    `proof_gen_id = proof_engine.request_proofs(new_payload_request, proof_attributes)`
    to initiate proof generation.
-4. Call `proofs = proof_engine.get_proofs(proof_gen_id)` to retrieve generated
+4. Call `proof_engine.get_proofs(proof_gen_id)` to retrieve the generated
    proofs.
-5. For each `ExecutionProof` in `proofs`:
-   - Set `signed_proof.message` to the `ExecutionProof`.
-   - Set `signed_proof.prover_pubkey` to the prover's public key.
-   - Set `signed_proof.signature` to the result of
-     `get_execution_proof_signature(state, proof, privkey)`.
+5. For each `ExecutionProof` in the returned list:
+   - Set `message` to the `ExecutionProof`.
+   - Set `prover_pubkey` to the prover's public key.
+   - Sign the proof using
+     `get_execution_proof_signature(state, proof, prover_privkey)`.
    - Broadcast the `ProverSignedExecutionProof` on the `execution_proof` gossip
      topic.
 
-## Honest Prover Relay
+## Honest prover relay
 
-A prover relay is a whitelisted service that accepts execution proofs from
-community provers, validates them, signs them, and broadcasts them to the
-network. This allows any prover to contribute proofs without needing to be
-individually whitelisted.
+A prover relay is a trusted intermediary that accepts unsigned execution proofs
+from community provers and signs them for broadcast. The relay's public key MUST
+be in the prover whitelist.
 
-### Accepting proofs
+When a prover relay receives an unsigned `ExecutionProof`:
 
-The relay exposes an API endpoint that accepts unsigned `ExecutionProof`
-submissions from community provers. Upon receiving a proof, the relay MUST:
-
-1. Verify the `proof.proof_data` is non-empty.
+1. Validate that `proof_data` is non-empty.
 2. Verify the execution proof is valid using
-   `verify_execution_proof(proof, program_bytecode)`.
-3. Verify a proof for the same `(new_payload_request_root, proof_type)` has not
-   already been signed and broadcast.
-
-If any validation fails, the relay SHOULD reject the submission.
-
-### Signing and broadcasting
-
-After successful validation, the relay signs and broadcasts the proof:
-
-1. Set `signed_proof.message` to the validated `proof`.
-2. Set `signed_proof.prover_pubkey` to the relay's whitelisted public key.
-3. Set `signed_proof.signature` to the result of
-   `get_execution_proof_signature(state, proof, relay_privkey)`.
-4. Broadcast the `ProverSignedExecutionProof` on the `execution_proof` gossip
-   topic.
-
-*Note*: The relay's public key MUST be included in `WHITELISTED_PROVERS`. The
-relay takes responsibility for the validity of proofs it signs.
+   `proof_engine.verify_execution_proof(proof)`.
+3. Check the proof is not a duplicate (same `new_payload_request_root`,
+   `proof_type`).
+4. If valid and not a duplicate:
+   - Create a `ProverSignedExecutionProof` with the relay's public key and
+     signature.
+   - Broadcast on the `execution_proof` gossip topic.
