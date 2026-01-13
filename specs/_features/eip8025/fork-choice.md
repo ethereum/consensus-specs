@@ -7,6 +7,7 @@
 - [Introduction](#introduction)
 - [Handlers](#handlers)
   - [Modified `on_execution_payload`](#modified-on_execution_payload)
+  - [New `on_execution_payload_header`](#new-on_execution_payload_header)
 
 <!-- mdformat-toc end -->
 
@@ -22,18 +23,13 @@ proofs.
 
 ### Modified `on_execution_payload`
 
-The handler `on_execution_payload` is modified to accept either a full
-`SignedExecutionPayloadEnvelope` or a `SignedExecutionPayloadHeaderEnvelope`.
+*Note*: `on_execution_payload` is modified in EIP-8025 to include `PROOF_ENGINE`
+in the call to `process_execution_payload`.
 
 ```python
-def on_execution_payload(
-    store: Store,
-    # [Modified in EIP-8025]
-    # Accept either full envelope or header-only envelope
-    signed_envelope: SignedExecutionPayloadEnvelope | SignedExecutionPayloadHeaderEnvelope,
-) -> None:
+def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEnvelope) -> None:
     """
-    Run ``on_execution_payload`` upon receiving a new execution payload or header.
+    Run ``on_execution_payload`` upon receiving a new execution payload.
     """
     envelope = signed_envelope.message
     # The corresponding beacon block root needs to be known
@@ -46,8 +42,36 @@ def on_execution_payload(
     # Make a copy of the state to avoid mutability issues
     state = copy(store.block_states[envelope.beacon_block_root])
 
-    # Process the execution payload (handles both full envelope and header)
-    process_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
+    # Process the execution payload
+    # [Modified in EIP-8025] Added PROOF_ENGINE parameter
+    process_execution_payload(state, signed_envelope, EXECUTION_ENGINE, PROOF_ENGINE)
+
+    # Add new state for this payload to the store
+    store.execution_payload_states[envelope.beacon_block_root] = state
+```
+
+### New `on_execution_payload_header`
+
+```python
+def on_execution_payload_header(
+    store: Store, signed_envelope: SignedExecutionPayloadHeaderEnvelope
+) -> None:
+    """
+    Run ``on_execution_payload_header`` upon receiving a new execution payload header.
+    """
+    envelope = signed_envelope.message
+    # The corresponding beacon block root needs to be known
+    assert envelope.beacon_block_root in store.block_states
+
+    # Check if blob data is available
+    # If not, this payload MAY be queued and subsequently considered when blob data becomes available
+    assert is_data_available(envelope.beacon_block_root)
+
+    # Make a copy of the state to avoid mutability issues
+    state = copy(store.block_states[envelope.beacon_block_root])
+
+    # Process the execution payload header
+    process_execution_payload_header(state, signed_envelope, PROOF_ENGINE)
 
     # Add new state for this payload to the store
     store.execution_payload_states[envelope.beacon_block_root] = state
