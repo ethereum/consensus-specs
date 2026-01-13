@@ -13,6 +13,8 @@
     - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
     - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
     - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
+    - [`verify_partial_data_column_header_inclusion_proof`](#verify_partial_data_column_header_inclusion_proof)
+    - [`verify_partial_data_column_sidecar_kzg_proofs`](#verify_partial_data_column_sidecar_kzg_proofs)
     - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -23,6 +25,20 @@
         - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
         - [Distributed Blob Publishing using blobs retrieved from local execution layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
+    - [Partial Columns](#partial-columns)
+      - [Partial Message Group ID](#partial-message-group-id)
+      - [`PartialDataColumnSidecar`](#partialdatacolumnsidecar)
+      - [`PartialDataColumnHeader`](#partialdatacolumnheader)
+      - [Parts Metadata](#parts-metadata)
+      - [Encoding and Decoding Responses](#encoding-and-decoding-responses)
+      - [Validation](#validation)
+      - [Eager Pushing](#eager-pushing)
+      - [Interaction with standard Gossipsub](#interaction-with-standard-gossipsub)
+        - [Requesting Partial messages](#requesting-partial-messages)
+        - [Mesh](#mesh)
+        - [Fanout](#fanout)
+        - [Scoring](#scoring)
+        - [Forwarding](#forwarding)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [Status v2](#status-v2)
@@ -183,12 +199,15 @@ def verify_partial_data_column_header_inclusion_proof(header: PartialDataColumnH
 #### `verify_partial_data_column_sidecar_kzg_proofs`
 
 ```python
-def verify_partial_data_column_sidecar_kzg_proofs(sidecar: PartialDataColumnSidecar, all_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]) -> bool:
+def verify_partial_data_column_sidecar_kzg_proofs(
+    sidecar: PartialDataColumnSidecar,
+    all_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+) -> bool:
     """
     Verify the KZG proofs.
     """
     # The column index also represents the cell index
-    cell_indices = [i for i, b in enumerate(sidecar.cells_present_bitmap) if b]
+    cell_indices = [CellIndex(i) for i, b in enumerate(sidecar.cells_present_bitmap) if b]
 
     # Batch verify that the cells match the corresponding commitments and proofs
     return verify_cell_kzg_proof_batch(
@@ -329,10 +348,10 @@ gossip. In particular, clients MUST:
 
 #### Partial Columns
 
-Gossipsub's [Partial Message
-Extension](https://github.com/libp2p/specs/pull/685) enables exchanging
-selective parts of a message rather than the whole. The specification here
-describes how Consensus Clients use Partial Messages to disseminate cells.
+Gossipsub's
+[Partial Message Extension](https://github.com/libp2p/specs/pull/685) enables
+exchanging selective parts of a message rather than the whole. The specification
+here describes how Consensus Clients use Partial Messages to disseminate cells.
 
 *Editor's Note*: This change MUST NOT be merged before the linked libp2p/specs.
 
@@ -373,8 +392,8 @@ class PartialDataColumnHeader(Container):
 
 ##### Parts Metadata
 
-Peers communicate the cells available with a bitmap. A set bit (`1`) at index `i`
-means that the peer has the cell at index `i`. The bitmap is encoded as a
+Peers communicate the cells available with a bitmap. A set bit (`1`) at index
+`i` means that the peer has the cell at index `i`. The bitmap is encoded as a
 Bitlist.
 
 ##### Encoding and Decoding Responses
@@ -387,34 +406,35 @@ container.
 Validating partial messages happens in two parts. First the
 `PartialDataColumnHeader` needs to be validated, then the cell and proof data.
 
-Once a `PartialDataColumnHeader` is validated for a corresponding block
-on any subnet (gossipsub topic), it can be used for all subnets.
+Once a `PartialDataColumnHeader` is validated for a corresponding block on any
+subnet (gossipsub topic), it can be used for all subnets.
 
 Due to the nature of partial messages, it's possible to get the
 `PartialDataColumnHeader` with no cells, and get cells in a future response.
 
 For all partial messages:
-- _[IGNORE]_ If the received partial message contains only cell data, the
-  node has not yet seen the corresponding `PartialDataColumnHeader`.
+
+- _[IGNORE]_ If the received partial message contains only cell data, the node
+  has not yet seen the corresponding `PartialDataColumnHeader`.
 
 For verifying the `PartialDataColumnHeader` in a partial message:
+
 - _[IGNORE]_ The header is the first header for the given block root.
 - _[REJECT]_ The header contains non-zero commitments.
 - _[IGNORE]_ The header is not from a future slot (with a
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
   `block_header.slot <= current_slot` (a client MAY queue future headers for
   processing at the appropriate slot).
-- _[IGNORE]_ The header is from a slot greater than the latest finalized slot
-  -- i.e. validate that
+- _[IGNORE]_ The header is from a slot greater than the latest finalized slot --
+  i.e. validate that
   `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
 - _[REJECT]_ The proposer signature of `signed_block_header`, is valid with
   respect to the `block_header.proposer_index` pubkey.
-- _[IGNORE]_ The header's block's parent (defined by
-  `block_header.parent_root`) has been seen (via gossip or non-gossip sources)
-  (a client MAY queue header for processing once the parent block is
-  retrieved).
-- _[REJECT]_ The header's block's parent (defined by
-  `block_header.parent_root`) passes validation.
+- _[IGNORE]_ The header's block's parent (defined by `block_header.parent_root`)
+  has been seen (via gossip or non-gossip sources) (a client MAY queue header
+  for processing once the parent block is retrieved).
+- _[REJECT]_ The header's block's parent (defined by `block_header.parent_root`)
+  passes validation.
 - _[REJECT]_ The header is from a higher slot than the header's block's parent
   (defined by `block_header.parent_root`).
 - _[REJECT]_ The current finalized_checkpoint is an ancestor of the header's
@@ -430,6 +450,7 @@ For verifying the `PartialDataColumnHeader` in a partial message:
   calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
 For verifying the cells in a partial message:
+
 - _[REJECT]_ The cells present bitmap length is equal to the number of KZG
   commitments in the `PartialDataColumnHeader`.
 - _[REJECT]_ The sidecar's cell and proof data is valid as verified by
@@ -438,9 +459,9 @@ For verifying the cells in a partial message:
 ##### Eager Pushing
 
 In contrast to standard Gossipsub, a client explicitly requests missing parts
-from a peer. A client can send its request before receiving a peer's parts metadata.
-This registers interest in certain parts, even if the peer doesn't have these
-parts yet.
+from a peer. A client can send its request before receiving a peer's parts
+metadata. This registers interest in certain parts, even if the peer doesn't
+have these parts yet.
 
 This request can introduce extra latency compared to a peer unconditionally
 pushing messages, especially in the first hop of dissemination.
@@ -464,13 +485,13 @@ Gossipsub's `SubOpts` RPC message to true.
 
 ###### Mesh
 
-The Partial Message Extension uses the same mesh peers for a given topic
-as the standard Gossipsub topics for DataColumnSidecars.
+The Partial Message Extension uses the same mesh peers for a given topic as the
+standard Gossipsub topics for DataColumnSidecars.
 
 ###### Fanout
 
-The Partial Message Extension uses the same fanout peers for a given topic
-as the standard Gossipsub topics for DataColumnSidecars.
+The Partial Message Extension uses the same fanout peers for a given topic as
+the standard Gossipsub topics for DataColumnSidecars.
 
 ###### Scoring
 
