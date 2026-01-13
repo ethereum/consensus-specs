@@ -25,16 +25,16 @@
         - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
         - [Distributed Blob Publishing using blobs retrieved from local execution layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
-    - [Partial Columns](#partial-columns)
-      - [Partial Message Group ID](#partial-message-group-id)
+    - [Partial columns](#partial-columns)
+      - [Partial message group ID](#partial-message-group-id)
       - [`PartialDataColumnSidecar`](#partialdatacolumnsidecar)
       - [`PartialDataColumnHeader`](#partialdatacolumnheader)
-      - [Parts Metadata](#parts-metadata)
-      - [Encoding and Decoding Responses](#encoding-and-decoding-responses)
+      - [Parts metadata](#parts-metadata)
+      - [Encoding and decoding responses](#encoding-and-decoding-responses)
       - [Validation](#validation)
-      - [Eager Pushing](#eager-pushing)
-      - [Interaction with standard Gossipsub](#interaction-with-standard-gossipsub)
-        - [Requesting Partial messages](#requesting-partial-messages)
+      - [Eager pushing](#eager-pushing)
+      - [Interaction with standard gossipsub](#interaction-with-standard-gossipsub)
+        - [Requesting partial messages](#requesting-partial-messages)
         - [Mesh](#mesh)
         - [Fanout](#fanout)
         - [Scoring](#scoring)
@@ -346,25 +346,24 @@ gossip. In particular, clients MUST:
 - Update gossip rule related data structures (i.e. update the anti-equivocation
   cache).
 
-#### Partial Columns
+#### Partial columns
 
 Gossipsub's
 [Partial Message Extension](https://github.com/libp2p/specs/pull/685) enables
 exchanging selective parts of a message rather than the whole. The specification
-here describes how Consensus Clients use Partial Messages to disseminate cells.
+here describes how consensus-layer clients use Partial Messages to disseminate
+cells.
 
-*Editor's Note*: This change MUST NOT be merged before the linked libp2p/specs.
+##### Partial message group ID
 
-##### Partial Message Group ID
-
-When sending a partial message, the Gossipsub Group ID MUST be the block root.
+When sending a partial message, the gossipsub group ID MUST be the block root.
 
 ##### `PartialDataColumnSidecar`
 
 The `PartialDataColumnSidecar` is similar to the `DataColumnSidecar` container,
 except that only the cells and proofs identified by the bitmap are present.
 
-The column index is inferred from the subnet (Gossipsub topic).
+*Note*: The column index is inferred from the gossipsub topic subnet.
 
 ```python
 class PartialDataColumnSidecar(Container):
@@ -390,26 +389,26 @@ class PartialDataColumnHeader(Container):
     kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
 ```
 
-##### Parts Metadata
+##### Parts metadata
 
 Peers communicate the cells available with a bitmap. A set bit (`1`) at index
 `i` means that the peer has the cell at index `i`. The bitmap is encoded as a
-Bitlist.
+`Bitlist`.
 
-##### Encoding and Decoding Responses
+##### Encoding and decoding responses
 
-All responses MUST be encoded and decoded with the PartialDataColumnSidecar
+All responses MUST be encoded and decoded with the `PartialDataColumnSidecar`
 container.
 
 ##### Validation
 
-Validating partial messages happens in two parts. First the
+Validating partial messages happens in two parts. First, the
 `PartialDataColumnHeader` needs to be validated, then the cell and proof data.
 
 Once a `PartialDataColumnHeader` is validated for a corresponding block on any
 subnet (gossipsub topic), it can be used for all subnets.
 
-Due to the nature of partial messages, it's possible to get the
+Due to the nature of partial messages, it is possible to get the
 `PartialDataColumnHeader` with no cells, and get cells in a future response.
 
 For all partial messages:
@@ -420,7 +419,7 @@ For all partial messages:
 For verifying the `PartialDataColumnHeader` in a partial message:
 
 - _[IGNORE]_ The header is the first header for the given block root.
-- _[REJECT]_ The header contains non-zero commitments.
+- _[REJECT]_ The header's `kzg_commitments` list is non-empty.
 - _[IGNORE]_ The header is not from a future slot (with a
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
   `block_header.slot <= current_slot` (a client MAY queue future headers for
@@ -428,7 +427,7 @@ For verifying the `PartialDataColumnHeader` in a partial message:
 - _[IGNORE]_ The header is from a slot greater than the latest finalized slot --
   i.e. validate that
   `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
-- _[REJECT]_ The proposer signature of `signed_block_header`, is valid with
+- _[REJECT]_ The proposer signature of `signed_block_header` is valid with
   respect to the `block_header.proposer_index` pubkey.
 - _[IGNORE]_ The header's block's parent (defined by `block_header.parent_root`)
   has been seen (via gossip or non-gossip sources) (a client MAY queue header
@@ -437,7 +436,7 @@ For verifying the `PartialDataColumnHeader` in a partial message:
   passes validation.
 - _[REJECT]_ The header is from a higher slot than the header's block's parent
   (defined by `block_header.parent_root`).
-- _[REJECT]_ The current finalized_checkpoint is an ancestor of the header's
+- _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the header's
   block -- i.e.
   `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
 - _[REJECT]_ The header's `kzg_commitments` field inclusion proof is valid as
@@ -454,19 +453,19 @@ For verifying the cells in a partial message:
 - _[REJECT]_ The cells present bitmap length is equal to the number of KZG
   commitments in the `PartialDataColumnHeader`.
 - _[REJECT]_ The sidecar's cell and proof data is valid as verified by
-  `verify_partial_data_column_sidecar_kzg_proofs(sidecar,header.kzg_commitments)`.
+  `verify_partial_data_column_sidecar_kzg_proofs(sidecar, header.kzg_commitments)`.
 
-##### Eager Pushing
+##### Eager pushing
 
-In contrast to standard Gossipsub, a client explicitly requests missing parts
+In contrast to standard gossipsub, a client explicitly requests missing parts
 from a peer. A client can send its request before receiving a peer's parts
-metadata. This registers interest in certain parts, even if the peer doesn't
+metadata. This registers interest in certain parts, even if the peer does not
 have these parts yet.
 
 This request can introduce extra latency compared to a peer unconditionally
 pushing messages, especially in the first hop of dissemination.
 
-To address this tradeoff a client MAY choose to eagerly push some (or all) of
+To address this tradeoff, a client MAY choose to eagerly push some (or all) of
 the cells it has. Clients SHOULD only do this when they are reasonably confident
 that a peer does not have the provided cells. For example, a proposer including
 private blobs SHOULD eagerly push the cells corresponding to the private blobs.
@@ -476,39 +475,39 @@ which blobs are included in this block, and therefore which cells they are
 missing. Clients SHOULD NOT send a `PartialDataColumnHeader` non-eagerly, as
 this is wasted bandwidth.
 
-##### Interaction with standard Gossipsub
+##### Interaction with standard gossipsub
 
-###### Requesting Partial messages
+###### Requesting partial messages
 
 A peer requests partial messages for a topic by setting the `partial` field in
-Gossipsub's `SubOpts` RPC message to true.
+gossipsub's `SubOpts` RPC message to `true`.
 
 ###### Mesh
 
 The Partial Message Extension uses the same mesh peers for a given topic as the
-standard Gossipsub topics for DataColumnSidecars.
+standard gossipsub topics for `DataColumnSidecar`s.
 
 ###### Fanout
 
 The Partial Message Extension uses the same fanout peers for a given topic as
-the standard Gossipsub topics for DataColumnSidecars.
+the standard gossipsub topics for `DataColumnSidecar`s.
 
 ###### Scoring
 
 On receiving useful novel data from a peer, the client should report to
-Gossipsub a positive first message delivery.
+gossipsub a positive first message delivery.
 
-On receiving invalid data, the client should report to Gossipsub an invalid
+On receiving invalid data, the client should report to gossipsub an invalid
 message delivery.
 
 ###### Forwarding
 
-Once clients can construct the full DataColumnSidecar after receiving missing
-cells, they should forward the full DataColumnSidecar over standard Gossipsub to
-peers that do not support partial messages. This provides backwards
+Once clients can construct the full `DataColumnSidecar` after receiving missing
+cells, they should forward the full `DataColumnSidecar` over standard gossipsub
+to peers that do not support partial messages. This provides backwards
 compatibility with nodes that do not yet support partial messages.
 
-Avoid forwarding the full DataColumnSidecar message to peers that requested
+Avoid forwarding the full `DataColumnSidecar` message to peers that requested
 partial messages for that given topic. It is purely redundant information.
 
 ### The Req/Resp domain
