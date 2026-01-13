@@ -475,7 +475,7 @@ def is_valid_indexed_payload_attestation(
 
     # Verify aggregate signature
     pubkeys = [state.validators[i].pubkey for i in indices]
-    domain = get_domain(state, DOMAIN_PTC_ATTESTER, None)
+    domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(attestation.data.slot))
     signing_root = compute_signing_root(attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, attestation.signature)
 ```
