@@ -224,11 +224,9 @@ def test_multiple_builder_withdrawals(spec, state):
     withdrawal_amount = spec.Gwei(500_000_000)
     builder_indices = [0, 1, 2]
 
-    # Verify builders exist in registry
-    for builder_index in builder_indices:
-        assert builder_index < len(state.builders), (
-            f"Builder {builder_index} must exist in registry"
-        )
+    assert max(builder_indices) < len(state.builders), (
+        f"Max builder index {max(builder_indices)} must exist in registry (builders: {len(state.builders)})"
+    )
 
     prepare_process_withdrawals(
         spec,
@@ -1033,12 +1031,10 @@ def test_builder_and_pending_leave_room_for_sweep(spec, state):
 
     withdrawal_amount = spec.MIN_ACTIVATION_BALANCE
 
-    # Set up builder indices
     builder_indices_list = list(range(num_builders))
-    for builder_index in builder_indices_list:
-        assert builder_index < len(state.builders), (
-            f"Builder {builder_index} must exist in registry"
-        )
+    assert max(builder_indices_list) < len(state.builders), (
+        f"Max builder index {max(builder_indices_list)} must exist in registry (builders: {len(state.builders)})"
+    )
 
     pending_indices = (
         list(range(num_builders, num_builders + num_pending)) if num_pending > 0 else []
@@ -1111,11 +1107,9 @@ def test_all_builder_withdrawals_zero_balance(spec, state):
     withdrawal_amount = spec.MIN_ACTIVATION_BALANCE
     regular_index = 5
 
-    # Verify builders exist
-    for builder_index in builder_indices:
-        assert builder_index < len(state.builders), (
-            f"Builder {builder_index} must exist in registry"
-        )
+    assert max(builder_indices) < len(state.builders), (
+        f"Max builder index {max(builder_indices)} must exist in registry (builders: {len(state.builders)})"
+    )
 
     # Use prepare_process_withdrawals with zero balance
     prepare_process_withdrawals(
