@@ -479,6 +479,10 @@ which blobs are included in this block, and therefore which cells they are
 missing. Clients SHOULD NOT send a `PartialDataColumnHeader` non-eagerly, as
 this is wasted bandwidth.
 
+Clients SHOULD request cell data from peers after validating a
+`PartialDataColumnHeader`, even if the corresponding block has not been seen
+yet.
+
 ##### Interaction with standard gossipsub
 
 ###### Requesting partial messages
