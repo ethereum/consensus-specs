@@ -9,10 +9,9 @@
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Configuration](#configuration)
 - [Constructing the `SignedExecutionPayloadHeaderEnvelope`](#constructing-the-signedexecutionpayloadheaderenvelope)
 - [Execution proof signature](#execution-proof-signature)
-- [Constructing the `SignedExecutionProof`](#constructing-the-signedexecutionproof)
+- [Constructing the `BuilderSignedExecutionProof`](#constructing-the-buildersignedexecutionproof)
 
 <!-- mdformat-toc end -->
 
@@ -28,14 +27,8 @@ definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the
-[EIP-8025 -- Beacon Chain](./beacon-chain.md) and
-[EIP-8025 -- zkEVM](./zkevm.md) documents are requisite for this document.
-
-## Configuration
-
-| Name                                 | Value   |
-| ------------------------------------ | ------- |
-| `EXECUTION_PROOF_GENERATION_ENABLED` | `False` |
+[EIP-8025 -- Beacon Chain](./beacon-chain.md) document are requisite for this
+document.
 
 ## Constructing the `SignedExecutionPayloadHeaderEnvelope`
 
@@ -58,7 +51,7 @@ To construct the `SignedExecutionPayloadHeaderEnvelope` from an existing
 4. Set `signed_header_envelope.signature = signed_envelope.signature`.
 
 Then the builder broadcasts `signed_header_envelope` on the
-`signed_execution_payload_envelope_header` global gossip topic.
+`signed_execution_payload_header_envelope` global gossip topic.
 
 ## Execution proof signature
 
@@ -71,27 +64,22 @@ def get_execution_proof_signature(
     return bls.Sign(privkey, signing_root)
 ```
 
-## Constructing the `SignedExecutionProof`
+## Constructing the `BuilderSignedExecutionProof`
 
 After producing an `ExecutionPayloadEnvelope` the builder constructs a set of
-`SignedExecutionProof` as follows:
+`BuilderSignedExecutionProof` as follows:
 
 1. Extract the `NewPayloadRequest` from the envelope.
-2. Obtain the `ZKExecutionWitness` from the execution layer.
-3. Select a `proof_id` corresponding to the proof system being used.
-4. Call
-   `generate_execution_proof(new_payload_request, execution_witness, PROGRAM, proof_id)`
-   to produce the `ExecutionProof`.
-5. Set `signed_proof.message` to the generated `ExecutionProof`.
-6. Set `signed_proof.prover_id` to the builder's `BuilderIndex`.
-7. Set `signed_proof.signature` to the result of
-   `get_execution_proof_signature(state, proof, privkey)`.
-
-Then the builder assembles
-`signed_execution_proof = SignedExecutionProof(message=proof, prover_id=builder_index, signature=signature)`
-and broadcasts it on the `execution_proof_{subnet_id}` gossip topic, where
-`subnet_id = proof.proof_type`.
-
-*Note*: The `proof_id` determines which subnet the proof is broadcast on. Each
-proof system has a dedicated subnet to allow validators to subscribe to proofs
-from specific proof systems.
+2. Select proof types and create `ProofAttributes`.
+3. Call
+   `proof_gen_id = proof_engine.request_proofs(new_payload_request, proof_attributes)`
+   to initiate proof generation.
+4. Call `proofs = proof_engine.get_proofs(proof_gen_id)` to retrieve generated
+   proofs.
+5. For each `ExecutionProof` in `proofs`:
+   - Set `signed_proof.message` to the `ExecutionProof`.
+   - Set `signed_proof.builder_index` to the builder's `BuilderIndex`.
+   - Set `signed_proof.signature` to the result of
+     `get_execution_proof_signature(state, proof, privkey)`.
+   - Broadcast the `BuilderSignedExecutionProof` on the `execution_proof` gossip
+     topic.

@@ -9,29 +9,28 @@ This document contains the networking specifications for EIP-8025.
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Table of contents](#table-of-contents)
-- [Constants](#constants)
 - [Containers](#containers)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
-      - [`signed_execution_payload_envelope_header`](#signed_execution_payload_envelope_header)
-      - [`execution_proof_{subnet_id}`](#execution_proof_subnet_id)
+      - [`signed_execution_payload_header_envelope`](#signed_execution_payload_header_envelope)
+      - [`execution_proof`](#execution_proof)
 - [The Req/Resp domain](#the-reqresp-domain)
   - [Messages](#messages)
     - [ExecutionProofsByRoot](#executionproofsbyroot)
 
 <!-- mdformat-toc end -->
 
-## Constants
-
-*Note*: There are `MAX_EXECUTION_PROOFS_PER_PAYLOAD` (from
-[beacon-chain.md](./beacon-chain.md)) execution proof subnets to provide 1-to-1
-mapping with proof systems. Each proof system gets its own dedicated subnet.
-
 ## Containers
 
-*Note*: Execution proofs are broadcast as `SignedExecutionProof` containers. No
-additional message wrapper is needed.
+*Note*: Execution proofs are broadcast as either `BuilderSignedExecutionProof`
+or `ProverSignedExecutionProof` containers on the same topic.
+
+<!-- TODO: Define proper union type for SSZ -->
+
+```python
+SignedExecutionProof = Union[BuilderSignedExecutionProof, ProverSignedExecutionProof]
+```
 
 ## The gossip domain: gossipsub
 
@@ -39,58 +38,67 @@ additional message wrapper is needed.
 
 #### Global topics
 
-##### `signed_execution_payload_envelope_header`
+##### `signed_execution_payload_header_envelope`
 
 This topic is used to propagate `SignedExecutionPayloadHeaderEnvelope` messages.
-ZK attesters subscribe to this topic to receive execution payload headers for
-which they can generate execution proofs.
+Provers subscribe to this topic to receive execution payload headers for which
+they can generate execution proofs.
 
 The following validations MUST pass before forwarding the
-`signed_execution_payload_envelope_header` on the network:
+`signed_execution_payload_header_envelope` on the network, assuming the alias
+`envelope = signed_execution_payload_header_envelope.message`,
+`payload = envelope.payload`:
 
-- _[IGNORE]_ The header is the first valid header received for the tuple
-  `(signed_execution_payload_envelope_header.message.beacon_block_root, signed_execution_payload_envelope_header.message.slot)`.
-- _[REJECT]_ The
-  `signed_execution_payload_envelope_header.message.beacon_block_root` refers to
-  a known beacon block.
-- _[REJECT]_ The
-  `signed_execution_payload_envelope_header.message.builder_index` is within the
-  known builder registry.
-- _[REJECT]_ The `signed_execution_payload_envelope_header.signature` is valid
-  with respect to the builder's public key.
-- _[REJECT]_ The `signed_execution_payload_envelope_header.message.slot` matches
-  the slot of the referenced beacon block.
+- _[IGNORE]_ The envelope's block root `envelope.beacon_block_root` has been
+  seen (via gossip or non-gossip sources) (a client MAY queue headers for
+  processing once the block is retrieved).
+- _[IGNORE]_ The node has not seen another valid
+  `SignedExecutionPayloadHeaderEnvelope` for this block root from this builder.
+- _[IGNORE]_ The envelope is from a slot greater than or equal to the latest
+  finalized slot -- i.e. validate that
+  `envelope.slot >= compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
 
-##### `execution_proof_{subnet_id}`
+Let `block` be the block with `envelope.beacon_block_root`. Let `bid` alias
+`block.body.signed_execution_payload_bid.message`.
 
-Execution proof subnets are used to propagate execution proofs for specific
-proof systems. `SignedExecutionProof` messages from both builders and provers
-are propagated on these subnets.
+- _[REJECT]_ `block` passes validation.
+- _[REJECT]_ `block.slot` equals `envelope.slot`.
+- _[REJECT]_ `envelope.builder_index == bid.builder_index`
+- _[REJECT]_ `payload.block_hash == bid.block_hash`
+- _[REJECT]_ `signed_execution_payload_header_envelope.signature` is valid with
+  respect to the builder's public key.
 
-The execution proof subnet for a given `proof_id` is:
+##### `execution_proof`
 
-```python
-def compute_subnet_for_execution_proof(proof_id: ProofID) -> SubnetID:
-    assert proof_id < MAX_EXECUTION_PROOFS_PER_PAYLOAD
-    return SubnetID(proof_id)
-```
+This topic is used to propagate execution proofs. Both
+`BuilderSignedExecutionProof` and `ProverSignedExecutionProof` messages are
+propagated on this topic.
 
-The following validations MUST pass before forwarding a `signed_execution_proof`
-on the network:
+The following validations MUST pass before forwarding a proof on the network:
 
+- _[IGNORE]_ The proof's corresponding new payload request (identified by
+  `proof.message.public_inputs.new_payload_request_root`) has been seen (via
+  gossip or non-gossip sources) (a client MAY queue proofs for processing once
+  the new payload request is retrieved).
 - _[IGNORE]_ The proof is the first valid proof received for the tuple
-  `(signed_execution_proof.message.public_inputs.new_payload_request_root, subnet_id)`.
-- _[REJECT]_ If `signed_execution_proof.prover_id` is a `BuilderIndex`: the
-  index is within the known builder registry.
-- _[REJECT]_ If `signed_execution_proof.prover_id` is a `BLSPubkey`: the pubkey
-  is in `WHITELISTED_PROVERS`.
-- _[REJECT]_ The `signed_execution_proof.signature` is valid with respect to the
-  prover's public key.
-- _[REJECT]_ The `signed_execution_proof.message.proof_data` is non-empty.
-- _[REJECT]_ The proof system ID matches the subnet:
-  `signed_execution_proof.message.proof_type == subnet_id`.
-- _[REJECT]_ The execution proof is valid as verified by
-  `process_signed_execution_proof()`.
+  `(proof.message.public_inputs.new_payload_request_root, proof.message.proof_type, signer)`.
+
+For `BuilderSignedExecutionProof`:
+
+- _[REJECT]_ The `builder_index` is within the known builder registry.
+- _[REJECT]_ The signature is valid with respect to the builder's public key.
+
+For `ProverSignedExecutionProof`:
+
+- _[REJECT]_ The `prover_pubkey` is in the prover whitelist.
+- _[REJECT]_ The signature is valid with respect to the prover's public key.
+
+For both types:
+
+- _[REJECT]_ The `proof.message.proof_data` is non-empty.
+- _[REJECT]_ The `proof.message.proof_data` is not larger than `MAX_PROOF_SIZE`.
+- _[REJECT]_ The execution proof is valid as verified by the appropriate
+  handler.
 
 ## The Req/Resp domain
 
@@ -107,7 +115,7 @@ Request Content:
 
 ```
 (
-  Root  # new_payload_request_root
+  Root
 )
 ```
 
