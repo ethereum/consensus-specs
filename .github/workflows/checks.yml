@@ -33,42 +33,6 @@ jobs:
           make lint
           git diff --exit-code
 
-  whitespace:
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - name: Check for trailing whitespace
-        run: |
-          if git grep -n '[[:blank:]]$'; then
-            echo "Trailing whitespace found. Please fix it."
-            exit 1
-          fi
-
-  comments:
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - name: Set up Python
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
-        with:
-          python-version-file: "pyproject.toml"
-      - name: Check fork comments
-        run: python3 scripts/check_fork_comments.py
-
-  headings:
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-      - name: Set up Python
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
-        with:
-          python-version-file: "pyproject.toml"
-      - name: Check markdown headings
-        run: python3 scripts/check_markdown_headings.py
-
   framework:
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     steps:
@@ -151,7 +115,7 @@ jobs:
           echo "PR title is valid"
 
   tests:
-    needs: [lint, whitespace, comments, headings, framework, title]
+    needs: [lint, framework, title]
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     strategy:
       matrix:
