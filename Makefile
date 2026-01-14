@@ -322,10 +322,8 @@ lint: _pyspec
 	@$(UV_RUN) mypy $(MYPY_SCOPE)
 	@$(UV_RUN) python $(CURDIR)/scripts/check_fork_comments.py
 	@$(UV_RUN) python $(CURDIR)/scripts/check_markdown_headings.py
-	@if git --no-pager grep -n '[[:blank:]]$'; then \
-		echo "Trailing whitespace found. Please fix it."; \
-		exit 1; \
-	fi
+	@$(UV_RUN) python $(CURDIR)/scripts/fix_trailing_whitespace.py
+
 
 ###############################################################################
 # Generators
