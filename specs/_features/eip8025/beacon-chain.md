@@ -101,7 +101,7 @@ class BeaconState(Container):
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
     proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
-    # [New in EIP-8025]
+    # [New in EIP8025]
     prover_whitelist: List[BLSPubkey, MAX_WHITELISTED_PROVERS]
 ```
 
@@ -118,7 +118,7 @@ class BeaconState(Container):
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_block_header(state, block)
     process_withdrawals(state, block.body.execution_payload)
-    # [Modified in EIP-8025]
+    # [Modified in EIP8025]
     process_execution_payload(state, block.body, EXECUTION_ENGINE, PROOF_ENGINE)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
@@ -169,7 +169,8 @@ def process_execution_payload(
         )
     )
 
-    # [New in EIP-8025] Verify via ProofEngine
+    # [New in EIP8025] 
+    # Verify via ProofEngine
     new_payload_request_header = NewPayloadRequestHeader(
         execution_payload_header=ExecutionPayloadHeader(
             parent_hash=payload.parent_hash,
