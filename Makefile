@@ -108,6 +108,7 @@ help-verbose:
 	@echo "    - mypy: Static type checker for Python"
 	@echo "    - Fork comments validation (scripts/check_fork_comments.py)"
 	@echo "    - Markdown headings validation (scripts/check_markdown_headings.py)"
+	@echo "    - Trailing whitespace check"
 	@echo ""
 	@echo "  Example: make lint"
 	@echo ""
@@ -321,6 +322,10 @@ lint: _pyspec
 	@$(UV_RUN) mypy $(MYPY_SCOPE)
 	@$(UV_RUN) python $(CURDIR)/scripts/check_fork_comments.py
 	@$(UV_RUN) python $(CURDIR)/scripts/check_markdown_headings.py
+	@if git --no-pager grep -n '[[:blank:]]$$'; then \
+		echo "Trailing whitespace found. Please fix it."; \
+		exit 1; \
+	fi
 
 ###############################################################################
 # Generators
