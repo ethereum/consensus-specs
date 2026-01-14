@@ -38,7 +38,6 @@ security:
   - dapplion              # Lion
   - michaelsproul         # Michael Sproul
   - mkalinin              # Mikhail Kalinin
-  - paulhauner            # Paul Hauner
   - 0xTylerHolmes         # Tyler Holmes
   - gitToki               # Yassine Ferhane
 ssz:
