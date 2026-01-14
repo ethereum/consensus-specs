@@ -47,7 +47,7 @@ help-nonverbose:
 	@echo "make $(BOLD)clean$(NORM)      -- delete all untracked files"
 	@echo "make $(BOLD)comptests$(NORM)  -- generate compliance tests"
 	@echo "make $(BOLD)coverage$(NORM)   -- run pyspec tests with coverage"
-	@echo "make $(BOLD)lint$(NORM)       -- run the linters"
+	@echo "make $(BOLD)lint$(NORM)       -- run linters and checks"
 	@echo "make $(BOLD)reftests$(NORM)   -- generate reference tests"
 	@echo "make $(BOLD)serve_docs$(NORM) -- start a local docs web server"
 	@echo "make $(BOLD)test$(NORM)       -- run pyspec tests"
@@ -101,11 +101,13 @@ help-verbose:
 	@echo ""
 	@echo "$(BOLD)make lint$(NORM)"
 	@echo ""
-	@echo "  Runs all linters and formatters to check code quality:"
+	@echo "  Runs all linters, formatters, and checks:"
 	@echo "    - mdformat: Formats markdown files"
 	@echo "    - codespell: Checks for spelling mistakes"
 	@echo "    - ruff: Python linter and formatter"
 	@echo "    - mypy: Static type checker for Python"
+	@echo "    - Fork comments validation (scripts/check_fork_comments.py)"
+	@echo "    - Markdown headings validation (scripts/check_markdown_headings.py)"
 	@echo ""
 	@echo "  Example: make lint"
 	@echo ""
@@ -317,6 +319,8 @@ lint: _pyspec
 	@$(UV_RUN) ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
 	@$(UV_RUN) ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
 	@$(UV_RUN) mypy $(MYPY_SCOPE)
+	@$(UV_RUN) python $(CURDIR)/scripts/check_fork_comments.py
+	@$(UV_RUN) python $(CURDIR)/scripts/check_markdown_headings.py
 
 ###############################################################################
 # Generators
