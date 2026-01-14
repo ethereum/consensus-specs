@@ -1,9 +1,8 @@
+import pytest
+
 from tests.core.pyspec.eth2spec.test.context import (
     spec_state_test,
     with_gloas_and_later,
-)
-from tests.core.pyspec.eth2spec.test.helpers.withdrawals import (
-    set_compounding_withdrawal_credential_with_balance,
 )
 from tests.infra.helpers.withdrawals import (
     assert_process_withdrawals,
@@ -13,11 +12,10 @@ from tests.infra.helpers.withdrawals import (
 
 def run_gloas_withdrawals_processing(spec, state):
     """
-    Minimal test harness for process_withdrawals.
-    All assertions are in assert_process_withdrawals.
+    Minimal test harness for process_withdrawals that generates vectors.
     """
-    pre_state = state.copy()
-    yield "pre", pre_state
+
+    yield "pre", state
     spec.process_withdrawals(state)
     yield "post", state
 
@@ -37,8 +35,6 @@ def test_zero_withdrawals(spec, state):
         - balances[*]: Unchanged
         - next_withdrawal_index: Unchanged
     """
-
-    # Initial state should have no withdrawals
     expected_withdrawals_result = spec.get_expected_withdrawals(state)
     assert len(expected_withdrawals_result.withdrawals) == 0
 
@@ -69,7 +65,10 @@ def test_single_full_withdrawal(spec, state):
         - balances[0]: 0 (full balance withdrawn)
         - next_withdrawal_index: Incremented by 1
     """
-    prepare_process_withdrawals(spec, state, full_withdrawal_indices=[0])
+    validator_index = 0
+    assert validator_index < len(state.validators), "Validator must exist in registry"
+
+    prepare_process_withdrawals(spec, state, full_withdrawal_indices=[validator_index])
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
     assert_process_withdrawals(
@@ -77,7 +76,7 @@ def test_single_full_withdrawal(spec, state):
         state,
         pre_state,
         withdrawal_count=1,
-        balances={0: 0},
+        balances={validator_index: 0},
         withdrawal_index_delta=1,
     )
 
@@ -99,7 +98,10 @@ def test_single_partial_withdrawal(spec, state):
         - balances[0]: == max_effective_balance (excess withdrawn)
         - next_withdrawal_index: Incremented by 1
     """
-    prepare_process_withdrawals(spec, state, partial_withdrawal_indices=[0])
+    validator_index = 0
+    assert validator_index < len(state.validators), "Validator must exist in registry"
+
+    prepare_process_withdrawals(spec, state, partial_withdrawal_indices=[validator_index])
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
     assert_process_withdrawals(
@@ -107,7 +109,9 @@ def test_single_partial_withdrawal(spec, state):
         state,
         pre_state,
         withdrawal_count=1,
-        balances={0: spec.get_max_effective_balance(state.validators[0])},
+        balances={
+            validator_index: spec.get_max_effective_balance(state.validators[validator_index])
+        },
         withdrawal_index_delta=1,
     )
 
@@ -130,9 +134,14 @@ def test_mixed_full_and_partial_withdrawals(spec, state):
         - balances[2,3]: == max_effective_balance (partial withdrawals)
         - next_withdrawal_index: Incremented by 4
     """
-
     fully_withdrawable_indices = [0, 1]
     partial_withdrawals_indices = [2, 3]
+    all_validator_indices = fully_withdrawable_indices + partial_withdrawals_indices
+    assert max(all_validator_indices) < len(state.validators), (
+        f"Max validator index {max(all_validator_indices)} must exist in registry "
+        f"(validators: {len(state.validators)})"
+    )
+
     prepare_process_withdrawals(
         spec,
         state,
@@ -178,7 +187,6 @@ def test_single_builder_withdrawal(spec, state):
     builder_index = 0
     withdrawal_amount = spec.Gwei(1_000_000_000)
 
-    # Verify builder exists in registry (created by genesis)
     assert builder_index < len(state.builders), "Builder must exist in registry"
 
     prepare_process_withdrawals(
@@ -268,10 +276,9 @@ def test_builder_withdrawal_insufficient_balance(spec, state):
         - next_withdrawal_index: Incremented by 1
     """
     builder_index = 0
-    withdrawal_amount = spec.Gwei(5_000_000_000)  # 5 ETH
-    available_balance = spec.Gwei(1_000_000_000)  # Only 1 ETH available
+    withdrawal_amount = spec.Gwei(5_000_000_000)
+    available_balance = spec.Gwei(1_000_000_000)
 
-    # Verify builder exists in registry
     assert builder_index < len(state.builders), "Builder must exist in registry"
 
     # Use prepare_process_withdrawals with insufficient balance
@@ -292,85 +299,10 @@ def test_builder_withdrawal_insufficient_balance(spec, state):
         state,
         pre_state,
         withdrawal_count=1,
-        builder_balances={builder_index: 0},  # Capped to available balance
+        builder_balances={builder_index: 0},
         builder_pending_delta=-1,
         withdrawal_index_delta=1,
     )
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_mixed_withdrawal_types_priority_ordering(spec, state):
-    """
-    Test all three withdrawal types together with priority ordering verification.
-
-    Input State Configured:
-        - state.builders[0]: Builder exists in registry with sufficient balance
-        - builder_pending_withdrawals: Contains 1 entry for builder 0
-        - pending_partial_withdrawals: Contains 1 entry for validator 1
-        - validators[2].withdrawable_epoch: <= current_epoch (sweep/full withdrawal)
-        - builders[0].balance, balances[1,2]: Configured for respective withdrawal types
-
-    Output State Verified:
-        - payload_expected_withdrawals: Contains 3 withdrawals in priority order:
-          [0] builder (builder 0), [1] pending partial (validator 1), [2] sweep (validator 2)
-        - builders[0].balance, balances[1,2]: Each decreased appropriately
-        - builder_pending_withdrawals: Reduced by 1
-        - pending_partial_withdrawals: Reduced by 1
-        - next_withdrawal_index: Incremented by 3
-    """
-
-    builder_index = 0
-    pending_index = 1
-    sweep_index = 2
-
-    # Verify builder exists
-    assert builder_index < len(state.builders), "Builder must exist in registry"
-    builder_amount = spec.Gwei(1_000_000_000)
-
-    # Prepare all three withdrawal types
-    prepare_process_withdrawals(
-        spec,
-        state,
-        builder_indices=[builder_index],
-        builder_withdrawal_amounts={builder_index: builder_amount},
-        builder_balances={builder_index: builder_amount + spec.MIN_DEPOSIT_AMOUNT},
-        pending_partial_indices=[pending_index],
-        full_withdrawal_indices=[sweep_index],
-    )
-
-    pre_state = state.copy()
-
-    expected_result = spec.get_expected_withdrawals(state)
-    expected_withdrawals = expected_result.withdrawals
-    spec.process_withdrawals(state)
-
-    # Get the converted builder validator index (with BUILDER_INDEX_FLAG set)
-    builder_validator_index = spec.convert_builder_index_to_validator_index(builder_index)
-
-    # Verify priority ordering: builder payments -> pending partial withdrawals -> exit/excess withdrawals
-    assert len(expected_withdrawals) == 3
-    assert (
-        expected_withdrawals[0].validator_index == builder_validator_index
-    )  # Builder payments first
-    assert (
-        expected_withdrawals[1].validator_index == pending_index
-    )  # Pending partial withdrawals second
-    assert expected_withdrawals[2].validator_index == sweep_index  # Exit/excess withdrawals third
-
-    assert_process_withdrawals(
-        spec,
-        state,
-        pre_state,
-        withdrawal_count=3,
-        withdrawal_order=[builder_validator_index, pending_index, sweep_index],
-        builder_pending_delta=-1,
-        pending_partial_delta=-1,
-        withdrawal_index_delta=3,
-    )
-
-    yield "pre", pre_state
-    yield "post", state
 
 
 @with_gloas_and_later
@@ -392,23 +324,25 @@ def test_maximum_withdrawals_per_payload_limit(spec, state):
         - next_withdrawal_index: Incremented by MAX_WITHDRAWALS_PER_PAYLOAD
     """
 
-    # Add more withdrawals than the limit allows
     num_builders = spec.MAX_WITHDRAWALS_PER_PAYLOAD // 2
     num_pending = spec.MAX_WITHDRAWALS_PER_PAYLOAD // 2
     num_sweep = spec.MAX_WITHDRAWALS_PER_PAYLOAD // 2
 
-    assert num_builders + num_pending + num_sweep <= len(state.validators), (
-        "Not enough validators for test"
-    )
-    assert num_builders <= len(state.builders), "Not enough builders in registry for test"
-
     builder_indices = list(range(num_builders))
-    pending_indices = list(range(num_builders, num_builders + num_pending))
-    sweep_indices = list(range(num_builders + num_pending, num_builders + num_pending + num_sweep))
+    pending_indices = list(range(num_pending))
+    sweep_indices = list(range(num_pending, num_pending + num_sweep))
+
+    assert max(builder_indices) < len(state.builders), (
+        f"Max builder index {max(builder_indices)} must exist in registry "
+        f"(builders: {len(state.builders)})"
+    )
+    assert max(sweep_indices) < len(state.validators), (
+        f"Max validator index {max(sweep_indices)} must exist in registry "
+        f"(validators: {len(state.validators)})"
+    )
 
     withdrawal_amount = spec.Gwei(1_000_000_000)
 
-    # Add all withdrawal types
     prepare_process_withdrawals(
         spec,
         state,
@@ -419,17 +353,21 @@ def test_maximum_withdrawals_per_payload_limit(spec, state):
         full_withdrawal_indices=sweep_indices,
     )
 
-    # Should not exceed MAX_WITHDRAWALS_PER_PAYLOAD
+    total_added = num_builders + num_pending + num_sweep
+    assert total_added > spec.MAX_WITHDRAWALS_PER_PAYLOAD, "Test setup should exceed limit"
+
+    # Calculate expected pending partial withdrawals to be consumed
+    # From get_pending_partial_withdrawals (specs/electra/beacon-chain.md):
+    #   withdrawals_limit = min(prior + MAX_PENDING_PARTIALS, MAX - 1)
+    # The -1 reserves at least one slot for sweep withdrawals
+    withdrawals_limit = min(
+        num_builders + spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
+        spec.MAX_WITHDRAWALS_PER_PAYLOAD - 1,
+    )
+    num_partial_withdrawals_consumed = min(num_pending, withdrawals_limit - num_builders)
+
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
-
-    # Verify some withdrawals remain unprocessed due to the limit
-    total_added = num_builders + num_pending + num_sweep
-    total_remaining = len(state.builder_pending_withdrawals) + len(
-        state.pending_partial_withdrawals
-    )
-    assert total_remaining > 0, "Some withdrawals should remain unprocessed"
-    assert total_added > spec.MAX_WITHDRAWALS_PER_PAYLOAD, "Test setup should exceed limit"
 
     assert_process_withdrawals(
         spec,
@@ -437,6 +375,8 @@ def test_maximum_withdrawals_per_payload_limit(spec, state):
         pre_state,
         withdrawal_count=spec.MAX_WITHDRAWALS_PER_PAYLOAD,
         withdrawal_index_delta=spec.MAX_WITHDRAWALS_PER_PAYLOAD,
+        builder_pending_delta=-int(num_builders),
+        pending_partial_delta=-int(num_partial_withdrawals_consumed),
     )
 
 
@@ -448,7 +388,7 @@ def test_pending_withdrawals_processing(spec, state):
 
     Input State Configured:
         - pending_partial_withdrawals: MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP entries
-        - pending_partial_withdrawals[*].withdrawable_epoch: <= current_epoch
+        - pending_partial_withdrawals[*].withdrawable_epoch: = current_epoch
         - validators[*]: Configured for partial withdrawals
         - No builder_pending_withdrawals
 
@@ -459,8 +399,12 @@ def test_pending_withdrawals_processing(spec, state):
         - next_withdrawal_index: Incremented by processed count
     """
 
-    # Add enough pending withdrawals to test the limit
     pending_indices = list(range(spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP))
+    assert max(pending_indices) < len(state.validators), (
+        f"Max validator index {max(pending_indices)} must exist in registry "
+        f"(validators: {len(state.validators)})"
+    )
+
     prepare_process_withdrawals(spec, state, pending_partial_indices=pending_indices)
 
     # EIP-7732 limits pending withdrawals to min(MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP, MAX_WITHDRAWALS_PER_PAYLOAD - 1)
@@ -486,8 +430,8 @@ def test_early_return_empty_parent_block(spec, state):
 
     Input State Configured:
         - latest_block_hash: != latest_execution_payload_bid.block_hash (parent block EMPTY)
-        - builder_pending_withdrawals: Contains entry for validator 0
-        - validators[1,2].withdrawable_epoch: <= current_epoch (fully withdrawable)
+        - builder_pending_withdrawals: Contains entry for builder 0
+        - validators[1,2].withdrawable_epoch: = current_epoch (fully withdrawable)
         - balances[0,1,2]: Configured for withdrawals
 
     Output State Verified:
@@ -499,22 +443,27 @@ def test_early_return_empty_parent_block(spec, state):
           - next_withdrawal_index: Unchanged
           - next_withdrawal_validator_index: Unchanged
     """
-    # Set up withdrawals that would normally be processed
+    builder_index = 0
+    validator_indices = [1, 2]
+    assert builder_index < len(state.builders), "Builder must exist in registry"
+    assert max(validator_indices) < len(state.validators), (
+        f"Max validator index {max(validator_indices)} must exist in registry "
+        f"(validators: {len(state.validators)})"
+    )
+
     withdrawal_amount = spec.Gwei(1_000_000_000)
     state.balances[0] = max(state.balances[0], withdrawal_amount + spec.MIN_ACTIVATION_BALANCE)
     prepare_process_withdrawals(
         spec,
         state,
-        builder_indices=[0],
-        builder_withdrawal_amounts={0: withdrawal_amount},
-        full_withdrawal_indices=[1, 2],
+        builder_indices=[builder_index],
+        builder_withdrawal_amounts={builder_index: withdrawal_amount},
+        full_withdrawal_indices=validator_indices,
         parent_block_empty=True,
     )
 
     pre_state = state.copy()
-
-    # Process withdrawals - should return early and do nothing
-    spec.process_withdrawals(state)
+    yield from run_gloas_withdrawals_processing(spec, state)
 
     assert_process_withdrawals(
         spec,
@@ -522,9 +471,6 @@ def test_early_return_empty_parent_block(spec, state):
         pre_state,
         all_state_unchanged=True,
     )
-
-    yield "pre", pre_state
-    yield "post", state
 
 
 @with_gloas_and_later
@@ -545,11 +491,12 @@ def test_compounding_validator_partial_withdrawal(spec, state):
         - next_withdrawal_index: Incremented by 1
     """
     validator_index = 0
-    set_compounding_withdrawal_credential_with_balance(
+    assert validator_index < len(state.validators), "Validator must exist in registry"
+
+    prepare_process_withdrawals(
         spec,
         state,
-        validator_index,
-        balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA + spec.Gwei(1_000_000_000),
+        compounding_indices=[validator_index],
     )
 
     assert spec.is_partially_withdrawable_validator(
@@ -577,7 +524,7 @@ def test_validator_not_yet_active(spec, state):
     Input State Configured:
         - validators[0].activation_epoch: current_epoch + 4 (NOT YET ACTIVE)
         - pending_partial_withdrawals: Contains entry for validator 0
-        - balances[0]: > MIN_ACTIVATION_BALANCE (has excess)
+        - balances[0]: == max_effective_balance + excess (> MIN_ACTIVATION_BALANCE)
 
     Output State Verified:
         - payload_expected_withdrawals: Contains 1 withdrawal (processed despite not active)
@@ -585,6 +532,8 @@ def test_validator_not_yet_active(spec, state):
         - Note: Withdrawals process regardless of validator active status
     """
     validator_index = 0
+    assert validator_index < len(state.validators), "Validator must exist in registry"
+
     prepare_process_withdrawals(
         spec,
         state,
@@ -616,9 +565,9 @@ def test_validator_in_exit_queue(spec, state):
     Test withdrawal processing with validator in exit queue.
 
     Input State Configured:
-        - validators[1].exit_epoch: current_epoch + 1 (IN EXIT QUEUE, still active now)
+        - validators[1].exit_epoch: current_epoch + 2 (IN EXIT QUEUE, still active now)
         - pending_partial_withdrawals: Contains entry for validator 1
-        - balances[1]: > MIN_ACTIVATION_BALANCE (has excess)
+        - balances[1]: == max_effective_balance + excess (> MIN_ACTIVATION_BALANCE)
 
     Output State Verified:
         - payload_expected_withdrawals: Contains 1 withdrawal (processed for exiting validator)
@@ -626,18 +575,20 @@ def test_validator_in_exit_queue(spec, state):
         - Note: Exit queue status does not block sweep partial withdrawals
     """
     validator_index = 1
+    assert validator_index < len(state.validators), "Validator must exist in registry"
+
     prepare_process_withdrawals(
         spec,
         state,
         partial_withdrawal_indices=[validator_index],
-        validator_exit_epoch_offsets={validator_index: 1},
+        validator_exit_epoch_offsets={validator_index: 2},
     )
 
     assert spec.is_active_validator(
         state.validators[validator_index], spec.get_current_epoch(state)
     )
     assert not spec.is_active_validator(
-        state.validators[validator_index], spec.get_current_epoch(state) + 1
+        state.validators[validator_index], spec.get_current_epoch(state) + 2
     )
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
@@ -660,7 +611,7 @@ def test_withdrawable_epoch_but_zero_balance(spec, state):
     Test edge case: validator is withdrawable but has zero balance.
 
     Input State Configured:
-        - validators[3].withdrawable_epoch: <= current_epoch (withdrawable)
+        - validators[3].withdrawable_epoch: == current_epoch (withdrawable)
         - validators[3].effective_balance: MIN_ACTIVATION_BALANCE
         - balances[3]: 0 (ZERO balance)
 
@@ -669,12 +620,15 @@ def test_withdrawable_epoch_but_zero_balance(spec, state):
         - balances[3]: Remains 0
         - Note: Full withdrawals require balance > 0
     """
+    validator_index = 3
+    assert validator_index < len(state.validators), "Validator must exist in registry"
+
     prepare_process_withdrawals(
         spec,
         state,
-        full_withdrawal_indices=[3],
-        validator_effective_balances={3: spec.MIN_ACTIVATION_BALANCE},
-        validator_balances={3: 0},
+        full_withdrawal_indices=[validator_index],
+        validator_effective_balances={validator_index: spec.MIN_ACTIVATION_BALANCE},
+        validator_balances={validator_index: 0},
     )
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
@@ -683,7 +637,7 @@ def test_withdrawable_epoch_but_zero_balance(spec, state):
         state,
         pre_state,
         withdrawal_count=0,
-        balances={3: 0},
+        balances={validator_index: 0},
         withdrawal_index_delta=0,
     )
 
@@ -695,7 +649,7 @@ def test_zero_effective_balance_but_nonzero_balance(spec, state):
     Test edge case: validator has zero effective balance but nonzero actual balance.
 
     Input State Configured:
-        - validators[4].withdrawable_epoch: <= current_epoch (withdrawable)
+        - validators[4].withdrawable_epoch: == current_epoch (withdrawable)
         - validators[4].effective_balance: 0 (ZERO effective balance)
         - balances[4]: MIN_ACTIVATION_BALANCE (has actual balance)
 
@@ -704,12 +658,15 @@ def test_zero_effective_balance_but_nonzero_balance(spec, state):
         - balances[4]: 0 (full balance withdrawn)
         - Note: Effective balance doesn't prevent full withdrawal if balance > 0
     """
+    validator_index = 4
+    assert validator_index < len(state.validators), "Validator must exist in registry"
+
     prepare_process_withdrawals(
         spec,
         state,
-        full_withdrawal_indices=[4],
-        validator_effective_balances={4: 0},
-        validator_balances={4: spec.MIN_ACTIVATION_BALANCE},
+        full_withdrawal_indices=[validator_index],
+        validator_effective_balances={validator_index: 0},
+        validator_balances={validator_index: spec.MIN_ACTIVATION_BALANCE},
     )
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
@@ -718,7 +675,7 @@ def test_zero_effective_balance_but_nonzero_balance(spec, state):
         state,
         pre_state,
         withdrawal_count=1,
-        balances={4: 0},
+        balances={validator_index: 0},
         withdrawal_index_delta=1,
     )
 
@@ -727,67 +684,69 @@ def test_zero_effective_balance_but_nonzero_balance(spec, state):
 @spec_state_test
 def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
     """
-    Test that when there are more than MAX_WITHDRAWALS_PER_PAYLOAD builder payments,
-    pending partial withdrawals are not processed.
+    Test builder payments at MAX_WITHDRAWALS_PER_PAYLOAD limit (documents known spec bug).
 
     Input State Configured:
-        - validators[0..N].withdrawal_credentials: 0x03 prefix (builder credentials)
+        - state.builders[0..N]: Builders exist in registry with sufficient balance
         - builder_pending_withdrawals: MAX_WITHDRAWALS_PER_PAYLOAD + 2 entries
-        - builder_pending_withdrawals[*].withdrawable_epoch: <= current_epoch
-        - balances[0..N]: >= amount + MIN_ACTIVATION_BALANCE
+        - validators[*].balances: Capped to prevent sweep withdrawals
 
     Output State Verified:
-        - payload_expected_withdrawals: Limited by MAX_WITHDRAWALS_PER_PAYLOAD
-        - builder_pending_withdrawals: Partially processed (some remain)
-        - Note: Builder payments are processed first; when they exceed limit,
-          pending partial and sweep withdrawals are blocked
+        - payload_expected_withdrawals: Limited to MAX_WITHDRAWALS_PER_PAYLOAD
+        - builder_pending_withdrawals: 2 entries remain unprocessed
+        - next_withdrawal_validator_index: KNOWN BUG - wraps incorrectly due to BUILDER_INDEX_FLAG
+        - See: https://github.com/ethereum/consensus-specs/pull/4835
     """
-
-    # Add more builder payments than the limit to test prioritization
-    num_builders = spec.MAX_WITHDRAWALS_PER_PAYLOAD + 2  # 6 builders (more than limit of 4)
+    num_builders = spec.MAX_WITHDRAWALS_PER_PAYLOAD + 2
     withdrawal_amount = spec.Gwei(1_000_000_000)
 
-    # Set up balances for all builders (credentials set via builder_indices in prepare_process_withdrawals)
-    builder_indices = list(range(num_builders))
-    for i in builder_indices:
-        state.balances[i] = max(state.balances[i], withdrawal_amount + spec.MIN_ACTIVATION_BALANCE)
+    assert num_builders <= len(state.builders), "Not enough builders in registry for test"
 
-    # builder_credentials defaults to builder_indices
+    builder_indices = list(range(num_builders))
+
+    # Cap validator balances to prevent sweep withdrawals
+    capped_validator_balances = {
+        i: min(state.balances[i], spec.MAX_EFFECTIVE_BALANCE)
+        for i in range(len(state.validators))
+        if state.validators[i].withdrawal_credentials[0:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
+    }
+
+    # Builder balances, ensure at least enough for withdrawal
+    builder_balance_values = {
+        i: max(state.builders[i].balance, withdrawal_amount + spec.MIN_ACTIVATION_BALANCE)
+        for i in builder_indices
+    }
+
     prepare_process_withdrawals(
         spec,
         state,
         builder_indices=builder_indices,
         builder_withdrawal_amounts={i: withdrawal_amount for i in builder_indices},
+        builder_balances=builder_balance_values,
+        validator_balances=capped_validator_balances,
     )
-
-    # Don't add any pending withdrawals for this test
-    # This test just verifies that builder payments work up to the limit
-
-    # Ensure no validators are eligible for sweep withdrawals
-    # by setting withdrawal credentials to non-withdrawable
-    for i in range(num_builders, len(state.validators)):
-        validator = state.validators[i]
-        if validator.withdrawal_credentials[0:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX:
-            # Keep ETH1 credentials but ensure balance is not above max_effective_balance
-            # to prevent full withdrawals
-            state.balances[i] = min(state.balances[i], spec.MAX_EFFECTIVE_BALANCE)
 
     pre_state = state.copy()
-
-    # Should process builder payments up to the limit, but actual count depends on eligibility
     yield from run_gloas_withdrawals_processing(spec, state)
 
-    # Verify builder queue was partially processed
-    # (some withdrawals should be processed, but not necessarily all due to eligibility constraints)
-    post_builder_count = len(state.builder_pending_withdrawals)
-    assert post_builder_count < len(pre_state.builder_pending_withdrawals), (
-        "Some builder withdrawals should have been processed"
+    # Verify builder queue was partially processed (exactly MAX withdrawals)
+    assert len(state.builder_pending_withdrawals) == 2, (
+        "Exactly 2 builder withdrawals should remain unprocessed"
     )
-    processed_count = len(pre_state.builder_pending_withdrawals) - post_builder_count
-    assert processed_count <= spec.MAX_WITHDRAWALS_PER_PAYLOAD, "Should not exceed withdrawal limit"
+    assert len(list(state.payload_expected_withdrawals)) == spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    assert state.next_withdrawal_index == (
+        pre_state.next_withdrawal_index + spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    )
 
-    # Complex assertion - keep verification outside assert_process_withdrawals
-    assert len(list(state.payload_expected_withdrawals)) <= spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    # Verify that assert_process_withdrawals raises error for this bug scenario
+    # See https://github.com/ethereum/consensus-specs/pull/4835
+    with pytest.raises(ValueError, match="BUILDER_INDEX_FLAG"):
+        assert_process_withdrawals(
+            spec,
+            state,
+            pre_state,
+            withdrawal_count=spec.MAX_WITHDRAWALS_PER_PAYLOAD,
+        )
 
 
 @with_gloas_and_later
@@ -812,10 +771,13 @@ def test_no_builders_max_pending_with_sweep_spillover(spec, state):
         - Note: Pending partials capped by MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
     """
 
-    # Add MAX_WITHDRAWALS_PER_PAYLOAD pending partial withdrawals and sweep withdrawals
     pending_indices = list(range(spec.MAX_WITHDRAWALS_PER_PAYLOAD))
     sweep_start = spec.MAX_WITHDRAWALS_PER_PAYLOAD
     sweep_indices = list(range(sweep_start, sweep_start + 3))
+    assert max(sweep_indices) < len(state.validators), (
+        f"Max validator index {max(sweep_indices)} must exist in registry "
+        f"(validators: {len(state.validators)})"
+    )
 
     prepare_process_withdrawals(
         spec,
@@ -832,11 +794,9 @@ def test_no_builders_max_pending_with_sweep_spillover(spec, state):
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
 
-    # Verify remaining pending withdrawals not processed
     remaining_pending = spec.MAX_WITHDRAWALS_PER_PAYLOAD - expected_pending
     assert len(state.pending_partial_withdrawals) == remaining_pending
 
-    # Build balances dict for sweep validators
     sweep_balances = {i: 0 for i in range(sweep_start, sweep_start + expected_sweep)}
 
     assert_process_withdrawals(
@@ -869,15 +829,17 @@ def test_no_builders_no_pending_max_sweep_withdrawals(spec, state):
         - next_withdrawal_index: Incremented by MAX_WITHDRAWALS_PER_PAYLOAD
     """
 
-    # Add MAX_WITHDRAWALS_PER_PAYLOAD sweep withdrawals
     sweep_indices = list(range(spec.MAX_WITHDRAWALS_PER_PAYLOAD))
+    assert max(sweep_indices) < len(state.validators), (
+        f"Max validator index {max(sweep_indices)} must exist in registry "
+        f"(validators: {len(state.validators)})"
+    )
+
     prepare_process_withdrawals(spec, state, full_withdrawal_indices=sweep_indices)
 
-    # All should be processed since no higher priority withdrawals exist
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
 
-    # Build balances dict for all sweep validators
     sweep_balances = {i: 0 for i in range(spec.MAX_WITHDRAWALS_PER_PAYLOAD)}
 
     assert_process_withdrawals(
@@ -892,29 +854,35 @@ def test_no_builders_no_pending_max_sweep_withdrawals(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_builder_withdrawals_processed_first(spec, state):
+def test_builder_withdrawals_processed_order(spec, state):
     """
-    Builder withdrawals should be processed before pending/regular withdrawals.
-    Verifies the priority ordering: builder > pending > sweep.
+    Verifies the priority ordering: builder > pending partial > sweep.
 
     Input State Configured:
-        - state.builders[0]: Builder exists in registry with sufficient balance
-        - builder_pending_withdrawals: Contains entry for builder 0
-        - validators[1].withdrawable_epoch: <= current_epoch (sweep eligible)
+        - builders[0].balance: MIN_ACTIVATION_BALANCE + MIN_DEPOSIT_AMOUNT
+        - builder_pending_withdrawals: entry for builder 0, amount = MIN_ACTIVATION_BALANCE
+        - pending_partial_withdrawals: entry for validator 1, amount = 1 Gwei
+        - validators[0].withdrawable_epoch: == current_epoch (fully withdrawable)
 
     Output State Verified:
-        - payload_expected_withdrawals: 2 withdrawals in order:
-          [0] builder withdrawal (builder 0), [1] sweep withdrawal (validator 1)
-        - payload_expected_withdrawals[0].amount: withdrawal_amount
-        - builders[0].balance, balances[1]: Decreased appropriately
+        - payload_expected_withdrawals: 3 withdrawals in order:
+          [0] builder 0, [1] validator 1 (pending), [2] validator 0 (sweep)
+        - withdrawal_amounts: builder = MIN_ACTIVATION_BALANCE, pending = 1 Gwei, sweep = full balance
+        - balances[0]: 0 (full withdrawal)
+        - balances[1]: pre_balance - 1 Gwei
+        - builders[0].balance: decreased by MIN_ACTIVATION_BALANCE
     """
 
     builder_index = 0
-    regular_index = 1
+    pending_index = 1
+    sweep_index = 0
     withdrawal_amount = spec.MIN_ACTIVATION_BALANCE
 
-    # Verify builder exists
     assert builder_index < len(state.builders), "Builder must exist in registry"
+    assert max(pending_index, sweep_index) < len(state.validators), (
+        f"Max validator index {max(pending_index, sweep_index)} must exist in registry "
+        f"(validators: {len(state.validators)})"
+    )
 
     prepare_process_withdrawals(
         spec,
@@ -922,31 +890,34 @@ def test_builder_withdrawals_processed_first(spec, state):
         builder_indices=[builder_index],
         builder_withdrawal_amounts={builder_index: withdrawal_amount},
         builder_balances={builder_index: withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT},
-        full_withdrawal_indices=[regular_index],
+        pending_partial_indices=[pending_index],
+        full_withdrawal_indices=[sweep_index],
     )
 
     pre_state = state.copy()
-    builder_validator_index = spec.convert_builder_index_to_validator_index(builder_index)
-
     yield from run_gloas_withdrawals_processing(spec, state)
 
-    # Verify priority ordering: builder first, then regular
-    withdrawals = list(state.payload_expected_withdrawals)
-    assert len(withdrawals) == 2
-    assert withdrawals[0].validator_index == builder_validator_index
-    assert withdrawals[1].validator_index == regular_index
+    builder_validator_index = spec.convert_builder_index_to_validator_index(builder_index)
 
     assert_process_withdrawals(
         spec,
         state,
         pre_state,
-        withdrawal_count=2,
-        withdrawal_order=[builder_validator_index, regular_index],
-        balances={regular_index: 0},
+        withdrawal_count=3,
+        withdrawal_order=[builder_validator_index, pending_index, sweep_index],
+        balances={
+            sweep_index: 0,
+            pending_index: pre_state.balances[pending_index] - 1_000_000_000,
+        },
         builder_balance_deltas={builder_index: -int(withdrawal_amount)},
         builder_pending_delta=-1,
-        withdrawal_index_delta=2,
+        pending_partial_delta=-1,
+        withdrawal_index_delta=3,
         withdrawal_amounts_builders={builder_index: withdrawal_amount},
+        withdrawal_amounts={
+            pending_index: 1_000_000_000,  # default pending partial amount
+            sweep_index: pre_state.balances[sweep_index],  # full withdrawal
+        },
     )
 
 
@@ -966,12 +937,10 @@ def test_builder_uses_fee_recipient_address(spec, state):
         - payload_expected_withdrawals[0].address: Custom fee_recipient address (0xab * 20)
         - Note: Withdrawal uses fee_recipient from BuilderPendingWithdrawal
     """
-
     builder_index = 0
     custom_address = b"\xab" * 20
     withdrawal_amount = spec.MIN_ACTIVATION_BALANCE
 
-    # Verify builder exists
     assert builder_index < len(state.builders), "Builder must exist in registry"
 
     prepare_process_withdrawals(
@@ -1007,11 +976,14 @@ def test_builder_and_pending_leave_room_for_sweep(spec, state):
     When builders + pending = MAX-1, exactly 1 slot remains for sweep.
 
     Input State Configured:
-        - state.builders[0..N-1]: Builders exist in registry with sufficient balance
+        - state.builders[0..N-1]: Builders exist in registry with sufficient balance, N = 2 or 1
         - builder_pending_withdrawals: N entries (calculated to leave 1 slot)
         - pending_partial_withdrawals: M entries (capped by MAX_PENDING_PARTIALS)
-        - validators[N+M+1].withdrawable_epoch: <= current_epoch (sweep eligible)
+        - validators[0].withdrawable_epoch: <= current_epoch (sweep eligible)
         - Total builder + pending < MAX_WITHDRAWALS_PER_PAYLOAD
+
+    Note: Builder indices and validator indices intentionally overlap to demonstrate
+    that they are separate namespaces.
 
     Output State Verified:
         - payload_expected_withdrawals: builders + pending + 1 sweep
@@ -1024,36 +996,42 @@ def test_builder_and_pending_leave_room_for_sweep(spec, state):
     )
 
     num_builders = 2 if spec.MAX_WITHDRAWALS_PER_PAYLOAD >= 4 else 1
-    num_pending = min(
-        spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
-        spec.MAX_WITHDRAWALS_PER_PAYLOAD - num_builders - 1,
+    num_pending = spec.MAX_WITHDRAWALS_PER_PAYLOAD - num_builders - 1
+
+    assert num_builders > 0, "Test requires at least 1 builder withdrawal"
+    assert num_pending > 0, "Test requires at least 1 pending partial withdrawal"
+    assert spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP >= num_pending, (
+        "Test requires MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP >= num_pending"
     )
 
     withdrawal_amount = spec.MIN_ACTIVATION_BALANCE
 
     builder_indices_list = list(range(num_builders))
     assert max(builder_indices_list) < len(state.builders), (
-        f"Max builder index {max(builder_indices_list)} must exist in registry (builders: {len(state.builders)})"
+        f"Max builder index {max(builder_indices_list)} must exist in registry "
+        f"(builders: {len(state.builders)})"
     )
 
-    pending_indices = (
-        list(range(num_builders, num_builders + num_pending)) if num_pending > 0 else []
+    # Validator indices intentionally overlap with builder indices to test separate namespaces
+    # pending_indices start from 1 to avoid overlap with regular_index (same validator can't be both)
+    pending_indices = list(range(1, 1 + num_pending))
+    regular_index = (
+        0  # Same numeric index as builder 0, but different entity (validator vs builder)
     )
-    regular_index = num_builders + num_pending + 1
+    all_validator_indices = pending_indices + [regular_index]
+    assert max(all_validator_indices) < len(state.validators), (
+        f"Max validator index {max(all_validator_indices)} must exist in registry "
+        f"(validators: {len(state.validators)})"
+    )
 
-    # Use a single prepare_process_withdrawals call with all parameters
     prepare_process_withdrawals(
         spec,
         state,
-        builder_indices=builder_indices_list if num_builders > 0 else [],
-        builder_withdrawal_amounts={i: withdrawal_amount for i in builder_indices_list}
-        if num_builders > 0
-        else None,
+        builder_indices=builder_indices_list,
+        builder_withdrawal_amounts={i: withdrawal_amount for i in builder_indices_list},
         builder_balances={
             i: withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT for i in builder_indices_list
-        }
-        if num_builders > 0
-        else None,
+        },
         pending_partial_indices=pending_indices,
         full_withdrawal_indices=[regular_index],
     )
@@ -1062,26 +1040,21 @@ def test_builder_and_pending_leave_room_for_sweep(spec, state):
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
 
-    # Verify exactly 1 sweep withdrawal was included
     withdrawals = list(state.payload_expected_withdrawals)
     regular_withdrawals = [w for w in withdrawals if w.validator_index == regular_index]
     assert len(regular_withdrawals) == 1, "Exactly 1 slot should remain for sweep withdrawal"
 
-    # Build parameters dict conditionally
-    assert_params = {
-        "withdrawal_count": expected_total,
-        "balances": {regular_index: 0},
-        "withdrawal_index_delta": expected_total,
-    }
-    if num_builders > 0:
-        assert_params["builder_pending_delta"] = -int(num_builders)
-        assert_params["builder_balance_deltas"] = {
-            i: -int(withdrawal_amount) for i in builder_indices_list
-        }
-    if num_pending > 0:
-        assert_params["pending_partial_delta"] = -int(num_pending)
-
-    assert_process_withdrawals(spec, state, pre_state, **assert_params)
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        withdrawal_count=expected_total,
+        balances={regular_index: 0},
+        withdrawal_index_delta=expected_total,
+        builder_pending_delta=-int(num_builders),
+        builder_balance_deltas={i: -int(withdrawal_amount) for i in builder_indices_list},
+        pending_partial_delta=-int(num_pending),
+    )
 
 
 @with_gloas_and_later
@@ -1093,64 +1066,55 @@ def test_all_builder_withdrawals_zero_balance(spec, state):
     Input State Configured:
         - state.builders[0,1]: Builders exist with zero balance
         - builder_pending_withdrawals: 2 entries requesting MIN_ACTIVATION_BALANCE each
-        - validators[5].withdrawable_epoch: <= current_epoch (sweep eligible)
+        - validators[0].withdrawable_epoch: <= current_epoch (sweep eligible)
+
+    Note: regular_index=0 intentionally overlaps with builder_index=0 to demonstrate
+    that builder indices and validator indices are separate namespaces.
 
     Output State Verified:
         - payload_expected_withdrawals: Contains 3 withdrawals (2 builder + 1 sweep)
         - Builder withdrawals processed (deduction capped to 0)
         - builders[0,1].balance: 0 (unchanged)
-        - balances[5]: 0 (full withdrawal processed)
+        - balances[0]: 0 (full withdrawal processed)
         - Note: Builder withdrawals always processed, amount capped to available balance
     """
 
     builder_indices = [0, 1]
     withdrawal_amount = spec.MIN_ACTIVATION_BALANCE
-    regular_index = 5
-
-    assert max(builder_indices) < len(state.builders), (
-        f"Max builder index {max(builder_indices)} must exist in registry (builders: {len(state.builders)})"
+    regular_index = (
+        0  # Same numeric index as builder 0, but different entity (validator vs builder)
     )
 
-    # Use prepare_process_withdrawals with zero balance
+    assert max(builder_indices) < len(state.builders), (
+        f"Max builder index {max(builder_indices)} must exist in registry "
+        f"(builders: {len(state.builders)})"
+    )
+    assert regular_index < len(state.validators), "Validator must exist in registry"
+
     prepare_process_withdrawals(
         spec,
         state,
         builder_indices=builder_indices,
         builder_withdrawal_amounts={i: withdrawal_amount for i in builder_indices},
-        builder_balances={i: 0 for i in builder_indices},  # Zero balance
+        builder_balances={i: 0 for i in builder_indices},
         full_withdrawal_indices=[regular_index],
     )
 
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
 
-    # Get converted builder validator indices
     builder_validator_indices = [
         spec.convert_builder_index_to_validator_index(i) for i in builder_indices
     ]
-
-    # Verify all withdrawals are present
-    withdrawals = list(state.payload_expected_withdrawals)
-    withdrawal_validator_indices = [w.validator_index for w in withdrawals]
-
-    # Builder withdrawals should be present (even with zero balance)
-    for builder_idx, builder_val_idx in zip(builder_indices, builder_validator_indices):
-        assert builder_val_idx in withdrawal_validator_indices, (
-            f"Builder {builder_idx} withdrawal should be present (processed with 0 deduction)"
-        )
-
-    # Regular sweep withdrawal should be present
-    assert regular_index in withdrawal_validator_indices, (
-        "Regular sweep withdrawal should be processed"
-    )
 
     assert_process_withdrawals(
         spec,
         state,
         pre_state,
-        withdrawal_count=3,  # 2 builder + 1 sweep
+        withdrawal_count=3,
+        withdrawal_order=builder_validator_indices + [regular_index],
         balances={regular_index: 0},
-        builder_balances={0: 0, 1: 0},  # Unchanged (were already 0)
+        builder_balances={0: 0, 1: 0},
         builder_pending_delta=-2,
         withdrawal_index_delta=3,
     )
@@ -1165,8 +1129,11 @@ def test_builder_max_minus_one_plus_one_regular(spec, state):
     Input State Configured:
         - state.builders[0..MAX-2]: Builders exist in registry with sufficient balance
         - builder_pending_withdrawals: MAX-1 entries
-        - validators[MAX, MAX+1, MAX+2].withdrawable_epoch: <= current_epoch (sweep eligible)
+        - validators[0, 1, 2].withdrawable_epoch: <= current_epoch (sweep eligible)
         - next_withdrawal_validator_index: Set to first sweep validator
+
+    Note: Validator indices intentionally overlap with builder indices to demonstrate
+    that they are separate namespaces.
 
     Output State Verified:
         - payload_expected_withdrawals: MAX_WITHDRAWALS_PER_PAYLOAD total
@@ -1178,15 +1145,15 @@ def test_builder_max_minus_one_plus_one_regular(spec, state):
     num_builders = spec.MAX_WITHDRAWALS_PER_PAYLOAD - 1
     withdrawal_amount = spec.MIN_ACTIVATION_BALANCE
 
-    # Ensure we have enough builders in registry
     assert num_builders <= len(state.builders), (
         f"Test requires at least {num_builders} builders in registry"
     )
 
     builder_indices_list = list(range(num_builders))
 
+    # Validator indices intentionally overlap with builder indices to test separate namespaces
     # Add multiple regular withdrawals, but only 1 should be processed
-    regular_indices = [num_builders + 1, num_builders + 2, num_builders + 3]
+    regular_indices = [0, 1, 2]  # Same numeric indices as builders, but different entities
     assert len(state.validators) >= max(regular_indices) + 1, (
         f"Test requires at least {max(regular_indices) + 1} validators"
     )
@@ -1204,31 +1171,18 @@ def test_builder_max_minus_one_plus_one_regular(spec, state):
     )
 
     pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
 
-    # Get converted builder validator indices
     builder_validator_indices = [
         spec.convert_builder_index_to_validator_index(i) for i in builder_indices_list
     ]
-
-    yield from run_gloas_withdrawals_processing(spec, state)
-
-    # Verify exactly 1 regular withdrawal when builders fill MAX-1 slots
-    withdrawals = list(state.payload_expected_withdrawals)
-    builder_withdrawals = [w for w in withdrawals if w.validator_index in builder_validator_indices]
-    assert len(builder_withdrawals) == num_builders
-    regular_withdrawals = [w for w in withdrawals if w.validator_index in regular_indices]
-    assert len(regular_withdrawals) == 1, (
-        "Should process exactly 1 regular withdrawal when builders fill MAX-1 slots"
-    )
-    assert regular_withdrawals[0].validator_index == regular_indices[0], (
-        "Should process the first regular withdrawal in sweep order"
-    )
 
     assert_process_withdrawals(
         spec,
         state,
         pre_state,
         withdrawal_count=spec.MAX_WITHDRAWALS_PER_PAYLOAD,
+        withdrawal_order=builder_validator_indices + [regular_indices[0]],
         balances={regular_indices[0]: 0},
         builder_balance_deltas={i: -int(withdrawal_amount) for i in builder_indices_list},
         builder_pending_delta=-int(num_builders),
@@ -1263,17 +1217,9 @@ def test_builder_zero_withdrawal_amount(spec, state):
         builder_withdrawal_amounts={builder_index: spec.Gwei(0)},
         builder_balances={builder_index: spec.MIN_DEPOSIT_AMOUNT},
     )
+
     pre_state = state.copy()
-
-    builder_validator_index = spec.convert_builder_index_to_validator_index(builder_index)
-
     yield from run_gloas_withdrawals_processing(spec, state)
-
-    # Verify withdrawal produced with 0 amount
-    withdrawals = list(state.payload_expected_withdrawals)
-    builder_withdrawals = [w for w in withdrawals if w.validator_index == builder_validator_index]
-    assert len(builder_withdrawals) == 1
-    assert builder_withdrawals[0].amount == 0
 
     assert_process_withdrawals(
         spec,
@@ -1285,3 +1231,94 @@ def test_builder_zero_withdrawal_amount(spec, state):
         builder_pending_delta=-1,
         withdrawal_index_delta=1,
     )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_full_builder_payload_next_validator_index_bug(spec, state):
+    """
+    Documents spec bug: When all withdrawals in a full payload are builder withdrawals,
+    next_withdrawal_validator_index is calculated incorrectly.
+
+    The spec uses (withdrawals[-1].validator_index + 1) % num_validators, but builder
+    withdrawals have BUILDER_INDEX_FLAG (2^40) set in validator_index, producing
+    incorrect results.
+
+    Input State:
+        - builder_pending_withdrawals: MAX_WITHDRAWALS_PER_PAYLOAD entries
+        - All validator balances capped (no validator withdrawals)
+        - next_withdrawal_validator_index: Known starting value
+
+    Bug Demonstrated:
+        - Actual: (builder_validator_index + 1) % num_validators (incorrect)
+        - Expected: (start_index + MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP) % num_validators
+
+    This test passes with current spec behavior (documenting the bug).
+    When the spec is fixed, this test should be updated to verify correct behavior.
+    """
+    # Setup: Record initial state
+    num_validators = len(state.validators)
+    starting_validator_index = state.next_withdrawal_validator_index
+
+    # Setup: Create MAX builder pending withdrawals manually
+    withdrawal_amount = spec.Gwei(1_000_000_000)
+    state.builder_pending_withdrawals = []
+    for builder_index in range(spec.MAX_WITHDRAWALS_PER_PAYLOAD):
+        state.builders[builder_index].balance = withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT
+        state.builder_pending_withdrawals.append(
+            spec.BuilderPendingWithdrawal(
+                builder_index=spec.BuilderIndex(builder_index),
+                fee_recipient=state.builders[builder_index].execution_address,
+                amount=withdrawal_amount,
+            )
+        )
+
+    # Setup: Cap validator balances to prevent any sweep withdrawals
+    for i, validator in enumerate(state.validators):
+        if validator.withdrawal_credentials[0:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX:
+            state.balances[i] = min(state.balances[i], spec.MAX_EFFECTIVE_BALANCE)
+
+    # Verify setup: All expected withdrawals are builder withdrawals
+    expected_result = spec.get_expected_withdrawals(state)
+    assert len(expected_result.withdrawals) == spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    for w in expected_result.withdrawals:
+        assert spec.is_builder_index(w.validator_index), (
+            "All withdrawals must be builder withdrawals"
+        )
+
+    # Execute
+    pre_state = state.copy()
+    yield "pre", pre_state
+    spec.process_withdrawals(state)
+    yield "post", state
+
+    # Calculate what spec actually produces in update_next_withdrawal_validator_index (CAPELLA)
+    # expected_result.withdrawals[-1].validator_index has BUILDER_INDEX_FLAG set !!
+    assert spec.is_builder_index(expected_result.withdrawals[-1].validator_index), (
+        "Last withdrawal must be a builder withdrawal"
+    )
+    last_builder_validator_index = expected_result.withdrawals[-1].validator_index
+    buggy_result = (last_builder_validator_index + 1) % num_validators
+
+    # Calculate what the correct result should be
+    correct_result = (
+        starting_validator_index + spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
+    ) % num_validators
+
+    # Assert current behavior
+    assert state.next_withdrawal_validator_index == buggy_result, (
+        f"Spec produces {state.next_withdrawal_validator_index}, expected buggy result {buggy_result}"
+    )
+    assert buggy_result != correct_result, (
+        f"Bug demonstration: spec produces {buggy_result}, correct would be {correct_result}"
+    )
+
+    # Verify that assert_process_withdrawals raises error for this bug scenario
+    # See https://github.com/ethereum/consensus-specs/pull/4835
+    with pytest.raises(ValueError, match="BUILDER_INDEX_FLAG"):
+        assert_process_withdrawals(
+            spec,
+            state,
+            pre_state,
+            withdrawal_count=spec.MAX_WITHDRAWALS_PER_PAYLOAD,
+        )

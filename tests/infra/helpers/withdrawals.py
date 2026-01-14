@@ -28,11 +28,13 @@ def prepare_process_withdrawals(
     pending_partial_indices=[],
     full_withdrawal_indices=[],
     partial_withdrawal_indices=[],
+    compounding_indices=[],
     builder_withdrawal_amounts=None,
     builder_balances=None,
     builder_execution_addresses=None,
     pending_partial_amounts=None,
     partial_excess_balances=None,
+    compounding_excess_balances=None,
     pending_partial_withdrawable_offsets=None,
     full_withdrawable_offsets=None,
     validator_balances=None,
@@ -54,6 +56,9 @@ def prepare_process_withdrawals(
         pending_partial_indices: List of validator indices to set up with pending partial withdrawals
         full_withdrawal_indices: List of validator indices to set up as fully withdrawable
         partial_withdrawal_indices: List of validator indices to set up as partially withdrawable
+        compounding_indices: List of validator indices to set up with compounding credentials (0x02).
+                            By default, balance is set to MAX_EFFECTIVE_BALANCE_ELECTRA + 1_000_000_000
+                            unless compounding_excess_balances is specified.
         builder_withdrawal_amounts: Single amount or dict[BuilderIndex, Gwei] for builder withdrawals
                                     (default: MIN_ACTIVATION_BALANCE for each)
         builder_balances: Single balance or dict[BuilderIndex, Gwei] to set builder balances.
@@ -64,6 +69,8 @@ def prepare_process_withdrawals(
                                  (default: 1_000_000_000 for each)
         partial_excess_balances: Single amount or dict[ValidatorIndex, Gwei] for partial withdrawals
                                  (default: 1_000_000_000 for each)
+        compounding_excess_balances: Single amount or dict[ValidatorIndex, Gwei] for compounding validators
+                                     excess above MAX_EFFECTIVE_BALANCE_ELECTRA (default: 1_000_000_000)
         pending_partial_withdrawable_offsets: Single offset or dict[ValidatorIndex, int] for pending partial
                                              withdrawals (default: 0, i.e., withdrawable immediately)
         full_withdrawable_offsets: Single offset or dict[ValidatorIndex, int] for full withdrawals
@@ -108,11 +115,31 @@ def prepare_process_withdrawals(
     # Import here to avoid circular imports
     from tests.core.pyspec.eth2spec.test.helpers.withdrawals import (  # noqa: PLC0415
         prepare_pending_withdrawal,
+        set_compounding_withdrawal_credential_with_balance,
         set_validator_fully_withdrawable,
         set_validator_partially_withdrawable,
     )
 
     current_epoch = spec.get_current_epoch(state)
+
+    # Set up compounding validators (Electra+)
+    if is_post_electra(spec) and compounding_indices:
+        for validator_index in compounding_indices:
+            excess_balance = (
+                compounding_excess_balances.get(validator_index, 1_000_000_000)
+                if isinstance(compounding_excess_balances, dict)
+                else (
+                    compounding_excess_balances
+                    if compounding_excess_balances is not None
+                    else 1_000_000_000
+                )
+            )
+            set_compounding_withdrawal_credential_with_balance(
+                spec,
+                state,
+                validator_index,
+                balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA + excess_balance,
+            )
 
     # Helper to get parameter value from single value, dict, or None
     def get_param_value(param, index, default):
@@ -316,11 +343,10 @@ def assert_process_withdrawals(
         # Note: For builders, validator_index has BUILDER_INDEX_FLAG set, which wraps correctly
         last_validator_index = expected_withdrawals[-1].validator_index
         if is_post_gloas(spec) and spec.is_builder_index(last_validator_index):
-            # Builder index wraps differently - use sweep advancement for full builder payloads
-            expected_next = (
-                pre_state.next_withdrawal_validator_index
-                + spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
-            ) % num_validators
+            raise ValueError(
+                "Full payload with builder as last withdrawal triggers BUILDER_INDEX_FLAG bug. "
+                "See https://github.com/ethereum/consensus-specs/pull/4835"
+            )
         else:
             expected_next = (last_validator_index + 1) % num_validators
     else:
