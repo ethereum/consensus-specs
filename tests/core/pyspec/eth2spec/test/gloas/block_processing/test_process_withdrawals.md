@@ -1,7 +1,7 @@
 # Report: `process_withdrawals` Input/Output Space
 
-Note: This is AI generated from the specs, and it is not the authoritative
-source of truth.
+*Note*: This report is AI-generated and is not an authoritative source of
+truth.
 
 ## Function Signature
 
