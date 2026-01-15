@@ -308,22 +308,30 @@ serve_docs: _pyspec _copy_docs
 # Checks
 ###############################################################################
 
+LINT_DIFF_BEFORE := .lint_diff_before
+LINT_DIFF_AFTER := .lint_diff_after
 MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md')
 MYPY_PACKAGE_BASE := $(subst /,.,$(PYSPEC_DIR:$(CURDIR)/%=%))
 MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p $(MYPY_PACKAGE_BASE).eth2spec.$S)
 
 # Check for mistakes.
 lint: _pyspec
+	@rm -f $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER)
+	@git diff > $(LINT_DIFF_BEFORE)
 	@uv --quiet lock --check
-	@$(UV_RUN) mdformat --number --wrap=80 $(MARKDOWN_FILES)
 	@$(UV_RUN) codespell
+	@$(UV_RUN) python $(CURDIR)/scripts/check_fork_comments.py
+	@$(UV_RUN) python $(CURDIR)/scripts/fix_trailing_whitespace.py
+	@$(UV_RUN) python $(CURDIR)/scripts/check_markdown_headings.py
+	@$(UV_RUN) mdformat --number --wrap=80 $(MARKDOWN_FILES)
 	@$(UV_RUN) ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
 	@$(UV_RUN) ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
-	@$(UV_RUN) mypy $(MYPY_SCOPE)
-	@$(UV_RUN) python $(CURDIR)/scripts/check_fork_comments.py
-	@$(UV_RUN) python $(CURDIR)/scripts/check_markdown_headings.py
-	@$(UV_RUN) python $(CURDIR)/scripts/fix_trailing_whitespace.py
-
+	@output="$$($(UV_RUN) mypy $(MYPY_SCOPE) 2>&1)" || \
+		{ echo "$$output"; exit 1; }
+	@git diff > $(LINT_DIFF_AFTER)
+	@diff -q $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER) >/dev/null 2>&1 || \
+		echo "$(BOLD)Note: make lint modified tracked files$(NORM)"
+	@rm -f $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER)
 
 ###############################################################################
 # Generators

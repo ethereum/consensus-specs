@@ -86,9 +86,6 @@ def main():
             print()
 
         sys.exit(1)
-    else:
-        print("No markdown heading violations found.")
-        sys.exit(0)
 
 
 if __name__ == "__main__":
