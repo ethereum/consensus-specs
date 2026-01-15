@@ -21,7 +21,6 @@
   - [`verify_execution_proof`](#verify_execution_proof)
   - [`verify_new_payload_request_header`](#verify_new_payload_request_header)
   - [`request_proofs`](#request_proofs)
-  - [`get_proofs`](#get_proofs)
 
 <!-- mdformat-toc end -->
 
@@ -133,19 +132,9 @@ def request_proofs(
     """
     Request proof generation for a new payload request with specified proof attributes.
     Returns a ``ProofGenId`` to track the generation request.
-    """
-    ...
-```
 
-### `get_proofs`
-
-```python
-def get_proofs(
-    self: ProofEngine,
-    proof_gen_id: ProofGenId,
-) -> List[ExecutionProof]:
-    """
-    Retrieve all generated proofs for a generation request.
+    Generated proofs are delivered asynchronously via the beacon API endpoint
+    ``POST /eth/v1/prover/execution_proofs``.
     """
     ...
 ```

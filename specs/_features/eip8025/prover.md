@@ -56,9 +56,10 @@ for a `BeaconBlockBody` performs the following steps:
 3. Call
    `proof_gen_id = proof_engine.request_proofs(new_payload_request, proof_attributes)`
    to initiate proof generation.
-4. Call `proof_engine.get_proofs(proof_gen_id)` to retrieve the generated
-   proofs.
-5. For each `ExecutionProof` in the returned list:
+4. The proof engine generates proofs asynchronously and delivers them to the
+   prover via `POST /eth/v1/prover/execution_proofs`.
+5. Upon receiving each `ExecutionProof`:
+   - Validate the proof matches a pending `proof_gen_id`.
    - Set `message` to the `ExecutionProof`.
    - Set `prover_pubkey` to the prover's public key.
    - Sign the proof using
@@ -69,10 +70,11 @@ for a `BeaconBlockBody` performs the following steps:
 ## Honest prover relay
 
 A prover relay is a trusted intermediary that accepts unsigned execution proofs
-from community provers and signs them for broadcast. The relay's public key MUST
+from proof engines and signs them for broadcast. The relay's public key MUST
 be in the prover whitelist.
 
-When a prover relay receives an unsigned `ExecutionProof`:
+When a prover relay receives an unsigned `ExecutionProof` via
+`POST /eth/v1/prover/execution_proofs`:
 
 1. Validate that `proof_data` is non-empty.
 2. Verify the execution proof is valid using
