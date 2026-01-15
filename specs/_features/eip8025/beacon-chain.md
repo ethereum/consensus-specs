@@ -169,7 +169,7 @@ def process_execution_payload(
         )
     )
 
-    # [New in EIP8025] 
+    # [New in EIP8025]
     # Verify via ProofEngine
     new_payload_request_header = NewPayloadRequestHeader(
         execution_payload_header=ExecutionPayloadHeader(
