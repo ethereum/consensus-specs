@@ -9,7 +9,6 @@ jobs:
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     permissions:
       contents: write
-      packages: write
       pull-requests: read
 
     steps:
@@ -19,20 +18,9 @@ jobs:
         with:
           path: "consensus-specs"
 
-      # Setup python
-      - name: Set up Python
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
-        with:
-          python-version-file: "consensus-specs/pyproject.toml"
-
-      - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7.1.6
-        with:
-          enable-cache: true
-          version: ${{ vars.UV_VERSION }}
-
       # Tag the current commit
       - name: Create tag
+        id: tag
         run: |
           version="v$(cat consensus-specs/tests/core/pyspec/eth2spec/VERSION.txt)"
           cd consensus-specs
@@ -43,6 +31,33 @@ jobs:
           git tag "$version"
           git push origin "$version"
           echo "Created and pushed tag $version"
+          echo "name=$version" >> "$GITHUB_OUTPUT"
+
+      # Create draft release. We use release-drafter to
+      # organize PRs into the appropriate section based on PR labels
+      - name: Create draft release
+        uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5 # v6.1.0
+        with:
+          name: ${{ steps.tag.outputs.name }}
+          tag: ${{ steps.tag.outputs.name }}
+          commitish: ${{ github.sha }}
+          prerelease: ${{ contains(steps.tag.outputs.name, '-') }}
+          publish: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Setup python
+      - name: Set up Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version-file: "consensus-specs/pyproject.toml"
+
+      # Install dependencies
+      - name: Install uv ${{ vars.UV_VERSION }}
+        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
+        with:
+          enable-cache: true
+          version: ${{ vars.UV_VERSION }}
 
       # Ensure framework tests pass
       - name: Run tests for framework
@@ -69,34 +84,22 @@ jobs:
           make reftests verbose=true
 
       # Make tarballs
-      - name: Archive configurations
+      - name: Create reference test tarballs
         run: |
           cd consensus-spec-tests
           tar -czvf general.tar.gz tests/general
           tar -czvf minimal.tar.gz tests/minimal
           tar -czvf mainnet.tar.gz tests/mainnet
 
-      # Create draft release. We use release-drafter to
-      # organize PRs into the appropriate section based on PR labels
-      - name: Create draft release
-        uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5 # v6.1.0
-        with:
-          name: ${{ github.ref_name }}
-          tag: ${{ github.ref_name }}
-          publish: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Upload spec test tarballs and publish the release
-      - name: Upload spec test tarballs and publish
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
-        with:
-          tag_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          files: |
-            consensus-spec-tests/general.tar.gz
-            consensus-spec-tests/minimal.tar.gz
+      # Upload tarballs and publish the release
+      - name: Upload reference test tarballs and publish
+        run: |
+          tag="${{ steps.tag.outputs.name }}"
+          gh release upload "$tag" \
+            consensus-spec-tests/general.tar.gz \
+            consensus-spec-tests/minimal.tar.gz \
             consensus-spec-tests/mainnet.tar.gz
+          gh release edit "$tag" --draft=false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
