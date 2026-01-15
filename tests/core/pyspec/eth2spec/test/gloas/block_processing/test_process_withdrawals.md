@@ -1,12 +1,11 @@
 # Report: `process_withdrawals` Input/Output Space
 
-*Note*: This report is AI-generated and is not an authoritative source of
-truth.
+*Note*: This report is AI-generated and is not an authoritative source of truth.
 
 ## Function Signature
 
 ```python
-def process_withdrawals(state: BeaconState) -> None
+def process_withdrawals(state: BeaconState) -> None: ...
 ```
 
 Location:
