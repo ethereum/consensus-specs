@@ -9,7 +9,7 @@ def process_withdrawals(state: BeaconState) -> None: ...
 ```
 
 Location:
-[specs/gloas/beacon-chain.md:1029-1055](../../../../../../../specs/gloas/beacon-chain.md#L1029-L1055)
+[specs/gloas/beacon-chain.md](../../../../../../../specs/gloas/beacon-chain.md)
 
 ______________________________________________________________________
 
@@ -154,15 +154,17 @@ ______________________________________________________________________
 
 ## Functions Called
 
-| Function                                             | Location                                                                                  |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `is_parent_block_full(state)`                        | [beacon-chain.md:406-407](../../../../../../../specs/gloas/beacon-chain.md#L406-L407)     |
-| `get_expected_withdrawals(state)`                    | [beacon-chain.md:931-969](../../../../../../../specs/gloas/beacon-chain.md#L931-L969)     |
-| `apply_withdrawals(state, withdrawals)`              | [beacon-chain.md:975-984](../../../../../../../specs/gloas/beacon-chain.md#L975-L984)     |
-| `get_builder_withdrawals(state, ...)`                | [beacon-chain.md:859-886](../../../../../../../specs/gloas/beacon-chain.md#L859-L886)     |
-| `get_builders_sweep_withdrawals(state, ...)`         | [beacon-chain.md:892-925](../../../../../../../specs/gloas/beacon-chain.md#L892-L925)     |
-| `update_builder_pending_withdrawals(state, count)`   | [beacon-chain.md:998-1004](../../../../../../../specs/gloas/beacon-chain.md#L998-L1004)   |
-| `update_next_withdrawal_builder_index(state, count)` | [beacon-chain.md:1009-1016](../../../../../../../specs/gloas/beacon-chain.md#L1009-L1016) |
+All functions are defined in [beacon-chain.md](../../../../../../../specs/gloas/beacon-chain.md).
+
+| Function                                             |
+| ---------------------------------------------------- |
+| `is_parent_block_full(state)`                        |
+| `get_expected_withdrawals(state)`                    |
+| `apply_withdrawals(state, withdrawals)`              |
+| `get_builder_withdrawals(state, ...)`                |
+| `get_builders_sweep_withdrawals(state, ...)`         |
+| `update_builder_pending_withdrawals(state, count)`   |
+| `update_next_withdrawal_builder_index(state, count)` |
 
 ______________________________________________________________________
 
