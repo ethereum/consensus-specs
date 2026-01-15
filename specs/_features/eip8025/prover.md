@@ -70,8 +70,8 @@ for a `BeaconBlockBody` performs the following steps:
 ## Honest prover relay
 
 A prover relay is a trusted intermediary that accepts unsigned execution proofs
-from proof engines and signs them for broadcast. The relay's public key MUST
-be in the prover whitelist.
+from proof engines and signs them for broadcast. The relay's public key MUST be
+in the prover whitelist.
 
 When a prover relay receives an unsigned `ExecutionProof` via
 `POST /eth/v1/prover/execution_proofs`:
