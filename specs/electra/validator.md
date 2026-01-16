@@ -207,7 +207,7 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     )
 ```
 
-#### Execution Requests
+#### Execution requests
 
 *[New in Electra]*
 

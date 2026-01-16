@@ -610,7 +610,7 @@ def compute_proposer_indices(
     ]
 ```
 
-### Beacon State accessors
+### Beacon state accessors
 
 #### Modified `get_next_sync_committee_indices`
 
@@ -1401,7 +1401,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state.builder_pending_payments[data.slot % SLOTS_PER_EPOCH] = payment
 ```
 
-##### Payload Attestations
+##### Payload attestations
 
 ###### New `process_payload_attestation`
 
@@ -1420,7 +1420,7 @@ def process_payload_attestation(
     assert is_valid_indexed_payload_attestation(state, indexed_payload_attestation)
 ```
 
-##### Proposer Slashing
+##### Proposer slashing
 
 ###### Modified `process_proposer_slashing`
 

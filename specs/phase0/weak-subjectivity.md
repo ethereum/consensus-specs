@@ -35,7 +35,7 @@ This document uses data structures, constants, functions, and terminology from
 [Phase 0 -- The Beacon Chain](./beacon-chain.md) and
 [Phase 0 -- Beacon Chain Fork Choice](./fork-choice.md).
 
-## Custom Types
+## Custom types
 
 | Name    | SSZ Equivalent | Description        |
 | ------- | -------------- | ------------------ |

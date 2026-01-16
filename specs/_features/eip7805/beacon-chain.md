@@ -40,7 +40,7 @@ inclusion. Refers to the following posts:
 
 ## Preset
 
-### Inclusion List Committee
+### Inclusion list committee
 
 | Name                            | Value                |
 | ------------------------------- | -------------------- |
@@ -89,7 +89,7 @@ def is_valid_inclusion_list_signature(
     return bls.Verify(pubkey, signing_root, signed_inclusion_list.signature)
 ```
 
-### Beacon State accessors
+### Beacon state accessors
 
 #### New `get_inclusion_list_committee`
 

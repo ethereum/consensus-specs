@@ -81,7 +81,7 @@ class SignedExecutionProof(Container):
     signature: BLSSignature
 ```
 
-### Extended Containers
+### Extended containers
 
 *Note*: `BeaconState` and `BeaconBlockBody` remain the same. No modifications
 are required for execution proofs since they are handled externally.

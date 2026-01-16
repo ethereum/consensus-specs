@@ -53,7 +53,7 @@ functions required for data availability sampling (DAS). It is not part of the
 core Deneb spec but an extension that can be optionally implemented to allow
 nodes to reduce their load using DAS.
 
-## Public Methods
+## Public methods
 
 For any KZG library extended to support DAS, functions flagged as "Public
 method" MUST be provided by the underlying KZG library as public functions. All

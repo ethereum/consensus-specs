@@ -28,7 +28,7 @@
 | ----------------- | ------------------------------------- | ----------------------------- |
 | `BlockAccessList` | `ByteList[MAX_BYTES_PER_TRANSACTION]` | RLP encoded block access list |
 
-## Extended Containers
+## Extended containers
 
 ### `ExecutionPayload`
 

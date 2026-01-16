@@ -165,7 +165,7 @@ channel handshake with `secp256k1` identities will be used for encryption.
 As specified in the libp2p specification, clients MUST support the `XX`
 handshake pattern.
 
-### Protocol Negotiation
+### Protocol negotiation
 
 Clients MUST use exact equality when negotiating protocol versions to use and
 MAY use the version to give priority to higher version numbers.
@@ -1481,7 +1481,7 @@ Overlay multiplexers are not necessary with QUIC since the protocol provides
 native multiplexing, but they need to be layered atop TCP, WebSockets, and other
 transports that lack such support.
 
-### Protocol Negotiation
+### Protocol negotiation
 
 #### When is multiselect 2.0 due and why do we plan to migrate to it?
 

@@ -269,7 +269,7 @@ all the sidecars of the same block, it verifies against the same set of
 result of the arguments tuple
 `(sidecar.kzg_commitments, sidecar.kzg_commitments_inclusion_proof, sidecar.signed_block_header)`.
 
-###### Distributed Blob Publishing using blobs retrieved from local execution layer client
+###### Distributed blob publishing using blobs retrieved from local execution layer client
 
 Honest nodes SHOULD query `engine_getBlobsV2` as soon as they receive a valid
 `beacon_block` or `data_column_sidecar` from gossip. If ALL blobs matching
@@ -640,7 +640,7 @@ Nodes unprepared to follow the Fulu fork will be unaware of `nfd` entries.
 However, their existing comparison of `eth2` entries (concretely
 `next_fork_epoch`) is sufficient to detect upcoming divergence.
 
-## Peer Scoring
+## Peer scoring
 
 Due to the deterministic custody functions, a node knows exactly what a peer
 should be able to respond to. In the event that a peer does not respond to
