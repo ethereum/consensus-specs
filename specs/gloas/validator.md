@@ -71,7 +71,7 @@ def get_payload_size(envelope: ExecutionPayloadEnvelope) -> uint64:
     """
     Return the snappy-compressed size of the execution payload envelope.
     """
-    return len(snappy_compress(ssz_serialize(envelope)))
+    return uint64(len(snappy_compress(ssz_serialize(envelope))))
 ```
 
 ## Validator assignment
