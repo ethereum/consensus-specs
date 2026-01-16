@@ -230,10 +230,6 @@ def prepare_execution_payload(
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
-    # [Modified in Gloas:EIP7732]
-    # Verify consistency of the parent hash with respect to the previous execution payload bid
-    parent_hash = state.latest_execution_payload_bid.block_hash
-
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
         timestamp=compute_time_at_slot(state, state.slot),
@@ -243,7 +239,8 @@ def prepare_execution_payload(
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
     )
     return execution_engine.notify_forkchoice_updated(
-        head_block_hash=parent_hash,
+        # [Modified in Gloas:EIP7732]
+        head_block_hash=state.latest_block_hash,
         safe_block_hash=safe_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
