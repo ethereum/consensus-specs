@@ -2,7 +2,7 @@
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Misc](#misc)
 - [Preset](#preset)
@@ -32,7 +32,7 @@
 
 <!-- mdformat-toc end -->
 
-## Custom types
+## Types
 
 | Name           | SSZ equivalent | Description                                           |
 | -------------- | -------------- | ----------------------------------------------------- |

@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Preset](#preset)
   - [Execution](#execution)
 - [Containers](#containers)
@@ -31,7 +31,7 @@
 This upgrade adds transaction execution to the beacon chain as part of the
 eip6800 upgrade.
 
-## Custom types
+## Types
 
 | Name                      | SSZ equivalent | Description |
 | ------------------------- | -------------- | ----------- |

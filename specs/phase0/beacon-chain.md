@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Notation](#notation)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
@@ -155,7 +155,7 @@ block (in a later upgrade) and proof-of-stake votes for a beacon block (Phase
 
 Code snippets appearing in `this style` are to be interpreted as Python 3 code.
 
-## Custom types
+## Types
 
 We define the following Python custom types for type hinting and readability:
 

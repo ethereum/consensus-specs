@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Participation flag indices](#participation-flag-indices)
   - [Incentivization weights](#incentivization-weights)
@@ -61,7 +61,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 - incentive accounting reforms to reduce spec complexity
 - penalty parameter updates towards their planned maximally punitive values
 
-## Custom types
+## Types
 
 | Name                 | SSZ equivalent | Description                                                |
 | -------------------- | -------------- | ---------------------------------------------------------- |

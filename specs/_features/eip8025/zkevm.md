@@ -6,7 +6,7 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Cryptographic types](#cryptographic-types)
 - [Containers](#containers)
   - [`ZKEVMProof`](#zkevmproof)
@@ -48,7 +48,7 @@ for a payload with a maximum gas limit of 30M gas.
 | `MAX_VERIFICATION_KEY_SIZE` | `2**20` (= 1MiB)       |
 | `MAX_WITNESS_SIZE`          | `314572800` (= 300MiB) |
 
-## Custom types
+## Types
 
 | Name         | SSZ equivalent | Description                     |
 | ------------ | -------------- | ------------------------------- |
