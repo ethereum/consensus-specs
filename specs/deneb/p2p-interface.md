@@ -19,7 +19,7 @@
         - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
       - [Blob subnets](#blob-subnets)
         - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
-        - [Blob retrieval via local execution layer client](#blob-retrieval-via-local-execution-layer-client)
+        - [Blob retrieval via local execution-layer client](#blob-retrieval-via-local-execution-layer-client)
       - [Attestation subnets](#attestation-subnets)
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
     - [Transitioning the gossip](#transitioning-the-gossip)
@@ -256,10 +256,10 @@ Per `fork_version = compute_fork_version(epoch)`:
 | ------------------------------ | ------------------- |
 | `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
 
-###### Blob retrieval via local execution layer client
+###### Blob retrieval via local execution-layer client
 
 In addition to `BlobSidecarsByRoot` requests, recent blobs MAY be retrieved by
-querying the Execution Layer (i.e. via `engine_getBlobsV1`). Honest nodes SHOULD
+querying the execution layer (i.e. via `engine_getBlobsV1`). Honest nodes SHOULD
 query `engine_getBlobsV1` as soon as they receive a valid gossip block that
 contains data, and import the returned blobs.
 

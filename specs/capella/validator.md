@@ -124,7 +124,7 @@ exited validators, the full balance is withdrawn. For active validators, the
 balance in excess of `MAX_EFFECTIVE_BALANCE` is withdrawn.
 
 There is one prerequisite for this automated process: the validator's withdrawal
-credentials pointing to an execution layer address, i.e. having an
+credentials pointing to an execution-layer address, i.e. having an
 `ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
 
 If a validator has a `BLS_WITHDRAWAL_PREFIX` withdrawal credential prefix, to

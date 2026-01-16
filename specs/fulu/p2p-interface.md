@@ -22,7 +22,7 @@
       - [Blob subnets](#blob-subnets)
         - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
-        - [Distributed blob publishing using blobs retrieved from local execution layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
+        - [Distributed blob publishing using blobs retrieved from local execution-layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [Status v2](#status-v2)
@@ -269,7 +269,7 @@ all the sidecars of the same block, it verifies against the same set of
 result of the arguments tuple
 `(sidecar.kzg_commitments, sidecar.kzg_commitments_inclusion_proof, sidecar.signed_block_header)`.
 
-###### Distributed blob publishing using blobs retrieved from local execution layer client
+###### Distributed blob publishing using blobs retrieved from local execution-layer client
 
 Honest nodes SHOULD query `engine_getBlobsV2` as soon as they receive a valid
 `beacon_block` or `data_column_sidecar` from gossip. If ALL blobs matching

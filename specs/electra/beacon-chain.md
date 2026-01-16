@@ -6,7 +6,7 @@
 - [Constants](#constants)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
-  - [Execution layer triggered requests](#execution-layer-triggered-requests)
+  - [Execution-layer triggered requests](#execution-layer-triggered-requests)
 - [Preset](#preset)
   - [Gwei values](#gwei-values)
   - [Rewards and penalties](#rewards-and-penalties)
@@ -102,11 +102,11 @@
         - [Modified `process_deposit`](#modified-process_deposit)
       - [Voluntary exits](#voluntary-exits)
         - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
-      - [Execution layer withdrawal requests](#execution-layer-withdrawal-requests)
+      - [Execution-layer withdrawal requests](#execution-layer-withdrawal-requests)
         - [New `process_withdrawal_request`](#new-process_withdrawal_request)
       - [Deposit requests](#deposit-requests)
         - [New `process_deposit_request`](#new-process_deposit_request)
-      - [Execution layer consolidation requests](#execution-layer-consolidation-requests)
+      - [Execution-layer consolidation requests](#execution-layer-consolidation-requests)
         - [New `is_valid_switch_to_compounding_request`](#new-is_valid_switch_to_compounding_request)
         - [New `process_consolidation_request`](#new-process_consolidation_request)
 
@@ -146,7 +146,7 @@ specification.
 | ------------------------------- | ---------------- | ----------------------------------------------------------------------------------- |
 | `COMPOUNDING_WITHDRAWAL_PREFIX` | `Bytes1('0x02')` | *[New in Electra:EIP7251]* Withdrawal credential prefix for a compounding validator |
 
-### Execution layer triggered requests
+### Execution-layer triggered requests
 
 | Name                         | Value            |
 | ---------------------------- | ---------------- |
@@ -189,9 +189,9 @@ specification.
 
 | Name                                     | Value                     | Description                                                                                         |
 | ---------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------- |
-| `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD`       | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of execution layer deposit requests in each payload       |
-| `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16)     | *[New in Electra:EIP7002]* Maximum number of execution layer withdrawal requests in each payload    |
-| `MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD` | `uint64(2**1)` (= 2)      | *[New in Electra:EIP7251]* Maximum number of execution layer consolidation requests in each payload |
+| `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD`       | `uint64(2**13)` (= 8,192) | *[New in Electra:EIP6110]* Maximum number of execution-layer deposit requests in each payload       |
+| `MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16)     | *[New in Electra:EIP7002]* Maximum number of execution-layer withdrawal requests in each payload    |
+| `MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD` | `uint64(2**1)` (= 2)      | *[New in Electra:EIP7251]* Maximum number of execution-layer consolidation requests in each payload |
 
 ### Withdrawals processing
 
@@ -1727,7 +1727,7 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     initiate_validator_exit(state, voluntary_exit.validator_index)
 ```
 
-##### Execution layer withdrawal requests
+##### Execution-layer withdrawal requests
 
 ###### New `process_withdrawal_request`
 
@@ -1823,7 +1823,7 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     )
 ```
 
-##### Execution layer consolidation requests
+##### Execution-layer consolidation requests
 
 ###### New `is_valid_switch_to_compounding_request`
 

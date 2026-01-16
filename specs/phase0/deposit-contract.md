@@ -50,7 +50,7 @@ contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to the Ethereum
 proof-of-work chain defined by the
 [chain-id](https://eips.ethereum.org/EIPS/eip-155) -- `DEPOSIT_CHAIN_ID` -- and
 the network-id -- `DEPOSIT_NETWORK_ID` -- for deposits of ETH to the beacon
-chain. Validator balances will be withdrawable to the execution-layer in a
+chain. Validator balances will be withdrawable to the execution layer in a
 followup fork after Bellatrix upgrade.
 
 _Note_: See [here](https://chainid.network/) for a comprehensive list of public
@@ -70,7 +70,7 @@ is the expected `DepositData` root as a protection against malformed calldata.
 The amount of ETH (rounded down to the closest Gwei) sent to the deposit
 contract is the deposit amount, which must be of size at least
 `MIN_DEPOSIT_AMOUNT` Gwei. Note that ETH consumed by the deposit contract is no
-longer usable on the execution-layer until sometime after Bellatrix upgrade.
+longer usable on the execution layer until sometime after Bellatrix upgrade.
 
 #### Withdrawal credentials
 

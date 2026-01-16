@@ -48,7 +48,7 @@ The `withdrawal_credentials` field must be:
 - `withdrawal_credentials[1:12] == b'\x00' * 11`
 - `withdrawal_credentials[12:] == builder_execution_address`
 
-Where `builder_execution_address` is an execution layer address that will
+Where `builder_execution_address` is an execution-layer address that will
 receive withdrawals.
 
 ### Submit deposit

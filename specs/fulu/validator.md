@@ -201,7 +201,7 @@ Moreover, the full sequence of sidecars can also be computed from
 `get_data_column_sidecars_from_column_sidecar(sidecar, cells_and_kzg_proofs)`.
 This can be used in distributed blob publishing, to reconstruct all sidecars
 from any sidecar received on the wire, assuming all cells and kzg proofs could
-be retrieved from the local execution layer client.
+be retrieved from the local execution-layer client.
 
 ```python
 def get_data_column_sidecars(

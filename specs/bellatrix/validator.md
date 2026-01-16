@@ -81,7 +81,7 @@ def get_terminal_pow_block(pow_chain: Dict[Hash32, PowBlock]) -> Optional[PowBlo
 ```
 
 *Note*: This function does *not* use simple serialize `hash_tree_root` as to
-avoid requiring simple serialize hashing capabilities in the Execution Layer.
+avoid requiring simple serialize hashing capabilities in the execution layer.
 
 ## Protocols
 
