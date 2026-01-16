@@ -15,6 +15,7 @@
   - [Helpers](#helpers)
     - [`compute_fork_version`](#compute_fork_version)
     - [`compute_fork_digest`](#compute_fork_digest)
+    - [`compute_attestation_subnet_prefix_bits`](#compute_attestation_subnet_prefix_bits)
   - [MetaData](#metadata)
   - [Maximum message sizes](#maximum-message-sizes)
     - [`max_compressed_len`](#max_compressed_len)
@@ -228,7 +229,6 @@ This section outlines configurations that are used in this spec.
 | `SUBNETS_PER_NODE`                   | `2`                                                                                    | The number of long-lived subnets a beacon node should be subscribed to                |
 | `ATTESTATION_SUBNET_COUNT`           | `2**6` (= 64)                                                                          | The number of attestation subnets used in the gossipsub protocol.                     |
 | `ATTESTATION_SUBNET_EXTRA_BITS`      | `0`                                                                                    | The number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
-| `ATTESTATION_SUBNET_PREFIX_BITS`     | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)`              |                                                                                       |
 | `MAX_CONCURRENT_REQUESTS`            | `2`                                                                                    | Maximum number of concurrent requests per protocol ID that a client may issue         |
 
 ### Helpers
@@ -259,6 +259,16 @@ def compute_fork_digest(
     fork_version = compute_fork_version(epoch)
     base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
     return ForkDigest(base_digest[:4])
+```
+
+#### `compute_attestation_subnet_prefix_bits`
+
+```python
+def compute_attestation_subnet_prefix_bits() -> uint64:
+    """
+    Return the number of NodeId bits to use when mapping to a subscribed subnet
+    """
+    return uint64(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)
 ```
 
 ### MetaData
@@ -1342,14 +1352,15 @@ should:
 
 ```python
 def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
-    node_id_prefix = node_id >> (NODE_ID_BITS - ATTESTATION_SUBNET_PREFIX_BITS)
+    prefix_bits = int(compute_attestation_subnet_prefix_bits())
+    node_id_prefix = node_id >> (NODE_ID_BITS - prefix_bits)
     node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
     permutation_seed = hash(
         uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
     )
     permutated_prefix = compute_shuffled_index(
         node_id_prefix,
-        1 << ATTESTATION_SUBNET_PREFIX_BITS,
+        1 << prefix_bits,
         permutation_seed,
     )
     return SubnetID((permutated_prefix + index) % ATTESTATION_SUBNET_COUNT)
