@@ -329,9 +329,9 @@ def get_payload_attestation_message(
 ```python
 def is_payload_timely(store: Store, root: Root, payload_arrival_time: Optional[uint64]) -> bool:
     """
-    Check if the payload for the given block root arrived on time.
-    A payload is considered timely if it arrived before the deadline
-    based on its snappy-compressed size.
+    Check if the payload for the given block root arrived on time and its
+    associated blob data is available. A payload is considered timely if it
+    arrived before the deadline based on its snappy-compressed size.
     """
     if payload_arrival_time is None:
         return False
@@ -346,7 +346,7 @@ def is_payload_timely(store: Store, root: Root, payload_arrival_time: Optional[u
     slot_start_time = store.genesis_time + block.slot * SECONDS_PER_SLOT
     arrival_time_into_slot_ms = seconds_to_milliseconds(payload_arrival_time - slot_start_time)
 
-    return arrival_time_into_slot_ms < get_payload_due_ms(payload_size)
+    return arrival_time_into_slot_ms <= get_payload_due_ms(payload_size)
 ```
 
 ```python
