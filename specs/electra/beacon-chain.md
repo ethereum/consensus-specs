@@ -31,7 +31,6 @@
   - [Modified containers](#modified-containers)
     - [`AttesterSlashing`](#attesterslashing)
     - [`BeaconBlockBody`](#beaconblockbody)
-  - [Modified containers](#modified-containers-1)
     - [`Attestation`](#attestation)
     - [`IndexedAttestation`](#indexedattestation)
     - [`BeaconState`](#beaconstate)
@@ -349,8 +348,6 @@ class BeaconBlockBody(Container):
     # [New in Electra]
     execution_requests: ExecutionRequests
 ```
-
-### Modified containers
 
 #### `Attestation`
 
