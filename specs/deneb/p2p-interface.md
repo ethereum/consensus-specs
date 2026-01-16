@@ -4,16 +4,14 @@
 
 - [Introduction](#introduction)
 - [Modifications in Deneb](#modifications-in-deneb)
-  - [Helper functions](#helper-functions)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
-  - [Constant](#constant)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`BlobSidecar`](#blobsidecar)
     - [`BlobIdentifier`](#blobidentifier)
-    - [Helpers](#helpers)
-      - [`verify_blob_sidecar_inclusion_proof`](#verify_blob_sidecar_inclusion_proof)
+  - [Helpers](#helpers)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
+    - [`verify_blob_sidecar_inclusion_proof`](#verify_blob_sidecar_inclusion_proof)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -44,30 +42,6 @@ The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Deneb
-
-### Helper functions
-
-#### Modified `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= DENEB_FORK_EPOCH:
-        return DENEB_FORK_VERSION
-    if epoch >= CAPELLA_FORK_EPOCH:
-        return CAPELLA_FORK_VERSION
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
-
-### Constant
-
-*[New in Deneb:EIP4844]*
 
 ### Preset
 
@@ -116,9 +90,27 @@ class BlobIdentifier(Container):
     index: BlobIndex
 ```
 
-#### Helpers
+### Helpers
 
-##### `verify_blob_sidecar_inclusion_proof`
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
+
+#### `verify_blob_sidecar_inclusion_proof`
 
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:

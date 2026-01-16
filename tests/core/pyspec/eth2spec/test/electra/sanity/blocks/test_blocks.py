@@ -296,7 +296,7 @@ def test_withdrawal_and_withdrawal_request_same_validator(spec, state):
 
     # Ensure the validator has an upcoming withdrawal
     # This will happen before the withdrawal request
-    expected_withdrawals, _ = spec.get_expected_withdrawals(state)
+    expected_withdrawals = spec.get_expected_withdrawals(state).withdrawals
     assert len(expected_withdrawals) == 1
     assert expected_withdrawals[0].validator_index == validator_index
 
@@ -340,7 +340,7 @@ def test_withdrawal_and_switch_to_compounding_request_same_validator(spec, state
 
     # Ensure the validator has an upcoming withdrawal
     # This will happen before the withdrawal request
-    expected_withdrawals, _ = spec.get_expected_withdrawals(state)
+    expected_withdrawals = spec.get_expected_withdrawals(state).withdrawals
     assert len(expected_withdrawals) == 1
     assert expected_withdrawals[0].validator_index == validator_index
 

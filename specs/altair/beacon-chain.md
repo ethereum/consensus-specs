@@ -21,7 +21,7 @@
   - [New containers](#new-containers)
     - [`SyncAggregate`](#syncaggregate)
     - [`SyncCommittee`](#synccommittee)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Crypto](#crypto)
   - [Misc](#misc-1)
     - [`add_flag`](#add_flag)
@@ -209,7 +209,7 @@ class SyncCommittee(Container):
     aggregate_pubkey: BLSPubkey
 ```
 
-## Helper functions
+## Helpers
 
 ### Crypto
 
