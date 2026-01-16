@@ -69,9 +69,9 @@ def get_payload_due_ms(payload_size: uint64) -> uint64:
 ```python
 def get_payload_size(envelope: ExecutionPayloadEnvelope) -> uint64:
     """
-    Return the snappy-compressed size of the execution payload envelope.
+    Return the uncompressed size of the execution payload envelope.
     """
-    return uint64(len(snappy_compress(ssz_serialize(envelope))))
+    return uint64(len(ssz_serialize(envelope)))
 ```
 
 ## Validator assignment
