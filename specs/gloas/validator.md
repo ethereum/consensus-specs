@@ -54,8 +54,8 @@ validator" to implement Gloas.
 def get_payload_due_ms(payload_size: uint64) -> uint64:
     """
     Calculate the deadline for a payload based on its snappy-compressed size.
-    Interpolates linearly from MIN_PAYLOAD_DUE_BPS (size 0) to
-    PAYLOAD_ATTESTATION_DUE_BPS (size MAX_PAYLOAD_SIZE).
+    Interpolates linearly from ``MIN_PAYLOAD_DUE_BPS`` (size 0) to
+    ``PAYLOAD_ATTESTATION_DUE_BPS`` (size ``MAX_PAYLOAD_SIZE``).
     """
     assert payload_size <= MAX_PAYLOAD_SIZE
     min_threshold_ms = get_slot_component_duration_ms(MIN_PAYLOAD_DUE_BPS)
