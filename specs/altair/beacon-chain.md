@@ -111,9 +111,6 @@ Altair is the first beacon-chain hard fork. Its main features are:
 This patch updates a few configuration values to move penalty parameters closer
 to their final, maximum security values.
 
-*Note*: The specification does *not* override previous configuration values but
-instead creates new values and replaces usage throughout.
-
 | Name                                      | Value                              |
 | ----------------------------------------- | ---------------------------------- |
 | `INACTIVITY_PENALTY_QUOTIENT_ALTAIR`      | `uint64(3 * 2**24)` (= 50,331,648) |

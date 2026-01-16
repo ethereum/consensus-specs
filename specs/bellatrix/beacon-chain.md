@@ -66,9 +66,6 @@ Additionally, this upgrade introduces the following minor changes:
 Bellatrix updates a few configuration values to move penalty parameters to their
 final, maximum security values.
 
-*Note*: The specification does *not* override previous configuration values but
-instead creates new values and replaces usage throughout.
-
 | Name                                         | Value                          |
 | -------------------------------------------- | ------------------------------ |
 | `INACTIVITY_PENALTY_QUOTIENT_BELLATRIX`      | `uint64(2**24)` (= 16,777,216) |
