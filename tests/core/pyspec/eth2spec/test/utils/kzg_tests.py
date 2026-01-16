@@ -7,7 +7,7 @@ from eth2spec.fulu import mainnet as spec
 from eth2spec.utils import bls
 
 ###############################################################################
-# Helper functions
+# Helpers
 ###############################################################################
 
 

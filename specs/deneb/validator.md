@@ -131,7 +131,7 @@ def prepare_execution_payload(
         timestamp=compute_time_at_slot(state, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
-        withdrawals=get_expected_withdrawals(state),
+        withdrawals=get_expected_withdrawals(state).withdrawals,
         # [New in Deneb:EIP4788]
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
     )

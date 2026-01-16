@@ -50,7 +50,7 @@
     - [`SignedVoluntaryExit`](#signedvoluntaryexit)
     - [`SignedBeaconBlock`](#signedbeaconblock)
     - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Math](#math)
     - [`integer_squareroot`](#integer_squareroot)
     - [`xor`](#xor)
@@ -107,10 +107,10 @@
   - [Genesis block](#genesis-block)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Epoch processing](#epoch-processing)
-    - [Helper functions](#helper-functions-1)
+    - [Helpers](#helpers-1)
     - [Justification and finalization](#justification-and-finalization)
     - [Rewards and penalties](#rewards-and-penalties-1)
-      - [Helpers](#helpers)
+      - [Helpers](#helpers-2)
       - [Components of attestation deltas](#components-of-attestation-deltas)
       - [`get_attestation_deltas`](#get_attestation_deltas)
       - [`process_rewards_and_penalties`](#process_rewards_and_penalties)
@@ -614,7 +614,7 @@ class SignedBeaconBlockHeader(Container):
     signature: BLSSignature
 ```
 
-## Helper functions
+## Helpers
 
 *Note*: The definitions below are for specification purposes and are not
 necessarily optimal implementations.
@@ -1284,7 +1284,7 @@ def initialize_beacon_state_from_eth1(
     state = BeaconState(
         genesis_time=eth1_timestamp + GENESIS_DELAY,
         fork=fork,
-        eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
+        eth1_data=Eth1Data(deposit_count=uint64(len(deposits)), block_hash=eth1_block_hash),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash]
         * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
@@ -1408,7 +1408,7 @@ def process_epoch(state: BeaconState) -> None:
     process_participation_record_updates(state)
 ```
 
-#### Helper functions
+#### Helpers
 
 ```python
 def get_matching_source_attestations(
@@ -1988,8 +1988,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert len(attestation.aggregation_bits) == len(committee)
 
     pending_attestation = PendingAttestation(
-        data=data,
         aggregation_bits=attestation.aggregation_bits,
+        data=data,
         inclusion_delay=state.slot - data.slot,
         proposer_index=get_beacon_proposer_index(state),
     )
