@@ -107,6 +107,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 - [EIP-7732](https://eips.ethereum.org/EIPS/eip-7732): Enshrined
   Proposer-Builder Separation
+- [EIP-7843](https://eips.ethereum.org/EIPS/eip-7843): SLOTNUM opcode
 
 *Note*: This specification is built upon [Fulu](../fulu/beacon-chain.md).
 
