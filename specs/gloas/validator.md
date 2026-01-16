@@ -298,11 +298,16 @@ associated blob data have been received, or (2) at the
 `get_payload_attestation_due_ms(epoch)` deadline, whichever comes first.
 
 *Note*: The `payload_arrival_time` parameter should be the time at which the
-payload was first seen, independently of when blob data becomes available.
+payload was first seen, independently of when blob data becomes available. If
+the validator has not seen the payload by the deadline, it should call
+`get_payload_attestation_message(store, validator_index, privkey, payload_arrival_time=None)`.
 
 ```python
 def get_payload_attestation_message(
-    store: Store, validator_index: ValidatorIndex, privkey: int, payload_arrival_time: uint64
+    store: Store,
+    validator_index: ValidatorIndex,
+    privkey: int,
+    payload_arrival_time: Optional[uint64],
 ) -> PayloadAttestationMessage:
     root = store.proposer_boost_root
     assert root != Root()
@@ -323,12 +328,15 @@ def get_payload_attestation_message(
 ```
 
 ```python
-def is_payload_timely(store: Store, root: Root, payload_arrival_time: uint64) -> bool:
+def is_payload_timely(store: Store, root: Root, payload_arrival_time: Optional[uint64]) -> bool:
     """
     Check if the payload for the given block root arrived on time.
     A payload is considered timely if it arrived before the deadline
     based on its snappy-compressed size.
     """
+    if payload_arrival_time is None:
+        return False
+
     if root not in store.execution_payloads:
         return False
 
