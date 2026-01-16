@@ -286,13 +286,10 @@ global execution attestation subnet within the first
 
 #### Constructing a payload attestation
 
-If a validator is in the payload attestation committee for the current slot (as
+If  validator is in the payload attestation committee for the current slot (as
 obtained from `get_ptc_assignment` above) and has seen a timely beacon block for
-the current slot from the expected proposer, then the validator should prepare a
-`PayloadAttestationMessage` for the current slot, according to the logic in
-`get_payload_attestation_message` below and broadcast to the global
-`payload_attestation_message` pubsub topic within the first
-`get_payload_attestation_due_ms(epoch)` milliseconds of the slot.
+the current slot from the expected proposer, the validator needs to send a
+`PayloadAttestationMessage` for the current slot, according to the following logic.
 
 Let `validator_index` be the validator chosen to submit, `privkey` be the
 private key mapping to `state.validators[validator_index].pubkey`, used to sign
@@ -302,9 +299,8 @@ beacon node to which the validator is connected. The validator should call
 the result either (1) as soon as a `SignedExecutionPayloadEnvelope` matching
 `store.proposer_boost_root` is received, or (2) at the
 `get_payload_attestation_due_ms(epoch)` deadline if no matching payload is
-received by then. The function will only succeed if `store.proposer_boost_root`
-is set (i.e., a timely beacon block from the expected proposer has been observed
-for the current slot).
+received by then. 
+
 
 ```python
 def get_payload_attestation_message(
