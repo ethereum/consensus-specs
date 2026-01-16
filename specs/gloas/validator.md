@@ -18,6 +18,7 @@
     - [Constructing `signed_execution_payload_bid`](#constructing-signed_execution_payload_bid)
     - [Constructing `payload_attestations`](#constructing-payload_attestations)
     - [Blob sidecars](#blob-sidecars)
+    - [Preparing `ExecutionPayload`](#preparing-executionpayload)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing a payload attestation](#constructing-a-payload-attestation)
 - [Modified functions](#modified-functions)
@@ -218,6 +219,36 @@ The blob sidecars are no longer broadcast by the validator, and thus their
 construction is not necessary. This deprecates the corresponding sections from
 the Honest Validator specifications in the Fulu fork, moving them, albeit with
 some modifications, to the [Honest Builder](./builder.md) specifications.
+
+#### Preparing `ExecutionPayload`
+
+```python
+def prepare_execution_payload(
+    state: BeaconState,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    suggested_fee_recipient: ExecutionAddress,
+    execution_engine: ExecutionEngine,
+) -> Optional[PayloadId]:
+    # [Modified in Gloas:EIP7732]
+    # Verify consistency of the parent hash with respect to the previous execution payload bid
+    parent_hash = state.latest_execution_payload_bid.block_hash
+
+    # Set the forkchoice head and initiate the payload build process
+    payload_attributes = PayloadAttributes(
+        timestamp=compute_time_at_slot(state, state.slot),
+        prev_randao=get_randao_mix(state, get_current_epoch(state)),
+        suggested_fee_recipient=suggested_fee_recipient,
+        withdrawals=get_expected_withdrawals(state).withdrawals,
+        parent_beacon_block_root=hash_tree_root(state.latest_block_header),
+    )
+    return execution_engine.notify_forkchoice_updated(
+        head_block_hash=parent_hash,
+        safe_block_hash=safe_block_hash,
+        finalized_block_hash=finalized_block_hash,
+        payload_attributes=payload_attributes,
+    )
+```
 
 ### Payload timeliness attestation
 
