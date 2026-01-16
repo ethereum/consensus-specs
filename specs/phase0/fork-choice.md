@@ -65,8 +65,8 @@
 
 ## Introduction
 
-This document is the beacon chain fork choice spec, part of Phase 0. It assumes
-the [beacon chain state transition function spec](./beacon-chain.md).
+This document is the beacon-chain fork choice spec, part of Phase 0. It assumes
+the [beacon-chain state transition function spec](./beacon-chain.md).
 
 ## Fork choice
 

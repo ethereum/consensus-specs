@@ -31,8 +31,8 @@ definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the
-updated Beacon Chain doc of [Bellatrix](./beacon-chain.md) are requisite for
-this document and used throughout. Please see related Beacon Chain doc before
+updated beacon-chain doc of [Bellatrix](./beacon-chain.md) are requisite for
+this document and used throughout. Please see related beacon-chain doc before
 continuing and use them as a reference throughout.
 
 ## Helpers
@@ -113,7 +113,7 @@ All validator responsibilities remain unchanged other than those noted below.
 Namely, the transition block handling and the addition of `ExecutionPayload`.
 
 *Note*: A validator must not propose on or attest to a block that isn't deemed
-valid, i.e. hasn't yet passed the beacon chain state transition and execution
+valid, i.e. hasn't yet passed the beacon-chain state transition and execution
 validations. In future upgrades, an "execution Proof-of-Custody" will be
 integrated to prevent outsourcing of execution payload validations.
 

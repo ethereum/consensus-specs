@@ -203,7 +203,7 @@ The following validations are removed:
 *[Modified in Gloas:EIP7732]*
 
 The *type* of the payload of this topic changes to the (modified)
-`SignedBeaconBlock` found in [the Beacon Chain changes](./beacon-chain.md).
+`SignedBeaconBlock` found in [the beacon-chain changes](./beacon-chain.md).
 
 There are no new validations for this topic. However, all validations with
 regards to the `ExecutionPayload` are removed:

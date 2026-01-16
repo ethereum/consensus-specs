@@ -21,7 +21,7 @@
 
 ## Introduction
 
-This is the beacon chain specification to add EIP-7805 / fork-choice enforced,
+This is the beacon-chain specification to add EIP-7805 / fork-choice enforced,
 committee-based inclusion list (FOCIL) mechanism to allow forced transaction
 inclusion. Refers to the following posts:
 

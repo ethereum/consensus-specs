@@ -190,7 +190,7 @@ The `withdrawal_credentials` field must be such that:
 - `withdrawal_credentials[1:12] == b'\x00' * 11`
 - `withdrawal_credentials[12:] == eth1_withdrawal_address`
 
-After the merge of the current Ethereum execution layer into the Beacon Chain,
+After the merge of the current Ethereum execution layer into the beacon chain,
 withdrawals to `eth1_withdrawal_address` will simply be increases to the
 account's ETH balance that do **NOT** trigger any EVM execution.
 
@@ -236,7 +236,7 @@ in which they were deposited or any of its descendants is added to the beacon
 chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth1
 blocks (~8 hours) plus `EPOCHS_PER_ETH1_VOTING_PERIOD` epochs (~6.8 hours). Once
 the requisite proof-of-work block data is added, the deposit will normally be
-added to a beacon chain block and processed into the `state.validators` within
+added to a beacon-chain block and processed into the `state.validators` within
 an epoch or two. The validator is then in a queue to be activated.
 
 ### Validator index
@@ -324,7 +324,7 @@ in a given epoch each responsibility might occur at a different slot.
 
 ### Lookahead
 
-The beacon chain shufflings are designed to provide a minimum of 1 epoch
+The beacon-chain shufflings are designed to provide a minimum of 1 epoch
 lookahead on the validator's upcoming committee assignments for attesting
 dictated by the shuffling and slot. Note that this lookahead does not apply to
 proposing, which must be checked during the epoch in question.
@@ -385,7 +385,7 @@ To propose, the validator selects a `BeaconBlock`, `parent` using this process:
 
 The validator creates, signs, and broadcasts a `block` that is a child of
 `parent` and satisfies a valid
-[beacon chain state transition](./beacon-chain.md#beacon-chain-state-transition-function).
+[beacon-chain state transition](./beacon-chain.md#beacon-chain-state-transition-function).
 Note that the parent's slot must be strictly less than the slot of the block
 about to be proposed, i.e. `parent.slot < slot`.
 

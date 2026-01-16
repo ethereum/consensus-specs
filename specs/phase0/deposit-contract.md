@@ -16,7 +16,7 @@
 
 ## Introduction
 
-This document represents the specification for the beacon chain deposit
+This document represents the specification for the beacon-chain deposit
 contract, part of Phase 0.
 
 ## Constants

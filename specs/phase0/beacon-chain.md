@@ -1254,7 +1254,7 @@ def slash_validator(
 
 ## Genesis
 
-Before the Ethereum beacon chain genesis has been triggered, and for every
+Before the Ethereum beacon-chain genesis has been triggered, and for every
 Ethereum proof-of-work block, let
 `candidate_state = initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)`
 where:

@@ -634,7 +634,7 @@ of subnets is defined via `ATTESTATION_SUBNET_COUNT`. The correct subnet for an
 attestation can be calculated with `compute_subnet_for_attestation`.
 `beacon_attestation_{subnet_id}` topics, are rotated through throughout the
 epoch in a similar fashion to rotating through shards in committees (future
-beacon chain upgrade). The subnets are rotated through with
+beacon-chain upgrade). The subnets are rotated through with
 `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`
 subnets per slot.
 
@@ -2083,7 +2083,7 @@ discv5 uses ENRs and we will presumably need to:
 #### Why do we not form ENRs and find peers until genesis block/state is known?
 
 Although client software might very well be running locally prior to the
-solidification of the beacon chain genesis state and block, clients cannot form
+solidification of the beacon-chain genesis state and block, clients cannot form
 valid ENRs prior to this point. ENRs contain `fork_digest` which utilizes the
 `genesis_validators_root` for a cleaner separation between chains so prior to
 knowing genesis, we cannot use `fork_digest` to cleanly find peers on our
