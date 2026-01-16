@@ -156,8 +156,8 @@ must be produced and broadcast for slots on range
 `[compute_start_slot_at_epoch(epoch) - 1, compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH - 1)`
 rather than for the range
 `[compute_start_slot_at_epoch(epoch), compute_start_slot_at_epoch(epoch) + SLOTS_PER_EPOCH)`.
-To reduce complexity during the Altair fork, sync committees are not expected to
-produce signatures for `compute_start_slot_at_epoch(ALTAIR_FORK_EPOCH) - 1`.
+To reduce complexity during the Altair upgrade, sync committees are not expected
+to produce signatures for `compute_start_slot_at_epoch(ALTAIR_FORK_EPOCH) - 1`.
 
 ```python
 def compute_sync_committee_period(epoch: Epoch) -> uint64:
@@ -577,12 +577,12 @@ particular time. To provide this stability, a validator must do the following:
   unset in the ENR once the node no longer has any validators in the
   subcommittee.
 
-  *Note*: The first sync committee from phase 0 to the Altair fork will not be
-  known until the fork happens, which implies subnet assignments are not known
-  until then. Early sync committee members should listen for topic subscriptions
-  from peers and employ discovery via the ENR advertisements near the fork
-  boundary to form initial subnets. Some early sync committee rewards may be
-  missed while the initial subnets form.
+  *Note*: The first sync committee from phase 0 to the Altair upgrade will not
+  be known until the upgrade happens, which implies subnet assignments are not
+  known until then. Early sync committee members should listen for topic
+  subscriptions from peers and employ discovery via the ENR advertisements near
+  the fork boundary to form initial subnets. Some early sync committee rewards
+  may be missed while the initial subnets form.
 
 - To join a sync committee subnet, select a random number of epochs before the
   end of the current sync committee period between 1 and

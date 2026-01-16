@@ -1360,10 +1360,10 @@ def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> Sequence[Subnet
     return [compute_subscribed_subnet(node_id, epoch, index) for index in range(SUBNETS_PER_NODE)]
 ```
 
-*Note*: When preparing for a hard fork, a node must select and subscribe to
+*Note*: When preparing for an upgrade, a node must select and subscribe to
 subnets of the future fork versioning at least `EPOCHS_PER_SUBNET_SUBSCRIPTION`
-epochs in advance of the fork. These new subnets for the fork are maintained in
-addition to those for the current fork until the fork occurs. After the fork
+epochs in advance of the upgrade. These new subnets for the fork are maintained
+in addition to those for the current fork until the fork occurs. After the fork
 occurs, let the subnets from the previous fork reach the end of life with no
 replacements.
 
@@ -1605,7 +1605,7 @@ in the topic name).
 #### How do we upgrade gossip channels (e.g. changes in encoding, compression)?
 
 Changing gossipsub/broadcasts requires a coordinated upgrade where all clients
-start publishing to the new topic together, during a hard fork.
+start publishing to the new topic together, during an upgrade.
 
 When a node is preparing for upcoming tasks (e.g. validator duty lookahead) on a
 gossipsub topic, the node should join the topic of the future epoch in which the
@@ -1771,9 +1771,9 @@ than more volatile advertisements.
 
 #### How should fork version be used in practice?
 
-Fork versions are to be manually updated (likely via incrementing) at each hard
-fork. This is to provide native domain separation for signatures as well as to
-aid in usefulness for identifying peers (via ENRs) and versioning network
+Fork versions are to be manually updated (likely via incrementing) at each
+upgrade. This is to provide native domain separation for signatures as well as
+to aid in usefulness for identifying peers (via ENRs) and versioning network
 protocols (e.g. using fork version to naturally version gossipsub topics).
 
 `BeaconState.genesis_validators_root` is mixed into signature and ENR fork

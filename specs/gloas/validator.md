@@ -214,8 +214,8 @@ construct the `payload_attestations` field in `BeaconBlockBody`:
 
 The blob sidecars are no longer broadcast by the validator, and thus their
 construction is not necessary. This deprecates the corresponding sections from
-the Honest Validator specifications in the Fulu fork, moving them, albeit with
-some modifications, to the [Honest Builder](./builder.md) specifications.
+the Honest Validator specifications in the Fulu upgrade, moving them, albeit
+with some modifications, to the [Honest Builder](./builder.md) specifications.
 
 #### Preparing `ExecutionPayload`
 

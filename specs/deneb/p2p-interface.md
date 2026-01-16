@@ -128,7 +128,7 @@ def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of Deneb to support upgraded types.
+Some gossip meshes are upgraded in Deneb to support upgraded types.
 
 #### Topics and messages
 

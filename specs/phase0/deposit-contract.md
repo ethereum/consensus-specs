@@ -51,7 +51,7 @@ proof-of-work chain defined by the
 [chain-id](https://eips.ethereum.org/EIPS/eip-155) -- `DEPOSIT_CHAIN_ID` -- and
 the network-id -- `DEPOSIT_NETWORK_ID` -- for deposits of ETH to the beacon
 chain. Validator balances will be withdrawable to the execution layer in a
-followup fork after Bellatrix upgrade.
+followup upgrade after Bellatrix.
 
 _Note_: See [here](https://chainid.network/) for a comprehensive list of public
 Ethereum chain chain-id's and network-id's.

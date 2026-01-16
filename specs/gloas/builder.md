@@ -26,8 +26,8 @@
 This is an accompanying document which describes the expected actions of a
 "builder" participating in the Ethereum proof-of-stake protocol.
 
-With the Gloas fork, the protocol introduces a new type of staked actor (not a
-validator) called a *builder*. Since builders are not validators, they do not
+With the Gloas upgrade, the protocol introduces a new type of staked actor (not
+a validator) called a *builder*. Since builders are not validators, they do not
 perform validator duties (e.g., attesting and proposing) and therefore do not
 earn yield on their stake. Builders have the option to produce execution
 payloads by submitting bids. This document is a collection of guidelines for

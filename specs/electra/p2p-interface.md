@@ -67,8 +67,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of Electra to support upgraded
-types.
+Some gossip meshes are upgraded in Electra to support upgraded types.
 
 #### Topics and messages
 

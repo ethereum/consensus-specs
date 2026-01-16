@@ -55,7 +55,7 @@
 
 ## Introduction
 
-Altair is the first beacon-chain hard fork. Its main features are:
+Altair is the first beacon-chain upgrade. Its main features are:
 
 - sync committees to support light clients
 - incentive accounting reforms to reduce specification complexity

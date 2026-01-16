@@ -157,7 +157,7 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of Gloas to support upgraded types.
+Some gossip meshes are upgraded in Gloas to support upgraded types.
 
 #### Topics and messages
 

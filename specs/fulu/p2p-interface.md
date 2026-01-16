@@ -194,7 +194,7 @@ Where
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the Fulu fork to support upgraded types.
+Some gossip meshes are upgraded in Fulu to support upgraded types.
 
 #### Topics and messages
 
@@ -618,7 +618,7 @@ A new entry is added to the ENR under the key `nfd`, short for _next fork
 digest_. This entry communicates the digest of the next scheduled fork,
 regardless of whether it is a regular or a Blob-Parameters-Only fork. This new
 entry MUST be added once `FULU_FORK_EPOCH` is assigned any value other than
-`FAR_FUTURE_EPOCH`. Adding this entry prior to the Fulu fork will not impact
+`FAR_FUTURE_EPOCH`. Adding this entry prior to the Fulu upgrade will not impact
 peering as nodes will ignore unknown ENR entries and `nfd` mismatches do not
 cause disconnects.
 
@@ -636,7 +636,7 @@ purposes of sustained peering. If there is a mismatch, the node MUST NOT
 disconnect before the fork boundary, but it MAY disconnect at/after the fork
 boundary.
 
-Nodes unprepared to follow the Fulu fork will be unaware of `nfd` entries.
+Nodes unprepared to follow the Fulu upgrade will be unaware of `nfd` entries.
 However, their existing comparison of `eth2` entries (concretely
 `next_fork_epoch`) is sufficient to detect upcoming divergence.
 
