@@ -286,10 +286,11 @@ global execution attestation subnet within the first
 
 #### Constructing a payload attestation
 
-If  validator is in the payload attestation committee for the current slot (as
+If validator is in the payload attestation committee for the current slot (as
 obtained from `get_ptc_assignment` above) and has seen a timely beacon block for
 the current slot from the expected proposer, the validator needs to send a
-`PayloadAttestationMessage` for the current slot, according to the following logic.
+`PayloadAttestationMessage` for the current slot, according to the following
+logic.
 
 Let `validator_index` be the validator chosen to submit, `privkey` be the
 private key mapping to `state.validators[validator_index].pubkey`, used to sign
@@ -299,8 +300,7 @@ beacon node to which the validator is connected. The validator should call
 the result either (1) as soon as a `SignedExecutionPayloadEnvelope` matching
 `store.proposer_boost_root` is received, or (2) at the
 `get_payload_attestation_due_ms(epoch)` deadline if no matching payload is
-received by then. 
-
+received by then.
 
 ```python
 def get_payload_attestation_message(
@@ -331,9 +331,17 @@ def is_payload_present(store: Store, root: Root) -> bool:
     A payload is considered present if it has been seen and arrived on time
     based on its snappy-compressed size.
     """
-    if root not in store.execution_payload_states:
+    if root not in store.execution_payloads:
         return False
-    return True
+
+    signed_envelope = store.execution_payloads[root]
+    payload_size = get_payload_size(signed_envelope.message)
+
+    block = store.blocks[root]
+    slot_start_time = store.genesis_time + block.slot * SECONDS_PER_SLOT
+    time_into_slot_ms = seconds_to_milliseconds(store.time - slot_start_time)
+
+    return time_into_slot_ms < get_payload_due_ms(payload_size)
 ```
 
 ```python

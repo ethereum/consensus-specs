@@ -153,6 +153,8 @@ class Store(object):
     payload_data_availability_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
         default_factory=dict
     )
+    # [New in Gloas:EIP7732]
+    execution_payloads: Dict[Root, SignedExecutionPayloadEnvelope] = field(default_factory=dict)
 ```
 
 ### Modified `get_forkchoice_store`
@@ -832,7 +834,8 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
     # Process the execution payload
     process_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
 
-    # Add new state for this payload to the store
+    # Add payload and payload state to the store
+    store.execution_payloads[envelope.beacon_block_root] = signed_envelope
     store.payload_states[envelope.beacon_block_root] = state
 ```
 
