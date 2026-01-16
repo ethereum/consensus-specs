@@ -296,21 +296,24 @@ Let `validator_index` be the validator chosen to submit, `privkey` be the
 private key mapping to `state.validators[validator_index].pubkey`, used to sign
 the payload timeliness attestation, and `store` be the fork-choice store of the
 beacon node to which the validator is connected. The validator should call
-`get_payload_attestation_message(store, validator_index, privkey)` and broadcast
-the result either (1) as soon as a `SignedExecutionPayloadEnvelope` matching
-`store.proposer_boost_root` is received, or (2) at the
-`get_payload_attestation_due_ms(epoch)` deadline if no matching payload is
-received by then.
+`get_payload_attestation_message(store, validator_index, privkey, payload_arrival_time)`
+and broadcast the result either (1) as soon as both the
+`SignedExecutionPayloadEnvelope` matching `store.proposer_boost_root` and its
+associated blob data have been received, or (2) at the
+`get_payload_attestation_due_ms(epoch)` deadline, whichever comes first.
+
+*Note*: The `payload_arrival_time` parameter should be the time at which the
+payload was first seen, independently of when blob data becomes available.
 
 ```python
 def get_payload_attestation_message(
-    store: Store, validator_index: ValidatorIndex, privkey: int
+    store: Store, validator_index: ValidatorIndex, privkey: int, payload_arrival_time: uint64
 ) -> PayloadAttestationMessage:
     root = store.proposer_boost_root
     assert root != Root()
     block = store.blocks[root]
     state = store.block_states[root]
-    payload_timely = is_payload_timely(store, root)
+    payload_timely = is_payload_timely(store, root, payload_arrival_time)
     data = PayloadAttestationData(
         beacon_block_root=root,
         slot=block.slot,
@@ -325,11 +328,11 @@ def get_payload_attestation_message(
 ```
 
 ```python
-def is_payload_timely(store: Store, root: Root) -> bool:
+def is_payload_timely(store: Store, root: Root, payload_arrival_time: uint64) -> bool:
     """
     Check if the payload for the given block root arrived on time.
-    A payload is considered timely if it has been seen and arrived before the
-    deadline based on its snappy-compressed size.
+    A payload is considered timely if it arrived before the deadline
+    based on its snappy-compressed size.
     """
     if root not in store.execution_payloads:
         return False
@@ -339,9 +342,9 @@ def is_payload_timely(store: Store, root: Root) -> bool:
 
     block = store.blocks[root]
     slot_start_time = store.genesis_time + block.slot * SECONDS_PER_SLOT
-    time_into_slot_ms = seconds_to_milliseconds(store.time - slot_start_time)
+    arrival_time_into_slot_ms = seconds_to_milliseconds(payload_arrival_time - slot_start_time)
 
-    return time_into_slot_ms < get_payload_due_ms(payload_size)
+    return arrival_time_into_slot_ms < get_payload_due_ms(payload_size)
 ```
 
 ```python
