@@ -58,14 +58,9 @@ def get_payload_due_ms(payload_size: uint64) -> uint64:
     ``PAYLOAD_ATTESTATION_DUE_BPS`` (size ``MAX_PAYLOAD_SIZE``).
     """
     assert payload_size <= MAX_PAYLOAD_SIZE
-    min_threshold_ms = get_slot_component_duration_ms(MIN_PAYLOAD_DUE_BPS)
-    max_threshold_ms = get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)
-
-    interpolated_ms = (
-        min_threshold_ms
-        + (payload_size * (max_threshold_ms - min_threshold_ms)) // MAX_PAYLOAD_SIZE
-    )
-
+    min_ms = get_slot_component_duration_ms(MIN_PAYLOAD_DUE_BPS)
+    max_ms = get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)
+    interpolated_ms = min_ms + (payload_size * (max_ms - min_ms)) // MAX_PAYLOAD_SIZE
     return uint64(interpolated_ms)
 ```
 
