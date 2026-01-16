@@ -166,7 +166,7 @@ the validations in
 [`process_bls_to_execution_change`](./beacon-chain.md#new-process_bls_to_execution_change).
 
 The `SignedBLSToExecutionChange` message should then be submitted to the
-consensus layer network. Once included on-chain, the withdrawal credential
+consensus-layer network. Once included on-chain, the withdrawal credential
 change takes effect. No further action is required for a validator to enter into
 the automated withdrawal process.
 

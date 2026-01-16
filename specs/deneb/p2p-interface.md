@@ -169,7 +169,7 @@ The *type* of the payload of this topic changes to the (modified)
 New validation:
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
-  limitation defined in Consensus Layer -- i.e. validate that
+  limitation defined in consensus layer -- i.e. validate that
   `len(signed_beacon_block.message.body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK`
 
 ###### `beacon_aggregate_and_proof`
