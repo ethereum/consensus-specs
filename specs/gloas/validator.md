@@ -7,6 +7,9 @@
 - [Introduction](#introduction)
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
+- [Helpers](#helpers)
+  - [`get_payload_due_ms`](#get_payload_due_ms)
+  - [`get_payload_size`](#get_payload_size)
 - [Validator assignment](#validator-assignment)
   - [Payload timeliness committee](#payload-timeliness-committee)
   - [Lookahead](#lookahead)
@@ -41,6 +44,41 @@ validator" to implement Gloas.
 | `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
 | `CONTRIBUTION_DUE_BPS_GLOAS`  | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
 | `PAYLOAD_ATTESTATION_DUE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
+| `MIN_PAYLOAD_DUE_BPS`         | `uint64(3000)` | basis points | 30% of `SLOT_DURATION_MS` |
+
+## Helpers
+
+### `get_payload_due_ms`
+
+```python
+def get_payload_due_ms(payload_size: uint64) -> uint64:
+    """
+    Calculate the deadline for a payload based on its snappy-compressed size.
+    Interpolates linearly from MIN_PAYLOAD_DUE_BPS (size 0) to
+    PAYLOAD_ATTESTATION_DUE_BPS (size MAX_PAYLOAD_SIZE).
+    """
+    assert payload_size <= MAX_PAYLOAD_SIZE
+    min_threshold_ms = get_slot_component_duration_ms(MIN_PAYLOAD_DUE_BPS)
+    max_threshold_ms = get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)
+
+    interpolated_ms = (
+        min_threshold_ms
+        + (payload_size * (max_threshold_ms - min_threshold_ms)) // MAX_PAYLOAD_SIZE
+    )
+
+    return uint64(interpolated_ms)
+```
+
+### `get_payload_size`
+
+```python
+def get_payload_size(envelope: ExecutionPayloadEnvelope) -> uint64:
+    """
+    Return the snappy-compressed size of the execution payload envelope.
+    """
+    # Stub: implementations should return len(snappy_compress(ssz_serialize(envelope)))
+    return uint64(0)
+```
 
 ## Validator assignment
 
@@ -259,19 +297,24 @@ the current slot from the expected proposer, then the validator should prepare a
 Let `validator_index` be the validator chosen to submit, `privkey` be the
 private key mapping to `state.validators[validator_index].pubkey`, used to sign
 the payload timeliness attestation, and `store` be the fork-choice store of the
-beacon node to which the validator is connected. The validator creates
-`payload_attestation_message` by calling
-`get_payload_attestation_message(store, validator_index, privkey)`.
+beacon node to which the validator is connected. The validator should call
+`get_payload_attestation_message(store, validator_index, privkey)` and broadcast
+the result either (1) as soon as a `SignedExecutionPayloadEnvelope` matching
+`store.proposer_boost_root` is received, or (2) at the
+`get_payload_attestation_due_ms(epoch)` deadline if no matching payload is
+received by then. The function will only succeed if `store.proposer_boost_root`
+is set (i.e., a timely beacon block from the expected proposer has been observed
+for the current slot).
 
 ```python
 def get_payload_attestation_message(
     store: Store, validator_index: ValidatorIndex, privkey: int
 ) -> PayloadAttestationMessage:
     root = store.proposer_boost_root
-    assert store.proposer_boost_root != Root()
+    assert root != Root()
     block = store.blocks[root]
     state = store.block_states[root]
-    payload_present = root in store.execution_payload_states
+    payload_present = is_payload_present(store, root)
     data = PayloadAttestationData(
         beacon_block_root=root,
         slot=block.slot,
@@ -283,6 +326,18 @@ def get_payload_attestation_message(
         data=data,
         signature=signature,
     )
+```
+
+```python
+def is_payload_present(store: Store, root: Root) -> bool:
+    """
+    Check if the payload for the given block root is present and timely.
+    A payload is considered present if it has been seen and arrived on time
+    based on its snappy-compressed size.
+    """
+    if root not in store.execution_payload_states:
+        return False
+    return True
 ```
 
 ```python
