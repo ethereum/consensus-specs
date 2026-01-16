@@ -16,7 +16,7 @@
   - [New containers](#new-containers)
     - [`ExecutionProof`](#executionproof)
     - [`SignedExecutionProof`](#signedexecutionproof)
-  - [Extended Containers](#extended-containers)
+  - [Extended containers](#extended-containers)
 - [Helpers](#helpers)
   - [Execution proof functions](#execution-proof-functions)
     - [`verify_execution_proof`](#verify_execution_proof)

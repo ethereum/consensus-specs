@@ -22,7 +22,7 @@
       - [Blob subnets](#blob-subnets)
         - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
-        - [Distributed Blob Publishing using blobs retrieved from local execution layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
+        - [Distributed blob publishing using blobs retrieved from local execution layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [Status v2](#status-v2)
@@ -36,7 +36,7 @@
       - [`eth2` field](#eth2-field)
       - [Custody group count](#custody-group-count)
       - [Next fork digest](#next-fork-digest)
-- [Peer Scoring](#peer-scoring)
+- [Peer scoring](#peer-scoring)
 - [Supernodes](#supernodes)
 
 <!-- mdformat-toc end -->

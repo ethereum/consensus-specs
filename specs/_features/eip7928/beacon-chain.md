@@ -6,7 +6,7 @@
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
-- [Extended Containers](#extended-containers)
+- [Extended containers](#extended-containers)
   - [`ExecutionPayload`](#executionpayload)
   - [`ExecutionPayloadHeader`](#executionpayloadheader)
   - [`BeaconState`](#beaconstate)

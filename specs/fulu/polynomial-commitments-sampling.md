@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Public Methods](#public-methods)
+- [Public methods](#public-methods)
 - [Custom types](#custom-types)
 - [Cryptographic types](#cryptographic-types)
 - [Preset](#preset)

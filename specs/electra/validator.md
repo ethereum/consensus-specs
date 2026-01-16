@@ -18,7 +18,7 @@
     - [Attester slashings](#attester-slashings)
     - [Attestations](#attestations)
     - [Deposits](#deposits)
-    - [Execution Requests](#execution-requests)
+    - [Execution requests](#execution-requests)
   - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
     - [Sidecar](#sidecar)
 - [Attesting](#attesting)

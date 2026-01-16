@@ -6,7 +6,7 @@
 - [Constants](#constants)
   - [Domain types](#domain-types)
 - [Preset](#preset)
-  - [Inclusion List Committee](#inclusion-list-committee)
+  - [Inclusion list committee](#inclusion-list-committee)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`InclusionList`](#inclusionlist)
@@ -14,7 +14,7 @@
 - [Helpers](#helpers)
   - [Predicates](#predicates)
     - [New `is_valid_inclusion_list_signature`](#new-is_valid_inclusion_list_signature)
-  - [Beacon State accessors](#beacon-state-accessors)
+  - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_inclusion_list_committee`](#new-get_inclusion_list_committee)
 
 <!-- mdformat-toc end -->
