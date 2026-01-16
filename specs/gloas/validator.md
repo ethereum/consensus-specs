@@ -249,41 +249,54 @@ global execution attestation subnet within the first
 #### Constructing a payload attestation
 
 If a validator is in the payload attestation committee for the current slot (as
-obtained from `get_ptc_assignment` above) then the validator should prepare a
-`PayloadAttestationMessage` for the current slot. Follow the logic below to
-create the `payload_attestation_message` and broadcast to the global
+obtained from `get_ptc_assignment` above) and has seen a timely beacon block for
+the current slot from the expected proposer, then the validator should prepare a
+`PayloadAttestationMessage` for the current slot, according to the logic in
+`get_payload_attestation_message` below and broadcast to the global
 `payload_attestation_message` pubsub topic within the first
 `get_payload_attestation_due_ms(epoch)` milliseconds of the slot.
 
-The validator creates `payload_attestation_message` as follows:
+Let `validator_index` be the validator chosen to submit, `privkey` be the
+private key mapping to `state.validators[validator_index].pubkey`, used to sign
+the payload timeliness attestation, and `store` be the fork-choice store of the
+beacon node to which the validator is connected. The validator creates
+`payload_attestation_message` by calling
+`get_payload_attestation_message(store, validator_index, privkey)`.
 
-- If the validator has not seen any beacon block for the assigned slot, do not
-  submit a payload attestation; it will be ignored anyway.
-- Set `data.beacon_block_root` be the hash tree root of the beacon block seen
-  for the assigned slot.
-- Set `data.slot` to be the assigned slot.
-- If a previously seen `SignedExecutionPayloadEnvelope` references the block
-  with root `data.beacon_block_root`, set `data.payload_present` to `True`;
-  otherwise, set `data.payload_present` to `False`.
-- Set `payload_attestation_message.validator_index = validator_index` where
-  `validator_index` is the validator chosen to submit. The private key mapping
-  to `state.validators[validator_index].pubkey` is used to sign the payload
-  timeliness attestation.
-- Sign the `payload_attestation_message.data` using the helper
-  `get_payload_attestation_message_signature`.
+```python
+def get_payload_attestation_message(
+    store: Store, validator_index: ValidatorIndex, privkey: int
+) -> PayloadAttestationMessage:
+    root = store.proposer_boost_root
+    assert store.proposer_boost_root != Root()
+    block = store.blocks[root]
+    state = store.block_states[root]
+    payload_present = root in store.execution_payload_states
+    data = PayloadAttestationData(
+        beacon_block_root=root,
+        slot=block.slot,
+        payload_present=payload_present,
+    )
+    signature = get_payload_attestation_message_signature(state, data, privkey)
+    return PayloadAttestationMessage(
+        validator_index=validator_index,
+        data=data,
+        signature=signature,
+    )
+```
+
+```python
+def get_payload_attestation_message_signature(
+    state: BeaconState, data: PayloadAttestationData, privkey: int
+) -> BLSSignature:
+    domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(data.slot))
+    signing_root = compute_signing_root(data, domain)
+    return bls.Sign(privkey, signing_root)
+```
 
 Notice that the attester only signs the `PayloadAttestationData` and not the
 `validator_index` field in the message. Proposers need to aggregate these
 attestations as described above.
-
-```python
-def get_payload_attestation_message_signature(
-    state: BeaconState, attestation: PayloadAttestationMessage, privkey: int
-) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(attestation.data.slot))
-    signing_root = compute_signing_root(attestation.data, domain)
-    return bls.Sign(privkey, signing_root)
-```
 
 *Note*: Validators do not need to check the full validity of the
 `ExecutionPayload` contained in within the envelope, but the checks in the
