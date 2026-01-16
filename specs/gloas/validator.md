@@ -8,8 +8,8 @@
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
 - [Helpers](#helpers)
-  - [`get_payload_due_ms`](#get_payload_due_ms)
-  - [`get_payload_size`](#get_payload_size)
+  - [New `get_payload_due_ms`](#new-get_payload_due_ms)
+  - [New `get_payload_size`](#new-get_payload_size)
 - [Validator assignment](#validator-assignment)
   - [Payload timeliness committee](#payload-timeliness-committee)
   - [Lookahead](#lookahead)
@@ -48,7 +48,7 @@ validator" to implement Gloas.
 
 ## Helpers
 
-### `get_payload_due_ms`
+### New `get_payload_due_ms`
 
 ```python
 def get_payload_due_ms(payload_size: uint64) -> uint64:
@@ -69,7 +69,7 @@ def get_payload_due_ms(payload_size: uint64) -> uint64:
     return uint64(interpolated_ms)
 ```
 
-### `get_payload_size`
+### New `get_payload_size`
 
 ```python
 def get_payload_size(envelope: ExecutionPayloadEnvelope) -> uint64:
