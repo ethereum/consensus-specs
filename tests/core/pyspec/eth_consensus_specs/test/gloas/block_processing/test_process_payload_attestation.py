@@ -40,7 +40,7 @@ def prepare_signed_payload_attestation(
     state,
     slot=None,
     beacon_block_root=None,
-    payload_present=True,
+    payload_timely=True,
     attesting_indices=None,
     valid_signature=True,
     domain_epoch=None,
@@ -80,7 +80,7 @@ def prepare_signed_payload_attestation(
     data = spec.PayloadAttestationData(
         beacon_block_root=beacon_block_root,
         slot=slot,
-        payload_present=payload_present,
+        payload_timely=payload_timely,
     )
 
     # Create payload attestation
@@ -141,13 +141,13 @@ def _compute_selection_with_acceptance_iterations(spec, state, indices, seed, si
 @with_gloas_and_later
 @spec_state_test
 @always_bls
-def test_process_payload_attestation_payload_present(spec, state):
+def test_process_payload_attestation_payload_timely(spec, state):
     """
     Test basic valid payload attestation processing
     """
     spec.process_slots(state, state.slot + 1)
 
-    payload_attestation = prepare_signed_payload_attestation(spec, state, payload_present=True)
+    payload_attestation = prepare_signed_payload_attestation(spec, state, payload_timely=True)
 
     yield from run_payload_attestation_processing(spec, state, payload_attestation)
 
@@ -161,7 +161,7 @@ def test_process_payload_attestation_payload_not_present(spec, state):
     """
     spec.process_slots(state, state.slot + 1)
 
-    payload_attestation = prepare_signed_payload_attestation(spec, state, payload_present=False)
+    payload_attestation = prepare_signed_payload_attestation(spec, state, payload_timely=False)
 
     yield from run_payload_attestation_processing(spec, state, payload_attestation)
 
