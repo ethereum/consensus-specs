@@ -152,10 +152,9 @@ To construct each `SignedProposerPreferences`:
    wishes to receive the builder payment.
 5. Set `preferences.gas_limit` to the validator's preferred gas limit for this
    execution payload.
-6.
-7. Instantiate a new `SignedProposerPreferences` object as `signed_preferences`.
-8. Set `signed_preferences.message` to `preferences`.
-9. Set `signed_preferences.signature` to the result of
+6. Instantiate a new `SignedProposerPreferences` object as `signed_preferences`.
+7. Set `signed_preferences.message` to `preferences`.
+8. Set `signed_preferences.signature` to the result of
    `get_proposer_preferences_signature(state, preferences, privkey)`.
 
 ```python

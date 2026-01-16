@@ -10,7 +10,7 @@
     - [Execution payload](#execution-payload)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
 - [Containers](#containers)
-  - [Extended Containers](#extended-containers)
+  - [Modified containers](#modified-containers)
     - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
   - [Misc](#misc)
@@ -117,7 +117,7 @@ def process_execution_payload(
 
 ## Containers
 
-### Extended Containers
+### Modified containers
 
 #### `BeaconState`
 
