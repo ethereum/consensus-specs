@@ -331,7 +331,7 @@ def is_payload_timely(store: Store, root: Root, payload_arrival_time: Optional[u
     """
     Check if the payload for the given block root arrived on time and its
     associated blob data is available. A payload is considered timely if it
-    arrived before the deadline based on its snappy-compressed size.
+    arrived before the deadline based on its uncompressed size.
     """
     if payload_arrival_time is None:
         return False
