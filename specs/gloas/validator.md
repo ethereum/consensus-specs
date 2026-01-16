@@ -53,7 +53,7 @@ validator" to implement Gloas.
 ```python
 def get_payload_due_ms(payload_size: uint64) -> uint64:
     """
-    Calculate the deadline for a payload based on its snappy-compressed size.
+    Calculate the deadline for a payload based on its uncompressed size.
     Interpolates linearly from ``MIN_PAYLOAD_DUE_BPS`` (size 0) to
     ``PAYLOAD_ATTESTATION_DUE_BPS`` (size ``MAX_PAYLOAD_SIZE``).
     """
