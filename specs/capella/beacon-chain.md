@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+- [Constants](#constants)
   - [Domains](#domains)
 - [Preset](#preset)
   - [Max operations per block](#max-operations-per-block)
@@ -70,6 +71,8 @@ We define the following Python custom types for type hinting and readability:
 | Name              | SSZ equivalent | Description                |
 | ----------------- | -------------- | -------------------------- |
 | `WithdrawalIndex` | `uint64`       | an index of a `Withdrawal` |
+
+## Constants
 
 ### Domains
 
