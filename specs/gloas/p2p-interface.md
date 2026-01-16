@@ -209,7 +209,7 @@ There are no new validations for this topic. However, all validations with
 regards to the `ExecutionPayload` are removed:
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
-  limitation defined in consensus layer -- i.e. validate that
+  limitation defined in the consensus layer -- i.e. validate that
   `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
 - _[REJECT]_ The block's execution payload timestamp is correct with respect to
   the slot -- i.e.

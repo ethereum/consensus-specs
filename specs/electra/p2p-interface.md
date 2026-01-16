@@ -93,7 +93,7 @@ The derivation of the `message-id` remains stable.
 *Updated validation*
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
-  limitation defined in consensus layer -- i.e. validate that
+  limitation defined in the consensus layer -- i.e. validate that
   `len(signed_beacon_block.message.body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA`
 
 ###### `beacon_aggregate_and_proof`

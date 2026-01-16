@@ -265,5 +265,5 @@ and broadcasts it on the `execution_payload` global gossip topic.
 
 An honest builder that has seen a `SignedBeaconBlock` referencing his signed
 bid, but that block was not timely and thus it is not the head of the builder's
-chain, may choose to withhold their execution payload. For this the builder
+chain, may choose to withhold their execution payload. For this, the builder
 should act as if no block was produced and not broadcast the payload.

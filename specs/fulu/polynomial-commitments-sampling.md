@@ -362,7 +362,7 @@ def evaluate_polynomialcoeff(
 
 ### KZG multiproofs
 
-Extended KZG functions for multiproofs
+Extended KZG functions for multiproofs.
 
 #### `compute_kzg_proof_multi_impl`
 
