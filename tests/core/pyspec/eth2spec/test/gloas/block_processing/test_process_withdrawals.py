@@ -294,14 +294,15 @@ def test_pending_withdrawals_processing(spec, state):
     Input State Configured:
         - pending_partial_withdrawals: MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP entries
         - pending_partial_withdrawals[*].withdrawable_epoch: = current_epoch
-        - validators[*]: Configured for partial withdrawals
-        - No builder_pending_withdrawals
+        - balances[*]: MAX_EFFECTIVE_BALANCE + 1 ETH (excess to withdraw)
+        - builder_pending_withdrawals: Empty
 
     Output State Verified:
         - payload_expected_withdrawals: MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
         - pending_partial_withdrawals: Empty (all processed)
-        - balances[*]: Each reduced to max_effective_balance
-        - next_withdrawal_index: Incremented by processed count
+        - pending_partial_delta: -MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
+        - balances[*]: MAX_EFFECTIVE_BALANCE (excess withdrawn)
+        - next_withdrawal_index: Incremented by MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
     """
 
     pending_indices = list(range(spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP))
@@ -310,13 +311,23 @@ def test_pending_withdrawals_processing(spec, state):
         f"(validators: {len(state.validators)})"
     )
 
-    prepare_process_withdrawals(spec, state, pending_partial_indices=pending_indices)
+    excess_balance = spec.Gwei(1_000_000_000)
+    initial_balance = spec.MAX_EFFECTIVE_BALANCE + excess_balance
 
-    # EIP-7732 limits pending withdrawals to min(MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP, MAX_WITHDRAWALS_PER_PAYLOAD - 1)
-    # In minimal config: min(2, 4-1) = 2, in mainnet config: min(8, 16-1) = 8
+    prepare_process_withdrawals(
+        spec,
+        state,
+        pending_partial_indices=pending_indices,
+        validator_balances={i: initial_balance for i in pending_indices},
+    )
+
     expected_withdrawals = spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
+
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
+
+    expected_balances = {i: spec.MAX_EFFECTIVE_BALANCE for i in pending_indices}
+
     assert_process_withdrawals(
         spec,
         state,
@@ -324,6 +335,65 @@ def test_pending_withdrawals_processing(spec, state):
         withdrawal_count=expected_withdrawals,
         pending_partial_delta=-int(expected_withdrawals),
         withdrawal_index_delta=expected_withdrawals,
+        balances=expected_balances,
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_pending_withdrawals_processing_exceeds_limit(spec, state):
+    """
+    Test pending partial withdrawals processing with more than the limit.
+
+    Input State Configured:
+        - pending_partial_withdrawals: MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP + 2 entries
+        - pending_partial_withdrawals[*].withdrawable_epoch: = current_epoch
+        - balances[*]: MAX_EFFECTIVE_BALANCE + 1 ETH (excess to withdraw)
+        - builder_pending_withdrawals: Empty
+
+    Output State Verified:
+        - payload_expected_withdrawals: MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
+        - pending_partial_withdrawals: 2 entries remain (limit enforced)
+        - pending_partial_delta: -MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
+        - balances[0..MAX-1]: MAX_EFFECTIVE_BALANCE (processed)
+        - balances[MAX..MAX+1]: MAX_EFFECTIVE_BALANCE + 1 ETH (unchanged)
+        - next_withdrawal_index: Incremented by MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
+    """
+    num_pending = spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP + 2
+    pending_indices = list(range(num_pending))
+    assert max(pending_indices) < len(state.validators), (
+        f"Max validator index {max(pending_indices)} must exist in registry "
+        f"(validators: {len(state.validators)})"
+    )
+
+    excess_balance = spec.Gwei(1_000_000_000)
+    initial_balance = spec.MAX_EFFECTIVE_BALANCE + excess_balance
+
+    prepare_process_withdrawals(
+        spec,
+        state,
+        pending_partial_indices=pending_indices,
+        validator_balances={i: initial_balance for i in pending_indices},
+    )
+
+    expected_processed = spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
+    processed_indices = pending_indices[:expected_processed]
+    unprocessed_indices = pending_indices[expected_processed:]
+
+    pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    expected_balances = {i: spec.MAX_EFFECTIVE_BALANCE for i in processed_indices}
+    expected_balances.update({i: initial_balance for i in unprocessed_indices})
+
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        withdrawal_count=expected_processed,
+        pending_partial_delta=-int(expected_processed),
+        withdrawal_index_delta=expected_processed,
+        balances=expected_balances,
     )
 
 
