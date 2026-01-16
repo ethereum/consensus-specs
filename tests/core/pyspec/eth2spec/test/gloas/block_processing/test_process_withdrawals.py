@@ -124,8 +124,9 @@ def test_builder_withdrawal_insufficient_balance(spec, state):
         - builders[0].balance: 1 ETH (insufficient for requested 5 ETH)
 
     Output State Verified:
-        - payload_expected_withdrawals: Contains 1 withdrawal (capped to available balance)
-        - builders[0].balance: 0 (all available balance withdrawn)
+        - payload_expected_withdrawals: Contains 1 withdrawal
+        - withdrawal.amount: 5 ETH (requested amount)
+        - builders[0].balance: 0 (deduction capped to available balance)
         - builder_pending_withdrawals: Reduced by 1 (processed even if capped)
         - next_withdrawal_index: Incremented by 1
     """
@@ -135,8 +136,6 @@ def test_builder_withdrawal_insufficient_balance(spec, state):
 
     assert builder_index < len(state.builders), "Builder must exist in registry"
 
-    # Use prepare_process_withdrawals with insufficient balance
-    # (balance assertion was removed, spec caps withdrawal to available balance)
     prepare_process_withdrawals(
         spec,
         state,
@@ -156,6 +155,58 @@ def test_builder_withdrawal_insufficient_balance(spec, state):
         builder_balances={builder_index: 0},
         builder_pending_delta=-1,
         withdrawal_index_delta=1,
+        withdrawal_amounts_builders={builder_index: withdrawal_amount},
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_withdrawal_insufficient_balance_realistic_bounds(spec, state):
+    """
+    Test builder withdrawal with insufficient balance using realistic bounds.
+
+    This test uses MIN_DEPOSIT_AMOUNT-based values to test edge cases with
+    realistic builder balances (builders need MIN_DEPOSIT_AMOUNT to be active).
+
+    Input State Configured:
+        - state.builders[0]: Builder with balance = MIN_DEPOSIT_AMOUNT + 122 Gwei
+        - builder_pending_withdrawals: Contains 1 entry requesting MIN_DEPOSIT_AMOUNT + 123 Gwei
+        - builders[0].balance: Insufficient by exactly 1 Gwei
+
+    Output State Verified:
+        - payload_expected_withdrawals: Contains 1 withdrawal
+        - withdrawal.amount: MIN_DEPOSIT_AMOUNT + 123 Gwei (requested amount)
+        - builders[0].balance: 0 (deduction capped to available balance)
+        - builder_pending_withdrawals: Reduced by 1 (processed even if capped)
+        - next_withdrawal_index: Incremented by 1
+    """
+    builder_index = 0
+    withdrawal_amount = spec.MIN_DEPOSIT_AMOUNT + spec.Gwei(123)
+    available_balance = spec.MIN_DEPOSIT_AMOUNT + spec.Gwei(122)
+
+    assert builder_index < len(state.builders), "Builder must exist in registry"
+    assert withdrawal_amount > available_balance, "Test requires insufficient balance"
+
+    prepare_process_withdrawals(
+        spec,
+        state,
+        builder_indices=[builder_index],
+        builder_withdrawal_amounts={builder_index: withdrawal_amount},
+        builder_balances={builder_index: available_balance},
+    )
+
+    pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        withdrawal_count=1,
+        builder_balances={builder_index: 0},
+        builder_pending_delta=-1,
+        withdrawal_index_delta=1,
+        withdrawal_amounts_builders={builder_index: withdrawal_amount},
     )
 
 
