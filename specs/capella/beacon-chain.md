@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Custom types](#custom-types)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
 - [Preset](#preset)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
@@ -71,7 +71,7 @@ We define the following Python custom types for type hinting and readability:
 | ----------------- | -------------- | -------------------------- |
 | `WithdrawalIndex` | `uint64`       | an index of a `Withdrawal` |
 
-### Domain types
+### Domains
 
 | Name                             | Value                      |
 | -------------------------------- | -------------------------- |

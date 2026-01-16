@@ -8,7 +8,7 @@
 - [Custom types](#custom-types)
 - [Constants](#constants)
   - [Index flags](#index-flags)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
 - [Preset](#preset)
@@ -124,7 +124,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 | -------------------- | --------------- | ------------------------------------------------------------------------------------------ |
 | `BUILDER_INDEX_FLAG` | `uint64(2**40)` | Bitwise flag which indicates that a `ValidatorIndex` should be treated as a `BuilderIndex` |
 
-### Domain types
+### Domains
 
 | Name                          | Value                      |
 | ----------------------------- | -------------------------- |
