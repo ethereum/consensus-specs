@@ -345,10 +345,6 @@ def get_payload_attestation_message_signature(
     return bls.Sign(privkey, signing_root)
 ```
 
-Notice that the attester only signs the `PayloadAttestationData` and not the
-`validator_index` field in the message. Proposers need to aggregate these
-attestations as described above.
-
 *Note*: Validators do not need to check the full validity of the
 `ExecutionPayload` contained in within the envelope, but the checks in the
 [Networking](./p2p-interface.md) specifications should pass for the
