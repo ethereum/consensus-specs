@@ -32,7 +32,7 @@
 
 ## Introduction
 
-This document contains the networking specification for Altair. This document
+This document contains the networking specifications for Altair. This document
 should be viewed as additive to the
 [document from Phase 0](../phase0/p2p-interface.md) and will be referred to as
 the "Phase 0 document" hereafter. Readers should understand the Phase 0 document

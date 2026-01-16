@@ -38,7 +38,7 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for Gloas.
+This document contains the consensus-layer networking specifications for Gloas.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.

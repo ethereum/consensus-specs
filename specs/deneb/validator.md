@@ -33,9 +33,9 @@ definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the
-updated [beacon-chain doc of Deneb](./beacon-chain.md) are requisite for this
-document and used throughout. Please see related beacon-chain doc before
-continuing and use them as a reference throughout.
+updated [beacon-chain specifications of Deneb](./beacon-chain.md) are requisite
+for this document and used throughout. Please see related beacon-chain
+specifications before continuing and use them as a reference throughout.
 
 ## Helpers
 
@@ -104,8 +104,8 @@ All validator responsibilities remain unchanged other than those noted below.
 
 ##### ExecutionPayload
 
-`prepare_execution_payload` is updated from the Capella specs to provide the
-parent beacon block root.
+`prepare_execution_payload` is updated from the Capella specification to provide
+the parent beacon block root.
 
 *Note*: In this section, `state` is the state of the slot for the block proposal
 _without_ the block yet applied. That is, `state` is the `previous_state`

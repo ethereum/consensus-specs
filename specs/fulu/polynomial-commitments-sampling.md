@@ -50,8 +50,8 @@
 This document extends
 [polynomial-commitments.md](../deneb/polynomial-commitments.md) with the
 functions required for data availability sampling (DAS). It is not part of the
-core Deneb spec but an extension that can be optionally implemented to allow
-nodes to reduce their load using DAS.
+core Deneb specification but an extension that can be optionally implemented to
+allow nodes to reduce their load using DAS.
 
 ## Public methods
 

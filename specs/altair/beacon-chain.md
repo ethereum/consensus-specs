@@ -58,7 +58,7 @@
 Altair is the first beacon-chain hard fork. Its main features are:
 
 - sync committees to support light clients
-- incentive accounting reforms to reduce spec complexity
+- incentive accounting reforms to reduce specification complexity
 - penalty parameter updates towards their planned maximally punitive values
 
 ## Custom types
@@ -111,8 +111,8 @@ Altair is the first beacon-chain hard fork. Its main features are:
 This patch updates a few configuration values to move penalty parameters closer
 to their final, maximum security values.
 
-*Note*: The spec does *not* override previous configuration values but instead
-creates new values and replaces usage throughout.
+*Note*: The specification does *not* override previous configuration values but
+instead creates new values and replaces usage throughout.
 
 | Name                                      | Value                              |
 | ----------------------------------------- | ---------------------------------- |

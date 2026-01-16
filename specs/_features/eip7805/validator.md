@@ -42,9 +42,9 @@ definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the
-updated beacon-chain doc of [EIP-7805](./beacon-chain.md) are requisite for this
-document and used throughout. Please see related beacon-chain doc before
-continuing and use them as a reference throughout.
+updated beacon-chain specifications of [EIP-7805](./beacon-chain.md) are
+requisite for this document and used throughout. Please see related beacon-chain
+specifications before continuing and use them as a reference throughout.
 
 ## Configuration
 

@@ -66,8 +66,8 @@ Additionally, this upgrade introduces the following minor changes:
 Bellatrix updates a few configuration values to move penalty parameters to their
 final, maximum security values.
 
-*Note*: The spec does *not* override previous configuration values but instead
-creates new values and replaces usage throughout.
+*Note*: The specification does *not* override previous configuration values but
+instead creates new values and replaces usage throughout.
 
 | Name                                         | Value                          |
 | -------------------------------------------- | ------------------------------ |

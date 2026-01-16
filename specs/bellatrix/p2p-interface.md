@@ -25,7 +25,7 @@
 
 ## Introduction
 
-This document contains the networking specification for Bellatrix.
+This document contains the networking specifications for Bellatrix.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite. This

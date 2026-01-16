@@ -43,7 +43,7 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for Fulu.
+This document contains the consensus-layer networking specifications for Fulu.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.

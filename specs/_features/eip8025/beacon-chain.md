@@ -29,8 +29,8 @@
 
 ## Introduction
 
-This document contains the consensus specs for EIP-8025. This enables stateless
-validation of execution payloads through cryptographic proofs.
+This document contains the consensus specifications for EIP-8025. This enables
+stateless validation of execution payloads through cryptographic proofs.
 
 *Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md).
 

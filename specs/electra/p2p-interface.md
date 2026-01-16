@@ -26,7 +26,8 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for Electra.
+This document contains the consensus-layer networking specifications for
+Electra.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.

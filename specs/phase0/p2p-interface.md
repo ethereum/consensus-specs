@@ -55,7 +55,7 @@
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
     - [Why are we defining specific transports?](#why-are-we-defining-specific-transports)
-    - [Can clients support other transports/handshakes than the ones mandated by the spec?](#can-clients-support-other-transportshandshakes-than-the-ones-mandated-by-the-spec)
+    - [Can clients support other transports/handshakes than the ones mandated by the specification?](#can-clients-support-other-transportshandshakes-than-the-ones-mandated-by-the-specification)
     - [What are the advantages of using TCP/QUIC/Websockets?](#what-are-the-advantages-of-using-tcpquicwebsockets)
     - [Why do we not just support a single transport?](#why-do-we-not-just-support-a-single-transport)
     - [Why are we not using QUIC from the start?](#why-are-we-not-using-quic-from-the-start)
@@ -114,7 +114,7 @@
 
 ## Introduction
 
-This document contains the networking specification for Phase 0.
+This document contains the networking specifications for Phase 0.
 
 It consists of four main sections:
 
@@ -125,7 +125,7 @@ It consists of four main sections:
 3. The rationale and further explanation for the design choices made in the
    previous two sections.
 4. An analysis of the maturity/state of the libp2p features required by this
-   spec across the languages in which clients are being developed.
+   specification across the languages in which clients are being developed.
 
 ## Network fundamentals
 
@@ -173,8 +173,8 @@ MAY use the version to give priority to higher version numbers.
 Clients MUST support
 [multistream-select 1.0](https://github.com/multiformats/multistream-select/)
 and MAY support [multiselect 2.0](https://github.com/libp2p/specs/pull/95) when
-the spec solidifies. Once all clients have implementations for multiselect 2.0,
-multistream-select 1.0 MAY be phased out.
+the specification solidifies. Once all clients have implementations for
+multiselect 2.0, multistream-select 1.0 MAY be phased out.
 
 ### Multiplexing
 
@@ -213,7 +213,7 @@ We define the following Python custom types for type hinting and readability:
 
 ### Configuration
 
-This section outlines configurations that are used in this spec.
+This section outlines configurations that are used in this specification.
 
 | Name                                 | Value                                                                                  | Description                                                                           |
 | ------------------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
@@ -338,7 +338,7 @@ will be used:
 *Note*: Gossipsub v1.1 introduces a number of
 [additional parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#overview-of-new-parameters)
 for peer scoring and other attack mitigations. These are currently under
-investigation and will be spec'd and released to mainnet when they are ready.
+investigation and will be specified and released to mainnet when they are ready.
 
 #### Topics and messages
 
@@ -1383,7 +1383,7 @@ WebSockets on paper becomes irrelevant.
 However, it is useful to define a minimum baseline for interoperability
 purposes.
 
-#### Can clients support other transports/handshakes than the ones mandated by the spec?
+#### Can clients support other transports/handshakes than the ones mandated by the specification?
 
 Clients may support other transports such as libp2p QUIC, WebSockets, and WebRTC
 transports, if available in the language of choice. While interoperability shall
@@ -1539,7 +1539,7 @@ because, amongst other things, it requires several round trips to be sound, and
 doesn’t support early data (0-RTT data), a mechanism that multiselect 2.0 will
 leverage to reduce round trips during connection bootstrapping.
 
-SecIO is not considered secure for the purposes of this spec.
+SecIO is not considered secure for the purposes of this specification.
 
 #### Why are we using Noise?
 
@@ -1803,9 +1803,9 @@ Requests are segregated by protocol ID to:
 3. Enable clients to select the individual requests/versions they support. It
    would no longer be a strict requirement to support all requests, and clients,
    in principle, could support a subset of requests and variety of versions.
-4. Enable flexibility and agility for clients adopting spec changes that impact
-   the request, by signalling to peers exactly which subset of new/old requests
-   they support.
+4. Enable flexibility and agility for clients adopting specification changes
+   that impact the request, by signalling to peers exactly which subset of
+   new/old requests they support.
 5. Enable clients to explicitly choose backwards compatibility at the request
    granularity. Without this, clients would be forced to support entire versions
    of the coarser request protocol.
@@ -2221,5 +2221,5 @@ messages signed by a validator may be amplified by the network.
 ## libp2p implementations matrix
 
 This section will soon contain a matrix showing the maturity/state of the libp2p
-features required by this spec across the languages in which clients are being
-developed.
+features required by this specification across the languages in which clients
+are being developed.

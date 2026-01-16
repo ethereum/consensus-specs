@@ -66,9 +66,9 @@ sync committee signatures into each block they produce.
 ## Prerequisites
 
 All terminology, constants, functions, and protocol mechanics defined in the
-[Altair -- The Beacon Chain](./beacon-chain.md) doc are requisite for this
-document and used throughout. Please see this document before continuing and use
-as a reference throughout.
+[Altair -- The Beacon Chain](./beacon-chain.md) specifications are requisite for
+this document and used throughout. Please see this document before continuing
+and use as a reference throughout.
 
 ## Constants
 

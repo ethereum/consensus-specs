@@ -92,9 +92,9 @@ protocol.
 
 All terminology, constants, functions, and protocol mechanics defined in the
 [Phase 0 -- The Beacon Chain](./beacon-chain.md) and
-[Phase 0 -- Deposit Contract](./deposit-contract.md) doc are requisite for this
-document and used throughout. Please see the Phase 0 doc before continuing and
-use as a reference throughout.
+[Phase 0 -- Deposit Contract](./deposit-contract.md) specifications are
+requisite for this document and used throughout. Please see the Phase 0
+specifications before continuing and use as a reference throughout.
 
 ## Constants
 

@@ -18,7 +18,7 @@
 
 ## Introduction
 
-This is the beacon-chain specification to assign new deposits to existing
+These are the beacon-chain specifications to assign new deposits to existing
 validator records. Refers to
 [EIP-6914](https://github.com/ethereum/EIPs/pull/6914).
 

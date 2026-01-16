@@ -187,10 +187,10 @@ The provided anchor-state will be regarded as a trusted state, to not roll back
 beyond. This should be the genesis state for a full client.
 
 *Note* With regards to fork choice, block headers are interchangeable with
-blocks. The spec is likely to move to headers for reduced overhead in test
-vectors and better encapsulation. Full implementations store blocks as part of
-their database and will often use full blocks when dealing with production fork
-choice.
+blocks. The specification is likely to move to headers for reduced overhead in
+test vectors and better encapsulation. Full implementations store blocks as part
+of their database and will often use full blocks when dealing with production
+fork choice.
 
 ```python
 def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:

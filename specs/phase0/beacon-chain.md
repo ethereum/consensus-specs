@@ -218,7 +218,7 @@ specification.
 `DomainType` for application usage. This means for some `DomainType`
 `DOMAIN_SOME_APPLICATION`, `DOMAIN_SOME_APPLICATION & DOMAIN_APPLICATION_MASK`
 **MUST** be non-zero. This expression for any other `DomainType` in the
-consensus specs **MUST** be zero.
+consensus specifications **MUST** be zero.
 
 ## Preset
 
@@ -355,7 +355,7 @@ The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md)
 containers.
 
 *Note*: The definitions are ordered topologically to facilitate execution of the
-spec.
+specification.
 
 *Note*: Fields missing in container instantiations default to their zero value.
 
@@ -684,7 +684,7 @@ def saturating_sub(a: int, b: int) -> int:
 
 `def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing
 objects into a single root by utilizing a hash tree structure, as defined in the
-[SSZ spec](../../ssz/simple-serialize.md#merkleization).
+[SSZ specification](../../ssz/simple-serialize.md#merkleization).
 
 #### BLS signatures
 
