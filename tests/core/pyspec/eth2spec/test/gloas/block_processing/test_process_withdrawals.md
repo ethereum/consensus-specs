@@ -23,7 +23,7 @@ ______________________________________________________________________
 | `state.next_withdrawal_index`                            | `WithdrawalIndex`                                                   | `uint64` in [0, 2^64-1]. Monotonically increasing. Assigned to each withdrawal created.                                                                              | Starting withdrawal index               |
 | `state.next_withdrawal_validator_index`                  | `ValidatorIndex`                                                    | `uint64` in \[0, `len(validators)`-1\]. **Bound to** `len(validators)`: wraps via modulo.                                                                            | Starting validator sweep position       |
 | `state.next_withdrawal_builder_index`                    | `BuilderIndex`                                                      | `uint64` in \[0, `len(builders)`-1\]. **Bound to** `len(builders)`: wraps via modulo.                                                                                | Starting builder sweep position         |
-| `state.builders`                                         | `List[Builder, BUILDER_REGISTRY_LIMIT]`                             | Length in [0, 2^20]. Separate non-validating staked actors.                                                                                                          | Builder registry                        |
+| `state.builders`                                         | `List[Builder, BUILDER_REGISTRY_LIMIT]`                             | Length in [0, 2^40]. Separate non-validating staked actors.                                                                                                          | Builder registry                        |
 | (in `builders`) `.pubkey`                                | `BLSPubkey`                                                         | `Bytes48`. Builder's public key.                                                                                                                                     | Builder identification                  |
 | (in `builders`) `.execution_address`                     | `ExecutionAddress`                                                  | `Bytes20`. Withdrawal destination for builder sweep withdrawals.                                                                                                     | Sweep withdrawal destination            |
 | (in `builders`) `.balance`                               | `Gwei`                                                              | `uint64`. Builder's staked balance. Decreased by withdrawal amounts.                                                                                                 | Builder balance for withdrawals         |
@@ -36,7 +36,7 @@ ______________________________________________________________________
 | (in `pending_partial_withdrawals`) `.withdrawable_epoch` | `Epoch`                                                             | `uint64`. **Bound to** `state.slot`: ready when `<= current_epoch`. If `>`, breaks processing loop.                                                                  | Check if withdrawal is ready            |
 | (in `pending_partial_withdrawals`) `.validator_index`    | `ValidatorIndex`                                                    | `uint64` in \[0, `len(validators)`-1\]. **Index into** `validators[]` and `balances[]`.                                                                              | Identify validator                      |
 | (in `pending_partial_withdrawals`) `.amount`             | `Gwei`                                                              | `uint64`. Requested amount. Actual = `min(balance - MIN_ACTIVATION_BALANCE, amount)`.                                                                                | Withdrawal amount                       |
-| `state.balances[*]`                                      | `Gwei`                                                              | `uint64` in [0, 2^64-1]. **Same length as** `validators[]`. Must have excess over `MIN_ACTIVATION_BALANCE` (32 ETH) for non-slashed withdrawals.                     | Check available balance                 |
+| `state.balances[*]`                                      | `Gwei`                                                              | `uint64` in [0, 2^64-1]. **Same length as** `validators[]`. Must have excess over `MIN_ACTIVATION_BALANCE` (32 ETH) for partial withdrawals.                         | Check available balance                 |
 | `state.validators`                                       | `List[Validator, VALIDATOR_REGISTRY_LIMIT]`                         | Length in [0, 2^40]. **Same length as** `balances[]`. All index references must be < len.                                                                            | Validator data                          |
 | (in `validators`) `[*].effective_balance`                | `Gwei`                                                              | `uint64` in [0, 2048 ETH]. **Constraint**: partial withdrawals require `>= MIN_ACTIVATION_BALANCE` (32 ETH).                                                         | Check sufficient balance                |
 | (in `validators`) `[*].exit_epoch`                       | `Epoch`                                                             | `uint64`. **Constraint**: partial withdrawals require `== FAR_FUTURE_EPOCH`. If set, validator is exiting and ineligible.                                            | Check if validator exiting              |
@@ -77,7 +77,7 @@ ______________________________________________________________________
 | `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP`         | 16,384                | Max builders checked per sweep        |
 | `MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP` | 8                     | Max partial withdrawals processed     |
 | `VALIDATOR_REGISTRY_LIMIT`                   | 2^40                  | Max validators in registry            |
-| `BUILDER_REGISTRY_LIMIT`                     | 2^20                  | Max builders in registry              |
+| `BUILDER_REGISTRY_LIMIT`                     | 2^40                  | Max builders in registry              |
 | `BUILDER_PENDING_WITHDRAWALS_LIMIT`          | 2^20 (1,048,576)      | Max pending builder withdrawals       |
 | `PENDING_PARTIAL_WITHDRAWALS_LIMIT`          | 2^27 (134,217,728)    | Max pending partial withdrawals       |
 | `MIN_ACTIVATION_BALANCE`                     | 32 ETH (32x10^9 Gwei) | Minimum balance for active validator  |
@@ -144,7 +144,7 @@ Builders are **separate non-validating staked actors** stored in
 
 **Builder withdrawal types**:
 
-1. **Builder Pending Withdrawals**: Explicit withdrawal requests in
+1. **Builder Pending Withdrawals**: Pending builder withdrawals stored in
    `state.builder_pending_withdrawals`. Uses `fee_recipient` as destination.
 2. **Builder Sweep Withdrawals**: Automatic withdrawals when
    `builder.withdrawable_epoch <= current_epoch`. Uses
@@ -154,17 +154,30 @@ ______________________________________________________________________
 
 ## Functions Called
 
-All functions are defined in [beacon-chain.md](../../../../../../../specs/gloas/beacon-chain.md).
+Call stack for `process_withdrawals`. Sources: gloas functions are defined in
+[gloas/beacon-chain.md](../../../../../../../specs/gloas/beacon-chain.md);
+inherited functions are from earlier forks (capella, electra, phase0).
 
-| Function                                             |
-| ---------------------------------------------------- |
-| `is_parent_block_full(state)`                        |
-| `get_expected_withdrawals(state)`                    |
-| `apply_withdrawals(state, withdrawals)`              |
-| `get_builder_withdrawals(state, ...)`                |
-| `get_builders_sweep_withdrawals(state, ...)`         |
-| `update_builder_pending_withdrawals(state, count)`   |
-| `update_next_withdrawal_builder_index(state, count)` |
+- `process_withdrawals(state)` — gloas
+  - `is_parent_block_full(state)` — gloas
+  - `get_expected_withdrawals(state)` — gloas
+    - `get_builder_withdrawals(state, ...)` — gloas
+      - `convert_builder_index_to_validator_index(index)` — gloas
+    - `get_pending_partial_withdrawals(state, ...)` — electra
+    - `get_builders_sweep_withdrawals(state, ...)` — gloas
+      - `get_current_epoch(state)` — phase0
+      - `convert_builder_index_to_validator_index(index)` — gloas
+    - `get_validators_sweep_withdrawals(state, ...)` — electra
+  - `apply_withdrawals(state, withdrawals)` — gloas
+    - `is_builder_index(validator_index)` — gloas
+    - `convert_validator_index_to_builder_index(index)` — gloas
+    - `decrease_balance(state, index, amount)` — phase0
+  - `update_next_withdrawal_index(state, withdrawals)` — capella
+  - `update_payload_expected_withdrawals(state, withdrawals)` — gloas
+  - `update_builder_pending_withdrawals(state, count)` — gloas
+  - `update_pending_partial_withdrawals(state, count)` — electra
+  - `update_next_withdrawal_builder_index(state, count)` — gloas
+  - `update_next_withdrawal_validator_index(state, withdrawals)` — capella
 
 ______________________________________________________________________
 
@@ -180,13 +193,16 @@ ______________________________________________________________________
                     | next_withdrawal_index                   : uint64          |
                     | next_withdrawal_validator_index         : uint64          |
                     | next_withdrawal_builder_index           : uint64          |
-                    | builders[0..2^20]                       : Container[]     |
+                    | builders[0..2^40]                       : Container[]     |
                     |   .balance, .execution_address, .withdrawable_epoch       |
                     | builder_pending_withdrawals[0..2^20]    : Container[]     |
                     |   .builder_index, .fee_recipient, .amount                 |
                     | pending_partial_withdrawals[0..2^27]    : Container[]     |
+                    |   .withdrawable_epoch, .validator_index, .amount          |
                     | balances[0..2^40]                       : uint64[]        |
                     | validators[0..2^40]                     : Container[]     |
+                    |   .effective_balance, .exit_epoch, .withdrawable_epoch,   |
+                    |   .withdrawal_credentials                                 |
                     +---------------------------+-------------------------------+
                                                 |
                                                 v
@@ -204,6 +220,7 @@ ______________________________________________________________________
                     |                   OUTPUT (Modified)                       |
                     +-----------------------------------------------------------+
                     | payload_expected_withdrawals[0..16]     : Container[]     |
+                    |   .index, .validator_index, .address, .amount             |
                     | builders[*].balance                     : uint64          |
                     | balances[*]                             : uint64          |
                     | builder_pending_withdrawals             : Container[]     |
