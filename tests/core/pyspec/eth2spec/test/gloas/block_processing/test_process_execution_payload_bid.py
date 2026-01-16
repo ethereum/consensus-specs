@@ -87,7 +87,7 @@ def prepare_signed_execution_payload_bid(
         )
 
     if blob_kzg_commitments_root is None:
-        kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+        kzg_list = spec.ProgressiveList[spec.KZGCommitment]()
         blob_kzg_commitments_root = kzg_list.hash_tree_root()
 
     if prev_randao is None:
@@ -326,7 +326,7 @@ def test_process_execution_payload_bid_self_build_non_zero_value(spec, state):
     Test self-builder with non-zero value fails (builder_index == BUILDER_INDEX_SELF_BUILD but value > 0)
     """
     block = build_empty_block_for_next_slot(spec, state)
-    kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+    kzg_list = spec.ProgressiveList[spec.KZGCommitment]()
     blob_kzg_commitments_root = kzg_list.hash_tree_root()
 
     bid = spec.ExecutionPayloadBid(

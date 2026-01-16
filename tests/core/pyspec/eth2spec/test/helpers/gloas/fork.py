@@ -24,17 +24,12 @@ def run_fork_test(post_spec, pre_state):
         "eth1_data",
         "eth1_data_votes",
         "eth1_deposit_index",
-        "validators",
-        "balances",
         "randao_mixes",
         "slashings",
-        "previous_epoch_participation",
-        "current_epoch_participation",
         "justification_bits",
         "previous_justified_checkpoint",
         "current_justified_checkpoint",
         "finalized_checkpoint",
-        "inactivity_scores",
         "current_sync_committee",
         "next_sync_committee",
         "next_withdrawal_index",
@@ -46,16 +41,23 @@ def run_fork_test(post_spec, pre_state):
         "earliest_exit_epoch",
         "consolidation_balance_to_consume",
         "earliest_consolidation_epoch",
-        "pending_deposits",
-        "pending_partial_withdrawals",
-        "pending_consolidations",
         "proposer_lookahead",
     ]
     for field in stable_fields:
         assert getattr(pre_state, field) == getattr(post_state, field)
 
     # Modified fields
-    modified_fields = ["fork"]
+    modified_fields = [
+        "fork",
+        "validators",
+        "balances",
+        "previous_epoch_participation",
+        "current_epoch_participation",
+        "inactivity_scores",
+        "pending_deposits",
+        "pending_partial_withdrawals",
+        "pending_consolidations",
+    ]
     for field in modified_fields:
         assert getattr(pre_state, field) != getattr(post_state, field)
 
