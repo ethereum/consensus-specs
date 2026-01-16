@@ -198,7 +198,7 @@ class FCRTest:
         self.apply_attestations()
         self.run_fast_confirmation()
 
-    def run_slots_with_fast_confirmation(self, slot_number, participation_rate=100):
+    def run_slots_with_blocks_and_fast_confirmation(self, slot_number, participation_rate=100):
         for _ in range(slot_number):
             self.next_slot_with_block_and_fast_confirmation(participation_rate)
 

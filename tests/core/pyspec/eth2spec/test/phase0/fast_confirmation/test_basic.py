@@ -1,12 +1,26 @@
-from eth2spec.test.context import MINIMAL, spec_state_test, with_altair_and_later, with_presets
+from eth2spec.test.context import (
+    default_activation_threshold,
+    default_balances,
+    MINIMAL,
+    single_phase,
+    spec_test,
+    with_altair_and_later,
+    with_custom_state,
+    with_presets,
+)
 from eth2spec.test.helpers.fast_confirmation import (
     FCRTest,
 )
 
 
 @with_altair_and_later
-@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_fast_confirm_an_epoch(spec, state):
     fcr_test = FCRTest(spec)
     store = fcr_test.initialize(state, seed=1)
