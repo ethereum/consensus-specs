@@ -74,10 +74,10 @@ and use as a reference throughout.
 
 ### Misc
 
-| Name                                       | Value         |                                       Unit                                       |
-| ------------------------------------------ | ------------- | :------------------------------------------------------------------------------: |
-| `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `2**4` (= 16) |                                    validators                                    |
-| `SYNC_COMMITTEE_SUBNET_COUNT`              | `4`           | The number of sync committee subnets used in the gossipsub aggregation protocol. |
+| Name                                       | Value         |                                      Unit                                       |
+| ------------------------------------------ | ------------- | :-----------------------------------------------------------------------------: |
+| `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `2**4` (= 16) |                                   validators                                    |
+| `SYNC_COMMITTEE_SUBNET_COUNT`              | `4`           | The number of sync committee subnets used in the gossipsub aggregation protocol |
 
 ## Configuration
 

@@ -69,7 +69,7 @@ We define the following Python custom types for type hinting and readability:
 
 | Name              | SSZ equivalent | Description                |
 | ----------------- | -------------- | -------------------------- |
-| `WithdrawalIndex` | `uint64`       | an index of a `Withdrawal` |
+| `WithdrawalIndex` | `uint64`       | An index of a `Withdrawal` |
 
 ### Domain types
 

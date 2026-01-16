@@ -161,19 +161,19 @@ We define the following Python custom types for type hinting and readability:
 
 | Name             | SSZ equivalent | Description                       |
 | ---------------- | -------------- | --------------------------------- |
-| `Slot`           | `uint64`       | a slot number                     |
-| `Epoch`          | `uint64`       | an epoch number                   |
-| `CommitteeIndex` | `uint64`       | a committee index at a slot       |
-| `ValidatorIndex` | `uint64`       | a validator registry index        |
-| `Gwei`           | `uint64`       | an amount in Gwei                 |
-| `Root`           | `Bytes32`      | a Merkle root                     |
-| `Hash32`         | `Bytes32`      | a 256-bit hash                    |
-| `Version`        | `Bytes4`       | a fork version number             |
-| `DomainType`     | `Bytes4`       | a domain type                     |
-| `ForkDigest`     | `Bytes4`       | a digest of the current fork data |
-| `Domain`         | `Bytes32`      | a signature domain                |
-| `BLSPubkey`      | `Bytes48`      | a BLS12-381 public key            |
-| `BLSSignature`   | `Bytes96`      | a BLS12-381 signature             |
+| `Slot`           | `uint64`       | A slot number                     |
+| `Epoch`          | `uint64`       | An epoch number                   |
+| `CommitteeIndex` | `uint64`       | A committee index at a slot       |
+| `ValidatorIndex` | `uint64`       | A validator registry index        |
+| `Gwei`           | `uint64`       | An amount in Gwei                 |
+| `Root`           | `Bytes32`      | A Merkle root                     |
+| `Hash32`         | `Bytes32`      | A 256-bit hash                    |
+| `Version`        | `Bytes4`       | A fork version number             |
+| `DomainType`     | `Bytes4`       | A domain type                     |
+| `ForkDigest`     | `Bytes4`       | A digest of the current fork data |
+| `Domain`         | `Bytes32`      | A signature domain                |
+| `BLSPubkey`      | `Bytes48`      | A BLS12-381 public key            |
+| `BLSSignature`   | `Bytes96`      | A BLS12-381 signature             |
 
 ## Constants
 

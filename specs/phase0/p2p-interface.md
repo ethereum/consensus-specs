@@ -202,8 +202,8 @@ We define the following Python custom types for type hinting and readability:
 
 | Name       | SSZ equivalent | Description       |
 | ---------- | -------------- | ----------------- |
-| `NodeID`   | `uint256`      | node identifier   |
-| `SubnetID` | `uint64`       | subnet identifier |
+| `NodeID`   | `uint256`      | Node identifier   |
+| `SubnetID` | `uint64`       | Subnet identifier |
 
 ### Constants
 
