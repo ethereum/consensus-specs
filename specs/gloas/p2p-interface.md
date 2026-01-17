@@ -8,6 +8,7 @@
 - [Modification in Gloas](#modification-in-gloas)
   - [Configuration](#configuration)
   - [Containers](#containers)
+    - [Modified `BlobSidecar`](#modified-blobsidecar)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
     - [New `ProposerPreferences`](#new-proposerpreferences)
     - [New `SignedProposerPreferences`](#new-signedproposerpreferences)
@@ -54,6 +55,30 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
 
 ### Containers
+
+#### Modified `BlobSidecar
+
+*Note*: The `signed_block_header` and `kzg_commitments_inclusion_proof` fields
+have been removed from `BlobSidecar` in Gloas as header and inclusion
+proof verifications are no longer required in ePBS. Instead, sidecars are
+validated by checking that the hash of `kzg_commitments` matches what's
+committed in the builder's bid for the corresponding `beacon_block_root`.
+
+``` python
+class BlobSidecar(Container):
+    index: BlobIndex
+    blob: Blob
+    kzg_commitment: KZGCommitment
+    kzg_proof: KZGProof
+    # [Modified in Gloas:EIP7732]
+    # Removed `signed_block_header`
+    # [Modified in Gloas:EIP7732]
+    # Removed `kzg_commitments_inclusion_proof`
+    # [New in Gloas:EIP7732]
+    slot: Slot
+    # [New in Gloas:EIP7732]
+    beacon_block_root: Root
+```
 
 #### Modified `DataColumnSidecar`
 
