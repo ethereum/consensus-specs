@@ -54,7 +54,7 @@ For `ProverSignedExecutionProof`:
 
 #### ExecutionProofsByRoot
 
-**Protocol ID:** `/eth2/beacon/req/execution_proofs_by_root/1/`
+**Protocol ID:** `/eth2/beacon_chain/req/execution_proofs_by_root/1/`
 
 The `<context-bytes>` field is calculated as
 `context = compute_fork_digest(fork_version, genesis_validators_root)`.
@@ -63,7 +63,7 @@ Request Content:
 
 ```
 (
-  Root
+  block_root: Root
 )
 ```
 
@@ -75,16 +75,16 @@ Response Content:
 )
 ```
 
-Requests execution proofs for the given `new_payload_request_root`. The response
-MUST contain all available proofs for the requested root, up to
+Requests execution proofs for the given `block_root`. The response MUST contain
+all available proofs for the requested beacon block, up to
 `MAX_EXECUTION_PROOFS_PER_PAYLOAD`.
 
 The following validations MUST pass:
 
-- _[REJECT]_ The `new_payload_request_root` is a 32-byte value.
+- _[REJECT]_ The `block_root` is a 32-byte value.
 
 The response MUST contain:
 
-- All available execution proofs for the requested `new_payload_request_root`.
+- All available execution proofs for the requested `block_root`.
 - The response MUST NOT contain more than `MAX_EXECUTION_PROOFS_PER_PAYLOAD`
   proofs.

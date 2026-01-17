@@ -33,6 +33,8 @@ stateless validation of execution payloads through execution proofs.
 
 ### Execution
 
+*Note*: The execution values are not definitive.
+
 | Name                               | Value               |
 | ---------------------------------- | ------------------- |
 | `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)`         |
@@ -55,10 +57,9 @@ stateless validation of execution payloads through execution proofs.
 
 *Note*: The configuration values are not definitive.
 
-| Name                            | Value         |
-| ------------------------------- | ------------- |
-| `MIN_REQUIRED_EXECUTION_PROOFS` | `uint64(1)`   |
-| `MAX_WHITELISTED_PROVERS`       | `uint64(256)` |
+| Name                      | Value         |
+| ------------------------- | ------------- |
+| `MAX_WHITELISTED_PROVERS` | `uint64(256)` |
 
 ## Containers
 
@@ -89,9 +90,20 @@ class ProofAttributes(object):
 ## Proof engine
 
 The implementation-dependent `ProofEngine` protocol encapsulates the proof
-sub-system logic via proof verification and generation functions.
+sub-system logic via:
 
-The body of these functions are implementation dependent.
+- a state object `self.proof_state` of type `ProofState` containing stored
+  proofs
+- a verification function `self.verify_execution_proof` to verify individual
+  proofs
+- a verification function `self.verify_new_payload_request_header` to verify new
+  payload request headers using stored proofs
+- a generation function `self.request_proofs` to initiate asynchronous proof
+  generation
+
+The body of these functions are implementation dependent. The Engine API may be
+used to implement this and similarly defined functions via an external proof
+engine.
 
 ### `verify_execution_proof`
 
@@ -115,7 +127,7 @@ def verify_new_payload_request_header(
     new_payload_request_header: NewPayloadRequestHeader,
 ) -> bool:
     """
-    Verify the given payload request header.
+    Verify the corresponding new payload request execution is valid.
     Return ``True`` if proof requirements are satisfied.
     """
     ...
