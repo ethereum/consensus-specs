@@ -29,7 +29,7 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
         latest_message = spec.LatestMessage(
             slot=attestation.data.slot,
             root=attestation.data.beacon_block_root,
-            payload_present=attestation.data.index == 1,
+            payload_timely=attestation.data.index == 1,
         )
     else:
         latest_message = spec.LatestMessage(

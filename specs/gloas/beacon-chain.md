@@ -218,7 +218,7 @@ class BuilderPendingWithdrawal(Container):
 class PayloadAttestationData(Container):
     beacon_block_root: Root
     slot: Slot
-    payload_present: boolean
+    payload_timely: boolean
     blob_data_available: boolean
 ```
 
