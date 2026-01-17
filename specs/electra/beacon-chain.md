@@ -126,8 +126,6 @@ Electra is a consensus-layer upgrade containing a number of features. Including:
   outside Attestation
 - [EIP-7691](https://eips.ethereum.org/EIPS/eip-7691): Blob throughput increase
 
-*Note*: This specification is built upon [Deneb](../deneb/beacon-chain.md).
-
 ## Constants
 
 The following values are (non-configurable) constants used throughout the

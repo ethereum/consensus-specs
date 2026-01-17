@@ -43,11 +43,10 @@
 
 ## Introduction
 
-This upgrade adds transaction execution to the beacon chain as part of Bellatrix
-upgrade.
+Bellatrix is a consensus-layer upgrade containing a number of features.
+Including:
 
-Additionally, this upgrade introduces the following minor changes:
-
+- Transaction execution
 - Penalty parameter updates to their planned maximally punitive values
 
 ## Custom types

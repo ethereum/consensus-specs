@@ -28,8 +28,8 @@
 
 ## Introduction
 
-This upgrade adds transaction execution to the beacon chain as part of the
-eip6800 upgrade.
+These are the beacon-chain specifications to add transaction execution to the
+beacon chain as part of the EIP-6800.
 
 ## Custom types
 

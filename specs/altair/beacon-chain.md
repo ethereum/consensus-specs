@@ -57,9 +57,9 @@
 
 Altair is the first beacon-chain upgrade. Its main features are:
 
-- sync committees to support light clients
-- incentive accounting reforms to reduce specification complexity
-- penalty parameter updates towards their planned maximally punitive values
+- Sync committees to support light clients
+- Incentive accounting reforms to reduce specification complexity
+- Penalty parameter updates towards their planned maximally punitive values
 
 ## Custom types
 

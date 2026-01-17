@@ -218,7 +218,7 @@ specification.
 `DomainType` for application usage. This means for some `DomainType`
 `DOMAIN_SOME_APPLICATION`, `DOMAIN_SOME_APPLICATION & DOMAIN_APPLICATION_MASK`
 **MUST** be non-zero. This expression for any other `DomainType` in the
-consensus specifications **MUST** be zero.
+consensus-layer specifications **MUST** be zero.
 
 ## Preset
 

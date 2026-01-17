@@ -26,8 +26,7 @@
 
 ## Introduction
 
-This document details the beacon chain additions and changes of to support the
-EIP-7441 (Whisk SSLE).
+These are the beacon-chain specifications to add EIP-7441 (Whisk SSLE).
 
 *Note*: This specification is built upon
 [Capella](../../capella/beacon-chain.md).
