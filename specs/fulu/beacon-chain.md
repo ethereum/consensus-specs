@@ -29,7 +29,14 @@
 
 ## Introduction
 
-*Note*: This specification is built upon [Electra](../electra/beacon-chain.md).
+Fulu is a consensus-layer upgrade containing a number of features. Including:
+
+- [EIP-7594](https://eips.ethereum.org/EIPS/eip-7594): PeerDAS - Peer Data
+  Availability Sampling
+- [EIP-7917](https://eips.ethereum.org/EIPS/eip-7917): Deterministic proposer
+  lookahead
+- [EIP-7892](https://eips.ethereum.org/EIPS/eip-7892): Blob Parameter Only
+  Hardforks
 
 ## Configuration
 

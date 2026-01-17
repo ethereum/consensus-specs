@@ -26,8 +26,7 @@
 
 ## Introduction
 
-This document details the beacon chain additions and changes of to support the
-EIP-7441 (Whisk SSLE).
+These are the beacon-chain specifications to add EIP-7441 (Whisk SSLE).
 
 *Note*: This specification is built upon
 [Capella](../../capella/beacon-chain.md).
@@ -46,19 +45,19 @@ EIP-7441 (Whisk SSLE).
 
 | Name                       | Value                      | Description                                    |
 | -------------------------- | -------------------------- | ---------------------------------------------- |
-| `CURDLEPROOFS_N_BLINDERS`  | `uint64(4)`                | number of blinders for curdleproofs            |
-| `CANDIDATE_TRACKERS_COUNT` | `uint64(2**14)` (= 16,384) | number of candidate trackers                   |
-| `PROPOSER_TRACKERS_COUNT`  | `uint64(2**13)` (= 8,192)  | number of proposer trackers                    |
-| `VALIDATORS_PER_SHUFFLE`   | `uint64(2**7 - 4)` (= 124) | number of validators shuffled per shuffle step |
-| `MAX_SHUFFLE_PROOF_SIZE`   | `uint64(2**15)`            | max size of a shuffle proof                    |
-| `MAX_OPENING_PROOF_SIZE`   | `uint64(2**10)`            | max size of an opening proof                   |
+| `CURDLEPROOFS_N_BLINDERS`  | `uint64(4)`                | Number of blinders for curdleproofs            |
+| `CANDIDATE_TRACKERS_COUNT` | `uint64(2**14)` (= 16,384) | Number of candidate trackers                   |
+| `PROPOSER_TRACKERS_COUNT`  | `uint64(2**13)` (= 8,192)  | Number of proposer trackers                    |
+| `VALIDATORS_PER_SHUFFLE`   | `uint64(2**7 - 4)` (= 124) | Number of validators shuffled per shuffle step |
+| `MAX_SHUFFLE_PROOF_SIZE`   | `uint64(2**15)`            | Max size of a shuffle proof                    |
+| `MAX_OPENING_PROOF_SIZE`   | `uint64(2**10)`            | Max size of an opening proof                   |
 
 ## Configuration
 
 | Name                         | Value                 | Description                                                 |
 | ---------------------------- | --------------------- | ----------------------------------------------------------- |
-| `EPOCHS_PER_SHUFFLING_PHASE` | `Epoch(2**8)` (= 256) | epochs per shuffling phase                                  |
-| `PROPOSER_SELECTION_GAP`     | `Epoch(2)`            | gap between proposer selection and the block proposal phase |
+| `EPOCHS_PER_SHUFFLING_PHASE` | `Epoch(2**8)` (= 256) | Epochs per shuffling phase                                  |
+| `PROPOSER_SELECTION_GAP`     | `Epoch(2)`            | Gap between proposer selection and the block proposal phase |
 
 ## Cryptography
 
@@ -67,7 +66,7 @@ EIP-7441 (Whisk SSLE).
 | Name                | SSZ equivalent                     | Description                   |
 | ------------------- | ---------------------------------- | ----------------------------- |
 | `BLSFieldElement`   | `uint256`                          | BLS12-381 scalar              |
-| `BLSG1Point`        | `Bytes48`                          | compressed BLS12-381 G1 point |
+| `BLSG1Point`        | `Bytes48`                          | Compressed BLS12-381 G1 point |
 | `WhiskShuffleProof` | `ByteList[MAX_SHUFFLE_PROOF_SIZE]` | Serialized shuffle proof      |
 | `WhiskTrackerProof` | `ByteList[MAX_OPENING_PROOF_SIZE]` | Serialized tracker proof      |
 

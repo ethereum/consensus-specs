@@ -43,11 +43,10 @@
 
 ## Introduction
 
-This upgrade adds transaction execution to the beacon chain as part of Bellatrix
-upgrade.
+Bellatrix is a consensus-layer upgrade containing a number of features.
+Including:
 
-Additionally, this upgrade introduces the following minor changes:
-
+- Transaction execution
 - Penalty parameter updates to their planned maximally punitive values
 
 ## Types
@@ -56,7 +55,7 @@ Additionally, this upgrade introduces the following minor changes:
 
 | Name               | SSZ equivalent                        | Description                                                                                                                                       |
 | ------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Transaction`      | `ByteList[MAX_BYTES_PER_TRANSACTION]` | either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction |
+| `Transaction`      | `ByteList[MAX_BYTES_PER_TRANSACTION]` | Either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction |
 | `ExecutionAddress` | `Bytes20`                             | Address of account on the execution layer                                                                                                         |
 
 ## Preset
@@ -65,9 +64,6 @@ Additionally, this upgrade introduces the following minor changes:
 
 Bellatrix updates a few configuration values to move penalty parameters to their
 final, maximum security values.
-
-*Note*: The spec does *not* override previous configuration values but instead
-creates new values and replaces usage throughout.
 
 | Name                                         | Value                          |
 | -------------------------------------------- | ------------------------------ |

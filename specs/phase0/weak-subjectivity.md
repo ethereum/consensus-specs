@@ -39,7 +39,7 @@ This document uses data structures, constants, functions, and terminology from
 
 | Name    | SSZ Equivalent | Description        |
 | ------- | -------------- | ------------------ |
-| `Ether` | `uint64`       | an amount in Ether |
+| `Ether` | `uint64`       | An amount in Ether |
 
 ## Constants
 

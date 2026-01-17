@@ -6,7 +6,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
-- [Extended Containers](#extended-containers)
+- [Extended containers](#extended-containers)
   - [`ExecutionPayload`](#executionpayload)
   - [`ExecutionPayloadHeader`](#executionpayloadheader)
   - [`BeaconState`](#beaconstate)
@@ -28,7 +28,7 @@
 | ----------------- | ------------------------------------- | ----------------------------- |
 | `BlockAccessList` | `ByteList[MAX_BYTES_PER_TRANSACTION]` | RLP encoded block access list |
 
-## Extended Containers
+## Extended containers
 
 ### `ExecutionPayload`
 

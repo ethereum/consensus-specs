@@ -49,7 +49,7 @@ bridges).
 
 This document suggests a minimal light client design for the beacon chain that
 uses sync committees introduced in
-[this beacon chain extension](../beacon-chain.md).
+[this beacon-chain extension](../beacon-chain.md).
 
 Additional documents describe how the light client sync protocol can be used:
 

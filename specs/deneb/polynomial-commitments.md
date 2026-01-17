@@ -342,8 +342,6 @@ def evaluate_polynomial_in_evaluation_form(
 
 ### KZG
 
-KZG core functions. These are also defined in Deneb execution specs.
-
 #### `blob_to_kzg_commitment`
 
 ```python

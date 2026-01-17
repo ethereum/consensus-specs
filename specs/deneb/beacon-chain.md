@@ -58,10 +58,10 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 ## Types
 
-| Name            | SSZ equivalent | Description              |
-| --------------- | -------------- | ------------------------ |
-| `VersionedHash` | `Bytes32`      | *[New in Deneb:EIP4844]* |
-| `BlobIndex`     | `uint64`       | *[New in Deneb:EIP4844]* |
+| Name            | SSZ equivalent | Description        |
+| --------------- | -------------- | ------------------ |
+| `VersionedHash` | `Bytes32`      | A versioned hash   |
+| `BlobIndex`     | `uint64`       | An index of a blob |
 
 ## Constants
 
@@ -75,17 +75,17 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 ### Execution
 
-| Name                             | Value                    | Description                                                                                                              |
-| -------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | *[New in Deneb:EIP4844]* hardfork independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` (see EIP 4844) |
+| Name                             | Value                    | Description                                                                     |
+| -------------------------------- | ------------------------ | ------------------------------------------------------------------------------- |
+| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | Upgrade independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` |
 
 ## Configuration
 
 ### Execution
 
-| Name                  | Value       | Description                                                                                                    |
-| --------------------- | ----------- | -------------------------------------------------------------------------------------------------------------- |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(6)` | *[New in Deneb:EIP4844]* maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
+| Name                  | Value       | Description                                                                           |
+| --------------------- | ----------- | ------------------------------------------------------------------------------------- |
+| `MAX_BLOBS_PER_BLOCK` | `uint64(6)` | Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 *Note*: The blob transactions are packed into the execution payload by the
 EL/builder with their corresponding blobs being independently transmitted and

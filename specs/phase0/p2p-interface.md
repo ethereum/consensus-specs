@@ -6,7 +6,7 @@
 - [Network fundamentals](#network-fundamentals)
   - [Transport](#transport)
   - [Encryption and identification](#encryption-and-identification)
-  - [Protocol Negotiation](#protocol-negotiation)
+  - [Protocol negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
   - [Types](#types)
@@ -55,13 +55,13 @@
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
     - [Why are we defining specific transports?](#why-are-we-defining-specific-transports)
-    - [Can clients support other transports/handshakes than the ones mandated by the spec?](#can-clients-support-other-transportshandshakes-than-the-ones-mandated-by-the-spec)
+    - [Can clients support other transports/handshakes than the ones mandated by the specification?](#can-clients-support-other-transportshandshakes-than-the-ones-mandated-by-the-specification)
     - [What are the advantages of using TCP/QUIC/Websockets?](#what-are-the-advantages-of-using-tcpquicwebsockets)
     - [Why do we not just support a single transport?](#why-do-we-not-just-support-a-single-transport)
     - [Why are we not using QUIC from the start?](#why-are-we-not-using-quic-from-the-start)
   - [Multiplexing](#multiplexing-1)
     - [Why are we using mplex/yamux?](#why-are-we-using-mplexyamux)
-  - [Protocol Negotiation](#protocol-negotiation-1)
+  - [Protocol negotiation](#protocol-negotiation-1)
     - [When is multiselect 2.0 due and why do we plan to migrate to it?](#when-is-multiselect-20-due-and-why-do-we-plan-to-migrate-to-it)
     - [What is the difference between connection-level and stream-level protocol negotiation?](#what-is-the-difference-between-connection-level-and-stream-level-protocol-negotiation)
   - [Encryption](#encryption)
@@ -114,7 +114,7 @@
 
 ## Introduction
 
-This document contains the networking specification for Phase 0.
+This document contains the networking specifications for Phase 0.
 
 It consists of four main sections:
 
@@ -125,7 +125,7 @@ It consists of four main sections:
 3. The rationale and further explanation for the design choices made in the
    previous two sections.
 4. An analysis of the maturity/state of the libp2p features required by this
-   spec across the languages in which clients are being developed.
+   specification across the languages in which clients are being developed.
 
 ## Network fundamentals
 
@@ -165,7 +165,7 @@ channel handshake with `secp256k1` identities will be used for encryption.
 As specified in the libp2p specification, clients MUST support the `XX`
 handshake pattern.
 
-### Protocol Negotiation
+### Protocol negotiation
 
 Clients MUST use exact equality when negotiating protocol versions to use and
 MAY use the version to give priority to higher version numbers.
@@ -173,8 +173,8 @@ MAY use the version to give priority to higher version numbers.
 Clients MUST support
 [multistream-select 1.0](https://github.com/multiformats/multistream-select/)
 and MAY support [multiselect 2.0](https://github.com/libp2p/specs/pull/95) when
-the spec solidifies. Once all clients have implementations for multiselect 2.0,
-multistream-select 1.0 MAY be phased out.
+the specification solidifies. Once all clients have implementations for
+multiselect 2.0, multistream-select 1.0 MAY be phased out.
 
 ### Multiplexing
 
@@ -202,8 +202,8 @@ We define the following Python custom types for type hinting and readability:
 
 | Name       | SSZ equivalent | Description       |
 | ---------- | -------------- | ----------------- |
-| `NodeID`   | `uint256`      | node identifier   |
-| `SubnetID` | `uint64`       | subnet identifier |
+| `NodeID`   | `uint256`      | Node identifier   |
+| `SubnetID` | `uint64`       | Subnet identifier |
 
 ### Constants
 
@@ -213,7 +213,7 @@ We define the following Python custom types for type hinting and readability:
 
 ### Configuration
 
-This section outlines configurations that are used in this spec.
+This section outlines configurations that are used in this specification.
 
 | Name                                 | Value                                                                                  | Description                                                                           |
 | ------------------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
@@ -338,7 +338,7 @@ will be used:
 *Note*: Gossipsub v1.1 introduces a number of
 [additional parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#overview-of-new-parameters)
 for peer scoring and other attack mitigations. These are currently under
-investigation and will be spec'd and released to mainnet when they are ready.
+investigation and will be specified and released to mainnet when they are ready.
 
 #### Topics and messages
 
@@ -634,7 +634,7 @@ of subnets is defined via `ATTESTATION_SUBNET_COUNT`. The correct subnet for an
 attestation can be calculated with `compute_subnet_for_attestation`.
 `beacon_attestation_{subnet_id}` topics, are rotated through throughout the
 epoch in a similar fashion to rotating through shards in committees (future
-beacon chain upgrade). The subnets are rotated through with
+beacon-chain upgrade). The subnets are rotated through with
 `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`
 subnets per slot.
 
@@ -1360,10 +1360,10 @@ def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> Sequence[Subnet
     return [compute_subscribed_subnet(node_id, epoch, index) for index in range(SUBNETS_PER_NODE)]
 ```
 
-*Note*: When preparing for a hard fork, a node must select and subscribe to
+*Note*: When preparing for an upgrade, a node must select and subscribe to
 subnets of the future fork versioning at least `EPOCHS_PER_SUBNET_SUBSCRIPTION`
-epochs in advance of the fork. These new subnets for the fork are maintained in
-addition to those for the current fork until the fork occurs. After the fork
+epochs in advance of the upgrade. These new subnets for the fork are maintained
+in addition to those for the current fork until the fork occurs. After the fork
 occurs, let the subnets from the previous fork reach the end of life with no
 replacements.
 
@@ -1383,7 +1383,7 @@ WebSockets on paper becomes irrelevant.
 However, it is useful to define a minimum baseline for interoperability
 purposes.
 
-#### Can clients support other transports/handshakes than the ones mandated by the spec?
+#### Can clients support other transports/handshakes than the ones mandated by the specification?
 
 Clients may support other transports such as libp2p QUIC, WebSockets, and WebRTC
 transports, if available in the language of choice. While interoperability shall
@@ -1481,7 +1481,7 @@ Overlay multiplexers are not necessary with QUIC since the protocol provides
 native multiplexing, but they need to be layered atop TCP, WebSockets, and other
 transports that lack such support.
 
-### Protocol Negotiation
+### Protocol negotiation
 
 #### When is multiselect 2.0 due and why do we plan to migrate to it?
 
@@ -1539,7 +1539,7 @@ because, amongst other things, it requires several round trips to be sound, and
 doesn’t support early data (0-RTT data), a mechanism that multiselect 2.0 will
 leverage to reduce round trips during connection bootstrapping.
 
-SecIO is not considered secure for the purposes of this spec.
+SecIO is not considered secure for the purposes of this specification.
 
 #### Why are we using Noise?
 
@@ -1605,7 +1605,7 @@ in the topic name).
 #### How do we upgrade gossip channels (e.g. changes in encoding, compression)?
 
 Changing gossipsub/broadcasts requires a coordinated upgrade where all clients
-start publishing to the new topic together, during a hard fork.
+start publishing to the new topic together, during an upgrade.
 
 When a node is preparing for upcoming tasks (e.g. validator duty lookahead) on a
 gossipsub topic, the node should join the topic of the future epoch in which the
@@ -1771,9 +1771,9 @@ than more volatile advertisements.
 
 #### How should fork version be used in practice?
 
-Fork versions are to be manually updated (likely via incrementing) at each hard
-fork. This is to provide native domain separation for signatures as well as to
-aid in usefulness for identifying peers (via ENRs) and versioning network
+Fork versions are to be manually updated (likely via incrementing) at each
+upgrade. This is to provide native domain separation for signatures as well as
+to aid in usefulness for identifying peers (via ENRs) and versioning network
 protocols (e.g. using fork version to naturally version gossipsub topics).
 
 `BeaconState.genesis_validators_root` is mixed into signature and ENR fork
@@ -1803,9 +1803,9 @@ Requests are segregated by protocol ID to:
 3. Enable clients to select the individual requests/versions they support. It
    would no longer be a strict requirement to support all requests, and clients,
    in principle, could support a subset of requests and variety of versions.
-4. Enable flexibility and agility for clients adopting spec changes that impact
-   the request, by signalling to peers exactly which subset of new/old requests
-   they support.
+4. Enable flexibility and agility for clients adopting specification changes
+   that impact the request, by signalling to peers exactly which subset of
+   new/old requests they support.
 5. Enable clients to explicitly choose backwards compatibility at the request
    granularity. Without this, clients would be forced to support entire versions
    of the coarser request protocol.
@@ -2083,7 +2083,7 @@ discv5 uses ENRs and we will presumably need to:
 #### Why do we not form ENRs and find peers until genesis block/state is known?
 
 Although client software might very well be running locally prior to the
-solidification of the beacon chain genesis state and block, clients cannot form
+solidification of the beacon-chain genesis state and block, clients cannot form
 valid ENRs prior to this point. ENRs contain `fork_digest` which utilizes the
 `genesis_validators_root` for a cleaner separation between chains so prior to
 knowing genesis, we cannot use `fork_digest` to cleanly find peers on our
@@ -2221,5 +2221,5 @@ messages signed by a validator may be amplified by the network.
 ## libp2p implementations matrix
 
 This section will soon contain a matrix showing the maturity/state of the libp2p
-features required by this spec across the languages in which clients are being
-developed.
+features required by this specification across the languages in which clients
+are being developed.
