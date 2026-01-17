@@ -56,7 +56,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Containers
 
-#### Modified `BlobSidecar
+#### Modified `BlobSidecar`
 
 *Note*: The `signed_block_header` and `kzg_commitments_inclusion_proof` fields
 have been removed from `BlobSidecar` in Gloas as header and inclusion
