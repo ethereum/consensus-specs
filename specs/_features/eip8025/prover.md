@@ -57,8 +57,9 @@ for a `BeaconBlockBody` performs the following steps:
    `proof_gen_id = proof_engine.request_proofs(new_payload_request, proof_attributes)`
    to initiate proof generation.
 4. The proof engine generates proofs asynchronously and delivers them to the
-   prover via `POST /eth/v1/prover/execution_proofs`.
-5. Upon receiving each `ExecutionProof`:
+   prover via `POST /eth/v1/prover/execution_proofs`. Each proof is delivered
+   with its associated `proof_gen_id` to link it to the original request.
+5. Upon receiving each `ExecutionProof` with its `proof_gen_id`:
    - Validate the proof matches a pending `proof_gen_id`.
    - Set `message` to the `ExecutionProof`.
    - Set `prover_pubkey` to the prover's public key.
