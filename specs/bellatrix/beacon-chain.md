@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Preset](#preset)
   - [Rewards and penalties](#rewards-and-penalties)
   - [Execution](#execution)
@@ -49,7 +49,7 @@ Including:
 - Transaction execution
 - Penalty parameter updates to their planned maximally punitive values
 
-## Custom types
+## Types
 
 *Note*: The `Transaction` type is a stub which is not final.
 
@@ -255,7 +255,9 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 
 ```python
 def slash_validator(
-    state: BeaconState, slashed_index: ValidatorIndex, whistleblower_index: ValidatorIndex = None
+    state: BeaconState,
+    slashed_index: ValidatorIndex,
+    whistleblower_index: Optional[ValidatorIndex] = None,
 ) -> None:
     """
     Slash the validator with index ``slashed_index``.

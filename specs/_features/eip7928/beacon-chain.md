@@ -5,7 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Extended containers](#extended-containers)
   - [`ExecutionPayload`](#executionpayload)
   - [`ExecutionPayloadHeader`](#executionpayloadheader)
@@ -22,7 +22,7 @@
 
 *Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md).
 
-## Custom types
+## Types
 
 | Name              | SSZ equivalent                        | Description                   |
 | ----------------- | ------------------------------------- | ----------------------------- |

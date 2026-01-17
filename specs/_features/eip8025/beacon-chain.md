@@ -10,7 +10,7 @@
 - [Introduction](#introduction)
 - [Constants](#constants)
   - [Execution](#execution)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
 - [Configuration](#configuration)
 - [Containers](#containers)
   - [New containers](#new-containers)
@@ -46,7 +46,7 @@ stateless validation of execution payloads through cryptographic proofs.
 | `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)`                            |
 | `PROGRAM`                          | `ProgramBytecode(b"DEFAULT__PROGRAM")` |
 
-### Domain types
+### Domains
 
 | Name                     | Value                      |
 | ------------------------ | -------------------------- |

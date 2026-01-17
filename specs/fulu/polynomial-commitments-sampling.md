@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Public methods](#public-methods)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Cryptographic types](#cryptographic-types)
 - [Preset](#preset)
   - [Blob](#blob)
@@ -68,7 +68,7 @@ The following is a list of the public methods:
 - [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
 - [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
-## Custom types
+## Types
 
 | Name              | SSZ equivalent                                                  | Description                                                                  |
 | ----------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------- |

@@ -9,7 +9,7 @@
   - [Protocol negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
-  - [Custom types](#custom-types)
+  - [Types](#types)
   - [Constants](#constants)
   - [Configuration](#configuration)
   - [Helpers](#helpers)
@@ -196,7 +196,7 @@ the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
 ## Consensus-layer network interaction domains
 
-### Custom types
+### Types
 
 We define the following Python custom types for type hinting and readability:
 

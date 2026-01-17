@@ -4,11 +4,11 @@
 
 - [Introduction](#introduction)
 - [Notation](#notation)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
 - [Preset](#preset)
   - [Misc](#misc-1)
   - [Gwei values](#gwei-values)
@@ -155,7 +155,7 @@ block (in a later upgrade) and proof-of-stake votes for a beacon block (Phase
 
 Code snippets appearing in `this style` are to be interpreted as Python 3 code.
 
-## Custom types
+## Types
 
 We define the following Python custom types for type hinting and readability:
 
@@ -201,7 +201,7 @@ specification.
 | `BLS_WITHDRAWAL_PREFIX`          | `Bytes1('0x00')` |
 | `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
 
-### Domain types
+### Domains
 
 | Name                         | Value                      |
 | ---------------------------- | -------------------------- |
@@ -934,7 +934,9 @@ def compute_fork_data_root(current_version: Version, genesis_validators_root: Ro
 
 ```python
 def compute_domain(
-    domain_type: DomainType, fork_version: Version = None, genesis_validators_root: Root = None
+    domain_type: DomainType,
+    fork_version: Optional[Version] = None,
+    genesis_validators_root: Optional[Root] = None,
 ) -> Domain:
     """
     Return the domain for the ``domain_type`` and ``fork_version``.
@@ -1137,7 +1139,9 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
 #### `get_domain`
 
 ```python
-def get_domain(state: BeaconState, domain_type: DomainType, epoch: Epoch = None) -> Domain:
+def get_domain(
+    state: BeaconState, domain_type: DomainType, epoch: Optional[Epoch] = None
+) -> Domain:
     """
     Return the signature domain (fork version concatenated with domain type) of a message.
     """
@@ -1225,7 +1229,9 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
 ```python
 def slash_validator(
-    state: BeaconState, slashed_index: ValidatorIndex, whistleblower_index: ValidatorIndex = None
+    state: BeaconState,
+    slashed_index: ValidatorIndex,
+    whistleblower_index: Optional[ValidatorIndex] = None,
 ) -> None:
     """
     Slash the validator with index ``slashed_index``.

@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
 - [Preset](#preset)
   - [Inclusion list committee](#inclusion-list-committee)
 - [Containers](#containers)
@@ -32,7 +32,7 @@ transaction inclusion. Refers to the following posts:
 
 ## Constants
 
-### Domain types
+### Domains
 
 | Name                              | Value                      |
 | --------------------------------- | -------------------------- |

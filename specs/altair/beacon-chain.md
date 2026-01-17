@@ -3,11 +3,11 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Participation flag indices](#participation-flag-indices)
   - [Incentivization weights](#incentivization-weights)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
   - [Misc](#misc)
 - [Preset](#preset)
   - [Rewards and penalties](#rewards-and-penalties)
@@ -61,7 +61,7 @@ Altair is the first beacon-chain upgrade. Its main features are:
 - Incentive accounting reforms to reduce specification complexity
 - Penalty parameter updates towards their planned maximally punitive values
 
-## Custom types
+## Types
 
 | Name                 | SSZ equivalent | Description                                                |
 | -------------------- | -------------- | ---------------------------------------------------------- |
@@ -90,7 +90,7 @@ Altair is the first beacon-chain upgrade. Its main features are:
 
 *Note*: The sum of the weights equal `WEIGHT_DENOMINATOR`.
 
-### Domain types
+### Domains
 
 | Name                                    | Value                      |
 | --------------------------------------- | -------------------------- |
@@ -457,7 +457,9 @@ calculating the proposer reward.
 
 ```python
 def slash_validator(
-    state: BeaconState, slashed_index: ValidatorIndex, whistleblower_index: ValidatorIndex = None
+    state: BeaconState,
+    slashed_index: ValidatorIndex,
+    whistleblower_index: Optional[ValidatorIndex] = None,
 ) -> None:
     """
     Slash the validator with index ``slashed_index``.

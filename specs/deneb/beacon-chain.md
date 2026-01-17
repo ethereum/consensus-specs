@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Blob](#blob)
 - [Preset](#preset)
@@ -56,7 +56,7 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
   Inclusion Slot
 - [EIP-7514](https://eips.ethereum.org/EIPS/eip-7514): Add Max Epoch Churn Limit
 
-## Custom types
+## Types
 
 | Name            | SSZ equivalent | Description        |
 | --------------- | -------------- | ------------------ |

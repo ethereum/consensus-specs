@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
@@ -31,7 +31,7 @@ Unless stated explicitly, all prior functionality from
 *Note*: It introduces the process of transition from the last PoW block to the
 first PoS block.
 
-## Custom types
+## Types
 
 | Name        | SSZ equivalent | Description                              |
 | ----------- | -------------- | ---------------------------------------- |
