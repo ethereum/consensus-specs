@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Preset](#preset)
   - [Rewards and penalties](#rewards-and-penalties)
   - [Execution](#execution)
@@ -50,7 +50,7 @@ Additionally, this upgrade introduces the following minor changes:
 
 - Penalty parameter updates to their planned maximally punitive values
 
-## Custom types
+## Types
 
 *Note*: The `Transaction` type is a stub which is not final.
 

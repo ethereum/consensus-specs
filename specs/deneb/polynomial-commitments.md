@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Cryptographic types](#cryptographic-types)
 - [Constants](#constants)
 - [Preset](#preset)
@@ -57,7 +57,7 @@ internally by the KZG library.
 Public functions MUST accept raw bytes as input and perform the required
 cryptographic normalization before invoking any internal functions.
 
-## Custom types
+## Types
 
 | Name            | SSZ equivalent                                                  | Description                                                                                                                                                                  |
 | --------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

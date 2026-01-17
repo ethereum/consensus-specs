@@ -6,7 +6,7 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
 - [Preset](#preset)
 - [Configuration](#configuration)
 - [Cryptography](#cryptography)
@@ -34,7 +34,7 @@ EIP-7441 (Whisk SSLE).
 
 ## Constants
 
-### Domain types
+### Domains
 
 | Name                         | Value                      |
 | ---------------------------- | -------------------------- |

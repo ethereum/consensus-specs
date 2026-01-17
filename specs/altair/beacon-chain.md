@@ -3,11 +3,11 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Participation flag indices](#participation-flag-indices)
   - [Incentivization weights](#incentivization-weights)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
   - [Misc](#misc)
 - [Preset](#preset)
   - [Rewards and penalties](#rewards-and-penalties)
@@ -61,7 +61,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 - incentive accounting reforms to reduce spec complexity
 - penalty parameter updates towards their planned maximally punitive values
 
-## Custom types
+## Types
 
 | Name                 | SSZ equivalent | Description                                                |
 | -------------------- | -------------- | ---------------------------------------------------------- |
@@ -90,7 +90,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 *Note*: The sum of the weights equal `WEIGHT_DENOMINATOR`.
 
-### Domain types
+### Domains
 
 | Name                                    | Value                      |
 | --------------------------------------- | -------------------------- |
