@@ -64,7 +64,7 @@ proof verifications are no longer required in ePBS. Instead, sidecars are
 validated by checking that the hash of `kzg_commitments` matches what is
 committed in the builder's bid for the corresponding `beacon_block_root`.
 
-``` python
+```python
 class BlobSidecar(Container):
     index: BlobIndex
     blob: Blob
