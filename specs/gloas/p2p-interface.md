@@ -61,7 +61,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 *Note*: The `signed_block_header` and `kzg_commitments_inclusion_proof` fields
 have been removed from `BlobSidecar` in Gloas as header and inclusion
 proof verifications are no longer required in ePBS. Instead, sidecars are
-validated by checking that the hash of `kzg_commitments` matches what's
+validated by checking that the hash of `kzg_commitments` matches what is
 committed in the builder's bid for the corresponding `beacon_block_root`.
 
 ``` python
