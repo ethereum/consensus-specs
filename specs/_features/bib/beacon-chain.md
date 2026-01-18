@@ -26,15 +26,21 @@
 
 ## Introduction
 
-BIB (Block-In-Blobs) is a protocol upgrade that extends the PeerDAS
-scheme to include execution payload data in "payload blobs".
+BIB (Block-In-Blobs) is a protocol upgrade that extends the PeerDAS scheme to
+include execution payload data in "payload blobs".
 
 Key changes:
-- `blob_kzg_commitments` contains commitments for both payload blobs and blob transaction blobs
-- `execution_payload_blobs_count` indicates the number of payload blob commitments (which come first)
-- Payload transactions are chunked into 128 KiB payload blobs and committed via KZG
-- Payload blob versioned hashes use `0x11` prefix (blob transaction blobs use `0x01`)
-- The existing `expectedBlobVersionedHashes` Engine API parameter carries both types combined
+
+- `blob_kzg_commitments` contains commitments for both payload blobs and blob
+  transaction blobs
+- `execution_payload_blobs_count` indicates the number of payload blob
+  commitments (which come first)
+- Payload transactions are chunked into 128 KiB payload blobs and committed via
+  KZG
+- Payload blob versioned hashes use `0x11` prefix (blob transaction blobs use
+  `0x01`)
+- The existing `expectedBlobVersionedHashes` Engine API parameter carries both
+  types combined
 
 *Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md).
 
@@ -46,12 +52,14 @@ No new custom types are introduced in BIB.
 
 ### Versioned hash versions
 
-| Name                                    | Value            | Description                                                                    |
-| --------------------------------------- | ---------------- | ------------------------------------------------------------------------------ |
-| `VERSIONED_HASH_VERSION_PAYLOAD_BLOB`   | `Bytes1('0x11')` | *[New in BIB]* Version byte for payload blob commitments (type=1, version=1)   |
+| Name                                  | Value            | Description                                                                  |
+| ------------------------------------- | ---------------- | ---------------------------------------------------------------------------- |
+| `VERSIONED_HASH_VERSION_PAYLOAD_BLOB` | `Bytes1('0x11')` | *[New in BIB]* Version byte for payload blob commitments (type=1, version=1) |
 
-*Note*: The first byte of a versioned hash uses the format `0xTV` where the high nibble (`T`)
-indicates the data type and the low nibble (`V`) indicates the commitment scheme version:
+*Note*: The first byte of a versioned hash uses the format `0xTV` where the high
+nibble (`T`) indicates the data type and the low nibble (`V`) indicates the
+commitment scheme version:
+
 - `0x01` = Blob transaction blobs (type=0), KZG v1 (existing EIP-4844)
 - `0x11` = Payload blobs (type=1), KZG v1 (new in BIB)
 
@@ -79,7 +87,7 @@ class BeaconBlockBody(Container):
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     execution_requests: ExecutionRequests
     # [New in BIB]
-    execution_payload_blobs_count: uint64  
+    execution_payload_blobs_count: uint64
 ```
 
 ## Helpers
@@ -107,7 +115,8 @@ def kzg_commitment_to_payload_blob_versioned_hash(kzg_commitment: KZGCommitment)
 ##### Modified `is_valid_versioned_hashes`
 
 *Note*: The function `is_valid_versioned_hashes` is modified to validate both
-blob transaction versioned hashes (`0x01`) and payload blob versioned hashes (`0x11`).
+blob transaction versioned hashes (`0x01`) and payload blob versioned hashes
+(`0x11`).
 
 ```python
 def is_valid_versioned_hashes(
@@ -131,10 +140,14 @@ def is_valid_versioned_hashes(
 
 ##### Modified `process_execution_payload`
 
-*Note*: The function `process_execution_payload` is modified to construct `versioned_hashes`
-from `blob_kzg_commitments`, using `execution_payload_blobs_count` to select the correct versioned hash prefix:
-- Commitments before `execution_payload_blobs_count` use `0x11` prefix (payload blobs)
-- Commitments at or after `execution_payload_blobs_count` use `0x01` prefix (blob transaction blobs)
+*Note*: The function `process_execution_payload` is modified to construct
+`versioned_hashes` from `blob_kzg_commitments`, using
+`execution_payload_blobs_count` to select the correct versioned hash prefix:
+
+- Commitments before `execution_payload_blobs_count` use `0x11` prefix (payload
+  blobs)
+- Commitments at or after `execution_payload_blobs_count` use `0x01` prefix
+  (blob transaction blobs)
 
 ```python
 def process_execution_payload(
@@ -162,7 +175,8 @@ def process_execution_payload(
     # [New in BIB]
     # Compute versioned hashes
     versioned_hashes = [
-        kzg_commitment_to_payload_blob_versioned_hash(commitment) if idx < body.execution_payload_blobs_count
+        kzg_commitment_to_payload_blob_versioned_hash(commitment)
+        if idx < body.execution_payload_blobs_count
         else kzg_commitment_to_versioned_hash(commitment)
         for (idx, commitment) in enumerate(body.blob_kzg_commitments)
     ]
@@ -205,7 +219,8 @@ def process_execution_payload(
 
 When constructing a `BeaconBlockBody` for proposal, the block producer **MUST**:
 
-1. Call `engine_getPayloadV6` to obtain the `ExecutionPayload` and `BlobsBundleV3` from EL
+1. Call `engine_getPayloadV6` to obtain the `ExecutionPayload` and
+   `BlobsBundleV3` from EL
 2. Set:
    - `blob_kzg_commitments = blobsBundle.commitments`
    - `execution_payload_blobs_count = blobsBundle.executionPayloadBlobsCount`
