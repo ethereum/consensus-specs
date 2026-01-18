@@ -10,9 +10,9 @@
     - [Execution payload](#execution-payload)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
 - [Containers](#containers)
-  - [Extended Containers](#extended-containers)
+  - [Modified containers](#modified-containers)
     - [`BeaconState`](#beaconstate)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Misc](#misc)
     - [New `BlobParameters`](#new-blobparameters)
     - [New `get_blob_parameters`](#new-get_blob_parameters)
@@ -29,7 +29,14 @@
 
 ## Introduction
 
-*Note*: This specification is built upon [Electra](../electra/beacon-chain.md).
+Fulu is a consensus-layer upgrade containing a number of features. Including:
+
+- [EIP-7594](https://eips.ethereum.org/EIPS/eip-7594): PeerDAS - Peer Data
+  Availability Sampling
+- [EIP-7917](https://eips.ethereum.org/EIPS/eip-7917): Deterministic proposer
+  lookahead
+- [EIP-7892](https://eips.ethereum.org/EIPS/eip-7892): Blob Parameter Only
+  Hardforks
 
 ## Configuration
 
@@ -117,7 +124,7 @@ def process_execution_payload(
 
 ## Containers
 
-### Extended Containers
+### Modified containers
 
 #### `BeaconState`
 
@@ -174,7 +181,7 @@ class BeaconState(Container):
     proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
 ```
 
-## Helper functions
+## Helpers
 
 ### Misc
 
@@ -254,7 +261,7 @@ def compute_proposer_indices(
 #### Modified `get_beacon_proposer_index`
 
 *Note*: The function `get_beacon_proposer_index` is modified to use the
-pre-calculated `current_proposer_lookahead` instead of calculating it on-demand.
+pre-calculated `proposer_lookahead` instead of calculating it on-demand.
 
 ```python
 def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:

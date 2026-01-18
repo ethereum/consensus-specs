@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
 - [Preset](#preset)
   - [Misc](#misc)
@@ -14,7 +14,7 @@
   - [`LightClientFinalityUpdate`](#lightclientfinalityupdate)
   - [`LightClientOptimisticUpdate`](#lightclientoptimisticupdate)
   - [`LightClientStore`](#lightclientstore)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [`finalized_root_gindex_at_slot`](#finalized_root_gindex_at_slot)
   - [`current_sync_committee_gindex_at_slot`](#current_sync_committee_gindex_at_slot)
   - [`next_sync_committee_gindex_at_slot`](#next_sync_committee_gindex_at_slot)
@@ -49,7 +49,7 @@ bridges).
 
 This document suggests a minimal light client design for the beacon chain that
 uses sync committees introduced in
-[this beacon chain extension](../beacon-chain.md).
+[this beacon-chain extension](../beacon-chain.md).
 
 Additional documents describe how the light client sync protocol can be used:
 
@@ -57,7 +57,7 @@ Additional documents describe how the light client sync protocol can be used:
 - [Light client](./light-client.md)
 - [Networking](./p2p-interface.md)
 
-## Custom types
+## Types
 
 | Name                         | SSZ equivalent                                              | Description                                                       |
 | ---------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------- |
@@ -170,7 +170,7 @@ class LightClientStore(object):
     current_max_active_participants: uint64
 ```
 
-## Helper functions
+## Helpers
 
 ### `finalized_root_gindex_at_slot`
 

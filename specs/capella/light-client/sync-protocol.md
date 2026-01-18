@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
 - [Containers](#containers)
   - [Modified `LightClientHeader`](#modified-lightclientheader)
@@ -12,7 +12,7 @@
   - [Modified `LightClientFinalityUpdate`](#modified-lightclientfinalityupdate)
   - [Modified `LightClientOptimisticUpdate`](#modified-lightclientoptimisticupdate)
   - [Modified `LightClientStore`](#modified-lightclientstore)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [`get_lc_execution_root`](#get_lc_execution_root)
   - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
@@ -31,7 +31,7 @@ Additional documents describes the impact of the upgrade on certain roles:
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 
-## Custom types
+## Types
 
 | Name              | SSZ equivalent                                         | Description                                                   |
 | ----------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
@@ -121,7 +121,7 @@ class LightClientStore(object):
     current_max_active_participants: uint64
 ```
 
-## Helper functions
+## Helpers
 
 ### `get_lc_execution_root`
 

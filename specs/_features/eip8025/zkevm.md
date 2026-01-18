@@ -6,13 +6,13 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Cryptographic types](#cryptographic-types)
 - [Containers](#containers)
   - [`ZKEVMProof`](#zkevmproof)
   - [`PrivateInput`](#privateinput)
   - [`PublicInput`](#publicinput)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Preprocessing](#preprocessing)
     - [`generate_keys`](#generate_keys)
   - [Proof verification](#proof-verification)
@@ -48,7 +48,7 @@ for a payload with a maximum gas limit of 30M gas.
 | `MAX_VERIFICATION_KEY_SIZE` | `2**20` (= 1MiB)       |
 | `MAX_WITNESS_SIZE`          | `314572800` (= 300MiB) |
 
-## Custom types
+## Types
 
 | Name         | SSZ equivalent | Description                     |
 | ------------ | -------------- | ------------------------------- |
@@ -61,7 +61,7 @@ layer client. The size depends on the client; `16` is a placeholder.
 
 | Name                 | SSZ equivalent                        | Description                                                   |
 | -------------------- | ------------------------------------- | ------------------------------------------------------------- |
-| `ProgramBytecode`    | `ByteList[16]`                        | Execution layer program bytecode                              |
+| `ProgramBytecode`    | `ByteList[16]`                        | Execution-layer program bytecode                              |
 | `ProofID`            | `uint8`                               | Identifier for proof system                                   |
 | `ProvingKey`         | `ByteList[MAX_PROVING_KEY_SIZE]`      | Key used for proof generation                                 |
 | `VerificationKey`    | `ByteList[MAX_VERIFICATION_KEY_SIZE]` | Key used for proof verification                               |
@@ -96,7 +96,7 @@ class PublicInput(Container):
     parent_hash: Hash32
 ```
 
-## Helper functions
+## Helpers
 
 ### Preprocessing
 

@@ -30,8 +30,8 @@ finality, deposits, active validator count, etc. may be part of the decision
 process to trigger the fork. For now we assume the condition will be triggered
 at epoch `BELLATRIX_FORK_EPOCH`.
 
-Note that for the pure Bellatrix networks, we don't apply `upgrade_to_bellatrix`
-since it starts with Bellatrix version logic.
+*Note*: For the pure Bellatrix networks, the `upgrade_to_bellatrix` function is
+applied to transition the genesis state to this fork.
 
 ### Upgrading the state
 

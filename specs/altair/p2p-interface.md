@@ -4,7 +4,8 @@
 
 - [Introduction](#introduction)
 - [Modifications in Altair](#modifications-in-altair)
-  - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Helpers](#helpers)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -31,8 +32,8 @@
 
 ## Introduction
 
-This document contains the networking specification for Altair. This document
-should be viewed as additive to the
+This document contains the consensus-layer networking specifications for Altair.
+This document should be viewed as additive to the
 [document from Phase 0](../phase0/p2p-interface.md) and will be referred to as
 the "Phase 0 document" hereafter. Readers should understand the Phase 0 document
 and use it as a basis to understand the changes outlined in this document.
@@ -41,6 +42,8 @@ Altair adds new messages, topics and data to the Req-Resp, Gossip and Discovery
 domain. Some Phase 0 features will be deprecated, but not removed immediately.
 
 ## Modifications in Altair
+
+### Helpers
 
 #### Modified `compute_fork_version`
 

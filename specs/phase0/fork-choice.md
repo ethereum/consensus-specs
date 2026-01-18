@@ -18,6 +18,8 @@
     - [`get_ancestor`](#get_ancestor)
     - [`calculate_committee_fraction`](#calculate_committee_fraction)
     - [`get_checkpoint_block`](#get_checkpoint_block)
+    - [`get_attestation_score`](#get_attestation_score)
+    - [`compute_proposer_score`](#compute_proposer_score)
     - [`get_proposer_score`](#get_proposer_score)
     - [`get_weight`](#get_weight)
     - [`get_voting_source`](#get_voting_source)
@@ -39,6 +41,7 @@
       - [`is_proposing_on_time`](#is_proposing_on_time)
       - [`is_head_weak`](#is_head_weak)
       - [`is_parent_strong`](#is_parent_strong)
+      - [`is_proposer_equivocation`](#is_proposer_equivocation)
       - [`get_proposer_head`](#get_proposer_head)
     - [Pull-up tip helpers](#pull-up-tip-helpers)
       - [`compute_pulled_up_tip`](#compute_pulled_up_tip)
@@ -49,6 +52,9 @@
       - [`validate_on_attestation`](#validate_on_attestation)
       - [`store_target_checkpoint_state`](#store_target_checkpoint_state)
       - [`update_latest_messages`](#update_latest_messages)
+    - [`on_block` helpers](#on_block-helpers)
+      - [`record_block_timeliness`](#record_block_timeliness)
+      - [`update_proposer_boost_root`](#update_proposer_boost_root)
   - [Handlers](#handlers)
     - [`on_tick`](#on_tick)
     - [`on_block`](#on_block)
@@ -59,8 +65,9 @@
 
 ## Introduction
 
-This document is the beacon chain fork choice spec, part of Phase 0. It assumes
-the [beacon chain state transition function spec](./beacon-chain.md).
+This document is the beacon-chain fork choice specification, part of Phase 0. It
+assumes the
+[beacon-chain state transition function specification](./beacon-chain.md).
 
 ## Fork choice
 
@@ -103,10 +110,9 @@ handlers must not modify `store`.
 
 ### Constant
 
-| Name                              | Value           |
-| --------------------------------- | --------------- |
-| `INTERVALS_PER_SLOT` *deprecated* | `uint64(3)`     |
-| `BASIS_POINTS`                    | `uint64(10000)` |
+| Name           | Value           |
+| -------------- | --------------- |
+| `BASIS_POINTS` | `uint64(10000)` |
 
 ### Configuration
 
@@ -148,9 +154,9 @@ algorithm. The important fields being tracked are described below:
 - `finalized_checkpoint`: the highest known finalized checkpoint. The fork
   choice only considers blocks that are not conflicting with this checkpoint.
 - `unrealized_justified_checkpoint` & `unrealized_finalized_checkpoint`: these
-  track the highest justified & finalized checkpoints resp., without regard to
-  whether on-chain ***realization*** has occurred, i.e. FFG processing of new
-  attestations within the state transition function. This is an important
+  track the highest justified & finalized checkpoints respectively, without
+  regard to whether on-chain ***realization*** has occurred, i.e. FFG processing
+  of new attestations within the state transition function. This is an important
   distinction from `justified_checkpoint` & `finalized_checkpoint`, because they
   will only track the checkpoints that are realized on-chain. Note that on-chain
   processing of FFG information only happens at epoch boundaries.
@@ -182,10 +188,10 @@ The provided anchor-state will be regarded as a trusted state, to not roll back
 beyond. This should be the genesis state for a full client.
 
 *Note* With regards to fork choice, block headers are interchangeable with
-blocks. The spec is likely to move to headers for reduced overhead in test
-vectors and better encapsulation. Full implementations store blocks as part of
-their database and will often use full blocks when dealing with production fork
-choice.
+blocks. The specification is likely to move to headers for reduced overhead in
+test vectors and better encapsulation. Full implementations store blocks as part
+of their database and will often use full blocks when dealing with production
+fork choice.
 
 ```python
 def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:
@@ -268,26 +274,16 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
     return get_ancestor(store, root, epoch_first_slot)
 ```
 
-#### `get_proposer_score`
+#### `get_attestation_score`
 
 ```python
-def get_proposer_score(store: Store) -> Gwei:
-    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
-    committee_weight = get_total_active_balance(justified_checkpoint_state) // SLOTS_PER_EPOCH
-    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
-```
-
-#### `get_weight`
-
-```python
-def get_weight(store: Store, root: Root) -> Gwei:
-    state = store.checkpoint_states[store.justified_checkpoint]
+def get_attestation_score(store: Store, root: Root, state: BeaconState) -> Gwei:
     unslashed_and_active_indices = [
         i
         for i in get_active_validator_indices(state, get_current_epoch(state))
         if not state.validators[i].slashed
     ]
-    attestation_score = Gwei(
+    return Gwei(
         sum(
             state.validators[i].effective_balance
             for i in unslashed_and_active_indices
@@ -299,6 +295,30 @@ def get_weight(store: Store, root: Root) -> Gwei:
             )
         )
     )
+```
+
+#### `compute_proposer_score`
+
+```python
+def compute_proposer_score(state: BeaconState) -> Gwei:
+    committee_weight = get_total_active_balance(state) // SLOTS_PER_EPOCH
+    return (committee_weight * PROPOSER_SCORE_BOOST) // 100
+```
+
+#### `get_proposer_score`
+
+```python
+def get_proposer_score(store: Store) -> Gwei:
+    justified_checkpoint_state = store.checkpoint_states[store.justified_checkpoint]
+    return compute_proposer_score(justified_checkpoint_state)
+```
+
+#### `get_weight`
+
+```python
+def get_weight(store: Store, root: Root) -> Gwei:
+    state = store.checkpoint_states[store.justified_checkpoint]
+    attestation_score = get_attestation_score(store, root, state)
     if store.proposer_boost_root == Root():
         # Return only attestation score if ``proposer_boost_root`` is not set
         return attestation_score
@@ -555,11 +575,28 @@ def is_head_weak(store: Store, head_root: Root) -> bool:
 ##### `is_parent_strong`
 
 ```python
-def is_parent_strong(store: Store, parent_root: Root) -> bool:
+def is_parent_strong(store: Store, root: Root) -> bool:
     justified_state = store.checkpoint_states[store.justified_checkpoint]
     parent_threshold = calculate_committee_fraction(justified_state, REORG_PARENT_WEIGHT_THRESHOLD)
+    parent_root = store.blocks[root].parent_root
     parent_weight = get_weight(store, parent_root)
     return parent_weight > parent_threshold
+```
+
+##### `is_proposer_equivocation`
+
+```python
+def is_proposer_equivocation(store: Store, root: Root) -> bool:
+    block = store.blocks[root]
+    proposer_index = block.proposer_index
+    slot = block.slot
+    # roots from the same slot and proposer
+    matching_roots = [
+        root
+        for root, block in store.blocks.items()
+        if (block.proposer_index == proposer_index and block.slot == slot)
+    ]
+    return len(matching_roots) > 1
 ```
 
 ##### `get_proposer_head`
@@ -595,7 +632,10 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
     head_weak = is_head_weak(store, head_root)
 
     # Check that the missing votes are assigned to the parent and not being hoarded.
-    parent_strong = is_parent_strong(store, parent_root)
+    parent_strong = is_parent_strong(store, head_root)
+
+    # Re-org more aggressively if there is a proposer equivocation in the previous slot.
+    proposer_equivocation = is_proposer_equivocation(store, head_root)
 
     if all(
         [
@@ -610,6 +650,8 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
         ]
     ):
         # We can re-org the current head by building upon its parent block.
+        return parent_root
+    elif all([head_weak, current_time_ok, proposer_equivocation]):
         return parent_root
     else:
         return head_root
@@ -740,6 +782,42 @@ def update_latest_messages(
             store.latest_messages[i] = LatestMessage(epoch=target.epoch, root=beacon_block_root)
 ```
 
+#### `on_block` helpers
+
+##### `record_block_timeliness`
+
+```python
+def record_block_timeliness(store: Store, root: Root) -> None:
+    block = store.blocks[root]
+    seconds_since_genesis = store.time - store.genesis_time
+    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    epoch = get_current_store_epoch(store)
+    attestation_threshold_ms = get_attestation_due_ms(epoch)
+    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
+    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
+    store.block_timeliness[root] = is_timely
+```
+
+##### `update_proposer_boost_root`
+
+```python
+def update_proposer_boost_root(store: Store, root: Root) -> None:
+    is_first_block = store.proposer_boost_root == Root()
+    is_timely = store.block_timeliness[root]
+
+    # Add proposer score boost if the block is timely, not conflicting with an
+    # existing block, with the same the proposer as the canonical chain.
+    if is_timely and is_first_block:
+        head_state = copy(store.block_states[get_head(store)])
+        slot = get_current_slot(store)
+        if head_state.slot < slot:
+            process_slots(head_state, slot)
+        block = store.blocks[root]
+        # Only update if the proposer is the same as on the canonical chain
+        if block.proposer_index == get_beacon_proposer_index(head_state):
+            store.proposer_boost_root = root
+```
+
 ### Handlers
 
 #### `on_tick`
@@ -787,19 +865,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
-    # Add block timeliness to the store
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    epoch = get_current_store_epoch(store)
-    attestation_threshold_ms = get_attestation_due_ms(epoch)
-    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
-    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
-    store.block_timeliness[hash_tree_root(block)] = is_timely
-
-    # Add proposer score boost if the block is timely and not conflicting with an existing block
-    is_first_block = store.proposer_boost_root == Root()
-    if is_timely and is_first_block:
-        store.proposer_boost_root = hash_tree_root(block)
+    record_block_timeliness(store, block_root)
+    update_proposer_boost_root(store, block_root)
 
     # Update checkpoints in store if necessary
     update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)

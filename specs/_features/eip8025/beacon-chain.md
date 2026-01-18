@@ -10,14 +10,14 @@
 - [Introduction](#introduction)
 - [Constants](#constants)
   - [Execution](#execution)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
 - [Configuration](#configuration)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`ExecutionProof`](#executionproof)
     - [`SignedExecutionProof`](#signedexecutionproof)
-  - [Extended Containers](#extended-containers)
-- [Helper functions](#helper-functions)
+  - [Extended containers](#extended-containers)
+- [Helpers](#helpers)
   - [Execution proof functions](#execution-proof-functions)
     - [`verify_execution_proof`](#verify_execution_proof)
     - [`verify_execution_proofs`](#verify_execution_proofs)
@@ -29,8 +29,8 @@
 
 ## Introduction
 
-This document contains the consensus specs for EIP-8025. This enables stateless
-validation of execution payloads through cryptographic proofs.
+These are the beacon-chain specifications to add EIP-8025. This enables
+stateless validation of execution payloads through cryptographic proofs.
 
 *Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md).
 
@@ -46,11 +46,11 @@ validation of execution payloads through cryptographic proofs.
 | `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)`                            |
 | `PROGRAM`                          | `ProgramBytecode(b"DEFAULT__PROGRAM")` |
 
-### Domain types
+### Domains
 
 | Name                     | Value                      |
 | ------------------------ | -------------------------- |
-| `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0B000000')` |
+| `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0D000000')` |
 
 ## Configuration
 
@@ -81,12 +81,12 @@ class SignedExecutionProof(Container):
     signature: BLSSignature
 ```
 
-### Extended Containers
+### Extended containers
 
 *Note*: `BeaconState` and `BeaconBlockBody` remain the same. No modifications
 are required for execution proofs since they are handled externally.
 
-## Helper functions
+## Helpers
 
 ### Execution proof functions
 

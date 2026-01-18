@@ -6,15 +6,15 @@
 - [Network fundamentals](#network-fundamentals)
   - [Transport](#transport)
   - [Encryption and identification](#encryption-and-identification)
-  - [Protocol Negotiation](#protocol-negotiation)
+  - [Protocol negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
-  - [Helper functions](#helper-functions)
-    - [`compute_fork_version`](#compute_fork_version)
-    - [`compute_fork_digest`](#compute_fork_digest)
-  - [Custom types](#custom-types)
+  - [Types](#types)
   - [Constants](#constants)
   - [Configuration](#configuration)
+  - [Helpers](#helpers)
+    - [`compute_fork_version`](#compute_fork_version)
+    - [`compute_fork_digest`](#compute_fork_digest)
   - [MetaData](#metadata)
   - [Maximum message sizes](#maximum-message-sizes)
     - [`max_compressed_len`](#max_compressed_len)
@@ -55,11 +55,11 @@
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
     - [Why are we defining specific transports?](#why-are-we-defining-specific-transports)
-    - [Can clients support other transports/handshakes than the ones mandated by the spec?](#can-clients-support-other-transportshandshakes-than-the-ones-mandated-by-the-spec)
+    - [Can clients support other transports/handshakes than the ones mandated by the specification?](#can-clients-support-other-transportshandshakes-than-the-ones-mandated-by-the-specification)
     - [What are the advantages of using TCP/QUIC/Websockets?](#what-are-the-advantages-of-using-tcpquicwebsockets)
     - [Why do we not just support a single transport?](#why-do-we-not-just-support-a-single-transport)
     - [Why are we not using QUIC from the start?](#why-are-we-not-using-quic-from-the-start)
-  - [Protocol Negotiation](#protocol-negotiation-1)
+  - [Protocol negotiation](#protocol-negotiation-1)
     - [When is multiselect 2.0 due and why do we plan to migrate to it?](#when-is-multiselect-20-due-and-why-do-we-plan-to-migrate-to-it)
     - [What is the difference between connection-level and stream-level protocol negotiation?](#what-is-the-difference-between-connection-level-and-stream-level-protocol-negotiation)
   - [Encryption](#encryption)
@@ -112,7 +112,7 @@
 
 ## Introduction
 
-This document contains the networking specification for Phase 0.
+This document contains the networking specifications for Phase 0.
 
 It consists of four main sections:
 
@@ -123,7 +123,7 @@ It consists of four main sections:
 3. The rationale and further explanation for the design choices made in the
    previous two sections.
 4. An analysis of the maturity/state of the libp2p features required by this
-   spec across the languages in which clients are being developed.
+   specification across the languages in which clients are being developed.
 
 ## Network fundamentals
 
@@ -163,7 +163,7 @@ channel handshake with `secp256k1` identities will be used for encryption.
 As specified in the libp2p specification, clients MUST support the `XX`
 handshake pattern.
 
-### Protocol Negotiation
+### Protocol negotiation
 
 Clients MUST use exact equality when negotiating protocol versions to use and
 MAY use the version to give priority to higher version numbers.
@@ -171,8 +171,8 @@ MAY use the version to give priority to higher version numbers.
 Clients MUST support
 [multistream-select 1.0](https://github.com/multiformats/multistream-select/)
 and MAY support [multiselect 2.0](https://github.com/libp2p/specs/pull/95) when
-the spec solidifies. Once all clients have implementations for multiselect 2.0,
-multistream-select 1.0 MAY be phased out.
+the specification solidifies. Once all clients have implementations for
+multiselect 2.0, multistream-select 1.0 MAY be phased out.
 
 ### Multiplexing
 
@@ -183,7 +183,42 @@ WebRTC), and is omitted for capable transports (e.g. QUIC).
 
 ## Consensus-layer network interaction domains
 
-### Helper functions
+### Types
+
+We define the following Python custom types for type hinting and readability:
+
+| Name       | SSZ equivalent | Description       |
+| ---------- | -------------- | ----------------- |
+| `NodeID`   | `uint256`      | Node identifier   |
+| `SubnetID` | `uint64`       | Subnet identifier |
+
+### Constants
+
+| Name           | Value |               Unit               |
+| -------------- | ----- | :------------------------------: |
+| `NODE_ID_BITS` | `256` | The bit length of uint256 is 256 |
+
+### Configuration
+
+This section outlines configurations that are used in this specification.
+
+| Name                                 | Value                                                                                  | Description                                                                           |
+| ------------------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `MAX_PAYLOAD_SIZE`                   | `10 * 2**20` (= 10485760, 10 MiB)                                                      | The maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
+| `MAX_REQUEST_BLOCKS`                 | `2**10` (= 1024)                                                                       | Maximum number of blocks in a single request                                          |
+| `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `2**8` (= 256)                                                                         | Number of epochs on a subnet subscription (~27 hours)                                 |
+| `MIN_EPOCHS_FOR_BLOCK_REQUESTS`      | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks                           |
+| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32`                                                                                   | The maximum number of slots during which an attestation can be propagated             |
+| `MAXIMUM_GOSSIP_CLOCK_DISPARITY`     | `500`                                                                                  | The maximum **milliseconds** of clock disparity assumed between honest nodes          |
+| `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType('0x00000000')`                                                             | 4-byte domain for gossip message-id isolation of *invalid* snappy messages            |
+| `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType('0x01000000')`                                                             | 4-byte domain for gossip message-id isolation of *valid* snappy messages              |
+| `SUBNETS_PER_NODE`                   | `2`                                                                                    | The number of long-lived subnets a beacon node should be subscribed to                |
+| `ATTESTATION_SUBNET_COUNT`           | `2**6` (= 64)                                                                          | The number of attestation subnets used in the gossipsub protocol.                     |
+| `ATTESTATION_SUBNET_EXTRA_BITS`      | `0`                                                                                    | The number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
+| `ATTESTATION_SUBNET_PREFIX_BITS`     | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)`              |                                                                                       |
+| `MAX_CONCURRENT_REQUESTS`            | `2`                                                                                    | Maximum number of concurrent requests per protocol ID that a client may issue         |
+
+### Helpers
 
 #### `compute_fork_version`
 
@@ -212,41 +247,6 @@ def compute_fork_digest(
     base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
     return ForkDigest(base_digest[:4])
 ```
-
-### Custom types
-
-We define the following Python custom types for type hinting and readability:
-
-| Name       | SSZ equivalent | Description       |
-| ---------- | -------------- | ----------------- |
-| `NodeID`   | `uint256`      | node identifier   |
-| `SubnetID` | `uint64`       | subnet identifier |
-
-### Constants
-
-| Name           | Value |               Unit               |
-| -------------- | ----- | :------------------------------: |
-| `NODE_ID_BITS` | `256` | The bit length of uint256 is 256 |
-
-### Configuration
-
-This section outlines configurations that are used in this spec.
-
-| Name                                 | Value                                                                                  | Description                                                                           |
-| ------------------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `MAX_PAYLOAD_SIZE`                   | `10 * 2**20` (= 10485760, 10 MiB)                                                      | The maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
-| `MAX_REQUEST_BLOCKS`                 | `2**10` (= 1024)                                                                       | Maximum number of blocks in a single request                                          |
-| `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `2**8` (= 256)                                                                         | Number of epochs on a subnet subscription (~27 hours)                                 |
-| `MIN_EPOCHS_FOR_BLOCK_REQUESTS`      | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks                           |
-| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32`                                                                                   | The maximum number of slots during which an attestation can be propagated             |
-| `MAXIMUM_GOSSIP_CLOCK_DISPARITY`     | `500`                                                                                  | The maximum **milliseconds** of clock disparity assumed between honest nodes          |
-| `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType('0x00000000')`                                                             | 4-byte domain for gossip message-id isolation of *invalid* snappy messages            |
-| `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType('0x01000000')`                                                             | 4-byte domain for gossip message-id isolation of *valid* snappy messages              |
-| `SUBNETS_PER_NODE`                   | `2`                                                                                    | The number of long-lived subnets a beacon node should be subscribed to                |
-| `ATTESTATION_SUBNET_COUNT`           | `2**6` (= 64)                                                                          | The number of attestation subnets used in the gossipsub protocol.                     |
-| `ATTESTATION_SUBNET_EXTRA_BITS`      | `0`                                                                                    | The number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
-| `ATTESTATION_SUBNET_PREFIX_BITS`     | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)`              |                                                                                       |
-| `MAX_CONCURRENT_REQUESTS`            | `2`                                                                                    | Maximum number of concurrent requests per protocol ID that a client may issue         |
 
 ### MetaData
 
@@ -325,7 +325,7 @@ will be used:
 *Note*: Gossipsub v1.1 introduces a number of
 [additional parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#overview-of-new-parameters)
 for peer scoring and other attack mitigations. These are currently under
-investigation and will be spec'd and released to mainnet when they are ready.
+investigation and will be specified and released to mainnet when they are ready.
 
 #### Topics and messages
 
@@ -461,7 +461,7 @@ We define the following variables for convenience:
 - `aggregate_and_proof = signed_aggregate_and_proof.message`
 - `aggregate = aggregate_and_proof.aggregate`
 - `index = aggregate.data.index`
-- `aggregation_bits = attestation.aggregation_bits`
+- `aggregation_bits = aggregate.aggregation_bits`
 
 The following validations MUST pass before forwarding the
 `signed_aggregate_and_proof` on the network.
@@ -621,7 +621,7 @@ of subnets is defined via `ATTESTATION_SUBNET_COUNT`. The correct subnet for an
 attestation can be calculated with `compute_subnet_for_attestation`.
 `beacon_attestation_{subnet_id}` topics, are rotated through throughout the
 epoch in a similar fashion to rotating through shards in committees (future
-beacon chain upgrade). The subnets are rotated through with
+beacon-chain upgrade). The subnets are rotated through with
 `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`
 subnets per slot.
 
@@ -1347,10 +1347,10 @@ def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> Sequence[Subnet
     return [compute_subscribed_subnet(node_id, epoch, index) for index in range(SUBNETS_PER_NODE)]
 ```
 
-*Note*: When preparing for a hard fork, a node must select and subscribe to
+*Note*: When preparing for an upgrade, a node must select and subscribe to
 subnets of the future fork versioning at least `EPOCHS_PER_SUBNET_SUBSCRIPTION`
-epochs in advance of the fork. These new subnets for the fork are maintained in
-addition to those for the current fork until the fork occurs. After the fork
+epochs in advance of the upgrade. These new subnets for the fork are maintained
+in addition to those for the current fork until the fork occurs. After the fork
 occurs, let the subnets from the previous fork reach the end of life with no
 replacements.
 
@@ -1370,7 +1370,7 @@ WebSockets on paper becomes irrelevant.
 However, it is useful to define a minimum baseline for interoperability
 purposes.
 
-#### Can clients support other transports/handshakes than the ones mandated by the spec?
+#### Can clients support other transports/handshakes than the ones mandated by the specification?
 
 Clients may support other transports such as libp2p QUIC, WebSockets, and WebRTC
 transports, if available in the language of choice. While interoperability shall
@@ -1450,7 +1450,7 @@ insecure, obsolete ciphers and algorithms have been removed, adopting Ed25519 as
 the sole ECDH key agreement function. Handshakes are faster, 1-RTT data is
 supported, and session resumption is a reality, amongst other features.
 
-### Protocol Negotiation
+### Protocol negotiation
 
 #### When is multiselect 2.0 due and why do we plan to migrate to it?
 
@@ -1508,7 +1508,7 @@ because, amongst other things, it requires several round trips to be sound, and
 doesn’t support early data (0-RTT data), a mechanism that multiselect 2.0 will
 leverage to reduce round trips during connection bootstrapping.
 
-SecIO is not considered secure for the purposes of this spec.
+SecIO is not considered secure for the purposes of this specification.
 
 #### Why are we using Noise?
 
@@ -1574,7 +1574,7 @@ in the topic name).
 #### How do we upgrade gossip channels (e.g. changes in encoding, compression)?
 
 Changing gossipsub/broadcasts requires a coordinated upgrade where all clients
-start publishing to the new topic together, during a hard fork.
+start publishing to the new topic together, during an upgrade.
 
 When a node is preparing for upcoming tasks (e.g. validator duty lookahead) on a
 gossipsub topic, the node should join the topic of the future epoch in which the
@@ -1740,9 +1740,9 @@ than more volatile advertisements.
 
 #### How should fork version be used in practice?
 
-Fork versions are to be manually updated (likely via incrementing) at each hard
-fork. This is to provide native domain separation for signatures as well as to
-aid in usefulness for identifying peers (via ENRs) and versioning network
+Fork versions are to be manually updated (likely via incrementing) at each
+upgrade. This is to provide native domain separation for signatures as well as
+to aid in usefulness for identifying peers (via ENRs) and versioning network
 protocols (e.g. using fork version to naturally version gossipsub topics).
 
 `BeaconState.genesis_validators_root` is mixed into signature and ENR fork
@@ -1772,9 +1772,9 @@ Requests are segregated by protocol ID to:
 3. Enable clients to select the individual requests/versions they support. It
    would no longer be a strict requirement to support all requests, and clients,
    in principle, could support a subset of requests and variety of versions.
-4. Enable flexibility and agility for clients adopting spec changes that impact
-   the request, by signalling to peers exactly which subset of new/old requests
-   they support.
+4. Enable flexibility and agility for clients adopting specification changes
+   that impact the request, by signalling to peers exactly which subset of
+   new/old requests they support.
 5. Enable clients to explicitly choose backwards compatibility at the request
    granularity. Without this, clients would be forced to support entire versions
    of the coarser request protocol.
@@ -2052,7 +2052,7 @@ discv5 uses ENRs and we will presumably need to:
 #### Why do we not form ENRs and find peers until genesis block/state is known?
 
 Although client software might very well be running locally prior to the
-solidification of the beacon chain genesis state and block, clients cannot form
+solidification of the beacon-chain genesis state and block, clients cannot form
 valid ENRs prior to this point. ENRs contain `fork_digest` which utilizes the
 `genesis_validators_root` for a cleaner separation between chains so prior to
 knowing genesis, we cannot use `fork_digest` to cleanly find peers on our
@@ -2190,5 +2190,5 @@ messages signed by a validator may be amplified by the network.
 ## libp2p implementations matrix
 
 This section will soon contain a matrix showing the maturity/state of the libp2p
-features required by this spec across the languages in which clients are being
-developed.
+features required by this specification across the languages in which clients
+are being developed.

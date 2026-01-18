@@ -4,16 +4,14 @@
 
 - [Introduction](#introduction)
 - [Modifications in Deneb](#modifications-in-deneb)
-  - [Helper functions](#helper-functions)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
-  - [Constant](#constant)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`BlobSidecar`](#blobsidecar)
     - [`BlobIdentifier`](#blobidentifier)
-    - [Helpers](#helpers)
-      - [`verify_blob_sidecar_inclusion_proof`](#verify_blob_sidecar_inclusion_proof)
+  - [Helpers](#helpers)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
+    - [`verify_blob_sidecar_inclusion_proof`](#verify_blob_sidecar_inclusion_proof)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -21,7 +19,7 @@
         - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
       - [Blob subnets](#blob-subnets)
         - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
-        - [Blob retrieval via local execution layer client](#blob-retrieval-via-local-execution-layer-client)
+        - [Blob retrieval via local execution-layer client](#blob-retrieval-via-local-execution-layer-client)
       - [Attestation subnets](#attestation-subnets)
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
     - [Transitioning the gossip](#transitioning-the-gossip)
@@ -38,36 +36,12 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for Deneb.
+This document contains the consensus-layer networking specifications for Deneb.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Deneb
-
-### Helper functions
-
-#### Modified `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= DENEB_FORK_EPOCH:
-        return DENEB_FORK_VERSION
-    if epoch >= CAPELLA_FORK_EPOCH:
-        return CAPELLA_FORK_VERSION
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
-
-### Constant
-
-*[New in Deneb:EIP4844]*
 
 ### Preset
 
@@ -86,7 +60,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 | `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)                                   | Maximum number of blocks in a single request                       |
 | `MAX_REQUEST_BLOB_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK` | Maximum number of blob sidecars in a single request                |
 | `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                | The minimum epoch range over which a node must serve blob sidecars |
-| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                                              | The number of blob sidecar subnets used in the gossipsub protocol. |
+| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                                              | The number of blob sidecar subnets used in the gossipsub protocol  |
 
 ### Containers
 
@@ -116,9 +90,27 @@ class BlobIdentifier(Container):
     index: BlobIndex
 ```
 
-#### Helpers
+### Helpers
 
-##### `verify_blob_sidecar_inclusion_proof`
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
+
+#### `verify_blob_sidecar_inclusion_proof`
 
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
@@ -136,7 +128,7 @@ def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of Deneb to support upgraded types.
+Some gossip meshes are upgraded in Deneb to support upgraded types.
 
 #### Topics and messages
 
@@ -177,7 +169,7 @@ The *type* of the payload of this topic changes to the (modified)
 New validation:
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
-  limitation defined in Consensus Layer -- i.e. validate that
+  limitation defined in the consensus layer -- i.e. validate that
   `len(signed_beacon_block.message.body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK`
 
 ###### `beacon_aggregate_and_proof`
@@ -264,10 +256,10 @@ Per `fork_version = compute_fork_version(epoch)`:
 | ------------------------------ | ------------------- |
 | `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
 
-###### Blob retrieval via local execution layer client
+###### Blob retrieval via local execution-layer client
 
 In addition to `BlobSidecarsByRoot` requests, recent blobs MAY be retrieved by
-querying the Execution Layer (i.e. via `engine_getBlobsV1`). Honest nodes SHOULD
+querying the execution layer (i.e. via `engine_getBlobsV1`). Honest nodes SHOULD
 query `engine_getBlobsV1` as soon as they receive a valid gossip block that
 contains data, and import the returned blobs.
 
@@ -352,7 +344,7 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 *[Modified in Deneb:EIP4844]* Clients SHOULD include a block in the response as
 soon as it passes the gossip validation rules. Clients SHOULD NOT respond with
-blocks that fail the beacon chain state transition.
+blocks that fail the beacon-chain state transition.
 
 ##### BlobSidecarsByRange v1
 
@@ -504,7 +496,7 @@ limit the number of blocks and sidecars in the response.
 Clients SHOULD include a sidecar in the response as soon as it passes the gossip
 validation rules. Clients SHOULD NOT respond with sidecars related to blocks
 that fail gossip validation rules. Clients SHOULD NOT respond with sidecars
-related to blocks that fail the beacon chain state transition
+related to blocks that fail the beacon-chain state transition
 
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by
