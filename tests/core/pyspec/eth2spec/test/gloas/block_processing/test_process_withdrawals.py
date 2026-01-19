@@ -1132,3 +1132,176 @@ def test_full_builder_payload_next_validator_index_bug(spec, state):
             pre_state,
             withdrawal_count=spec.MAX_WITHDRAWALS_PER_PAYLOAD,
         )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_single_builder_sweep_withdrawal(spec, state):
+    """
+    Test processing a single builder sweep withdrawal.
+
+    Builder sweep withdrawals occur when builder.withdrawable_epoch <= current_epoch.
+    Unlike pending withdrawals, sweep uses builder.execution_address and full balance.
+
+    Input State Configured:
+        - builders[0].withdrawable_epoch: current_epoch (eligible for sweep)
+        - builders[0].balance: 5 ETH
+        - builders[0].execution_address: 0xab * 20
+        - builder_pending_withdrawals: Empty
+        - next_withdrawal_builder_index: 0
+
+    Output State Verified:
+        - payload_expected_withdrawals: 1 builder sweep withdrawal
+        - withdrawal.address: builder.execution_address
+        - withdrawal.amount: 5 ETH (full balance)
+        - builders[0].balance: 0
+    """
+    builder_index = 0
+    sweep_balance = spec.Gwei(5_000_000_000)
+    custom_address = b"\xab" * 20
+
+    prepare_process_withdrawals(
+        spec,
+        state,
+        builder_sweep_indices=[builder_index],
+        builder_balances={builder_index: sweep_balance},
+        builder_execution_addresses={builder_index: custom_address},
+        next_withdrawal_builder_index=builder_index,
+    )
+
+    pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        withdrawal_count=1,
+        builder_balances={builder_index: 0},
+        withdrawal_amounts_builders={builder_index: sweep_balance},
+        withdrawal_addresses_builders={builder_index: spec.ExecutionAddress(custom_address)},
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_multiple_builder_sweep_withdrawals(spec, state):
+    """
+    Test processing multiple builder sweep withdrawals.
+
+    Input State Configured:
+        - builders[0,1,2].withdrawable_epoch: current_epoch (all eligible)
+        - builders[0,1,2].balance: 1, 2, 3 ETH respectively
+        - builder_pending_withdrawals: Empty
+        - next_withdrawal_builder_index: 0
+
+    Output State Verified:
+        - payload_expected_withdrawals: 3 builder sweep withdrawals
+        - builders[0,1,2].balance: All 0
+        - withdrawal amounts: 1, 2, 3 ETH respectively
+    """
+    builder_indices = [0, 1, 2]
+    balances = {
+        0: spec.Gwei(1_000_000_000),
+        1: spec.Gwei(2_000_000_000),
+        2: spec.Gwei(3_000_000_000),
+    }
+
+    prepare_process_withdrawals(
+        spec,
+        state,
+        builder_sweep_indices=builder_indices,
+        builder_balances=balances,
+        next_withdrawal_builder_index=0,
+    )
+
+    pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        withdrawal_count=3,
+        builder_balances={i: 0 for i in builder_indices},
+        withdrawal_amounts_builders=balances,
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_sweep_zero_balance_skipped(spec, state):
+    """
+    Test that builder sweep skips builders with zero balance.
+
+    Input State Configured:
+        - builders[0].withdrawable_epoch: current_epoch (eligible)
+        - builders[0].balance: 0 (should be skipped)
+        - builders[1].withdrawable_epoch: current_epoch (eligible)
+        - builders[1].balance: 2 ETH (should be processed)
+        - next_withdrawal_builder_index: 0
+
+    Output State Verified:
+        - payload_expected_withdrawals: 1 withdrawal (only builder 1)
+        - builders[0].balance: 0 (unchanged, was skipped)
+        - builders[1].balance: 0 (withdrawn)
+    """
+    prepare_process_withdrawals(
+        spec,
+        state,
+        builder_sweep_indices=[0, 1],
+        builder_balances={0: spec.Gwei(0), 1: spec.Gwei(2_000_000_000)},
+        next_withdrawal_builder_index=0,
+    )
+
+    pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        withdrawal_count=1,
+        builder_balances={0: 0, 1: 0},
+        withdrawal_amounts_builders={1: spec.Gwei(2_000_000_000)},
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_sweep_not_withdrawable_skipped(spec, state):
+    """
+    Test that builder sweep skips builders not yet withdrawable.
+
+    Input State Configured:
+        - builders[0].withdrawable_epoch: current_epoch + 1 (not yet eligible)
+        - builders[0].balance: 5 ETH
+        - builders[1].withdrawable_epoch: current_epoch (eligible)
+        - builders[1].balance: 2 ETH
+        - next_withdrawal_builder_index: 0
+
+    Output State Verified:
+        - payload_expected_withdrawals: 1 withdrawal (only builder 1)
+        - builders[0].balance: 5 ETH (unchanged, not withdrawable yet)
+        - builders[1].balance: 0 (withdrawn)
+    """
+    prepare_process_withdrawals(
+        spec,
+        state,
+        builder_sweep_indices=[0, 1],
+        builder_balances={0: spec.Gwei(5_000_000_000), 1: spec.Gwei(2_000_000_000)},
+        builder_sweep_withdrawable_offsets={0: 1, 1: 0},  # Builder 0: future, Builder 1: now
+        next_withdrawal_builder_index=0,
+    )
+
+    pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        withdrawal_count=1,
+        builder_balances={0: spec.Gwei(5_000_000_000), 1: 0},
+        withdrawal_amounts_builders={1: spec.Gwei(2_000_000_000)},
+    )

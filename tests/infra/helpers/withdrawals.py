@@ -25,6 +25,7 @@ def prepare_process_withdrawals(
     spec,
     state,
     builder_indices=[],
+    builder_sweep_indices=[],
     pending_partial_indices=[],
     full_withdrawal_indices=[],
     partial_withdrawal_indices=[],
@@ -32,6 +33,7 @@ def prepare_process_withdrawals(
     builder_withdrawal_amounts=None,
     builder_balances=None,
     builder_execution_addresses=None,
+    builder_sweep_withdrawable_offsets=None,
     pending_partial_amounts=None,
     partial_excess_balances=None,
     compounding_excess_balances=None,
@@ -42,6 +44,7 @@ def prepare_process_withdrawals(
     validator_activation_epoch_offsets=None,
     validator_exit_epoch_offsets=None,
     next_withdrawal_validator_index=None,
+    next_withdrawal_builder_index=None,
     parent_block_full=True,
     parent_block_empty=False,
 ):
@@ -53,18 +56,22 @@ def prepare_process_withdrawals(
         state: The beacon state to modify
         builder_indices: List of builder indices (BuilderIndex) to add builder pending withdrawals for.
                         Builders must already exist in state.builders registry.
+        builder_sweep_indices: List of builder indices to set up for sweep withdrawals.
+                              Sets withdrawable_epoch <= current_epoch to make builders eligible.
         pending_partial_indices: List of validator indices to set up with pending partial withdrawals
         full_withdrawal_indices: List of validator indices to set up as fully withdrawable
         partial_withdrawal_indices: List of validator indices to set up as partially withdrawable
         compounding_indices: List of validator indices to set up with compounding credentials (0x02).
                             By default, balance is set to MAX_EFFECTIVE_BALANCE_ELECTRA + 1_000_000_000
                             unless compounding_excess_balances is specified.
-        builder_withdrawal_amounts: Single amount or dict[BuilderIndex, Gwei] for builder withdrawals
+        builder_withdrawal_amounts: Single amount or dict[BuilderIndex, Gwei] for builder pending withdrawals
                                     (default: MIN_ACTIVATION_BALANCE for each)
         builder_balances: Single balance or dict[BuilderIndex, Gwei] to set builder balances.
-                         Applied before adding builder pending withdrawals.
+                         Applied to both pending and sweep builders.
         builder_execution_addresses: dict[BuilderIndex, ExecutionAddress] to set builder execution addresses.
-                                    Applied before adding builder pending withdrawals.
+                                    Applied to both pending and sweep builders.
+        builder_sweep_withdrawable_offsets: Single offset or dict[BuilderIndex, int] for builder sweep
+                                           withdrawable_epoch = current_epoch + offset (default: 0)
         pending_partial_amounts: Single amount or dict[ValidatorIndex, Gwei] for pending partial withdrawals
                                  (default: 1_000_000_000 for each)
         partial_excess_balances: Single amount or dict[ValidatorIndex, Gwei] for partial withdrawals
@@ -85,6 +92,8 @@ def prepare_process_withdrawals(
                                      Applied at the start before any withdrawal setup.
         next_withdrawal_validator_index: ValidatorIndex to set state.next_withdrawal_validator_index.
                                         Applied at the start before any withdrawal setup.
+        next_withdrawal_builder_index: BuilderIndex to set state.next_withdrawal_builder_index.
+                                      Applied at the start before any withdrawal setup.
         parent_block_full: If True, set state to indicate parent block was full (default: True)
         parent_block_empty: If True, set state to indicate parent block was empty (default: False)
                            Takes precedence over parent_block_full if both are True
@@ -99,6 +108,18 @@ def prepare_process_withdrawals(
     # Set next_withdrawal_validator_index if provided
     if next_withdrawal_validator_index is not None:
         state.next_withdrawal_validator_index = next_withdrawal_validator_index
+
+    # Set next_withdrawal_builder_index if provided (Gloas+)
+    if is_post_gloas(spec) and next_withdrawal_builder_index is not None:
+        state.next_withdrawal_builder_index = spec.BuilderIndex(next_withdrawal_builder_index)
+
+    # Validate all builder indices exist in registry (Gloas+)
+    if is_post_gloas(spec):
+        all_builder_indices = set(builder_indices) | set(builder_sweep_indices)
+        for builder_index in all_builder_indices:
+            assert builder_index < len(state.builders), (
+                f"Builder {builder_index} does not exist in state.builders registry"
+            )
 
     # Set validator activation epoch offsets if provided (before withdrawal setup)
     if validator_activation_epoch_offsets is not None:
@@ -162,11 +183,6 @@ def prepare_process_withdrawals(
                 builder_withdrawal_amounts, builder_index, spec.MIN_ACTIVATION_BALANCE
             )
 
-            # Verify the builder exists in registry
-            assert builder_index < len(state.builders), (
-                f"Builder {builder_index} does not exist in state.builders registry"
-            )
-
             builder = state.builders[builder_index]
 
             # Set builder balance if provided
@@ -189,6 +205,28 @@ def prepare_process_withdrawals(
                     builder_index=builder_index,
                 )
             )
+
+    # Set up builder sweep withdrawals (Gloas+)
+    # Builder sweep occurs when builder.withdrawable_epoch <= current_epoch and balance > 0
+    if is_post_gloas(spec) and builder_sweep_indices:
+        for builder_index in builder_sweep_indices:
+            builder = state.builders[builder_index]
+
+            # Set builder balance if provided
+            if builder_balances is not None:
+                balance = get_param_value(builder_balances, builder_index, None)
+                if balance is not None:
+                    builder.balance = balance
+
+            # Set builder execution address if provided
+            if builder_execution_addresses is not None:
+                address = builder_execution_addresses.get(builder_index)
+                if address is not None:
+                    builder.execution_address = spec.ExecutionAddress(address)
+
+            # Set withdrawable_epoch to make builder eligible for sweep
+            epoch_offset = get_param_value(builder_sweep_withdrawable_offsets, builder_index, 0)
+            builder.withdrawable_epoch = current_epoch + epoch_offset
 
     # Set up pending partial withdrawals (Electra+)
     if is_post_electra(spec) and pending_partial_indices:
