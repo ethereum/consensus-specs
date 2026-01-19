@@ -41,8 +41,6 @@ def test_single_builder_withdrawal(spec, state):
     builder_index = 0
     withdrawal_amount = spec.Gwei(1_000_000_000)
 
-    assert builder_index < len(state.builders), "Builder must exist in registry"
-
     prepare_process_withdrawals(
         spec,
         state,
@@ -85,10 +83,6 @@ def test_multiple_builder_withdrawals(spec, state):
     """
     withdrawal_amount = spec.Gwei(500_000_000)
     builder_indices = [0, 1, 2]
-
-    assert max(builder_indices) < len(state.builders), (
-        f"Max builder index {max(builder_indices)} must exist in registry (builders: {len(state.builders)})"
-    )
 
     prepare_process_withdrawals(
         spec,
@@ -133,8 +127,6 @@ def test_builder_withdrawal_insufficient_balance(spec, state):
     builder_index = 0
     withdrawal_amount = spec.Gwei(5_000_000_000)
     available_balance = spec.Gwei(1_000_000_000)
-
-    assert builder_index < len(state.builders), "Builder must exist in registry"
 
     prepare_process_withdrawals(
         spec,
@@ -184,7 +176,6 @@ def test_builder_withdrawal_insufficient_balance_realistic_bounds(spec, state):
     withdrawal_amount = spec.MIN_DEPOSIT_AMOUNT + spec.Gwei(123)
     available_balance = spec.MIN_DEPOSIT_AMOUNT + spec.Gwei(122)
 
-    assert builder_index < len(state.builders), "Builder must exist in registry"
     assert withdrawal_amount > available_balance, "Test requires insufficient balance"
 
     prepare_process_withdrawals(
@@ -236,15 +227,6 @@ def test_maximum_withdrawals_per_payload_limit(spec, state):
     builder_indices = list(range(num_builders))
     pending_indices = list(range(num_pending))
     sweep_indices = list(range(num_pending, num_pending + num_sweep))
-
-    assert max(builder_indices) < len(state.builders), (
-        f"Max builder index {max(builder_indices)} must exist in registry "
-        f"(builders: {len(state.builders)})"
-    )
-    assert max(sweep_indices) < len(state.validators), (
-        f"Max validator index {max(sweep_indices)} must exist in registry "
-        f"(validators: {len(state.validators)})"
-    )
 
     withdrawal_amount = spec.Gwei(1_000_000_000)
 
@@ -306,10 +288,6 @@ def test_pending_withdrawals_processing(spec, state):
     """
 
     pending_indices = list(range(spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP))
-    assert max(pending_indices) < len(state.validators), (
-        f"Max validator index {max(pending_indices)} must exist in registry "
-        f"(validators: {len(state.validators)})"
-    )
 
     excess_balance = spec.Gwei(1_000_000_000)
     initial_balance = spec.MAX_EFFECTIVE_BALANCE + excess_balance
@@ -361,10 +339,6 @@ def test_pending_withdrawals_processing_exceeds_limit(spec, state):
     """
     num_pending = spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP + 2
     pending_indices = list(range(num_pending))
-    assert max(pending_indices) < len(state.validators), (
-        f"Max validator index {max(pending_indices)} must exist in registry "
-        f"(validators: {len(state.validators)})"
-    )
 
     excess_balance = spec.Gwei(1_000_000_000)
     initial_balance = spec.MAX_EFFECTIVE_BALANCE + excess_balance
@@ -420,11 +394,6 @@ def test_early_return_empty_parent_block(spec, state):
     """
     builder_index = 0
     validator_indices = [1, 2]
-    assert builder_index < len(state.builders), "Builder must exist in registry"
-    assert max(validator_indices) < len(state.validators), (
-        f"Max validator index {max(validator_indices)} must exist in registry "
-        f"(validators: {len(state.validators)})"
-    )
 
     withdrawal_amount = spec.Gwei(1_000_000_000)
     state.balances[0] = max(state.balances[0], withdrawal_amount + spec.MIN_ACTIVATION_BALANCE)
@@ -466,7 +435,6 @@ def test_compounding_validator_partial_withdrawal(spec, state):
         - next_withdrawal_index: Incremented by 1
     """
     validator_index = 0
-    assert validator_index < len(state.validators), "Validator must exist in registry"
 
     prepare_process_withdrawals(
         spec,
@@ -509,8 +477,6 @@ def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
     """
     num_builders = spec.MAX_WITHDRAWALS_PER_PAYLOAD + 2
     withdrawal_amount = spec.Gwei(1_000_000_000)
-
-    assert num_builders <= len(state.builders), "Not enough builders in registry for test"
 
     builder_indices = list(range(num_builders))
 
@@ -584,10 +550,6 @@ def test_no_builders_max_pending_with_sweep_spillover(spec, state):
     pending_indices = list(range(spec.MAX_WITHDRAWALS_PER_PAYLOAD))
     sweep_start = spec.MAX_WITHDRAWALS_PER_PAYLOAD
     sweep_indices = list(range(sweep_start, sweep_start + 3))
-    assert max(sweep_indices) < len(state.validators), (
-        f"Max validator index {max(sweep_indices)} must exist in registry "
-        f"(validators: {len(state.validators)})"
-    )
 
     prepare_process_withdrawals(
         spec,
@@ -640,10 +602,6 @@ def test_no_builders_no_pending_max_sweep_withdrawals(spec, state):
     """
 
     sweep_indices = list(range(spec.MAX_WITHDRAWALS_PER_PAYLOAD))
-    assert max(sweep_indices) < len(state.validators), (
-        f"Max validator index {max(sweep_indices)} must exist in registry "
-        f"(validators: {len(state.validators)})"
-    )
 
     prepare_process_withdrawals(spec, state, full_withdrawal_indices=sweep_indices)
 
@@ -687,12 +645,6 @@ def test_builder_withdrawals_processed_order(spec, state):
     pending_index = 1
     sweep_index = 0
     withdrawal_amount = spec.MIN_ACTIVATION_BALANCE
-
-    assert builder_index < len(state.builders), "Builder must exist in registry"
-    assert max(pending_index, sweep_index) < len(state.validators), (
-        f"Max validator index {max(pending_index, sweep_index)} must exist in registry "
-        f"(validators: {len(state.validators)})"
-    )
 
     prepare_process_withdrawals(
         spec,
@@ -750,8 +702,6 @@ def test_builder_uses_fee_recipient_address(spec, state):
     builder_index = 0
     custom_address = b"\xab" * 20
     withdrawal_amount = spec.MIN_ACTIVATION_BALANCE
-
-    assert builder_index < len(state.builders), "Builder must exist in registry"
 
     prepare_process_withdrawals(
         spec,
@@ -817,21 +767,12 @@ def test_builder_and_pending_leave_room_for_sweep(spec, state):
     withdrawal_amount = spec.MIN_ACTIVATION_BALANCE
 
     builder_indices_list = list(range(num_builders))
-    assert max(builder_indices_list) < len(state.builders), (
-        f"Max builder index {max(builder_indices_list)} must exist in registry "
-        f"(builders: {len(state.builders)})"
-    )
 
     # Validator indices intentionally overlap with builder indices to test separate namespaces
     # pending_indices start from 1 to avoid overlap with regular_index (same validator can't be both)
     pending_indices = list(range(1, 1 + num_pending))
     regular_index = (
         0  # Same numeric index as builder 0, but different entity (validator vs builder)
-    )
-    all_validator_indices = pending_indices + [regular_index]
-    assert max(all_validator_indices) < len(state.validators), (
-        f"Max validator index {max(all_validator_indices)} must exist in registry "
-        f"(validators: {len(state.validators)})"
     )
 
     prepare_process_withdrawals(
@@ -895,12 +836,6 @@ def test_all_builder_withdrawals_zero_balance(spec, state):
         0  # Same numeric index as builder 0, but different entity (validator vs builder)
     )
 
-    assert max(builder_indices) < len(state.builders), (
-        f"Max builder index {max(builder_indices)} must exist in registry "
-        f"(builders: {len(state.builders)})"
-    )
-    assert regular_index < len(state.validators), "Validator must exist in registry"
-
     prepare_process_withdrawals(
         spec,
         state,
@@ -955,18 +890,11 @@ def test_builder_max_minus_one_plus_one_regular(spec, state):
     num_builders = spec.MAX_WITHDRAWALS_PER_PAYLOAD - 1
     withdrawal_amount = spec.MIN_ACTIVATION_BALANCE
 
-    assert num_builders <= len(state.builders), (
-        f"Test requires at least {num_builders} builders in registry"
-    )
-
     builder_indices_list = list(range(num_builders))
 
     # Validator indices intentionally overlap with builder indices to test separate namespaces
     # Add multiple regular withdrawals, but only 1 should be processed
     regular_indices = [0, 1, 2]  # Same numeric indices as builders, but different entities
-    assert len(state.validators) >= max(regular_indices) + 1, (
-        f"Test requires at least {max(regular_indices) + 1} validators"
-    )
 
     prepare_process_withdrawals(
         spec,
@@ -1018,7 +946,6 @@ def test_builder_zero_withdrawal_amount(spec, state):
     """
 
     builder_index = 0
-    assert builder_index < len(state.builders), "Builder must exist in registry"
 
     prepare_process_withdrawals(
         spec,

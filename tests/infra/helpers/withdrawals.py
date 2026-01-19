@@ -47,6 +47,8 @@ def prepare_process_withdrawals(
     next_withdrawal_builder_index=None,
     parent_block_full=True,
     parent_block_empty=False,
+    validate_builder_indices=True,
+    validate_validator_indices=True,
 ):
     """
     Populate the state with all three types of withdrawals based on configuration.
@@ -97,6 +99,8 @@ def prepare_process_withdrawals(
         parent_block_full: If True, set state to indicate parent block was full (default: True)
         parent_block_empty: If True, set state to indicate parent block was empty (default: False)
                            Takes precedence over parent_block_full if both are True
+        validate_builder_indices: If True, assert all builder indices exist in registry (default: True)
+        validate_validator_indices: If True, assert all validator indices exist in registry (default: True)
     """
     # Set parent block state (Gloas+)
     if is_post_gloas(spec):
@@ -114,12 +118,25 @@ def prepare_process_withdrawals(
         state.next_withdrawal_builder_index = spec.BuilderIndex(next_withdrawal_builder_index)
 
     # Validate all builder indices exist in registry (Gloas+)
-    if is_post_gloas(spec):
-        all_builder_indices = set(builder_indices) | set(builder_sweep_indices)
-        for builder_index in all_builder_indices:
-            assert builder_index < len(state.builders), (
-                f"Builder {builder_index} does not exist in state.builders registry"
-            )
+    all_builder_indices = set(builder_indices) | set(builder_sweep_indices)
+    if validate_builder_indices and is_post_gloas(spec) and all_builder_indices:
+        max_builder_index = max(all_builder_indices)
+        assert max_builder_index < len(state.builders), (
+            f"Builder {max_builder_index} does not exist in state.builders registry"
+        )
+
+    # Validate all validator indices exist in registry
+    all_validator_indices = (
+        set(pending_partial_indices)
+        | set(full_withdrawal_indices)
+        | set(partial_withdrawal_indices)
+        | set(compounding_indices)
+    )
+    if validate_validator_indices and all_validator_indices:
+        max_validator_index = max(all_validator_indices)
+        assert max_validator_index < len(state.validators), (
+            f"Validator {max_validator_index} does not exist in state.validators registry"
+        )
 
     # Set validator activation epoch offsets if provided (before withdrawal setup)
     if validator_activation_epoch_offsets is not None:
