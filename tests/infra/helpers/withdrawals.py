@@ -219,13 +219,16 @@ def prepare_process_withdrawals(
                         builder.execution_address = spec.ExecutionAddress(address)
 
                 fee_recipient = builder.execution_address
+            # Invalid builder index - use provided address or default
+            elif builder_execution_addresses is not None:
+                address = builder_execution_addresses.get(builder_index)
+                fee_recipient = (
+                    spec.ExecutionAddress(address)
+                    if address
+                    else spec.ExecutionAddress(b"\x00" * 20)
+                )
             else:
-                # Invalid builder index - use provided address or default
-                if builder_execution_addresses is not None:
-                    address = builder_execution_addresses.get(builder_index)
-                    fee_recipient = spec.ExecutionAddress(address) if address else spec.ExecutionAddress(b"\x00" * 20)
-                else:
-                    fee_recipient = spec.ExecutionAddress(b"\x00" * 20)
+                fee_recipient = spec.ExecutionAddress(b"\x00" * 20)
 
             # Add builder pending withdrawal
             state.builder_pending_withdrawals.append(

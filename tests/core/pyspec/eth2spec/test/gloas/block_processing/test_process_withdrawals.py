@@ -462,7 +462,11 @@ def test_compounding_validator_partial_withdrawal(spec, state):
 @spec_state_test
 def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
     """
-    Test builder payments at MAX_WITHDRAWALS_PER_PAYLOAD limit (documents known spec bug).
+    Test builder payments exceeding MAX_WITHDRAWALS_PER_PAYLOAD limit.
+
+    This test verifies that when builder pending withdrawals exceed the maximum,
+    only MAX_WITHDRAWALS_PER_PAYLOAD - 1 are processed, reserving one slot for
+    validator sweep withdrawals.
 
     Input State Configured:
         - state.builders[0..N]: Builders exist in registry with sufficient balance
@@ -470,10 +474,9 @@ def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
         - validators[*].balances: Capped to prevent sweep withdrawals
 
     Output State Verified:
-        - payload_expected_withdrawals: Limited to MAX_WITHDRAWALS_PER_PAYLOAD
-        - builder_pending_withdrawals: 2 entries remain unprocessed
-        - next_withdrawal_validator_index: KNOWN BUG - wraps incorrectly due to BUILDER_INDEX_FLAG
-        - See: https://github.com/ethereum/consensus-specs/pull/4835
+        - payload_expected_withdrawals: Limited to MAX_WITHDRAWALS_PER_PAYLOAD - 1
+          (one slot reserved for validator sweep)
+        - builder_pending_withdrawals: 3 entries remain unprocessed
     """
     num_builders = spec.MAX_WITHDRAWALS_PER_PAYLOAD + 2
     withdrawal_amount = spec.Gwei(1_000_000_000)
@@ -505,24 +508,24 @@ def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
 
-    # Verify builder queue was partially processed (exactly MAX withdrawals)
-    assert len(state.builder_pending_withdrawals) == 2, (
-        "Exactly 2 builder withdrawals should remain unprocessed"
+    # Verify builder queue was partially processed
+    # One slot is reserved for validator sweep, so only MAX - 1 builder withdrawals processed
+    expected_builder_withdrawals = spec.MAX_WITHDRAWALS_PER_PAYLOAD - 1
+    expected_remaining = num_builders - expected_builder_withdrawals
+    assert len(state.builder_pending_withdrawals) == expected_remaining, (
+        f"Expected {expected_remaining} builder withdrawals to remain unprocessed"
     )
-    assert len(list(state.payload_expected_withdrawals)) == spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    assert len(list(state.payload_expected_withdrawals)) == expected_builder_withdrawals
     assert state.next_withdrawal_index == (
-        pre_state.next_withdrawal_index + spec.MAX_WITHDRAWALS_PER_PAYLOAD
+        pre_state.next_withdrawal_index + expected_builder_withdrawals
     )
 
-    # Verify that assert_process_withdrawals raises error for this bug scenario
-    # See https://github.com/ethereum/consensus-specs/pull/4835
-    with pytest.raises(ValueError, match="BUILDER_INDEX_FLAG"):
-        assert_process_withdrawals(
-            spec,
-            state,
-            pre_state,
-            withdrawal_count=spec.MAX_WITHDRAWALS_PER_PAYLOAD,
-        )
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        withdrawal_count=expected_builder_withdrawals,
+    )
 
 
 @with_gloas_and_later
@@ -972,26 +975,30 @@ def test_builder_zero_withdrawal_amount(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_full_builder_payload_next_validator_index_bug(spec, state):
+def test_full_builder_payload_reserves_sweep_slot(spec, state):
     """
-    Documents spec bug: When all withdrawals in a full payload are builder withdrawals,
-    next_withdrawal_validator_index is calculated incorrectly.
+    Test that builder withdrawals reserve one slot for validator sweep.
 
-    The spec uses (withdrawals[-1].validator_index + 1) % num_validators, but builder
-    withdrawals have BUILDER_INDEX_FLAG (2^40) set in validator_index, producing
-    incorrect results.
+    This test verifies the fix from https://github.com/ethereum/consensus-specs/pull/4832
+    which reserves one slot in MAX_WITHDRAWALS_PER_PAYLOAD for validator sweep withdrawals.
+
+    Previous Bug (before the fix):
+        When all MAX_WITHDRAWALS_PER_PAYLOAD slots were filled by builder withdrawals,
+        next_withdrawal_validator_index was calculated incorrectly. The spec used
+        (withdrawals[-1].validator_index + 1) % num_validators, but builder withdrawals
+        have BUILDER_INDEX_FLAG (2^40) set in validator_index, producing incorrect results.
+        See also: https://github.com/ethereum/consensus-specs/pull/4835
 
     Input State:
         - builder_pending_withdrawals: MAX_WITHDRAWALS_PER_PAYLOAD entries
         - All validator balances capped (no validator withdrawals)
         - next_withdrawal_validator_index: Known starting value
 
-    Bug Demonstrated:
-        - Actual: (builder_validator_index + 1) % num_validators (incorrect)
-        - Expected: (start_index + MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP) % num_validators
-
-    This test passes with current spec behavior (documenting the bug).
-    When the spec is fixed, this test should be updated to verify correct behavior.
+    Output State Verified:
+        - Only MAX_WITHDRAWALS_PER_PAYLOAD - 1 builder withdrawals processed
+        - One slot reserved for validator sweep
+        - next_withdrawal_validator_index: Correctly advanced by MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
+          (sweep runs even though no validator withdrawals are produced due to capped balances)
     """
     # Setup: Record initial state
     num_validators = len(state.validators)
@@ -1015,9 +1022,12 @@ def test_full_builder_payload_next_validator_index_bug(spec, state):
         if validator.withdrawal_credentials[0:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX:
             state.balances[i] = min(state.balances[i], spec.MAX_EFFECTIVE_BALANCE)
 
-    # Verify setup: All expected withdrawals are builder withdrawals
+    # Verify setup: One slot reserved for sweep, so only MAX - 1 builder withdrawals
     expected_result = spec.get_expected_withdrawals(state)
-    assert len(expected_result.withdrawals) == spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    expected_builder_withdrawals = spec.MAX_WITHDRAWALS_PER_PAYLOAD - 1
+    assert len(expected_result.withdrawals) == expected_builder_withdrawals, (
+        f"Expected {expected_builder_withdrawals} builder withdrawals (one slot reserved for sweep)"
+    )
     for w in expected_result.withdrawals:
         assert spec.is_builder_index(w.validator_index), (
             "All withdrawals must be builder withdrawals"
@@ -1029,36 +1039,31 @@ def test_full_builder_payload_next_validator_index_bug(spec, state):
     spec.process_withdrawals(state)
     yield "post", state
 
-    # Calculate what spec actually produces in update_next_withdrawal_validator_index (CAPELLA)
-    # expected_result.withdrawals[-1].validator_index has BUILDER_INDEX_FLAG set !!
-    assert spec.is_builder_index(expected_result.withdrawals[-1].validator_index), (
-        "Last withdrawal must be a builder withdrawal"
-    )
+    # Calculate what the buggy spec would have produced (before the fix)
+    # If all MAX slots were filled with builder withdrawals, the last withdrawal's
+    # validator_index would have BUILDER_INDEX_FLAG set, producing wrong result
     last_builder_validator_index = expected_result.withdrawals[-1].validator_index
     buggy_result = (last_builder_validator_index + 1) % num_validators
 
     # Calculate what the correct result should be
+    # The reserved slot allows validator sweep to run, advancing the index by MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
     correct_result = (
         starting_validator_index + spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP
     ) % num_validators
 
-    # Assert current behavior
-    assert state.next_withdrawal_validator_index == buggy_result, (
-        f"Spec produces {state.next_withdrawal_validator_index}, expected buggy result {buggy_result}"
+    # Assert the fix: next_withdrawal_validator_index is correct
+    # Before the fix, it would have been buggy_result (completely wrong due to BUILDER_INDEX_FLAG)
+    assert state.next_withdrawal_validator_index == correct_result, (
+        f"Spec produces {state.next_withdrawal_validator_index}, expected {correct_result}"
     )
-    assert buggy_result != correct_result, (
-        f"Bug demonstration: spec produces {buggy_result}, correct would be {correct_result}"
+    assert state.next_withdrawal_validator_index != buggy_result, (
+        f"Bug fix verified: spec no longer produces buggy result {buggy_result}"
     )
 
-    # Verify that assert_process_withdrawals raises error for this bug scenario
-    # See https://github.com/ethereum/consensus-specs/pull/4835
-    with pytest.raises(ValueError, match="BUILDER_INDEX_FLAG"):
-        assert_process_withdrawals(
-            spec,
-            state,
-            pre_state,
-            withdrawal_count=spec.MAX_WITHDRAWALS_PER_PAYLOAD,
-        )
+    # Verify: One builder withdrawal remains unprocessed (slot was reserved for sweep)
+    assert len(state.builder_pending_withdrawals) == 1, (
+        "One builder withdrawal should remain (slot was reserved for sweep)"
+    )
 
 
 @with_gloas_and_later
