@@ -67,7 +67,7 @@ def prepare_process_withdrawals(
                             By default, balance is set to MAX_EFFECTIVE_BALANCE_ELECTRA + 1_000_000_000
                             unless compounding_excess_balances is specified.
         builder_withdrawal_amounts: Single amount or dict[BuilderIndex, Gwei] for builder pending withdrawals
-                                    (default: MIN_ACTIVATION_BALANCE for each)
+                                    (default: 1 ETH for each)
         builder_balances: Single balance or dict[BuilderIndex, Gwei] to set builder balances.
                          Applied to both pending and sweep builders.
         builder_execution_addresses: dict[BuilderIndex, ExecutionAddress] to set builder execution addresses.
@@ -197,7 +197,7 @@ def prepare_process_withdrawals(
     if is_post_gloas(spec) and builder_indices:
         for builder_index in builder_indices:
             amount = get_param_value(
-                builder_withdrawal_amounts, builder_index, spec.MIN_ACTIVATION_BALANCE
+                builder_withdrawal_amounts, builder_index, spec.Gwei(1_000_000_000)
             )
 
             # Check if builder index is valid
