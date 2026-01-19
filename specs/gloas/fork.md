@@ -38,6 +38,7 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
     onboarding builders at the fork.
     """
     validator_pubkeys = [v.pubkey for v in state.validators]
+    pending_validator_pubkeys = []
     pending_deposits = []
     for deposit in state.pending_deposits:
         if deposit.pubkey in validator_pubkeys:
@@ -47,6 +48,8 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
         is_existing_builder = deposit.pubkey in builder_pubkeys
         has_builder_credentials = is_builder_withdrawal_credential(deposit.withdrawal_credentials)
         if is_existing_builder or has_builder_credentials:
+            if deposit.pubkey in pending_validator_pubkeys:
+                continue
             apply_deposit_for_builder(
                 state,
                 deposit.pubkey,
@@ -55,6 +58,10 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
                 deposit.signature,
             )
             continue
+        if is_valid_deposit_signature(
+            deposit.pubkey, deposit.withdrawal_credentials, deposit.amount, deposit.signature
+        ):
+            pending_validator_pubkeys.append(deposit.pubkey)
         pending_deposits.append(deposit)
     state.pending_deposits = pending_deposits
 ```

@@ -387,3 +387,107 @@ def test_fork_builder_deposit_followed_by_non_builder_credentials(spec, phases, 
 
     # Both pending deposits should be removed (applied to builder)
     assert len(post_state.pending_deposits) == 0
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_validator_deposit_followed_by_builder_credentials(spec, phases, state):
+    """
+    Test fork with two deposits for the same pubkey:
+    - First deposit has validator credentials (0x02)
+    - Second deposit has builder credentials (0x03)
+    The first deposit should stay in pending (for validator creation),
+    and the second deposit should be ignored (no builder created).
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+
+    builder_pubkey = builder_pubkeys[0]
+    privkey = builder_pubkey_to_privkey[builder_pubkey]
+
+    # First deposit: compounding credentials (0x02)
+    compounding_withdrawal_credentials = (
+        post_spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\xab" * 20
+    )
+    deposit_data_validator = build_deposit_data(
+        post_spec,
+        builder_pubkey,
+        privkey,
+        amount,
+        compounding_withdrawal_credentials,
+        signed=True,
+    )
+    validator_deposit = post_spec.PendingDeposit(
+        pubkey=deposit_data_validator.pubkey,
+        withdrawal_credentials=deposit_data_validator.withdrawal_credentials,
+        amount=deposit_data_validator.amount,
+        signature=deposit_data_validator.signature,
+        slot=post_spec.GENESIS_SLOT,
+    )
+
+    # Second deposit: builder credentials (0x03) for the same pubkey
+    builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
+
+    state.pending_deposits = [validator_deposit, builder_deposit]
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    # No builder should be created (first valid deposit was for validator)
+    assert len(post_state.builders) == 0
+
+    # First deposit should remain in pending (for validator creation later)
+    assert len(post_state.pending_deposits) == 1
+    assert post_state.pending_deposits[0].pubkey == builder_pubkey
+    assert (
+        post_state.pending_deposits[0].withdrawal_credentials == compounding_withdrawal_credentials
+    )
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_invalid_validator_deposit_followed_by_builder_credentials(spec, phases, state):
+    """
+    Test fork with two deposits for the same pubkey:
+    - First deposit has validator credentials (0x02) but INVALID signature
+    - Second deposit has builder credentials (0x03) with valid signature
+    The invalid validator deposit should not block the builder deposit.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+
+    builder_pubkey = builder_pubkeys[0]
+
+    # First deposit: compounding credentials (0x02) with INVALID signature
+    compounding_withdrawal_credentials = (
+        post_spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\xab" * 20
+    )
+    invalid_validator_deposit = post_spec.PendingDeposit(
+        pubkey=builder_pubkey,
+        withdrawal_credentials=compounding_withdrawal_credentials,
+        amount=amount,
+        signature=post_spec.bls.G2_POINT_AT_INFINITY,  # Invalid signature
+        slot=post_spec.GENESIS_SLOT,
+    )
+
+    # Second deposit: builder credentials (0x03) with valid signature
+    builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
+
+    state.pending_deposits = [invalid_validator_deposit, builder_deposit]
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    # Builder should be created (invalid validator deposit doesn't claim the pubkey)
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == builder_pubkey
+    assert post_state.builders[0].balance == amount
+
+    # Invalid validator deposit should remain in pending (to be discarded later during normal processing)
+    assert len(post_state.pending_deposits) == 1
+    assert post_state.pending_deposits[0].pubkey == builder_pubkey
+    assert (
+        post_state.pending_deposits[0].withdrawal_credentials == compounding_withdrawal_credentials
+    )
