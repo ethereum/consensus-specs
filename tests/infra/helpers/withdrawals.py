@@ -200,24 +200,37 @@ def prepare_process_withdrawals(
                 builder_withdrawal_amounts, builder_index, spec.MIN_ACTIVATION_BALANCE
             )
 
-            builder = state.builders[builder_index]
+            # Check if builder index is valid
+            is_valid_builder = builder_index < len(state.builders)
 
-            # Set builder balance if provided
-            if builder_balances is not None:
-                balance = get_param_value(builder_balances, builder_index, None)
-                if balance is not None:
-                    builder.balance = balance
+            if is_valid_builder:
+                builder = state.builders[builder_index]
 
-            # Set builder execution address if provided
-            if builder_execution_addresses is not None:
-                address = builder_execution_addresses.get(builder_index)
-                if address is not None:
-                    builder.execution_address = spec.ExecutionAddress(address)
+                # Set builder balance if provided
+                if builder_balances is not None:
+                    balance = get_param_value(builder_balances, builder_index, None)
+                    if balance is not None:
+                        builder.balance = balance
+
+                # Set builder execution address if provided
+                if builder_execution_addresses is not None:
+                    address = builder_execution_addresses.get(builder_index)
+                    if address is not None:
+                        builder.execution_address = spec.ExecutionAddress(address)
+
+                fee_recipient = builder.execution_address
+            else:
+                # Invalid builder index - use provided address or default
+                if builder_execution_addresses is not None:
+                    address = builder_execution_addresses.get(builder_index)
+                    fee_recipient = spec.ExecutionAddress(address) if address else spec.ExecutionAddress(b"\x00" * 20)
+                else:
+                    fee_recipient = spec.ExecutionAddress(b"\x00" * 20)
 
             # Add builder pending withdrawal
             state.builder_pending_withdrawals.append(
                 spec.BuilderPendingWithdrawal(
-                    fee_recipient=builder.execution_address,
+                    fee_recipient=fee_recipient,
                     amount=amount,
                     builder_index=builder_index,
                 )
@@ -251,13 +264,26 @@ def prepare_process_withdrawals(
             amount = get_param_value(pending_partial_amounts, validator_index, 1_000_000_000)
             epoch_offset = get_param_value(pending_partial_withdrawable_offsets, validator_index, 0)
 
-            prepare_pending_withdrawal(
-                spec,
-                state,
-                validator_index,
-                amount=amount,
-                withdrawable_epoch=current_epoch + epoch_offset,
-            )
+            # Check if validator index is valid
+            is_valid_validator = validator_index < len(state.validators)
+
+            if is_valid_validator:
+                prepare_pending_withdrawal(
+                    spec,
+                    state,
+                    validator_index,
+                    amount=amount,
+                    withdrawable_epoch=current_epoch + epoch_offset,
+                )
+            else:
+                # Invalid validator index - create pending withdrawal directly
+                state.pending_partial_withdrawals.append(
+                    spec.PendingPartialWithdrawal(
+                        validator_index=spec.ValidatorIndex(validator_index),
+                        amount=spec.Gwei(amount),
+                        withdrawable_epoch=current_epoch + epoch_offset,
+                    )
+                )
 
     # Set up full withdrawals
     for validator_index in full_withdrawal_indices:

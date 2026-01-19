@@ -1232,3 +1232,129 @@ def test_builder_sweep_not_withdrawable_skipped(spec, state):
         builder_balances={0: spec.Gwei(5_000_000_000), 1: 0},
         withdrawal_amounts_builders={1: spec.Gwei(2_000_000_000)},
     )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_invalid_builder_index_pending(spec, state):
+    """
+    Test that process_withdrawals raises IndexError for invalid builder index
+    in builder_pending_withdrawals.
+
+    Input State Configured:
+        - builder_pending_withdrawals: Contains entry with builder_index >= len(state.builders)
+        - validate_builder_indices: False (bypass helper validation)
+
+    Expected:
+        - IndexError raised when process_withdrawals tries to access invalid builder
+    """
+    invalid_builder_index = len(state.builders)
+    withdrawal_amount = spec.Gwei(1_000_000_000)
+
+    prepare_process_withdrawals(
+        spec,
+        state,
+        builder_indices=[invalid_builder_index],
+        builder_withdrawal_amounts={invalid_builder_index: withdrawal_amount},
+        validate_builder_indices=False,
+    )
+
+    yield "pre", state
+
+    with pytest.raises(IndexError):
+        spec.process_withdrawals(state)
+
+    yield "post", None
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_invalid_builder_index_sweep(spec, state):
+    """
+    Test that process_withdrawals raises IndexError for invalid builder index
+    during builder sweep.
+
+    Input State Configured:
+        - next_withdrawal_builder_index: Set to len(state.builders) (invalid)
+        - validate_builder_indices: False (bypass helper validation)
+
+    Expected:
+        - IndexError raised when process_withdrawals tries to sweep invalid builder
+    """
+    invalid_builder_index = len(state.builders)
+
+    prepare_process_withdrawals(
+        spec,
+        state,
+        next_withdrawal_builder_index=invalid_builder_index,
+        validate_builder_indices=False,
+    )
+
+    yield "pre", state
+
+    with pytest.raises(IndexError):
+        spec.process_withdrawals(state)
+
+    yield "post", None
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_invalid_validator_index_pending_partial(spec, state):
+    """
+    Test that process_withdrawals raises IndexError for invalid validator index
+    in pending_partial_withdrawals.
+
+    Input State Configured:
+        - pending_partial_withdrawals: Contains entry with validator_index >= len(state.validators)
+        - validate_validator_indices: False (bypass helper validation)
+
+    Expected:
+        - IndexError raised when process_withdrawals tries to access invalid validator
+    """
+    invalid_validator_index = len(state.validators)
+
+    prepare_process_withdrawals(
+        spec,
+        state,
+        pending_partial_indices=[invalid_validator_index],
+        validate_validator_indices=False,
+    )
+
+    yield "pre", state
+
+    with pytest.raises(IndexError):
+        spec.process_withdrawals(state)
+
+    yield "post", None
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_invalid_validator_index_sweep(spec, state):
+    """
+    Test that process_withdrawals raises IndexError for invalid validator index
+    during validator sweep.
+
+    Input State Configured:
+        - next_withdrawal_validator_index: Set to len(state.validators) (invalid)
+        - validate_validator_indices: False (bypass helper validation)
+
+    Expected:
+        - IndexError raised when process_withdrawals tries to sweep invalid validator
+    """
+    invalid_validator_index = len(state.validators)
+
+    prepare_process_withdrawals(
+        spec,
+        state,
+        next_withdrawal_validator_index=invalid_validator_index,
+        validate_validator_indices=False,
+    )
+
+    yield "pre", state
+
+    with pytest.raises(IndexError):
+        spec.process_withdrawals(state)
+
+    yield "post", None
