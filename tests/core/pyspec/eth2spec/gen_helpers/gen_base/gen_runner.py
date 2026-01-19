@@ -109,6 +109,9 @@ def execute_test(test_case: TestCase, dumper: Dumper):
     if meta:
         dumper.dump_meta(test_case, meta)
 
+    # Always write manifest.yml for every test case
+    dumper.dump_manifest(test_case)
+
 
 def run_generator(input_test_cases: Iterable[TestCase], args=None):
     start_time = time.time()

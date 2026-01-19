@@ -240,6 +240,7 @@ def get_valid_attestations_at_slot(
     """
     Return attestations at slot `slot_to_attest`.
     """
+    attestations = []
     committees_per_slot = spec.get_committee_count_per_slot(
         state, spec.compute_epoch_at_slot(slot_to_attest)
     )
@@ -251,7 +252,7 @@ def get_valid_attestations_at_slot(
             else:
                 return participation_fn(state.slot, index, comm)
 
-        yield get_valid_attestation(
+        attestation = get_valid_attestation(
             spec,
             state,
             slot_to_attest,
@@ -260,6 +261,13 @@ def get_valid_attestations_at_slot(
             filter_participant_set=participants_filter,
             beacon_block_root=beacon_block_root,
         )
+
+        # Valid attestation must have at least one aggregation bit set
+        # which may not be true due to custom participation_fn
+        if any(attestation.aggregation_bits):
+            attestations.append(attestation)
+
+    return attestations
 
 
 def get_valid_attestation_at_slot(
@@ -270,14 +278,12 @@ def get_valid_attestation_at_slot(
     Note: this EIP supports dense packing of on-chain aggregates so we can just return a single `Attestation`.
     """
     assert is_post_electra(spec)
-    attestations = list(
-        get_valid_attestations_at_slot(
-            state,
-            spec,
-            slot_to_attest,
-            participation_fn=participation_fn,
-            beacon_block_root=beacon_block_root,
-        )
+    attestations = get_valid_attestations_at_slot(
+        state,
+        spec,
+        slot_to_attest,
+        participation_fn=participation_fn,
+        beacon_block_root=beacon_block_root,
     )
     if not attestations:
         raise Exception("No valid attestations found")

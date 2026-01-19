@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [`compute_merkle_proof`](#compute_merkle_proof)
   - [`block_to_light_client_header`](#block_to_light_client_header)
 - [Deriving light client data](#deriving-light-client-data)
@@ -20,7 +20,7 @@ This document provides helper functions to enable full nodes to serve light
 client data. Full nodes SHOULD implement the described functionality to enable
 light clients to sync with the network.
 
-## Helper functions
+## Helpers
 
 ### `compute_merkle_proof`
 

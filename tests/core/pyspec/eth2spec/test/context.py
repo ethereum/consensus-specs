@@ -116,12 +116,13 @@ def zero_activation_threshold(spec: Spec):
     return 0
 
 
-def default_balances(spec: Spec):
+def default_balances(spec: Spec, num_validators=None):
     """
     Helper method to create a series of default balances.
     Usage: `@with_custom_state(balances_fn=default_balances, ...)`
     """
-    num_validators = spec.SLOTS_PER_EPOCH * 8
+    if num_validators is None:
+        num_validators = spec.SLOTS_PER_EPOCH * 8
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 

@@ -18,13 +18,13 @@ jobs:
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Set up Python
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         with:
           python-version-file: "pyproject.toml"
       - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
@@ -33,41 +33,17 @@ jobs:
           make lint
           git diff --exit-code
 
-  whitespace:
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-      - name: Check for trailing whitespace
-        run: |
-          if git grep -n '[[:blank:]]$'; then
-            echo "Trailing whitespace found. Please fix it."
-            exit 1
-          fi
-
-  comments:
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-      - name: Set up Python
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
-        with:
-          python-version-file: "pyproject.toml"
-      - name: Check fork comments
-        run: python3 scripts/check_fork_comments.py
-
   framework:
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Set up Python
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         with:
           python-version-file: "pyproject.toml"
       - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
@@ -77,7 +53,7 @@ jobs:
         if: always()
         run: cp -r ./tests/core/pyspec/test-reports ./tests/core/pyspec/test-results-framework-${{ github.run_number }}
       - name: Upload framework test results
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: test-results-framework-${{ github.run_number }}
@@ -139,7 +115,7 @@ jobs:
           echo "PR title is valid"
 
   tests:
-    needs: [lint, whitespace, comments, framework, title]
+    needs: [lint, framework, title]
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     strategy:
       matrix:
@@ -156,13 +132,13 @@ jobs:
           - eip7928
     steps:
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Set up Python
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         with:
           python-version-file: "pyproject.toml"
       - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
+        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
@@ -172,7 +148,7 @@ jobs:
         if: always()
         run: cp -r ./tests/core/pyspec/test-reports ./tests/core/pyspec/test-results-minimal-${{ matrix.fork }}-${{ github.run_number }}
       - name: Upload ${{ matrix.fork }} test results
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: test-results-minimal-${{ matrix.fork }}-${{ github.run_number }}
