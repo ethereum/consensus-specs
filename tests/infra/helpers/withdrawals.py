@@ -24,12 +24,12 @@ def set_parent_block_empty(spec, state):
 def prepare_process_withdrawals(
     spec,
     state,
-    builder_indices=[],
-    builder_sweep_indices=[],
-    pending_partial_indices=[],
-    full_withdrawal_indices=[],
-    partial_withdrawal_indices=[],
-    compounding_indices=[],
+    builder_indices=None,
+    builder_sweep_indices=None,
+    pending_partial_indices=None,
+    full_withdrawal_indices=None,
+    partial_withdrawal_indices=None,
+    compounding_indices=None,
     builder_withdrawal_amounts=None,
     builder_balances=None,
     builder_execution_addresses=None,
@@ -102,6 +102,20 @@ def prepare_process_withdrawals(
         validate_builder_indices: If True, assert all builder indices exist in registry (default: True)
         validate_validator_indices: If True, assert all validator indices exist in registry (default: True)
     """
+    # Initialize mutable default arguments
+    if builder_indices is None:
+        builder_indices = []
+    if builder_sweep_indices is None:
+        builder_sweep_indices = []
+    if pending_partial_indices is None:
+        pending_partial_indices = []
+    if full_withdrawal_indices is None:
+        full_withdrawal_indices = []
+    if partial_withdrawal_indices is None:
+        partial_withdrawal_indices = []
+    if compounding_indices is None:
+        compounding_indices = []
+
     # Set parent block state (Gloas+)
     if is_post_gloas(spec):
         if parent_block_empty:
