@@ -1382,7 +1382,9 @@ def test_duplicate_builder_index_in_pending_withdrawals(spec, state):
         state,
         builder_indices=[builder_index] * num_withdrawals,
         builder_withdrawal_amounts={builder_index: withdrawal_amount},
-        builder_balances={builder_index: withdrawal_amount * num_withdrawals + spec.MIN_DEPOSIT_AMOUNT},
+        builder_balances={
+            builder_index: withdrawal_amount * num_withdrawals + spec.MIN_DEPOSIT_AMOUNT
+        },
     )
 
     pre_state = state.copy()

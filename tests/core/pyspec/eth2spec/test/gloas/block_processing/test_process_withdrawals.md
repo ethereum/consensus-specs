@@ -114,8 +114,8 @@ ______________________________________________________________________
      `MAX_WITHDRAWALS_PER_PAYLOAD - 1` (one slot reserved for validator sweep)
    - Partial withdrawals: processed second, capped by
      `MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP`, must leave at least one slot
-   - Builder sweep: processed third, up to
-     `MAX_WITHDRAWALS_PER_PAYLOAD - 1` (one slot reserved for validator sweep)
+   - Builder sweep: processed third, up to `MAX_WITHDRAWALS_PER_PAYLOAD - 1`
+     (one slot reserved for validator sweep)
    - Validator sweep: processed last, at least one slot reserved, capped by
      `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP`
    - Total output: `MAX_WITHDRAWALS_PER_PAYLOAD`
