@@ -174,25 +174,6 @@ def prepare_process_withdrawals(
 
     current_epoch = spec.get_current_epoch(state)
 
-    # Set up compounding validators (Electra+)
-    if is_post_electra(spec) and compounding_indices:
-        for validator_index in compounding_indices:
-            excess_balance = (
-                compounding_excess_balances.get(validator_index, 1_000_000_000)
-                if isinstance(compounding_excess_balances, dict)
-                else (
-                    compounding_excess_balances
-                    if compounding_excess_balances is not None
-                    else 1_000_000_000
-                )
-            )
-            set_compounding_withdrawal_credential_with_balance(
-                spec,
-                state,
-                validator_index,
-                balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA + excess_balance,
-            )
-
     # Helper to get parameter value from single value, dict, or None
     def get_param_value(param, index, default):
         """
@@ -206,6 +187,19 @@ def prepare_process_withdrawals(
         if isinstance(param, (int, type(spec.Gwei(0)))):
             return param
         return param.get(index, default)
+
+    # Set up compounding validators (Electra+)
+    if is_post_electra(spec) and compounding_indices:
+        for validator_index in compounding_indices:
+            excess_balance = get_param_value(
+                compounding_excess_balances, validator_index, 1_000_000_000
+            )
+            set_compounding_withdrawal_credential_with_balance(
+                spec,
+                state,
+                validator_index,
+                balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA + excess_balance,
+            )
 
     # Set up builder pending withdrawals (Gloas+)
     if is_post_gloas(spec) and builder_indices:
