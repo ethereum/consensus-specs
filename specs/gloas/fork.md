@@ -6,6 +6,8 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
+- [Helpers](#helpers)
+  - [New `onboard_builders_from_pending_deposits`](#new-onboard_builders_from_pending_deposits)
 - [Fork to Gloas](#fork-to-gloas)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -24,6 +26,35 @@ Warning: this configuration is not definitive.
 | -------------------- | ------------------------------------- |
 | `GLOAS_FORK_VERSION` | `Version('0x07000000')`               |
 | `GLOAS_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+
+## Helpers
+
+### New `onboard_builders_from_pending_deposits`
+
+```python
+def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
+    """
+    Applies any pending deposit for builders, effectively
+    onboarding builders at the fork.
+    """
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    pending_deposits = []
+    for deposit in state.pending_deposits:
+        if deposit.pubkey in validator_pubkeys:
+            pending_deposits.append(deposit)
+            continue
+        if is_builder_withdrawal_credential(deposit.withdrawal_credentials):
+            apply_deposit_for_builder(
+                state,
+                deposit.pubkey,
+                deposit.withdrawal_credentials,
+                deposit.amount,
+                deposit.signature,
+            )
+            continue
+        pending_deposits.append(deposit)
+    state.pending_deposits = pending_deposits
+```
 
 ## Fork to Gloas
 
@@ -105,6 +136,9 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         # [New in Gloas:EIP7732]
         payload_expected_withdrawals=[],
     )
+
+    # [New in Gloas:EIP7732]
+    onboard_builders_from_pending_deposits(post)
 
     return post
 ```
