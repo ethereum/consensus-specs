@@ -508,23 +508,16 @@ def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
 
-    # Verify builder queue was partially processed
     # One slot is reserved for validator sweep, so only MAX - 1 builder withdrawals processed
     expected_builder_withdrawals = spec.MAX_WITHDRAWALS_PER_PAYLOAD - 1
-    expected_remaining = num_builders - expected_builder_withdrawals
-    assert len(state.builder_pending_withdrawals) == expected_remaining, (
-        f"Expected {expected_remaining} builder withdrawals to remain unprocessed"
-    )
-    assert len(list(state.payload_expected_withdrawals)) == expected_builder_withdrawals
-    assert state.next_withdrawal_index == (
-        pre_state.next_withdrawal_index + expected_builder_withdrawals
-    )
 
     assert_process_withdrawals(
         spec,
         state,
         pre_state,
         withdrawal_count=expected_builder_withdrawals,
+        builder_pending_delta=-int(expected_builder_withdrawals),
+        withdrawal_index_delta=expected_builder_withdrawals,
     )
 
 
