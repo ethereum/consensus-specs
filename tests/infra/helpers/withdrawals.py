@@ -438,15 +438,8 @@ def assert_process_withdrawals(
     num_validators = len(pre_state.validators)
     if len(expected_withdrawals) == spec.MAX_WITHDRAWALS_PER_PAYLOAD:
         # Full payload: next validator is after last withdrawal's validator index
-        # Note: For builders, validator_index has BUILDER_INDEX_FLAG set, which wraps correctly
         last_validator_index = expected_withdrawals[-1].validator_index
-        if is_post_gloas(spec) and spec.is_builder_index(last_validator_index):
-            raise ValueError(
-                "Full payload with builder as last withdrawal triggers BUILDER_INDEX_FLAG bug. "
-                "See https://github.com/ethereum/consensus-specs/pull/4835"
-            )
-        else:
-            expected_next = (last_validator_index + 1) % num_validators
+        expected_next = (last_validator_index + 1) % num_validators
     else:
         # Partial payload: advance by sweep size
         expected_next = (
