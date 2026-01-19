@@ -18,6 +18,7 @@
     - [Constructing `signed_execution_payload_bid`](#constructing-signed_execution_payload_bid)
     - [Constructing `payload_attestations`](#constructing-payload_attestations)
     - [Blob sidecars](#blob-sidecars)
+    - [Preparing `ExecutionPayload`](#preparing-executionpayload)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing a payload attestation](#constructing-a-payload-attestation)
 - [Modified functions](#modified-functions)
@@ -58,7 +59,7 @@ def get_ptc_assignment(
 ) -> Optional[Slot]:
     """
     Returns the slot during the requested epoch in which the validator with
-    index `validator_index` is a member of the PTC. Returns None if no
+    index ``validator_index`` is a member of the PTC. Returns None if no
     assignment is found.
     """
     next_epoch = Epoch(get_current_epoch(state) + 1)
@@ -72,8 +73,6 @@ def get_ptc_assignment(
 ```
 
 ### Lookahead
-
-*[New in Gloas:EIP7732]*
 
 `get_ptc_assignment` should be called at the start of each epoch to get the
 assignment for the next epoch (`current_epoch + 1`). A validator should plan for
@@ -151,10 +150,9 @@ To construct each `SignedProposerPreferences`:
    wishes to receive the builder payment.
 5. Set `preferences.gas_limit` to the validator's preferred gas limit for this
    execution payload.
-6.
-7. Instantiate a new `SignedProposerPreferences` object as `signed_preferences`.
-8. Set `signed_preferences.message` to `preferences`.
-9. Set `signed_preferences.signature` to the result of
+6. Instantiate a new `SignedProposerPreferences` object as `signed_preferences`.
+7. Set `signed_preferences.message` to `preferences`.
+8. Set `signed_preferences.signature` to the result of
    `get_proposer_preferences_signature(state, preferences, privkey)`.
 
 ```python
@@ -216,8 +214,35 @@ construct the `payload_attestations` field in `BeaconBlockBody`:
 
 The blob sidecars are no longer broadcast by the validator, and thus their
 construction is not necessary. This deprecates the corresponding sections from
-the Honest Validator specifications in the Fulu fork, moving them, albeit with
-some modifications, to the [Honest Builder](./builder.md) specifications.
+the Honest Validator specifications in the Fulu upgrade, moving them, albeit
+with some modifications, to the [Honest Builder](./builder.md) specifications.
+
+#### Preparing `ExecutionPayload`
+
+```python
+def prepare_execution_payload(
+    state: BeaconState,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    suggested_fee_recipient: ExecutionAddress,
+    execution_engine: ExecutionEngine,
+) -> Optional[PayloadId]:
+    # Set the forkchoice head and initiate the payload build process
+    payload_attributes = PayloadAttributes(
+        timestamp=compute_time_at_slot(state, state.slot),
+        prev_randao=get_randao_mix(state, get_current_epoch(state)),
+        suggested_fee_recipient=suggested_fee_recipient,
+        withdrawals=get_expected_withdrawals(state).withdrawals,
+        parent_beacon_block_root=hash_tree_root(state.latest_block_header),
+    )
+    return execution_engine.notify_forkchoice_updated(
+        # [Modified in Gloas:EIP7732]
+        head_block_hash=state.latest_block_hash,
+        safe_block_hash=safe_block_hash,
+        finalized_block_hash=finalized_block_hash,
+        payload_attributes=payload_attributes,
+    )
+```
 
 ### Payload timeliness attestation
 
@@ -285,7 +310,7 @@ def get_data_column_sidecars_from_column_sidecar(
     ],
 ) -> Sequence[DataColumnSidecar]:
     """
-    Given a DataColumnSidecar and the cells/proofs associated with each blob corresponding
+    Given a data column sidecar and the cells/proofs associated with each blob corresponding
     to the commitments it contains, assemble all sidecars for distribution to peers.
     """
     assert len(cells_and_kzg_proofs) == len(sidecar.kzg_commitments)

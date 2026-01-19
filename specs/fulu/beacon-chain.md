@@ -10,7 +10,7 @@
     - [Execution payload](#execution-payload)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
 - [Containers](#containers)
-  - [Extended Containers](#extended-containers)
+  - [Modified containers](#modified-containers)
     - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
   - [Misc](#misc)
@@ -29,7 +29,14 @@
 
 ## Introduction
 
-*Note*: This specification is built upon [Electra](../electra/beacon-chain.md).
+Fulu is a consensus-layer upgrade containing a number of features. Including:
+
+- [EIP-7594](https://eips.ethereum.org/EIPS/eip-7594): PeerDAS - Peer Data
+  Availability Sampling
+- [EIP-7917](https://eips.ethereum.org/EIPS/eip-7917): Deterministic proposer
+  lookahead
+- [EIP-7892](https://eips.ethereum.org/EIPS/eip-7892): Blob Parameter Only
+  Hardforks
 
 ## Configuration
 
@@ -117,7 +124,7 @@ def process_execution_payload(
 
 ## Containers
 
-### Extended Containers
+### Modified containers
 
 #### `BeaconState`
 
