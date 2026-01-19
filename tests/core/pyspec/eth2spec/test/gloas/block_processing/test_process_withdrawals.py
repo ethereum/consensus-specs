@@ -1356,3 +1356,79 @@ def test_invalid_validator_index_sweep(spec, state):
         spec.process_withdrawals(state)
 
     yield "post", None
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_duplicate_builder_index_in_pending_withdrawals(spec, state):
+    """
+    Test processing multiple pending withdrawals for the same builder.
+
+    Input State Configured:
+        - builder_pending_withdrawals: 3 entries all for builder 0
+        - builders[0].balance: Sufficient for all withdrawals
+
+    Output State Verified:
+        - All 3 withdrawals processed
+        - builders[0].balance: Decreased by total of all withdrawal amounts
+        - builder_pending_withdrawals: Reduced by 3
+    """
+    builder_index = 0
+    withdrawal_amount = spec.Gwei(1_000_000_000)
+    num_withdrawals = 3
+
+    prepare_process_withdrawals(
+        spec,
+        state,
+        builder_indices=[builder_index] * num_withdrawals,
+        builder_withdrawal_amounts={builder_index: withdrawal_amount},
+        builder_balances={builder_index: withdrawal_amount * num_withdrawals + spec.MIN_DEPOSIT_AMOUNT},
+    )
+
+    pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        withdrawal_count=num_withdrawals,
+        builder_pending_delta=-num_withdrawals,
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_sweep_index_wrap_around(spec, state):
+    """
+    Test that next_withdrawal_builder_index wraps around the builder registry.
+
+    Input State Configured:
+        - next_withdrawal_builder_index: len(builders) - 2 (near end of registry)
+        - builders at indices -2, -1, 0: Eligible for sweep with balance > 0
+
+    Output State Verified:
+        - Sweep starts near end and wraps to beginning
+        - Builder at index 0 is swept (verifies wrap-around occurred)
+    """
+    num_builders = len(state.builders)
+    start_index = num_builders - 2
+
+    sweep_indices = [num_builders - 2, num_builders - 1, 0]
+
+    prepare_process_withdrawals(
+        spec,
+        state,
+        builder_sweep_indices=sweep_indices,
+        next_withdrawal_builder_index=start_index,
+    )
+
+    pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        builder_balances={0: 0},  # Builder 0 swept after wrap-around
+    )

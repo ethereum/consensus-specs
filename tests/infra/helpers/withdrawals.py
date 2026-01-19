@@ -401,20 +401,38 @@ def assert_process_withdrawals(
     )
 
     # INVARIANT: Balance decreases for all withdrawals
+    # Aggregate withdrawals by index to handle multiple withdrawals for same builder/validator
+    builder_withdrawals: dict[int, int] = {}  # builder_index -> total amount
+    validator_withdrawals: dict[int, int] = {}  # validator_index -> total amount
+
     for withdrawal in expected_withdrawals:
         validator_index = withdrawal.validator_index
         if is_post_gloas(spec) and spec.is_builder_index(validator_index):
             builder_index = spec.convert_validator_index_to_builder_index(validator_index)
-            pre_balance = pre_state.builders[builder_index].balance
-            post_balance = state.builders[builder_index].balance
-            # Builder withdrawals cap at available balance (spec uses min())
-            expected_deduction = min(withdrawal.amount, pre_balance)
+            builder_withdrawals[builder_index] = (
+                builder_withdrawals.get(builder_index, 0) + withdrawal.amount
+            )
         else:
-            pre_balance = pre_state.balances[validator_index]
-            post_balance = state.balances[validator_index]
-            expected_deduction = withdrawal.amount
+            validator_withdrawals[validator_index] = (
+                validator_withdrawals.get(validator_index, 0) + withdrawal.amount
+            )
+
+    # Check builder balance decreases
+    for builder_index, total_amount in builder_withdrawals.items():
+        pre_balance = pre_state.builders[builder_index].balance
+        post_balance = state.builders[builder_index].balance
+        # Builder withdrawals cap at available balance (spec uses min())
+        expected_deduction = min(total_amount, pre_balance)
         assert post_balance == pre_balance - expected_deduction, (
-            f"Index {validator_index} balance must decrease by withdrawal amount"
+            f"Builder {builder_index} balance must decrease by withdrawal amount"
+        )
+
+    # Check validator balance decreases
+    for validator_index, total_amount in validator_withdrawals.items():
+        pre_balance = pre_state.balances[validator_index]
+        post_balance = state.balances[validator_index]
+        assert post_balance == pre_balance - total_amount, (
+            f"Validator {validator_index} balance must decrease by withdrawal amount"
         )
 
     # INVARIANT: Queue lengths never increase
