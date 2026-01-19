@@ -47,7 +47,7 @@ help-nonverbose:
 	@echo "make $(BOLD)clean$(NORM)      -- delete all untracked files"
 	@echo "make $(BOLD)comptests$(NORM)  -- generate compliance tests"
 	@echo "make $(BOLD)coverage$(NORM)   -- run pyspec tests with coverage"
-	@echo "make $(BOLD)lint$(NORM)       -- run the linters"
+	@echo "make $(BOLD)lint$(NORM)       -- run linters and checks"
 	@echo "make $(BOLD)reftests$(NORM)   -- generate reference tests"
 	@echo "make $(BOLD)serve_docs$(NORM) -- start a local docs web server"
 	@echo "make $(BOLD)test$(NORM)       -- run pyspec tests"
@@ -101,11 +101,14 @@ help-verbose:
 	@echo ""
 	@echo "$(BOLD)make lint$(NORM)"
 	@echo ""
-	@echo "  Runs all linters and formatters to check code quality:"
+	@echo "  Runs all linters, formatters, and checks:"
 	@echo "    - mdformat: Formats markdown files"
 	@echo "    - codespell: Checks for spelling mistakes"
 	@echo "    - ruff: Python linter and formatter"
 	@echo "    - mypy: Static type checker for Python"
+	@echo "    - Fork comments validation (scripts/check_fork_comments.py)"
+	@echo "    - Markdown headings validation (scripts/check_markdown_headings.py)"
+	@echo "    - Trailing whitespace check"
 	@echo ""
 	@echo "  Example: make lint"
 	@echo ""
@@ -305,18 +308,30 @@ serve_docs: _pyspec _copy_docs
 # Checks
 ###############################################################################
 
+LINT_DIFF_BEFORE := .lint_diff_before
+LINT_DIFF_AFTER := .lint_diff_after
 MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md')
 MYPY_PACKAGE_BASE := $(subst /,.,$(PYSPEC_DIR:$(CURDIR)/%=%))
 MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p $(MYPY_PACKAGE_BASE).eth2spec.$S)
 
 # Check for mistakes.
 lint: _pyspec
+	@rm -f $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER)
+	@git diff > $(LINT_DIFF_BEFORE)
 	@uv --quiet lock --check
-	@$(UV_RUN) mdformat --number --wrap=80 $(MARKDOWN_FILES)
 	@$(UV_RUN) codespell
+	@$(UV_RUN) python $(CURDIR)/scripts/check_fork_comments.py
+	@$(UV_RUN) python $(CURDIR)/scripts/fix_trailing_whitespace.py
+	@$(UV_RUN) python $(CURDIR)/scripts/check_markdown_headings.py
+	@$(UV_RUN) mdformat --number --wrap=80 $(MARKDOWN_FILES)
 	@$(UV_RUN) ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
 	@$(UV_RUN) ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
-	@$(UV_RUN) mypy $(MYPY_SCOPE)
+	@output="$$($(UV_RUN) mypy $(MYPY_SCOPE) 2>&1)" || \
+		{ echo "$$output"; exit 1; }
+	@git diff > $(LINT_DIFF_AFTER)
+	@diff -q $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER) >/dev/null 2>&1 || \
+		echo "$(BOLD)Note: make lint modified tracked files$(NORM)"
+	@rm -f $(LINT_DIFF_BEFORE) $(LINT_DIFF_AFTER)
 
 ###############################################################################
 # Generators

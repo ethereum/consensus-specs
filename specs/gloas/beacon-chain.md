@@ -5,10 +5,10 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Index flags](#index-flags)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
 - [Preset](#preset)
@@ -53,7 +53,7 @@
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
     - [New `compute_balance_weighted_acceptance`](#new-compute_balance_weighted_acceptance)
     - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
-  - [Beacon State accessors](#beacon-state-accessors)
+  - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
     - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
     - [New `get_ptc`](#new-get_ptc)
@@ -91,9 +91,9 @@
         - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
       - [Attestations](#attestations)
         - [Modified `process_attestation`](#modified-process_attestation)
-      - [Payload Attestations](#payload-attestations)
+      - [Payload attestations](#payload-attestations)
         - [New `process_payload_attestation`](#new-process_payload_attestation)
-      - [Proposer Slashing](#proposer-slashing)
+      - [Proposer slashing](#proposer-slashing)
         - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
   - [Execution payload processing](#execution-payload-processing)
     - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
@@ -108,9 +108,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 - [EIP-7732](https://eips.ethereum.org/EIPS/eip-7732): Enshrined
   Proposer-Builder Separation
 
-*Note*: This specification is built upon [Fulu](../fulu/beacon-chain.md).
-
-## Custom types
+## Types
 
 | Name           | SSZ equivalent | Description            |
 | -------------- | -------------- | ---------------------- |
@@ -124,7 +122,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 | -------------------- | --------------- | ------------------------------------------------------------------------------------------ |
 | `BUILDER_INDEX_FLAG` | `uint64(2**40)` | Bitwise flag which indicates that a `ValidatorIndex` should be treated as a `BuilderIndex` |
 
-### Domain types
+### Domains
 
 | Name                          | Value                      |
 | ----------------------------- | -------------------------- |
@@ -462,22 +460,22 @@ def is_attestation_same_slot(state: BeaconState, data: AttestationData) -> bool:
 
 ```python
 def is_valid_indexed_payload_attestation(
-    state: BeaconState, indexed_payload_attestation: IndexedPayloadAttestation
+    state: BeaconState, attestation: IndexedPayloadAttestation
 ) -> bool:
     """
-    Check if ``indexed_payload_attestation`` is non-empty, has sorted indices, and has
+    Check if ``attestation`` is non-empty, has sorted indices, and has
     a valid aggregate signature.
     """
     # Verify indices are non-empty and sorted
-    indices = indexed_payload_attestation.attesting_indices
+    indices = attestation.attesting_indices
     if len(indices) == 0 or not indices == sorted(indices):
         return False
 
     # Verify aggregate signature
     pubkeys = [state.validators[i].pubkey for i in indices]
-    domain = get_domain(state, DOMAIN_PTC_ATTESTER, None)
-    signing_root = compute_signing_root(indexed_payload_attestation.data, domain)
-    return bls.FastAggregateVerify(pubkeys, signing_root, indexed_payload_attestation.signature)
+    domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(attestation.data.slot))
+    signing_root = compute_signing_root(attestation.data, domain)
+    return bls.FastAggregateVerify(pubkeys, signing_root, attestation.signature)
 ```
 
 #### New `is_parent_block_full`
@@ -610,7 +608,7 @@ def compute_proposer_indices(
     ]
 ```
 
-### Beacon State accessors
+### Beacon state accessors
 
 #### Modified `get_next_sync_committee_indices`
 
@@ -861,13 +859,14 @@ def get_builder_withdrawals(
     withdrawal_index: WithdrawalIndex,
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
-    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
+    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
+    assert len(prior_withdrawals) <= withdrawals_limit
 
     processed_count: uint64 = 0
     withdrawals: List[Withdrawal] = []
     for withdrawal in state.builder_pending_withdrawals:
         all_withdrawals = prior_withdrawals + withdrawals
-        has_reached_limit = len(all_withdrawals) == withdrawals_limit
+        has_reached_limit = len(all_withdrawals) >= withdrawals_limit
         if has_reached_limit:
             break
 
@@ -896,14 +895,15 @@ def get_builders_sweep_withdrawals(
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
     epoch = get_current_epoch(state)
     builders_limit = min(len(state.builders), MAX_BUILDERS_PER_WITHDRAWALS_SWEEP)
-    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
+    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
+    assert len(prior_withdrawals) <= withdrawals_limit
 
     processed_count: uint64 = 0
     withdrawals: List[Withdrawal] = []
     builder_index = state.next_withdrawal_builder_index
     for _ in range(builders_limit):
         all_withdrawals = prior_withdrawals + withdrawals
-        has_reached_limit = len(all_withdrawals) == withdrawals_limit
+        has_reached_limit = len(all_withdrawals) >= withdrawals_limit
         if has_reached_limit:
             break
 
@@ -1399,7 +1399,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state.builder_pending_payments[data.slot % SLOTS_PER_EPOCH] = payment
 ```
 
-##### Payload Attestations
+##### Payload attestations
 
 ###### New `process_payload_attestation`
 
@@ -1418,7 +1418,7 @@ def process_payload_attestation(
     assert is_valid_indexed_payload_attestation(state, indexed_payload_attestation)
 ```
 
-##### Proposer Slashing
+##### Proposer slashing
 
 ###### Modified `process_proposer_slashing`
 

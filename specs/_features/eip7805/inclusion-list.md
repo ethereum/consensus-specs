@@ -15,8 +15,8 @@
 
 ## Introduction
 
-This is the inclusion list specification for the fork-choice enforced inclusion
-list feature.
+These are the inclusion list specifications for the fork-choice enforced
+inclusion list feature.
 
 ## Containers
 

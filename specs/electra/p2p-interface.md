@@ -26,7 +26,8 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for Electra.
+This document contains the consensus-layer networking specifications for
+Electra.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
@@ -66,8 +67,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of Electra to support upgraded
-types.
+Some gossip meshes are upgraded in Electra to support upgraded types.
 
 #### Topics and messages
 
@@ -93,7 +93,7 @@ The derivation of the `message-id` remains stable.
 *Updated validation*
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
-  limitation defined in Consensus Layer -- i.e. validate that
+  limitation defined in the consensus layer -- i.e. validate that
   `len(signed_beacon_block.message.body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK_ELECTRA`
 
 ###### `beacon_aggregate_and_proof`
