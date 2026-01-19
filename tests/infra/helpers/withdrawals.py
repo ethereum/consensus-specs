@@ -175,7 +175,11 @@ def prepare_process_withdrawals(
     current_epoch = spec.get_current_epoch(state)
 
     # Helper to get parameter value from single value, dict, or None
-    def get_param_value(param, index, default):
+    def get_param_value(
+        param: None | int | dict[int, int],
+        index: int,
+        default: int,
+    ) -> int:
         """
         Extract a value from a parameter that can be:
         - None: returns the default value
