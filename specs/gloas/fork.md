@@ -43,7 +43,10 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
         if deposit.pubkey in validator_pubkeys:
             pending_deposits.append(deposit)
             continue
-        if is_builder_withdrawal_credential(deposit.withdrawal_credentials):
+        builder_pubkeys = [b.pubkey for b in state.builders]
+        is_existing_builder = deposit.pubkey in builder_pubkeys
+        has_builder_credentials = is_builder_withdrawal_credential(deposit.withdrawal_credentials)
+        if is_existing_builder or has_builder_credentials:
             apply_deposit_for_builder(
                 state,
                 deposit.pubkey,

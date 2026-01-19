@@ -332,3 +332,58 @@ def test_fork_builder_deposit_with_existing_validator_pubkey_builder_creds(spec,
     # Pending deposit should remain
     assert len(post_state.pending_deposits) == 1
     assert post_state.pending_deposits[0].pubkey == validator_pubkey
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_builder_deposit_followed_by_non_builder_credentials(spec, phases, state):
+    """
+    Test fork with two deposits for the same builder pubkey:
+    - First deposit has builder credentials (0x03)
+    - Second deposit has non-builder credentials (0x02)
+    Both should be applied to the builder.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+
+    builder_pubkey = builder_pubkeys[0]
+    privkey = builder_pubkey_to_privkey[builder_pubkey]
+
+    # First deposit: builder credentials (0x03)
+    builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
+
+    # Second deposit: compounding credentials (0x02) for the same pubkey
+    compounding_withdrawal_credentials = (
+        post_spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\xab" * 20
+    )
+    deposit_data = build_deposit_data(
+        post_spec,
+        builder_pubkey,
+        privkey,
+        amount,
+        compounding_withdrawal_credentials,
+        signed=True,
+    )
+    non_builder_deposit = post_spec.PendingDeposit(
+        pubkey=deposit_data.pubkey,
+        withdrawal_credentials=deposit_data.withdrawal_credentials,
+        amount=deposit_data.amount,
+        signature=deposit_data.signature,
+        slot=post_spec.GENESIS_SLOT,
+    )
+
+    state.pending_deposits = [builder_deposit, non_builder_deposit]
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    # One builder should be created
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == builder_pubkey
+
+    # Balance should be the sum of both deposits
+    assert post_state.builders[0].balance == amount * 2
+
+    # Both pending deposits should be removed (applied to builder)
+    assert len(post_state.pending_deposits) == 0
