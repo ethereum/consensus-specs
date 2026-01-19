@@ -9,6 +9,7 @@
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
+    - [Modified `PartialDataColumnHeader`](#modified-partialdatacolumnheader)
     - [New `ProposerPreferences`](#new-proposerpreferences)
     - [New `SignedProposerPreferences`](#new-signedproposerpreferences)
   - [Helpers](#helpers)
@@ -25,6 +26,7 @@
         - [`proposer_preferences`](#proposer_preferences)
       - [Blob subnets](#blob-subnets)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
+        - [Partial Messages on `data_column_sidecar_{subnet_id}`](#partial-messages-on-data_column_sidecar_subnet_id)
       - [Attestation subnets](#attestation-subnets)
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
@@ -67,6 +69,23 @@ class DataColumnSidecar(Container):
     column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    # [Modified in Gloas:EIP7732]
+    # Removed `signed_block_header`
+    # [Modified in Gloas:EIP7732]
+    # Removed `kzg_commitments_inclusion_proof`
+    # [New in Gloas:EIP7732]
+    slot: Slot
+    # [New in Gloas:EIP7732]
+    beacon_block_root: Root
+```
+
+#### Modified `PartialDataColumnHeader`
+
+*Note*: These are the same changes as the changes for `DataColumnSidecar` above.
+
+```python
+class PartialDataColumnHeader(Container):
+    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     # [Modified in Gloas:EIP7732]
     # Removed `signed_block_header`
     # [Modified in Gloas:EIP7732]
@@ -414,6 +433,54 @@ The following validations MUST pass before forwarding the
   block's slot in the context of the current shuffling (defined by
   `block_header.parent_root`/`block_header.slot`). If the `proposer_index`
   cannot immediately be verified against the expected shuffling, the sidecar MAY
+  be queued for later processing while proposers for the block's branch are
+  calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
+
+###### Partial Messages on `data_column_sidecar_{subnet_id}`
+
+*[Modified in Gloas:EIP7732]*
+
+*Note*: These are the same changes as the changes in validation rules for full
+messages on `data_column_sidecar_{subnet_id}` as defined above.
+
+**Added in Gloas:**
+
+- _[IGNORE]_ The header's `beacon_block_root` has been seen via a valid signed
+  execution payload bid. A client MAY queue the sidecar for processing once the
+  block is retrieved.
+- _[REJECT]_ The header's `slot` matches the slot of the block with root
+  `beacon_block_root`.
+- _[REJECT]_ The hash of the header's `kzg_commitments` matches the
+  `blob_kzg_commitments_root` in the corresponding builder's bid for
+  `header.beacon_block_root`.
+
+**Removed from Fulu:**
+
+- _[IGNORE]_ The header is not from a future slot (with a
+  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
+  `block_header.slot <= current_slot` (a client MAY queue future headers for
+  processing at the appropriate slot).
+- _[IGNORE]_ The header is from a slot greater than the latest finalized slot --
+  i.e. validate that
+  `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
+- _[REJECT]_ The proposer signature of `signed_block_header` is valid with
+  respect to the `block_header.proposer_index` pubkey.
+- _[IGNORE]_ The header's block's parent (defined by `block_header.parent_root`)
+  has been seen (via gossip or non-gossip sources) (a client MAY queue header
+  for processing once the parent block is retrieved).
+- _[REJECT]_ The header's block's parent (defined by `block_header.parent_root`)
+  passes validation.
+- _[REJECT]_ The header is from a higher slot than the header's block's parent
+  (defined by `block_header.parent_root`).
+- _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the header's
+  block -- i.e.
+  `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
+- _[REJECT]_ The header's `kzg_commitments` field inclusion proof is valid as
+  verified by `verify_partial_data_column_header_inclusion_proof`.
+- _[REJECT]_ The header is proposed by the expected `proposer_index` for the
+  block's slot in the context of the current shuffling (defined by
+  `block_header.parent_root`/`block_header.slot`). If the `proposer_index`
+  cannot immediately be verified against the expected shuffling, the header MAY
   be queued for later processing while proposers for the block's branch are
   calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
 
