@@ -8,6 +8,8 @@
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`DataColumnsByRootIdentifier`](#datacolumnsbyrootidentifier)
+    - [`PartialDataColumnSidecar`](#partialdatacolumnsidecar)
+    - [`PartialDataColumnHeader`](#partialdatacolumnheader)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
     - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
@@ -25,13 +27,11 @@
         - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
         - [Distributed blob publishing using blobs retrieved from local execution-layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
-    - [Partial columns](#partial-columns)
+        - [Partial Messages on `data_column_sidecar_{subnet_id}`](#partial-messages-on-data_column_sidecar_subnet_id)
+    - [Partial columns for Cell Dissemination](#partial-columns-for-cell-dissemination)
       - [Partial message group ID](#partial-message-group-id)
-      - [`PartialDataColumnSidecar`](#partialdatacolumnsidecar)
-      - [`PartialDataColumnHeader`](#partialdatacolumnheader)
       - [Parts metadata](#parts-metadata)
       - [Encoding and decoding responses](#encoding-and-decoding-responses)
-      - [Validation](#validation)
       - [Eager pushing](#eager-pushing)
       - [Interaction with standard gossipsub](#interaction-with-standard-gossipsub)
         - [Requesting partial messages](#requesting-partial-messages)
@@ -90,6 +90,37 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 class DataColumnsByRootIdentifier(Container):
     block_root: Root
     columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
+```
+
+#### `PartialDataColumnSidecar`
+
+The `PartialDataColumnSidecar` is similar to the `DataColumnSidecar` container,
+except that only the cells and proofs identified by the bitmap are present.
+
+*Note*: The column index is inferred from the gossipsub topic subnet.
+
+```python
+class PartialDataColumnSidecar(Container):
+    cells_present_bitmap: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    partial_column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    # Optional header, only sent on eager pushes
+    header: List[PartialDataColumnHeader, 1]
+```
+
+#### `PartialDataColumnHeader`
+
+The `PartialDataColumnHeader` is the header that is common to all columns for a
+given block. It lets a peer identify which blobs are included in a block, as
+well as validating cells and proofs. This header is only sent on eager pushes
+because a peer can only make a request after having the data in this header.
+This header can be derived from a beacon block or a `DataColumnSidecar`.
+
+```python
+class PartialDataColumnHeader(Container):
+    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    signed_block_header: SignedBeaconBlockHeader
+    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
 ```
 
 ### Helpers
@@ -350,61 +381,7 @@ gossip. In particular, clients MUST:
 - Update gossip rule related data structures (i.e. update the anti-equivocation
   cache).
 
-#### Partial columns
-
-Gossipsub's
-[Partial Message Extension](https://github.com/libp2p/specs/pull/685) enables
-exchanging selective parts of a message rather than the whole. The specification
-here describes how consensus-layer clients use Partial Messages to disseminate
-cells.
-
-##### Partial message group ID
-
-When sending a partial message, the gossipsub group ID MUST be the block root.
-
-##### `PartialDataColumnSidecar`
-
-The `PartialDataColumnSidecar` is similar to the `DataColumnSidecar` container,
-except that only the cells and proofs identified by the bitmap are present.
-
-*Note*: The column index is inferred from the gossipsub topic subnet.
-
-```python
-class PartialDataColumnSidecar(Container):
-    cells_present_bitmap: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    partial_column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    # Optional header, only sent on eager pushes
-    header: List[PartialDataColumnHeader, 1]
-```
-
-##### `PartialDataColumnHeader`
-
-The `PartialDataColumnHeader` is the header that is common to all columns for a
-given block. It lets a peer identify which blobs are included in a block, as
-well as validating cells and proofs. This header is only sent on eager pushes
-because a peer can only make a request after having the data in this header.
-This header can be derived from a beacon block or a `DataColumnSidecar`.
-
-```python
-class PartialDataColumnHeader(Container):
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    signed_block_header: SignedBeaconBlockHeader
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
-```
-
-##### Parts metadata
-
-Peers communicate the cells available with a bitmap. A set bit (`1`) at index
-`i` means that the peer has the cell at index `i`. The bitmap is encoded as a
-`Bitlist`.
-
-##### Encoding and decoding responses
-
-All responses MUST be encoded and decoded with the `PartialDataColumnSidecar`
-container.
-
-##### Validation
+###### Partial Messages on `data_column_sidecar_{subnet_id}`
 
 Validating partial messages happens in two parts. First, the
 `PartialDataColumnHeader` needs to be validated, then the cell and proof data.
@@ -458,6 +435,31 @@ For verifying the cells in a partial message:
   commitments in the `PartialDataColumnHeader`.
 - _[REJECT]_ The sidecar's cell and proof data is valid as verified by
   `verify_partial_data_column_sidecar_kzg_proofs(sidecar, header.kzg_commitments, column_index)`.
+
+#### Partial columns for Cell Dissemination
+
+Gossipsub's
+[Partial Message Extension](https://github.com/libp2p/specs/pull/685) enables
+exchanging selective parts of a message rather than the whole. The specification
+here describes how consensus-layer clients use Partial Messages to disseminate
+cells.
+
+##### Partial message group ID
+
+When sending a partial message, the gossipsub group ID MUST be the block root
+prefixed by a single byte used for versioning. The version byte MUST be zero.
+Other versions may be defined later.
+
+##### Parts metadata
+
+Peers communicate the cells available with a bitmap. A set bit (`1`) at index
+`i` means that the peer has the cell at index `i`. The bitmap is encoded as a
+`Bitlist`.
+
+##### Encoding and decoding responses
+
+All responses MUST be encoded and decoded with the `PartialDataColumnSidecar`
+container.
 
 ##### Eager pushing
 
