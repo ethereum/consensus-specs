@@ -28,7 +28,7 @@ ______________________________________________________________________
 | (in `builders`) `.execution_address`                     | `ExecutionAddress`                                                  | `Bytes20`. Withdrawal destination for builder sweep withdrawals.                                                                                                     | Sweep withdrawal destination            |
 | (in `builders`) `.balance`                               | `Gwei`                                                              | `uint64`. Builder's staked balance. Decreased by withdrawal amounts.                                                                                                 | Builder balance for withdrawals         |
 | (in `builders`) `.withdrawable_epoch`                    | `Epoch`                                                             | `uint64`. **Bound to** `state.slot`: builder sweep withdrawal ready when `<= current_epoch`.                                                                         | Check if builder sweep eligible         |
-| `state.builder_pending_withdrawals`                      | `List[BuilderPendingWithdrawal, BUILDER_PENDING_WITHDRAWALS_LIMIT]` | Length in [0, 2^20]. Processed first. Max `MAX_WITHDRAWALS_PER_PAYLOAD` can produce withdrawals.                                                                     | Iterate for builder pending withdrawals |
+| `state.builder_pending_withdrawals`                      | `List[BuilderPendingWithdrawal, BUILDER_PENDING_WITHDRAWALS_LIMIT]` | Length in [0, 2^20]. Processed first. Max `MAX_WITHDRAWALS_PER_PAYLOAD - 1` can produce withdrawals.                                                                 | Iterate for builder pending withdrawals |
 | (in `builder_pending_withdrawals`) `.builder_index`      | `BuilderIndex`                                                      | `uint64` in \[0, `len(builders)`-1\]. **Index into** `builders[]`.                                                                                                   | Identify builder in registry            |
 | (in `builder_pending_withdrawals`) `.fee_recipient`      | `ExecutionAddress`                                                  | `Bytes20`. Withdrawal destination. Independent of builder's own `execution_address`.                                                                                 | Withdrawal destination                  |
 | (in `builder_pending_withdrawals`) `.amount`             | `Gwei`                                                              | `uint64`. Requested amount. Actual = `min(amount, builder.balance)`.                                                                                                 | Withdrawal amount                       |
@@ -111,12 +111,12 @@ ______________________________________________________________________
 4. **Processing Order & Caps** (combined constraint on output):
 
    - Builder pending withdrawals: processed first, up to
-     `MAX_WITHDRAWALS_PER_PAYLOAD`
+     `MAX_WITHDRAWALS_PER_PAYLOAD - 1` (one slot reserved for validator sweep)
    - Partial withdrawals: processed second, capped by
-     `MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP`
-   - Builder sweep: processed third, capped by
-     `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP`
-   - Validator sweep: processed last, capped by
+     `MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP`, must leave at least one slot
+   - Builder sweep: processed third, up to
+     `MAX_WITHDRAWALS_PER_PAYLOAD - 1` (one slot reserved for validator sweep)
+   - Validator sweep: processed last, at least one slot reserved, capped by
      `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP`
    - Total output: `MAX_WITHDRAWALS_PER_PAYLOAD`
 
