@@ -398,8 +398,7 @@ def test_fork_validator_deposit_followed_by_builder_credentials(spec, phases, st
     Test fork with two deposits for the same pubkey:
     - First deposit has validator credentials (0x02)
     - Second deposit has builder credentials (0x03)
-    The first deposit should stay in pending (for validator creation),
-    and the second deposit should be ignored (no builder created).
+    Both deposits should stay in pending (no builder created).
     """
     post_spec = phases[GLOAS]
     amount = post_spec.MIN_DEPOSIT_AMOUNT
@@ -437,11 +436,16 @@ def test_fork_validator_deposit_followed_by_builder_credentials(spec, phases, st
     # No builder should be created (first valid deposit was for validator)
     assert len(post_state.builders) == 0
 
-    # First deposit should remain in pending (for validator creation later)
-    assert len(post_state.pending_deposits) == 1
+    # Both deposits should remain in pending
+    assert len(post_state.pending_deposits) == 2
     assert post_state.pending_deposits[0].pubkey == builder_pubkey
     assert (
         post_state.pending_deposits[0].withdrawal_credentials == compounding_withdrawal_credentials
+    )
+    assert post_state.pending_deposits[1].pubkey == builder_pubkey
+    assert (
+        post_state.pending_deposits[1].withdrawal_credentials
+        == builder_deposit.withdrawal_credentials
     )
 
 
