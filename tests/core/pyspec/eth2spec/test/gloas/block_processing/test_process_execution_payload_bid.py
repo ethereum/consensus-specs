@@ -4,10 +4,9 @@ from eth2spec.test.context import (
     with_gloas_and_later,
 )
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
-from eth2spec.test.helpers.keys import privkeys
-from eth2spec.test.helpers.withdrawals import (
-    set_builder_withdrawal_credential,
-    set_builder_withdrawal_credential_with_balance,
+from eth2spec.test.helpers.keys import builder_privkeys
+from eth2spec.test.helpers.state import (
+    next_epoch_with_full_participation,
 )
 
 
@@ -49,6 +48,7 @@ def prepare_signed_execution_payload_bid(
     blob_kzg_commitments_root=None,
     prev_randao=None,
     valid_signature=True,
+    valid_amount=True,
 ):
     """
     Helper to create a signed execution payload bid with customizable parameters.
@@ -81,9 +81,10 @@ def prepare_signed_execution_payload_bid(
         value = spec.Gwei(0)
 
     # Validation: if builder index equals proposer index, value must be 0
-    proposer_index = spec.get_beacon_proposer_index(state)
-    if builder_index == proposer_index and value != 0:
-        raise ValueError("Self-builder (builder_index == proposer_index) must use zero value")
+    if valid_amount and builder_index == spec.BUILDER_INDEX_SELF_BUILD and value != 0:
+        raise ValueError(
+            "Self-builder (builder_index == BUILDER_INDEX_SELF_BUILD) must use zero value"
+        )
 
     if blob_kzg_commitments_root is None:
         kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
@@ -107,13 +108,12 @@ def prepare_signed_execution_payload_bid(
 
     if valid_signature:
         # Check if this is a self-build case
-        proposer_index = spec.get_beacon_proposer_index(state)
-        if builder_index == proposer_index:
+        if builder_index == spec.BUILDER_INDEX_SELF_BUILD:
             # Self-builds must use G2_POINT_AT_INFINITY
             signature = spec.bls.G2_POINT_AT_INFINITY
         else:
             # External builders use real signatures
-            privkey = privkeys[builder_index]
+            privkey = builder_privkeys[builder_index]
             signature = spec.get_execution_payload_bid_signature(state, bid, privkey)
     else:
         # Invalid signature
@@ -123,13 +123,6 @@ def prepare_signed_execution_payload_bid(
         message=bid,
         signature=signature,
     )
-
-
-def make_validator_builder(spec, state, validator_index):
-    """
-    Helper to make a validator a builder by setting builder withdrawal credentials.
-    """
-    set_builder_withdrawal_credential(spec, state, validator_index)
 
 
 def prepare_block_with_execution_payload_bid(spec, state, **bid_kwargs):
@@ -144,9 +137,9 @@ def prepare_block_with_execution_payload_bid(spec, state, **bid_kwargs):
     bid_kwargs["slot"] = block.slot
     bid_kwargs["parent_block_root"] = block.parent_root
 
-    # Default builder_index to the block's proposer_index if not specified
+    # Default builder_index to the self-build index if not specified
     if "builder_index" not in bid_kwargs:
-        bid_kwargs["builder_index"] = block.proposer_index
+        bid_kwargs["builder_index"] = spec.BUILDER_INDEX_SELF_BUILD
 
     # Now create bid with the correct slot and parent root
     signed_bid = prepare_signed_execution_payload_bid(spec, state, **bid_kwargs)
@@ -162,14 +155,7 @@ def prepare_block_with_non_proposer_builder(spec, state):
     """
     # Create block first (this advances state.slot)
     block = build_empty_block_for_next_slot(spec, state)
-
-    # Use a different validator as builder (clearly not self-building)
-    builder_index = (block.proposer_index + 1) % len(state.validators)
-    make_validator_builder(spec, state, builder_index)
-
-    # Ensure the contract is satisfied
-    assert builder_index != block.proposer_index, "Helper must return non-self-building scenario"
-
+    builder_index = block.proposer_index % len(state.builders)
     return block, builder_index
 
 
@@ -184,7 +170,7 @@ def test_process_execution_payload_bid_valid_self_build(spec, state):
     """
     Test valid self-building scenario (proposer building their own block with zero value)
     """
-    block, signed_bid = prepare_block_with_execution_payload_bid(spec, state, value=spec.Gwei(0))
+    block, _ = prepare_block_with_execution_payload_bid(spec, state, value=spec.Gwei(0))
 
     yield from run_execution_payload_bid_processing(spec, state, block)
 
@@ -196,19 +182,22 @@ def test_process_execution_payload_bid_valid_builder(spec, state):
     """
     Test valid builder scenario with registered builder and non-zero value
     """
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    assert state.finalized_checkpoint.epoch == 2
+
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+    assert spec.is_active_builder(state, builder_index) is True
 
-    # Ensure builder has sufficient balance
-    value = spec.Gwei(1000000)  # 0.001 ETH
-    required_balance = value + spec.MIN_ACTIVATION_BALANCE
-    state.balances[builder_index] = required_balance
-
-    pre_balance = state.balances[builder_index]
+    pre_balance = state.builders[builder_index].balance
     pre_pending_payments_len = len(
         [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
     )
 
     # Create bid with this non-proposer builder
+    value = spec.Gwei(1000000)  # 0.001 ETH
     signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
@@ -226,14 +215,13 @@ def test_process_execution_payload_bid_valid_builder(spec, state):
     assert state.latest_execution_payload_bid == signed_bid.message
 
     # Verify builder balance is still the same
-    assert state.balances[builder_index] == pre_balance
+    assert state.builders[builder_index].balance == pre_balance
 
     # Verify pending payment was recorded
     slot_index = spec.SLOTS_PER_EPOCH + (signed_bid.message.slot % spec.SLOTS_PER_EPOCH)
     pending_payment = state.builder_pending_payments[slot_index]
     assert pending_payment.withdrawal.amount == value
     assert pending_payment.withdrawal.builder_index == builder_index
-    assert pending_payment.withdrawal.withdrawable_epoch == spec.FAR_FUTURE_EPOCH
     assert pending_payment.weight == 0
 
     # Verify pending payments count increased by 1
@@ -241,30 +229,6 @@ def test_process_execution_payload_bid_valid_builder(spec, state):
         [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
     )
     assert post_pending_payments_len == pre_pending_payments_len + 1
-
-
-@with_gloas_and_later
-@spec_state_test
-@always_bls
-def test_process_execution_payload_bid_valid_builder_zero_value(spec, state):
-    """
-    Test valid builder scenario with registered builder and zero value
-    """
-    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
-
-    # Create bid with this non-proposer builder
-    signed_bid = prepare_signed_execution_payload_bid(
-        spec,
-        state,
-        builder_index=builder_index,
-        value=spec.Gwei(0),
-        slot=block.slot,
-        parent_block_root=block.parent_root,
-    )
-
-    block.body.signed_execution_payload_bid = signed_bid
-
-    yield from run_execution_payload_bid_processing(spec, state, block)
 
 
 #
@@ -278,10 +242,8 @@ def test_process_execution_payload_bid_invalid_signature(spec, state):
     """
     Test invalid signature fails
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-
-    block, signed_bid = prepare_block_with_execution_payload_bid(
-        spec, state, builder_index=proposer_index, valid_signature=False
+    block, _ = prepare_block_with_execution_payload_bid(
+        spec, state, builder_index=spec.BUILDER_INDEX_SELF_BUILD, valid_signature=False
     )
 
     yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
@@ -294,19 +256,21 @@ def test_process_execution_payload_bid_invalid_signature(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_bid_inactive_builder(spec, state):
+def test_process_execution_payload_bid_inactive_builder_deposit_not_finalized(spec, state):
     """
     Test inactive builder fails
     """
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
-    # Make builder inactive by setting exit epoch
-    state.validators[builder_index].exit_epoch = spec.get_current_epoch(state)
+    # Set the builder's deposit epoch as a non-finalized (future) epoch
+    state.builders[builder_index].deposit_epoch = spec.get_current_epoch(state) + 1
+    assert state.builders[builder_index].withdrawable_epoch == spec.FAR_FUTURE_EPOCH
+    assert spec.is_active_builder(state, builder_index) is False
 
     # Ensure builder has sufficient balance for the bid to avoid balance check failure
     value = spec.Gwei(1000000)
-    required_balance = value + spec.MIN_ACTIVATION_BALANCE
-    state.balances[builder_index] = required_balance
+    required_balance = value + spec.MIN_DEPOSIT_AMOUNT
+    state.builders[builder_index].balance = required_balance
 
     # Create bid with this non-proposer builder
     signed_bid = prepare_signed_execution_payload_bid(
@@ -325,19 +289,20 @@ def test_process_execution_payload_bid_inactive_builder(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_execution_payload_bid_slashed_builder(spec, state):
+def test_process_execution_payload_bid_inactive_builder_exiting(spec, state):
     """
-    Test slashed builder fails
+    Test inactive builder fails
     """
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
-    # Slash the builder
-    state.validators[builder_index].slashed = True
+    # Initiate builder exit by setting its withdrawable epoch
+    state.builders[builder_index].withdrawable_epoch = spec.get_current_epoch(state)
+    assert spec.is_active_builder(state, builder_index) is False
 
     # Ensure builder has sufficient balance for the bid to avoid balance check failure
     value = spec.Gwei(1000000)
-    required_balance = value + spec.MIN_ACTIVATION_BALANCE
-    state.balances[builder_index] = required_balance
+    required_balance = value + spec.MIN_DEPOSIT_AMOUNT
+    state.builders[builder_index].balance = required_balance
 
     # Create bid with this non-proposer builder
     signed_bid = prepare_signed_execution_payload_bid(
@@ -358,7 +323,7 @@ def test_process_execution_payload_bid_slashed_builder(spec, state):
 @spec_state_test
 def test_process_execution_payload_bid_self_build_non_zero_value(spec, state):
     """
-    Test self-builder with non-zero value fails (builder_index == proposer_index but value > 0)
+    Test self-builder with non-zero value fails (builder_index == BUILDER_INDEX_SELF_BUILD but value > 0)
     """
     block = build_empty_block_for_next_slot(spec, state)
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
@@ -370,63 +335,18 @@ def test_process_execution_payload_bid_self_build_non_zero_value(spec, state):
         block_hash=spec.Hash32(),
         fee_recipient=spec.ExecutionAddress(),
         gas_limit=spec.uint64(30000000),
-        builder_index=block.proposer_index,  # Same as proposer (self-build)
+        builder_index=spec.BUILDER_INDEX_SELF_BUILD,
         slot=block.slot,
-        value=1,
+        value=spec.Gwei(1),
         blob_kzg_commitments_root=blob_kzg_commitments_root,
     )
 
     # Sign the bid
-    privkey = privkeys[block.proposer_index]
-    signature = spec.get_execution_payload_bid_signature(state, bid, privkey)
-
     signed_bid = spec.SignedExecutionPayloadBid(
-        message=bid,
-        signature=signature,
+        message=bid, signature=spec.bls.G2_POINT_AT_INFINITY
     )
 
     block.body.signed_execution_payload_bid = signed_bid
-
-    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_process_execution_payload_bid_non_builder_non_zero_value(spec, state):
-    """
-    Test non-builder attempting non-zero value fails
-    """
-    proposer_index = spec.get_beacon_proposer_index(state)
-
-    # Ensure builder has sufficient balance for the bid to avoid balance check failure
-    value = spec.Gwei(1000000)
-    required_balance = value + spec.MIN_ACTIVATION_BALANCE
-    state.balances[proposer_index] = required_balance
-
-    # Don't make proposer a builder, but try non-zero value
-    block, signed_bid = prepare_block_with_execution_payload_bid(
-        spec,
-        state,
-        builder_index=proposer_index,
-        value=value,  # Non-zero value should fail for non-builder
-    )
-
-    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_process_execution_payload_bid_non_builder_wrong_proposer(spec, state):
-    """
-    Test non-builder with wrong proposer index fails
-    """
-    proposer_index = spec.get_beacon_proposer_index(state)
-    other_index = (proposer_index + 1) % len(state.validators)
-
-    # Non-builder but not the proposer
-    block, signed_bid = prepare_block_with_execution_payload_bid(
-        spec, state, builder_index=other_index, value=spec.Gwei(0)
-    )
 
     yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
 
@@ -446,7 +366,7 @@ def test_process_execution_payload_bid_insufficient_balance(spec, state):
 
     value = spec.Gwei(1000000)  # 0.001 ETH
     # Set balance too low
-    state.balances[builder_index] = value - 1
+    state.builders[builder_index].balance = value - 1
 
     # Create bid with this non-proposer builder
     signed_bid = prepare_signed_execution_payload_bid(
@@ -465,82 +385,19 @@ def test_process_execution_payload_bid_insufficient_balance(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
-def test_process_execution_payload_bid_excess_balance(spec, state):
-    """
-    Test builder with excess balance (2048.25 ETH) can submit bid for 2016.25 ETH
-    Edge case where bid limit depends on builder's balance, not effective balance
-    """
-    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
-
-    # Set up builder with excess balance as requested by reviewer
-    excess_balance = spec.Gwei(2048250000000)  # 2048.25 ETH in Gwei
-    bid_value = spec.Gwei(2016250000000)  # 2016.25 ETH in Gwei
-
-    # Use the helper function to set up builder with specific balance
-    set_builder_withdrawal_credential_with_balance(
-        spec,
-        state,
-        builder_index,
-        balance=excess_balance,
-        effective_balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA,  # Standard max effective balance
-    )
-
-    pre_balance = state.balances[builder_index]
-    pre_pending_payments_len = len(
-        [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
-    )
-
-    # Create bid with this non-proposer builder
-    signed_bid = prepare_signed_execution_payload_bid(
-        spec,
-        state,
-        builder_index=builder_index,
-        value=bid_value,
-        slot=block.slot,
-        parent_block_root=block.parent_root,
-    )
-
-    block.body.signed_execution_payload_bid = signed_bid
-
-    yield from run_execution_payload_bid_processing(spec, state, block)
-
-    # Verify state updates
-    assert state.latest_execution_payload_bid == signed_bid.message
-
-    # Verify builder balance is still the same (payment is pending)
-    assert state.balances[builder_index] == pre_balance
-
-    # Verify pending payment was recorded
-    slot_index = spec.SLOTS_PER_EPOCH + (signed_bid.message.slot % spec.SLOTS_PER_EPOCH)
-    pending_payment = state.builder_pending_payments[slot_index]
-    assert pending_payment.withdrawal.amount == bid_value
-    assert pending_payment.withdrawal.builder_index == builder_index
-    assert pending_payment.withdrawal.withdrawable_epoch == spec.FAR_FUTURE_EPOCH
-    assert pending_payment.weight == 0
-
-    # Verify pending payments count increased by 1
-    post_pending_payments_len = len(
-        [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
-    )
-    assert post_pending_payments_len == pre_pending_payments_len + 1
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_process_execution_payload_bid_insufficient_balance_with_pending_payments(spec, state):
     """
     Test builder with sufficient balance for bid alone but insufficient when considering pending payments and min activation balance
     """
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
-    # Set up scenario: balance=32000000000 + 1000, bid=600, existing_pending=500
-    # Total needed: 600 + 500 + 32000000000 = 32000001100 > 32000001000 (should fail)
-    balance = spec.MIN_ACTIVATION_BALANCE + spec.Gwei(1000)  # 32 ETH + 1000 gwei
+    # Set up scenario: balance=1000000000 + 1000, bid=600, existing_pending=500
+    # Total needed: 600 + 500 + 1000000000 = 1000001100 > 1000001000 (should fail)
+    balance = spec.MIN_DEPOSIT_AMOUNT + spec.Gwei(1000)  # 1 ETH + 1000 gwei
     bid_amount = spec.Gwei(600)
     existing_pending = spec.Gwei(500)
 
-    state.balances[builder_index] = balance
+    state.builders[builder_index].balance = balance
 
     # Create existing pending payment for this builder
     slot_index = 5  # Some slot in first epoch
@@ -550,7 +407,6 @@ def test_process_execution_payload_bid_insufficient_balance_with_pending_payment
             fee_recipient=spec.ExecutionAddress(),
             amount=existing_pending,
             builder_index=builder_index,
-            withdrawable_epoch=spec.Epoch(0),
         ),
     )
 
@@ -575,15 +431,22 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_payments(
     """
     Test builder with sufficient balance for both bid and existing pending payments
     """
-    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    assert state.finalized_checkpoint.epoch == 2
 
-    # Set up scenario: balance=2000, bid=600, existing_pending=500, min_activation=32ETH
+    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+    assert spec.is_active_builder(state, builder_index) is True
+
+    # Set up scenario: balance=2000 ETH, bid=600, existing_pending=500, min_activation=32ETH
     # Total needed: 600 + 500 + 32000000000 = ~32.0011 ETH < 2000 ETH (should pass)
     balance = spec.Gwei(2000000000000)  # 2000 ETH
     bid_amount = spec.Gwei(600)
     existing_pending = spec.Gwei(500)
 
-    state.balances[builder_index] = balance
+    state.builders[builder_index].balance = balance
 
     # Create existing pending payment for this builder
     slot_index = 5  # Some slot in first epoch
@@ -593,11 +456,10 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_payments(
             fee_recipient=spec.ExecutionAddress(),
             amount=existing_pending,
             builder_index=builder_index,
-            withdrawable_epoch=spec.Epoch(0),
         ),
     )
 
-    pre_balance = state.balances[builder_index]
+    pre_balance = state.builders[builder_index].balance
     pre_pending_payments_len = len(
         [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
     )
@@ -620,14 +482,13 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_payments(
     assert state.latest_execution_payload_bid == signed_bid.message
 
     # Verify builder balance is still the same (payment is pending)
-    assert state.balances[builder_index] == pre_balance
+    assert state.builders[builder_index].balance == pre_balance
 
     # Verify new pending payment was recorded
     slot_index_new = spec.SLOTS_PER_EPOCH + (signed_bid.message.slot % spec.SLOTS_PER_EPOCH)
     pending_payment = state.builder_pending_payments[slot_index_new]
     assert pending_payment.withdrawal.amount == bid_amount
     assert pending_payment.withdrawal.builder_index == builder_index
-    assert pending_payment.withdrawal.withdrawable_epoch == spec.FAR_FUTURE_EPOCH
     assert pending_payment.weight == 0
 
     # Verify pending payments count increased by 1 (now we have 2 total)
@@ -651,7 +512,7 @@ def test_process_execution_payload_bid_insufficient_balance_with_pending_withdra
     bid_amount = spec.Gwei(600)
     existing_withdrawal = spec.Gwei(500)
 
-    state.balances[builder_index] = balance
+    state.builders[builder_index].balance = balance
 
     # Create existing pending withdrawal for this builder
     state.builder_pending_withdrawals.append(
@@ -659,7 +520,6 @@ def test_process_execution_payload_bid_insufficient_balance_with_pending_withdra
             fee_recipient=spec.ExecutionAddress(),
             amount=existing_withdrawal,
             builder_index=builder_index,
-            withdrawable_epoch=spec.Epoch(100),  # Future epoch
         )
     )
 
@@ -684,7 +544,14 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_withdrawa
     """
     Test builder with sufficient balance for both bid and existing pending withdrawals
     """
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    assert state.finalized_checkpoint.epoch == 2
+
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+    assert spec.is_active_builder(state, builder_index) is True
 
     # Set up scenario: balance=2000, bid=600, existing_withdrawal=500, min_activation=32ETH
     # Total needed: 600 + 500 + 32000000000 = ~32.0011 ETH < 2000 ETH (should pass)
@@ -692,7 +559,7 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_withdrawa
     bid_amount = spec.Gwei(600)
     existing_withdrawal = spec.Gwei(500)
 
-    state.balances[builder_index] = balance
+    state.builders[builder_index].balance = balance
 
     # Create existing pending withdrawal for this builder
     state.builder_pending_withdrawals.append(
@@ -700,11 +567,10 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_withdrawa
             fee_recipient=spec.ExecutionAddress(),
             amount=existing_withdrawal,
             builder_index=builder_index,
-            withdrawable_epoch=spec.Epoch(100),  # Future epoch
         )
     )
 
-    pre_balance = state.balances[builder_index]
+    pre_balance = state.builders[builder_index].balance
     pre_pending_payments_len = len(
         [p for p in state.builder_pending_payments if p.withdrawal.amount > 0]
     )
@@ -728,14 +594,13 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_withdrawa
     assert state.latest_execution_payload_bid == signed_bid.message
 
     # Verify builder balance is still the same (payment is pending)
-    assert state.balances[builder_index] == pre_balance
+    assert state.builders[builder_index].balance == pre_balance
 
     # Verify new pending payment was recorded
     slot_index_new = spec.SLOTS_PER_EPOCH + (signed_bid.message.slot % spec.SLOTS_PER_EPOCH)
     pending_payment = state.builder_pending_payments[slot_index_new]
     assert pending_payment.withdrawal.amount == bid_amount
     assert pending_payment.withdrawal.builder_index == builder_index
-    assert pending_payment.withdrawal.withdrawable_epoch == spec.FAR_FUTURE_EPOCH
     assert pending_payment.weight == 0
 
     # Verify pending payments count increased by 1
@@ -760,8 +625,6 @@ def test_process_execution_payload_bid_wrong_slot(spec, state):
     """
     Test wrong slot in bid fails
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-
     # Create block first to advance slot
     block = build_empty_block_for_next_slot(spec, state)
 
@@ -769,7 +632,7 @@ def test_process_execution_payload_bid_wrong_slot(spec, state):
     signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
-        builder_index=proposer_index,
+        builder_index=spec.BUILDER_INDEX_SELF_BUILD,
         slot=block.slot + 1,  # Wrong slot
         parent_block_root=block.parent_root,
     )
@@ -785,8 +648,6 @@ def test_process_execution_payload_bid_wrong_parent_block_hash(spec, state):
     """
     Test wrong parent block hash fails
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-
     # Create block first to advance slot
     block = build_empty_block_for_next_slot(spec, state)
 
@@ -795,7 +656,7 @@ def test_process_execution_payload_bid_wrong_parent_block_hash(spec, state):
     signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
-        builder_index=proposer_index,
+        builder_index=spec.BUILDER_INDEX_SELF_BUILD,
         slot=block.slot,
         parent_block_root=block.parent_root,
         parent_block_hash=wrong_hash,
@@ -812,15 +673,17 @@ def test_process_execution_payload_bid_wrong_parent_block_root(spec, state):
     """
     Test wrong parent block root fails
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-
     # Create block first to advance slot
     block = build_empty_block_for_next_slot(spec, state)
 
     # Create bid with wrong parent block root
     wrong_root = spec.Root(b"\x42" * 32)
     signed_bid = prepare_signed_execution_payload_bid(
-        spec, state, builder_index=proposer_index, slot=block.slot, parent_block_root=wrong_root
+        spec,
+        state,
+        builder_index=spec.BUILDER_INDEX_SELF_BUILD,
+        slot=block.slot,
+        parent_block_root=wrong_root,
     )
 
     block.body.signed_execution_payload_bid = signed_bid
@@ -834,8 +697,6 @@ def test_process_execution_payload_bid_wrong_prev_randao(spec, state):
     """
     Test wrong prev_randao fails (bid.prev_randao != get_randao_mix)
     """
-    proposer_index = spec.get_beacon_proposer_index(state)
-
     # Create block first to advance slot
     block = build_empty_block_for_next_slot(spec, state)
 
@@ -844,7 +705,7 @@ def test_process_execution_payload_bid_wrong_prev_randao(spec, state):
     signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
-        builder_index=proposer_index,
+        builder_index=spec.BUILDER_INDEX_SELF_BUILD,
         slot=block.slot,
         parent_block_root=block.parent_root,
         prev_randao=wrong_prev_randao,

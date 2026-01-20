@@ -12,7 +12,7 @@
   - [Modified `LightClientFinalityUpdate`](#modified-lightclientfinalityupdate)
   - [Modified `LightClientOptimisticUpdate`](#modified-lightclientoptimisticupdate)
   - [Modified `LightClientStore`](#modified-lightclientstore)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [`get_lc_execution_root`](#get_lc_execution_root)
   - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
@@ -121,7 +121,7 @@ class LightClientStore(object):
     current_max_active_participants: uint64
 ```
 
-## Helper functions
+## Helpers
 
 ### `get_lc_execution_root`
 

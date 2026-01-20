@@ -2,17 +2,17 @@
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
+- [Custom types](#custom-types)
 - [Constants](#constants)
   - [Misc](#misc)
-- [Custom types](#custom-types)
-- [Configuration](#configuration)
-  - [Custody setting](#custody-setting)
 - [Preset](#preset)
   - [Size parameters](#size-parameters)
-  - [Containers](#containers)
-    - [`DataColumnSidecar`](#datacolumnsidecar)
-    - [`MatrixEntry`](#matrixentry)
-- [Helper functions](#helper-functions)
+- [Configuration](#configuration)
+  - [Custody setting](#custody-setting)
+- [Containers](#containers)
+  - [`DataColumnSidecar`](#datacolumnsidecar)
+  - [`MatrixEntry`](#matrixentry)
+- [Helpers](#helpers)
   - [`get_custody_groups`](#get_custody_groups)
   - [`compute_columns_for_custody_group`](#compute_columns_for_custody_group)
   - [`compute_matrix`](#compute_matrix)
@@ -32,6 +32,14 @@
 
 <!-- mdformat-toc end -->
 
+## Custom types
+
+| Name           | SSZ equivalent | Description                                           |
+| -------------- | -------------- | ----------------------------------------------------- |
+| `RowIndex`     | `uint64`       | Row identifier in the matrix of cells                 |
+| `ColumnIndex`  | `uint64`       | Column identifier in the matrix of cells              |
+| `CustodyIndex` | `uint64`       | Custody group identifier in the set of custody groups |
+
 ## Constants
 
 The following values are (non-configurable) constants used throughout the
@@ -43,13 +51,13 @@ specification.
 | ------------- | --------------------- |
 | `UINT256_MAX` | `uint256(2**256 - 1)` |
 
-## Custom types
+## Preset
 
-| Name           | SSZ equivalent | Description                                           |
-| -------------- | -------------- | ----------------------------------------------------- |
-| `RowIndex`     | `uint64`       | Row identifier in the matrix of cells                 |
-| `ColumnIndex`  | `uint64`       | Column identifier in the matrix of cells              |
-| `CustodyIndex` | `uint64`       | Custody group identifier in the set of custody groups |
+### Size parameters
+
+| Name                | Value                                | Description                                   |
+| ------------------- | ------------------------------------ | --------------------------------------------- |
+| `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
 
 ## Configuration
 
@@ -61,17 +69,9 @@ specification.
 | `NUMBER_OF_CUSTODY_GROUPS` | `128` | Number of custody groups available for nodes to custody                           |
 | `CUSTODY_REQUIREMENT`      | `4`   | Minimum number of custody groups an honest node custodies and serves samples from |
 
-## Preset
+## Containers
 
-### Size parameters
-
-| Name                | Value                                | Description                                   |
-| ------------------- | ------------------------------------ | --------------------------------------------- |
-| `NUMBER_OF_COLUMNS` | `uint64(CELLS_PER_EXT_BLOB)` (= 128) | Number of columns in the extended data matrix |
-
-### Containers
-
-#### `DataColumnSidecar`
+### `DataColumnSidecar`
 
 ```python
 class DataColumnSidecar(Container):
@@ -83,7 +83,7 @@ class DataColumnSidecar(Container):
     kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
 ```
 
-#### `MatrixEntry`
+### `MatrixEntry`
 
 ```python
 class MatrixEntry(Container):
@@ -93,7 +93,7 @@ class MatrixEntry(Container):
     row_index: RowIndex
 ```
 
-## Helper functions
+## Helpers
 
 ### `get_custody_groups`
 
@@ -152,8 +152,8 @@ def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
                 MatrixEntry(
                     cell=cell,
                     kzg_proof=proof,
-                    row_index=blob_index,
                     column_index=cell_index,
+                    row_index=blob_index,
                 )
             )
     return matrix
@@ -181,8 +181,8 @@ def recover_matrix(
                 MatrixEntry(
                     cell=cell,
                     kzg_proof=proof,
-                    row_index=blob_index,
                     column_index=cell_index,
+                    row_index=blob_index,
                 )
             )
     return matrix

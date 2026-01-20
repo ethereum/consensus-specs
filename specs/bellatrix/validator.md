@@ -127,19 +127,19 @@ To obtain an execution payload, a block proposer building a block on top of a
 `state` must take the following actions:
 
 1. Set
-   `payload_id = prepare_execution_payload(state, pow_chain, safe_block_hash, finalized_block_hash, suggested_fee_recipient, execution_engine)`,
+   `payload_id = prepare_execution_payload(state, safe_block_hash, finalized_block_hash, suggested_fee_recipient, execution_engine, pow_chain)`,
    where:
    - `state` is the state object after applying `process_slots(state, slot)`
      transition to the resulting state of the parent block processing
-   - `pow_chain` is a `Dict[Hash32, PowBlock]` dictionary that abstractly
-     represents all blocks in the PoW chain with block hash as the dictionary
-     key
    - `safe_block_hash` is the return value of the
      `get_safe_execution_block_hash(store: Store)` function call
    - `finalized_block_hash` is the block hash of the latest finalized execution
      payload (`Hash32()` if none yet finalized)
    - `suggested_fee_recipient` is the value suggested to be used for the
      `fee_recipient` field of the execution payload
+   - `pow_chain` is a `Dict[Hash32, PowBlock]` dictionary that abstractly
+     represents all blocks in the PoW chain with block hash as the dictionary
+     key
 
 ```python
 def prepare_execution_payload(
