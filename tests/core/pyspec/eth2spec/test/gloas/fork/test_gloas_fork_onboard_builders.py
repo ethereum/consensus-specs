@@ -495,3 +495,89 @@ def test_fork_invalid_validator_deposit_followed_by_builder_credentials(spec, ph
     assert (
         post_state.pending_deposits[0].withdrawal_credentials == compounding_withdrawal_credentials
     )
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_invalid_builder_deposit_followed_by_valid_builder_deposit(spec, phases, state):
+    """
+    Test fork with two builder deposits for the same pubkey:
+    - First deposit has builder credentials (0x03) but INVALID signature
+    - Second deposit has builder credentials (0x03) with valid signature
+    The valid second deposit should create the builder.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+
+    builder_pubkey = builder_pubkeys[0]
+    builder_withdrawal_credentials = get_builder_withdrawal_credentials(post_spec, builder_pubkey)
+
+    # First deposit: builder credentials (0x03) with INVALID signature
+    invalid_builder_deposit = post_spec.PendingDeposit(
+        pubkey=builder_pubkey,
+        withdrawal_credentials=builder_withdrawal_credentials,
+        amount=amount,
+        signature=post_spec.bls.G2_POINT_AT_INFINITY,  # Invalid signature
+        slot=post_spec.GENESIS_SLOT,
+    )
+
+    # Second deposit: builder credentials (0x03) with valid signature
+    valid_builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
+
+    state.pending_deposits = [invalid_builder_deposit, valid_builder_deposit]
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    # Builder should be created from the valid second deposit
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == builder_pubkey
+    # Only the valid deposit amount should be counted
+    assert post_state.builders[0].balance == amount
+
+    # No pending deposits should remain
+    assert len(post_state.pending_deposits) == 0
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_valid_builder_deposit_followed_by_invalid_builder_deposit(spec, phases, state):
+    """
+    Test fork with two builder deposits for the same pubkey:
+    - First deposit has builder credentials (0x03) with valid signature
+    - Second deposit has builder credentials (0x03) but INVALID signature
+    The valid first deposit should create the builder, second adds to balance.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+
+    builder_pubkey = builder_pubkeys[0]
+    builder_withdrawal_credentials = get_builder_withdrawal_credentials(post_spec, builder_pubkey)
+
+    # First deposit: builder credentials (0x03) with valid signature
+    valid_builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
+
+    # Second deposit: builder credentials (0x03) with INVALID signature
+    invalid_builder_deposit = post_spec.PendingDeposit(
+        pubkey=builder_pubkey,
+        withdrawal_credentials=builder_withdrawal_credentials,
+        amount=amount,
+        signature=post_spec.bls.G2_POINT_AT_INFINITY,  # Invalid signature
+        slot=post_spec.GENESIS_SLOT,
+    )
+
+    state.pending_deposits = [valid_builder_deposit, invalid_builder_deposit]
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    # Builder should be created from the valid first deposit
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == builder_pubkey
+    # Both deposits should be applied (second is a top-up, no signature check needed)
+    assert post_state.builders[0].balance == amount * 2
+
+    # No pending deposits should remain
+    assert len(post_state.pending_deposits) == 0
