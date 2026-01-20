@@ -172,7 +172,7 @@ def process_execution_payload(
     # Verify execution payload blobs count is valid
     assert body.execution_payload_blobs_count <= len(body.blob_kzg_commitments)
 
-    # [New in BIB]
+    # [Modified in BIB]
     # Compute versioned hashes
     versioned_hashes = [
         kzg_commitment_to_payload_blob_versioned_hash(commitment)
