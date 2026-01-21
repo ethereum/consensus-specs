@@ -88,7 +88,7 @@ class FCRTest:
     def next_slot(self):
         self.tick(self.current_slot() + 1)
 
-    def add_and_apply_block(self, parent_root=None):
+    def add_and_apply_block(self, parent_root=None, release_att_pool=True, graffiti: str = None):
         if parent_root is None:
             parent_root = self.head()
         else:
@@ -109,8 +109,12 @@ class FCRTest:
         for attestation in self.attestation_pool:
             block.body.attestations.append(attestation)
 
+        if graffiti is not None:
+            block.body.graffiti = bytes(graffiti, "ascii").ljust(32, b"\x00")
+
         # Release included attestations from the pool
-        self.attestation_pool = []
+        if release_att_pool:
+            self.attestation_pool = []
 
         # Sign block and add it to the Store
         signed_block = state_transition_and_sign_block(self.spec, parent_state, block)
@@ -190,10 +194,15 @@ class FCRTest:
         self.run_fast_confirmation()
         return block_root
 
-    def empty_slot_with_fast_confirmation(self, participation_rate=100):
-        self.attest(
-            block_root=self.head(), slot=self.current_slot(), participation_rate=participation_rate
-        )
+    def attest_and_next_slot_with_fast_confirmation(
+        self, block_root=None, slot=None, participation_rate=100
+    ):
+        self.attest(block_root, slot, participation_rate)
+        self.next_slot()
+        self.apply_attestations()
+        self.run_fast_confirmation()
+
+    def next_slot_with_fast_confirmation(self):
         self.next_slot()
         self.apply_attestations()
         self.run_fast_confirmation()
