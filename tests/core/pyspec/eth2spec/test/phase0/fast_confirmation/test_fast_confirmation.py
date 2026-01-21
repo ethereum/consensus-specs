@@ -1,10 +1,16 @@
 import copy
 
+from eth_utils import encode_hex
+
+from eth2spec.test.helpers.state import transition_to
+
 from eth2spec.test.context import MINIMAL, spec_state_test, with_altair_and_later, with_presets
 
 from eth2spec.test.helpers.block import build_empty_block  # NOTE: build_empty_block (not _for_next_slot)
 from eth2spec.test.helpers.state import state_transition_and_sign_block, transition_to
 from eth2spec.test.helpers.fork_choice import add_block
+
+from eth2spec.test.helpers.attestations import get_valid_attestations_for_block_at_slot
 
 from eth2spec.test.context import (
     default_activation_threshold,
@@ -81,7 +87,7 @@ def test_fcr_invariants_monotone_and_canonical(spec, state):
     yield from fcr_test.get_test_artefacts()
 
 
-# Stale confirmed root => revert to GF (v2, more realistic scenario)
+# Stale confirmed root => revert to GF
 
 @with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
@@ -96,57 +102,49 @@ def test_fcr_reverts_to_finalized_when_confirmed_too_old_lower_participation(spe
     store = fcr.initialize(state, seed=1)
 
     S = spec.SLOTS_PER_EPOCH
-    epoch1_start = S
     epoch2_start = 2 * S
     epoch3_start = 3 * S
 
-    drop_slot = epoch1_start + (S // 2)
+    drop_slot = S + (S // 2)  # mid of epoch 1
     assert drop_slot % S != 0
 
-    nonfinal_confirmed_root = None
+    saw_nonfinal_confirmation = False
     frozen_root = None
 
-    # We run slots up to the start of epoch 3 (exclusive),
-    # because "epoch start processing" happens when we enter that slot.
+    # Run until we enter epoch 3 (epoch boundary processing happens when we start that slot)
     while fcr.current_slot() < epoch3_start:
         cur = fcr.current_slot()
 
-        # Decide participation *for the attestations produced at this slot*.
-        # Before drop_slot: normal voting. From drop_slot onward: zero voting.
+        # participation controls attestations PRODUCED at slot cur
         participation = 100 if cur < drop_slot else 60
 
- 
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=participation)
+        now = fcr.current_slot()
 
-        now_slot = fcr.current_slot()
+        # We should see at least one non-final confirmation before the drop kicks in
+        if now <= drop_slot and store.confirmed_root != store.finalized_checkpoint.root:
+            saw_nonfinal_confirmation = True
 
-        # Before the drop begins, record a concrete non-final confirmation.
-        if now_slot <= drop_slot and store.confirmed_root != store.finalized_checkpoint.root:
-            if nonfinal_confirmed_root is None:
-                nonfinal_confirmed_root = store.confirmed_root
-
-        # Exactly when we *enter* drop_slot, lock the confirmed root.
-        #    (Because participation for cur==drop_slot was set to 60,
-        #     from this point onward confirmations should stall.)
-        if now_slot == drop_slot:
+        # Freeze the confirmed root exactly when we ENTER drop_slot (i.e., after processing cur=drop_slot-1)
+        if now == drop_slot:
             frozen_root = store.confirmed_root
             assert frozen_root != store.finalized_checkpoint.root
 
-        # After the drop begins, but before epoch3 reset, confirmed must remain frozen.
-        if frozen_root is not None and now_slot < epoch3_start:
+        # After the drop begins, confirmations should stall (stay frozen) until epoch3 reset
+        if frozen_root is not None and now < epoch3_start:
             assert store.confirmed_root == frozen_root
 
-        if now_slot == epoch2_start:
-            assert spec.is_start_slot_at_epoch(now_slot)
+        # Optional sanity at epoch2 start: confirmed should still be from epoch <= 1
+        if now == epoch2_start:
+            assert spec.is_start_slot_at_epoch(now)
             confirmed_epoch = spec.get_block_epoch(store, store.confirmed_root)
             assert confirmed_epoch <= spec.Epoch(1)
 
-    # We must have actually seen non-final confirmation before drop.
-    assert nonfinal_confirmed_root is not None
+    assert saw_nonfinal_confirmation
 
-    # Now we are at epoch 3 start; the "too old" rule should reset to finalized.
-    assert spec.is_start_slot_at_epoch(fcr.current_slot())
+    # Now at epoch 3 start: confirmed should reset to finalized due to "too old"
     assert fcr.current_slot() == epoch3_start
+    assert spec.is_start_slot_at_epoch(fcr.current_slot())
     assert store.confirmed_root == store.finalized_checkpoint.root
 
     yield from fcr.get_test_artefacts()
@@ -154,8 +152,13 @@ def test_fcr_reverts_to_finalized_when_confirmed_too_old_lower_participation(spe
 # Confirmed blocks become non-canonical mid-epoch => revert to finalized 
 
 @with_altair_and_later
-@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, state):
     fcr = FCRTest(spec)
     store = fcr.initialize(state, seed=1)
@@ -163,35 +166,26 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
     S = spec.SLOTS_PER_EPOCH
     epoch2_start = 2 * S
 
-    # Drive to start of epoch 2
-    while fcr.current_slot() < epoch2_start:
-        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
-
-    # Move a couple slots into epoch 2 (mid-epoch)
-    while fcr.current_slot() < epoch2_start + 2:
-        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
-
+    # Drive to epoch 2 start, then 2 slots into epoch 2 (mid-epoch)
+    fcr.run_slots_with_blocks_and_fast_confirmation(epoch2_start - fcr.current_slot(), participation_rate=100)
+    fcr.run_slots_with_blocks_and_fast_confirmation(2, participation_rate=100)
     assert fcr.current_slot() % S != 0  # mid-epoch
 
-    # Build fork parent R at current slot, vote 100% for it, then advance
-    r_slot = fcr.current_slot()
+    # Build fork parent R at current slot; vote 100% for it; advance + apply + FCR
     r_root = fcr.add_and_apply_block(parent_root=fcr.head())
-    fcr.attest(block_root=r_root, slot=r_slot, participation_rate=100)
-    fcr.next_slot()
-    fcr.apply_attestations()
-    fcr.run_fast_confirmation()
+    fcr.attest_and_next_slot_with_fast_confirmation(block_root=r_root, participation_rate=100)
 
-    # Now we are at the slot where we create siblings A and M
+    # Now we are at the fork slot: create siblings A (canonical) and M (competing)
     fork_slot = fcr.current_slot()
-    assert fork_slot % S != 0  
+    assert fork_slot % S != 0
 
-    # Save "previous-slot" attestations that would be included in blocks at fork_slot
+    # Save "previous-slot" attestations that should be included in blocks at fork_slot
     prev_atts = list(fcr.attestation_pool)
 
-    # Canonical child A at fork_slot 
+    # Canonical child A at fork_slot
     a_root = fcr.add_and_apply_block(parent_root=r_root)
 
-    # Competing sibling M at same parent/slot
+    # Competing sibling M at same parent/slot (manual build)
     parent_state = store.block_states[r_root].copy()
     competing_block = build_empty_block(spec, parent_state, fork_slot)
     for att in prev_atts:
@@ -203,270 +197,241 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
         fcr.blockchain_artefacts.append(artefact)
     m_root = signed_m.message.hash_tree_root()
 
-    # (75% attest to A, 0% to M)
-    fcr.attest(block_root=a_root, slot=fork_slot, participation_rate=75)
-    fcr.next_slot()
-    fcr.apply_attestations()
-    fcr.run_fast_confirmation()
+    # Slot fork_slot: 75% attest to A; advance + apply + FCR
+    fcr.attest_and_next_slot_with_fast_confirmation(block_root=a_root, participation_rate=75)
 
-    slot2 = fcr.current_slot()
-    assert slot2 == fork_slot + 1
-
-    # (build B on A, 75% attest to B) 
+    # Next slot: build B on A; attest 100% to B; advance + apply + FCR
     b_root = fcr.add_and_apply_block(parent_root=a_root)
-    fcr.attest(block_root=b_root, slot=slot2, participation_rate=100)
-    fcr.next_slot()
-    fcr.apply_attestations()
-    fcr.run_fast_confirmation()
+    fcr.attest_and_next_slot_with_fast_confirmation(block_root=b_root, participation_rate=100)
 
-    slot3 = fcr.current_slot()
-    assert slot3 == slot2 + 1
-
-    # Assert that by now we reached the canonical fork side
+    # By now we should have confirmed onto the A side
     assert spec.is_ancestor(store, store.confirmed_root, a_root), "Confirmed did not reach A"
 
-    # (build C on B, 100% attest to M)
+    # Next slot: build C on B; attest 100% to M; advance + apply + FCR
     c_root = fcr.add_and_apply_block(parent_root=b_root)
-    fcr.attest(block_root=m_root, slot=slot3, participation_rate=100)
-    fcr.next_slot()
-    fcr.apply_attestations()
-    fcr.run_fast_confirmation()
+    fcr.attest_and_next_slot_with_fast_confirmation(block_root=m_root, participation_rate=100)
 
-    slot4 = fcr.current_slot()
-    assert slot4 == slot3 + 1
-
+    # Confirmed still on A side (optional sanity)
     assert spec.is_ancestor(store, store.confirmed_root, a_root)
 
-    # (build D on C, 100% attest to M again) 
-    d_root = fcr.add_and_apply_block(parent_root=c_root)
-    fcr.attest(block_root=m_root, slot=slot4, participation_rate=100)
-    fcr.next_slot()
-    fcr.apply_attestations()
-    fcr.run_fast_confirmation()
+    # Next slot: build D on C; attest 100% to M again; advance + apply + FCR
+    _d_root = fcr.add_and_apply_block(parent_root=c_root)
+    fcr.attest_and_next_slot_with_fast_confirmation(block_root=m_root, participation_rate=100)
 
-    # Now check: head should be on the M side, and confirmed should have reset to finalized
+    # Now: head should be on M side, and confirmed should have reset to finalized
     head = fcr.head()
     assert spec.is_ancestor(store, head, m_root), "Head did not flip to M (may need one more 100%-to-M slot)"
     assert store.confirmed_root == store.finalized_checkpoint.root, "Expected reset to finalized mid-epoch"
 
     yield from fcr.get_test_artefacts()
 
-#  At an epoch boundary, if the previously confirmed chain cannot be re-confirmed, FCR must reset confirmed_root to finalized.
 
+# At an epoch boundary, if the previously confirmed chain cannot be re-confirmed
+# under the new epoch anchor, FCR must reset confirmed_root to finalized
 @with_altair_and_later
-@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-def test_fcr_reverts_to_finalized_when_reconfirmation_fails_at_epoch_start(spec, state):
-    test_steps = []
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_fcr_reverts_to_finalized_when_reconfirmation_fails_at_epoch_start_due_to_late_equivocations(spec, state):
+    fcr = FCRTest(spec)
+    store = fcr.initialize(state, seed=1)
 
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
+    S = spec.SLOTS_PER_EPOCH
+    epoch2_start = 2 * S
+    epoch3_start = 3 * S
 
-    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
+    # Drive to epoch 2 start
+    while fcr.current_slot() < epoch2_start:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    assert fcr.current_slot() == epoch2_start
+    assert spec.is_start_slot_at_epoch(fcr.current_slot())
 
-    attestations = []
-    last_root = anchor_block.hash_tree_root()
+    # Make sure confirmed_root is in epoch 2 (avoid "too old" disjunct at epoch 3 start)
+    fcr.run_slots_with_blocks_and_fast_confirmation(2, participation_rate=100)
+    assert spec.get_block_epoch(store, store.confirmed_root) == spec.Epoch(2)
+    assert store.confirmed_root != store.finalized_checkpoint.root
 
-    epoch2_start = spec.SLOTS_PER_EPOCH * 2
+    # Go to epoch3_start-3 so we can fork for 3 slots => 6 blocks total (tip/competing per slot)
+    # One slashing is too weak to break reconfirmation in practice
+    s1 = epoch3_start - 3
+    s2 = epoch3_start - 2
+    s3 = epoch3_start - 1
+    while fcr.current_slot() < s1:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    assert fcr.current_slot() == s1
 
-    # Build a canonical chain up to the start of epoch 2
-    for slot in range(spec.GENESIS_SLOT, epoch2_start):
-        if slot > spec.GENESIS_SLOT:
-            block = build_empty_block_for_next_slot(spec, state)
-            for att in attestations:
-                block.body.attestations.append(att)
-            signed = state_transition_and_sign_block(spec, state, block)
-            yield from add_block(spec, store, signed, test_steps)
-            last_root = signed.message.hash_tree_root()
+    # We will collect (honest_atts, equiv_atts, tip_root) for 3 slots, then "prove" equivocations at epoch start
+    records = []
 
-        attestations = get_valid_attestations_for_block_at_slot(
-            spec, state, state.slot, spec.get_head(store)
+    def fork_and_vote_at_slot(slot, run_fcr_after_applying=True):
+        """
+        At `slot` (must equal fcr.current_slot()):
+          - create sibling blocks tip vs competing at same parent/slot
+          - produce honest votes for tip (kept in pool)
+          - produce equiv votes for competing (removed from pool and stored)
+          - move to next slot and apply honest votes
+          - optionally run FCR at slot start (do NOT run it at epoch boundary until after slashings)
+        """
+        assert fcr.current_slot() == slot
+
+        fork_parent_root = fcr.head()
+        prev_pool_atts = list(fcr.attestation_pool)
+
+        # tip block
+        fcr.attestation_pool = list(prev_pool_atts)
+        tip_root = fcr.add_and_apply_block(
+            parent_root=fork_parent_root, release_att_pool=True, graffiti=f"tip_{slot}"
         )
 
-        current_time = (slot + 1) * spec.config.SECONDS_PER_SLOT + store.genesis_time
-        on_tick_and_append_step(spec, store, current_time, test_steps)
-
-        yield from add_attestations(spec, store, attestations, test_steps)
-        on_slot_start_after_past_attestations_applied_and_append_step(spec, store, test_steps)
-
-    # Sanity: we are at an epoch boundary now
-    assert spec.is_start_slot_at_epoch(spec.get_current_slot(store))
-
-    # Force confirmed_root to be a recent canonical block (not finalized)
-    assert last_root != store.finalized_checkpoint.root
-    store.confirmed_root = last_root
-
-    # Sanity: the other two disjuncts do NOT trigger
-    head = spec.get_head(store)
-    current_epoch = spec.get_current_store_epoch(store)
-    assert spec.get_block_epoch(store, store.confirmed_root) + 1 >= current_epoch   # not too old
-    assert spec.is_ancestor(store, head, store.confirmed_root)                     # canonical
-
-    # Prevent the restart clause from overriding the "revert to finalized" outcome:
-    # pick a very old observed-justified (finalized) anchor.
-    store.current_epoch_observed_justified_checkpoint = spec.Checkpoint(
-        epoch=spec.Epoch(0),
-        root=store.finalized_checkpoint.root,
-    )
-
-    # Precondition for "reconfirmation-failure => revert":
-    # we must be in the regime GU <= confirmed (GU is ancestor of confirmed).
-    assert spec.is_ancestor(store, store.confirmed_root, store.current_epoch_observed_justified_checkpoint.root)
-
-    # Force reconfirmation failure: wipe latest votes so is_one_confirmed(...) fails.
-    store.latest_messages = {}
-
-    # Run epoch-start handler: should detect reconfirmation failure and revert to finalized.
-    on_slot_start_after_past_attestations_applied_and_append_step(spec, store, test_steps)
-
-    assert store.confirmed_root == store.finalized_checkpoint.root
-
-    yield "steps", test_steps
-
-#  At an epoch boundary, if the previously confirmed chain cannot be re-confirmed, FCR must reset confirmed_root to finalized. (v2)
-
-@with_altair_and_later
-@spec_state_test
-@with_presets([MINIMAL], reason="too slow")
-def test_fcr_reverts_to_finalized_when_reconfirmation_fails_at_epoch_start_partial_vote_flip(spec, state):
-    test_steps = []
-
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-
-    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    attestations = []
-    last_root = anchor_block.hash_tree_root()
-
-    epoch2_start = spec.SLOTS_PER_EPOCH * 2
-
-    # We'll create a sibling fork at some slot in epoch 1 (so it exists in the store),
-    # but keep the canonical head on the main chain via attestations.
-    fork_slot = spec.SLOTS_PER_EPOCH + 1  # epoch 1, slot 1
-    fork_root = None
-
-    # Build canonical chain up to start of epoch 2
-    for slot in range(spec.GENESIS_SLOT, epoch2_start):
-        if slot > spec.GENESIS_SLOT:
-            # If next block is at fork_slot, snapshot state so we can build a sibling at same parent/slot.
-            pre_state = copy.deepcopy(state) if (state.slot + 1 == fork_slot) else None
-
-            # Canonical block
-            block = build_empty_block_for_next_slot(spec, state)
-            for att in attestations:
-                block.body.attestations.append(att)
-            signed = state_transition_and_sign_block(spec, state, block)
-            yield from add_block(spec, store, signed, test_steps)
-            last_root = signed.message.hash_tree_root()
-
-            # Competing sibling block (same parent/slot, different contents)
-            if pre_state is not None:
-                sib = build_empty_block_for_next_slot(spec, pre_state)
-                for att in attestations:
-                    sib.body.attestations.append(att)
-                sib.body.graffiti = b"i love ethereum".ljust(32, b"\x00")
-                signed_sib = state_transition_and_sign_block(spec, pre_state, sib)
-                yield from add_block(spec, store, signed_sib, test_steps)
-                fork_root = signed_sib.message.hash_tree_root()
-
-        # Attest to the current head to keep the main chain canonical
-        attestations = get_valid_attestations_for_block_at_slot(
-            spec, state, state.slot, spec.get_head(store)
+        # competing sibling block at same parent/slot
+        fcr.attestation_pool = list(prev_pool_atts)
+        competing_root = fcr.add_and_apply_block(
+            parent_root=fork_parent_root, release_att_pool=True, graffiti=f"competing_{slot}"
         )
 
-        current_time = (slot + 1) * spec.config.SECONDS_PER_SLOT + store.genesis_time
-        on_tick_and_append_step(spec, store, current_time, test_steps)
+        # Honest votes for tip (keep in pool to be applied next slot)
+        honest_atts = fcr.attest(block_root=tip_root, slot=slot, participation_rate=100)
 
-        yield from add_attestations(spec, store, attestations, test_steps)
-        on_slot_start_after_past_attestations_applied_and_append_step(spec, store, test_steps)
+        # Equivocating votes for competing 
+        equiv_atts = fcr.attest(block_root=competing_root, slot=slot, participation_rate=100)
+        for a in equiv_atts:
+            fcr.attestation_pool.remove(a)
 
-    # Sanity: we are at an epoch boundary now
-    assert spec.is_start_slot_at_epoch(spec.get_current_slot(store))
-    assert fork_root is not None
+        records.append(
+            {
+                "slot": slot,
+                "tip_root": tip_root,
+                "competing_root": competing_root,
+                "honest_atts": list(honest_atts),
+                "equiv_atts": list(equiv_atts),
+            }
+        )
 
-    # Force confirmed_root to be a recent canonical block (not finalized)
-    assert last_root != store.finalized_checkpoint.root
-    store.confirmed_root = last_root
+        # Advance and apply honest votes
+        fcr.next_slot()
+        fcr.apply_attestations()
+        fcr.attestation_pool = []
 
-    # Other two disjuncts do NOT trigger (not too old, still canonical)
-    head_before = spec.get_head(store)
-    current_epoch = spec.get_current_store_epoch(store)
-    assert spec.get_block_epoch(store, store.confirmed_root) + 1 >= current_epoch
-    assert spec.is_ancestor(store, head_before, store.confirmed_root)  # confirmed ⪯ head
+        if run_fcr_after_applying:
+            fcr.run_fast_confirmation()
 
-    # Make sure fork_root is indeed *not* on the canonical head chain (i.e., not an ancestor of head)
-    assert not spec.is_ancestor(store, head_before, fork_root)
+    # Slot epoch3_start-3: fork, vote for tip, advance, apply, run FCR normally
+    fork_and_vote_at_slot(s1, run_fcr_after_applying=True)
+    assert fcr.current_slot() == s2
 
-    # Prevent restart clause from overriding the revert-to-finalized outcome:
-    store.current_epoch_observed_justified_checkpoint = spec.Checkpoint(
-        epoch=spec.Epoch(0),
-        root=store.finalized_checkpoint.root,
-    )
+    # Slot epoch3_start-2: fork, vote for tip, advance, apply, run FCR normally
+    fork_and_vote_at_slot(s2, run_fcr_after_applying=True)
+    assert fcr.current_slot() == s3
 
-    # Precondition for the reconfirmation regime:
-    # GU must be ancestor of confirmed_root, i.e., GU ⪯ confirmed.
-    assert spec.is_ancestor(store, store.confirmed_root, store.current_epoch_observed_justified_checkpoint.root)
+    # Slot epoch3_start-1: fork, vote for tip, advance into epoch 3, apply honest votes, BUT DO NOT run FCR yet
+    fork_and_vote_at_slot(s3, run_fcr_after_applying=False)
+    assert fcr.current_slot() == epoch3_start
+    assert spec.is_start_slot_at_epoch(fcr.current_slot())
 
-    # Target block whose one-confirmed support we want to break.
-    victim_root = store.confirmed_root
+    # Before we inject slashings, the tips should be one-confirmed under the previous balance source.
+    balance_source = spec.get_previous_balance_source(store)
+    for rec in records:
+        assert spec.is_one_confirmed(
+            store, balance_source, rec["tip_root"]
+        ), f"tip at slot {rec['slot']} not one-confirmed before slashings"
 
-    # Identify validators whose latest vote currently supports victim_root,
-    # i.e., victim_root is an ancestor of the validator's latest vote root.
-    supporters = []
-    for vidx, msg in store.latest_messages.items():
-        vote_root = msg.root
-        if spec.is_ancestor(store, vote_root, victim_root):  # victim_root ⪯ vote_root
-            supporters.append(vidx)
+    # Rule out the other reset disjuncts *before* reconfirmation:
+    confirmed_before = store.confirmed_root
+    head_before = fcr.head()
+    assert confirmed_before != store.finalized_checkpoint.root
+    assert spec.is_ancestor(store, head_before, confirmed_before)  # canonical
+    assert spec.get_block_epoch(store, confirmed_before) >= spec.Epoch(2)  # not too old
 
-    assert len(supporters) > 0
-    supporters.sort()
+    # Late equivocations "land" at epoch boundary: create + process AttesterSlashings for ALL 3 slots
+    for rec in records:
+        slot = rec["slot"]
+        honest_atts = rec["honest_atts"]
+        equiv_atts = rec["equiv_atts"]
+        tip_root = rec["tip_root"]
 
-    # Find the minimum number of supporters to "flip" onto the sibling fork
-    # such that reconfirmation fails and we revert to finalized.
-    def would_revert_with_k_flipped(k: int) -> bool:
-        tmp = copy.deepcopy(store)
-        for vidx in supporters[:k]:
-            old = tmp.latest_messages[vidx]
-            tmp.latest_messages[vidx] = spec.LatestMessage(epoch=old.epoch, root=fork_root)
-        on_slot_start_after_past_attestations_applied_and_append_step(spec, tmp, [])
-        return tmp.confirmed_root == tmp.finalized_checkpoint.root
+        # Find a matching committee index (same slot/target epoch, different head root)
+        honest_by_index = {att.data.index: att for att in honest_atts}
+        pair = None
+        for att2 in equiv_atts:
+            att1 = honest_by_index.get(att2.data.index)
+            if att1 is None:
+                continue
+            if (
+                att1.data.slot == att2.data.slot == slot
+                and att1.data.target.epoch == att2.data.target.epoch
+                and att1.data.beacon_block_root != att2.data.beacon_block_root
+            ):
+                pair = (att1, att2)
+                break
+        assert pair is not None, f"Could not find slashable equivocation pair at slot {slot}"
+        honest_att, equiv_att = pair
 
-    k_star = None
-    for k in range(1, len(supporters) + 1):
-        if would_revert_with_k_flipped(k):
-            k_star = k
-            break
+        # Build indexed attestations in the correct state context for this slot
+        att_state = store.block_states[tip_root].copy()
+        transition_to(spec, att_state, slot)
 
-    assert k_star is not None
-    assert k_star < len(supporters)
+        indexed_1 = spec.get_indexed_attestation(att_state, honest_att)
+        indexed_2 = spec.get_indexed_attestation(att_state, equiv_att)
 
-    # Apply the minimal flip on the real store
-    for vidx in supporters[:k_star]:
-        old = store.latest_messages[vidx]
-        store.latest_messages[vidx] = spec.LatestMessage(epoch=old.epoch, root=fork_root)
+        slashing = spec.AttesterSlashing(attestation_1=indexed_1, attestation_2=indexed_2)
 
-    # Sanity: we didn’t accidentally flip the head to the fork (we want the reconfirmation path)
-    head_after = spec.get_head(store)
-    assert head_after == head_before
+        # Add explicit artefacts + steps
+        fcr.blockchain_artefacts.append(("attester_slashing", slashing))
+        fcr.test_steps.append(
+            {
+                "attester_slashing": {
+                    "slot": int(slot),
+                    "tip_root": encode_hex(rec["tip_root"]),
+                    "competing_root": encode_hex(rec["competing_root"]),
+                    "a1": {
+                        "committee_index": int(honest_att.data.index),
+                        "beacon_block_root": encode_hex(honest_att.data.beacon_block_root),
+                        "target_epoch": int(honest_att.data.target.epoch),
+                        "target_root": encode_hex(honest_att.data.target.root),
+                        "source_epoch": int(honest_att.data.source.epoch),
+                        "source_root": encode_hex(honest_att.data.source.root),
+                        "attesting_indices_len": int(len(indexed_1.attesting_indices)),
+                    },
+                    "a2": {
+                        "committee_index": int(equiv_att.data.index),
+                        "beacon_block_root": encode_hex(equiv_att.data.beacon_block_root),
+                        "target_epoch": int(equiv_att.data.target.epoch),
+                        "target_root": encode_hex(equiv_att.data.target.root),
+                        "source_epoch": int(equiv_att.data.source.epoch),
+                        "source_root": encode_hex(equiv_att.data.source.root),
+                        "attesting_indices_len": int(len(indexed_2.attesting_indices)),
+                    },
+                }
+            }
+        )
 
-    # Run epoch-start handler: should detect reconfirmation failure and revert to finalized.
-    on_slot_start_after_past_attestations_applied_and_append_step(spec, store, test_steps)
+        # Apply the slashing to the store (this is what clients must reproduce)
+        spec.on_attester_slashing(store, slashing)
 
+    assert len(store.equivocating_indices) > 0
+
+    # Now run epoch-start fast-confirmation logic (this is where reconfirmation is checked)
+    fcr.run_fast_confirmation()
+
+    # Expect reset-to-finalized due to reconfirmation failure at epoch boundary
     assert store.confirmed_root == store.finalized_checkpoint.root
 
-    yield "steps", test_steps
-
+    yield from fcr.get_test_artefacts()
 
 #  At mid epoch, if the previously confirmed chain cannot be re-confirmed, FCR must *not* reset confirmed_root to finalized.
 
 @with_altair_and_later
-@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_fcr_not_revert_to_finalized_when_reconfirmation_fails_at_mid_epoch(spec, state):
 
     test_steps = []
@@ -542,8 +507,13 @@ def test_fcr_not_revert_to_finalized_when_reconfirmation_fails_at_mid_epoch(spec
 # GU too old => no restart
 # This version lowers participations to 0 in order to create a too-old justification
 @with_altair_and_later
-@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
 def test_no_restart_at_epoch3_when_epoch2_not_justified_under_50_50_target_split(spec, state):
     test_steps = []
 
