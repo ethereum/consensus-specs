@@ -1,7 +1,10 @@
 nav:
     - ...
-    - Fork Choice -- Core:
-        - phase0: specs/phase0/fork-choice
-        - bellatrix: specs/bellatrix/fork-choice
-        - capella: specs/capella/fork-choice
-        - deneb: specs/deneb/fork-choice
+    - Fork Choice (Core Logic):
+        - Introduction: specs/fork-choice-overview.md # Genel bir giriş sayfası eklenmesi önerilir
+        - Upgrades Hierarchy:
+            - Phase 0 (Genesis): specs/phase0/fork-choice.md
+            - Bellatrix (The Merge): specs/bellatrix/fork-choice.md
+            - Capella (Withdrawals): specs/capella/fork-choice.md
+            - Deneb (EIP-4844): specs/deneb/fork-choice.md
+        - Helpers & Utils: specs/fork-choice-helpers.md
