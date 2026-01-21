@@ -484,6 +484,11 @@ def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
 
     builder_indices = list(range(num_builders))
 
+    # Create any builders that don't exist yet
+    for builder_index in builder_indices:
+        if builder_index >= len(state.builders):
+            add_builder_to_registry(spec, state, builder_index)
+
     # Cap validator balances to prevent sweep withdrawals
     capped_validator_balances = {
         i: min(state.balances[i], spec.MAX_EFFECTIVE_BALANCE)
@@ -526,27 +531,32 @@ def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
 @spec_state_test
 def test_no_builders_max_pending_with_sweep_spillover(spec, state):
     """
-    Test no builder payments, MAX_WITHDRAWALS_PER_PAYLOAD pending partial withdrawals,
-    with sweep withdrawals available due to MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP limit.
+    Test that pending partial withdrawals are capped at MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
+    allowing validator sweep withdrawals to fill the remaining slots.
 
     Input State Configured:
         - builder_pending_withdrawals: Empty (no builders)
         - pending_partial_withdrawals: MAX_WITHDRAWALS_PER_PAYLOAD entries
-        - validators[N..N+3].withdrawable_epoch: <= current_epoch (sweep eligible)
-        - balances[*]: Configured for respective withdrawal types
+        - validators for sweep: MAX_WITHDRAWALS_PER_PAYLOAD - MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
+          validators eligible for full withdrawal
 
     Output State Verified:
-        - payload_expected_withdrawals: MAX_WITHDRAWALS_PER_PAYLOAD total
+        - withdrawal_order: pending partials first, then validator sweep
+        - withdrawal_count: MAX_WITHDRAWALS_PER_PAYLOAD total
           - MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP from pending queue
-          - Remaining slots filled by sweep withdrawals
-        - pending_partial_withdrawals: MAX - MAX_PENDING_PARTIALS remaining
+          - Remaining slots filled by validator sweep withdrawals
+        - pending_partial_withdrawals: reduced by MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
         - balances[sweep indices]: 0 (full withdrawals)
-        - Note: Pending partials capped by MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
     """
+
+    # Calculate expected sweep slots based on pending partials cap
+    expected_pending = spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
+    expected_sweep = spec.MAX_WITHDRAWALS_PER_PAYLOAD - expected_pending
+    expected_total = expected_pending + expected_sweep
 
     pending_indices = list(range(spec.MAX_WITHDRAWALS_PER_PAYLOAD))
     sweep_start = spec.MAX_WITHDRAWALS_PER_PAYLOAD
-    sweep_indices = list(range(sweep_start, sweep_start + 3))
+    sweep_indices = list(range(sweep_start, sweep_start + expected_sweep))
 
     prepare_process_withdrawals(
         spec,
@@ -554,11 +564,6 @@ def test_no_builders_max_pending_with_sweep_spillover(spec, state):
         pending_partial_indices=pending_indices,
         full_withdrawal_indices=sweep_indices,
     )
-
-    # Should process MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP pending + remaining slots for sweep
-    expected_pending = spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
-    expected_sweep = spec.MAX_WITHDRAWALS_PER_PAYLOAD - expected_pending
-    expected_total = expected_pending + expected_sweep
 
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
@@ -568,6 +573,9 @@ def test_no_builders_max_pending_with_sweep_spillover(spec, state):
 
     sweep_balances = {i: 0 for i in range(sweep_start, sweep_start + expected_sweep)}
 
+    # Expected order: pending partial withdrawals first, then validator sweep
+    expected_order = pending_indices[:expected_pending] + sweep_indices
+
     assert_process_withdrawals(
         spec,
         state,
@@ -576,6 +584,7 @@ def test_no_builders_max_pending_with_sweep_spillover(spec, state):
         balances=sweep_balances,
         pending_partial_delta=-int(expected_pending),
         withdrawal_index_delta=expected_total,
+        withdrawal_order=expected_order,
     )
 
 
@@ -918,6 +927,11 @@ def test_builder_max_minus_one_plus_one_regular(spec, state):
 
     builder_indices_list = list(range(num_builders))
 
+    # Create any builders that don't exist yet
+    for builder_index in builder_indices_list:
+        if builder_index >= len(state.builders):
+            add_builder_to_registry(spec, state, builder_index)
+
     # Validator indices intentionally overlap with builder indices to test separate namespaces
     # Add multiple regular withdrawals, but only 1 should be processed
     regular_indices = [0, 1, 2]  # Same numeric indices as builders, but different entities
@@ -1026,6 +1040,11 @@ def test_full_builder_payload_reserves_sweep_slot(spec, state):
     # Setup: Record initial state
     num_validators = len(state.validators)
     starting_validator_index = state.next_withdrawal_validator_index
+
+    # Setup: Create any builders that don't exist yet
+    for builder_index in range(spec.MAX_WITHDRAWALS_PER_PAYLOAD):
+        if builder_index >= len(state.builders):
+            add_builder_to_registry(spec, state, builder_index)
 
     # Setup: Create MAX builder pending withdrawals manually
     withdrawal_amount = spec.Gwei(1_000_000_000)
