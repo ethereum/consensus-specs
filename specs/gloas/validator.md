@@ -17,7 +17,6 @@
     - [Broadcasting `SignedProposerPreferences`](#broadcasting-signedproposerpreferences)
     - [Constructing `signed_execution_payload_bid`](#constructing-signed_execution_payload_bid)
     - [Constructing `payload_attestations`](#constructing-payload_attestations)
-    - [Blob sidecars](#blob-sidecars)
     - [Preparing `ExecutionPayload`](#preparing-executionpayload)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing a payload attestation](#constructing-a-payload-attestation)
@@ -209,13 +208,6 @@ construct the `payload_attestations` field in `BeaconBlockBody`:
   `aggregation_bits` field by using the relative position of the validator
   indices with respect to the PTC that is obtained from
   `get_ptc(state, block_slot - 1)`.
-
-#### Blob sidecars
-
-The blob sidecars are no longer broadcast by the validator, and thus their
-construction is not necessary. This deprecates the corresponding sections from
-the Honest Validator specifications in the Fulu upgrade, moving them, albeit
-with some modifications, to the [Honest Builder](./builder.md) specifications.
 
 #### Preparing `ExecutionPayload`
 
