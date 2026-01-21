@@ -1,9 +1,10 @@
 import pytest
 
-from tests.core.pyspec.eth2spec.test.context import (
+from eth2spec.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
+from tests.infra.helpers.builders import add_builder_to_registry
 from tests.infra.helpers.withdrawals import (
     assert_process_withdrawals,
     prepare_process_withdrawals,
@@ -728,48 +729,53 @@ def test_builder_uses_fee_recipient_address(spec, state):
 @spec_state_test
 def test_builder_and_pending_leave_room_for_sweep(spec, state):
     """
-    Test that builders + pending withdrawals leave room for sweep withdrawals.
-    When builders + pending = MAX-1, exactly 1 slot remains for sweep.
+    Test that the spec reserves at least 1 slot for sweep withdrawals.
+
+    This test verifies that when builders + pending partials exceed
+    MAX_WITHDRAWALS_PER_PAYLOAD - 1, the spec caps pending partials to ensure
+    at least 1 slot remains for sweep withdrawals.
 
     Input State Configured:
-        - state.builders[0..N-1]: Builders exist in registry with sufficient balance, N = 2 or 1
-        - builder_pending_withdrawals: N entries (calculated to leave 1 slot)
-        - pending_partial_withdrawals: M entries (capped by MAX_PENDING_PARTIALS)
-        - validators[0].withdrawable_epoch: <= current_epoch (sweep eligible)
-        - Total builder + pending < MAX_WITHDRAWALS_PER_PAYLOAD
+        - builder_pending_withdrawals: (MAX - PENDING_LIMIT + 1) entries
+        - pending_partial_withdrawals: PENDING_LIMIT entries
+        - Total requested: builders + pending = MAX + 1 (overfill attempt)
+        - validators[0]: sweep eligible (withdrawable_epoch <= current_epoch)
 
-    Note: Builder indices and validator indices intentionally overlap to demonstrate
-    that they are separate namespaces.
-
-    Output State Verified:
-        - payload_expected_withdrawals: builders + pending + 1 sweep
-        - Exactly 1 sweep withdrawal included in the payload
-        - Note: Tests the slot allocation between withdrawal types
+    Expected Behavior:
+        - All builders are processed (they fit within MAX - 1)
+        - Pending partials are capped to (MAX - 1 - builders) to reserve sweep slot
+        - Exactly 1 sweep withdrawal is included
+        - Total withdrawals = MAX (payload fully filled)
     """
 
     assert spec.MAX_WITHDRAWALS_PER_PAYLOAD >= 3, (
         "Test requires MAX_WITHDRAWALS_PER_PAYLOAD to be at least 3"
     )
 
-    num_builders = 2 if spec.MAX_WITHDRAWALS_PER_PAYLOAD >= 4 else 1
-    num_pending = spec.MAX_WITHDRAWALS_PER_PAYLOAD - num_builders - 1
+    # Try to overfill: set up builders + pending > MAX_WITHDRAWALS_PER_PAYLOAD
+    # The spec should cap builder + pending at MAX_WITHDRAWALS_PER_PAYLOAD - 1 to reserve sweep slot
+    num_builders_requested = (
+        spec.MAX_WITHDRAWALS_PER_PAYLOAD - spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP + 1
+    )
+    num_pending_requested = spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
 
-    assert num_builders > 0, "Test requires at least 1 builder withdrawal"
-    assert num_pending > 0, "Test requires at least 1 pending partial withdrawal"
-    assert spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP >= num_pending, (
-        "Test requires MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP >= num_pending"
+    # Verify we're actually trying to overfill
+    assert num_builders_requested + num_pending_requested > spec.MAX_WITHDRAWALS_PER_PAYLOAD, (
+        f"Test requires overfill attempt: {num_builders_requested} + {num_pending_requested} "
+        f"> {spec.MAX_WITHDRAWALS_PER_PAYLOAD}"
     )
 
     withdrawal_amount = spec.MIN_ACTIVATION_BALANCE
 
-    builder_indices_list = list(range(num_builders))
+    builder_indices_list = list(range(num_builders_requested))
 
-    # Validator indices intentionally overlap with builder indices to test separate namespaces
-    # pending_indices start from 1 to avoid overlap with regular_index (same validator can't be both)
-    pending_indices = list(range(1, 1 + num_pending))
-    regular_index = (
-        0  # Same numeric index as builder 0, but different entity (validator vs builder)
-    )
+    for builder_index in builder_indices_list:
+        if builder_index >= len(state.builders):
+            add_builder_to_registry(spec, state, builder_index)
+
+    # pending_indices start from 1 to avoid overlap with regular_index
+    pending_indices = list(range(1, 1 + num_pending_requested))
+    regular_index = 0  # Sweep-eligible validator
 
     prepare_process_withdrawals(
         spec,
@@ -783,13 +789,36 @@ def test_builder_and_pending_leave_room_for_sweep(spec, state):
         full_withdrawal_indices=[regular_index],
     )
 
-    expected_total = num_builders + num_pending + 1
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
 
     withdrawals = list(state.payload_expected_withdrawals)
-    regular_withdrawals = [w for w in withdrawals if w.validator_index == regular_index]
-    assert len(regular_withdrawals) == 1, "Exactly 1 slot should remain for sweep withdrawal"
+
+    # The spec processes all builders (they fit within MAX - 1), then caps pending partials
+    # to reserve space for sweep. The overfill is in the combination, not builders alone.
+    expected_builders = num_builders_requested
+    # Pending: capped at remaining space (MAX - 1 - builders) and MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
+    remaining_for_pending = spec.MAX_WITHDRAWALS_PER_PAYLOAD - 1 - expected_builders
+    expected_pending = min(
+        num_pending_requested,
+        spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
+        remaining_for_pending,
+    )
+    expected_sweep = 1
+    expected_total = expected_builders + expected_pending + expected_sweep
+
+    assert expected_total == spec.MAX_WITHDRAWALS_PER_PAYLOAD, (
+        f"Expected total withdrawals to fill payload: {spec.MAX_WITHDRAWALS_PER_PAYLOAD}, "
+        f"but got {expected_total}"
+    )
+
+    builder_validator_indices = [
+        spec.convert_builder_index_to_validator_index(i)
+        for i in builder_indices_list[:expected_builders]
+    ]
+    expected_order = (
+        builder_validator_indices + pending_indices[:expected_pending] + [regular_index]
+    )
 
     assert_process_withdrawals(
         spec,
@@ -798,9 +827,12 @@ def test_builder_and_pending_leave_room_for_sweep(spec, state):
         withdrawal_count=expected_total,
         balances={regular_index: 0},
         withdrawal_index_delta=expected_total,
-        builder_pending_delta=-int(num_builders),
-        builder_balance_deltas={i: -int(withdrawal_amount) for i in builder_indices_list},
-        pending_partial_delta=-int(num_pending),
+        builder_pending_delta=-int(expected_builders),
+        builder_balance_deltas={
+            i: -int(withdrawal_amount) for i in builder_indices_list[:expected_builders]
+        },
+        pending_partial_delta=-int(expected_pending),
+        withdrawal_order=expected_order,
     )
 
 
