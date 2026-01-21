@@ -78,15 +78,14 @@ def _validate_fork_name(forks):
 @fixture(autouse=True)
 def preset(request):
     preset_value = request.config.getoption("--preset")
-    # Set DEFAULT_TEST_PRESET on ALL loaded context modules.
+    context.DEFAULT_TEST_PRESET = preset_value
     # The eth2spec package is built inside tests/core/pyspec/, causing it to be
     # imported under two paths: "eth2spec.test.context" and
     # "tests.core.pyspec.eth2spec.test.context". Python treats these as separate
     # modules with independent module-level variables.
-    for name in list(sys.modules.keys()):
-        if name.endswith("eth2spec.test.context"):
-            sys.modules[name].DEFAULT_TEST_PRESET = preset_value
-    context.DEFAULT_TEST_PRESET = preset_value
+    alt_context = sys.modules.get("tests.core.pyspec.eth2spec.test.context")
+    if alt_context is not None:
+        alt_context.DEFAULT_TEST_PRESET = preset_value
 
 
 @fixture(autouse=True)
