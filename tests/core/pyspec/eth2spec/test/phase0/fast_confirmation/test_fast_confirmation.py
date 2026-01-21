@@ -167,7 +167,9 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
     epoch2_start = 2 * S
 
     # Drive to epoch 2 start, then 2 slots into epoch 2 (mid-epoch)
-    fcr.run_slots_with_blocks_and_fast_confirmation(epoch2_start - fcr.current_slot(), participation_rate=100)
+    fcr.run_slots_with_blocks_and_fast_confirmation(
+        epoch2_start - fcr.current_slot(), participation_rate=100
+    )
     fcr.run_slots_with_blocks_and_fast_confirmation(2, participation_rate=100)
     assert fcr.current_slot() % S != 0  # mid-epoch
 
@@ -207,6 +209,11 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
     # By now we should have confirmed onto the A side
     assert spec.is_ancestor(store, store.confirmed_root, a_root), "Confirmed did not reach A"
 
+    # snapshot what confirmed_root is *before* we start pushing 100%-to-M 
+    confirmed_before_flip = store.confirmed_root
+    assert confirmed_before_flip != store.finalized_checkpoint.root
+    assert spec.is_ancestor(store, confirmed_before_flip, a_root)
+
     # Next slot: build C on B; attest 100% to M; advance + apply + FCR
     c_root = fcr.add_and_apply_block(parent_root=b_root)
     fcr.attest_and_next_slot_with_fast_confirmation(block_root=m_root, participation_rate=100)
@@ -218,14 +225,14 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
     _d_root = fcr.add_and_apply_block(parent_root=c_root)
     fcr.attest_and_next_slot_with_fast_confirmation(block_root=m_root, participation_rate=100)
 
-    # Now: head should be on M side, and confirmed should have reset to finalized
+    # Now: head should be on M side, and confirmed should have reset to finalized.
+    # (FCR does not move confirmations backwards; it resets to finalized when confirmed becomes non-canonical.)
     head = fcr.head()
-    assert spec.is_ancestor(store, head, m_root), "Head did not flip to M (may need one more 100%-to-M slot)"
+    assert spec.is_ancestor(store, head, m_root), "Head did not flip to M"
     assert store.confirmed_root == store.finalized_checkpoint.root, "Expected reset to finalized mid-epoch"
+    assert store.confirmed_root != confirmed_before_flip  # we actually reset
 
     yield from fcr.get_test_artefacts()
-
-
 # At an epoch boundary, if the previously confirmed chain cannot be re-confirmed
 # under the new epoch anchor, FCR must reset confirmed_root to finalized
 @with_altair_and_later
