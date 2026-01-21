@@ -270,6 +270,9 @@ The validator creates `payload_attestation_message` as follows:
 - Set `data.beacon_block_root` be the hash tree root of the beacon block seen
   for the assigned slot.
 - Set `data.slot` to be the assigned slot.
+- If the validator has seen the columns it's required to custody for the
+  assigned slot, set `data.blob_data_available` to `True`; otherwise, set
+  `data.blob_data_available` to `False`.
 - If a previously seen `SignedExecutionPayloadEnvelope` references the block
   with root `data.beacon_block_root`, set `data.payload_present` to `True`;
   otherwise, set `data.payload_present` to `False`.
