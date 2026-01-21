@@ -792,8 +792,6 @@ def test_builder_and_pending_leave_room_for_sweep(spec, state):
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
 
-    withdrawals = list(state.payload_expected_withdrawals)
-
     # The spec processes all builders (they fit within MAX - 1), then caps pending partials
     # to reserve space for sweep. The overfill is in the combination, not builders alone.
     expected_builders = num_builders_requested
