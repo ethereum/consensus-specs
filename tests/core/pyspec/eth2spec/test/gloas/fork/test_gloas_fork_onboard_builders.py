@@ -489,12 +489,8 @@ def test_fork_invalid_validator_deposit_followed_by_builder_credentials(spec, ph
     assert post_state.builders[0].pubkey == builder_pubkey
     assert post_state.builders[0].balance == amount
 
-    # Invalid validator deposit should remain in pending (to be discarded later during normal processing)
-    assert len(post_state.pending_deposits) == 1
-    assert post_state.pending_deposits[0].pubkey == builder_pubkey
-    assert (
-        post_state.pending_deposits[0].withdrawal_credentials == compounding_withdrawal_credentials
-    )
+    # Invalid validator deposit is dropped (not kept in pending)
+    assert len(post_state.pending_deposits) == 0
 
 
 @with_phases(phases=[FULU], other_phases=[GLOAS])
