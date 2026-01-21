@@ -3,8 +3,9 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
-  - [Domain types](#domain-types)
+- [Types](#types)
+- [Constants](#constants)
+  - [Domains](#domains)
 - [Preset](#preset)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
@@ -63,15 +64,17 @@ accumulators, it becomes possible to validate the entire block history that led
 up to that particular state without any additional information beyond the state
 and the blocks.
 
-## Custom types
+## Types
 
 We define the following Python custom types for type hinting and readability:
 
 | Name              | SSZ equivalent | Description                |
 | ----------------- | -------------- | -------------------------- |
-| `WithdrawalIndex` | `uint64`       | an index of a `Withdrawal` |
+| `WithdrawalIndex` | `uint64`       | An index of a `Withdrawal` |
 
-### Domain types
+## Constants
+
+### Domains
 
 | Name                             | Value                      |
 | -------------------------------- | -------------------------- |

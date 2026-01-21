@@ -16,7 +16,7 @@
 
 ## Introduction
 
-This document represents the specification for the beacon chain deposit
+This document represents the specification for the beacon-chain deposit
 contract, part of Phase 0.
 
 ## Constants
@@ -31,8 +31,8 @@ specification.
 ## Configuration
 
 *Note*: The default mainnet configuration values are included here for
-spec-design purposes. The different configurations for mainnet, testnets, and
-YAML-based testing can be found in the
+specification-design purposes. The different configurations for mainnet,
+testnets, and YAML-based testing can be found in the
 [`configs/constant_presets`](../../configs) directory. These configurations are
 updated for releases and may be out of sync during `dev` changes.
 
@@ -50,10 +50,10 @@ contract at address `DEPOSIT_CONTRACT_ADDRESS` is added to the Ethereum
 proof-of-work chain defined by the
 [chain-id](https://eips.ethereum.org/EIPS/eip-155) -- `DEPOSIT_CHAIN_ID` -- and
 the network-id -- `DEPOSIT_NETWORK_ID` -- for deposits of ETH to the beacon
-chain. Validator balances will be withdrawable to the execution-layer in a
-followup fork after Bellatrix upgrade.
+chain. Validator balances will be withdrawable to the execution layer in a
+follow-up upgrade after Bellatrix.
 
-_Note_: See [here](https://chainid.network/) for a comprehensive list of public
+*Note*: See [here](https://chainid.network/) for a comprehensive list of public
 Ethereum chain chain-id's and network-id's.
 
 ### `deposit` function
@@ -70,7 +70,7 @@ is the expected `DepositData` root as a protection against malformed calldata.
 The amount of ETH (rounded down to the closest Gwei) sent to the deposit
 contract is the deposit amount, which must be of size at least
 `MIN_DEPOSIT_AMOUNT` Gwei. Note that ETH consumed by the deposit contract is no
-longer usable on the execution-layer until sometime after Bellatrix upgrade.
+longer usable on the execution layer until sometime after Bellatrix upgrade.
 
 #### Withdrawal credentials
 

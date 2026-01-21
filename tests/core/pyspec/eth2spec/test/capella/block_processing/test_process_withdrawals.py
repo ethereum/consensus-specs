@@ -34,7 +34,7 @@ from eth2spec.test.helpers.withdrawals import (
 )
 
 
-@with_all_phases_from_to(CAPELLA, GLOAS)
+@with_capella_and_later
 @spec_state_test
 def test_success_zero_expected_withdrawals(spec, state):
     assert len(get_expected_withdrawals(spec, state)) == 0
@@ -45,7 +45,7 @@ def test_success_zero_expected_withdrawals(spec, state):
     yield from run_withdrawals_processing(spec, state, execution_payload)
 
 
-@with_all_phases_from_to(CAPELLA, GLOAS)
+@with_capella_and_later
 @spec_state_test
 def test_success_one_full_withdrawal(spec, state):
     fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
@@ -66,7 +66,7 @@ def test_success_one_full_withdrawal(spec, state):
     )
 
 
-@with_all_phases_from_to(CAPELLA, GLOAS)
+@with_capella_and_later
 @spec_state_test
 def test_success_one_partial_withdrawal(spec, state):
     fully_withdrawable_indices, partial_withdrawals_indices = prepare_expected_withdrawals(
@@ -89,7 +89,7 @@ def test_success_one_partial_withdrawal(spec, state):
     )
 
 
-@with_all_phases_from_to(CAPELLA, GLOAS)
+@with_capella_and_later
 @spec_state_test
 def test_success_mixed_fully_and_partial_withdrawable(spec, state):
     num_full_withdrawals = spec.MAX_WITHDRAWALS_PER_PAYLOAD // 2
@@ -536,7 +536,7 @@ def test_invalid_many_incorrectly_partial(spec, state):
 #
 
 
-@with_all_phases_from_to(CAPELLA, GLOAS)
+@with_capella_and_later
 @spec_state_test
 def test_withdrawable_epoch_but_0_balance(spec, state):
     current_epoch = spec.get_current_epoch(state)
@@ -568,7 +568,7 @@ def test_withdrawable_epoch_but_0_effective_balance_0_balance(spec, state):
     )
 
 
-@with_all_phases_from_to(CAPELLA, GLOAS)
+@with_capella_and_later
 @spec_state_test
 def test_withdrawable_epoch_but_0_effective_balance_nonzero_balance(spec, state):
     current_epoch = spec.get_current_epoch(state)

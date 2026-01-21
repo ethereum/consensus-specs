@@ -46,7 +46,6 @@ def run_fork_test(post_spec, pre_state):
         "earliest_exit_epoch",
         "consolidation_balance_to_consume",
         "earliest_consolidation_epoch",
-        "pending_deposits",
         "pending_partial_withdrawals",
         "pending_consolidations",
         "proposer_lookahead",

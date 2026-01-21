@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
 - [Containers](#containers)
   - [Modified `LightClientHeader`](#modified-lightclientheader)
@@ -31,7 +31,7 @@ Additional documents describes the impact of the upgrade on certain roles:
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)
 
-## Custom types
+## Types
 
 | Name              | SSZ equivalent                                         | Description                                                   |
 | ----------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
