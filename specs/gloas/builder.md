@@ -26,8 +26,8 @@
 This is an accompanying document which describes the expected actions of a
 "builder" participating in the Ethereum proof-of-stake protocol.
 
-With the Gloas fork, the protocol introduces a new type of staked actor (not a
-validator) called a *builder*. Since builders are not validators, they do not
+With the Gloas upgrade, the protocol introduces a new type of staked actor (not
+a validator) called a *builder*. Since builders are not validators, they do not
 perform validator duties (e.g., attesting and proposing) and therefore do not
 earn yield on their stake. Builders have the option to produce execution
 payloads by submitting bids. This document is a collection of guidelines for
@@ -48,7 +48,7 @@ The `withdrawal_credentials` field must be:
 - `withdrawal_credentials[1:12] == b'\x00' * 11`
 - `withdrawal_credentials[12:] == builder_execution_address`
 
-Where `builder_execution_address` is an execution layer address that will
+Where `builder_execution_address` is an execution-layer address that will
 receive withdrawals.
 
 ### Submit deposit
@@ -265,5 +265,5 @@ and broadcasts it on the `execution_payload` global gossip topic.
 
 An honest builder that has seen a `SignedBeaconBlock` referencing his signed
 bid, but that block was not timely and thus it is not the head of the builder's
-chain, may choose to withhold their execution payload. For this the builder
+chain, may choose to withhold their execution payload. For this, the builder
 should act as if no block was produced and not broadcast the payload.
