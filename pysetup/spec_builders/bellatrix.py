@@ -27,10 +27,6 @@ def get_execution_state(_execution_state_root: Bytes32) -> ExecutionState:
     pass
 
 
-def get_pow_chain_head() -> PowBlock:
-    pass
-
-
 def validator_is_connected(validator_index: ValidatorIndex) -> bool:
     # pylint: disable=unused-argument
     return True"""

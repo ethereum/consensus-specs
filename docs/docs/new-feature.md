@@ -25,7 +25,7 @@
 
 ### 1. Create a folder under `./specs/_features`
 
-For example, if it's an `EIP-9999` CL spec, you can create a
+For example, if it's an `EIP-9999` CL specification, you can create a
 `./specs/_features/eip9999` folder.
 
 ### 2. Choose the "previous fork" to extend: usually, use the scheduled or the latest mainnet fork version.
@@ -56,7 +56,7 @@ You can refer to the previous fork's `fork.md` file.
   with the new feature name.
 - Update helpers for
   [`setup.py`](https://github.com/ethereum/consensus-specs/blob/master/setup.py)
-  for building the spec:
+  for building the specification:
   - Update
     [`pysetup/constants.py`](https://github.com/ethereum/consensus-specs/blob/master/pysetup/constants.py)
     with the new feature name as Pyspec `constants.py` defined.

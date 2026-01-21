@@ -47,8 +47,8 @@ Next, click the green "Run workflow" button.
 > 24 hours to run.
 
 > [!TIP]
-> If the release fails, delete the tag, fix the issue, and re-run the release
-> workflow.
+> If the release fails, delete the tag, delete the draft release, fix the issue,
+> and re-run the release workflow.
 
 ## Make an Announcement
 
@@ -63,7 +63,7 @@ their client.
 Use the following template for your announcement:
 
 ```markdown
-Consensus layer specs <version> -- <release-name> -- released!
+Consensus-layer specifications <version> released!
 
 https://github.com/ethereum/consensus-specs/releases/tag/<version>
 ```

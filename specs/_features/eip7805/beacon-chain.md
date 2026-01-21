@@ -4,9 +4,9 @@
 
 - [Introduction](#introduction)
 - [Constants](#constants)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
 - [Preset](#preset)
-  - [Inclusion List Committee](#inclusion-list-committee)
+  - [Inclusion list committee](#inclusion-list-committee)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`InclusionList`](#inclusionlist)
@@ -14,16 +14,16 @@
 - [Helpers](#helpers)
   - [Predicates](#predicates)
     - [New `is_valid_inclusion_list_signature`](#new-is_valid_inclusion_list_signature)
-  - [Beacon State accessors](#beacon-state-accessors)
+  - [Beacon state accessors](#beacon-state-accessors)
     - [New `get_inclusion_list_committee`](#new-get_inclusion_list_committee)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This is the beacon chain specification to add EIP-7805 / fork-choice enforced,
-committee-based inclusion list (FOCIL) mechanism to allow forced transaction
-inclusion. Refers to the following posts:
+These are the beacon-chain specifications to add EIP-7805 / fork-choice
+enforced, committee-based inclusion list (FOCIL) mechanism to allow forced
+transaction inclusion. Refers to the following posts:
 
 - [Fork-Choice enforced Inclusion Lists (FOCIL): A simple committee-based inclusion list proposal](https://ethresear.ch/t/fork-choice-enforced-inclusion-lists-focil-a-simple-committee-based-inclusion-list-proposal/19870/1)
 - [FOCIL CL & EL workflow](https://ethresear.ch/t/focil-cl-el-workflow/20526)
@@ -32,7 +32,7 @@ inclusion. Refers to the following posts:
 
 ## Constants
 
-### Domain types
+### Domains
 
 | Name                              | Value                      |
 | --------------------------------- | -------------------------- |
@@ -40,7 +40,7 @@ inclusion. Refers to the following posts:
 
 ## Preset
 
-### Inclusion List Committee
+### Inclusion list committee
 
 | Name                            | Value                |
 | ------------------------------- | -------------------- |
@@ -89,7 +89,7 @@ def is_valid_inclusion_list_signature(
     return bls.Verify(pubkey, signing_root, signed_inclusion_list.signature)
 ```
 
-### Beacon State accessors
+### Beacon state accessors
 
 #### New `get_inclusion_list_committee`
 

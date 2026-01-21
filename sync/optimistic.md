@@ -350,7 +350,7 @@ able to complete because the recent state soon becomes unavailable due to state
 trie pruning.
 
 Optimistic block import (i.e. import when the execution engine *cannot*
-currently validate the payload) breaks a deadlock between the execution layer
+currently validate the payload) breaks a deadlock between the execution-layer
 sync process and importing beacon blocks while the execution engine is syncing.
 
 Optimistic sync is also an optimal strategy for execution engines using block

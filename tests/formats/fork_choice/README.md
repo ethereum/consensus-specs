@@ -166,7 +166,7 @@ Optional step for optimistic sync tests.
 
 This step sets the
 [`payloadStatus`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#payloadstatusv1)
-value that Execution Layer client mock returns in responses to the following
+value that execution-layer client mock returns in responses to the following
 Engine API calls:
 
 - [`engine_newPayloadV1(payload)`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#engine_newpayloadv1)

@@ -18,7 +18,7 @@
     - [Attester slashings](#attester-slashings)
     - [Attestations](#attestations)
     - [Deposits](#deposits)
-    - [Execution Requests](#execution-requests)
+    - [Execution requests](#execution-requests)
   - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
     - [Sidecar](#sidecar)
 - [Attesting](#attesting)
@@ -41,9 +41,9 @@ definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the
-updated Beacon Chain doc of [Electra](./beacon-chain.md) are requisite for this
-document and used throughout. Please see related Beacon Chain doc before
-continuing and use them as a reference throughout.
+updated beacon-chain specifications of [Electra](./beacon-chain.md) are
+requisite for this document and used throughout. Please see related beacon-chain
+specifications before continuing and use them as a reference throughout.
 
 ## Helpers
 
@@ -207,7 +207,7 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     )
 ```
 
-#### Execution Requests
+#### Execution requests
 
 *[New in Electra]*
 

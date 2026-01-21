@@ -49,3 +49,6 @@ site
 
 # docker test results
 testResults
+
+# lint temporary files
+.lint_diff_*

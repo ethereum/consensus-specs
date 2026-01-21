@@ -4,11 +4,11 @@
 
 - [Introduction](#introduction)
 - [Notation](#notation)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
 - [Preset](#preset)
   - [Misc](#misc-1)
   - [Gwei values](#gwei-values)
@@ -155,25 +155,25 @@ block (in a later upgrade) and proof-of-stake votes for a beacon block (Phase
 
 Code snippets appearing in `this style` are to be interpreted as Python 3 code.
 
-## Custom types
+## Types
 
 We define the following Python custom types for type hinting and readability:
 
 | Name             | SSZ equivalent | Description                       |
 | ---------------- | -------------- | --------------------------------- |
-| `Slot`           | `uint64`       | a slot number                     |
-| `Epoch`          | `uint64`       | an epoch number                   |
-| `CommitteeIndex` | `uint64`       | a committee index at a slot       |
-| `ValidatorIndex` | `uint64`       | a validator registry index        |
-| `Gwei`           | `uint64`       | an amount in Gwei                 |
-| `Root`           | `Bytes32`      | a Merkle root                     |
-| `Hash32`         | `Bytes32`      | a 256-bit hash                    |
-| `Version`        | `Bytes4`       | a fork version number             |
-| `DomainType`     | `Bytes4`       | a domain type                     |
-| `ForkDigest`     | `Bytes4`       | a digest of the current fork data |
-| `Domain`         | `Bytes32`      | a signature domain                |
-| `BLSPubkey`      | `Bytes48`      | a BLS12-381 public key            |
-| `BLSSignature`   | `Bytes96`      | a BLS12-381 signature             |
+| `Slot`           | `uint64`       | A slot number                     |
+| `Epoch`          | `uint64`       | An epoch number                   |
+| `CommitteeIndex` | `uint64`       | A committee index at a slot       |
+| `ValidatorIndex` | `uint64`       | A validator registry index        |
+| `Gwei`           | `uint64`       | An amount in Gwei                 |
+| `Root`           | `Bytes32`      | A Merkle root                     |
+| `Hash32`         | `Bytes32`      | A 256-bit hash                    |
+| `Version`        | `Bytes4`       | A fork version number             |
+| `DomainType`     | `Bytes4`       | A domain type                     |
+| `ForkDigest`     | `Bytes4`       | A digest of the current fork data |
+| `Domain`         | `Bytes32`      | A signature domain                |
+| `BLSPubkey`      | `Bytes48`      | A BLS12-381 public key            |
+| `BLSSignature`   | `Bytes96`      | A BLS12-381 signature             |
 
 ## Constants
 
@@ -201,7 +201,7 @@ specification.
 | `BLS_WITHDRAWAL_PREFIX`          | `Bytes1('0x00')` |
 | `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
 
-### Domain types
+### Domains
 
 | Name                         | Value                      |
 | ---------------------------- | -------------------------- |
@@ -218,7 +218,7 @@ specification.
 `DomainType` for application usage. This means for some `DomainType`
 `DOMAIN_SOME_APPLICATION`, `DOMAIN_SOME_APPLICATION & DOMAIN_APPLICATION_MASK`
 **MUST** be non-zero. This expression for any other `DomainType` in the
-consensus specs **MUST** be zero.
+consensus-layer specifications **MUST** be zero.
 
 ## Preset
 
@@ -355,7 +355,7 @@ The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md)
 containers.
 
 *Note*: The definitions are ordered topologically to facilitate execution of the
-spec.
+specification.
 
 *Note*: Fields missing in container instantiations default to their zero value.
 
@@ -684,7 +684,7 @@ def saturating_sub(a: int, b: int) -> int:
 
 `def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing
 objects into a single root by utilizing a hash tree structure, as defined in the
-[SSZ spec](../../ssz/simple-serialize.md#merkleization).
+[SSZ specification](../../ssz/simple-serialize.md#merkleization).
 
 #### BLS signatures
 
@@ -934,7 +934,9 @@ def compute_fork_data_root(current_version: Version, genesis_validators_root: Ro
 
 ```python
 def compute_domain(
-    domain_type: DomainType, fork_version: Version = None, genesis_validators_root: Root = None
+    domain_type: DomainType,
+    fork_version: Optional[Version] = None,
+    genesis_validators_root: Optional[Root] = None,
 ) -> Domain:
     """
     Return the domain for the ``domain_type`` and ``fork_version``.
@@ -1137,7 +1139,9 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
 #### `get_domain`
 
 ```python
-def get_domain(state: BeaconState, domain_type: DomainType, epoch: Epoch = None) -> Domain:
+def get_domain(
+    state: BeaconState, domain_type: DomainType, epoch: Optional[Epoch] = None
+) -> Domain:
     """
     Return the signature domain (fork version concatenated with domain type) of a message.
     """
@@ -1225,7 +1229,9 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
 ```python
 def slash_validator(
-    state: BeaconState, slashed_index: ValidatorIndex, whistleblower_index: ValidatorIndex = None
+    state: BeaconState,
+    slashed_index: ValidatorIndex,
+    whistleblower_index: Optional[ValidatorIndex] = None,
 ) -> None:
     """
     Slash the validator with index ``slashed_index``.
@@ -1254,7 +1260,7 @@ def slash_validator(
 
 ## Genesis
 
-Before the Ethereum beacon chain genesis has been triggered, and for every
+Before the Ethereum beacon-chain genesis has been triggered, and for every
 Ethereum proof-of-work block, let
 `candidate_state = initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)`
 where:

@@ -25,7 +25,8 @@
 
 ## Introduction
 
-This document contains the networking specification for Bellatrix.
+This document contains the consensus-layer networking specifications for
+Bellatrix.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite. This
@@ -136,7 +137,7 @@ result in an INVALID response from an execution engine. To prevent network
 segregation between optimistic and non-optimistic nodes, transmission of an
 INVALID execution payload via the Req/Resp domain SHOULD NOT cause a node to be
 down-scored or disconnected. Transmission of a block which is invalid due to any
-consensus layer rules (i.e., *not* execution layer rules) MAY result in
+consensus-layer rules (i.e., *not* execution-layer rules) MAY result in
 down-scoring or disconnection.
 
 #### Messages

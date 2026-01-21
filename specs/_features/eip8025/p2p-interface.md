@@ -1,6 +1,6 @@
 # EIP-8025 -- Networking
 
-This document contains the networking specification for EIP-8025.
+This document contains the networking specifications for EIP-8025.
 
 ## Table of contents
 
