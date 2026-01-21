@@ -110,15 +110,22 @@ ______________________________________________________________________
 
 4. **Processing Order & Caps** (combined constraint on output):
 
-   - Builder pending withdrawals: processed first, up to
-     `MAX_WITHDRAWALS_PER_PAYLOAD - 1` (one slot reserved for validator sweep)
-   - Partial withdrawals: processed second, capped by
-     `MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP`, must leave at least one slot
-   - Builder sweep: processed third, up to `MAX_WITHDRAWALS_PER_PAYLOAD - 1`
-     (one slot reserved for validator sweep)
-   - Validator sweep: processed last, at least one slot reserved, capped by
-     `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP`
-   - Total output: `MAX_WITHDRAWALS_PER_PAYLOAD`
+   All withdrawal types except validator sweep are capped at
+   `MAX_WITHDRAWALS_PER_PAYLOAD - 1` total, reserving 1 slot for validator
+   sweep. Each function receives `prior_withdrawals` and can only fill up to
+   this limit.
+
+   - **Builder pending** (`get_builder_withdrawals`): processed first, capped at
+     `MAX_WITHDRAWALS_PER_PAYLOAD - 1`
+   - **Pending partial** (`get_pending_partial_withdrawals`): processed second,
+     capped at
+     `min(prior + MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP, MAX - 1)`. This
+     means if builders took N slots, partials get at most `MAX - 1 - N` slots.
+   - **Builder sweep** (`get_builders_sweep_withdrawals`): processed third,
+     capped at `MAX_WITHDRAWALS_PER_PAYLOAD - 1` total (including prior)
+   - **Validator sweep** (`get_validators_sweep_withdrawals`): processed last,
+     gets remaining slots, capped by `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP`
+   - **Total output**: up to `MAX_WITHDRAWALS_PER_PAYLOAD`
 
 5. **Early Exit Binding**: Function executes only when
    `latest_execution_payload_bid.block_hash == latest_block_hash`.
