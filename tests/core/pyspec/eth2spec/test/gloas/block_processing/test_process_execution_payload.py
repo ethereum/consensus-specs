@@ -679,6 +679,42 @@ def test_process_execution_payload_wrong_blob_commitments_root(spec, state):
 @with_gloas_and_later
 @spec_state_test
 @always_bls
+def test_process_execution_payload_wrong_withdrawals(spec, state):
+    """
+    Test wrong withdrawals root fails with separate builder
+    """
+    builder_index = 0
+
+    setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(2600000))
+
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.block_hash = state.latest_execution_payload_bid.block_hash
+    execution_payload.gas_limit = state.latest_execution_payload_bid.gas_limit
+    execution_payload.parent_hash = state.latest_block_hash
+
+    withdrawal = spec.Withdrawal(
+        index=0,
+        validator_index=0,
+        address=b"\x22" * 20,
+        amount=spec.Gwei(1),
+    )
+    state.payload_expected_withdrawals = spec.List[
+        spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    ]([withdrawal])
+    execution_payload.withdrawals = spec.List[
+        spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    ]()
+
+    signed_envelope = prepare_execution_payload_envelope(
+        spec, state, builder_index=builder_index, execution_payload=execution_payload
+    )
+
+    yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
 def test_process_execution_payload_wrong_gas_limit(spec, state):
     """
     Test wrong gas limit fails with separate builder

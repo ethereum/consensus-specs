@@ -60,7 +60,7 @@ def prepare_signed_execution_payload_bid(
     spec.process_slots(state, slot)
 
     if builder_index is None:
-        builder_index = spec.get_beacon_proposer_index(state)
+        builder_index = spec.BUILDER_INDEX_SELF_BUILD
 
     if parent_block_hash is None:
         parent_block_hash = state.latest_block_hash
