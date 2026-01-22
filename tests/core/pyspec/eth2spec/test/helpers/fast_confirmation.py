@@ -5,11 +5,15 @@ from eth_utils import encode_hex
 from eth2spec.test.helpers.attestations import (
     get_valid_attestations_for_block_at_slot,
 )
+from eth2spec.test.helpers.attester_slashings import (
+    get_valid_attester_slashing_by_indices,
+)
 from eth2spec.test.helpers.block import (
     build_empty_block,
 )
 from eth2spec.test.helpers.fork_choice import (
     add_attestations,
+    add_attester_slashing,
     add_block,
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
@@ -49,19 +53,20 @@ def on_slot_start_after_past_attestations_applied_and_append_step(spec, store, t
 
 
 class FCRTest:
-    def __init__(self, spec):
+    def __init__(self, spec, seed):
         self.spec = spec
+        self.seed = seed
 
-    def initialize(self, anchor_state, seed):
+    def initialize(self, anchor_state):
         # Initialization
         test_steps = []
         store, anchor_block = get_genesis_forkchoice_store_and_block(self.spec, anchor_state)
 
+        self.rng = Random(self.seed)
         self.store = store
         self.test_steps = test_steps
         self.attestation_pool = []
         self.blockchain_artefacts = []
-        self.rng = Random(seed)
 
         # Tick
         self.tick(self.spec.GENESIS_SLOT)
@@ -184,13 +189,17 @@ class FCRTest:
             self.spec, self.store, self.test_steps
         )
 
-    def next_slot_with_block_and_fast_confirmation(self, participation_rate=100):
+    def next_slot_with_block_and_apply_attestations(self, participation_rate=100):
         block_root = self.add_and_apply_block(parent_root=self.head())
         self.attest(
             block_root=self.head(), slot=self.current_slot(), participation_rate=participation_rate
         )
         self.next_slot()
         self.apply_attestations()
+        return block_root
+
+    def next_slot_with_block_and_fast_confirmation(self, participation_rate=100):
+        block_root = self.next_slot_with_block_and_apply_attestations(participation_rate)
         self.run_fast_confirmation()
         return block_root
 
@@ -229,3 +238,31 @@ class FCRTest:
         sleepy_participants_count = len(slot_committee) * (100 - participation_rate) // 100
         self.rng.shuffle(slot_committee)
         return set(slot_committee[:sleepy_participants_count])
+
+    def apply_attester_slashing(
+        self, slashing_percentage: int = None, slashing_indices: list[int] = None, slot=None
+    ):
+        if slot is None:
+            slot = self.current_slot()
+        state = self.store.block_states[self.head()].copy()
+        if slashing_indices is None:
+            assert slashing_percentage is not None
+            slashing_count = len(state.validators) * slashing_percentage // 100
+            unslashed_indices = [idx for idx, val in enumerate(state.validators) if not val.slashed]
+            self.rng.shuffle(unslashed_indices)
+            slashing_indices = unslashed_indices[:slashing_count]
+        else:
+            assert len(slashing_indices) > 0
+
+        transition_to(self.spec, state, slot)
+
+        attester_slashing = get_valid_attester_slashing_by_indices(
+            self.spec, state, sorted(slashing_indices), slot=slot, signed_1=True, signed_2=True
+        )
+
+        for artefact in add_attester_slashing(
+            self.spec, self.store, attester_slashing, self.test_steps
+        ):
+            self.blockchain_artefacts.append(artefact)
+
+        return attester_slashing

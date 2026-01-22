@@ -66,8 +66,9 @@
 
 ## Introduction
 
-This document is the beacon chain fork choice spec, part of Phase 0. It assumes
-the [beacon chain state transition function spec](./beacon-chain.md).
+This document is the beacon-chain fork choice specification, part of Phase 0. It
+assumes the
+[beacon-chain state transition function specification](./beacon-chain.md).
 
 ## Fork choice
 
@@ -154,9 +155,9 @@ algorithm. The important fields being tracked are described below:
 - `finalized_checkpoint`: the highest known finalized checkpoint. The fork
   choice only considers blocks that are not conflicting with this checkpoint.
 - `unrealized_justified_checkpoint` & `unrealized_finalized_checkpoint`: these
-  track the highest justified & finalized checkpoints resp., without regard to
-  whether on-chain ***realization*** has occurred, i.e. FFG processing of new
-  attestations within the state transition function. This is an important
+  track the highest justified & finalized checkpoints respectively, without
+  regard to whether on-chain ***realization*** has occurred, i.e. FFG processing
+  of new attestations within the state transition function. This is an important
   distinction from `justified_checkpoint` & `finalized_checkpoint`, because they
   will only track the checkpoints that are realized on-chain. Note that on-chain
   processing of FFG information only happens at epoch boundaries.
@@ -205,10 +206,10 @@ The provided anchor-state will be regarded as a trusted state, to not roll back
 beyond. This should be the genesis state for a full client.
 
 *Note* With regards to fork choice, block headers are interchangeable with
-blocks. The spec is likely to move to headers for reduced overhead in test
-vectors and better encapsulation. Full implementations store blocks as part of
-their database and will often use full blocks when dealing with production fork
-choice.
+blocks. The specification is likely to move to headers for reduced overhead in
+test vectors and better encapsulation. Full implementations store blocks as part
+of their database and will often use full blocks when dealing with production
+fork choice.
 
 ```python
 def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -> Store:

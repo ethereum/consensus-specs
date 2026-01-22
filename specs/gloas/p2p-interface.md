@@ -38,7 +38,7 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for Gloas.
+This document contains the consensus-layer networking specifications for Gloas.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
@@ -46,8 +46,6 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 ## Modification in Gloas
 
 ### Configuration
-
-*[New in Gloas:EIP7732]*
 
 | Name                   | Value          | Description                                                       |
 | ---------------------- | -------------- | ----------------------------------------------------------------- |
@@ -159,7 +157,7 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of Gloas to support upgraded types.
+Some gossip meshes are upgraded in Gloas to support upgraded types.
 
 #### Topics and messages
 
@@ -205,13 +203,13 @@ The following validations are removed:
 *[Modified in Gloas:EIP7732]*
 
 The *type* of the payload of this topic changes to the (modified)
-`SignedBeaconBlock` found in [the Beacon Chain changes](./beacon-chain.md).
+`SignedBeaconBlock` found in [the beacon-chain changes](./beacon-chain.md).
 
 There are no new validations for this topic. However, all validations with
 regards to the `ExecutionPayload` are removed:
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
-  limitation defined in Consensus Layer -- i.e. validate that
+  limitation defined in the consensus layer -- i.e. validate that
   `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
 - _[REJECT]_ The block's execution payload timestamp is correct with respect to
   the slot -- i.e.
@@ -478,8 +476,6 @@ The following validations are removed:
 
 **Protocol ID:**
 `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
-
-*[New in Gloas:EIP7732]*
 
 Request Content:
 

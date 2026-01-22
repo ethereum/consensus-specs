@@ -63,7 +63,7 @@ their client.
 Use the following template for your announcement:
 
 ```markdown
-Consensus layer specs <version> -- <release-name> -- released!
+Consensus-layer specifications <version> released!
 
 https://github.com/ethereum/consensus-specs/releases/tag/<version>
 ```

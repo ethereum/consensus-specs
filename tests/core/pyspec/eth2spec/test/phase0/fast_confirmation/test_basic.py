@@ -22,8 +22,8 @@ from eth2spec.test.helpers.fast_confirmation import (
 @spec_test
 @single_phase
 def test_fast_confirm_an_epoch(spec, state):
-    fcr_test = FCRTest(spec)
-    store = fcr_test.initialize(state, seed=1)
+    fcr_test = FCRTest(spec, seed=1)
+    store = fcr_test.initialize(state)
     for _ in range(spec.SLOTS_PER_EPOCH):
         fcr_test.next_slot_with_block_and_fast_confirmation()
         # Ensure head is confirmed
