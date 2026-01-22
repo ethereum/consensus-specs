@@ -10,6 +10,8 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Table of contents](#table-of-contents)
+- [Constants](#constants)
+  - [Execution](#execution)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -19,6 +21,16 @@ imports proof types from [proof-engine.md](./proof-engine.md).
     - [ExecutionProofsByRoot](#executionproofsbyroot)
 
 <!-- mdformat-toc end -->
+
+## Constants
+
+### Execution
+
+*Note*: The execution values are not definitive.
+
+| Name                               | Value       |
+| ---------------------------------- | ----------- |
+| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)` |
 
 ## The gossip domain: gossipsub
 

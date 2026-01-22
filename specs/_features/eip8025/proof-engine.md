@@ -9,16 +9,10 @@
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
 - [Types](#types)
-- [Constants](#constants)
-  - [Execution](#execution)
-  - [Domains](#domains)
-- [Containers](#containers)
-  - [New `PublicInput`](#new-publicinput)
-  - [New `ExecutionProof`](#new-executionproof)
-  - [New `ProofAttributes`](#new-proofattributes)
 - [Proof engine](#proof-engine)
   - [New `verify_execution_proof`](#new-verify_execution_proof)
   - [New `verify_new_payload_request_header`](#new-verify_new_payload_request_header)
+  - [New `ProofAttributes`](#new-proofattributes)
   - [New `request_proofs`](#new-request_proofs)
 
 <!-- mdformat-toc end -->
@@ -33,50 +27,6 @@ stateless validation of execution payloads through execution proofs.
 | Name         | SSZ equivalent | Description                              |
 | ------------ | -------------- | ---------------------------------------- |
 | `ProofGenId` | `Bytes8`       | Identifier for tracking proof generation |
-| `ProofType`  | `uint8`        | The type identifier for the proof        |
-
-## Constants
-
-### Execution
-
-*Note*: The execution values are not definitive.
-
-| Name                               | Value               |
-| ---------------------------------- | ------------------- |
-| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)`         |
-| `MAX_PROOF_SIZE`                   | `307200` (= 300KiB) |
-
-### Domains
-
-| Name                     | Value                      |
-| ------------------------ | -------------------------- |
-| `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0D000000')` |
-
-## Containers
-
-### New `PublicInput`
-
-```python
-class PublicInput(Container):
-    new_payload_request_root: Root
-```
-
-### New `ExecutionProof`
-
-```python
-class ExecutionProof(Container):
-    proof_data: ByteList[MAX_PROOF_SIZE]
-    proof_type: ProofType
-    public_input: PublicInput
-```
-
-### New `ProofAttributes`
-
-```python
-@dataclass
-class ProofAttributes(object):
-    proof_types: List[ProofType]
-```
 
 ## Proof engine
 
@@ -122,6 +72,14 @@ def verify_new_payload_request_header(
     Return ``True`` if proof requirements are satisfied.
     """
     ...
+```
+
+### New `ProofAttributes`
+
+```python
+@dataclass
+class ProofAttributes(object):
+    proof_types: List[ProofType]
 ```
 
 ### New `request_proofs`

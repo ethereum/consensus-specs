@@ -8,15 +8,21 @@
 
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
+- [Types](#types)
+- [Constants](#constants)
+  - [Execution](#execution)
+  - [Domains](#domains)
 - [Configuration](#configuration)
 - [Containers](#containers)
+  - [New `PublicInput`](#new-publicinput)
+  - [New `ExecutionProof`](#new-executionproof)
   - [New `SignedExecutionProof`](#new-signedexecutionproof)
-  - [New `NewPayloadRequestHeader`](#new-newpayloadrequestheader)
     - [Modified `BeaconState`](#modified-beaconstate)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Modified `process_block`](#modified-process_block)
   - [Execution payload processing](#execution-payload-processing)
+    - [New `NewPayloadRequestHeader`](#new-newpayloadrequestheader)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
   - [Execution proof handlers](#execution-proof-handlers)
     - [New `process_prover_signed_execution_proof`](#new-process_prover_signed_execution_proof)
@@ -31,6 +37,28 @@ validation of execution payloads through execution proofs.
 *Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md) and
 imports proof types from [proof-engine.md](./proof-engine.md).
 
+## Types
+
+| Name        | SSZ equivalent | Description                       |
+| ----------- | -------------- | --------------------------------- |
+| `ProofType` | `uint8`        | The type identifier for the proof |
+
+## Constants
+
+### Execution
+
+*Note*: The execution values are not definitive.
+
+| Name             | Value               |
+| ---------------- | ------------------- |
+| `MAX_PROOF_SIZE` | `307200` (= 300KiB) |
+
+### Domains
+
+| Name                     | Value                      |
+| ------------------------ | -------------------------- |
+| `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0D000000')` |
+
 ## Configuration
 
 *Note*: The configuration values are not definitive.
@@ -41,6 +69,22 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 
 ## Containers
 
+### New `PublicInput`
+
+```python
+class PublicInput(Container):
+    new_payload_request_root: Root
+```
+
+### New `ExecutionProof`
+
+```python
+class ExecutionProof(Container):
+    proof_data: ByteList[MAX_PROOF_SIZE]
+    proof_type: ProofType
+    public_input: PublicInput
+```
+
 ### New `SignedExecutionProof`
 
 ```python
@@ -48,17 +92,6 @@ class SignedExecutionProof(Container):
     message: ExecutionProof
     prover_pubkey: BLSPubkey
     signature: BLSSignature
-```
-
-### New `NewPayloadRequestHeader`
-
-```python
-@dataclass
-class NewPayloadRequestHeader(object):
-    execution_payload_header: ExecutionPayloadHeader
-    versioned_hashes: Sequence[VersionedHash]
-    parent_beacon_block_root: Root
-    execution_requests: ExecutionRequests
 ```
 
 #### Modified `BeaconState`
@@ -129,6 +162,17 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ```
 
 ### Execution payload processing
+
+#### New `NewPayloadRequestHeader`
+
+```python
+@dataclass
+class NewPayloadRequestHeader(object):
+    execution_payload_header: ExecutionPayloadHeader
+    versioned_hashes: Sequence[VersionedHash]
+    parent_beacon_block_root: Root
+    execution_requests: ExecutionRequests
+```
 
 #### Modified `process_execution_payload`
 
