@@ -9,7 +9,7 @@
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
 - [Helpers](#helpers)
-  - [`get_execution_proof_signature`](#get_execution_proof_signature)
+  - [New `get_execution_proof_signature`](#new-get_execution_proof_signature)
 - [Constructing `ProverSignedExecutionProof`](#constructing-proversignedexecutionproof)
 - [Honest prover relay](#honest-prover-relay)
 
@@ -31,7 +31,7 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 
 ## Helpers
 
-### `get_execution_proof_signature`
+### New `get_execution_proof_signature`
 
 ```python
 def get_execution_proof_signature(

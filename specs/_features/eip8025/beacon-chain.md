@@ -8,12 +8,11 @@
 
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
+- [Configuration](#configuration)
 - [Containers](#containers)
-  - [New containers](#new-containers)
-    - [`ProverSignedExecutionProof`](#proversignedexecutionproof)
-    - [`NewPayloadRequestHeader`](#newpayloadrequestheader)
-  - [Extended containers](#extended-containers)
-    - [`BeaconState`](#beaconstate)
+  - [New `ProverSignedExecutionProof`](#new-proversignedexecutionproof)
+  - [New `NewPayloadRequestHeader`](#new-newpayloadrequestheader)
+    - [Modified `BeaconState`](#modified-beaconstate)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Modified `process_block`](#modified-process_block)
@@ -32,11 +31,17 @@ validation of execution payloads through execution proofs.
 *Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md) and
 imports proof types from [proof-engine.md](./proof-engine.md).
 
+## Configuration
+
+*Note*: The configuration values are not definitive.
+
+| Name                      | Value         |
+| ------------------------- | ------------- |
+| `MAX_WHITELISTED_PROVERS` | `uint64(256)` |
+
 ## Containers
 
-### New containers
-
-#### `ProverSignedExecutionProof`
+### New `ProverSignedExecutionProof`
 
 ```python
 class ProverSignedExecutionProof(Container):
@@ -45,7 +50,7 @@ class ProverSignedExecutionProof(Container):
     signature: BLSSignature
 ```
 
-#### `NewPayloadRequestHeader`
+### New `NewPayloadRequestHeader`
 
 ```python
 @dataclass
@@ -56,9 +61,7 @@ class NewPayloadRequestHeader(object):
     execution_requests: ExecutionRequests
 ```
 
-### Extended containers
-
-#### `BeaconState`
+#### Modified `BeaconState`
 
 ```python
 class BeaconState(Container):

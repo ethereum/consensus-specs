@@ -8,19 +8,18 @@
 
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
+- [Types](#types)
 - [Constants](#constants)
   - [Execution](#execution)
-  - [Custom types](#custom-types)
-  - [Domain types](#domain-types)
-- [Configuration](#configuration)
+  - [Domains](#domains)
 - [Containers](#containers)
-  - [`PublicInput`](#publicinput)
-  - [`ExecutionProof`](#executionproof)
-  - [`ProofAttributes`](#proofattributes)
+  - [New `PublicInput`](#new-publicinput)
+  - [New `ExecutionProof`](#new-executionproof)
+  - [New `ProofAttributes`](#new-proofattributes)
 - [Proof engine](#proof-engine)
-  - [`verify_execution_proof`](#verify_execution_proof)
-  - [`verify_new_payload_request_header`](#verify_new_payload_request_header)
-  - [`request_proofs`](#request_proofs)
+  - [New `verify_execution_proof`](#new-verify_execution_proof)
+  - [New `verify_new_payload_request_header`](#new-verify_new_payload_request_header)
+  - [New `request_proofs`](#new-request_proofs)
 
 <!-- mdformat-toc end -->
 
@@ -28,6 +27,13 @@
 
 This document contains the Proof Engine specification. The Proof Engine enables
 stateless validation of execution payloads through execution proofs.
+
+## Types
+
+| Name         | SSZ equivalent | Description                              |
+| ------------ | -------------- | ---------------------------------------- |
+| `ProofGenId` | `Bytes8`       | Identifier for tracking proof generation |
+| `ProofType`  | `uint8`        | The type identifier for the proof        |
 
 ## Constants
 
@@ -40,37 +46,22 @@ stateless validation of execution payloads through execution proofs.
 | `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)`         |
 | `MAX_PROOF_SIZE`                   | `307200` (= 300KiB) |
 
-### Custom types
-
-| Name         | SSZ equivalent | Description                              |
-| ------------ | -------------- | ---------------------------------------- |
-| `ProofGenId` | `Bytes8`       | Identifier for tracking proof generation |
-| `ProofType`  | `uint8`        | The type identifier for the proof        |
-
-### Domain types
+### Domains
 
 | Name                     | Value                      |
 | ------------------------ | -------------------------- |
 | `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0D000000')` |
 
-## Configuration
-
-*Note*: The configuration values are not definitive.
-
-| Name                      | Value         |
-| ------------------------- | ------------- |
-| `MAX_WHITELISTED_PROVERS` | `uint64(256)` |
-
 ## Containers
 
-### `PublicInput`
+### New `PublicInput`
 
 ```python
 class PublicInput(Container):
     new_payload_request_root: Root
 ```
 
-### `ExecutionProof`
+### New `ExecutionProof`
 
 ```python
 class ExecutionProof(Container):
@@ -79,7 +70,7 @@ class ExecutionProof(Container):
     public_input: PublicInput
 ```
 
-### `ProofAttributes`
+### New `ProofAttributes`
 
 ```python
 @dataclass
@@ -105,7 +96,7 @@ The body of these functions are implementation dependent. The Engine API may be
 used to implement this and similarly defined functions via an external proof
 engine.
 
-### `verify_execution_proof`
+### New `verify_execution_proof`
 
 ```python
 def verify_execution_proof(
@@ -119,7 +110,7 @@ def verify_execution_proof(
     ...
 ```
 
-### `verify_new_payload_request_header`
+### New `verify_new_payload_request_header`
 
 ```python
 def verify_new_payload_request_header(
@@ -133,7 +124,7 @@ def verify_new_payload_request_header(
     ...
 ```
 
-### `request_proofs`
+### New `request_proofs`
 
 ```python
 def request_proofs(
