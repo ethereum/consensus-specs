@@ -8,7 +8,6 @@
 
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
-- [Configuration](#configuration)
 - [Containers](#containers)
   - [New containers](#new-containers)
     - [`ProverSignedExecutionProof`](#proversignedexecutionproof)
