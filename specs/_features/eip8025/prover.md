@@ -10,7 +10,7 @@
 - [Introduction](#introduction)
 - [Helpers](#helpers)
   - [New `get_execution_proof_signature`](#new-get_execution_proof_signature)
-- [Constructing `ProverSignedExecutionProof`](#constructing-proversignedexecutionproof)
+- [Constructing `SignedExecutionProof`](#constructing-signedexecutionproof)
 - [Honest prover relay](#honest-prover-relay)
 
 <!-- mdformat-toc end -->
@@ -42,7 +42,7 @@ def get_execution_proof_signature(
     return bls.Sign(privkey, signing_root)
 ```
 
-## Constructing `ProverSignedExecutionProof`
+## Constructing `SignedExecutionProof`
 
 An honest prover who has been whitelisted and wants to generate execution proofs
 for a `BeaconBlockBody` performs the following steps:
@@ -65,8 +65,7 @@ for a `BeaconBlockBody` performs the following steps:
    - Set `prover_pubkey` to the prover's public key.
    - Sign the proof using
      `get_execution_proof_signature(state, proof, prover_privkey)`.
-   - Broadcast the `ProverSignedExecutionProof` on the `execution_proof` gossip
-     topic.
+   - Broadcast the `SignedExecutionProof` on the `execution_proof` gossip topic.
 
 ## Honest prover relay
 
@@ -83,6 +82,5 @@ When a prover relay receives an unsigned `ExecutionProof` via
 3. Check the proof is not a duplicate (same `new_payload_request_root`,
    `proof_type`).
 4. If valid and not a duplicate:
-   - Create a `ProverSignedExecutionProof` with the relay's public key and
-     signature.
+   - Create a `SignedExecutionProof` with the relay's public key and signature.
    - Broadcast on the `execution_proof` gossip topic.

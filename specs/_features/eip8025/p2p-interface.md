@@ -28,7 +28,7 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 
 ##### `execution_proof`
 
-This topic is used to propagate `ProverSignedExecutionProof` messages.
+This topic is used to propagate `SignedExecutionProof` messages.
 
 The following validations MUST pass before forwarding a proof on the network:
 
@@ -39,7 +39,7 @@ The following validations MUST pass before forwarding a proof on the network:
 - _[IGNORE]_ The proof is the first valid proof received for the tuple
   `(proof.message.public_input.new_payload_request_root, proof.message.proof_type, prover_pubkey)`.
 
-For `ProverSignedExecutionProof`:
+For `SignedExecutionProof`:
 
 - _[REJECT]_ The `prover_pubkey` is in the prover whitelist.
 - _[REJECT]_ The signature is valid with respect to the prover's public key.
@@ -71,7 +71,7 @@ Response Content:
 
 ```
 (
-  List[ProverSignedExecutionProof, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+  List[SignedExecutionProof, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
 )
 ```
 

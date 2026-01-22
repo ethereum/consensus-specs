@@ -10,7 +10,7 @@
 - [Introduction](#introduction)
 - [Configuration](#configuration)
 - [Containers](#containers)
-  - [New `ProverSignedExecutionProof`](#new-proversignedexecutionproof)
+  - [New `SignedExecutionProof`](#new-signedexecutionproof)
   - [New `NewPayloadRequestHeader`](#new-newpayloadrequestheader)
     - [Modified `BeaconState`](#modified-beaconstate)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -41,10 +41,10 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 
 ## Containers
 
-### New `ProverSignedExecutionProof`
+### New `SignedExecutionProof`
 
 ```python
-class ProverSignedExecutionProof(Container):
+class SignedExecutionProof(Container):
     message: ExecutionProof
     prover_pubkey: BLSPubkey
     signature: BLSSignature
@@ -230,11 +230,11 @@ def process_execution_payload(
 ```python
 def process_prover_signed_execution_proof(
     state: BeaconState,
-    signed_proof: ProverSignedExecutionProof,
+    signed_proof: SignedExecutionProof,
     proof_engine: ProofEngine,
 ) -> None:
     """
-    Handler for ProverSignedExecutionProof.
+    Handler for SignedExecutionProof.
     """
     proof_message = signed_proof.message
     prover_pubkey = signed_proof.prover_pubkey
