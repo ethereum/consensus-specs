@@ -701,9 +701,7 @@ def test_process_execution_payload_wrong_withdrawals(spec, state):
     state.payload_expected_withdrawals = spec.List[
         spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
     ]([withdrawal])
-    execution_payload.withdrawals = spec.List[
-        spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
-    ]()
+    execution_payload.withdrawals = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD]()
 
     signed_envelope = prepare_execution_payload_envelope(
         spec, state, builder_index=builder_index, execution_payload=execution_payload
