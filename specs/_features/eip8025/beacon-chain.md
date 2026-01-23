@@ -17,7 +17,7 @@
   - [New `PublicInput`](#new-publicinput)
   - [New `ExecutionProof`](#new-executionproof)
   - [New `SignedExecutionProof`](#new-signedexecutionproof)
-    - [Modified `BeaconState`](#modified-beaconstate)
+  - [Modified `BeaconState`](#modified-beaconstate)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Modified `process_block`](#modified-process_block)
@@ -31,7 +31,7 @@
 
 ## Introduction
 
-This document contains the consensus specs for EIP-8025, enabling stateless
+These are the beacon-chain specifications to add EIP-8025, enabling stateless
 validation of execution payloads through execution proofs.
 
 *Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md) and
@@ -94,7 +94,7 @@ class SignedExecutionProof(Container):
     signature: BLSSignature
 ```
 
-#### Modified `BeaconState`
+### Modified `BeaconState`
 
 ```python
 class BeaconState(Container):
