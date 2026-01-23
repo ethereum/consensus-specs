@@ -272,7 +272,7 @@ def process_execution_payload(
 #### New `process_prover_signed_execution_proof`
 
 ```python
-def process_prover_signed_execution_proof(
+def process_execution_proof(
     state: BeaconState,
     signed_proof: SignedExecutionProof,
     proof_engine: ProofEngine,
