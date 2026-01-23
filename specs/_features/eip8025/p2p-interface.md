@@ -49,7 +49,7 @@ The following validations MUST pass before forwarding a proof on the network:
   gossip or non-gossip sources) (a client MAY queue proofs for processing once
   the new payload request is retrieved).
 - _[IGNORE]_ The proof is the first proof received for the tuple
-  `(proof.message.public_input.new_payload_request_root, proof.message.proof_type, prover_pubkey)`
+  `(proof.message.public_input.new_payload_request_root, proof.message.proof_type, proof.prover_pubkey)`
   -- i.e. the first proof from that prover.
 - _[REJECT]_ `proof.prover_pubkey` is associated with an active validator.
 - _[REJECT]_ `proof.signature` is valid with respect to the prover's public key.
