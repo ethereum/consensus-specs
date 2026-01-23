@@ -50,15 +50,17 @@ The following validations MUST pass before forwarding a proof on the network:
   the new payload request is retrieved).
 - _[IGNORE]_ The proof is the first proof received for the tuple
   `(proof.message.public_input.new_payload_request_root, proof.message.proof_type, proof.prover_pubkey)`
-  -- i.e. the first proof from that prover.
+  -- i.e. the first *valid or invalid* proof for `proof.message.proof_type` from
+  `proof.prover_pubkey`.
 - _[REJECT]_ `proof.prover_pubkey` is associated with an active validator.
 - _[REJECT]_ `proof.signature` is valid with respect to the prover's public key.
 - _[REJECT]_ `proof.message.proof_data` is non-empty.
 - _[REJECT]_ `proof.message.proof_data` is not larger than `MAX_PROOF_SIZE`.
 - _[REJECT]_ `proof.message` is a valid execution proof.
-- _[IGNORE]_ The proof is the first *valid* proof received for the tuple
+- _[IGNORE]_ The proof is the first proof received for the tuple
   `(proof.message.public_input.new_payload_request_root, proof.message.proof_type)`
-  -- i.e. the first valid proof for that proof type.
+  -- i.e. the first *valid* proof for `proof.message.proof_type` from any
+  prover.
 
 ## The Req/Resp domain
 
