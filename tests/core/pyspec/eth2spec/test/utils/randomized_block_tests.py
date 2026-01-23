@@ -14,6 +14,7 @@ from eth2spec.test.helpers.execution_payload import (
     build_randomized_execution_payload,
     compute_el_block_hash_for_block,
 )
+from eth2spec.test.helpers.forks import is_post_gloas
 from eth2spec.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
 )
@@ -111,6 +112,17 @@ def randomize_state_electra(spec, state, stats, exit_fraction=0.1, slash_fractio
 
 def randomize_state_fulu(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
     scenario_state = randomize_state_electra(
+        spec,
+        state,
+        stats,
+        exit_fraction=exit_fraction,
+        slash_fraction=slash_fraction,
+    )
+    return scenario_state
+
+
+def randomize_state_gloas(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_fulu(
         spec,
         state,
         stats,
@@ -251,6 +263,8 @@ def random_block_bellatrix(spec, state, signed_blocks, scenario_state, rng=None)
     block = random_block_altair_with_cycling_sync_committee_participation(
         spec, state, signed_blocks, scenario_state
     )
+    if is_post_gloas(spec):
+        return block
     # build execution_payload at the next slot
     state = state.copy()
     next_slot(spec, state)
@@ -272,6 +286,8 @@ def random_block_deneb(spec, state, signed_blocks, scenario_state, rng=None):
     if rng is None:
         rng = Random(3456)
     block = random_block_capella(spec, state, signed_blocks, scenario_state, rng=rng)
+    if is_post_gloas(spec):
+        return block
     # TODO: more commitments. blob_kzg_commitments: List[KZGCommitment, MAX_BLOBS_PER_BLOCK]
     # TODO: add MAX_BLOBS_PER_BLOCK_FULU at fulu
     opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
@@ -288,6 +304,8 @@ def random_block_electra(spec, state, signed_blocks, scenario_state, rng=None):
     if rng is None:
         rng = Random(3456)
     block = random_block_deneb(spec, state, signed_blocks, scenario_state, rng=rng)
+    if is_post_gloas(spec):
+        return block
     block.body.execution_requests = get_random_execution_requests(spec, state, rng=rng)
     block.body.execution_payload.block_hash = compute_el_block_hash_for_block(spec, block)
 
@@ -298,6 +316,25 @@ def random_block_fulu(spec, state, signed_blocks, scenario_state, rng=None):
     if rng is None:
         rng = Random(3456)
     block = random_block_electra(spec, state, signed_blocks, scenario_state, rng=rng)
+
+    return block
+
+
+def random_block_gloas(spec, state, signed_blocks, scenario_state, rng=None):
+    if rng is None:
+        rng = Random(3456)
+    block = random_block_fulu(spec, state, signed_blocks, scenario_state, rng=rng)
+
+    _, _, blob_kzg_commitments, _ = get_sample_blob_tx(
+        spec, blob_count=rng.randint(0, spec.config.MAX_BLOBS_PER_BLOCK), rng=rng
+    )
+    blob_kzg_commitments_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
+        blob_kzg_commitments
+    )
+    kzg_root = blob_kzg_commitments_list.hash_tree_root()
+    block.body.signed_execution_payload_bid.message.blob_kzg_commitments_root = kzg_root
+
+    # TODO(jtraglia): Set other new/updated fields for Gloas.
 
     return block
 
