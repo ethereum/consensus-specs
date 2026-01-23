@@ -48,17 +48,17 @@ The following validations MUST pass before forwarding a proof on the network:
   `proof.message.public_input.new_payload_request_root`) has been seen (via
   gossip or non-gossip sources) (a client MAY queue proofs for processing once
   the new payload request is retrieved).
-- _[IGNORE]_ The proof is the first valid proof received for the tuple
-  `(proof.message.public_input.new_payload_request_root, proof.message.proof_type, prover_pubkey)`.
-
-For `SignedExecutionProof`:
-
-- _[REJECT]_ The `prover_pubkey` is in the prover whitelist.
-- _[REJECT]_ The signature is valid with respect to the prover's public key.
-- _[REJECT]_ The `proof.message.proof_data` is non-empty.
-- _[REJECT]_ The `proof.message.proof_data` is not larger than `MAX_PROOF_SIZE`.
-- _[REJECT]_ The execution proof is valid as verified by the appropriate
-  handler.
+- _[IGNORE]_ The proof is the first proof received for the tuple
+  `(proof.message.public_input.new_payload_request_root, proof.message.proof_type, prover_pubkey)`
+  -- i.e. the first proof from that prover.
+- _[REJECT]_ `proof.prover_pubkey` is associated with an active validator.
+- _[REJECT]_ `proof.signature` is valid with respect to the prover's public key.
+- _[REJECT]_ `proof.message.proof_data` is non-empty.
+- _[REJECT]_ `proof.message.proof_data` is not larger than `MAX_PROOF_SIZE`.
+- _[REJECT]_ `proof.message` is a valid execution proof.
+- _[IGNORE]_ The proof is the first *valid* proof received for the tuple
+  `(proof.message.public_input.new_payload_request_root, proof.message.proof_type)`
+  -- i.e. the first valid proof for that proof type.
 
 ## The Req/Resp domain
 

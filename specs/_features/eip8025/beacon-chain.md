@@ -17,7 +17,6 @@
   - [New `PublicInput`](#new-publicinput)
   - [New `ExecutionProof`](#new-executionproof)
   - [New `SignedExecutionProof`](#new-signedexecutionproof)
-  - [Modified `BeaconState`](#modified-beaconstate)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Modified `process_block`](#modified-process_block)
@@ -92,52 +91,6 @@ class SignedExecutionProof(Container):
     message: ExecutionProof
     prover_pubkey: BLSPubkey
     signature: BLSSignature
-```
-
-### Modified `BeaconState`
-
-```python
-class BeaconState(Container):
-    genesis_time: uint64
-    genesis_validators_root: Root
-    slot: Slot
-    fork: Fork
-    latest_block_header: BeaconBlockHeader
-    block_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    state_roots: Vector[Root, SLOTS_PER_HISTORICAL_ROOT]
-    historical_roots: List[Root, HISTORICAL_ROOTS_LIMIT]
-    eth1_data: Eth1Data
-    eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
-    eth1_deposit_index: uint64
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
-    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
-    randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
-    slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
-    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
-    previous_justified_checkpoint: Checkpoint
-    current_justified_checkpoint: Checkpoint
-    finalized_checkpoint: Checkpoint
-    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
-    current_sync_committee: SyncCommittee
-    next_sync_committee: SyncCommittee
-    latest_execution_payload_header: ExecutionPayloadHeader
-    next_withdrawal_index: WithdrawalIndex
-    next_withdrawal_validator_index: ValidatorIndex
-    historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
-    deposit_requests_start_index: uint64
-    deposit_balance_to_consume: Gwei
-    exit_balance_to_consume: Gwei
-    earliest_exit_epoch: Epoch
-    consolidation_balance_to_consume: Gwei
-    earliest_consolidation_epoch: Epoch
-    pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
-    pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
-    pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
-    proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
-    # [New in EIP8025]
-    prover_whitelist: List[BLSPubkey, MAX_WHITELISTED_PROVERS]
 ```
 
 ## Beacon chain state transition function
@@ -284,7 +237,8 @@ def process_execution_proof(
     prover_pubkey = signed_proof.prover_pubkey
 
     # Verify prover is whitelisted
-    assert prover_pubkey in state.prover_whitelist
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    assert prover_pubkey in validator_pubkeys
 
     domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
     signing_root = compute_signing_root(proof_message, domain)
