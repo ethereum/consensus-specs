@@ -20,11 +20,11 @@
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Modified `process_block`](#modified-process_block)
-  - [Execution payload processing](#execution-payload-processing)
-    - [New `NewPayloadRequestHeader`](#new-newpayloadrequestheader)
-    - [Modified `process_execution_payload`](#modified-process_execution_payload)
-  - [Execution proof handlers](#execution-proof-handlers)
-    - [New `process_prover_signed_execution_proof`](#new-process_prover_signed_execution_proof)
+    - [Execution payload](#execution-payload)
+      - [New `NewPayloadRequestHeader`](#new-newpayloadrequestheader)
+      - [Modified `process_execution_payload`](#modified-process_execution_payload)
+  - [Execution proof](#execution-proof)
+    - [New `process_execution_proof`](#new-process_execution_proof)
 
 <!-- mdformat-toc end -->
 
@@ -114,9 +114,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     process_sync_aggregate(state, block.body.sync_aggregate)
 ```
 
-### Execution payload processing
+#### Execution payload
 
-#### New `NewPayloadRequestHeader`
+##### New `NewPayloadRequestHeader`
 
 ```python
 @dataclass
@@ -127,7 +127,7 @@ class NewPayloadRequestHeader(object):
     execution_requests: ExecutionRequests
 ```
 
-#### Modified `process_execution_payload`
+##### Modified `process_execution_payload`
 
 *Note*: `process_execution_payload` is modified in EIP-8025 to require both
 `ExecutionEngine` and `ProofEngine` for validation.
@@ -218,11 +218,11 @@ def process_execution_payload(
     )
 ```
 
-### Execution proof handlers
+### Execution proof
 
 *Note*: Proof storage is implementation-dependent, managed by the `ProofEngine`.
 
-#### New `process_prover_signed_execution_proof`
+#### New `process_execution_proof`
 
 ```python
 def process_execution_proof(
@@ -230,9 +230,6 @@ def process_execution_proof(
     signed_proof: SignedExecutionProof,
     proof_engine: ProofEngine,
 ) -> None:
-    """
-    Handler for SignedExecutionProof.
-    """
     proof_message = signed_proof.message
     prover_pubkey = signed_proof.prover_pubkey
 
