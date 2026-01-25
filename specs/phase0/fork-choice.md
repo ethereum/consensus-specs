@@ -155,11 +155,11 @@ algorithm. The important fields being tracked are described below:
   choice only considers blocks that are not conflicting with this checkpoint.
 - `unrealized_justified_checkpoint` & `unrealized_finalized_checkpoint`: these
   track the highest justified & finalized checkpoints respectively, without
-  regard to whether on-chain ***realization*** has occurred, i.e. FFG processing
-  of new attestations within the state transition function. This is an important
+  regard to whether on-chain ***realization*** has occurred, i.e. epoch boundary
+  processing that updates justified and finalized checkpoints. This is an important
   distinction from `justified_checkpoint` & `finalized_checkpoint`, because they
   will only track the checkpoints that are realized on-chain. Note that on-chain
-  processing of FFG information only happens at epoch boundaries.
+  justification and finalization processing only happens at epoch boundaries.
 - `unrealized_justifications`: stores a map of block root to the unrealized
   justified checkpoint observed in that block.
 
