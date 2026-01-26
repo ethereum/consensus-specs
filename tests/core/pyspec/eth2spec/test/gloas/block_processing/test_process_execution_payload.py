@@ -66,7 +66,6 @@ def prepare_execution_payload_envelope(
     state_root=None,
     execution_payload=None,
     execution_requests=None,
-    blob_kzg_commitments=None,
     valid_signature=True,
 ):
     """
@@ -98,9 +97,6 @@ def prepare_execution_payload_envelope(
                 spec.ConsolidationRequest, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
             ](),
         )
-
-    if blob_kzg_commitments is None:
-        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
 
     # Create a copy of state for computing state_root after execution payload processing
     if state_root is None:
@@ -144,7 +140,6 @@ def prepare_execution_payload_envelope(
         builder_index=builder_index,
         beacon_block_root=beacon_block_root,
         slot=slot,
-        blob_kzg_commitments=blob_kzg_commitments,
         state_root=state_root,
     )
 
@@ -401,7 +396,6 @@ def test_process_execution_payload_with_blob_commitments(spec, state):
         state,
         builder_index=builder_index,
         execution_payload=execution_payload,
-        blob_kzg_commitments=blob_kzg_commitments,
     )
 
     # Capture pre-state for payment verification
@@ -670,7 +664,6 @@ def test_process_execution_payload_wrong_blob_commitments_root(spec, state):
         state,
         builder_index=builder_index,
         execution_payload=execution_payload,
-        blob_kzg_commitments=wrong_blob_commitments,
     )
 
     yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
@@ -858,7 +851,6 @@ def test_process_execution_payload_max_blob_commitments_valid(spec, state):
         state,
         builder_index=builder_index,
         execution_payload=execution_payload,
-        blob_kzg_commitments=blob_kzg_commitments,
     )
 
     # Capture pre-state for payment verification

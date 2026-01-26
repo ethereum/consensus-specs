@@ -283,7 +283,6 @@ class ExecutionPayloadEnvelope(Container):
     builder_index: BuilderIndex
     beacon_block_root: Root
     slot: Slot
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     state_root: Root
 ```
 
