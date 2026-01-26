@@ -69,7 +69,7 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
         # signature, track the pubkey so that subsequent builder deposits for
         # the same pubkey stay in pending (applied to the validator later)
         # rather than creating a builder. Deposits with invalid signatures are
-        # dropped here since they would fail in apply_pending_deposits anyway.
+        # dropped here since they would fail in apply_pending_deposit anyway.
         if is_valid_deposit_signature(
             deposit.pubkey, deposit.withdrawal_credentials, deposit.amount, deposit.signature
         ):
