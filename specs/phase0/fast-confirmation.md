@@ -154,7 +154,7 @@ def is_start_slot_at_epoch(slot: Slot) -> bool:
 ```python
 def is_ancestor(store: Store, block_root: Root, ancestor_root: Root) -> bool:
     """
-    Return ``True`` if ``block_root`` is an ancestor of ``ancestor_root``.
+    Return ``True`` if ``ancestor_root`` is an ancestor of ``block_root``.
     """
     return get_ancestor(store, block_root, store.blocks[ancestor_root].slot) == ancestor_root
 ```
