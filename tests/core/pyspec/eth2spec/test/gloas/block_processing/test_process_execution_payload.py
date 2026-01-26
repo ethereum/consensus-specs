@@ -654,11 +654,6 @@ def test_process_execution_payload_wrong_blob_commitments_root(spec, state):
     execution_payload.gas_limit = state.latest_execution_payload_bid.gas_limit
     execution_payload.parent_hash = state.latest_block_hash
 
-    # Use different blob commitments
-    wrong_blob_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
-        [spec.KZGCommitment(b"\x22" * 48)]
-    )
-
     signed_envelope = prepare_execution_payload_envelope(
         spec,
         state,
