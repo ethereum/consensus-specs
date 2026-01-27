@@ -44,6 +44,9 @@ def test_fast_confirm_an_epoch(spec, state):
 
     yield from fcr.get_test_artefacts()
 
+"""
+Test on update FCR variables
+"""
 
 @with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
@@ -93,6 +96,428 @@ def test_fcr_invariants_monotone_and_canonical(spec, state):
         prev_confirmed_slot = confirmed_slot
 
     yield from fcr.get_test_artefacts()
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_observed_justified_checkpoints_initial_state(spec, state):
+    """
+    Test that observed justified checkpoints are initialized correctly at genesis.
+    
+    At genesis:
+    - Both previous_epoch_observed_justified_checkpoint and 
+      current_epoch_observed_justified_checkpoint should equal the anchor checkpoint
+    """
+    fcr = FCRTest(spec, seed=1)
+    store = fcr.initialize(state)
+
+    anchor_root = store.finalized_checkpoint.root
+    anchor_epoch = store.finalized_checkpoint.epoch
+
+    # Both observed checkpoints should be initialized to anchor
+    assert store.previous_epoch_observed_justified_checkpoint.root == anchor_root
+    assert store.previous_epoch_observed_justified_checkpoint.epoch == anchor_epoch
+    assert store.current_epoch_observed_justified_checkpoint.root == anchor_root
+    assert store.current_epoch_observed_justified_checkpoint.epoch == anchor_epoch
+
+    yield from fcr.get_test_artefacts()
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_observed_justified_checkpoints_not_updated_mid_epoch(spec, state):
+    """
+    Test that observed justified checkpoints are NOT updated during mid-epoch slots.
+    
+    The update only happens at the last slot of an epoch (when current_slot + 1 is epoch start).
+    During all other slots, the observed checkpoints should remain unchanged by 
+    update_fast_confirmation_variables.
+    """
+    fcr = FCRTest(spec, seed=1)
+    store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+    last_slot_of_epoch0 = S - 1  
+
+    # Record initial values
+    initial_prev = store.previous_epoch_observed_justified_checkpoint
+    initial_curr = store.current_epoch_observed_justified_checkpoint
+
+    # Run through slots 1 to last_slot - 1 
+    # These are all mid-epoch slots where GU sampling should NOT happen
+    for slot in range(1, last_slot_of_epoch0):
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+        
+        assert fcr.current_slot() == slot
+        assert not spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot() + 1)), \
+            f"Slot {slot} should not trigger GU sampling"
+
+        # Observed checkpoints should NOT have changed
+        assert store.previous_epoch_observed_justified_checkpoint == initial_prev, \
+            f"previous_epoch_observed changed at mid-epoch slot {slot}"
+        assert store.current_epoch_observed_justified_checkpoint == initial_curr, \
+            f"current_epoch_observed changed at mid-epoch slot {slot}"
+
+    yield from fcr.get_test_artefacts()
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_observed_justified_checkpoints_updated_at_last_slot_of_epoch(spec, state):
+    """
+    Test that observed justified checkpoints are updated at the last slot of an epoch.
+    
+    The logic in update_fast_confirmation_variables:
+        if is_start_slot_at_epoch(Slot(get_current_slot(store) + 1)):
+            previous_epoch_observed := current_epoch_observed
+            current_epoch_observed := unrealized_justified_checkpoint
+    
+    This triggers when current_slot is the LAST slot of an epoch.
+    """
+    fcr = FCRTest(spec, seed=1)
+    store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+    last_slot_of_epoch1 = 2*S - 1  
+
+    # Run to slot before the last slot
+    while fcr.current_slot() < last_slot_of_epoch1 - 1:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    assert fcr.current_slot() == last_slot_of_epoch1 - 1
+
+    # Record state before the critical slot
+    prev_before = store.previous_epoch_observed_justified_checkpoint
+    curr_before = store.current_epoch_observed_justified_checkpoint
+    unrealized_before = store.unrealized_justified_checkpoint
+
+    # Advance to last slot of epoch  and run FCR
+    fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    assert fcr.current_slot() == last_slot_of_epoch1
+    # Verify this is the trigger condition
+    assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot() + 1)), \
+        f"Slot {fcr.current_slot()} should trigger GU sampling (next slot is epoch start)"
+
+    # After update_fast_confirmation_variables runs:
+    # - previous_epoch_observed should now equal what current_epoch_observed was
+    # - current_epoch_observed should now equal unrealized_justified_checkpoint
+    assert store.previous_epoch_observed_justified_checkpoint == curr_before, \
+        "previous_epoch_observed should have been set to old current_epoch_observed"
+    
+    # Note: current_epoch_observed is set to unrealized at the moment of sampling,
+    # which may have advanced since unrealized_before due to block processing
+    # So we check it equals the current unrealized (not unrealized_before)
+    assert store.current_epoch_observed_justified_checkpoint == store.unrealized_justified_checkpoint, \
+        "current_epoch_observed should equal unrealized_justified_checkpoint after sampling"
+
+    yield from fcr.get_test_artefacts()
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_observed_justified_checkpoints_cascade_across_epochs(spec, state):
+    """
+    Test that observed justified checkpoints cascade correctly across multiple epochs.
+    
+    At each epoch boundary (last slot):
+    - previous := current
+    - current := unrealized
+    
+    With 100% participation, we should see:
+    - Epoch 0 end: current_observed captures unrealized (likely epoch 0)
+    - Epoch 1 end: previous_observed gets epoch 0's value, current gets epoch 1's unrealized
+    - Epoch 2 end: previous gets epoch 1's value, current gets epoch 2's unrealized
+    """
+    fcr = FCRTest(spec, seed=1)
+    store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+
+    observed_history = []
+
+    for epoch in range(4):  # Run through epochs 0, 1, 2, 3
+        last_slot = (epoch + 1) * S - 1
+
+        # Run to last slot of this epoch
+        while fcr.current_slot() < last_slot:
+            fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+        # Now at last slot of epoch
+        assert fcr.current_slot() == last_slot
+        assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot() + 1))
+
+        # Record the observed values AFTER the update ran
+        observed_history.append({
+            'epoch': epoch,
+            'slot': fcr.current_slot(),
+            'previous_observed_epoch': int(store.previous_epoch_observed_justified_checkpoint.epoch),
+            'current_observed_epoch': int(store.current_epoch_observed_justified_checkpoint.epoch),
+            'unrealized_epoch': int(store.unrealized_justified_checkpoint.epoch),
+        })
+
+    # Verify the cascade property:
+    # At epoch E's last slot, previous_observed should equal what current_observed was at epoch E-1's last slot
+    for i in range(1, len(observed_history)):
+        prev_record = observed_history[i - 1]
+        curr_record = observed_history[i]
+
+        assert curr_record['previous_observed_epoch'] == prev_record['current_observed_epoch'], \
+            f"Cascade broken at epoch {curr_record['epoch']}: " \
+            f"previous_observed={curr_record['previous_observed_epoch']} " \
+            f"but prior current_observed was {prev_record['current_observed_epoch']}"
+
+    yield from fcr.get_test_artefacts()
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_observed_justified_monotonically_increasing_under_full_participation(spec, state):
+    """
+    Test that observed justified checkpoint epochs are monotonically non-decreasing
+    under full participation.
+    
+    With 100% honest participation, unrealized_justified should advance each epoch,
+    and therefore current_epoch_observed should never decrease.
+    """
+    fcr = FCRTest(spec, seed=1)
+    store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+
+    prev_current_observed_epoch = store.current_epoch_observed_justified_checkpoint.epoch
+    prev_previous_observed_epoch = store.previous_epoch_observed_justified_checkpoint.epoch
+
+    # Run through 4 epochs
+    for _ in range(4 * S):
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+        current_observed_epoch = store.current_epoch_observed_justified_checkpoint.epoch
+        previous_observed_epoch = store.previous_epoch_observed_justified_checkpoint.epoch
+
+        # Monotonicity: epochs should never decrease
+        assert current_observed_epoch >= prev_current_observed_epoch, \
+            f"current_epoch_observed went backwards: {prev_current_observed_epoch} -> {current_observed_epoch}"
+        assert previous_observed_epoch >= prev_previous_observed_epoch, \
+            f"previous_epoch_observed went backwards: {prev_previous_observed_epoch} -> {previous_observed_epoch}"
+
+        # Update tracking
+        prev_current_observed_epoch = current_observed_epoch
+        prev_previous_observed_epoch = previous_observed_epoch
+
+    yield from fcr.get_test_artefacts()
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_observed_justified_stalls_under_low_participation(spec, state):
+    """
+    Test that observed justified checkpoints stall (don't advance) under low participation.
+    
+    With participation below 2/3, FFG justification cannot occur, so:
+    - unrealized_justified_checkpoint stays at genesis
+    - current_epoch_observed stays at genesis (sampling a stale unrealized)
+    - previous_epoch_observed stays at genesis
+    """
+    fcr = FCRTest(spec, seed=1)
+    store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+    genesis_epoch = store.current_epoch_observed_justified_checkpoint.epoch
+
+    # Run 3 epochs with very low participation (20%)
+    for _ in range(3 * S):
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=20)
+
+    # With 20% participation, justification should not occur
+    # Therefore observed checkpoints should still be at genesis
+    assert store.current_epoch_observed_justified_checkpoint.epoch == genesis_epoch, \
+        f"current_epoch_observed advanced despite low participation: {store.current_epoch_observed_justified_checkpoint.epoch}"
+    assert store.previous_epoch_observed_justified_checkpoint.epoch == genesis_epoch, \
+        f"previous_epoch_observed advanced despite low participation: {store.previous_epoch_observed_justified_checkpoint.epoch}"
+
+    yield from fcr.get_test_artefacts()
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_current_observed_equals_unrealized_at_sampling_moment(spec, state):
+    """
+    Test that current_epoch_observed_justified_checkpoint equals unrealized_justified_checkpoint
+    at the exact moment of sampling (last slot of epoch).
+    """
+    fcr = FCRTest(spec, seed=1)
+    store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+
+    # Test across multiple epoch boundaries
+    for epoch in range(3):
+        last_slot = (epoch + 1) * S - 1
+
+        # Advance to last slot of epoch
+        while fcr.current_slot() < last_slot:
+            fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+        assert fcr.current_slot() == last_slot
+
+        # At this point, update_fast_confirmation_variables has already run
+        # (it runs as part of on_slot_start_after_past_attestations_applied)
+        # So current_observed should equal unrealized
+        assert store.current_epoch_observed_justified_checkpoint == store.unrealized_justified_checkpoint, \
+            f"At epoch {epoch} last slot: current_observed != unrealized"
+
+    yield from fcr.get_test_artefacts()
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_previous_observed_lags_current_observed_by_one_epoch(spec, state):
+    """
+    Test that previous_epoch_observed is always one sampling behind current_epoch_observed.
+    
+    After full participation for several epochs:
+    - At epoch E's last slot, previous_observed should have the value that 
+      current_observed had at epoch E-1's last slot
+    - This means previous_observed.epoch should typically be current_observed.epoch - 1
+      (under steady-state full participation)
+    """
+    fcr = FCRTest(spec, seed=1)
+    store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+
+    # Run through epoch 0 and 1 to reach steady state
+    while fcr.current_slot() < 2 * S - 1:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Now at last slot of epoch 1, record current_observed
+    assert fcr.current_slot() == 2 * S - 1
+    current_at_epoch1_end = store.current_epoch_observed_justified_checkpoint
+
+    # Advance through epoch 2 to its last slot
+    while fcr.current_slot() < 3 * S - 1:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Now at last slot of epoch 2
+    assert fcr.current_slot() == 3 * S - 1
+
+    # previous_observed should now equal what current_observed was at epoch 1 end
+    assert store.previous_epoch_observed_justified_checkpoint == current_at_epoch1_end, \
+        f"previous_observed at epoch 2 end should equal current_observed at epoch 1 end"
+
+    yield from fcr.get_test_artefacts()
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_slot_head_variables_updated_every_slot(spec, state):
+    """
+    Test that previous_slot_head and current_slot_head are updated every slot.
+    
+    Unlike the observed justified checkpoints (which only update at epoch boundaries),
+    the slot head variables update on EVERY call to update_fast_confirmation_variables:
+        previous_slot_head = current_slot_head
+        current_slot_head = get_head(store)
+    """
+    fcr = FCRTest(spec, seed=1)
+    store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+
+    prev_slot_head_before = store.previous_slot_head
+    curr_slot_head_before = store.current_slot_head
+
+    # Run several slots and verify the cascade happens each slot
+    for i in range(S + 2):  # Run past one epoch boundary
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+        # After each slot, previous should equal what current was before
+        # and current should equal the new head
+        expected_previous = curr_slot_head_before
+        actual_previous = store.previous_slot_head
+        actual_current = store.current_slot_head
+        actual_head = fcr.head()
+
+        assert actual_previous == expected_previous, \
+            f"Slot {fcr.current_slot()}: previous_slot_head cascade failed"
+        assert actual_current == actual_head, \
+            f"Slot {fcr.current_slot()}: current_slot_head != get_head()"
+
+        # Update tracking for next iteration
+        curr_slot_head_before = actual_current
+
+    yield from fcr.get_test_artefacts()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @with_altair_and_later
