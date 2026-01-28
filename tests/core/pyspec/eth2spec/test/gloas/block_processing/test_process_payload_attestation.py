@@ -4,6 +4,7 @@ from eth2spec.test.context import (
     with_gloas_and_later,
 )
 from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.state import next_epoch
 from eth2spec.utils.ssz.ssz_typing import Bitvector
 
 
@@ -244,8 +245,8 @@ def test_process_payload_attestation_cross_epoch_wrong_domain(spec, state):
     """
     Test that payload attestation signed with wrong epoch domain fails
     """
-    # Advance to first slot of epoch 1, attest to last slot of epoch 0
-    spec.process_slots(state, spec.SLOTS_PER_EPOCH)
+    # Advance to first slot of next epoch, attest to last slot of previous epoch
+    next_epoch(spec, state)
 
     attested_slot = state.slot - 1
     wrong_epoch = spec.get_current_epoch(state)
