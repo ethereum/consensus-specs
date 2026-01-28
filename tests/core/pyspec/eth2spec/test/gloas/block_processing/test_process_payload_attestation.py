@@ -52,6 +52,9 @@ def prepare_signed_payload_attestation(
     if beacon_block_root is None:
         beacon_block_root = state.latest_block_header.parent_root
 
+    if domain_epoch is None:
+        domain_epoch = spec.compute_epoch_at_slot(slot)
+
     # Get the PTC for the attested slot
     ptc = spec.get_ptc(state, slot)
 
@@ -85,9 +88,8 @@ def prepare_signed_payload_attestation(
 
     if valid_signature and attesting_indices:
         # Sign the attestation
-        epoch = domain_epoch if domain_epoch is not None else spec.compute_epoch_at_slot(slot)
         signing_root = spec.compute_signing_root(
-            data, spec.get_domain(state, spec.DOMAIN_PTC_ATTESTER, epoch)
+            data, spec.get_domain(state, spec.DOMAIN_PTC_ATTESTER, domain_epoch)
         )
 
         signatures = []
