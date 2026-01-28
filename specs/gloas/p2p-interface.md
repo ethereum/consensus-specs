@@ -393,15 +393,17 @@ This topic is used to propagate column sidecars, where each column maps to some
 The *type* of the payload of this topic is `DataColumnSidecar`.
 
 The following validations MUST pass before forwarding the
-`sidecar: DataColumnSidecar` on the network:
+`sidecar: DataColumnSidecar` on the network, assuming the alias
+`bid = block.body.signed_execution_payload_bid.message` where `block` is the
+`BeaconBlock` associated with `sidecar.beacon_block_root`:
 
 **Modified from Fulu:** Let `block` be the beacon block with block root equal to
 `sidecar.beacon_block_root`.
 
 - _[REJECT]_ The sidecar is valid as verified by
-  `verify_data_column_sidecar(sidecar, block.body.signed_execution_payload_bid.kzg_commitments)`.
+  `verify_data_column_sidecar(sidecar, bid.blob_kzg_commitments)`.
 - _[REJECT]_ The sidecar's column data is valid as verified by
-  `verify_data_column_sidecar_kzg_proofs(sidecar, block.body.signed_execution_payload_bid.kzg_commitments)`.
+  `verify_data_column_sidecar_kzg_proofs(sidecar, bid.blob_kzg_commitments)`.
 - _[IGNORE]_ The sidecar is the first sidecar for the tuple
   `(sidecar.beacon_block_root, sidecar.index)` with valid kzg proof.
 
