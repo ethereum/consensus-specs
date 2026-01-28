@@ -162,8 +162,9 @@ def get_data_column_sidecars(
     ],
 ) -> Sequence[DataColumnSidecar]:
     """
-    Given a beacon block root and the cells/proofs associated with
-    each blob in the corresponding payload, assemble the sidecars which can be distributed to peers.
+    Given a beacon block root and the cells/proofs associated with each blob
+    in the corresponding payload, assemble the sidecars which can be
+    distributed to peers.
     """
     sidecars = []
     for column_index in range(NUMBER_OF_COLUMNS):

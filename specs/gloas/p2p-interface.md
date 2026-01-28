@@ -56,7 +56,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 #### Modified `DataColumnSidecar`
 
-*Note*: The `signed_block_header`, `kzg_commitments` and
+*Note*: The `signed_block_header`, `kzg_commitments`, and
 `kzg_commitments_inclusion_proof` fields have been removed from
 `DataColumnSidecar` in Gloas as header and inclusion proof verifications are no
 longer required in ePBS.
