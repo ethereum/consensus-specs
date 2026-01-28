@@ -45,7 +45,7 @@ def prepare_signed_execution_payload_bid(
     fee_recipient=None,
     gas_limit=None,
     block_hash=None,
-    blob_kzg_commitments_root=None,
+    blob_kzg_commitments=None,
     prev_randao=None,
     valid_signature=True,
     valid_amount=True,
@@ -86,9 +86,8 @@ def prepare_signed_execution_payload_bid(
             "Self-builder (builder_index == BUILDER_INDEX_SELF_BUILD) must use zero value"
         )
 
-    if blob_kzg_commitments_root is None:
-        kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
-        blob_kzg_commitments_root = kzg_list.hash_tree_root()
+    if blob_kzg_commitments is None:
+        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
 
     if prev_randao is None:
         prev_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
@@ -103,7 +102,7 @@ def prepare_signed_execution_payload_bid(
         builder_index=builder_index,
         slot=slot,
         value=value,
-        blob_kzg_commitments_root=blob_kzg_commitments_root,
+        blob_kzg_commitments=blob_kzg_commitments,
     )
 
     if valid_signature:
@@ -327,7 +326,6 @@ def test_process_execution_payload_bid_self_build_non_zero_value(spec, state):
     """
     block = build_empty_block_for_next_slot(spec, state)
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
-    blob_kzg_commitments_root = kzg_list.hash_tree_root()
 
     bid = spec.ExecutionPayloadBid(
         parent_block_hash=state.latest_block_hash,
@@ -338,7 +336,7 @@ def test_process_execution_payload_bid_self_build_non_zero_value(spec, state):
         builder_index=spec.BUILDER_INDEX_SELF_BUILD,
         slot=block.slot,
         value=spec.Gwei(1),
-        blob_kzg_commitments_root=blob_kzg_commitments_root,
+        blob_kzg_commitments=kzg_list,
     )
 
     # Sign the bid

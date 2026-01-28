@@ -41,8 +41,8 @@ def run_execution_payload_processing(
         kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
             blob_kzg_commitments
         )
-        # In Gloas, blob_kzg_commitments_root is stored in latest_execution_payload_bid, not latest_execution_payload_header
-        state.latest_execution_payload_bid.blob_kzg_commitments_root = kzg_list.hash_tree_root()
+        # In Gloas, blob_kzg_commitments is stored in latest_execution_payload_bid, not latest_execution_payload_header
+        state.latest_execution_payload_bid.blob_kzg_commitments = kzg_list
         state.latest_execution_payload_bid.builder_index = envelope.builder_index
         # Ensure bid fields match payload for assertions to pass
         state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
