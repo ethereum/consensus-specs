@@ -144,7 +144,6 @@ def prepare_execution_payload_envelope(
         builder_index=builder_index,
         beacon_block_root=beacon_block_root,
         slot=slot,
-        blob_kzg_commitments=blob_kzg_commitments,
         state_root=state_root,
     )
 
