@@ -1,9 +1,8 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from eth2spec.test.context import spec_state_test, with_all_phases
-
 from tests.infra.helpers.proposer_slashings import (
     assert_process_proposer_slashing,
     prepare_process_proposer_slashing,
@@ -49,9 +48,7 @@ class TestPrepareProcessProposerSlashing:
     @spec_state_test
     def test_parent_root_2_makes_headers_different(self, spec, state):
         """Test that setting parent_root_2 creates different headers (valid slashing)"""
-        result, _ = prepare_process_proposer_slashing(
-            spec, state, parent_root_2=b"\x99" * 32
-        )
+        result, _ = prepare_process_proposer_slashing(spec, state, parent_root_2=b"\x99" * 32)
 
         header_1 = result.signed_header_1.message
         header_2 = result.signed_header_2.message
@@ -88,8 +85,6 @@ class TestAssertProcessProposerSlashing:
 
     def test_valid_slashing_passes_all_checks(self):
         """Test that properly configured mocks pass all check_proposer_slashing_effect checks"""
-        from unittest.mock import patch
-
         # Constants
         slashed_index = 42
         proposer_index = 5
@@ -139,7 +134,10 @@ class TestAssertProcessProposerSlashing:
         # Mock pre_state
         pre_state = MagicMock()
         pre_state.validators = {slashed_index: pre_validator}
-        pre_state.balances = {slashed_index: pre_balance_slashed, proposer_index: pre_balance_proposer}
+        pre_state.balances = {
+            slashed_index: pre_balance_slashed,
+            proposer_index: pre_balance_proposer,
+        }
         pre_state.slashings = {slashings_index: 0}
 
         # Mock post_state with correct values after slashing
@@ -156,9 +154,7 @@ class TestAssertProcessProposerSlashing:
         proposer_slashing.signed_header_1.message.proposer_index = slashed_index
 
         # Patch fork detection to return phase0/electra behavior (no altair sync committee, no gloas)
-        with patch(
-            "eth2spec.test.helpers.proposer_slashings.is_post_altair", return_value=False
-        ):
+        with patch("eth2spec.test.helpers.proposer_slashings.is_post_altair", return_value=False):
             with patch(
                 "eth2spec.test.helpers.proposer_slashings.is_post_electra", return_value=True
             ):

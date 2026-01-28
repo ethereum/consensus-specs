@@ -248,4 +248,6 @@ def assert_process_proposer_slashing(
 
     assert proposer_slashing is not None, "proposer_slashing required when state_unchanged=False"
     slashed_index = proposer_slashing.signed_header_1.message.proposer_index
-    check_proposer_slashing_effect(spec, pre_state, state, slashed_index, proposer_slashing=proposer_slashing)
+    check_proposer_slashing_effect(
+        spec, pre_state, state, slashed_index, proposer_slashing=proposer_slashing
+    )
