@@ -83,7 +83,6 @@
       - [Modified `process_operations`](#modified-process_operations)
       - [Deposit requests](#deposit-requests)
         - [New `get_index_for_new_builder`](#new-get_index_for_new_builder)
-        - [New `get_builder_from_deposit`](#new-get_builder_from_deposit)
         - [New `add_builder_to_registry`](#new-add_builder_to_registry)
         - [New `apply_deposit_for_builder`](#new-apply_deposit_for_builder)
         - [Modified `process_deposit_request`](#modified-process_deposit_request)
@@ -1171,31 +1170,28 @@ def get_index_for_new_builder(state: BeaconState) -> BuilderIndex:
     return BuilderIndex(len(state.builders))
 ```
 
-###### New `get_builder_from_deposit`
-
-```python
-def get_builder_from_deposit(
-    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
-) -> Builder:
-    return Builder(
-        pubkey=pubkey,
-        version=uint8(withdrawal_credentials[0]),
-        execution_address=ExecutionAddress(withdrawal_credentials[12:]),
-        balance=amount,
-        deposit_epoch=get_current_epoch(state),
-        withdrawable_epoch=FAR_FUTURE_EPOCH,
-    )
-```
-
 ###### New `add_builder_to_registry`
 
 ```python
 def add_builder_to_registry(
-    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
+    state: BeaconState,
+    pubkey: BLSPubkey,
+    withdrawal_credentials: Bytes32,
+    amount: uint64,
+    slot: Slot,
 ) -> None:
-    index = get_index_for_new_builder(state)
-    builder = get_builder_from_deposit(state, pubkey, withdrawal_credentials, amount)
-    set_or_append_list(state.builders, index, builder)
+    set_or_append_list(
+        state.builders,
+        get_index_for_new_builder(state),
+        Builder(
+            pubkey=pubkey,
+            version=uint8(withdrawal_credentials[0]),
+            execution_address=ExecutionAddress(withdrawal_credentials[12:]),
+            balance=amount,
+            deposit_epoch=compute_epoch_at_slot(slot),
+            withdrawable_epoch=FAR_FUTURE_EPOCH,
+        ),
+    )
 ```
 
 ###### New `apply_deposit_for_builder`
@@ -1214,12 +1210,13 @@ def apply_deposit_for_builder(
     withdrawal_credentials: Bytes32,
     amount: uint64,
     signature: BLSSignature,
+    slot: Slot,
 ) -> None:
     builder_pubkeys = [b.pubkey for b in state.builders]
     if pubkey not in builder_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
-            add_builder_to_registry(state, pubkey, withdrawal_credentials, amount)
+            add_builder_to_registry(state, pubkey, withdrawal_credentials, amount, slot)
     else:
         # Increase balance by deposit amount
         builder_index = builder_pubkeys.index(pubkey)
@@ -1248,6 +1245,7 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
             deposit_request.withdrawal_credentials,
             deposit_request.amount,
             deposit_request.signature,
+            state.slot,
         )
         return
 
