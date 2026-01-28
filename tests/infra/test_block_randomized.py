@@ -2,11 +2,6 @@
 Unit tests for the block_randomized module.
 """
 
-import os
-import subprocess
-import sys
-from pathlib import Path
-
 import pytest
 
 from eth2spec.test.utils.randomized_block_tests import random_block
@@ -132,8 +127,9 @@ class TestScenarioGenerator:
         # The scenarios should have different orderings
         # Compare by converting to id strings after normalizing callables
         def scenario_key(s: dict) -> str:
-            return str([(t.get("epochs_to_skip"), t.get("slots_to_skip"))
-                       for t in s["transitions"]])
+            return str(
+                [(t.get("epochs_to_skip"), t.get("slots_to_skip")) for t in s["transitions"]]
+            )
 
         keys1 = [scenario_key(s) for s in scenarios1]
         keys2 = [scenario_key(s) for s in scenarios2]

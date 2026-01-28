@@ -83,11 +83,13 @@ ScenarioDict = dict[str, Any]
 
 def transition_to_id_string(transition: TransitionDict) -> str:
     """Generate human-readable ID string for a transition."""
-    return ",".join([
-        f"epochs:{transition['epochs_to_skip']}",
-        f"slots:{transition['slots_to_skip']}",
-        f"with-block:{transition['block_producer']}",
-    ])
+    return ",".join(
+        [
+            f"epochs:{transition['epochs_to_skip']}",
+            f"slots:{transition['slots_to_skip']}",
+            f"with-block:{transition['block_producer']}",
+        ]
+    )
 
 
 def scenario_to_id_string(scenario: ScenarioDict) -> str:
@@ -134,8 +136,7 @@ class ScenarioGenerator:
         # Generate randomized skip combinations
         all_skips = list(itertools.product(epochs_set, slots_set))
         randomized_skips = (
-            self._rng.sample(all_skips, len(all_skips))
-            for _ in range(BLOCK_TRANSITIONS_COUNT)
+            self._rng.sample(all_skips, len(all_skips)) for _ in range(BLOCK_TRANSITIONS_COUNT)
         )
 
         # Build block transitions from combinations
@@ -158,9 +159,7 @@ class ScenarioGenerator:
 
         return scenarios
 
-    def _flatten_transitions(
-        self, combo: tuple[Any, ...]
-    ) -> list[TransitionDict]:
+    def _flatten_transitions(self, combo: tuple[Any, ...]) -> list[TransitionDict]:
         """Flatten nested transition structure."""
         leak_transition = combo[0]
         result = [leak_transition]
@@ -224,7 +223,7 @@ from eth2spec.test.utils.randomized_block_tests import (
     run_generated_randomized_test,
 )'''
 
-    TEST_TEMPLATE: ClassVar[str] = '''
+    TEST_TEMPLATE: ClassVar[str] = """
 @only_generator("randomized test for broad coverage, not point-to-point CI")
 @with_phases([{phase}])
 @with_custom_state(
@@ -242,7 +241,7 @@ def test_randomized_{index}(spec, state):
         spec,
         state,
         scenario,
-    )'''
+    )"""
 
     def __init__(self, fork_name: str, state_randomizer_name: str) -> None:
         self._fork_name = fork_name
@@ -333,9 +332,7 @@ class RandomizedTestGenerator:
 
     def __init__(self, fork: str) -> None:
         if fork not in self.FORK_CONFIGS:
-            raise ValueError(
-                f"Unknown fork: {fork}. Available: {list(self.FORK_CONFIGS.keys())}"
-            )
+            raise ValueError(f"Unknown fork: {fork}. Available: {list(self.FORK_CONFIGS.keys())}")
         self._fork = fork
         self._config = self.FORK_CONFIGS[fork]
 
