@@ -62,6 +62,7 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
                 deposit.withdrawal_credentials,
                 deposit.amount,
                 deposit.signature,
+                deposit.slot,
             )
             continue
 
