@@ -1,58 +1,112 @@
-# Label for changes to the specifications
-specs:
+phase0:
   - changed-files:
-      - any-glob-to-any-file:
-          # Source specifications (markdown)
-          - 'specs/**'
-          # Preset configurations
-          - 'presets/**'
-          # Network configurations
-          - 'configs/**'
-          # Generated spec files (NOT test files)
-          - 'tests/core/pyspec/eth2spec/phase0/**'
-          - 'tests/core/pyspec/eth2spec/altair/**'
-          - 'tests/core/pyspec/eth2spec/bellatrix/**'
-          - 'tests/core/pyspec/eth2spec/capella/**'
-          - 'tests/core/pyspec/eth2spec/deneb/**'
-          - 'tests/core/pyspec/eth2spec/electra/**'
-          - 'tests/core/pyspec/eth2spec/fulu/**'
-          - 'tests/core/pyspec/eth2spec/gloas/**'
-          - 'tests/core/pyspec/eth2spec/eip6800/**'
-          - 'tests/core/pyspec/eth2spec/eip7441/**'
-          - 'tests/core/pyspec/eth2spec/eip7805/**'
-          - 'tests/core/pyspec/eth2spec/eip7928/**'
+    - any-glob-to-any-file:
+      - 'specs/phase0/**'
+      - 'presets/*/phase0.yaml'
+      - 'pysetup/spec_builders/phase0.py'
 
-# Label for actual test files (files starting with test_)
+altair:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/altair/**'
+      - 'presets/*/altair.yaml'
+      - 'pysetup/spec_builders/altair.py'
+
+bellatrix:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/bellatrix/**'
+      - 'presets/*/bellatrix.yaml'
+      - 'pysetup/spec_builders/bellatrix.py'
+
+capella:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/capella/**'
+      - 'presets/*/capella.yaml'
+      - 'pysetup/spec_builders/capella.py'
+
+deneb:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/deneb/**'
+      - 'presets/*/deneb.yaml'
+      - 'pysetup/spec_builders/deneb.py'
+
+electra:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/electra/**'
+      - 'presets/*/electra.yaml'
+      - 'pysetup/spec_builders/electra.py'
+
+fulu:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/fulu/**'
+      - 'presets/*/fulu.yaml'
+      - 'pysetup/spec_builders/fulu.py'
+
+gloas:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/gloas/**'
+      - 'presets/*/gloas.yaml'
+      - 'pysetup/spec_builders/gloas.py'
+
+eip6800:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/_features/eip6800/**'
+      - 'presets/*/eip6800.yaml'
+      - 'pysetup/spec_builders/eip6800.py'
+
+eip6914:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/_features/eip6914/**'
+      - 'presets/*/eip6914.yaml'
+      - 'pysetup/spec_builders/eip6914.py'
+
+eip7441:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/_features/eip7441/**'
+      - 'presets/*/eip7441.yaml'
+      - 'pysetup/spec_builders/eip7441.py'
+
+eip7805:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/_features/eip7805/**'
+      - 'presets/*/eip7805.yaml'
+      - 'pysetup/spec_builders/eip7805.py'
+
+eip7928:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/_features/eip7928/**'
+      - 'presets/*/eip7928.yaml'
+      - 'pysetup/spec_builders/eip7928.py'
+
+eip8025:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/_features/eip8025/**'
+      - 'presets/*/eip8025.yaml'
+      - 'pysetup/spec_builders/eip8025.py'
+
 testing:
   - changed-files:
-      - any-glob-to-any-file:
-          - 'tests/core/pyspec/eth2spec/test/**/test_*.py'
+    - any-glob-to-any-file:
+      - 'tests/**'
 
-# Label for testing infrastructure and utilities
-testing-infra:
+ssz:
   - changed-files:
-      - any-glob-to-any-file:
-          # Build system that generates specs
-          - 'pysetup/**'
-          # Test infrastructure
-          - 'tests/infra/**'
-          # Test generators
-          - 'tests/generators/**'
-          # Test format definitions
-          - 'tests/formats/**'
-          # Test helpers (fixtures, state builders)
-          - 'tests/core/pyspec/eth2spec/test/helpers/**'
-          - 'tests/core/pyspec/eth2spec/test/utils/**'
-          # Test config files (conftest.py, context.py, etc.)
-          - 'tests/core/pyspec/eth2spec/test/conftest.py'
-          - 'tests/core/pyspec/eth2spec/test/context.py'
-          - 'tests/core/pyspec/eth2spec/test/__init__.py'
-          - 'tests/core/pyspec/eth2spec/test/exceptions.py'
-          # Utility modules (BLS, SSZ, KZG, etc.)
-          - 'tests/core/pyspec/eth2spec/utils/**'
-          # Test generation helpers
-          - 'tests/core/pyspec/eth2spec/gen_helpers/**'
-          # Config utilities
-          - 'tests/core/pyspec/eth2spec/config/**'
-          # Debug utilities
-          - 'tests/core/pyspec/eth2spec/debug/**'
+    - any-glob-to-any-file:
+      - 'ssz/**'
+
+lightclients:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/**/light-client/**'
