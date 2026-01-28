@@ -1,0 +1,58 @@
+# Label for changes to the specifications
+specs:
+  - changed-files:
+      - any-glob-to-any-file:
+          # Source specifications (markdown)
+          - 'specs/**'
+          # Preset configurations
+          - 'presets/**'
+          # Network configurations
+          - 'configs/**'
+          # Generated spec files (NOT test files)
+          - 'tests/core/pyspec/eth2spec/phase0/**'
+          - 'tests/core/pyspec/eth2spec/altair/**'
+          - 'tests/core/pyspec/eth2spec/bellatrix/**'
+          - 'tests/core/pyspec/eth2spec/capella/**'
+          - 'tests/core/pyspec/eth2spec/deneb/**'
+          - 'tests/core/pyspec/eth2spec/electra/**'
+          - 'tests/core/pyspec/eth2spec/fulu/**'
+          - 'tests/core/pyspec/eth2spec/gloas/**'
+          - 'tests/core/pyspec/eth2spec/eip6800/**'
+          - 'tests/core/pyspec/eth2spec/eip7441/**'
+          - 'tests/core/pyspec/eth2spec/eip7805/**'
+          - 'tests/core/pyspec/eth2spec/eip7928/**'
+
+# Label for actual test files (files starting with test_)
+testing:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'tests/core/pyspec/eth2spec/test/**/test_*.py'
+
+# Label for testing infrastructure and utilities
+testing-infra:
+  - changed-files:
+      - any-glob-to-any-file:
+          # Build system that generates specs
+          - 'pysetup/**'
+          # Test infrastructure
+          - 'tests/infra/**'
+          # Test generators
+          - 'tests/generators/**'
+          # Test format definitions
+          - 'tests/formats/**'
+          # Test helpers (fixtures, state builders)
+          - 'tests/core/pyspec/eth2spec/test/helpers/**'
+          - 'tests/core/pyspec/eth2spec/test/utils/**'
+          # Test config files (conftest.py, context.py, etc.)
+          - 'tests/core/pyspec/eth2spec/test/conftest.py'
+          - 'tests/core/pyspec/eth2spec/test/context.py'
+          - 'tests/core/pyspec/eth2spec/test/__init__.py'
+          - 'tests/core/pyspec/eth2spec/test/exceptions.py'
+          # Utility modules (BLS, SSZ, KZG, etc.)
+          - 'tests/core/pyspec/eth2spec/utils/**'
+          # Test generation helpers
+          - 'tests/core/pyspec/eth2spec/gen_helpers/**'
+          # Config utilities
+          - 'tests/core/pyspec/eth2spec/config/**'
+          # Debug utilities
+          - 'tests/core/pyspec/eth2spec/debug/**'
