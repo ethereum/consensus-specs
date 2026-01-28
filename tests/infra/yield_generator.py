@@ -2,7 +2,6 @@ import functools
 import inspect
 from collections.abc import Generator, Iterable
 
-from eth2spec.test import context
 from eth2spec.utils.ssz.ssz_impl import serialize
 from eth2spec.utils.ssz.ssz_typing import View
 
@@ -76,6 +75,8 @@ def vector_test(fn):
                 continue
 
     if inspect.isgeneratorfunction(fn):
+        # Lazy import to avoid circular dependency with eth2spec.test.context
+        from eth2spec.test import context  # noqa: PLC0415
         if not context.is_pytest:
             return wrapper_generator
         else:
