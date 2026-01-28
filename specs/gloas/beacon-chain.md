@@ -1175,7 +1175,6 @@ def get_index_for_new_builder(state: BeaconState) -> BuilderIndex:
 
 ```python
 def get_builder_from_deposit(
-    state: BeaconState,
     pubkey: BLSPubkey,
     withdrawal_credentials: Bytes32,
     amount: uint64,
@@ -1202,7 +1201,7 @@ def add_builder_to_registry(
     slot: Slot,
 ) -> None:
     index = get_index_for_new_builder(state)
-    builder = get_builder_from_deposit(state, pubkey, withdrawal_credentials, amount, slot)
+    builder = get_builder_from_deposit(pubkey, withdrawal_credentials, amount, slot)
     set_or_append_list(state.builders, index, builder)
 ```
 
