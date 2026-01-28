@@ -181,13 +181,11 @@ def get_block_with_blob_and_sidecars(spec, state, rng=None, blob_count=1):
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     if is_post_gloas(spec):
-        sidecars = spec.get_data_column_sidecars_from_block(
-            signed_block, blob_kzg_commitments, cells_and_kzg_proofs
-        )
+        sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
     else:
         # For Fulu and earlier, use 2-parameter version
         sidecars = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)
-    return block, blobs, blob_kzg_proofs, signed_block, sidecars
+    return block, blobs, blob_kzg_proofs, signed_block, sidecars, blob_kzg_commitments
 
 
 @cache

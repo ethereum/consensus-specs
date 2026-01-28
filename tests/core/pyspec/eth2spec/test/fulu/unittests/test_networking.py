@@ -179,7 +179,10 @@ def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_column(spec, state
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_commitment(spec, state):
     sidecar, blob_kzg_commitments = compute_data_column_sidecar(spec, state)
-    sidecar.kzg_commitments[0] = sidecar.kzg_commitments[1]
+    if is_post_gloas(spec):
+        blob_kzg_commitments[0] = blob_kzg_commitments[1]
+    else:
+        sidecar.kzg_commitments[0] = sidecar.kzg_commitments[1]
     assert not _verify_data_column_sidecar_kzg_proofs(spec, sidecar, blob_kzg_commitments)
 
 
