@@ -1537,6 +1537,7 @@ def process_execution_payload(
     # Verify the execution payload is valid
     versioned_hashes = [
         kzg_commitment_to_versioned_hash(commitment)
+        # [Modified in Gloas:EIP7732]
         for commitment in committed_bid.blob_kzg_commitments
     ]
     requests = envelope.execution_requests

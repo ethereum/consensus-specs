@@ -173,6 +173,7 @@ def get_data_column_sidecars(
             column_cells.append(cells[column_index])
             column_proofs.append(proofs[column_index])
         sidecars.append(
+            # [Modified in Gloas:EIP7732]
             DataColumnSidecar(
                 index=column_index,
                 column=column_cells,

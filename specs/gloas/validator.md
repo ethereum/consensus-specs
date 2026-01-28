@@ -305,6 +305,7 @@ def get_data_column_sidecars_from_column_sidecar(
     Given a data column sidecar and the cells/proofs associated with each blob corresponding
     to the commitments it contains, assemble all sidecars for distribution to peers.
     """
+    # [Modified in Gloas:EIP7732]
     return get_data_column_sidecars(
         sidecar.beacon_block_root,
         sidecar.slot,

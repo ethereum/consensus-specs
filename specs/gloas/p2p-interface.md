@@ -128,12 +128,11 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 #### Modified `verify_data_column_sidecar_kzg_proofs`
 
-*Note*: `verify_data_column_sidecar_kzg_proofs` is modified to take the kzg
-commitment list as parameter.
-
 ```python
 def verify_data_column_sidecar_kzg_proofs(
-    sidecar: DataColumnSidecar, kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    sidecar: DataColumnSidecar,
+    # [New in Gloas:EIP7732]
+    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
 ) -> bool:
     """
     Verify if the KZG proofs are correct.
@@ -143,6 +142,7 @@ def verify_data_column_sidecar_kzg_proofs(
 
     # Batch verify that the cells match the corresponding commitments and proofs
     return verify_cell_kzg_proof_batch(
+        # [Modified in Gloas:EIP7732]
         commitments_bytes=kzg_commitments,
         cell_indices=cell_indices,
         cells=sidecar.column,
@@ -152,12 +152,11 @@ def verify_data_column_sidecar_kzg_proofs(
 
 #### Modified `verify_data_column_sidecar`
 
-*Note*: `verify_data_column_sidecar` is modified to take the kzg commitment list
-as parameter.
-
 ```python
 def verify_data_column_sidecar(
-    sidecar: DataColumnSidecar, kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    sidecar: DataColumnSidecar,
+    # [New in Gloas:EIP7732]
+    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
 ) -> bool:
     """
     Verify if the data column sidecar is valid.
@@ -166,10 +165,12 @@ def verify_data_column_sidecar(
     if sidecar.index >= NUMBER_OF_COLUMNS:
         return False
 
+    # [Modified in Gloas:EIP7732]
     # A sidecar for zero blobs is invalid
     if len(sidecar.column) == 0:
         return False
 
+    # [Modified in Gloas:EIP7732]
     # The column length must be equal to the number of commitments/proofs
     if len(sidecar.column) != len(kzg_commitments) or len(sidecar.column) != len(
         sidecar.kzg_proofs
