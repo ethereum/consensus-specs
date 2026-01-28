@@ -305,12 +305,9 @@ def get_data_column_sidecars_from_column_sidecar(
     Given a data column sidecar and the cells/proofs associated with each blob corresponding
     to the commitments it contains, assemble all sidecars for distribution to peers.
     """
-    assert len(cells_and_kzg_proofs) == len(sidecar.kzg_commitments)
-
     return get_data_column_sidecars(
         sidecar.beacon_block_root,
         sidecar.slot,
-        sidecar.kzg_commitments,
         cells_and_kzg_proofs,
     )
 ```
