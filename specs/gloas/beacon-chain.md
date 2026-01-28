@@ -1171,25 +1171,6 @@ def get_index_for_new_builder(state: BeaconState) -> BuilderIndex:
     return BuilderIndex(len(state.builders))
 ```
 
-###### New `get_builder_from_deposit`
-
-```python
-def get_builder_from_deposit(
-    pubkey: BLSPubkey,
-    withdrawal_credentials: Bytes32,
-    amount: uint64,
-    slot: Slot,
-) -> Builder:
-    return Builder(
-        pubkey=pubkey,
-        version=uint8(withdrawal_credentials[0]),
-        execution_address=ExecutionAddress(withdrawal_credentials[12:]),
-        balance=amount,
-        deposit_epoch=compute_epoch_at_slot(slot),
-        withdrawable_epoch=FAR_FUTURE_EPOCH,
-    )
-```
-
 ###### New `add_builder_to_registry`
 
 ```python
@@ -1200,9 +1181,18 @@ def add_builder_to_registry(
     amount: uint64,
     slot: Slot,
 ) -> None:
-    index = get_index_for_new_builder(state)
-    builder = get_builder_from_deposit(pubkey, withdrawal_credentials, amount, slot)
-    set_or_append_list(state.builders, index, builder)
+    set_or_append_list(
+        state.builders,
+        get_index_for_new_builder(state),
+        Builder(
+            pubkey=pubkey,
+            version=uint8(withdrawal_credentials[0]),
+            execution_address=ExecutionAddress(withdrawal_credentials[12:]),
+            balance=amount,
+            deposit_epoch=compute_epoch_at_slot(slot),
+            withdrawable_epoch=FAR_FUTURE_EPOCH,
+        ),
+    )
 ```
 
 ###### New `apply_deposit_for_builder`
