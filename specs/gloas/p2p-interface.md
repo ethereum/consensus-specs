@@ -276,7 +276,7 @@ The following validations MUST pass before forwarding the
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `data.slot == current_slot`.
 - _[IGNORE]_ The `payload_attestation_message` is the first valid message
   received from the validator with index
-  `payload_attestation_message.validate_index`.
+  `payload_attestation_message.validator_index`.
 - _[IGNORE]_ The message's block `data.beacon_block_root` has been seen (via
   gossip or non-gossip sources) (a client MAY queue attestation for processing
   once the block is retrieved. Note a client might want to request payload
