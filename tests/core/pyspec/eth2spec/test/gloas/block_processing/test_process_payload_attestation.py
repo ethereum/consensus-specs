@@ -38,6 +38,7 @@ def prepare_signed_payload_attestation(
     payload_present=True,
     attesting_indices=None,
     valid_signature=True,
+    domain_epoch=None,
 ):
     """
     Helper to create a signed payload attestation with customizable parameters.
@@ -83,8 +84,9 @@ def prepare_signed_payload_attestation(
 
     if valid_signature and attesting_indices:
         # Sign the attestation
+        epoch = domain_epoch if domain_epoch is not None else spec.compute_epoch_at_slot(slot)
         signing_root = spec.compute_signing_root(
-            data, spec.get_domain(state, spec.DOMAIN_PTC_ATTESTER, spec.compute_epoch_at_slot(slot))
+            data, spec.get_domain(state, spec.DOMAIN_PTC_ATTESTER, epoch)
         )
 
         signatures = []
@@ -231,5 +233,26 @@ def test_process_payload_attestation_no_attesting_indices(spec, state):
     spec.process_slots(state, state.slot + 1)
 
     payload_attestation = prepare_signed_payload_attestation(spec, state, attesting_indices=[])
+
+    yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
+def test_process_payload_attestation_cross_epoch_wrong_domain(spec, state):
+    """
+    Test that payload attestation signed with wrong epoch domain fails
+    """
+    # Advance to first slot of epoch 1, attest to last slot of epoch 0
+    spec.process_slots(state, spec.SLOTS_PER_EPOCH)
+
+    attested_slot = state.slot - 1
+    wrong_epoch = spec.get_current_epoch(state)
+    assert wrong_epoch != spec.compute_epoch_at_slot(attested_slot)
+
+    payload_attestation = prepare_signed_payload_attestation(
+        spec, state, slot=attested_slot, domain_epoch=wrong_epoch
+    )
 
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
