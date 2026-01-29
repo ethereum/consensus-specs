@@ -243,11 +243,11 @@ def test_process_execution_payload_bid_blob_kzg_commitments_at_limit(spec, state
     block = build_empty_block_for_next_slot(spec, state)
 
     # Construct list of commitments
-    epoch = spec.compute_epoch_at_slot(state.slot)
+    epoch = spec.compute_epoch_at_slot(block.slot)
     blob_limit = spec.get_blob_parameters(epoch).max_blobs_per_block
     _, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=blob_limit)
 
-    # Create bid with too many commitments
+    # Create bid with max commitments
     signed_bid = prepare_signed_execution_payload_bid(
         spec,
         state,
@@ -758,7 +758,7 @@ def test_process_execution_payload_bid_blob_kzg_commitments_over_limit(spec, sta
     block = build_empty_block_for_next_slot(spec, state)
 
     # Construct list of commitments
-    epoch = spec.compute_epoch_at_slot(state.slot)
+    epoch = spec.compute_epoch_at_slot(block.slot)
     blob_limit = spec.get_blob_parameters(epoch).max_blobs_per_block
     _, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=blob_limit + 1)
 
