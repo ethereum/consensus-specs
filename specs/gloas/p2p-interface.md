@@ -343,7 +343,8 @@ The following validations MUST pass before forwarding the
   next epoch's portion of `state.proposer_lookahead` -- i.e.
   `is_valid_proposal_slot(state, preferences)` returns `True`.
 - _[IGNORE]_ The `signed_proposer_preferences` is the first valid message
-  received from the validator with index `preferences.validator_index`.
+  received from the validator with index `preferences.validator_index` and the given
+  slot `preferences.slot`.
 - _[REJECT]_ `signed_proposer_preferences.signature` is valid with respect to
   the validator's public key.
 
