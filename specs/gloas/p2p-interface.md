@@ -383,7 +383,7 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ The sidecar is the first sidecar for the tuple
   `(sidecar.beacon_block_root, sidecar.index)` with valid kzg proof.
 
-*Note:* If the sidecar fails deferred validation, its forwarding peers MUST be
+*Note*: If the sidecar fails deferred validation, its forwarding peers MUST be
 downscored retroactively. If validation succeeds, the client MUST re-broadcast
 the sidecar.
 
