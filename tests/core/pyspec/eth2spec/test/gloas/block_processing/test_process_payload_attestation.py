@@ -4,6 +4,7 @@ from eth2spec.test.context import (
     with_gloas_and_later,
 )
 from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.state import next_epoch
 from eth2spec.utils.ssz.ssz_typing import Bitvector
 
 
@@ -38,6 +39,7 @@ def prepare_signed_payload_attestation(
     payload_present=True,
     attesting_indices=None,
     valid_signature=True,
+    domain_epoch=None,
 ):
     """
     Helper to create a signed payload attestation with customizable parameters.
@@ -49,6 +51,9 @@ def prepare_signed_payload_attestation(
 
     if beacon_block_root is None:
         beacon_block_root = state.latest_block_header.parent_root
+
+    if domain_epoch is None:
+        domain_epoch = spec.compute_epoch_at_slot(slot)
 
     # Get the PTC for the attested slot
     ptc = spec.get_ptc(state, slot)
@@ -84,7 +89,7 @@ def prepare_signed_payload_attestation(
     if valid_signature and attesting_indices:
         # Sign the attestation
         signing_root = spec.compute_signing_root(
-            data, spec.get_domain(state, spec.DOMAIN_PTC_ATTESTER, spec.compute_epoch_at_slot(slot))
+            data, spec.get_domain(state, spec.DOMAIN_PTC_ATTESTER, domain_epoch)
         )
 
         signatures = []
@@ -231,5 +236,26 @@ def test_process_payload_attestation_no_attesting_indices(spec, state):
     spec.process_slots(state, state.slot + 1)
 
     payload_attestation = prepare_signed_payload_attestation(spec, state, attesting_indices=[])
+
+    yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
+def test_process_payload_attestation_cross_epoch_wrong_domain(spec, state):
+    """
+    Test that payload attestation signed with wrong epoch domain fails
+    """
+    # Advance to first slot of next epoch, attest to last slot of previous epoch
+    next_epoch(spec, state)
+
+    attested_slot = state.slot - 1
+    wrong_epoch = spec.get_current_epoch(state)
+    assert wrong_epoch != spec.compute_epoch_at_slot(attested_slot)
+
+    payload_attestation = prepare_signed_payload_attestation(
+        spec, state, slot=attested_slot, domain_epoch=wrong_epoch
+    )
 
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)

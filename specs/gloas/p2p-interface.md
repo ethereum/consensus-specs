@@ -276,7 +276,7 @@ The following validations MUST pass before forwarding the
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `data.slot == current_slot`.
 - _[IGNORE]_ The `payload_attestation_message` is the first valid message
   received from the validator with index
-  `payload_attestation_message.validate_index`.
+  `payload_attestation_message.validator_index`.
 - _[IGNORE]_ The message's block `data.beacon_block_root` has been seen (via
   gossip or non-gossip sources) (a client MAY queue attestation for processing
   once the block is retrieved. Note a client might want to request payload
@@ -362,20 +362,8 @@ def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences)
 
 *[Modified in Gloas:EIP7732]*
 
-This topic is used to propagate column sidecars, where each column maps to some
-`subnet_id`.
-
-The *type* of the payload of this topic is `DataColumnSidecar`.
-
 The following validations MUST pass before forwarding the
 `sidecar: DataColumnSidecar` on the network:
-
-**Modified from Fulu:**
-
-- _[IGNORE]_ The sidecar is the first sidecar for the tuple
-  `(sidecar.beacon_block_root, sidecar.index)` with valid kzg proof.
-
-**Added in Gloas:**
 
 - _[IGNORE]_ The sidecar's `beacon_block_root` has been seen via a valid signed
   execution payload bid. A client MAY queue the sidecar for processing once the
@@ -385,37 +373,14 @@ The following validations MUST pass before forwarding the
 - _[REJECT]_ The hash of the sidecar's `kzg_commitments` matches the
   `blob_kzg_commitments_root` in the corresponding builder's bid for
   `sidecar.beacon_block_root`.
-
-**Removed from Fulu:**
-
-- _[IGNORE]_ The sidecar is not from a future slot (with a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
-  `block_header.slot <= current_slot` (a client MAY queue future sidecars for
-  processing at the appropriate slot).
-- _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot
-  -- i.e. validate that
-  `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
-- _[REJECT]_ The proposer signature of `sidecar.signed_block_header`, is valid
-  with respect to the `block_header.proposer_index` pubkey.
-- _[IGNORE]_ The sidecar's block's parent (defined by
-  `block_header.parent_root`) has been seen (via gossip or non-gossip sources)
-  (a client MAY queue sidecars for processing once the parent block is
-  retrieved).
-- _[REJECT]_ The sidecar's block's parent (defined by
-  `block_header.parent_root`) passes validation.
-- _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent
-  (defined by `block_header.parent_root`).
-- _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's
-  block -- i.e.
-  `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
-- _[REJECT]_ The sidecar's `kzg_commitments` field inclusion proof is valid as
-  verified by `verify_data_column_sidecar_inclusion_proof(sidecar)`.
-- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the
-  block's slot in the context of the current shuffling (defined by
-  `block_header.parent_root`/`block_header.slot`). If the `proposer_index`
-  cannot immediately be verified against the expected shuffling, the sidecar MAY
-  be queued for later processing while proposers for the block's branch are
-  calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
+- _[REJECT]_ The sidecar is valid as verified by
+  `verify_data_column_sidecar(sidecar)`.
+- _[REJECT]_ The sidecar is for the correct subnet -- i.e.
+  `compute_subnet_for_data_column_sidecar(sidecar.index) == subnet_id`.
+- _[REJECT]_ The sidecar's column data is valid as verified by
+  `verify_data_column_sidecar_kzg_proofs(sidecar)`.
+- _[IGNORE]_ The sidecar is the first sidecar for the tuple
+  `(sidecar.beacon_block_root, sidecar.index)` with valid kzg proof.
 
 ##### Attestation subnets
 
