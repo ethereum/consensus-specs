@@ -755,7 +755,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 ```python
 def is_data_available(beacon_block_root: Root) -> bool:
     # `retrieve_column_sidecars_and_kzg_commitments` is implementation and
-    # context dependent replacing `retrieve_column_sidecars`. For the given
+    # context dependent, replacing `retrieve_column_sidecars`. For the given
     # block root, it returns all column sidecars to sample, or raises an
     # exception if they are not available, in addition it returns all the
     # corresponding kzg commitments. The p2p network does not guarantee sidecar

@@ -302,8 +302,9 @@ def get_data_column_sidecars_from_column_sidecar(
     ],
 ) -> Sequence[DataColumnSidecar]:
     """
-    Given a data column sidecar and the cells/proofs associated with each blob corresponding
-    to the commitments it contains, assemble all sidecars for distribution to peers.
+    Given a data column sidecar and the cells/proofs associated with each blob
+    in the corresponding payload, assemble the sidecars which can be
+    distributed to peers.
     """
     # [Modified in Gloas:EIP7732]
     return get_data_column_sidecars(
