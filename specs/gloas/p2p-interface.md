@@ -397,9 +397,6 @@ The following validations MUST pass before forwarding the
   block is retrieved.
 - _[REJECT]_ The sidecars's `slot` matches the slot of the block with root
   `beacon_block_root`.
-- _[REJECT]_ The hash of the sidecar's `kzg_commitments` matches the
-  `blob_kzg_commitments_root` in the corresponding builder's bid for
-  `sidecar.beacon_block_root`.
 - _[REJECT]_ The sidecar is valid as verified by
   `verify_data_column_sidecar(sidecar, bid.blob_kzg_commitments)`.
 - _[REJECT]_ The sidecar is for the correct subnet -- i.e.
