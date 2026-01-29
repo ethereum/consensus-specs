@@ -472,6 +472,10 @@ having the cell and not wanting it, so it does not need a separate state.
 
 Clients MUST only provide or request a cell if the second bit is set to `1`.
 
+The parts metadata is encoded as two `Bitlist` back to back. With the first
+`Bitlist` being the availability `Bitlist` and the second being the request
+`Bitlist`.
+
 ##### Encoding and decoding responses
 
 All responses MUST be encoded and decoded with the `PartialDataColumnSidecar`
