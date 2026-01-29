@@ -365,10 +365,11 @@ def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences)
 The following validations MUST pass before forwarding the
 `sidecar: DataColumnSidecar` on the network:
 
-- _[IGNORE]_ The sidecar's `beacon_block_root` has been seen via a valid signed
-  execution payload bid. A client MAY queue the sidecar for processing once the
-  block is retrieved.
-- _[REJECT]_ The sidecars's `slot` matches the slot of the block with root
+- _[IGNORE]_ A valid block for the sidecar's `slot` has been seen (via gossip
+  or non-gossip sources). If not yet seen, a client MUST queue the sidecar for
+  deferred validation and possible processing once the block is received or
+  retrieved.
+- _[REJECT]_ The sidecar's `slot` matches the slot of the block with root
   `beacon_block_root`.
 - _[REJECT]_ The hash of the sidecar's `kzg_commitments` matches the
   `blob_kzg_commitments_root` in the corresponding builder's bid for
@@ -381,6 +382,10 @@ The following validations MUST pass before forwarding the
   `verify_data_column_sidecar_kzg_proofs(sidecar)`.
 - _[IGNORE]_ The sidecar is the first sidecar for the tuple
   `(sidecar.beacon_block_root, sidecar.index)` with valid kzg proof.
+
+*Note:* If the sidecar fails deferred validation, its forwarding peers
+MUST be downscored retroactively. If validation succeeds, the client
+MUST re-broadcast the sidecar.
 
 ##### Attestation subnets
 
