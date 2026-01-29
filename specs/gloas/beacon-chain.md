@@ -174,9 +174,9 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 ### Time parameters
 
-| Name                                | Value                     |  Unit  | Duration |
-| ----------------------------------- | ------------------------- | :----: | :------: |
-| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `uint64(2**12)` (= 4,096) | epochs | ~18 days |
+| Name                                | Value                 |  Unit  |
+| ----------------------------------- | --------------------- | :----: |
+| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `uint64(2**6)` (= 64) | epochs |
 
 ## Containers
 
