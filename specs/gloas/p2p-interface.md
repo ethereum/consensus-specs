@@ -252,6 +252,9 @@ regards to the `ExecutionPayload` are removed:
 And instead the following validations are set in place with the alias
 `bid = signed_execution_payload_bid.message`:
 
+- _[REJECT]_ The length of KZG commitments is less than or equal to the
+  limitation defined in the consensus layer -- i.e. validate that
+  `len(bid.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
 - If `execution_payload` verification of block's execution payload parent by an
   execution node **is complete**:
   - [REJECT] The block's execution payload parent (defined by
