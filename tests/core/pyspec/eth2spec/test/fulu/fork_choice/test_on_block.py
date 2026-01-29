@@ -38,7 +38,7 @@ def get_alt_sidecars(spec, state):
     """
     rng = Random(4321)
     state_copy = state.copy()
-    _, _, _, _, alt_sidecars = get_block_with_blob_and_sidecars(
+    _, _, _, _, alt_sidecars, _ = get_block_with_blob_and_sidecars(
         spec, state_copy, rng=rng, blob_count=2
     )
     return alt_sidecars
@@ -64,20 +64,20 @@ def test_on_block_peerdas__ok(spec, state):
     assert store.time == current_time
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
-    _, _, _, signed_block, sidecars = get_block_with_blob_and_sidecars(
+    _, _, _, signed_block, sidecars, kzg_commitments = get_block_with_blob_and_sidecars(
         spec, state, rng=rng, blob_count=2
     )
-    blob_data = BlobData(sidecars=sidecars)
+    blob_data = BlobData(sidecars=sidecars, kzg_commitments=kzg_commitments)
 
     yield from tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data)
 
     assert spec.get_head(store) == signed_block.message.hash_tree_root()
 
     # On receiving a block of next epoch
-    _, _, _, signed_block, sidecars = get_block_with_blob_and_sidecars(
+    _, _, _, signed_block, sidecars, kzg_commitments = get_block_with_blob_and_sidecars(
         spec, state, rng=rng, blob_count=2
     )
-    blob_data = BlobData(sidecars=sidecars)
+    blob_data = BlobData(sidecars=sidecars, kzg_commitments=kzg_commitments)
 
     yield from tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data)
 
@@ -102,11 +102,11 @@ def run_on_block_peerdas_invalid_test(spec, state, fn):
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
-    _, _, _, signed_block, sidecars = get_block_with_blob_and_sidecars(
+    _, _, _, signed_block, sidecars, kzg_commitments = get_block_with_blob_and_sidecars(
         spec, state, rng=rng, blob_count=2
     )
     sidecars = fn(sidecars)
-    blob_data = BlobData(sidecars=sidecars)
+    blob_data = BlobData(sidecars=sidecars, kzg_commitments=kzg_commitments)
 
     yield from tick_and_add_block_with_data(
         spec, store, signed_block, test_steps, blob_data, valid=False

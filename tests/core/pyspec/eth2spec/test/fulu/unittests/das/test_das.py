@@ -86,10 +86,10 @@ def run_is_data_available_peerdas_test(spec, blob_data):
 @spec_state_test
 def test_is_data_available_peerdas(spec, state):
     rng = random.Random(1234)
-    _, blobs, blob_kzg_proofs, _, sidecars = get_block_with_blob_and_sidecars(
+    _, blobs, blob_kzg_proofs, _, sidecars, kzg_commitments = get_block_with_blob_and_sidecars(
         spec, state, rng=rng, blob_count=2
     )
-    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars)
+    blob_data = BlobData(blobs, blob_kzg_proofs, sidecars, kzg_commitments)
 
     result = run_is_data_available_peerdas_test(spec, blob_data)
 
@@ -100,14 +100,13 @@ def test_is_data_available_peerdas(spec, state):
 @spec_state_test
 def test_get_data_column_sidecars(spec, state):
     rng = random.Random(1234)
-    _, blobs, _, signed_block, sidecars = get_block_with_blob_and_sidecars(
+    _, blobs, _, signed_block, sidecars, kzg_commitments = get_block_with_blob_and_sidecars(
         spec, state, rng=rng, blob_count=2
     )
 
     if is_post_gloas(spec):
         sidecars_result = spec.get_data_column_sidecars_from_block(
             signed_block,
-            sidecars[0].kzg_commitments,
             [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs],
         )
     else:
@@ -133,7 +132,9 @@ def test_get_data_column_sidecars_from_column_sidecar(spec, state):
         return
 
     rng = random.Random(1234)
-    _, blobs, _, _, sidecars = get_block_with_blob_and_sidecars(spec, state, rng=rng, blob_count=2)
+    _, blobs, _, _, sidecars, _ = get_block_with_blob_and_sidecars(
+        spec, state, rng=rng, blob_count=2
+    )
 
     sidecars_result = spec.get_data_column_sidecars_from_column_sidecar(
         sidecar=sidecars[0],

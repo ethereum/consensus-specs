@@ -91,7 +91,7 @@ def get_execution_payload_bid(spec, state, execution_payload):
         builder_index=builder_index,
         slot=state.slot,
         value=spec.Gwei(0),
-        blob_kzg_commitments_root=kzg_list.hash_tree_root(),
+        blob_kzg_commitments=kzg_list,
     )
 
 
@@ -334,7 +334,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
         builder_index=builder_index,
         slot=state.slot,
         value=spec.Gwei(0),
-        blob_kzg_commitments_root=kzg_list.hash_tree_root(),
+        blob_kzg_commitments=kzg_list,
     )
 
 
@@ -440,7 +440,7 @@ def build_state_with_incomplete_transition(spec, state):
         bid = spec.ExecutionPayloadBid(
             slot=state.slot,
             value=spec.Gwei(0),
-            blob_kzg_commitments_root=kzgs.hash_tree_root(),
+            blob_kzg_commitments=kzgs,
         )
         state = build_state_with_execution_payload_bid(spec, state, bid)
     else:

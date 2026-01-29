@@ -144,7 +144,6 @@ def prepare_execution_payload_envelope(
         builder_index=builder_index,
         beacon_block_root=beacon_block_root,
         slot=slot,
-        blob_kzg_commitments=blob_kzg_commitments,
         state_root=state_root,
     )
 
@@ -194,7 +193,7 @@ def setup_state_with_payload_bid(spec, state, builder_index=None, value=None, pr
         builder_index=builder_index,
         slot=state.slot,
         value=value,
-        blob_kzg_commitments_root=kzg_list.hash_tree_root(),
+        blob_kzg_commitments=kzg_list,
     )
     state.latest_execution_payload_bid = bid
 
@@ -387,9 +386,7 @@ def test_process_execution_payload_with_blob_commitments(spec, state):
     )
 
     # Update bid with correct blob commitments root
-    state.latest_execution_payload_bid.blob_kzg_commitments_root = (
-        blob_kzg_commitments.hash_tree_root()
-    )
+    state.latest_execution_payload_bid.blob_kzg_commitments = blob_kzg_commitments
 
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.block_hash = state.latest_execution_payload_bid.block_hash
@@ -651,9 +648,7 @@ def test_process_execution_payload_wrong_blob_commitments_root(spec, state):
     original_blob_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
         [spec.KZGCommitment(b"\x11" * 48)]
     )
-    state.latest_execution_payload_bid.blob_kzg_commitments_root = (
-        original_blob_commitments.hash_tree_root()
-    )
+    state.latest_execution_payload_bid.blob_kzg_commitments = original_blob_commitments
 
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.block_hash = state.latest_execution_payload_bid.block_hash
@@ -849,9 +844,7 @@ def test_process_execution_payload_max_blob_commitments_valid(spec, state):
     )
 
     # Update committed bid to match
-    state.latest_execution_payload_bid.blob_kzg_commitments_root = (
-        blob_kzg_commitments.hash_tree_root()
-    )
+    state.latest_execution_payload_bid.blob_kzg_commitments = blob_kzg_commitments
 
     signed_envelope = prepare_execution_payload_envelope(
         spec,

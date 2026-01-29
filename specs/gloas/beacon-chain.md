@@ -262,7 +262,7 @@ class ExecutionPayloadBid(Container):
     slot: Slot
     value: Gwei
     execution_payment: Gwei
-    blob_kzg_commitments_root: Root
+    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
 ```
 
 #### `SignedExecutionPayloadBid`
@@ -282,7 +282,6 @@ class ExecutionPayloadEnvelope(Container):
     builder_index: BuilderIndex
     beacon_block_root: Root
     slot: Slot
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     state_root: Root
 ```
 
@@ -1089,6 +1088,12 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
         # Verify that the bid signature is valid
         assert verify_execution_payload_bid_signature(state, signed_bid)
 
+    # Verify commitments are under limit
+    assert (
+        len(bid.blob_kzg_commitments)
+        <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    )
+
     # Verify that the bid is for the current slot
     assert bid.slot == block.slot
     # Verify that the bid is for the right parent block
@@ -1514,7 +1519,6 @@ def process_execution_payload(
     # Verify consistency with the committed bid
     committed_bid = state.latest_execution_payload_bid
     assert envelope.builder_index == committed_bid.builder_index
-    assert committed_bid.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
     assert committed_bid.prev_randao == payload.prev_randao
 
     # Verify consistency with expected withdrawals
@@ -1528,14 +1532,11 @@ def process_execution_payload(
     assert payload.parent_hash == state.latest_block_hash
     # Verify timestamp
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
-    # Verify commitments are under limit
-    assert (
-        len(envelope.blob_kzg_commitments)
-        <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
-    )
     # Verify the execution payload is valid
     versioned_hashes = [
-        kzg_commitment_to_versioned_hash(commitment) for commitment in envelope.blob_kzg_commitments
+        kzg_commitment_to_versioned_hash(commitment)
+        # [Modified in Gloas:EIP7732]
+        for commitment in committed_bid.blob_kzg_commitments
     ]
     requests = envelope.execution_requests
     assert execution_engine.verify_and_notify_new_payload(
