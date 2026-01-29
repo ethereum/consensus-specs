@@ -137,27 +137,18 @@ def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_proofs(spec, state
     assert not _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments)
 
 
-@with_fulu_and_later
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_kzg_commitments_over_max_blobs(spec, state):
     sidecar, blob_kzg_commitments = compute_data_column_sidecar(spec, state)
-
-    if is_post_gloas(spec):
-        slot = sidecar.slot
-    else:
-        slot = sidecar.signed_block_header.message.slot
+    slot = sidecar.signed_block_header.message.slot
     epoch = spec.compute_epoch_at_slot(slot)
     max_blobs = spec.get_blob_parameters(epoch).max_blobs_per_block
 
-    if is_post_gloas(spec):
-        for _ in range(max_blobs - len(blob_kzg_commitments) + 1):
-            blob_kzg_commitments.append(blob_kzg_commitments[0])
-        assert len(blob_kzg_commitments) > max_blobs
-    else:
-        for _ in range(max_blobs - len(sidecar.kzg_commitments) + 1):
-            sidecar.kzg_commitments.append(sidecar.kzg_commitments[0])
-        assert len(sidecar.kzg_commitments) > max_blobs
+    for _ in range(max_blobs - len(sidecar.kzg_commitments) + 1):
+        sidecar.kzg_commitments.append(sidecar.kzg_commitments[0])
+    assert len(sidecar.kzg_commitments) > max_blobs
 
     assert not _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments)
 
