@@ -3,8 +3,8 @@ from eth2spec.test.context import (
     default_activation_threshold,
     large_validator_set,
     single_phase,
-    spec_test,
     spec_state_test,
+    spec_test,
     with_custom_state,
     with_gloas_and_later,
     with_presets,
@@ -114,7 +114,9 @@ def prepare_signed_payload_attestation(
 def _get_ptc_from_indices(spec, state, slot, indices):
     slot = spec.Slot(slot)
     epoch = spec.compute_epoch_at_slot(slot)
-    seed = spec.hash(spec.get_seed(state, epoch, spec.DOMAIN_PTC_ATTESTER) + spec.uint_to_bytes(slot))
+    seed = spec.hash(
+        spec.get_seed(state, epoch, spec.DOMAIN_PTC_ATTESTER) + spec.uint_to_bytes(slot)
+    )
     return spec.compute_balance_weighted_selection(
         state, indices, seed, size=spec.PTC_SIZE, shuffle_indices=False
     )
