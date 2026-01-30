@@ -163,8 +163,8 @@ are unchanged from the Altair p2p networking document.
 A new field is added to the ENR under the key `eproof` to facilitate discovery
 of nodes that are aware of optional execution proofs.
 
-| Key      | Value                                     |
-| -------- | ----------------------------------------- |
+| Key      | Value                                    |
+| -------- | ---------------------------------------- |
 | `eproof` | Execution layer proof awareness, `uint8` |
 
 A node is considered optional execution proof–aware if the `eproof` key is
