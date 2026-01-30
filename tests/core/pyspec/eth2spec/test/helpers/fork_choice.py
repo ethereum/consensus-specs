@@ -23,12 +23,13 @@ def check_head_against_root(spec, store, root):
 
 class BlobData(NamedTuple):
     """
-    The return values of ``retrieve_blobs_and_proofs`` helper.
+    The return values of blob/sidecar retrieval helpers.
     """
 
     blobs: Sequence[Any] | None = None
     proofs: Sequence[bytes] | None = None
     sidecars: Sequence[DataColumnSidecar] | None = None
+    kzg_commitments: Sequence[Any] | None = None
 
     def is_post_fulu(self):
         return self.sidecars is not None and self.blobs is None and self.proofs is None
@@ -38,14 +39,18 @@ class BlobData(NamedTuple):
 
 
 def with_blob_data(spec, blob_data: BlobData, func):
-    if not is_post_fulu(spec):
-        if blob_data.proofs is None:
-            raise ValueError("blob_data.proofs must be provided when pre FULU fork")
-        yield from with_blob_data_deneb(spec, blob_data, func)
-    else:
+    if is_post_gloas(spec):
+        if blob_data.kzg_commitments is None:
+            raise ValueError("blob_data.kzg_commitments must be provided post-Gloas")
+        yield from with_blob_data_gloas(spec, blob_data, func)
+    elif is_post_fulu(spec):
         if blob_data.sidecars is None:
-            raise ValueError("blob_data.sidecars must be provided when post FULU fork")
+            raise ValueError("blob_data.sidecars must be provided post-Fulu")
         yield from with_blob_data_fulu(spec, blob_data, func)
+    else:
+        if blob_data.proofs is None:
+            raise ValueError("blob_data.proofs must be provided pre-Fulu")
+        yield from with_blob_data_deneb(spec, blob_data, func)
 
 
 def with_blob_data_deneb(spec, blob_data: BlobData, func):
@@ -80,7 +85,7 @@ def with_blob_data_deneb(spec, blob_data: BlobData, func):
 def with_blob_data_fulu(spec, blob_data: BlobData, func):
     """
     This helper runs the given ``func`` with monkeypatched ``retrieve_column_sidecars``
-    that returns ``blob_data``.
+    that returns ``blob_data.sidecars``.
     """
 
     def retrieve_column_sidecars(_):
@@ -105,6 +110,44 @@ def with_blob_data_fulu(spec, blob_data: BlobData, func):
         yield from wrap(is_called)
     finally:
         spec.retrieve_column_sidecars = retrieve_column_sidecars_backup
+    assert is_called.value
+
+
+def with_blob_data_gloas(spec, blob_data: BlobData, func):
+    """
+    This helper runs the given ``func`` with monkeypatched
+    ``retrieve_column_sidecars_and_kzg_commitments``.
+    """
+
+    def retrieve_column_sidecars_and_kzg_commitments(_):
+        assert blob_data.sidecars is not None, "blob_data.sidecars must be provided"
+        if len(blob_data.sidecars) == 0:
+            assert False, "Simulation: not all required columns have been sampled"
+        assert blob_data.kzg_commitments is not None, (
+            "blob_data.kzg_commitments must be provided for Gloas"
+        )
+        return blob_data.sidecars, blob_data.kzg_commitments
+
+    retrieve_column_sidecars_and_kzg_commitments_backup = (
+        spec.retrieve_column_sidecars_and_kzg_commitments
+    )
+    spec.retrieve_column_sidecars_and_kzg_commitments = retrieve_column_sidecars_and_kzg_commitments
+
+    class AtomicBoolean:
+        value = False
+
+    is_called = AtomicBoolean()
+
+    def wrap(flag: AtomicBoolean):
+        yield from func()
+        flag.value = True
+
+    try:
+        yield from wrap(is_called)
+    finally:
+        spec.retrieve_column_sidecars_and_kzg_commitments = (
+            retrieve_column_sidecars_and_kzg_commitments_backup
+        )
     assert is_called.value
 
 

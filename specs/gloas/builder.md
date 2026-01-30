@@ -123,8 +123,8 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
 11. Set `bid.execution_payment` to zero. A non-zero value indicates a trusted
     execution-layer payment. Bids with non-zero `execution_payment` **MUST NOT**
     be broadcast to the `execution_payload_bid` gossip topic.
-12. Set `bid.blob_kzg_commitments_root` to be the `hash_tree_root` of the
-    `blobsbundle.commitments` field returned by `engine_getPayloadV5`.
+12. Set `bid.blob_kzg_commitments` to be the `blobsbundle.commitments` field
+    returned by `engine_getPayloadV5`.
 
 After building the `bid`, the builder obtains a `signature` of the bid by using:
 
@@ -153,7 +153,8 @@ def get_data_column_sidecars(
     beacon_block_root: Root,
     # [New in Gloas:EIP7732]
     slot: Slot,
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    # [Modified in Gloas:EIP7732]
+    # Removed `kzg_commitments`
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments_inclusion_proof`
     cells_and_kzg_proofs: Sequence[
@@ -161,11 +162,10 @@ def get_data_column_sidecars(
     ],
 ) -> Sequence[DataColumnSidecar]:
     """
-    Given a beacon block root and the commitments, cells/proofs associated with
-    each blob in the block, assemble the sidecars which can be distributed to peers.
+    Given a beacon block root and the cells/proofs associated with each blob
+    in the corresponding payload, assemble the sidecars which can be
+    distributed to peers.
     """
-    assert len(cells_and_kzg_proofs) == len(kzg_commitments)
-
     sidecars = []
     for column_index in range(NUMBER_OF_COLUMNS):
         column_cells, column_proofs = [], []
@@ -173,10 +173,10 @@ def get_data_column_sidecars(
             column_cells.append(cells[column_index])
             column_proofs.append(proofs[column_index])
         sidecars.append(
+            # [Modified in Gloas:EIP7732]
             DataColumnSidecar(
                 index=column_index,
                 column=column_cells,
-                kzg_commitments=kzg_commitments,
                 kzg_proofs=column_proofs,
                 slot=slot,
                 beacon_block_root=beacon_block_root,
@@ -187,15 +187,12 @@ def get_data_column_sidecars(
 
 #### Modified `get_data_column_sidecars_from_block`
 
-*Note*: The function `get_data_column_sidecars_from_block` is modified to
-include the list of blob KZG commitments and to use `beacon_block_root` instead
-of header and inclusion proof computations.
+*Note*: The function `get_data_column_sidecars_from_block` is modified to use
+`beacon_block_root` instead of header and inclusion proof computations.
 
 ```python
 def get_data_column_sidecars_from_block(
     signed_block: SignedBeaconBlock,
-    # [New in Gloas:EIP7732]
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
     cells_and_kzg_proofs: Sequence[
         Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
     ],
@@ -208,7 +205,6 @@ def get_data_column_sidecars_from_block(
     return get_data_column_sidecars(
         beacon_block_root,
         signed_block.message.slot,
-        blob_kzg_commitments,
         cells_and_kzg_proofs,
     )
 ```
@@ -234,9 +230,6 @@ alias `bid` to be the committed `ExecutionPayloadBid` in
    steps. This field **MUST** be `bid.builder_index`.
 4. Set `envelope.beacon_block_root` to be `hash_tree_root(block)`.
 5. Set `envelope.slot` to be `block.slot`.
-6. Set `envelope.blob_kzg_commitments` to be the `commitments` field of the
-   blobs bundle constructed when constructing the bid. This field **MUST** have
-   a `hash_tree_root` equal to `bid.blob_kzg_commitments_root`.
 
 After setting these parameters, the builder assembles
 `signed_execution_payload_envelope = SignedExecutionPayloadEnvelope(message=envelope, signature=BLSSignature())`,

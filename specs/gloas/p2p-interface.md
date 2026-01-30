@@ -13,6 +13,7 @@
     - [New `SignedProposerPreferences`](#new-signedproposerpreferences)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
+    - [Modified `verify_data_column_sidecar_kzg_proofs`](#modified-verify_data_column_sidecar_kzg_proofs)
     - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -55,17 +56,19 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 #### Modified `DataColumnSidecar`
 
-*Note*: The `signed_block_header` and `kzg_commitments_inclusion_proof` fields
-have been removed from `DataColumnSidecar` in Gloas as header and inclusion
-proof verifications are no longer required in ePBS. Instead, sidecars are
-validated by checking that the hash of `kzg_commitments` matches what's
-committed in the builder's bid for the corresponding `beacon_block_root`.
+*Note*: The `signed_block_header`, `kzg_commitments`, and
+`kzg_commitments_inclusion_proof` fields have been removed from
+`DataColumnSidecar` in Gloas as header and inclusion proof verifications are no
+longer required in Gloas. The KZG commitments are now located at
+`block.body.signed_execution_payload_bid.message.blob_kzg_commitments` where
+`block` is the `BeaconBlock` associated with `beacon_block_root`.
 
 ```python
 class DataColumnSidecar(Container):
     index: ColumnIndex
     column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    # [Modified in Gloas:EIP7732]
+    # Removed `kzg_commitments`
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     # [Modified in Gloas:EIP7732]
     # Removed `signed_block_header`
@@ -125,10 +128,38 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
+#### Modified `verify_data_column_sidecar_kzg_proofs`
+
+```python
+def verify_data_column_sidecar_kzg_proofs(
+    sidecar: DataColumnSidecar,
+    # [New in Gloas:EIP7732]
+    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+) -> bool:
+    """
+    Verify if the KZG proofs are correct.
+    """
+    # The column index also represents the cell index
+    cell_indices = [CellIndex(sidecar.index)] * len(sidecar.column)
+
+    # Batch verify that the cells match the corresponding commitments and proofs
+    return verify_cell_kzg_proof_batch(
+        # [Modified in Gloas:EIP7732]
+        commitments_bytes=kzg_commitments,
+        cell_indices=cell_indices,
+        cells=sidecar.column,
+        proofs_bytes=sidecar.kzg_proofs,
+    )
+```
+
 #### Modified `verify_data_column_sidecar`
 
 ```python
-def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
+def verify_data_column_sidecar(
+    sidecar: DataColumnSidecar,
+    # [New in Gloas:EIP7732]
+    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+) -> bool:
     """
     Verify if the data column sidecar is valid.
     """
@@ -136,18 +167,14 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     if sidecar.index >= NUMBER_OF_COLUMNS:
         return False
 
+    # [Modified in Gloas:EIP7732]
     # A sidecar for zero blobs is invalid
-    if len(sidecar.kzg_commitments) == 0:
+    if len(sidecar.column) == 0:
         return False
 
     # [Modified in Gloas:EIP7732]
-    # Check that the sidecar respects the blob limit
-    epoch = compute_epoch_at_slot(sidecar.slot)
-    if len(sidecar.kzg_commitments) > get_blob_parameters(epoch).max_blobs_per_block:
-        return False
-
     # The column length must be equal to the number of commitments/proofs
-    if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(
+    if len(sidecar.column) != len(kzg_commitments) or len(sidecar.column) != len(
         sidecar.kzg_proofs
     ):
         return False
@@ -227,6 +254,9 @@ regards to the `ExecutionPayload` are removed:
 And instead the following validations are set in place with the alias
 `bid = signed_execution_payload_bid.message`:
 
+- _[REJECT]_ The length of KZG commitments is less than or equal to the
+  limitation defined in the consensus layer -- i.e. validate that
+  `len(bid.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
 - If `execution_payload` verification of block's execution payload parent by an
   execution node **is complete**:
   - [REJECT] The block's execution payload parent (defined by
@@ -364,22 +394,21 @@ def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences)
 *[Modified in Gloas:EIP7732]*
 
 The following validations MUST pass before forwarding the
-`sidecar: DataColumnSidecar` on the network:
+`sidecar: DataColumnSidecar` on the network, assuming the alias
+`bid = block.body.signed_execution_payload_bid.message` where `block` is the
+`BeaconBlock` associated with `sidecar.beacon_block_root`:
 
 - _[IGNORE]_ The sidecar's `beacon_block_root` has been seen via a valid signed
   execution payload bid. A client MAY queue the sidecar for processing once the
   block is retrieved.
 - _[REJECT]_ The sidecars's `slot` matches the slot of the block with root
   `beacon_block_root`.
-- _[REJECT]_ The hash of the sidecar's `kzg_commitments` matches the
-  `blob_kzg_commitments_root` in the corresponding builder's bid for
-  `sidecar.beacon_block_root`.
 - _[REJECT]_ The sidecar is valid as verified by
-  `verify_data_column_sidecar(sidecar)`.
+  `verify_data_column_sidecar(sidecar, bid.blob_kzg_commitments)`.
 - _[REJECT]_ The sidecar is for the correct subnet -- i.e.
   `compute_subnet_for_data_column_sidecar(sidecar.index) == subnet_id`.
 - _[REJECT]_ The sidecar's column data is valid as verified by
-  `verify_data_column_sidecar_kzg_proofs(sidecar)`.
+  `verify_data_column_sidecar_kzg_proofs(sidecar, bid.blob_kzg_commitments)`.
 - _[IGNORE]_ The sidecar is the first sidecar for the tuple
   `(sidecar.beacon_block_root, sidecar.index)` with valid kzg proof.
 
