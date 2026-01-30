@@ -165,7 +165,7 @@ of nodes that are aware of optional execution proofs.
 
 | Key      | Value                                     |
 | -------- | ----------------------------------------- |
-| `eproof` | Execution layer proof awareness, `uint64` |
+| `eproof` | Execution layer proof awareness, `uint8` |
 
 A node is considered optional execution proof–aware if the `eproof` key is
 present and its value is not 0.
