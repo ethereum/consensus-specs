@@ -20,7 +20,6 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 - [The Req/Resp domain](#the-reqresp-domain)
   - [Messages](#messages)
     - [ExecutionProofsByRoot](#executionproofsbyroot)
-    - [ExecutionProofsByHash](#executionproofsbyhash)
     - [GetMetaData v4](#getmetadata-v4)
 - [The discovery domain: discv5](#the-discovery-domain-discv5)
   - [ENR structure](#enr-structure)
