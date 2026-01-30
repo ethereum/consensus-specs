@@ -12,6 +12,7 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 - [Table of contents](#table-of-contents)
 - [Constants](#constants)
   - [Execution](#execution)
+- [MetaData](#metadata)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -19,6 +20,11 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 - [The Req/Resp domain](#the-reqresp-domain)
   - [Messages](#messages)
     - [ExecutionProofsByRoot](#executionproofsbyroot)
+    - [ExecutionProofsByHash](#executionproofsbyhash)
+    - [GetMetaData v4](#getmetadata-v4)
+- [The discovery domain: discv5](#the-discovery-domain-discv5)
+  - [ENR structure](#enr-structure)
+    - [Execution proof awareness](#execution-proof-awareness)
 
 <!-- mdformat-toc end -->
 
@@ -31,6 +37,30 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 | Name                               | Value       |
 | ---------------------------------- | ----------- |
 | `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)` |
+
+## MetaData
+
+The `MetaData` stored locally by clients is updated with an additional field to
+communicate execution proof awareness.
+
+```
+(
+  seq_number: uint64
+  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
+  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
+  custody_group_count: uint64  # cgc
+  execution_proof_aware: bool  # eproof
+)
+```
+
+Where
+
+- `seq_number`, `attnets`, `syncnets`, and `custody_group_count` have the same
+  meaning defined in the previous documents.
+- `execution_proof_aware` indicates whether the node is aware of optional
+  execution proofs. A value of `True` signals that the node understands
+  execution proof gossip topics and can participate in execution proof
+  propagation.
 
 ## The gossip domain: gossipsub
 
@@ -102,3 +132,37 @@ The response MUST contain:
 - All available execution proofs for the requested `block_root`.
 - The response MUST NOT contain more than `MAX_EXECUTION_PROOFS_PER_PAYLOAD`
   proofs.
+
+#### GetMetaData v4
+
+**Protocol ID:** `/eth2/beacon_chain/req/metadata/4/`
+
+No Request Content.
+
+Response Content:
+
+```
+(
+  MetaData
+)
+```
+
+Requests the MetaData of a peer, using the new `MetaData` definition given above
+that is extended from Altair. Other conditions for the `GetMetaData` protocol
+are unchanged from the Altair p2p networking document.
+
+## The discovery domain: discv5
+
+### ENR structure
+
+#### Execution proof awareness
+
+A new field is added to the ENR under the key `eproof` to facilitate discovery
+of nodes that are aware of optional execution proofs.
+
+| Key      | Value                                    |
+| -------- | ---------------------------------------- |
+| `eproof` | Execution layer proof awareness, `uint8` |
+
+A node is considered optional execution proof–aware if the `eproof` key is
+present and its value is not 0.
