@@ -680,9 +680,9 @@ def test_process_execution_payload_wrong_blob_commitments_root(spec, state):
 @spec_state_test
 @always_bls
 def test_process_execution_payload_missing_expected_withdrawal(spec, state):
-    """                                                                                                                                                                                                                                                                                                                                                                                                                
-    Verify payload rejected when it omits a withdrawal expected by the state.                                                                                                                                                                                                                                                                                                                                          
-    """ 
+    """
+    Verify payload rejected when it omits a withdrawal expected by the state.
+    """
     builder_index = 0
 
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(2600000))
