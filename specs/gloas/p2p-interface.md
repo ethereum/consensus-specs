@@ -59,7 +59,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 *Note*: The `signed_block_header`, `kzg_commitments`, and
 `kzg_commitments_inclusion_proof` fields have been removed from
 `DataColumnSidecar` in Gloas as header and inclusion proof verifications are no
-longer required in EIP-7732. The KZG commitments are now located at
+longer required in Gloas. The KZG commitments are now located at
 `block.body.signed_execution_payload_bid.message.kzg_commitments` where `block`
 is the `BeaconBlock` associated with `beacon_block_root`.
 
