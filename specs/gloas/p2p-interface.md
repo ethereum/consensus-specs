@@ -60,8 +60,8 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 `kzg_commitments_inclusion_proof` fields have been removed from
 `DataColumnSidecar` in Gloas as header and inclusion proof verifications are no
 longer required in Gloas. The KZG commitments are now located at
-`block.body.signed_execution_payload_bid.message.kzg_commitments` where `block`
-is the `BeaconBlock` associated with `beacon_block_root`.
+`block.body.signed_execution_payload_bid.message.blob_kzg_commitments` where
+`block` is the `BeaconBlock` associated with `beacon_block_root`.
 
 ```python
 class DataColumnSidecar(Container):
