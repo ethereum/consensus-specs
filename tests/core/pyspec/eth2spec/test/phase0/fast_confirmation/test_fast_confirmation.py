@@ -1600,7 +1600,31 @@ def test_reset_to_finality_but_no_restart_to_gu_because_gu_too_old_epoch(spec, s
 @single_phase
 def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, state):
     """
-    Test bcand ⊁ GU reset using "first-received UJ wins" semantics.
+    Test that FCR resets when bcand ⊁ GU (bcand is not a descendant of the 
+    globally observed unrealized justified checkpoint).
+    
+    This test uses "first-received UJ wins" semantics to create a scenario where:
+    - GU points to checkpoint C on the RED branch (epoch 2)
+    - bcand is a confirmed block on the BLACK branch (epoch 3)
+    - BLACK branch is canonical (justified checkpoint is on BLACK)
+    - bcand is NOT too old
+    - bcand ⊁ GU (BLACK doesn't descend from RED)
+    
+    Timeline:
+    - Epoch 2: Fork into RED and BLACK branches, neither justifies yet
+    - Epoch 3 start: 
+      * RED block 'a' released FIRST with epoch 2 attestations → UJ = (C, 2)
+      * BLACK block 'd' released SECOND with epoch 2 attestations → internal UJ = (C'', 2)
+      * Global UJ stays (C, 2) due to "first received wins"
+    - Epoch 3: BLACK branch continues with 100% participation, confirmations advance
+    - Epoch 3 last slot:
+      * FCR runs → GU sampled = (C, 2)
+      * THEN BLACK block b' released with epoch 3 attestations → justifies (d, 3)
+    - Epoch 4: justified = (d, 3) so BLACK is canonical, but GU = (C, 2)
+      * bcand (BLACK, epoch 3) ⊁ GU (C, epoch 2) → RESET
+    
+    The test verifies that reset occurs SPECIFICALLY due to bcand ⊁ GU,
+    NOT due to bcand being too old or non-canonical.
     """
     fcr = FCRTest(spec, seed=1)
     store = fcr.initialize(state)
@@ -1610,13 +1634,24 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
     epoch3_start = 3 * S
     epoch4_start = 4 * S
 
+    # ==========================================================================
     # Epochs 0, 1: Normal operation
+    # ==========================================================================
     while fcr.current_slot() < epoch2_start:
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
     assert fcr.current_slot() == epoch2_start
 
-    # Epoch 2: Fork
+    print(f"\n{'='*60}")
+    print(f"=== END EPOCH 1 ===")
+    print(f"{'='*60}")
+    print(f"confirmed_epoch: {spec.get_block_epoch(store, store.confirmed_root)}")
+    print(f"uj_epoch: {store.unrealized_justified_checkpoint.epoch}")
+
+    # ==========================================================================
+    # Epoch 2: Fork - RED and BLACK branches (empty attestation bodies)
+    # ==========================================================================
+    
     fork_point = fcr.head()
     prev_atts = list(fcr.attestation_pool)
     
@@ -1635,12 +1670,19 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
     red_tip = c_red
     red_state = store.block_states[c_red].copy()
 
+    print(f"\n{'='*60}")
+    print(f"=== EPOCH 2: FORK ===")
+    print(f"{'='*60}")
+    print(f"c_red: {encode_hex(c_red)[:20]}")
+
     # BLACK BRANCH
     fcr.attestation_pool = list(prev_atts)
     c_double_prime = fcr.add_and_apply_block(parent_root=fork_point, graffiti="C_double_prime_black")
     black_tip = c_double_prime
     black_blocks_by_slot = {epoch2_start: c_double_prime}
     
+    print(f"c_double_prime: {encode_hex(c_double_prime)[:20]}")
+
     fcr.attest(block_root=black_tip, slot=fcr.current_slot(), participation_rate=100)
     fcr.next_slot()
     fcr.apply_attestations()
@@ -1689,9 +1731,22 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
 
     assert fcr.current_slot() == epoch3_start
 
-    # Epoch 3: Release 'a' FIRST, then 'd'
+    print(f"\n{'='*60}")
+    print(f"=== END EPOCH 2 ===")
+    print(f"{'='*60}")
+    print(f"confirmed_epoch: {spec.get_block_epoch(store, store.confirmed_root)}")
+    print(f"uj_epoch: {store.unrealized_justified_checkpoint.epoch}")
+
+    # ==========================================================================
+    # Epoch 3: Release 'a' FIRST with epoch 2 attestations → (C, 2)
+    # Then 'd' with epoch 2 attestations → internal (C'', 2), global stays (C, 2)
+    # ==========================================================================
     
-    # RED block 'a' FIRST
+    print(f"\n{'='*60}")
+    print(f"=== EPOCH 3 START: INJECT BLOCKS ===")
+    print(f"{'='*60}")
+
+    # RED block 'a' FIRST with EPOCH 2 attestations
     a_block = build_empty_block(spec, red_state, fcr.current_slot())
     a_block.body.graffiti = b"a_red_FIRST".ljust(32, b"\x00")
     
@@ -1707,14 +1762,20 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
                 if len(a_block.body.attestations) < spec.MAX_ATTESTATIONS:
                     a_block.body.attestations.append(att)
 
+    print(f"Block 'a': {len(a_block.body.attestations)} attestations from EPOCH 2")
+
     signed_a = state_transition_and_sign_block(spec, red_state, a_block)
     for artefact in add_block(spec, store, signed_a, fcr.test_steps):
         fcr.blockchain_artefacts.append(artefact)
     a_red = signed_a.message.hash_tree_root()
 
-    assert store.unrealized_justified_checkpoint.root == c_red
+    print(f"After 'a': UJ = epoch {store.unrealized_justified_checkpoint.epoch}, root={encode_hex(store.unrealized_justified_checkpoint.root)[:20]}")
+    print(f"UJ == (C, 2): {store.unrealized_justified_checkpoint.root == c_red and store.unrealized_justified_checkpoint.epoch == 2}")
+    
+    assert store.unrealized_justified_checkpoint.root == c_red, "UJ should be c_red after 'a'"
+    assert store.unrealized_justified_checkpoint.epoch == spec.Epoch(2), "UJ epoch should be 2"
 
-    # BLACK block 'd' SECOND
+    # BLACK block 'd' SECOND with EPOCH 2 attestations
     parent_state = store.block_states[black_tip].copy()
     d_block = build_empty_block(spec, parent_state, fcr.current_slot())
     d_block.body.graffiti = b"d_black_SECOND".ljust(32, b"\x00")
@@ -1731,13 +1792,22 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
                 if len(d_block.body.attestations) < spec.MAX_ATTESTATIONS:
                     d_block.body.attestations.append(att)
 
+    print(f"Block 'd': {len(d_block.body.attestations)} attestations from EPOCH 2")
+
     signed_d = state_transition_and_sign_block(spec, parent_state, d_block)
     for artefact in add_block(spec, store, signed_d, fcr.test_steps):
         fcr.blockchain_artefacts.append(artefact)
     d_root = signed_d.message.hash_tree_root()
     black_tip = d_root
+    black_blocks_by_slot[fcr.current_slot()] = d_root
 
-    assert store.unrealized_justified_checkpoint.root == c_red
+    epoch3_black_checkpoint = d_root
+
+    print(f"d_root (epoch 3 black checkpoint): {encode_hex(d_root)[:20]}")
+    print(f"After 'd': Global UJ still (C, 2): {store.unrealized_justified_checkpoint.root == c_red}")
+    print(f"Block 'd' internal UJ: epoch={store.unrealized_justifications[d_root].epoch}, root={encode_hex(store.unrealized_justifications[d_root].root)[:20]}")
+    
+    assert store.unrealized_justified_checkpoint.root == c_red, "Global UJ should still be c_red"
 
     fcr.attest(block_root=black_tip, slot=fcr.current_slot(), participation_rate=100)
     fcr.next_slot()
@@ -1745,86 +1815,242 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
     fcr.attestation_pool = []
     fcr.run_fast_confirmation()
 
-    # Continue epoch 3
+    print(f"\nAfter 'd' FCR: confirmed_epoch = {spec.get_block_epoch(store, store.confirmed_root)}")
+
+    # ==========================================================================
+    # Continue epoch 3 with normal black blocks (include attestations)
+    # ==========================================================================
+    
+    print(f"\n{'='*60}")
+    print(f"=== EPOCH 3: CONTINUE BLACK BRANCH ===")
+    print(f"{'='*60}")
+
     while fcr.current_slot() < epoch4_start - 1:
         black_block = fcr.add_and_apply_block(parent_root=black_tip, graffiti=f"black_e3_{fcr.current_slot()}")
         black_tip = black_block
+        black_blocks_by_slot[fcr.current_slot()] = black_block
+        
         fcr.attest(block_root=black_tip, slot=fcr.current_slot(), participation_rate=100)
         fcr.next_slot()
         fcr.apply_attestations()
         fcr.attestation_pool = []
         fcr.run_fast_confirmation()
+        
+        print(f"slot {fcr.current_slot()}: conf_epoch={spec.get_block_epoch(store, store.confirmed_root)}, uj_epoch={store.unrealized_justified_checkpoint.epoch}, head={encode_hex(fcr.head())[:10]}")
 
-    # Last slot of epoch 3
+    # ==========================================================================
+    # LAST SLOT of epoch 3: First run FCR (GU sampling), THEN release b'
+    # ==========================================================================
+    
     assert fcr.current_slot() == epoch4_start - 1
     
-    b_prime = fcr.add_and_apply_block(parent_root=black_tip, graffiti="b_prime_black")
-    fcr.attest(block_root=b_prime, slot=fcr.current_slot(), participation_rate=100)
-    
-    # GU sampling
+    print(f"\n{'='*60}")
+    print(f"=== EPOCH 3 LAST SLOT (slot {fcr.current_slot()}) ===")
+    print(f"{'='*60}")
+
+    print(f"\n--- BEFORE GU SAMPLING ---")
+    print(f"UJ: epoch={store.unrealized_justified_checkpoint.epoch}, root={encode_hex(store.unrealized_justified_checkpoint.root)[:20]}")
+    print(f"UJ == (C, 2): {store.unrealized_justified_checkpoint.root == c_red and store.unrealized_justified_checkpoint.epoch == 2}")
+    print(f"confirmed_epoch: {spec.get_block_epoch(store, store.confirmed_root)}")
+
+    # Run FCR FIRST - this samples GU
+    assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot() + 1))
     fcr.run_fast_confirmation()
 
     gu = store.current_epoch_observed_justified_checkpoint
-    assert gu.root == c_red, "GU should be c_red"
+    
+    print(f"\n--- AFTER GU SAMPLING (before b') ---")
+    print(f"GU: epoch={gu.epoch}, root={encode_hex(gu.root)[:20]}")
+    print(f"GU == (C, 2): {gu.root == c_red and gu.epoch == 2}")
+    
+    assert gu.root == c_red, f"GU should be c_red, got {encode_hex(gu.root)[:20]}"
+    assert gu.epoch == spec.Epoch(2), f"GU epoch should be 2, got {gu.epoch}"
 
-    print(f"\n=== BEFORE CROSSING EPOCH ===")
-    print(f"slot: {fcr.current_slot()}")
-    print(f"head (via fcr.head()): {encode_hex(fcr.head())[:20]}")
-    print(f"store.justified_checkpoint: epoch={store.justified_checkpoint.epoch}, root={encode_hex(store.justified_checkpoint.root)[:20]}")
-    print(f"store.unrealized_justified_checkpoint: epoch={store.unrealized_justified_checkpoint.epoch}, root={encode_hex(store.unrealized_justified_checkpoint.root)[:20]}")
-    print(f"confirmed_root: {encode_hex(store.confirmed_root)[:20]}")
+    # NOW release b' with EPOCH 3 attestations → justifies (d_root, 3)
+    print(f"\n--- RELEASING b' WITH EPOCH 3 ATTESTATIONS ---")
+    
+    parent_state = store.block_states[black_tip].copy()
+    b_prime_block = build_empty_block(spec, parent_state, fcr.current_slot())
+    b_prime_block.body.graffiti = b"b_prime_LAST".ljust(32, b"\x00")
+    
+    # Add EPOCH 3 attestations targeting black branch
+    for att_slot in range(epoch3_start, fcr.current_slot()):
+        if att_slot in black_blocks_by_slot:
+            block_root_for_att = black_blocks_by_slot[att_slot]
+            att_state = store.block_states[block_root_for_att].copy()
+            slot_attestations = get_valid_attestations_for_block_at_slot(
+                spec, att_state, spec.Slot(att_slot), block_root_for_att,
+                participation_fn=lambda slot, index, committee: committee,
+            )
+            for att in slot_attestations:
+                if len(b_prime_block.body.attestations) < spec.MAX_ATTESTATIONS:
+                    b_prime_block.body.attestations.append(att)
 
-    # Cross into epoch 4 - DO NOT apply attestations yet
+    print(f"Block b': {len(b_prime_block.body.attestations)} attestations from EPOCH 3")
+
+    signed_b_prime = state_transition_and_sign_block(spec, parent_state, b_prime_block)
+    for artefact in add_block(spec, store, signed_b_prime, fcr.test_steps):
+        fcr.blockchain_artefacts.append(artefact)
+    b_prime = signed_b_prime.message.hash_tree_root()
+    black_tip = b_prime
+
+    uj_after_b_prime = store.unrealized_justified_checkpoint
+    uj_of_b_prime = store.unrealized_justifications.get(b_prime, None)
+    
+    print(f"\n--- AFTER b' ---")
+    print(f"Global UJ: epoch={uj_after_b_prime.epoch}, root={encode_hex(uj_after_b_prime.root)[:20]}")
+    print(f"b' internal UJ: epoch={uj_of_b_prime.epoch if uj_of_b_prime else 'None'}, root={encode_hex(uj_of_b_prime.root)[:20] if uj_of_b_prime else 'None'}")
+    print(f"epoch3_black_checkpoint (d_root): {encode_hex(epoch3_black_checkpoint)[:20]}")
+    
+    if uj_of_b_prime:
+        print(f"b' internal UJ == (d_root, 3): {uj_of_b_prime.root == epoch3_black_checkpoint and uj_of_b_prime.epoch == 3}")
+        print(f"b' internal UJ descends from c_double_prime: {spec.is_ancestor(store, uj_of_b_prime.root, c_double_prime)}")
+    
+    print(f"GU STILL == (C, 2): {store.current_epoch_observed_justified_checkpoint.root == c_red and store.current_epoch_observed_justified_checkpoint.epoch == 2}")
+
+    # Verify b' justifies a checkpoint on black branch (d_root, 3)
+    assert uj_of_b_prime is not None, "b' should have unrealized_justifications entry"
+    assert uj_of_b_prime.epoch == spec.Epoch(3), f"b' internal UJ epoch should be 3, got {uj_of_b_prime.epoch}"
+    assert uj_of_b_prime.root == epoch3_black_checkpoint, \
+        f"b' internal UJ root should be d_root (epoch3_black_checkpoint), got {encode_hex(uj_of_b_prime.root)[:20]}"
+    assert spec.is_ancestor(store, uj_of_b_prime.root, c_double_prime), \
+        "b' internal UJ should be on black branch"
+
+    # GU should STILL be (C, 2)
+    assert store.current_epoch_observed_justified_checkpoint.root == c_red, "GU should still be c_red"
+    assert store.current_epoch_observed_justified_checkpoint.epoch == spec.Epoch(2), "GU epoch should still be 2"
+
+    fcr.attest(block_root=b_prime, slot=fcr.current_slot(), participation_rate=100)
+
+    # ==========================================================================
+    # Cross into Epoch 4
+    # ==========================================================================
+    
+    print(f"\n{'='*60}")
+    print(f"=== CROSSING INTO EPOCH 4 ===")
+    print(f"{'='*60}")
+
+    print(f"\n--- BEFORE next_slot() ---")
+    print(f"justified_checkpoint: epoch={store.justified_checkpoint.epoch}")
+    print(f"unrealized_justified_checkpoint: epoch={store.unrealized_justified_checkpoint.epoch}")
+
     fcr.next_slot()
     
-    print(f"\n=== AFTER next_slot() (slot {fcr.current_slot()}) ===")
-    print(f"head (via fcr.head()): {encode_hex(fcr.head())[:20]}")
-    print(f"store.justified_checkpoint: epoch={store.justified_checkpoint.epoch}, root={encode_hex(store.justified_checkpoint.root)[:20]}")
+    print(f"\n--- AFTER next_slot() (slot {fcr.current_slot()}) ---")
+    print(f"justified_checkpoint: epoch={store.justified_checkpoint.epoch}, root={encode_hex(store.justified_checkpoint.root)[:20]}")
+    print(f"justified == (d_root, 3): {store.justified_checkpoint.root == epoch3_black_checkpoint and store.justified_checkpoint.epoch == 3}")
+    print(f"justified descends from c_double_prime (black): {spec.is_ancestor(store, store.justified_checkpoint.root, c_double_prime)}")
     
-    # Check what get_head returns vs raw LMDGHOST
-    head_via_get_head = fcr.head()
-    print(f"head descends from c_red: {spec.is_ancestor(store, head_via_get_head, c_red)}")
-    print(f"head descends from c_double_prime: {spec.is_ancestor(store, head_via_get_head, c_double_prime)}")
-    print(f"b_prime: {encode_hex(b_prime)[:20]}")
-    print(f"head == b_prime: {head_via_get_head == b_prime}")
-
-    # Now apply attestations
     fcr.apply_attestations()
     fcr.attestation_pool = []
 
-    print(f"\n=== AFTER apply_attestations() ===")
-    print(f"head (via fcr.head()): {encode_hex(fcr.head())[:20]}")
-
     assert fcr.current_slot() == epoch4_start
+    assert spec.is_start_slot_at_epoch(fcr.current_slot())
 
-    # Check state BEFORE running FCR
+    # ==========================================================================
+    # Verify ALL preconditions to ensure reset is SPECIFICALLY due to bcand ⊁ GU
+    # ==========================================================================
+    
     head_before_fcr = fcr.head()
     confirmed_before_fcr = store.confirmed_root
     current_epoch = spec.get_current_store_epoch(store)
     gu_root = store.current_epoch_observed_justified_checkpoint.root
+    gu_epoch = store.current_epoch_observed_justified_checkpoint.epoch
     confirmed_epoch = spec.get_block_epoch(store, confirmed_before_fcr)
 
-    print(f"\n=== STATE BEFORE FCR ===")
-    print(f"head: {encode_hex(head_before_fcr)[:20]}")
-    print(f"confirmed: {encode_hex(confirmed_before_fcr)[:20]}")
-    print(f"confirmed_epoch: {confirmed_epoch}, current_epoch: {current_epoch}")
+    print(f"\n{'='*60}")
+    print(f"=== PRECONDITION VERIFICATION ===")
+    print(f"{'='*60}")
     
-    bcand_not_too_old = confirmed_epoch + 1 >= current_epoch
-    bcand_is_canonical = spec.is_ancestor(store, head_before_fcr, confirmed_before_fcr)
+    print(f"\nState:")
+    print(f"  head: {encode_hex(head_before_fcr)[:20]}")
+    print(f"  confirmed (bcand): {encode_hex(confirmed_before_fcr)[:20]}")
+    print(f"  confirmed_epoch: {confirmed_epoch}")
+    print(f"  current_epoch: {current_epoch}")
+    print(f"  GU: epoch={gu_epoch}, root={encode_hex(gu_root)[:20]}")
+    print(f"  c_red: {encode_hex(c_red)[:20]}")
+    print(f"  justified: epoch={store.justified_checkpoint.epoch}, root={encode_hex(store.justified_checkpoint.root)[:20]}")
+
+    print(f"\nAncestry checks:")
+    print(f"  head descends from c_red: {spec.is_ancestor(store, head_before_fcr, c_red)}")
+    print(f"  head descends from c_double_prime: {spec.is_ancestor(store, head_before_fcr, c_double_prime)}")
+    print(f"  confirmed descends from c_red: {spec.is_ancestor(store, confirmed_before_fcr, c_red)}")
+    print(f"  confirmed descends from c_double_prime: {spec.is_ancestor(store, confirmed_before_fcr, c_double_prime)}")
+    print(f"  confirmed descends from GU (c_red): {spec.is_ancestor(store, confirmed_before_fcr, gu_root)}")
+
+    # Calculate all conditions from the spec
+    bcand_too_old = confirmed_epoch + 1 < current_epoch
+    bcand_not_canonical = not spec.is_ancestor(store, head_before_fcr, confirmed_before_fcr)
     bcand_not_descendant_of_gu = not spec.is_ancestor(store, confirmed_before_fcr, gu_root)
-    gu_is_c_red = gu_root == c_red
+    gu_is_c_red = (gu_root == c_red and gu_epoch == spec.Epoch(2))
 
-    print(f"\n=== CONDITIONS ===")
-    print(f"bcand_not_too_old: {bcand_not_too_old}")
-    print(f"bcand_is_canonical: {bcand_is_canonical}")
-    print(f"bcand_not_descendant_of_gu: {bcand_not_descendant_of_gu}")
-    print(f"gu_is_c_red: {gu_is_c_red}")
+    print(f"\n{'='*60}")
+    print(f"=== RESET CONDITION ANALYSIS ===")
+    print(f"{'='*60}")
+    print(f"\nSpec reset condition:")
+    print(f"  IF epoch(bcand) < epoch(t) - 1")
+    print(f"  OR bcand ⊀ head")
+    print(f"  OR (at_epoch_start AND (bcand ⊁ GU OR NOT is_chain_one_confirmed))")
+    print(f"  THEN reset to finalized")
+    
+    print(f"\nCondition evaluation:")
+    print(f"  1. bcand_too_old: {bcand_too_old} (epoch {confirmed_epoch} + 1 < {current_epoch} = {confirmed_epoch + 1 < current_epoch})")
+    print(f"  2. bcand_not_canonical (bcand ⊀ head): {bcand_not_canonical}")
+    print(f"  3. bcand_not_descendant_of_gu (bcand ⊁ GU): {bcand_not_descendant_of_gu}")
+    print(f"  4. GU == (C, 2): {gu_is_c_red}")
 
-    # Run FCR
+    print(f"\n{'='*60}")
+    print(f"=== ASSERTIONS ===")
+    print(f"{'='*60}")
+
+    # These must be FALSE - otherwise reset would be due to these, not bcand ⊁ GU
+    assert not bcand_too_old, \
+        f"FAILED: bcand IS too old! This would trigger reset, not bcand ⊁ GU"
+    print(f"✓ bcand NOT too old (reset not due to this)")
+
+    assert not bcand_not_canonical, \
+        f"FAILED: bcand IS not canonical! This would trigger reset, not bcand ⊁ GU"
+    print(f"✓ bcand IS canonical (reset not due to this)")
+
+    # This must be TRUE - this is what triggers the reset
+    assert bcand_not_descendant_of_gu, \
+        f"FAILED: bcand IS descendant of GU! Reset would not be triggered by bcand ⊁ GU"
+    print(f"✓ bcand NOT descendant of GU (THIS triggers reset)")
+
+    assert gu_is_c_red, \
+        f"FAILED: GU should be (C, 2)!"
+    print(f"✓ GU == (C, 2)")
+
+    # ==========================================================================
+    # Run FCR and verify reset
+    # ==========================================================================
+    
+    print(f"\n{'='*60}")
+    print(f"=== RUNNING FCR ===")
+    print(f"{'='*60}")
+
     fcr.run_fast_confirmation()
 
-    reset_occurred = store.confirmed_root == store.finalized_checkpoint.root
-    print(f"\n=== RESULT ===")
-    print(f"reset_occurred: {reset_occurred}")
+    confirmed_after_fcr = store.confirmed_root
+    finalized = store.finalized_checkpoint.root
+    reset_occurred = confirmed_after_fcr == finalized
+
+    print(f"\nResult:")
+    print(f"  confirmed BEFORE: {encode_hex(confirmed_before_fcr)[:20]}")
+    print(f"  confirmed AFTER: {encode_hex(confirmed_after_fcr)[:20]}")
+    print(f"  finalized: {encode_hex(finalized)[:20]}")
+    print(f"  RESET OCCURRED: {reset_occurred}")
+
+    assert reset_occurred, \
+        f"FAILED: Expected reset to finalized!"
+
+    print(f"\n{'='*60}")
+    print(f"=== TEST PASSED ===")
+    print(f"{'='*60}")
+    print(f"Reset was triggered SPECIFICALLY by: bcand ⊁ GU")
+    print(f"  - bcand was NOT too old (condition 1 was FALSE)")
+    print(f"  - bcand WAS canonical (condition 2 was FALSE)")  
+    print(f"  - bcand was NOT descendant of GU (condition 3 was TRUE) ← TRIGGER")
+    print(f"{'='*60}")
 
     yield from fcr.get_test_artefacts()
