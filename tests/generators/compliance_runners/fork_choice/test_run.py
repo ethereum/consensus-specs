@@ -10,6 +10,7 @@ from ruamel.yaml import YAML
 from snappy import uncompress
 from tqdm import tqdm
 
+from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.helpers.specs import spec_targets
 from eth2spec.utils import bls
 
@@ -88,11 +89,7 @@ def run_test(test_info):
                     except AssertionError:
                         pass
             else:
-                try:
-                    spec.on_block(store, signed_block)
-                    assert False
-                except AssertionError:
-                    pass
+                expect_assertion_error(lambda: spec.on_block(store, signed_block))
         elif "attestation" in step:
             att_id = step["attestation"]
             valid = step.get("valid", True)
@@ -100,11 +97,9 @@ def run_test(test_info):
             if valid:
                 spec.on_attestation(store, attestation, is_from_block=False)
             else:
-                try:
-                    spec.on_attestation(store, attestation, is_from_block=False)
-                    assert False
-                except AssertionError:
-                    pass
+                expect_assertion_error(
+                    lambda: spec.on_attestation(store, attestation, is_from_block=False)
+                )
         elif "attester_slashing" in step:
             slashing_id = step["attester_slashing"]
             valid = step.get("valid", True)

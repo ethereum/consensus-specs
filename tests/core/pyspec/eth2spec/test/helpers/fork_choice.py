@@ -4,6 +4,7 @@ from typing import Any, NamedTuple
 from eth_utils import encode_hex
 
 from eth2spec.fulu.mainnet import DataColumnSidecar
+from eth2spec.test.context import expect_assertion_error
 from eth2spec.test.exceptions import BlockNotFoundException
 from eth2spec.test.helpers.attestations import (
     next_epoch_with_attestations,
@@ -232,12 +233,10 @@ def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_bl
 
 def run_on_attestation(spec, store, attestation, is_from_block=False, valid=True):
     if not valid:
-        try:
-            spec.on_attestation(store, attestation, is_from_block=is_from_block)
-        except AssertionError:
-            return
-        else:
-            assert False
+        expect_assertion_error(
+            lambda: spec.on_attestation(store, attestation, is_from_block=is_from_block)
+        )
+        return
 
     spec.on_attestation(store, attestation, is_from_block=is_from_block)
 
@@ -300,12 +299,8 @@ def on_tick_and_append_step(spec, store, time, test_steps):
 
 def run_on_block(spec, store, signed_block, valid=True):
     if not valid:
-        try:
-            spec.on_block(store, signed_block)
-        except AssertionError:
-            return
-        else:
-            assert False
+        expect_assertion_error(lambda: spec.on_block(store, signed_block))
+        return
 
     spec.on_block(store, signed_block)
     root = signed_block.message.hash_tree_root()
@@ -402,12 +397,8 @@ def add_block(
 
 def run_on_attester_slashing(spec, store, attester_slashing, valid=True):
     if not valid:
-        try:
-            spec.on_attester_slashing(store, attester_slashing)
-        except AssertionError:
-            return
-        else:
-            assert False
+        expect_assertion_error(lambda: spec.on_attester_slashing(store, attester_slashing))
+        return
 
     spec.on_attester_slashing(store, attester_slashing)
 
@@ -417,18 +408,14 @@ def add_attester_slashing(spec, store, attester_slashing, test_steps, valid=True
     yield get_attester_slashing_file_name(attester_slashing), attester_slashing
 
     if not valid:
-        try:
-            run_on_attester_slashing(spec, store, attester_slashing)
-        except AssertionError:
-            test_steps.append(
-                {
-                    "attester_slashing": slashing_file_name,
-                    "valid": False,
-                }
-            )
-            return
-        else:
-            assert False
+        expect_assertion_error(lambda: run_on_attester_slashing(spec, store, attester_slashing))
+        test_steps.append(
+            {
+                "attester_slashing": slashing_file_name,
+                "valid": False,
+            }
+        )
+        return
 
     run_on_attester_slashing(spec, store, attester_slashing)
     test_steps.append({"attester_slashing": slashing_file_name})
