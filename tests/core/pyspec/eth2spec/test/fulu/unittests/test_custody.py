@@ -68,3 +68,23 @@ def test_compute_columns_for_custody_group_out_of_bound_custody_group(spec):
     expect_assertion_error(
         lambda: spec.compute_columns_for_custody_group(spec.config.NUMBER_OF_CUSTODY_GROUPS)
     )
+
+
+@with_fulu_and_later
+@spec_test
+@single_phase
+def test_get_custody_groups_optimization(spec):
+    """
+    Verify optimization skips computation if all groups are custodied.
+    """
+    node_id = 12345
+    # We ask for the MAXIMUM number of groups
+    custody_group_count = spec.config.NUMBER_OF_CUSTODY_GROUPS
+
+    result = spec.get_custody_groups(node_id, custody_group_count)
+
+    # The optimization should return a perfect sequential list: [0, 1, 2, ... 127]
+    expected = [spec.CustodyIndex(i) for i in range(spec.config.NUMBER_OF_CUSTODY_GROUPS)]
+
+    assert len(result) == spec.config.NUMBER_OF_CUSTODY_GROUPS
+    assert result == expected
