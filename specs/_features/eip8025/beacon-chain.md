@@ -236,6 +236,8 @@ def process_execution_proof(
     # Verify prover is whitelisted
     validator_pubkeys = [v.pubkey for v in state.validators]
     assert prover_pubkey in validator_pubkeys
+    validator_index = ValidatorIndex(validator_pubkeys.index(prover_pubkey))
+    assert is_active_validator(state.validators[validator_index], get_current_epoch(state))
 
     domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
     signing_root = compute_signing_root(proof_message, domain)
