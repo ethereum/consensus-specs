@@ -1,5 +1,6 @@
 from eth2spec.test.context import (
     always_bls,
+    expect_assertion_error,
     spec_state_test,
     with_gloas_and_later,
 )
@@ -24,11 +25,6 @@ def run_execution_payload_processing(
     yield "signed_envelope", signed_envelope
     yield "execution", {"execution_valid": execution_valid}
 
-    if not valid:
-        expect_assertion_error = True
-    else:
-        expect_assertion_error = False
-
     called_new_payload = False
 
     class TestEngine(spec.NoopExecutionEngine):
@@ -38,13 +34,12 @@ def run_execution_payload_processing(
             assert new_payload_request.execution_payload == signed_envelope.message.payload
             return execution_valid
 
-    if expect_assertion_error:
-        try:
-            # Use full verification for invalid tests to catch the right errors
-            spec.process_execution_payload(state, signed_envelope, TestEngine(), verify=True)
-            assert False, "Expected AssertionError but none was raised"
-        except AssertionError:
-            pass
+    if not valid:
+        expect_assertion_error(
+            lambda: spec.process_execution_payload(
+                state, signed_envelope, TestEngine(), verify=True
+            )
+        )
         yield "post", None
         return
 

@@ -1,6 +1,7 @@
 from eth2spec.test.context import (
     always_bls,
     default_activation_threshold,
+    expect_assertion_error,
     large_validator_set,
     single_phase,
     spec_state_test,
@@ -27,11 +28,7 @@ def run_payload_attestation_processing(spec, state, payload_attestation, valid=T
     yield "payload_attestation", payload_attestation
 
     if not valid:
-        try:
-            spec.process_payload_attestation(state, payload_attestation)
-            assert False, "Expected AssertionError"
-        except AssertionError:
-            pass
+        expect_assertion_error(lambda: spec.process_payload_attestation(state, payload_attestation))
         return
 
     spec.process_payload_attestation(state, payload_attestation)

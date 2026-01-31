@@ -1,6 +1,12 @@
 import random
 
-from eth2spec.test.context import only_generator, single_phase, spec_test, with_phases
+from eth2spec.test.context import (
+    expect_assertion_error,
+    only_generator,
+    single_phase,
+    spec_test,
+    with_phases,
+)
 from eth2spec.test.helpers.constants import FULU
 from eth2spec.test.utils.kzg_tests import (
     CELL_RANDOM_VALID1,
@@ -27,13 +33,8 @@ def _run_recover_cells_and_kzg_proofs_test(
         if expected_recovered_proofs is not None:
             assert recovered_proofs == expected_recovered_proofs
     else:
-        try:
-            recovered_cells, recovered_proofs = spec.recover_cells_and_kzg_proofs(
-                cell_indices, cells
-            )
-            assert False, "should raise exception"
-        except Exception:
-            recovered_cells, recovered_proofs = None, None
+        expect_assertion_error(lambda: spec.recover_cells_and_kzg_proofs(cell_indices, cells))
+        recovered_cells, recovered_proofs = None, None
 
     yield (
         "data",

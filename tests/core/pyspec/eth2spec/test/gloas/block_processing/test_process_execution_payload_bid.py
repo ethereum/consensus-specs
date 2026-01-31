@@ -1,5 +1,6 @@
 from eth2spec.test.context import (
     always_bls,
+    expect_assertion_error,
     spec_state_test,
     with_gloas_and_later,
 )
@@ -25,11 +26,7 @@ def run_execution_payload_bid_processing(spec, state, block, valid=True):
     yield "block", block
 
     if not valid:
-        try:
-            spec.process_execution_payload_bid(state, block)
-            assert False, "Expected AssertionError but none was raised"
-        except AssertionError:
-            pass
+        expect_assertion_error(lambda: spec.process_execution_payload_bid(state, block))
         yield "post", None
         return
 
