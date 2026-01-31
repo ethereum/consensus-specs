@@ -274,14 +274,28 @@ def test_process_payload_attestation_no_attesting_indices(spec, state):
 @always_bls
 def test_process_payload_attestation_cross_epoch_wrong_domain(spec, state):
     """
-    Test that payload attestation signed with wrong epoch domain fails
+    Test that payload attestation signed with wrong epoch domain fails.
+
+    The signature uses the wrong epoch's domain (epoch 1) instead of the
+    attested slot's epoch domain (epoch 0). To ensure different domains,
+    we set the fork boundary at epoch 1 so epochs 0 and 1 use different
+    fork versions.
     """
     # Advance to first slot of next epoch, attest to last slot of previous epoch
     next_epoch(spec, state)
 
     attested_slot = state.slot - 1
+    correct_epoch = spec.compute_epoch_at_slot(attested_slot)
     wrong_epoch = spec.get_current_epoch(state)
-    assert wrong_epoch != spec.compute_epoch_at_slot(attested_slot)
+    assert wrong_epoch != correct_epoch
+
+    # Set fork boundary at wrong_epoch so the two epochs use different fork versions.
+    # - correct_epoch (0) < fork.epoch (1) -> uses previous_version
+    # - wrong_epoch (1) >= fork.epoch (1) -> uses current_version
+    state.fork.epoch = wrong_epoch
+    # Ensure fork versions are different
+    state.fork.previous_version = spec.Version("0x00000001")
+    state.fork.current_version = spec.Version("0x00000002")
 
     payload_attestation = prepare_signed_payload_attestation(
         spec, state, slot=attested_slot, domain_epoch=wrong_epoch
