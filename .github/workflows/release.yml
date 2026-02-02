@@ -40,7 +40,7 @@ jobs:
         with:
           name: ${{ steps.tag.outputs.name }}
           tag: ${{ steps.tag.outputs.name }}
-          commitish: ${{ github.sha }}
+          include-pre-releases: true
           prerelease: ${{ contains(steps.tag.outputs.name, '-') }}
           publish: false
         env:
