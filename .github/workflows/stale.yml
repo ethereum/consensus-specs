@@ -7,7 +7,7 @@ on:
 
 jobs:
   stale:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     permissions:
       actions: write
       issues: write
