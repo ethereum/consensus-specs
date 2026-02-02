@@ -60,7 +60,7 @@ def on_slot_start_after_past_attestations_applied_and_append_step(spec, store, t
 class SystemRun:
     number_of_slots: int
     participation_rate: int = 100
-    valid_proposal: bool = True
+    has_proposal: bool = True
     release_att_pool: bool = True
     atts_in_block: bool = True
     apply_atts: bool = True
@@ -69,6 +69,8 @@ class SystemRun:
     branch_root_slot_offset: int = None
     attesting_root: object = None
     attesting_root_slot_offset: int = None
+    slashing_percentage: int = None
+    slash_participants_in_slot_with_offset: int = None
 
     def get_block_root_by_slot(self, store, slot):
         block_roots_at_slot = [r for (r, b) in store.blocks.items() if b.slot == slot]
@@ -92,6 +94,14 @@ class SystemRun:
             return self.get_block_root_by_slot(store, branch_root_slot)
         else:
             return default_root
+
+    def has_slashing(self):
+        return (
+            self.slashing_percentage != None or self.slash_participants_in_slot_with_offset != None
+        )
+
+    def is_pure_slashing(self):
+        return self.number_of_slots == 0 and self.has_slashing()
 
 
 class FCRTest:
@@ -289,11 +299,16 @@ class FCRTest:
             )
         return committee
 
-    def sample_sleepy_participants(self, shuffling_source, slot, participation_rate):
+    def sample_fraction_of_participants(self, shuffling_source, slot, fraction):
         slot_committee = self.get_slot_committee(shuffling_source, slot)
-        sleepy_participants_count = len(slot_committee) * (100 - participation_rate) // 100
+        participants_count = len(slot_committee) * fraction // 100
         self.rng.shuffle(slot_committee)
-        return set(slot_committee[:sleepy_participants_count])
+        return set(slot_committee[:participants_count])
+
+    def sample_sleepy_participants(self, shuffling_source, slot, participation_rate):
+        return self.sample_fraction_of_participants(
+            shuffling_source, slot, 100 - participation_rate
+        )
 
     def apply_attester_slashing(
         self, slashing_percentage: int = None, slashing_indices: list[int] = None, slot=None
@@ -323,11 +338,35 @@ class FCRTest:
 
         return attester_slashing
 
+    def execute_slashing(self, run: SystemRun):
+        if run.slash_participants_in_slot_with_offset is not None:
+            if run.slashing_percentage is None:
+                slashing_percentage = 100
+            else:
+                slashing_percentage = run.slashing_percentage
+
+            if slashing_percentage > 0:
+                shuffling_source = self.store.block_states[self.head()]
+                slot = int(self.current_slot()) + run.slash_participants_in_slot_with_offset
+                participants = self.sample_fraction_of_participants(
+                    shuffling_source, slot, slashing_percentage
+                )
+                self.apply_attester_slashing(slashing_indices=participants)
+        elif run.slashing_percentage is not None and run.slashing_percentage > 0:
+            self.apply_attester_slashing(slashing_percentage=run.slashing_percentage)
+
     def execute_run(self, run: SystemRun):
+        print(run)
+
+        if run.is_pure_slashing():
+            # Apply slashing and return
+            self.execute_slashing(run)
+            return
+
         tip_root = run.get_branch_root(self.store, self.head(), self.current_slot())
         for _ in range(run.number_of_slots):
             # Propose
-            if run.valid_proposal:
+            if run.has_proposal:
                 tip_root = self.add_and_apply_block(
                     parent_root=tip_root,
                     release_att_pool=run.release_att_pool,
@@ -344,6 +383,10 @@ class FCRTest:
                 participation_rate=run.participation_rate,
             )
 
+            # Slash
+            if run.has_slashing():
+                self.execute_slashing(run)
+
             # Next slot
             self.next_slot()
 
@@ -355,7 +398,6 @@ class FCRTest:
             if run.with_fast_confirmation:
                 self.run_fast_confirmation()
 
-        print(run)
         if len(attestations) > 0:
             effective_participation = (
                 len([bit for bit in attestations[0].aggregation_bits if bit])
@@ -403,10 +445,12 @@ class CurrentEpochTestSpecification:
         )
         assert self.target_will_be_justified == spec.will_current_target_be_justified(store)
         if self.is_one_confirmed:
-            assert all(
+            is_one_confirmed_list = [
                 spec.is_one_confirmed(store, spec.get_current_balance_source(store), root)
                 for root in canonical_roots
-            )
+            ]
+            print(is_one_confirmed_list)
+            assert all(is_one_confirmed_list)
         else:
             assert not spec.is_one_confirmed(
                 store, spec.get_current_balance_source(store), spec.get_head(store)
@@ -426,6 +470,15 @@ class CurrentEpochTestSpecification:
         else:
             return store.confirmed_root
 
+    def first_block_at_mid_epoch(self):
+        return self.first_block_in_epoch and not self.second_slot_call
+
+    def one_confirmed_but_no_justification(self):
+        return self.is_one_confirmed and not self.target_will_be_justified
+
+    def first_block_in_second_slot(self):
+        return self.first_block_in_epoch and self.second_slot_call
+
 
 class CurrentEpochTestBuilder:
     def __init__(self, spec, state, seed, test_spec: CurrentEpochTestSpecification):
@@ -439,6 +492,20 @@ class CurrentEpochTestBuilder:
         if self.test_spec.second_slot_call:
             # Nothing to do here
             pass
+        elif (
+            self.test_spec.first_block_in_epoch
+            and self.test_spec.one_confirmed_but_no_justification()
+        ):
+            # Slash a fraction of validators each slot
+            # and leave yet enough unslashed to make is_one_confirmed to pass
+            # but will_current_target_be_justified to fail
+            runs.append(
+                SystemRun(
+                    number_of_slots=1,
+                    slashing_percentage=45,
+                    slash_participants_in_slot_with_offset=0,
+                )
+            )
         elif self.test_spec.first_block_in_epoch:
             # Move on to the seconds slot in an epoch
             # with participation low enough to prevent confirming a block
@@ -448,6 +515,17 @@ class CurrentEpochTestBuilder:
             # Move on to the seconds slot in an epoch
             # and confirm a block
             runs.append(SystemRun(number_of_slots=1))
+
+            if self.test_spec.one_confirmed_but_no_justification():
+                # Slash entire committee that has already confirmed a block,
+                # this will result in will_current_target_be_justified to fail
+                runs.append(
+                    SystemRun(
+                        number_of_slots=0,
+                        slashing_percentage=100,
+                        slash_participants_in_slot_with_offset=-1,
+                    )
+                )
 
         return runs
 
@@ -464,11 +542,26 @@ class CurrentEpochTestBuilder:
         if self.test_spec.second_slot_call:
             # Nothing to do here
             pass
+        elif (
+            self.test_spec.first_block_in_epoch
+            and self.test_spec.one_confirmed_but_no_justification()
+        ):
+            # Slash a fraction of validators each slot
+            # and leave yet enough unslashed to make is_one_confirmed to pass
+            # but will_current_target_be_justified to fail
+            runs.append(
+                SystemRun(
+                    number_of_slots=1,
+                    slashing_percentage=45,
+                    slash_participants_in_slot_with_offset=0,
+                    atts_in_block=False,
+                )
+            )
         elif self.test_spec.first_block_in_epoch:
             # Move on to the seconds slot in an epoch
             # without including atts in a block to prevent UJ update
-            # in this case block won't be confirmed as UJ is stale
-            runs.append(SystemRun(number_of_slots=1, atts_in_block=False))
+            # and low participation enough to prevent is_one_confirmed from being True
+            runs.append(SystemRun(number_of_slots=1, participation_rate=85, atts_in_block=False))
         else:
             # Create the following block tree:
             #   B
@@ -486,9 +579,19 @@ class CurrentEpochTestBuilder:
             runs.append(
                 SystemRun(number_of_slots=1, atts_in_block=True, attesting_root_slot_offset=-1)
             )
-            # Create C and attest to C, so C becomes the head,
-            # confirm A, C will be confirmed in the final run
+            # Create C and attest to C, so C becomes the head, confirm A
             runs.append(SystemRun(number_of_slots=1, branch_root_slot_offset=-2))
+
+            if self.test_spec.one_confirmed_but_no_justification():
+                # Slash entire committee that has confirmed block A,
+                # this will result in will_current_target_be_justified to fail
+                runs.append(
+                    SystemRun(
+                        number_of_slots=0,
+                        slashing_percentage=100,
+                        slash_participants_in_slot_with_offset=-3,
+                    )
+                )
 
         return runs
 
@@ -511,12 +614,44 @@ class CurrentEpochTestBuilder:
             # nor to justify a target
             return 0
 
+    def create_final_run(self) -> SystemRun:
+        if self.test_spec.first_block_at_mid_epoch():
+            if self.test_spec.one_confirmed_but_no_justification():
+                # Slash a fraction of validators each slot
+                # and leave yet enough unslashed to make is_one_confirmed to pass
+                # but will_current_target_be_justified to fail
+                slashing_percentage = 45
+            else:
+                slashing_percentage = 0
+
+            return SystemRun(
+                number_of_slots=1,
+                # Do not propose when the first block of the epoch
+                # should be confirmed mid epoch
+                has_proposal=False,
+                # Prevent UJ update unless UJ must be fresh
+                atts_in_block=self.test_spec.head_uj_fresh,
+                participation_rate=self.get_final_run_participation_rate(),
+                slashing_percentage=slashing_percentage,
+                slash_participants_in_slot_with_offset=0,
+                # Final run without fast confirmation as it will be triggered by the test execution
+                with_fast_confirmation=False,
+            )
+        else:
+            return SystemRun(
+                number_of_slots=1,
+                # Prevent UJ update unless UJ must be fresh
+                atts_in_block=self.test_spec.head_uj_fresh,
+                participation_rate=self.get_final_run_participation_rate(),
+                # Final run without fast confirmation as it will be triggered by the test execution
+                with_fast_confirmation=False,
+            )
+
     def create_system_runs(self) -> list[SystemRun]:
         if self.test_spec.second_slot_call:
             assert self.test_spec.first_block_in_epoch, "Impossible in the second slot of an epoch"
-
-        if self.test_spec.is_one_confirmed:
-            assert self.test_spec.target_will_be_justified, "Unsupported"
+        if self.test_spec.one_confirmed_but_no_justification():
+            assert not self.test_spec.first_block_in_second_slot(), "The test is hard to build"
 
         # Initial run to the second epoch
         runs = [SystemRun(number_of_slots=self.spec.SLOTS_PER_EPOCH)]
@@ -524,16 +659,8 @@ class CurrentEpochTestBuilder:
         # Mid runs depending on the test spec
         runs.extend(self.create_mid_runs())
 
-        # Final run without fast confirmation as it will be triggered by the test execution
-        runs.append(
-            SystemRun(
-                number_of_slots=1,
-                # Prevent UJ update unless UJ must be fresh
-                atts_in_block=self.test_spec.head_uj_fresh,
-                participation_rate=self.get_final_run_participation_rate(),
-                with_fast_confirmation=False,
-            )
-        )
+        # Final run
+        runs.append(self.create_final_run())
 
         return runs
 

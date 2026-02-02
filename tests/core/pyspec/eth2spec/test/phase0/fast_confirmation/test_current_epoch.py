@@ -277,3 +277,59 @@ def test_fcr_current_epoch_17(spec, state):
         is_one_confirmed=False,
     )
     yield from build_and_run_current_epoch_test(spec, state, 17, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_current_epoch_18(spec, state):
+    test_spec = CurrentEpochTestSpecification(
+        head_uj_fresh=True,
+        second_slot_call=False,
+        first_block_in_epoch=False,
+        target_will_be_justified=False,
+        is_one_confirmed=True,
+    )
+    yield from build_and_run_current_epoch_test(spec, state, 18, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_current_epoch_19(spec, state):
+    test_spec = CurrentEpochTestSpecification(
+        head_uj_fresh=False,
+        second_slot_call=False,
+        first_block_in_epoch=False,
+        target_will_be_justified=False,
+        is_one_confirmed=True,
+    )
+    yield from build_and_run_current_epoch_test(spec, state, 19, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_current_epoch_20(spec, state):
+    test_spec = CurrentEpochTestSpecification(
+        head_uj_fresh=True,
+        second_slot_call=False,
+        first_block_in_epoch=True,
+        target_will_be_justified=False,
+        is_one_confirmed=True,
+    )
+    yield from build_and_run_current_epoch_test(spec, state, 20, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_current_epoch_21(spec, state):
+    test_spec = CurrentEpochTestSpecification(
+        head_uj_fresh=False,
+        second_slot_call=False,
+        first_block_in_epoch=True,
+        target_will_be_justified=False,
+        is_one_confirmed=True,
+    )
+    yield from build_and_run_current_epoch_test(spec, state, 21, test_spec)
