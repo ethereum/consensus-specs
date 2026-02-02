@@ -80,6 +80,12 @@ index) has been finalized. Since registrations occur as soon as deposits reach
 the beacon chain, builders typically become active two epochs after submitting
 their deposit.
 
+*Note*: At the fork, pending deposits with the `BUILDER_WITHDRAWAL_PREFIX` are
+applied to the builder registry. The builder's `deposit_epoch` is set to the
+epoch of the pending deposit, not the fork epoch. Therefore, if that epoch is
+finalized at the fork, the builder will be immediately active. See
+`onboard_builders_from_pending_deposits` for details.
+
 ## Builder activities
 
 Builders have two optional activities: submitting bids and submitting payloads.
