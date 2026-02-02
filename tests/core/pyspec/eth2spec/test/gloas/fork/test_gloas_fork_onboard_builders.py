@@ -119,6 +119,34 @@ def test_fork_single_builder_deposit(spec, phases, state):
 @spec_test
 @with_state
 @with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_builder_deposit_uses_deposit_slot_epoch(spec, phases, state):
+    """
+    Test fork uses the deposit's slot epoch when onboarding builders.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+
+    # Set state slot to a later epoch than the deposit slot
+    state.slot = post_spec.SLOTS_PER_EPOCH * 2
+
+    builder_pubkey = builder_pubkeys[0]
+    pending_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
+    pending_deposit.slot = state.slot - 1
+    state.pending_deposits = [pending_deposit]
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    assert len(post_state.builders) == 1
+    builder = post_state.builders[0]
+    assert builder.deposit_epoch == post_spec.compute_epoch_at_slot(pending_deposit.slot)
+    assert builder.deposit_epoch != post_spec.get_current_epoch(post_state)
+    assert len(post_state.pending_deposits) == 0
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
 def test_fork_multiple_builder_deposits(spec, phases, state):
     """
     Test fork with multiple pending deposits with builder credentials.

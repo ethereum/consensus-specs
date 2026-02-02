@@ -230,13 +230,13 @@ def run_withdrawals_processing(
 
     pre_state = state.copy()
     yield "pre", state
-    yield "execution_payload", execution_payload
 
     if not valid:
         with pytest.raises(AssertionError):
             if is_post_gloas(spec):
                 spec.process_withdrawals(state)
             else:
+                yield "execution_payload", execution_payload
                 spec.process_withdrawals(state, execution_payload)
         yield "post", None
         return
@@ -244,6 +244,7 @@ def run_withdrawals_processing(
     if is_post_gloas(spec):
         spec.process_withdrawals(state)
     else:
+        yield "execution_payload", execution_payload
         spec.process_withdrawals(state, execution_payload)
 
     yield "post", state

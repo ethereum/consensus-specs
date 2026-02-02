@@ -651,7 +651,7 @@ Set `attestation_data.beacon_block_root = hash_tree_root(head_block)`.
 
 - Let `start_slot = compute_start_slot_at_epoch(get_current_epoch(head_state))`.
 - Let
-  `epoch_boundary_block_root = hash_tree_root(head_block) if start_slot == head_state.slot else get_block_root(state, get_current_epoch(head_state))`.
+  `epoch_boundary_block_root = hash_tree_root(head_block) if start_slot == head_state.slot else get_block_root(head_state, get_current_epoch(head_state))`.
 
 #### Construct attestation
 
