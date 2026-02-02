@@ -315,8 +315,7 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
 ```python
 def is_supporting_vote(store: Store, node: ForkChoiceNode, message: LatestMessage) -> bool:
     """
-    Returns whether a vote for ``message.root`` supports the chain containing the beacon block ``node.root`` with the
-    payload contents indicated by ``node.payload_status`` as head during slot ``node.slot``.
+    Returns whether the vote ``message`` supports the chain containing the forkchoice node ``node``.
     """
     block = store.blocks[node.root]
     if node.root == message.root:
