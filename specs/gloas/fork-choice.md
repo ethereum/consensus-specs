@@ -289,8 +289,7 @@ def is_supporting_vote(store: Store, node: ForkChoiceNode, message: LatestMessag
     if node.root == message.root:
         if node.payload_status == PAYLOAD_STATUS_PENDING:
             return True
-        if message.slot <= block.slot:
-            return False
+        assert message.slot >= block.slot
         if message.payload_present:
             return node.payload_status == PAYLOAD_STATUS_FULL
         else:
