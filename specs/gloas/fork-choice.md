@@ -15,7 +15,7 @@
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [New `notify_ptc_messages`](#new-notify_ptc_messages)
   - [New `is_payload_timely`](#new-is_payload_timely)
-  - [New `is_payload_data_avaialble`](#new-is_payload_data_avaialble)
+  - [New `is_payload_data_available`](#new-is_payload_data_available)
   - [New `get_parent_payload_status`](#new-get_parent_payload_status)
   - [New `is_parent_node_full`](#new-is_parent_node_full)
   - [Modified `get_ancestor`](#modified-get_ancestor)
@@ -233,7 +233,7 @@ def is_payload_timely(store: Store, root: Root) -> bool:
     return sum(store.payload_timeliness_vote[root]) > PAYLOAD_TIMELY_THRESHOLD
 ```
 
-### New `is_payload_data_avaialble`
+### New `is_payload_data_available`
 
 ```python
 def is_payload_data_available(store: Store, root: Root) -> bool:
@@ -315,7 +315,8 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
 ```python
 def is_supporting_vote(store: Store, node: ForkChoiceNode, message: LatestMessage) -> bool:
     """
-    Returns whether the vote ``message`` supports the chain containing the forkchoice node ``node``.
+    Returns whether the vote ``message`` supports the chain containing the
+    forkchoice node ``node``.
     """
     block = store.blocks[node.root]
     if node.root == message.root:
