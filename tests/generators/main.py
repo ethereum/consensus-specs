@@ -9,7 +9,7 @@ if __name__ == "__main__":
 
     test_cases = []
     for filename in os.listdir(runners_dir):
-        if not filename.endswith(".py"):
+        if not filename.endswith(".py") or filename == "__init__.py":
             continue
         module_name = filename.replace(".py", "")
         full_module = f"tests.generators.runners.{module_name}"

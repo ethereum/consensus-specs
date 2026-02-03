@@ -1,6 +1,12 @@
 from eth_utils import encode_hex
 
-from eth2spec.test.context import only_generator, single_phase, spec_test, with_phases
+from eth2spec.test.context import (
+    expect_assertion_error,
+    only_generator,
+    single_phase,
+    spec_test,
+    with_phases,
+)
 from eth2spec.test.helpers.constants import FULU
 from eth2spec.test.utils.kzg_tests import (
     encode_hex_list,
@@ -17,13 +23,11 @@ def _run_compute_verify_cell_kzg_proof_batch_challenge_test(
             commitments, commitment_indices, cell_indices, cosets_evals, proofs
         )
     else:
-        try:
-            challenge = spec.compute_verify_cell_kzg_proof_batch_challenge(
+        expect_assertion_error(
+            lambda: spec.compute_verify_cell_kzg_proof_batch_challenge(
                 commitments, commitment_indices, cell_indices, cosets_evals, proofs
             )
-            assert False, "should raise exception"
-        except Exception:
-            pass
+        )
 
     yield (
         "data",

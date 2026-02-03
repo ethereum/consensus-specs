@@ -1,5 +1,6 @@
 from eth2spec.test.context import (
     always_bls,
+    expect_assertion_error,
     spec_state_test,
     with_gloas_and_later,
 )
@@ -24,11 +25,6 @@ def run_execution_payload_processing(
     yield "signed_envelope", signed_envelope
     yield "execution", {"execution_valid": execution_valid}
 
-    if not valid:
-        expect_assertion_error = True
-    else:
-        expect_assertion_error = False
-
     called_new_payload = False
 
     class TestEngine(spec.NoopExecutionEngine):
@@ -38,13 +34,12 @@ def run_execution_payload_processing(
             assert new_payload_request.execution_payload == signed_envelope.message.payload
             return execution_valid
 
-    if expect_assertion_error:
-        try:
-            # Use full verification for invalid tests to catch the right errors
-            spec.process_execution_payload(state, signed_envelope, TestEngine(), verify=True)
-            assert False, "Expected AssertionError but none was raised"
-        except AssertionError:
-            pass
+    if not valid:
+        expect_assertion_error(
+            lambda: spec.process_execution_payload(
+                state, signed_envelope, TestEngine(), verify=True
+            )
+        )
         yield "post", None
         return
 
@@ -66,7 +61,6 @@ def prepare_execution_payload_envelope(
     state_root=None,
     execution_payload=None,
     execution_requests=None,
-    blob_kzg_commitments=None,
     valid_signature=True,
 ):
     """
@@ -98,9 +92,6 @@ def prepare_execution_payload_envelope(
                 spec.ConsolidationRequest, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
             ](),
         )
-
-    if blob_kzg_commitments is None:
-        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
 
     # Create a copy of state for computing state_root after execution payload processing
     if state_root is None:
@@ -144,7 +135,6 @@ def prepare_execution_payload_envelope(
         builder_index=builder_index,
         beacon_block_root=beacon_block_root,
         slot=slot,
-        blob_kzg_commitments=blob_kzg_commitments,
         state_root=state_root,
     )
 
@@ -168,7 +158,9 @@ def prepare_execution_payload_envelope(
     )
 
 
-def setup_state_with_payload_bid(spec, state, builder_index=None, value=None, prev_randao=None):
+def setup_state_with_payload_bid(
+    spec, state, builder_index=None, value=None, prev_randao=None, blob_kzg_commitments=None
+):
     """
     Helper to setup state with a committed execution payload bid.
     This simulates the state after process_execution_payload_bid has run.
@@ -182,8 +174,10 @@ def setup_state_with_payload_bid(spec, state, builder_index=None, value=None, pr
     if prev_randao is None:
         prev_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
 
+    if blob_kzg_commitments is None:
+        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+
     # Create and set the latest execution payload bid
-    kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
     bid = spec.ExecutionPayloadBid(
         parent_block_hash=state.latest_block_hash,
         parent_block_root=state.latest_block_header.hash_tree_root(),
@@ -194,7 +188,7 @@ def setup_state_with_payload_bid(spec, state, builder_index=None, value=None, pr
         builder_index=builder_index,
         slot=state.slot,
         value=value,
-        blob_kzg_commitments_root=kzg_list.hash_tree_root(),
+        blob_kzg_commitments=blob_kzg_commitments,
     )
     state.latest_execution_payload_bid = bid
 
@@ -376,19 +370,13 @@ def test_process_execution_payload_with_blob_commitments(spec, state):
     """
     builder_index = 0
 
-    setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(3000000))
-
-    # Create blob commitments
-    blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
-        [
-            spec.KZGCommitment(b"\x42" * 48),
-            spec.KZGCommitment(b"\x43" * 48),
-        ]
-    )
-
-    # Update bid with correct blob commitments root
-    state.latest_execution_payload_bid.blob_kzg_commitments_root = (
-        blob_kzg_commitments.hash_tree_root()
+    # Create bid with blob commitments
+    setup_state_with_payload_bid(
+        spec,
+        state,
+        builder_index,
+        spec.Gwei(3000000),
+        blob_kzg_commitments=[spec.KZGCommitment(b"\x42" * 48), spec.KZGCommitment(b"\x43" * 48)],
     )
 
     execution_payload = build_empty_execution_payload(spec, state)
@@ -401,7 +389,6 @@ def test_process_execution_payload_with_blob_commitments(spec, state):
         state,
         builder_index=builder_index,
         execution_payload=execution_payload,
-        blob_kzg_commitments=blob_kzg_commitments,
     )
 
     # Capture pre-state for payment verification
@@ -641,36 +628,32 @@ def test_process_execution_payload_wrong_builder_index(spec, state):
 @with_gloas_and_later
 @spec_state_test
 @always_bls
-def test_process_execution_payload_wrong_blob_commitments_root(spec, state):
+def test_process_execution_payload_missing_expected_withdrawal(spec, state):
     """
-    Test wrong blob KZG commitments root fails with separate builder
+    Verify payload rejected when it omits a withdrawal expected by the state.
     """
     builder_index = 0
 
-    setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(2800000))
-    original_blob_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
-        [spec.KZGCommitment(b"\x11" * 48)]
-    )
-    state.latest_execution_payload_bid.blob_kzg_commitments_root = (
-        original_blob_commitments.hash_tree_root()
-    )
+    setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(2600000))
 
     execution_payload = build_empty_execution_payload(spec, state)
     execution_payload.block_hash = state.latest_execution_payload_bid.block_hash
     execution_payload.gas_limit = state.latest_execution_payload_bid.gas_limit
     execution_payload.parent_hash = state.latest_block_hash
 
-    # Use different blob commitments
-    wrong_blob_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
-        [spec.KZGCommitment(b"\x22" * 48)]
+    withdrawal = spec.Withdrawal(
+        index=0,
+        validator_index=0,
+        address=b"\x22" * 20,
+        amount=spec.Gwei(1),
     )
+    state.payload_expected_withdrawals = spec.List[
+        spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    ]([withdrawal])
+    execution_payload.withdrawals = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD]()
 
     signed_envelope = prepare_execution_payload_envelope(
-        spec,
-        state,
-        builder_index=builder_index,
-        execution_payload=execution_payload,
-        blob_kzg_commitments=wrong_blob_commitments,
+        spec, state, builder_index=builder_index, execution_payload=execution_payload
     )
 
     yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
@@ -822,66 +805,6 @@ def test_process_execution_payload_wrong_timestamp(spec, state):
     )
 
     yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
-
-
-@with_gloas_and_later
-@spec_state_test
-@always_bls
-def test_process_execution_payload_max_blob_commitments_valid(spec, state):
-    """
-    Test max blob commitments is valid with separate builder (edge case)
-    """
-    builder_index = 0
-
-    setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(6000000))
-
-    execution_payload = build_empty_execution_payload(spec, state)
-    execution_payload.block_hash = state.latest_execution_payload_bid.block_hash
-    execution_payload.gas_limit = state.latest_execution_payload_bid.gas_limit
-    execution_payload.parent_hash = state.latest_block_hash
-
-    # Create exactly MAX_BLOBS_PER_BLOCK commitments (should be valid)
-    max_blob_commitments = [
-        spec.KZGCommitment(b"\x42" * 48) for _ in range(spec.config.MAX_BLOBS_PER_BLOCK)
-    ]
-    blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
-        max_blob_commitments
-    )
-
-    # Update committed bid to match
-    state.latest_execution_payload_bid.blob_kzg_commitments_root = (
-        blob_kzg_commitments.hash_tree_root()
-    )
-
-    signed_envelope = prepare_execution_payload_envelope(
-        spec,
-        state,
-        builder_index=builder_index,
-        execution_payload=execution_payload,
-        blob_kzg_commitments=blob_kzg_commitments,
-    )
-
-    # Capture pre-state for payment verification
-    pre_payment = state.builder_pending_payments[
-        spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
-    ]
-    pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
-
-    yield from run_execution_payload_processing(spec, state, signed_envelope, valid=True)
-
-    # Verify builder payment was processed correctly
-    # 1. Verify pending withdrawal was added with correct amount
-    assert len(state.builder_pending_withdrawals) == pre_pending_withdrawals_len + 1
-    new_withdrawal = state.builder_pending_withdrawals[pre_pending_withdrawals_len]
-    assert new_withdrawal.amount == pre_payment.withdrawal.amount
-    assert new_withdrawal.builder_index == builder_index
-    assert new_withdrawal.fee_recipient == pre_payment.withdrawal.fee_recipient
-
-    # 2. Verify pending payment was cleared
-    cleared_payment = state.builder_pending_payments[
-        spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
-    ]
-    assert cleared_payment.withdrawal.amount == 0
 
 
 @with_gloas_and_later
