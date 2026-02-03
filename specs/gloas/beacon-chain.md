@@ -45,7 +45,7 @@
     - [New `is_attestation_same_slot`](#new-is_attestation_same_slot)
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
     - [New `is_parent_block_full`](#new-is_parent_block_full)
-    - [New `is_validator_in_pending_queue`](#new-is_validator_in_pending_queue)
+    - [New `is_pending_validator`](#new-is_pending_validator)
   - [Misc](#misc-2)
     - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
     - [New `convert_validator_index_to_builder_index`](#new-convert_validator_index_to_builder_index)
@@ -489,17 +489,21 @@ def is_parent_block_full(state: BeaconState) -> bool:
     return state.latest_execution_payload_bid.block_hash == state.latest_block_hash
 ```
 
-#### New `is_validator_in_pending_queue`
+#### New `is_pending_validator`
 
 ```python
-def is_validator_in_pending_queue(state: BeaconState, pubkey: BLSPubkey) -> bool:
+def is_pending_validator(state: BeaconState, pubkey: BLSPubkey) -> bool:
     """
-    Check if an existing pending deposit is in the queue for the given pubkey.
+    Check if a pending deposit with a valid signature is in the queue for the given pubkey.
     """
-    candidate_deposits = [deposit for deposit in state.pending_deposits if deposit.pubkey == pubkey]
-    for deposit in candidate_deposits:
+    for pending_deposit in state.pending_deposits:
+        if pending_deposit.pubkey != pubkey:
+            continue
         if is_valid_deposit_signature(
-            deposit.pubkey, deposit.withdrawal_credentials, deposit.amount, deposit.signature
+            pending_deposit.pubkey,
+            pending_deposit.withdrawal_credentials,
+            pending_deposit.amount,
+            pending_deposit.signature,
         ):
             return True
     return False
@@ -1257,10 +1261,9 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     # Regardless of the withdrawal credentials prefix, if a builder/validator
     # already exists with this pubkey, apply the deposit to their balance
     is_builder = deposit_request.pubkey in builder_pubkeys
-    is_validator = deposit_request.pubkey in validator_pubkeys or is_validator_in_pending_queue(
-        state, deposit_request.pubkey
-    )
     is_builder_prefix = is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
+    in_validators = deposit_request.pubkey in validator_pubkeys
+    is_validator = in_validators or is_pending_validator(state, deposit_request.pubkey)
     if is_builder or (is_builder_prefix and not is_validator):
         # Apply builder deposits immediately
         apply_deposit_for_builder(
