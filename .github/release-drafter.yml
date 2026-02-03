@@ -23,12 +23,16 @@ categories:
       - eip7928
 
   # Features
-  - title: EIP-6110
-    label: eip6110
+  - title: EIP-6800
+    label: eip6800
+  - title: EIP-6914
+    label: eip6914
   - title: EIP-7441
     label: eip7441
   - title: EIP-7805
     label: eip7805
+  - title: EIP-7928
+    label: eip7928
   - title: EIP-8025
     label: eip8025
 

@@ -1,7 +1,11 @@
 from eth2spec.test.context import (
     always_bls,
+    expect_assertion_error,
     spec_state_test,
     with_gloas_and_later,
+)
+from eth2spec.test.helpers.blob import (
+    get_sample_blob_tx,
 )
 from eth2spec.test.helpers.block import build_empty_block_for_next_slot
 from eth2spec.test.helpers.keys import builder_privkeys
@@ -22,11 +26,7 @@ def run_execution_payload_bid_processing(spec, state, block, valid=True):
     yield "block", block
 
     if not valid:
-        try:
-            spec.process_execution_payload_bid(state, block)
-            assert False, "Expected AssertionError but none was raised"
-        except AssertionError:
-            pass
+        expect_assertion_error(lambda: spec.process_execution_payload_bid(state, block))
         yield "post", None
         return
 
@@ -45,7 +45,7 @@ def prepare_signed_execution_payload_bid(
     fee_recipient=None,
     gas_limit=None,
     block_hash=None,
-    blob_kzg_commitments_root=None,
+    blob_kzg_commitments=None,
     prev_randao=None,
     valid_signature=True,
     valid_amount=True,
@@ -60,7 +60,7 @@ def prepare_signed_execution_payload_bid(
     spec.process_slots(state, slot)
 
     if builder_index is None:
-        builder_index = spec.get_beacon_proposer_index(state)
+        builder_index = spec.BUILDER_INDEX_SELF_BUILD
 
     if parent_block_hash is None:
         parent_block_hash = state.latest_block_hash
@@ -86,9 +86,8 @@ def prepare_signed_execution_payload_bid(
             "Self-builder (builder_index == BUILDER_INDEX_SELF_BUILD) must use zero value"
         )
 
-    if blob_kzg_commitments_root is None:
-        kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
-        blob_kzg_commitments_root = kzg_list.hash_tree_root()
+    if blob_kzg_commitments is None:
+        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
 
     if prev_randao is None:
         prev_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
@@ -103,7 +102,7 @@ def prepare_signed_execution_payload_bid(
         builder_index=builder_index,
         slot=slot,
         value=value,
-        blob_kzg_commitments_root=blob_kzg_commitments_root,
+        blob_kzg_commitments=blob_kzg_commitments,
     )
 
     if valid_signature:
@@ -231,6 +230,37 @@ def test_process_execution_payload_bid_valid_builder(spec, state):
     assert post_pending_payments_len == pre_pending_payments_len + 1
 
 
+@with_gloas_and_later
+@spec_state_test
+def test_process_execution_payload_bid_blob_kzg_commitments_at_limit(spec, state):
+    """
+    Test blob kzg commitments list is at the limit.
+    """
+    # Create block first to advance slot
+    block = build_empty_block_for_next_slot(spec, state)
+
+    # Construct list of commitments
+    epoch = spec.compute_epoch_at_slot(block.slot)
+    blob_limit = spec.get_blob_parameters(epoch).max_blobs_per_block
+    _, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=blob_limit)
+
+    # Create bid with max commitments
+    signed_bid = prepare_signed_execution_payload_bid(
+        spec,
+        state,
+        builder_index=spec.BUILDER_INDEX_SELF_BUILD,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
+        blob_kzg_commitments=spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
+            blob_kzg_commitments
+        ),
+    )
+
+    block.body.signed_execution_payload_bid = signed_bid
+
+    yield from run_execution_payload_bid_processing(spec, state, block)
+
+
 #
 # Invalid signature tests
 #
@@ -327,7 +357,6 @@ def test_process_execution_payload_bid_self_build_non_zero_value(spec, state):
     """
     block = build_empty_block_for_next_slot(spec, state)
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
-    blob_kzg_commitments_root = kzg_list.hash_tree_root()
 
     bid = spec.ExecutionPayloadBid(
         parent_block_hash=state.latest_block_hash,
@@ -338,7 +367,7 @@ def test_process_execution_payload_bid_self_build_non_zero_value(spec, state):
         builder_index=spec.BUILDER_INDEX_SELF_BUILD,
         slot=block.slot,
         value=spec.Gwei(1),
-        blob_kzg_commitments_root=blob_kzg_commitments_root,
+        blob_kzg_commitments=kzg_list,
     )
 
     # Sign the bid
@@ -709,6 +738,37 @@ def test_process_execution_payload_bid_wrong_prev_randao(spec, state):
         slot=block.slot,
         parent_block_root=block.parent_root,
         prev_randao=wrong_prev_randao,
+    )
+
+    block.body.signed_execution_payload_bid = signed_bid
+
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_execution_payload_bid_blob_kzg_commitments_over_limit(spec, state):
+    """
+    Test blob kzg commitments list is over the limit.
+    """
+    # Create block first to advance slot
+    block = build_empty_block_for_next_slot(spec, state)
+
+    # Construct list of commitments
+    epoch = spec.compute_epoch_at_slot(block.slot)
+    blob_limit = spec.get_blob_parameters(epoch).max_blobs_per_block
+    _, _, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=blob_limit + 1)
+
+    # Create bid with too many commitments
+    signed_bid = prepare_signed_execution_payload_bid(
+        spec,
+        state,
+        builder_index=spec.BUILDER_INDEX_SELF_BUILD,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
+        blob_kzg_commitments=spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
+            blob_kzg_commitments
+        ),
     )
 
     block.body.signed_execution_payload_bid = signed_bid

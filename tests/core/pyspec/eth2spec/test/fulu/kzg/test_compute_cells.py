@@ -1,6 +1,12 @@
 from eth_utils import encode_hex
 
-from eth2spec.test.context import only_generator, single_phase, spec_test, with_phases
+from eth2spec.test.context import (
+    expect_assertion_error,
+    only_generator,
+    single_phase,
+    spec_test,
+    with_phases,
+)
 from eth2spec.test.helpers.constants import FULU
 from eth2spec.test.utils.kzg_tests import (
     encode_hex_list,
@@ -51,11 +57,7 @@ def _compute_cells_invalid_blob(blob_index):
     @spec_test
     @single_phase
     def the_test(spec):
-        try:
-            spec.compute_cells(blob)
-            assert False, "Expected exception not thrown"
-        except Exception:
-            pass
+        expect_assertion_error(lambda: spec.compute_cells(blob))
 
         yield (
             "data",
