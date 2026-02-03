@@ -1,4 +1,10 @@
-from eth2spec.test.context import only_generator, single_phase, spec_test, with_phases
+from eth2spec.test.context import (
+    expect_assertion_error,
+    only_generator,
+    single_phase,
+    spec_test,
+    with_phases,
+)
 from eth2spec.test.helpers.constants import FULU
 from eth2spec.test.utils.kzg_tests import (
     bls_add_one,
@@ -20,11 +26,10 @@ def _run_verify_cell_kzg_proof_batch_test(
         if expected_result is not None:
             assert result == expected_result
     else:
-        try:
-            result = spec.verify_cell_kzg_proof_batch(commitments, cell_indices, cells, proofs)
-            assert False, "should raise exception"
-        except Exception:
-            result = None
+        expect_assertion_error(
+            lambda: spec.verify_cell_kzg_proof_batch(commitments, cell_indices, cells, proofs)
+        )
+        result = None
 
     yield (
         "data",

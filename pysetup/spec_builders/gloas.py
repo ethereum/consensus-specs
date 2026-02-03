@@ -29,3 +29,13 @@ from eth2spec.fulu import {preset_name} as fulu
                 "KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH",
             ]
         )
+
+    @classmethod
+    def sundry_functions(cls) -> str:
+        return """
+def retrieve_column_sidecars_and_kzg_commitments(
+    beacon_block_root: Root
+) -> tuple[Sequence[DataColumnSidecar], Sequence[KZGCommitment]]:
+    # pylint: disable=unused-argument
+    return [], []
+"""

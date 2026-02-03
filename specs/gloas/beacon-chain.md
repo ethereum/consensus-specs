@@ -5,10 +5,10 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Index flags](#index-flags)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
 - [Preset](#preset)
@@ -57,7 +57,7 @@
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
     - [New `compute_balance_weighted_acceptance`](#new-compute_balance_weighted_acceptance)
     - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
-  - [Beacon State accessors](#beacon-state-accessors)
+  - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
     - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
     - [New `get_ptc`](#new-get_ptc)
@@ -87,7 +87,6 @@
       - [Modified `process_operations`](#modified-process_operations)
       - [Deposit requests](#deposit-requests)
         - [New `get_index_for_new_builder`](#new-get_index_for_new_builder)
-        - [New `get_builder_from_deposit`](#new-get_builder_from_deposit)
         - [New `add_builder_to_registry`](#new-add_builder_to_registry)
         - [New `apply_deposit_for_builder`](#new-apply_deposit_for_builder)
         - [Modified `process_deposit_request`](#modified-process_deposit_request)
@@ -95,9 +94,9 @@
         - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
       - [Attestations](#attestations)
         - [Modified `process_attestation`](#modified-process_attestation)
-      - [Payload Attestations](#payload-attestations)
+      - [Payload attestations](#payload-attestations)
         - [New `process_payload_attestation`](#new-process_payload_attestation)
-      - [Proposer Slashing](#proposer-slashing)
+      - [Proposer slashing](#proposer-slashing)
         - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
   - [Execution payload processing](#execution-payload-processing)
     - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
@@ -112,9 +111,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 - [EIP-7732](https://eips.ethereum.org/EIPS/eip-7732): Enshrined
   Proposer-Builder Separation
 
-*Note*: This specification is built upon [Fulu](../fulu/beacon-chain.md).
-
-## Custom types
+## Types
 
 | Name                    | SSZ equivalent                          | Description                                                                                   |
 | ----------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -133,7 +130,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 | -------------------- | --------------- | ------------------------------------------------------------------------------------------ |
 | `BUILDER_INDEX_FLAG` | `uint64(2**40)` | Bitwise flag which indicates that a `ValidatorIndex` should be treated as a `BuilderIndex` |
 
-### Domain types
+### Domains
 
 | Name                          | Value                      |
 | ----------------------------- | -------------------------- |
@@ -179,9 +176,9 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 ### Time parameters
 
-| Name                                | Value                     |  Unit  | Duration |
-| ----------------------------------- | ------------------------- | :----: | :------: |
-| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `uint64(2**12)` (= 4,096) | epochs | ~18 days |
+| Name                                | Value                 |  Unit  |
+| ----------------------------------- | --------------------- | :----: |
+| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `uint64(2**6)` (= 64) | epochs |
 
 ## Containers
 
@@ -267,7 +264,7 @@ class ExecutionPayloadBid(Container):
     slot: Slot
     value: Gwei
     execution_payment: Gwei
-    blob_kzg_commitments_root: Root
+    blob_kzg_commitments: ProgressiveList[KZGCommitment]
 ```
 
 #### `SignedExecutionPayloadBid`
@@ -287,7 +284,6 @@ class ExecutionPayloadEnvelope(Container):
     builder_index: BuilderIndex
     beacon_block_root: Root
     slot: Slot
-    blob_kzg_commitments: ProgressiveList[KZGCommitment]
     state_root: Root
 ```
 
@@ -562,22 +558,22 @@ def is_attestation_same_slot(state: BeaconState, data: AttestationData) -> bool:
 
 ```python
 def is_valid_indexed_payload_attestation(
-    state: BeaconState, indexed_payload_attestation: IndexedPayloadAttestation
+    state: BeaconState, attestation: IndexedPayloadAttestation
 ) -> bool:
     """
-    Check if ``indexed_payload_attestation`` is non-empty, has sorted indices, and has
+    Check if ``attestation`` is non-empty, has sorted indices, and has
     a valid aggregate signature.
     """
     # Verify indices are non-empty and sorted
-    indices = indexed_payload_attestation.attesting_indices
+    indices = attestation.attesting_indices
     if len(indices) == 0 or not indices == sorted(indices):
         return False
 
     # Verify aggregate signature
     pubkeys = [state.validators[i].pubkey for i in indices]
-    domain = get_domain(state, DOMAIN_PTC_ATTESTER, None)
-    signing_root = compute_signing_root(indexed_payload_attestation.data, domain)
-    return bls.FastAggregateVerify(pubkeys, signing_root, indexed_payload_attestation.signature)
+    domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(attestation.data.slot))
+    signing_root = compute_signing_root(attestation.data, domain)
+    return bls.FastAggregateVerify(pubkeys, signing_root, attestation.signature)
 ```
 
 #### New `is_parent_block_full`
@@ -710,7 +706,7 @@ def compute_proposer_indices(
     ]
 ```
 
-### Beacon State accessors
+### Beacon state accessors
 
 #### Modified `get_next_sync_committee_indices`
 
@@ -961,13 +957,14 @@ def get_builder_withdrawals(
     withdrawal_index: WithdrawalIndex,
     prior_withdrawals: Sequence[Withdrawal],
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
-    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
+    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
+    assert len(prior_withdrawals) <= withdrawals_limit
 
     processed_count: uint64 = 0
     withdrawals: List[Withdrawal] = []
     for withdrawal in state.builder_pending_withdrawals:
         all_withdrawals = prior_withdrawals + withdrawals
-        has_reached_limit = len(all_withdrawals) == withdrawals_limit
+        has_reached_limit = len(all_withdrawals) >= withdrawals_limit
         if has_reached_limit:
             break
 
@@ -996,14 +993,15 @@ def get_builders_sweep_withdrawals(
 ) -> Tuple[Sequence[Withdrawal], WithdrawalIndex, uint64]:
     epoch = get_current_epoch(state)
     builders_limit = min(len(state.builders), MAX_BUILDERS_PER_WITHDRAWALS_SWEEP)
-    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD
+    withdrawals_limit = MAX_WITHDRAWALS_PER_PAYLOAD - 1
+    assert len(prior_withdrawals) <= withdrawals_limit
 
     processed_count: uint64 = 0
     withdrawals: List[Withdrawal] = []
     builder_index = state.next_withdrawal_builder_index
     for _ in range(builders_limit):
         all_withdrawals = prior_withdrawals + withdrawals
-        has_reached_limit = len(all_withdrawals) == withdrawals_limit
+        has_reached_limit = len(all_withdrawals) >= withdrawals_limit
         if has_reached_limit:
             break
 
@@ -1190,6 +1188,12 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
         # Verify that the bid signature is valid
         assert verify_execution_payload_bid_signature(state, signed_bid)
 
+    # Verify commitments are under limit
+    assert (
+        len(bid.blob_kzg_commitments)
+        <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    )
+
     # Verify that the bid is for the current slot
     assert bid.slot == block.slot
     # Verify that the bid is for the right parent block
@@ -1278,31 +1282,28 @@ def get_index_for_new_builder(state: BeaconState) -> BuilderIndex:
     return BuilderIndex(len(state.builders))
 ```
 
-###### New `get_builder_from_deposit`
-
-```python
-def get_builder_from_deposit(
-    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
-) -> Builder:
-    return Builder(
-        pubkey=pubkey,
-        version=uint8(withdrawal_credentials[0]),
-        execution_address=ExecutionAddress(withdrawal_credentials[12:]),
-        balance=amount,
-        deposit_epoch=get_current_epoch(state),
-        withdrawable_epoch=FAR_FUTURE_EPOCH,
-    )
-```
-
 ###### New `add_builder_to_registry`
 
 ```python
 def add_builder_to_registry(
-    state: BeaconState, pubkey: BLSPubkey, withdrawal_credentials: Bytes32, amount: uint64
+    state: BeaconState,
+    pubkey: BLSPubkey,
+    withdrawal_credentials: Bytes32,
+    amount: uint64,
+    slot: Slot,
 ) -> None:
-    index = get_index_for_new_builder(state)
-    builder = get_builder_from_deposit(state, pubkey, withdrawal_credentials, amount)
-    set_or_append_list(state.builders, index, builder)
+    set_or_append_list(
+        state.builders,
+        get_index_for_new_builder(state),
+        Builder(
+            pubkey=pubkey,
+            version=uint8(withdrawal_credentials[0]),
+            execution_address=ExecutionAddress(withdrawal_credentials[12:]),
+            balance=amount,
+            deposit_epoch=compute_epoch_at_slot(slot),
+            withdrawable_epoch=FAR_FUTURE_EPOCH,
+        ),
+    )
 ```
 
 ###### New `apply_deposit_for_builder`
@@ -1321,12 +1322,13 @@ def apply_deposit_for_builder(
     withdrawal_credentials: Bytes32,
     amount: uint64,
     signature: BLSSignature,
+    slot: Slot,
 ) -> None:
     builder_pubkeys = [b.pubkey for b in state.builders]
     if pubkey not in builder_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
-            add_builder_to_registry(state, pubkey, withdrawal_credentials, amount)
+            add_builder_to_registry(state, pubkey, withdrawal_credentials, amount, slot)
     else:
         # Increase balance by deposit amount
         builder_index = builder_pubkeys.index(pubkey)
@@ -1355,6 +1357,7 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
             deposit_request.withdrawal_credentials,
             deposit_request.amount,
             deposit_request.signature,
+            state.slot,
         )
         return
 
@@ -1506,7 +1509,7 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         state.builder_pending_payments[data.slot % SLOTS_PER_EPOCH] = payment
 ```
 
-##### Payload Attestations
+##### Payload attestations
 
 ###### New `process_payload_attestation`
 
@@ -1525,7 +1528,7 @@ def process_payload_attestation(
     assert is_valid_indexed_payload_attestation(state, indexed_payload_attestation)
 ```
 
-##### Proposer Slashing
+##### Proposer slashing
 
 ###### Modified `process_proposer_slashing`
 
@@ -1623,7 +1626,6 @@ def process_execution_payload(
     # Verify consistency with the committed bid
     committed_bid = state.latest_execution_payload_bid
     assert envelope.builder_index == committed_bid.builder_index
-    assert committed_bid.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
     assert committed_bid.prev_randao == payload.prev_randao
 
     # Verify consistency with expected withdrawals
@@ -1637,14 +1639,11 @@ def process_execution_payload(
     assert payload.parent_hash == state.latest_block_hash
     # Verify timestamp
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
-    # Verify commitments are under limit
-    assert (
-        len(envelope.blob_kzg_commitments)
-        <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
-    )
     # Verify the execution payload is valid
     versioned_hashes = [
-        kzg_commitment_to_versioned_hash(commitment) for commitment in envelope.blob_kzg_commitments
+        kzg_commitment_to_versioned_hash(commitment)
+        # [Modified in Gloas:EIP7732]
+        for commitment in committed_bid.blob_kzg_commitments
     ]
     requests = envelope.execution_requests
     assert execution_engine.verify_and_notify_new_payload(

@@ -131,9 +131,6 @@ def main():
             print()
 
         sys.exit(1)
-    else:
-        print("No fork comment violations found.")
-        sys.exit(0)
 
 
 if __name__ == "__main__":

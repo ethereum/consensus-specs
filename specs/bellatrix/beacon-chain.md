@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Preset](#preset)
   - [Rewards and penalties](#rewards-and-penalties)
   - [Execution](#execution)
@@ -43,20 +43,19 @@
 
 ## Introduction
 
-This upgrade adds transaction execution to the beacon chain as part of Bellatrix
-upgrade.
+Bellatrix is a consensus-layer upgrade containing a number of features.
+Including:
 
-Additionally, this upgrade introduces the following minor changes:
-
+- Transaction execution
 - Penalty parameter updates to their planned maximally punitive values
 
-## Custom types
+## Types
 
 *Note*: The `Transaction` type is a stub which is not final.
 
 | Name               | SSZ equivalent                        | Description                                                                                                                                       |
 | ------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Transaction`      | `ByteList[MAX_BYTES_PER_TRANSACTION]` | either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction |
+| `Transaction`      | `ByteList[MAX_BYTES_PER_TRANSACTION]` | Either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction |
 | `ExecutionAddress` | `Bytes20`                             | Address of account on the execution layer                                                                                                         |
 
 ## Preset
@@ -65,9 +64,6 @@ Additionally, this upgrade introduces the following minor changes:
 
 Bellatrix updates a few configuration values to move penalty parameters to their
 final, maximum security values.
-
-*Note*: The spec does *not* override previous configuration values but instead
-creates new values and replaces usage throughout.
 
 | Name                                         | Value                          |
 | -------------------------------------------- | ------------------------------ |
@@ -259,7 +255,9 @@ def get_inactivity_penalty_deltas(state: BeaconState) -> Tuple[Sequence[Gwei], S
 
 ```python
 def slash_validator(
-    state: BeaconState, slashed_index: ValidatorIndex, whistleblower_index: ValidatorIndex = None
+    state: BeaconState,
+    slashed_index: ValidatorIndex,
+    whistleblower_index: Optional[ValidatorIndex] = None,
 ) -> None:
     """
     Slash the validator with index ``slashed_index``.

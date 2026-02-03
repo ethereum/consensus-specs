@@ -13,7 +13,7 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for
+This document contains the consensus-layer networking specifications for
 EIP-6800.
 
 The specification of these changes continues in the same format as the network

@@ -91,7 +91,7 @@ def get_execution_payload_bid(spec, state, execution_payload):
         builder_index=builder_index,
         slot=state.slot,
         value=spec.Gwei(0),
-        blob_kzg_commitments_root=kzg_list.hash_tree_root(),
+        blob_kzg_commitments=kzg_list,
     )
 
 
@@ -334,7 +334,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
         builder_index=builder_index,
         slot=state.slot,
         value=spec.Gwei(0),
-        blob_kzg_commitments_root=kzg_list.hash_tree_root(),
+        blob_kzg_commitments=kzg_list,
     )
 
 
@@ -371,7 +371,6 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         if randao_mix is None:
             randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
     timestamp = spec.compute_time_at_slot(state, state.slot)
-    empty_txs = spec.List[spec.Transaction, spec.MAX_TRANSACTIONS_PER_PAYLOAD]()
 
     payload = spec.ExecutionPayload(
         parent_hash=parent_hash,
@@ -387,7 +386,6 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         gas_limit=latest.gas_limit,
         timestamp=timestamp,
         extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
-        transactions=empty_txs,
     )
     if not is_post_gloas(spec):
         payload.state_root = latest.state_root  # no changes to the state
@@ -440,7 +438,7 @@ def build_state_with_incomplete_transition(spec, state):
         bid = spec.ExecutionPayloadBid(
             slot=state.slot,
             value=spec.Gwei(0),
-            blob_kzg_commitments_root=kzgs.hash_tree_root(),
+            blob_kzg_commitments=kzgs,
         )
         state = build_state_with_execution_payload_bid(spec, state, bid)
     else:

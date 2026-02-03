@@ -13,6 +13,7 @@
     - [New `SignedProposerPreferences`](#new-signedproposerpreferences)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
+    - [Modified `verify_data_column_sidecar_kzg_proofs`](#modified-verify_data_column_sidecar_kzg_proofs)
     - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -38,7 +39,7 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for Gloas.
+This document contains the consensus-layer networking specifications for Gloas.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
@@ -46,8 +47,6 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 ## Modification in Gloas
 
 ### Configuration
-
-*[New in Gloas:EIP7732]*
 
 | Name                   | Value          | Description                                                       |
 | ---------------------- | -------------- | ----------------------------------------------------------------- |
@@ -57,20 +56,19 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 #### Modified `DataColumnSidecar`
 
-*Note*: The `signed_block_header` and `kzg_commitments_inclusion_proof` fields
-have been removed from `DataColumnSidecar` in Gloas as header and inclusion
-proof verifications are no longer required in ePBS. Instead, sidecars are
-validated by checking that the hash of `kzg_commitments` matches what's
-committed in the builder's bid for the corresponding `beacon_block_root`.
+*Note*: The `signed_block_header`, `kzg_commitments`, and
+`kzg_commitments_inclusion_proof` fields have been removed from
+`DataColumnSidecar` in Gloas as header and inclusion proof verifications are no
+longer required in Gloas. The KZG commitments are now located at
+`block.body.signed_execution_payload_bid.message.blob_kzg_commitments` where
+`block` is the `BeaconBlock` associated with `beacon_block_root`.
 
 ```python
 class DataColumnSidecar(Container):
     index: ColumnIndex
-    # [Modified in Gloas:7688]
     column: ProgressiveList[Cell]
-    # [Modified in Gloas:7688]
-    kzg_commitments: ProgressiveList[KZGCommitment]
-    # [Modified in Gloas:7688]
+    # [Modified in Gloas:EIP7732]
+    # Removed `kzg_commitments`
     kzg_proofs: ProgressiveList[KZGProof]
     # [Modified in Gloas:EIP7732]
     # Removed `signed_block_header`
@@ -130,10 +128,38 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
+#### Modified `verify_data_column_sidecar_kzg_proofs`
+
+```python
+def verify_data_column_sidecar_kzg_proofs(
+    sidecar: DataColumnSidecar,
+    # [New in Gloas:EIP7732]
+    kzg_commitments: ProgressiveList[KZGCommitment],
+) -> bool:
+    """
+    Verify if the KZG proofs are correct.
+    """
+    # The column index also represents the cell index
+    cell_indices = [CellIndex(sidecar.index)] * len(sidecar.column)
+
+    # Batch verify that the cells match the corresponding commitments and proofs
+    return verify_cell_kzg_proof_batch(
+        # [Modified in Gloas:EIP7732]
+        commitments_bytes=kzg_commitments,
+        cell_indices=cell_indices,
+        cells=sidecar.column,
+        proofs_bytes=sidecar.kzg_proofs,
+    )
+```
+
 #### Modified `verify_data_column_sidecar`
 
 ```python
-def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
+def verify_data_column_sidecar(
+    sidecar: DataColumnSidecar,
+    # [New in Gloas:EIP7732]
+    kzg_commitments: ProgressiveList[KZGCommitment],
+) -> bool:
     """
     Verify if the data column sidecar is valid.
     """
@@ -141,18 +167,14 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     if sidecar.index >= NUMBER_OF_COLUMNS:
         return False
 
+    # [Modified in Gloas:EIP7732]
     # A sidecar for zero blobs is invalid
-    if len(sidecar.kzg_commitments) == 0:
+    if len(sidecar.column) == 0:
         return False
 
     # [Modified in Gloas:EIP7732]
-    # Check that the sidecar respects the blob limit
-    epoch = compute_epoch_at_slot(sidecar.slot)
-    if len(sidecar.kzg_commitments) > get_blob_parameters(epoch).max_blobs_per_block:
-        return False
-
     # The column length must be equal to the number of commitments/proofs
-    if len(sidecar.column) != len(sidecar.kzg_commitments) or len(sidecar.column) != len(
+    if len(sidecar.column) != len(kzg_commitments) or len(sidecar.column) != len(
         sidecar.kzg_proofs
     ):
         return False
@@ -162,7 +184,7 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of Gloas to support upgraded types.
+Some gossip meshes are upgraded in Gloas to support upgraded types.
 
 #### Topics and messages
 
@@ -208,7 +230,7 @@ The following validations are removed:
 *[Modified in Gloas:EIP7732]*
 
 The *type* of the payload of this topic changes to the (modified)
-`SignedBeaconBlock` found in [the Beacon Chain changes](./beacon-chain.md).
+`SignedBeaconBlock` found in [the beacon-chain changes](./beacon-chain.md).
 
 There are no new validations for this topic. However, all validations with
 regards to the `ExecutionPayload` are removed:
@@ -222,7 +244,7 @@ regards to the `ExecutionPayload` are removed:
   `len(body.bls_to_execution_changes) <= MAX_BLS_TO_EXECUTION_CHANGES` and
   `len(body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS`
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
-  limitation defined in Consensus Layer -- i.e. validate that
+  limitation defined in the consensus layer -- i.e. validate that
   `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
 - _[REJECT]_ The block's execution payload timestamp is correct with respect to
   the slot -- i.e.
@@ -240,6 +262,9 @@ regards to the `ExecutionPayload` are removed:
 And instead the following validations are set in place with the alias
 `bid = signed_execution_payload_bid.message`:
 
+- _[REJECT]_ The length of KZG commitments is less than or equal to the
+  limitation defined in the consensus layer -- i.e. validate that
+  `len(bid.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
 - If `execution_payload` verification of block's execution payload parent by an
   execution node **is complete**:
   - [REJECT] The block's execution payload parent (defined by
@@ -296,7 +321,7 @@ The following validations MUST pass before forwarding the
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `data.slot == current_slot`.
 - _[IGNORE]_ The `payload_attestation_message` is the first valid message
   received from the validator with index
-  `payload_attestation_message.validate_index`.
+  `payload_attestation_message.validator_index`.
 - _[IGNORE]_ The message's block `data.beacon_block_root` has been seen (via
   gossip or non-gossip sources) (a client MAY queue attestation for processing
   once the block is retrieved. Note a client might want to request payload
@@ -339,6 +364,12 @@ The following validations MUST pass before forwarding the
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
 
+*Note*: Implementations SHOULD include DoS prevention measures to mitigate spam
+from malicious builders submitting numerous bids with minimal value increments.
+Possible strategies include: (1) only forwarding bids that exceed the current
+highest bid by a minimum threshold, or (2) forwarding only the highest observed
+bid at regular time intervals.
+
 ###### `proposer_preferences`
 
 *[New in Gloas:EIP7732]*
@@ -357,7 +388,8 @@ The following validations MUST pass before forwarding the
   next epoch's portion of `state.proposer_lookahead` -- i.e.
   `is_valid_proposal_slot(state, preferences)` returns `True`.
 - _[IGNORE]_ The `signed_proposer_preferences` is the first valid message
-  received from the validator with index `preferences.validator_index`.
+  received from the validator with index `preferences.validator_index` and the
+  given slot `preferences.slot`.
 - _[REJECT]_ `signed_proposer_preferences.signature` is valid with respect to
   the validator's public key.
 
@@ -376,60 +408,29 @@ def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences)
 
 *[Modified in Gloas:EIP7732]*
 
-This topic is used to propagate column sidecars, where each column maps to some
-`subnet_id`.
-
-The *type* of the payload of this topic is `DataColumnSidecar`.
-
 The following validations MUST pass before forwarding the
-`sidecar: DataColumnSidecar` on the network:
+`sidecar: DataColumnSidecar` on the network, assuming the alias
+`bid = block.body.signed_execution_payload_bid.message` where `block` is the
+`BeaconBlock` associated with `sidecar.beacon_block_root`:
 
-**Modified from Fulu:**
-
+- _[IGNORE]_ A valid block for the sidecar's `slot` has been seen (via gossip or
+  non-gossip sources). If not yet seen, a client MUST queue the sidecar for
+  deferred validation and possible processing once the block is received or
+  retrieved.
+- _[REJECT]_ The sidecar's `slot` matches the slot of the block with root
+  `beacon_block_root`.
+- _[REJECT]_ The sidecar is valid as verified by
+  `verify_data_column_sidecar(sidecar, bid.blob_kzg_commitments)`.
+- _[REJECT]_ The sidecar is for the correct subnet -- i.e.
+  `compute_subnet_for_data_column_sidecar(sidecar.index) == subnet_id`.
+- _[REJECT]_ The sidecar's column data is valid as verified by
+  `verify_data_column_sidecar_kzg_proofs(sidecar, bid.blob_kzg_commitments)`.
 - _[IGNORE]_ The sidecar is the first sidecar for the tuple
   `(sidecar.beacon_block_root, sidecar.index)` with valid kzg proof.
 
-**Added in Gloas:**
-
-- _[IGNORE]_ The sidecar's `beacon_block_root` has been seen via a valid signed
-  execution payload bid. A client MAY queue the sidecar for processing once the
-  block is retrieved.
-- _[REJECT]_ The sidecars's `slot` matches the slot of the block with root
-  `beacon_block_root`.
-- _[REJECT]_ The hash of the sidecar's `kzg_commitments` matches the
-  `blob_kzg_commitments_root` in the corresponding builder's bid for
-  `sidecar.beacon_block_root`.
-
-**Removed from Fulu:**
-
-- _[IGNORE]_ The sidecar is not from a future slot (with a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
-  `block_header.slot <= current_slot` (a client MAY queue future sidecars for
-  processing at the appropriate slot).
-- _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot
-  -- i.e. validate that
-  `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
-- _[REJECT]_ The proposer signature of `sidecar.signed_block_header`, is valid
-  with respect to the `block_header.proposer_index` pubkey.
-- _[IGNORE]_ The sidecar's block's parent (defined by
-  `block_header.parent_root`) has been seen (via gossip or non-gossip sources)
-  (a client MAY queue sidecars for processing once the parent block is
-  retrieved).
-- _[REJECT]_ The sidecar's block's parent (defined by
-  `block_header.parent_root`) passes validation.
-- _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent
-  (defined by `block_header.parent_root`).
-- _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's
-  block -- i.e.
-  `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
-- _[REJECT]_ The sidecar's `kzg_commitments` field inclusion proof is valid as
-  verified by `verify_data_column_sidecar_inclusion_proof(sidecar)`.
-- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the
-  block's slot in the context of the current shuffling (defined by
-  `block_header.parent_root`/`block_header.slot`). If the `proposer_index`
-  cannot immediately be verified against the expected shuffling, the sidecar MAY
-  be queued for later processing while proposers for the block's branch are
-  calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
+*Note*: If the sidecar fails deferred validation, its forwarding peers MUST be
+downscored retroactively. If validation succeeds, the client MUST re-broadcast
+the sidecar.
 
 ##### Attestation subnets
 
@@ -490,8 +491,6 @@ The following validations are removed:
 
 **Protocol ID:**
 `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
-
-*[New in Gloas:EIP7732]*
 
 Request Content:
 

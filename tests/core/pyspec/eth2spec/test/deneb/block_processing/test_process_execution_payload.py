@@ -6,7 +6,6 @@ from eth2spec.test.context import (
     with_deneb_and_later,
 )
 from eth2spec.test.helpers.blob import (
-    get_max_blob_count,
     get_sample_blob_tx,
 )
 from eth2spec.test.helpers.execution_payload import (
@@ -34,13 +33,12 @@ def run_execution_payload_processing(
     if is_post_gloas(spec):
         envelope = spec.ExecutionPayloadEnvelope(
             payload=execution_payload,
-            blob_kzg_commitments=blob_kzg_commitments,
             slot=state.slot,
             builder_index=spec.BUILDER_INDEX_SELF_BUILD,
         )
         kzg_list = spec.ProgressiveList[spec.KZGCommitment](blob_kzg_commitments)
-        # In Gloas, blob_kzg_commitments_root is stored in latest_execution_payload_bid, not latest_execution_payload_header
-        state.latest_execution_payload_bid.blob_kzg_commitments_root = kzg_list.hash_tree_root()
+        # In Gloas, blob_kzg_commitments is stored in latest_execution_payload_bid, not latest_execution_payload_header
+        state.latest_execution_payload_bid.blob_kzg_commitments = kzg_list
         state.latest_execution_payload_bid.builder_index = envelope.builder_index
         # Ensure bid fields match payload for assertions to pass
         state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
@@ -446,29 +444,4 @@ def test_invalid_correct_input__execution_invalid(spec, state):
         state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments, valid=False, execution_valid=False
-    )
-
-
-@with_deneb_and_later
-@spec_state_test
-def test_invalid_exceed_max_blobs_per_block(spec, state):
-    """
-    The blob transaction and commitments are correct but the number of blobs exceeds the `MAX_BLOBS_PER_BLOCK`.
-    """
-    execution_payload = build_empty_execution_payload(spec, state)
-
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
-        spec, blob_count=get_max_blob_count(spec, state) + 1
-    )
-
-    execution_payload.transactions = [opaque_tx]
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
-
-    # Make the parent block full in Gloas and set up bid to match payload
-    if is_post_gloas(spec):
-        state.latest_block_hash = execution_payload.parent_hash
-        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
-        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
-    yield from run_execution_payload_processing(
-        spec, state, execution_payload, blob_kzg_commitments, valid=False
     )
