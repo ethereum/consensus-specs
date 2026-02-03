@@ -42,7 +42,7 @@ The expected genesis state. An SSZ-snappy encoded `BeaconState` object.
 To process this test, build a genesis state with the provided `eth1_block_hash`,
 `eth1_timestamp` and `deposits`:
 `initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)`,
-as described in the Beacon Chain specification.
+as described in the beacon-chain specification.
 
 ## Condition
 

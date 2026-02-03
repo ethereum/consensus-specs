@@ -1,4 +1,5 @@
 from eth2spec.test.context import (
+    expect_assertion_error,
     single_phase,
     spec_test,
     with_electra_and_later,
@@ -70,11 +71,7 @@ def test_requests_deserialize__reject_duplicate_request(spec):
         spec.WITHDRAWAL_REQUEST_TYPE + serialized_withdrawal,
         spec.WITHDRAWAL_REQUEST_TYPE + serialized_withdrawal,
     ]
-    try:
-        spec.get_execution_requests(serialized_execution_requests)
-        assert False, "expected exception"
-    except Exception:
-        pass
+    expect_assertion_error(lambda: spec.get_execution_requests(serialized_execution_requests))
 
 
 @with_electra_and_later
@@ -86,11 +83,7 @@ def test_requests_deserialize__reject_out_of_order_requests(spec):
         spec.DEPOSIT_REQUEST_TYPE + 192 * b"\x0b",
     ]
     assert int(serialized_execution_requests[0][0]) > int(serialized_execution_requests[1][0])
-    try:
-        spec.get_execution_requests(serialized_execution_requests)
-        assert False, "expected exception"
-    except Exception:
-        pass
+    expect_assertion_error(lambda: spec.get_execution_requests(serialized_execution_requests))
 
 
 @with_electra_and_later
@@ -98,11 +91,7 @@ def test_requests_deserialize__reject_out_of_order_requests(spec):
 @single_phase
 def test_requests_deserialize__reject_empty_request(spec):
     serialized_execution_requests = [b"\x01"]
-    try:
-        spec.get_execution_requests(serialized_execution_requests)
-        assert False, "expected exception"
-    except Exception:
-        pass
+    expect_assertion_error(lambda: spec.get_execution_requests(serialized_execution_requests))
 
 
 @with_electra_and_later
@@ -112,8 +101,4 @@ def test_requests_deserialize__reject_unexpected_request_type(spec):
     serialized_execution_requests = [
         b"\x03\xff\xff\xff",
     ]
-    try:
-        spec.get_execution_requests(serialized_execution_requests)
-        assert False, "expected exception"
-    except Exception:
-        pass
+    expect_assertion_error(lambda: spec.get_execution_requests(serialized_execution_requests))

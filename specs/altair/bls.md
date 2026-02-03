@@ -30,7 +30,7 @@ including type definitions.
 
 An additional function `AggregatePKs` is defined to extend the
 [IETF BLS signature draft standard v4](https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04)
-spec referenced in the phase 0 document.
+specification referenced in the phase 0 document.
 
 ```python
 def eth_aggregate_pubkeys(pubkeys: Sequence[BLSPubkey]) -> BLSPubkey:

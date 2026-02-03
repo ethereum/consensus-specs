@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
 - [Preset](#preset)
   - [Misc](#misc)
@@ -49,7 +49,7 @@ bridges).
 
 This document suggests a minimal light client design for the beacon chain that
 uses sync committees introduced in
-[this beacon chain extension](../beacon-chain.md).
+[this beacon-chain extension](../beacon-chain.md).
 
 Additional documents describe how the light client sync protocol can be used:
 
@@ -57,7 +57,7 @@ Additional documents describe how the light client sync protocol can be used:
 - [Light client](./light-client.md)
 - [Networking](./p2p-interface.md)
 
-## Custom types
+## Types
 
 | Name                         | SSZ equivalent                                              | Description                                                       |
 | ---------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------- |

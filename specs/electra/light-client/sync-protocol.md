@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Frozen constants](#frozen-constants)
   - [New constants](#new-constants)
@@ -26,7 +26,7 @@ Additional documents describes the impact of the upgrade on certain roles:
 
 - [Networking](./p2p-interface.md)
 
-## Custom types
+## Types
 
 | Name                         | SSZ equivalent                                                      | Description                                                       |
 | ---------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------- |

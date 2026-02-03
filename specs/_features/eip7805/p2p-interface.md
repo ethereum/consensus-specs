@@ -1,6 +1,6 @@
 # EIP-7805 -- Networking
 
-This document contains the consensus-layer networking specification for
+This document contains the consensus-layer networking specifications for
 EIP-7805.
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
