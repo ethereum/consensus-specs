@@ -27,6 +27,13 @@ from eth2spec.test.helpers.state import (
     transition_to,
 )
 
+DEBUG = False
+
+
+def debug_print(*args, **kwargs):
+    if DEBUG:
+        print(*args, **kwargs)
+
 
 def output_fast_confirmation_checks(spec, store, test_steps):
     test_steps.append(
@@ -356,7 +363,7 @@ class FCRTest:
             self.apply_attester_slashing(slashing_percentage=run.slashing_percentage)
 
     def execute_run(self, run: SystemRun):
-        print(run)
+        debug_print(run)
 
         if run.is_pure_slashing():
             # Apply slashing and return
@@ -406,7 +413,7 @@ class FCRTest:
             )
         else:
             effective_participation = 0
-        print(
+        debug_print(
             f"current_slot={self.current_slot()}, "
             f"head=({self.spec.get_block_slot(self.store, self.head())}, {self.head()}), "
             f"confirmed_block=({self.spec.get_block_slot(self.store, self.store.confirmed_root)}, {self.store.confirmed_root}), "
@@ -449,7 +456,7 @@ class CurrentEpochTestSpecification:
                 spec.is_one_confirmed(store, spec.get_current_balance_source(store), root)
                 for root in canonical_roots
             ]
-            print(is_one_confirmed_list)
+            debug_print(is_one_confirmed_list)
             assert all(is_one_confirmed_list)
         else:
             assert not spec.is_one_confirmed(
