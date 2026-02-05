@@ -194,3 +194,16 @@ def get_valid_proposer_slashing(
         signed_header_1=signed_header_1,
         signed_header_2=signed_header_2,
     )
+
+
+def get_valid_proposer_slashings(spec, state, num_slashings):
+    proposer_slashings = []
+    for i in range(num_slashings):
+        slashed_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[i]
+        assert not state.validators[slashed_index].slashed
+
+        proposer_slashing = get_valid_proposer_slashing(
+            spec, state, slashed_index=slashed_index, signed_1=True, signed_2=True
+        )
+        proposer_slashings.append(proposer_slashing)
+    return proposer_slashings
