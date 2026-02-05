@@ -36,9 +36,6 @@
   - [Verify current spec behavior](#verify-current-spec-behavior)
   - [Do not edit generated files](#do-not-edit-generated-files)
   - [Fork inheritance](#fork-inheritance)
-  - [Changes to older forks may affect newer forks](#changes-to-older-forks-may-affect-newer-forks)
-  - [Linting requirements](#linting-requirements)
-  - [Test organization](#test-organization)
 
 <!-- mdformat-toc end -->
 
@@ -522,26 +519,6 @@ When adding to a new fork:
 - Include an `upgrade_to_<fork>` function that converts the previous fork's
   `BeaconState` to the new fork's state
 
-### Changes to older forks may affect newer forks
-
 Changes to an older fork (functions, containers, constants, etc.) may require
 updates to newer forks as well, if those elements are used or modified in later
 forks.
-
-### Linting requirements
-
-Run `make lint` before committing.
-
-### Test organization
-
-Tests mirror the spec structure:
-
-```
-tests/core/pyspec/eth2spec/test/
-  {fork}/
-    block_processing/
-    epoch_processing/
-    sanity/
-    fork_choice/
-    ...
-```
