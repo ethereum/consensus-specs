@@ -481,7 +481,7 @@ def get_head(store: Store) -> ForkChoiceNode:
         children = get_node_children(store, blocks, head)
         if len(children) == 0:
             return head
-        # Sort by latest attesting balance with ties broken lexicographically
+        # Sort by latest attesting balance with ties broken by root lexicographically, then payload status
         head = max(
             children,
             key=lambda child: (
