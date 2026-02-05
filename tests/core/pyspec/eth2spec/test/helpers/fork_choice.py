@@ -444,8 +444,8 @@ def output_head_check(spec, store, test_steps):
     )
 
 
-def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=False):
-    checks = {
+def get_basic_store_checks(spec, store):
+    return {
         "time": int(store.time),
         "head": get_formatted_head_output(spec, store),
         "justified_checkpoint": {
@@ -458,6 +458,10 @@ def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=Fa
         },
         "proposer_boost_root": encode_hex(store.proposer_boost_root),
     }
+
+
+def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=False):
+    checks = get_basic_store_checks(spec, store)
 
     if with_viable_for_head_weights:
         filtered_block_roots = spec.get_filtered_block_tree(store).keys()
