@@ -1,5 +1,47 @@
 # AGENTS.md
 
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=3 --minlevel=2 -->
+
+- [Project overview](#project-overview)
+- [Directory structure](#directory-structure)
+  - [Specs](#specs)
+  - [Tests](#tests)
+  - [Other](#other)
+- [Key conventions](#key-conventions)
+  - [Specification files](#specification-files)
+  - [Markdown directives](#markdown-directives)
+  - [Python code in markdown](#python-code-in-markdown)
+  - [Code style](#code-style)
+  - [Fork comments](#fork-comments)
+  - [Container definitions](#container-definitions)
+  - [Type system](#type-system)
+  - [Presets vs configs](#presets-vs-configs)
+- [Important commands](#important-commands)
+  - [Linting](#linting)
+  - [Running tests](#running-tests)
+  - [Generating reference tests](#generating-reference-tests)
+  - [Cleaning](#cleaning)
+- [Writing tests](#writing-tests)
+  - [Test locations](#test-locations)
+  - [Reference tests vs unittests](#reference-tests-vs-unittests)
+  - [Reference test formats](#reference-test-formats)
+  - [Test decorators](#test-decorators)
+  - [Test pattern](#test-pattern)
+- [Common tasks](#common-tasks)
+  - [Adding a new helper function](#adding-a-new-helper-function)
+  - [Modifying an existing function](#modifying-an-existing-function)
+  - [Adding a new container field](#adding-a-new-container-field)
+  - [Adding a new fork or feature](#adding-a-new-fork-or-feature)
+- [Important notes](#important-notes)
+  - [Verify current spec behavior](#verify-current-spec-behavior)
+  - [Do not edit generated files](#do-not-edit-generated-files)
+  - [Fork inheritance](#fork-inheritance)
+  - [Changes to older forks may affect newer forks](#changes-to-older-forks-may-affect-newer-forks)
+  - [Linting requirements](#linting-requirements)
+  - [Test organization](#test-organization)
+
+<!-- mdformat-toc end -->
+
 ## Project overview
 
 This repository contains the **Ethereum Proof-of-Stake Consensus
@@ -15,25 +57,44 @@ operates.
 
 ## Directory structure
 
+### Specs
+
 ```
 /specs/
-  phase0/       # The genesis specs
-  altair/       # The 1st upgrade (starts with A)
-  bellatrix/    # The 2nd upgrade (starts with B)
+  phase0/     # The genesis specs
+  altair/     # The 1st upgrade (starts with A)
+  bellatrix/  # The 2nd upgrade (starts with B)
+  capella/    # The 3rd upgrade (starts with C)
   ...
-  _features/    # Features which have not been scheduled for inclusion
+  _features/  # Features which have not been scheduled for inclusion
+```
 
+### Tests
+
+```
 /tests/
-  core/pyspec/  # Generated Python specs and test suite
-  generators/   # Reference test generators
-  formats/      # Test format specifications
+  core/pyspec/eth2spec/
+    <fork>/              # Generated specs (do not edit)
+    test/<fork>/         # Test cases organized by fork
+      block_processing/
+      epoch_processing/
+      sanity/
+      ...
+    test/helpers/        # Shared test helpers
+      <fork>/            # Fork-specific test helpers
+  generators/            # Reference test generators
+  formats/               # Test format specifications
+```
 
-/pysetup/       # Spec generation pipeline (markdown → Python)
-/presets/       # Network parameters (mainnet and minimal)
-/configs/       # Network configurations
-/fork_choice/   # Fork choice protocol spec
-/sync/          # Optimistic sync protocol
-/ssz/           # SSZ serialization spec
+### Other
+
+```
+/pysetup/      # Executable spec generator (markdown to Python)
+/presets/      # Network parameters (mainnet and minimal)
+/configs/      # Network configurations
+/fork_choice/  # Fork choice protocol spec
+/sync/         # Optimistic sync protocol
+/ssz/          # SSZ serialization spec
 ```
 
 ## Key conventions
@@ -115,10 +176,10 @@ simple and readable:
 - Be concise but not overly verbose
 - Match the style of existing spec code
 
-### Fork modification markers
+### Fork comments
 
-Comments mark specific changes **within** functions or containers, not above the
-entire definition.
+These comments mark specific changes **within** functions or containers, not
+above the entire definition.
 
 **Example: function parameters:**
 
@@ -212,16 +273,29 @@ just network parameters (config). Preset values go in both `mainnet/` and
 **Important**: Do not create presets or configs that are derived from other
 presets or configs. Each value should be defined independently.
 
-## Build commands
+## Important commands
 
 Everything is done through the Makefile. Run `make help verbose=true` for full
 documentation.
 
+### Linting
+
 ```bash
-# Run all minimal preset tests (fast)
+make lint
+```
+
+This command runs all linters, formatters, and checks for the repository. It
+covers Python code style, markdown formatting, table of contents validation, and
+spec-specific checks. Always run this before committing to ensure changes meet
+the project standards.
+
+### Running tests
+
+```bash
+# Run all minimal preset tests (~30 minutes)
 make test
 
-# Run all mainnet preset tests (slow)
+# Run all mainnet preset tests (~5 hours)
 make test preset=mainnet
 
 # Run tests for a specific fork
@@ -232,12 +306,88 @@ make test k=deposit  # Runs all tests with "deposit" in the name
 
 # Combine options
 make test preset=mainnet fork=deneb k=test_verify_kzg_proof
-
-# Run linters, formatters, and checks
-make lint
 ```
 
+When testing, focus on what might have been impacted by the changes. Running the
+full test suite is slow, so target testing to relevant areas. For example, a bug
+fix in Electra deposit handling should be tested with deposit tests for Electra
+and any later forks. This may require multiple commands with different
+`fork=<fork>` options, as there is currently no single command to run tests for
+a given fork and all subsequent forks.
+
+Use `preset=minimal` (the default) while developing and iterating on changes.
+Once everything works, run the same targeted tests with `preset=mainnet` as a
+final sanity check before committing.
+
+### Generating reference tests
+
+```bash
+# Generate all reference tests (runs both presets by default)
+make reftests
+
+# AI agents should use verbose mode (default view uses dynamic tables)
+make reftests verbose=true
+
+# Generate tests for a specific fork
+make reftests fork=electra verbose=true
+
+# Generate tests matching a pattern (omit the "test_" prefix)
+make reftests k=verify_kzg_proof verbose=true
+
+# Generate a specific test runner's suite
+make reftests runner=bls verbose=true
+
+# Combine options
+make reftests preset=mainnet fork=deneb k=verify_kzg_proof verbose=true
+```
+
+Reference tests are written to the `../consensus-spec-tests` directory, which is
+created automatically.
+
+If a full suite of tests has been generated and an issue is identified, there is
+no need to regenerate everything. Only the affected test cases need to be
+regenerated; the framework will delete the individual test case directories
+before regenerating them.
+
+Note that if a test case is removed from the framework, `make reftests` will not
+delete previously generated reference tests for that case. The corresponding
+directories must be deleted manually, or the entire `../consensus-spec-tests`
+directory can be removed if regenerating everything is acceptable.
+
+To see available runners:
+
+```bash
+find tests/generators/runners -maxdepth 1 -type f -name '*.py' ! -name '__init__.py' -exec basename {} .py \;
+```
+
+### Cleaning
+
+```bash
+make clean
+```
+
+This command deletes all untracked files in the repository. Any untracked files
+that should be preserved must be staged with `git add` before running this
+command.
+
 ## Writing tests
+
+### Test locations
+
+Tests are located in `tests/core/pyspec/eth2spec/test/`, organized by fork. For
+example:
+
+- `tests/core/pyspec/eth2spec/test/phase0/`
+- `tests/core/pyspec/eth2spec/test/altair/`
+- \`tests/core/pyspec/eth2spec/test/bellatrix/
+
+Within each fork directory, tests are further organized by category (e.g.,
+`block_processing/`, `epoch_processing/`, `sanity/`, `unittests/`).
+
+Test helpers are located in `tests/core/pyspec/eth2spec/test/helpers/`. Shared
+helpers (e.g., `attestations.py`, `block.py`, `deposits.py`) are at the top
+level, while fork-specific helpers are in subdirectories (e.g.,
+`helpers/electra/`, `helpers/deneb/`).
 
 ### Reference tests vs unittests
 
@@ -245,8 +395,17 @@ make lint
 Prefer reference tests when possible since they benefit the entire ecosystem.
 
 **Unittests** are internal-only tests that don't produce reference files. Use
-these when reference tests aren't feasible (e.g., testing internal helpers or
-edge cases that don't map to client behavior).
+these when reference tests are not feasible (e.g., testing internal helpers or
+edge cases that do not map to client behavior). Unittests are located in
+`unittests` directories.
+
+### Reference test formats
+
+Reference test format specifications are located in `tests/formats/`. These
+define the directory and file structure for generated reference tests,
+documenting the expected inputs, outputs, and file organization for each test
+category (e.g., `operations/`, `sanity/`, `epoch_processing/`). Client
+implementations use these specifications to parse and run the reference tests.
 
 ### Test decorators
 
@@ -286,21 +445,19 @@ def test_example(spec, state):
 1. Add the Python function to the appropriate spec markdown file
 2. Add tests in `tests/core/pyspec/eth2spec/test/`
 3. Run `make lint` to run checks
-4. Run `make test k=your_test_name` (this regenerates specs automatically)
 
 ### Modifying an existing function
 
 1. Find the function in the spec markdown
-2. Make your changes, adding fork modification comments above changed lines
+2. Make the necessary changes, adding "fork comments" above changed lines
 3. Run `make lint` to run checks
-4. Run `make test` (this regenerates specs automatically)
 
 ### Adding a new container field
 
 1. Add field to container definition in spec markdown
 2. Update any functions that construct or use the container
 3. Update preset/config if needed
-4. Run `make lint` then `make test`
+4. Run `make lint` to run checks
 
 ### Adding a new fork or feature
 
@@ -364,6 +521,12 @@ When adding to a new fork:
 - Only include new or modified sections
 - Include an `upgrade_to_<fork>` function that converts the previous fork's
   `BeaconState` to the new fork's state
+
+### Changes to older forks may affect newer forks
+
+Changes to an older fork (functions, containers, constants, etc.) may require
+updates to newer forks as well, if those elements are used or modified in later
+forks.
 
 ### Linting requirements
 
