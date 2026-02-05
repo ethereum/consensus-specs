@@ -108,6 +108,36 @@ class PartialDataColumnSidecar(Container):
     header: List[PartialDataColumnHeader, 1]
 ```
 
+#### `PartialDataColumnPartsMetadata`
+
+Peers communicate the cells available with a bitmap. A set bit (`1`) at index
+`i` means that the peer has the cell at index `i`. The bitmap is encoded as a
+`Bitlist`. Peers explicitly request cells with a second request bitmap of the
+same length that is set to `1` if the peer would like to receive or provide this
+cell.
+
+This is encoded as the following SSZ container:
+
+```python
+class PartialDataColumnPartsMetadata(Container):
+    available: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    requests: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
+```
+
+This means that for each cell there are 2 bits of state:
+
+| bits | meaning                                              |
+| ---- | ---------------------------------------------------- |
+| 00   | The peer does not have the cell and does not want it |
+| 01   | The peer does not have the cell and does want it     |
+| 10   | Unused. Ignore                                       |
+| 11   | The peer has the cell and is willing to provide it   |
+
+Having a cell but not willing to provide it is functionally the same as not
+having the cell and not wanting it, so it does not need a separate state.
+
+Clients MUST only provide or request a cell if the second bit is set to `1`.
+
 #### `PartialDataColumnHeader`
 
 The `PartialDataColumnHeader` is the header that is common to all columns for a
@@ -452,29 +482,8 @@ Other versions may be defined later.
 
 ##### Parts metadata
 
-Peers communicate the cells available with a bitmap. A set bit (`1`) at index
-`i` means that the peer has the cell at index `i`. The bitmap is encoded as a
-`Bitlist`. Peers explicitly request cells with a second request bitmap of the
-same length that is set to `1` if the peer would like to receive or provide this
-cell.
-
-This means that for each cell there are 2 bits of state:
-
-| bits | meaning                                              |
-| ---- | ---------------------------------------------------- |
-| 00   | The peer does not have the cell and does not want it |
-| 01   | The peer does not have the cell and does want it     |
-| 10   | Unused.                                              |
-| 11   | The peer has the cell and is willing to provide it   |
-
-Having a cell but not willing to provide it is functionally the same as not
-having the cell and not wanting it, so it does not need a separate state.
-
-Clients MUST only provide or request a cell if the second bit is set to `1`.
-
-The parts metadata is encoded as two `Bitlist` back to back. With the first
-`Bitlist` being the availability `Bitlist` and the second being the request
-`Bitlist`.
+The parts metadata is encoded with the `PartialDataColumnPartsMetadata`
+container. 
 
 ##### Encoding and decoding responses
 
