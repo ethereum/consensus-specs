@@ -1261,10 +1261,10 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     # Regardless of the withdrawal credentials prefix, if a builder/validator
     # already exists with this pubkey, apply the deposit to their balance
     is_builder = deposit_request.pubkey in builder_pubkeys
-    is_builder_prefix = is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
+    has_builder_prefix = is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
     in_validators = deposit_request.pubkey in validator_pubkeys
     is_validator = in_validators or is_pending_validator(state, deposit_request.pubkey)
-    if is_builder or (is_builder_prefix and not is_validator):
+    if is_builder or (has_builder_prefix and not is_validator):
         # Apply builder deposits immediately
         apply_deposit_for_builder(
             state,
