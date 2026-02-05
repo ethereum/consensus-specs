@@ -125,14 +125,14 @@ class PartialDataColumnPartsMetadata(Container):
     requests: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
 ```
 
-This means that for each cell there are 2 bits of state:
+This means that for each cell there are two bits of state:
 
-| bits | meaning                                              |
-| ---- | ---------------------------------------------------- |
-| 00   | The peer does not have the cell and does not want it |
-| 01   | The peer does not have the cell and does want it     |
-| 10   | Unused. Ignore                                       |
-| 11   | The peer has the cell and is willing to provide it   |
+| Bits | Description                                          |
+| :--: | ---------------------------------------------------- |
+|  00  | The peer does not have the cell and does not want it |
+|  01  | The peer does not have the cell and does want it     |
+|  10  | Unused, ignore                                       |
+|  11  | The peer has the cell and is willing to provide it   |
 
 Having a cell but not willing to provide it is functionally the same as not
 having the cell and not wanting it, so it does not need a separate state.
