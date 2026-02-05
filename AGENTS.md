@@ -209,6 +209,9 @@ When adding new constants, determine if they affect type sizes (preset) or are
 just network parameters (config). Preset values go in both `mainnet/` and
 `minimal/` directories.
 
+**Important**: Do not create presets or configs that are derived from other
+presets or configs. Each value should be defined independently.
+
 ## Build commands
 
 Everything is done through the Makefile. Run `make help verbose=true` for full
