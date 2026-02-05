@@ -200,7 +200,8 @@ class TestRandomizedTestGenerator:
         assert "phase0" in forks
         assert "altair" in forks
         assert "fulu" in forks
-        assert len(forks) == 7
+        assert "gloas" in forks
+        assert len(forks) == 8
 
     def test_invalid_fork_raises(self) -> None:
         with pytest.raises(ValueError, match="Unknown fork"):

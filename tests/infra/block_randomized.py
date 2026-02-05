@@ -41,6 +41,7 @@ from eth2spec.test.helpers.constants import (
     DENEB,
     ELECTRA,
     FULU,
+    GLOAS,
     PHASE0,
 )
 from eth2spec.test.utils.randomized_block_tests import (
@@ -56,6 +57,7 @@ from eth2spec.test.utils.randomized_block_tests import (
     random_block_deneb,
     random_block_electra,
     random_block_fulu,
+    random_block_gloas,
     random_slot_in_epoch,
     randomize_state,
     randomize_state_altair,
@@ -64,6 +66,7 @@ from eth2spec.test.utils.randomized_block_tests import (
     randomize_state_deneb,
     randomize_state_electra,
     randomize_state_fulu,
+    randomize_state_gloas,
     slot_transition,
     transition_to_leaking,
     transition_with_random_block,
@@ -327,6 +330,11 @@ class RandomizedTestGenerator:
             name=FULU,
             state_randomizer=randomize_state_fulu,
             block_randomizer=random_block_fulu,
+        ),
+        GLOAS: ForkConfig(
+            name=GLOAS,
+            state_randomizer=randomize_state_gloas,
+            block_randomizer=random_block_gloas,
         ),
     }
 
