@@ -9,6 +9,7 @@
   - [Containers](#containers)
     - [`DataColumnsByRootIdentifier`](#datacolumnsbyrootidentifier)
     - [`PartialDataColumnSidecar`](#partialdatacolumnsidecar)
+    - [`PartialDataColumnPartsMetadata`](#partialdatacolumnpartsmetadata)
     - [`PartialDataColumnHeader`](#partialdatacolumnheader)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
@@ -485,7 +486,7 @@ Other versions may be defined later.
 ##### Parts metadata
 
 The parts metadata is encoded with the `PartialDataColumnPartsMetadata`
-container. 
+container.
 
 ##### Encoding and decoding responses
 
