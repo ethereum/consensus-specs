@@ -33,7 +33,7 @@ Test on restart to GU
 @with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
+    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
     threshold_fn=default_activation_threshold,
 )
 @spec_test
@@ -48,8 +48,8 @@ def test_fcr_restarts_to_gu_when_all_conditions_met(spec, state):
     
     Strategy:
     - Epochs 0-4: 100% participation, confirmations and justification advance
-    - Epoch 5 start (before FCR):
-      * Late slashing arrives → reconfirmation fails → triggers reset
+    - Last slot of epoch 4: GU sampling happens, then late slashing arrives
+    - Epoch 5 start: reconfirmation fails due to slashed weight
       * GU (epoch 4) is fresh, slot(finalized) < slot(GU)
       * → restart to GU instead of staying at finalized
     """
@@ -69,11 +69,14 @@ def test_fcr_restarts_to_gu_when_all_conditions_met(spec, state):
     # Last slot of epoch 4: build block, attest
     block_root = fcr.add_and_apply_block(parent_root=fcr.head())
     fcr.attest(block_root=block_root, slot=fcr.current_slot(), participation_rate=100)
-    
+
     # Run FCR at last slot of epoch 4 - this samples GU
     fcr.run_fast_confirmation()
-    
-    # Now advance to epoch 5 start
+
+    # Late slashing arrives during last slot of epoch 4 (before crossing into epoch 5)
+    fcr.apply_attester_slashing(slashing_percentage=50, slot=fcr.current_slot())
+
+    # Cross into epoch 5 atomically: tick + apply attestations
     fcr.next_slot()
     fcr.apply_attestations()
     fcr.attestation_pool = []
@@ -81,31 +84,27 @@ def test_fcr_restarts_to_gu_when_all_conditions_met(spec, state):
     assert fcr.current_slot() == epoch5_start
     assert spec.is_start_slot_at_epoch(fcr.current_slot())
 
-    # Capture state before slashing
-    confirmed_before_slashing = store.confirmed_root
+    # Verify preconditions for restart-to-GU
+    confirmed_before = store.confirmed_root
     gu = store.current_epoch_observed_justified_checkpoint
     finalized = store.finalized_checkpoint.root
     head = fcr.head()
     head_uj = store.unrealized_justifications[head]
     current_epoch = spec.get_current_store_epoch(store)
-    
+
     gu_slot = spec.get_block_slot(store, gu.root)
     finalized_slot = spec.get_block_slot(store, finalized)
 
-    # Verify preconditions for restart-to-GU
     assert gu.epoch + 1 == current_epoch, \
         f"GU not fresh: {gu.epoch} + 1 != {current_epoch}"
-    assert confirmed_before_slashing != finalized, \
-        "Should have confirmations before slashing"
+    assert confirmed_before != finalized, \
+        "Should have confirmations before FCR"
     assert gu == head_uj, \
         "GU != head's UJ"
     assert finalized_slot < gu_slot, \
         f"slot(finalized)={finalized_slot} >= slot(GU)={gu_slot}"
     assert gu.root != finalized, \
         "GU == finalized (test not meaningful)"
-
-    # Late slashing: slash 50% to break reconfirmation
-    fcr.apply_attester_slashing(slashing_percentage=50, slot=fcr.current_slot())
 
     # Run FCR - should reset due to reconfirmation failure, then restart to GU
     fcr.run_fast_confirmation()
