@@ -13,11 +13,11 @@ from eth2spec.test.helpers.block import (
     build_empty_block,
 )
 from eth2spec.test.helpers.fork_choice import (
-    add_attestations,
     add_attester_slashing,
     add_block,
+    get_attestation_file_name,
+    get_basic_store_checks,
     get_genesis_forkchoice_store_and_block,
-    on_tick_and_append_step,
 )
 from eth2spec.test.helpers.forks import (
     is_post_electra,
@@ -36,30 +36,25 @@ def debug_print(*args, **kwargs):
 
 
 def output_fast_confirmation_checks(spec, store, test_steps):
-    test_steps.append(
-        {
-            "checks": {
-                "previous_epoch_observed_justified_checkpoint": {
-                    "epoch": int(store.previous_epoch_observed_justified_checkpoint.epoch),
-                    "root": encode_hex(store.previous_epoch_observed_justified_checkpoint.root),
-                },
-                "current_epoch_observed_justified_checkpoint": {
-                    "epoch": int(store.current_epoch_observed_justified_checkpoint.epoch),
-                    "root": encode_hex(store.current_epoch_observed_justified_checkpoint.root),
-                },
-                "previous_slot_head": encode_hex(store.previous_slot_head),
-                "current_slot_head": encode_hex(store.current_slot_head),
-                "confirmed_root": encode_hex(store.confirmed_root),
-            }
-        }
-    )
+    basic_checks = get_basic_store_checks(spec, store)
+    fcr_checks = {
+        "previous_epoch_observed_justified_checkpoint": {
+            "epoch": int(store.previous_epoch_observed_justified_checkpoint.epoch),
+            "root": encode_hex(store.previous_epoch_observed_justified_checkpoint.root),
+        },
+        "current_epoch_observed_justified_checkpoint": {
+            "epoch": int(store.current_epoch_observed_justified_checkpoint.epoch),
+            "root": encode_hex(store.current_epoch_observed_justified_checkpoint.root),
+        },
+        "previous_slot_head": encode_hex(store.previous_slot_head),
+        "current_slot_head": encode_hex(store.current_slot_head),
+        "confirmed_root": encode_hex(store.confirmed_root),
+    }
+    test_steps.append({"checks": basic_checks | fcr_checks})
 
 
 def on_slot_start_after_past_attestations_applied_and_append_step(spec, store, test_steps):
     spec.on_slot_start_after_past_attestations_applied(store)
-    test_steps.append(
-        {"slot_start_after_past_attestations_applied": int(spec.get_current_slot(store))}
-    )
     output_fast_confirmation_checks(spec, store, test_steps)
 
 
@@ -149,8 +144,9 @@ class FCRTest:
 
     def tick(self, slot):
         assert slot > self.current_slot() or slot == self.spec.GENESIS_SLOT
-        current_time = slot * self.spec.config.SECONDS_PER_SLOT + self.store.genesis_time
-        on_tick_and_append_step(self.spec, self.store, current_time, self.test_steps)
+        new_time = slot * self.spec.config.SECONDS_PER_SLOT + self.store.genesis_time
+        self.spec.on_tick(self.store, new_time)
+        self.test_steps.append({"tick": int(new_time)})
 
     def next_slot(self):
         self.tick(self.current_slot() + 1)
@@ -249,14 +245,21 @@ class FCRTest:
         )
         self.attestation_pool.extend(attestations)
 
+        # Yield test data
+        for attestation in attestations:
+            att_tuple = (get_attestation_file_name(attestation), attestation)
+            self.blockchain_artefacts.append(att_tuple)
+            self.test_steps.append({"attestation": att_tuple[0]})
+
         return attestations
 
     def apply_attestations(self, attestations=None):
         if attestations is None:
             attestations = self.attestation_pool
 
-        for artefact in add_attestations(self.spec, self.store, attestations, self.test_steps):
-            self.blockchain_artefacts.append(artefact)
+        # Apply attestations to the fork choice
+        for attestation in attestations:
+            self.spec.on_attestation(self.store, attestation, is_from_block=False)
 
     def next_slot_and_apply_attestations(self):
         self.next_slot()
