@@ -430,6 +430,8 @@ For all partial messages:
 For verifying the `PartialDataColumnHeader` in a partial message:
 
 - _[IGNORE]_ The header is the first valid header for the given block root.
+- _[REJECT]_ The hash of the block header in `signed_block_header` MUST be the
+  same as the partial message's group id.
 - _[REJECT]_ The header's `kzg_commitments` list is non-empty.
 - _[IGNORE]_ The header is not from a future slot (with a
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
