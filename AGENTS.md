@@ -6,7 +6,6 @@
 - [Directory structure](#directory-structure)
   - [Specs](#specs)
   - [Tests](#tests)
-  - [Other](#other)
 - [Key conventions](#key-conventions)
   - [Specification files](#specification-files)
   - [Markdown directives](#markdown-directives)
@@ -22,7 +21,6 @@
   - [Generating reference tests](#generating-reference-tests)
   - [Cleaning](#cleaning)
 - [Writing tests](#writing-tests)
-  - [Test locations](#test-locations)
   - [Reference tests vs unittests](#reference-tests-vs-unittests)
   - [Reference test formats](#reference-test-formats)
   - [Test decorators](#test-decorators)
@@ -34,7 +32,6 @@
   - [Adding a new fork or feature](#adding-a-new-fork-or-feature)
 - [Important notes](#important-notes)
   - [Verify current spec behavior](#verify-current-spec-behavior)
-  - [Do not edit generated files](#do-not-edit-generated-files)
   - [Fork inheritance](#fork-inheritance)
 
 <!-- mdformat-toc end -->
@@ -71,7 +68,7 @@ operates.
 ```
 /tests/
   core/pyspec/eth2spec/
-    <fork>/              # Generated specs (do not edit)
+    <fork>/              # Assembled pyspec (do not edit)
     test/<fork>/         # Test cases organized by fork
       block_processing/
       epoch_processing/
@@ -81,17 +78,6 @@ operates.
       <fork>/            # Fork-specific test helpers
   generators/            # Reference test generators
   formats/               # Test format specifications
-```
-
-### Other
-
-```
-/pysetup/      # Executable spec generator (markdown to Python)
-/presets/      # Network parameters (mainnet and minimal)
-/configs/      # Network configurations
-/fork_choice/  # Fork choice protocol spec
-/sync/         # Optimistic sync protocol
-/ssz/          # SSZ serialization spec
 ```
 
 ## Key conventions
@@ -369,23 +355,6 @@ command.
 
 ## Writing tests
 
-### Test locations
-
-Tests are located in `tests/core/pyspec/eth2spec/test/`, organized by fork. For
-example:
-
-- `tests/core/pyspec/eth2spec/test/phase0/`
-- `tests/core/pyspec/eth2spec/test/altair/`
-- \`tests/core/pyspec/eth2spec/test/bellatrix/
-
-Within each fork directory, tests are further organized by category (e.g.,
-`block_processing/`, `epoch_processing/`, `sanity/`, `unittests/`).
-
-Test helpers are located in `tests/core/pyspec/eth2spec/test/helpers/`. Shared
-helpers (e.g., `attestations.py`, `block.py`, `deposits.py`) are at the top
-level, while fork-specific helpers are in subdirectories (e.g.,
-`helpers/electra/`, `helpers/deneb/`).
-
 ### Reference tests vs unittests
 
 **Reference tests** generate test vectors that client implementations use.
@@ -500,11 +469,6 @@ Adding a new fork (e.g., "foobar") requires updates to many files:
 This is an evolving specification. Do not rely on prior knowledge or cached
 context when modifying the spec. Always read the current spec files to verify
 how functions, containers, and logic actually behave before making changes.
-
-### Do not edit generated files
-
-Files in `tests/core/pyspec/eth2spec/{fork}/{preset}/` are **generated**. Edit
-the source markdown in `/specs/` instead.
 
 ### Fork inheritance
 
