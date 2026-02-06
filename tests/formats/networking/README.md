@@ -9,3 +9,4 @@ Handlers:
   `compute_columns_for_custody_group` helper tests
 - [`get_custody_groups`](./get_custody_groups.md): `get_custody_groups` helper
   tests
+- [`gossip_validation`](./gossip_validation.md): Gossip topic validation tests
