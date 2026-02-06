@@ -3,11 +3,11 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Participation flag indices](#participation-flag-indices)
   - [Incentivization weights](#incentivization-weights)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
   - [Misc](#misc)
 - [Preset](#preset)
   - [Rewards and penalties](#rewards-and-penalties)
@@ -21,7 +21,7 @@
   - [New containers](#new-containers)
     - [`SyncAggregate`](#syncaggregate)
     - [`SyncCommittee`](#synccommittee)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Crypto](#crypto)
   - [Misc](#misc-1)
     - [`add_flag`](#add_flag)
@@ -55,17 +55,17 @@
 
 ## Introduction
 
-Altair is the first beacon chain hard fork. Its main features are:
+Altair is the first beacon-chain upgrade. Its main features are:
 
-- sync committees to support light clients
-- incentive accounting reforms to reduce spec complexity
-- penalty parameter updates towards their planned maximally punitive values
+- Sync committees to support light clients
+- Incentive accounting reforms to reduce specification complexity
+- Penalty parameter updates towards their planned maximally punitive values
 
-## Custom types
+## Types
 
 | Name                 | SSZ equivalent | Description                                                |
 | -------------------- | -------------- | ---------------------------------------------------------- |
-| `ParticipationFlags` | `uint8`        | a succinct representation of 8 boolean participation flags |
+| `ParticipationFlags` | `uint8`        | A succinct representation of 8 boolean participation flags |
 
 ## Constants
 
@@ -90,7 +90,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 *Note*: The sum of the weights equal `WEIGHT_DENOMINATOR`.
 
-### Domain types
+### Domains
 
 | Name                                    | Value                      |
 | --------------------------------------- | -------------------------- |
@@ -111,9 +111,6 @@ Altair is the first beacon chain hard fork. Its main features are:
 This patch updates a few configuration values to move penalty parameters closer
 to their final, maximum security values.
 
-*Note*: The spec does *not* override previous configuration values but instead
-creates new values and replaces usage throughout.
-
 | Name                                      | Value                              |
 | ----------------------------------------- | ---------------------------------- |
 | `INACTIVITY_PENALTY_QUOTIENT_ALTAIR`      | `uint64(3 * 2**24)` (= 50,331,648) |
@@ -133,8 +130,8 @@ creates new values and replaces usage throughout.
 
 | Name                             | Value                 | Description                      |
 | -------------------------------- | --------------------- | -------------------------------- |
-| `INACTIVITY_SCORE_BIAS`          | `uint64(2**2)` (= 4)  | score points per inactive epoch  |
-| `INACTIVITY_SCORE_RECOVERY_RATE` | `uint64(2**4)` (= 16) | score points per leak-free epoch |
+| `INACTIVITY_SCORE_BIAS`          | `uint64(2**2)` (= 4)  | Score points per inactive epoch  |
+| `INACTIVITY_SCORE_RECOVERY_RATE` | `uint64(2**4)` (= 16) | Score points per leak-free epoch |
 
 ## Containers
 
@@ -209,7 +206,7 @@ class SyncCommittee(Container):
     aggregate_pubkey: BLSPubkey
 ```
 
-## Helper functions
+## Helpers
 
 ### Crypto
 
@@ -460,7 +457,9 @@ calculating the proposer reward.
 
 ```python
 def slash_validator(
-    state: BeaconState, slashed_index: ValidatorIndex, whistleblower_index: ValidatorIndex = None
+    state: BeaconState,
+    slashed_index: ValidatorIndex,
+    whistleblower_index: Optional[ValidatorIndex] = None,
 ) -> None:
     """
     Slash the validator with index ``slashed_index``.

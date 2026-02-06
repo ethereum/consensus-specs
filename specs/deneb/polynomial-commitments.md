@@ -3,19 +3,18 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Cryptographic types](#cryptographic-types)
 - [Constants](#constants)
 - [Preset](#preset)
   - [Blob](#blob)
   - [Trusted setup](#trusted-setup)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Bit-reversal permutation](#bit-reversal-permutation)
     - [`is_power_of_two`](#is_power_of_two)
     - [`reverse_bits`](#reverse_bits)
     - [`bit_reversal_permutation`](#bit_reversal_permutation)
   - [BLS12-381 helpers](#bls12-381-helpers)
-    - [`multi_exp`](#multi_exp)
     - [`hash_to_bls_field`](#hash_to_bls_field)
     - [`bytes_to_bls_field`](#bytes_to_bls_field)
     - [`bls_field_to_bytes`](#bls_field_to_bytes)
@@ -58,7 +57,7 @@ internally by the KZG library.
 Public functions MUST accept raw bytes as input and perform the required
 cryptographic normalization before invoking any internal functions.
 
-## Custom types
+## Types
 
 | Name            | SSZ equivalent                                                  | Description                                                                                                                                                                  |
 | --------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -107,7 +106,7 @@ cryptographic normalization before invoking any internal functions.
 | `KZG_SETUP_G1_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
 | `KZG_SETUP_G2_MONOMIAL` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]`     |
 
-## Helper functions
+## Helpers
 
 ### Bit-reversal permutation
 
@@ -151,15 +150,6 @@ def bit_reversal_permutation(sequence: Sequence[T]) -> Sequence[T]:
 ```
 
 ### BLS12-381 helpers
-
-#### `multi_exp`
-
-This function performs a multi-scalar multiplication between `points` and
-`integers`. `points` can either be in G1 or G2.
-
-```python
-def multi_exp(_points: Sequence[TPoint], _integers: Sequence[uint64]) -> Sequence[TPoint]: ...
-```
 
 #### `hash_to_bls_field`
 
@@ -351,8 +341,6 @@ def evaluate_polynomial_in_evaluation_form(
 ```
 
 ### KZG
-
-KZG core functions. These are also defined in Deneb execution specs.
 
 #### `blob_to_kzg_commitment`
 

@@ -26,18 +26,21 @@
 This is an accompanying document which describes the expected actions of a
 "builder" participating in the Ethereum proof-of-stake protocol.
 
-With the Gloas fork, the protocol introduces a new type of validator called a
-*builder*. Builders have the option to produce execution payloads by submitting
-bids. This document is a collection of guidelines for builders.
+With the Gloas upgrade, the protocol introduces a new type of staked actor (not
+a validator) called a *builder*. Since builders are not validators, they do not
+perform validator duties (e.g., attesting and proposing) and therefore do not
+earn yield on their stake. Builders have the option to produce execution
+payloads by submitting bids. This document is a collection of guidelines for
+builders.
 
 ## Becoming a builder
 
 ### Builder withdrawal credentials
 
-The `withdrawal_credentials` field determines whether a validator is registered
-as a builder on the network. To be recognized as a builder, a validator’s
-`withdrawal_credentials` must use the `BUILDER_WITHDRAWAL_PREFIX`. This prefix
-distinguishes builders from other validator types.
+When submitting a deposit to the deposit contract, the `withdrawal_credentials`
+field determines whether the staked actor will be a validator or a builder. To
+be recognized as a builder, the `withdrawal_credentials` must use the
+`BUILDER_WITHDRAWAL_PREFIX`.
 
 The `withdrawal_credentials` field must be:
 
@@ -45,12 +48,12 @@ The `withdrawal_credentials` field must be:
 - `withdrawal_credentials[1:12] == b'\x00' * 11`
 - `withdrawal_credentials[12:] == builder_execution_address`
 
-Where `builder_execution_address` is an execution layer address that will
+Where `builder_execution_address` is an execution-layer address that will
 receive withdrawals.
 
 ### Submit deposit
 
-Builders follow the same deposit process as regular validators, but with the
+Builders follow the same deposit process as validators, but with the
 builder-specific withdrawal credentials. The deposit must include:
 
 - `pubkey`: The builder's BLS public key.
@@ -66,15 +69,22 @@ with the withdrawal credentials using `BUILDER_WITHDRAWAL_PREFIX`.
 
 ### Builder index
 
-Once the deposit is processed, the builder is assigned a unique
-`validator_index` within the validator registry. This index is used to identify
-the builder in execution payload bids and envelopes.
+When the deposit is processed on the beacon chain, the builder is assigned a
+unique `builder_index` within the builder registry. This index is used to
+identify the builder in execution payload bids and envelopes.
 
 ### Activation
 
-Builder activation follows the same process as other validators. Note that the
-validator must have a balance of at least `MIN_ACTIVATION_BALANCE` to become
-eligible for activation.
+Builders become active once the epoch in which they were registered (assigned an
+index) has been finalized. Since registrations occur as soon as deposits reach
+the beacon chain, builders typically become active two epochs after submitting
+their deposit.
+
+*Note*: At the fork, pending deposits with the `BUILDER_WITHDRAWAL_PREFIX` are
+applied to the builder registry. The builder's `deposit_epoch` is set to the
+epoch of the pending deposit, not the fork epoch. Therefore, if that epoch is
+finalized at the fork, the builder will be immediately active. See
+`onboard_builders_from_pending_deposits` for details.
 
 ## Builder activities
 
@@ -104,21 +114,26 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
     execution engine via a call to `engine_getPayloadV5`.
 04. Set `bid.block_hash` to be the block hash of the constructed payload, that
     is `payload.block_hash`.
-05. Set `bid.fee_recipient` to be an execution address to receive the payment.
-    This address can be obtained from the proposer directly via a request or can
-    be set from the withdrawal credentials of the proposer. The burn address can
-    be used as a fallback.
-06. Set `bid.gas_limit` to be the gas limit of the constructed payload, that is
-    `payload.gas_limit`.
-07. Set `bid.builder_index` to be the validator index of the builder performing
-    these actions.
-08. Set `bid.slot` to be the slot for which this bid is aimed. This slot
+05. Set `bid.prev_randao` to be the previous RANDAO of the constructed payload,
+    that is `payload.prev_randao`.
+06. Set `bid.fee_recipient` to be an execution address to receive the payment.
+    The proposer's preferred fee recipient can be obtained from the
+    `SignedProposerPreferences` associated with `bid.slot`.
+07. Set `bid.gas_limit` to be the gas limit of the constructed payload. The
+    proposer's preferred gas limit can be obtained from the
+    `SignedProposerPreferences` associated with `bid.slot`.
+08. Set `bid.builder_index` to be the index of the builder performing these
+    actions.
+09. Set `bid.slot` to be the slot for which this bid is aimed. This slot
     **MUST** be either the current slot or the next slot.
-09. Set `bid.value` to be the value (in gwei) that the builder will pay the
+10. Set `bid.value` to be the value (in gwei) that the builder will pay the
     proposer if the bid is accepted. The builder **MUST** have enough excess
     balance to fulfill this bid and all pending payments.
-10. Set `bid.kzg_commitments_root` to be the `hash_tree_root` of the
-    `blobsbundle.commitments` field returned by `engine_getPayloadV5`.
+11. Set `bid.execution_payment` to zero. A non-zero value indicates a trusted
+    execution-layer payment. Bids with non-zero `execution_payment` **MUST NOT**
+    be broadcast to the `execution_payload_bid` gossip topic.
+12. Set `bid.blob_kzg_commitments` to be the `blobsbundle.commitments` field
+    returned by `engine_getPayloadV5`.
 
 After building the `bid`, the builder obtains a `signature` of the bid by using:
 
@@ -147,7 +162,8 @@ def get_data_column_sidecars(
     beacon_block_root: Root,
     # [New in Gloas:EIP7732]
     slot: Slot,
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    # [Modified in Gloas:EIP7732]
+    # Removed `kzg_commitments`
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments_inclusion_proof`
     cells_and_kzg_proofs: Sequence[
@@ -155,11 +171,10 @@ def get_data_column_sidecars(
     ],
 ) -> Sequence[DataColumnSidecar]:
     """
-    Given a beacon block root and the commitments, cells/proofs associated with
-    each blob in the block, assemble the sidecars which can be distributed to peers.
+    Given a beacon block root and the cells/proofs associated with each blob
+    in the corresponding payload, assemble the sidecars which can be
+    distributed to peers.
     """
-    assert len(cells_and_kzg_proofs) == len(kzg_commitments)
-
     sidecars = []
     for column_index in range(NUMBER_OF_COLUMNS):
         column_cells, column_proofs = [], []
@@ -167,10 +182,10 @@ def get_data_column_sidecars(
             column_cells.append(cells[column_index])
             column_proofs.append(proofs[column_index])
         sidecars.append(
+            # [Modified in Gloas:EIP7732]
             DataColumnSidecar(
                 index=column_index,
                 column=column_cells,
-                kzg_commitments=kzg_commitments,
                 kzg_proofs=column_proofs,
                 slot=slot,
                 beacon_block_root=beacon_block_root,
@@ -181,15 +196,12 @@ def get_data_column_sidecars(
 
 #### Modified `get_data_column_sidecars_from_block`
 
-*Note*: The function `get_data_column_sidecars_from_block` is modified to
-include the list of blob KZG commitments and to use `beacon_block_root` instead
-of header and inclusion proof computations.
+*Note*: The function `get_data_column_sidecars_from_block` is modified to use
+`beacon_block_root` instead of header and inclusion proof computations.
 
 ```python
 def get_data_column_sidecars_from_block(
     signed_block: SignedBeaconBlock,
-    # [New in Gloas:EIP7732]
-    blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
     cells_and_kzg_proofs: Sequence[
         Tuple[Vector[Cell, CELLS_PER_EXT_BLOB], Vector[KZGProof, CELLS_PER_EXT_BLOB]]
     ],
@@ -202,7 +214,6 @@ def get_data_column_sidecars_from_block(
     return get_data_column_sidecars(
         beacon_block_root,
         signed_block.message.slot,
-        blob_kzg_commitments,
         cells_and_kzg_proofs,
     )
 ```
@@ -221,16 +232,13 @@ alias `bid` to be the committed `ExecutionPayloadBid` in
 
 1. Set `envelope.payload` to be the `ExecutionPayload` constructed when creating
    the corresponding bid. This payload **MUST** have the same block hash as
-   `envelope.bid.block_hash`.
+   `bid.block_hash`.
 2. Set `envelope.execution_requests` to be the `ExecutionRequests` associated
    with `payload`.
-3. Set `envelope.builder_index` to be the validator index of the builder
-   performing these steps. This field **MUST** be `bid.builder_index`.
+3. Set `envelope.builder_index` to be the index of the builder performing these
+   steps. This field **MUST** be `bid.builder_index`.
 4. Set `envelope.beacon_block_root` to be `hash_tree_root(block)`.
 5. Set `envelope.slot` to be `block.slot`.
-6. Set `envelope.blob_kzg_commitments` to be the `commitments` field of the
-   blobs bundle constructed when constructing the bid. This field **MUST** have
-   a `hash_tree_root` equal to `bid.blob_kzg_commitments_root`.
 
 After setting these parameters, the builder assembles
 `signed_execution_payload_envelope = SignedExecutionPayloadEnvelope(message=envelope, signature=BLSSignature())`,
@@ -259,5 +267,5 @@ and broadcasts it on the `execution_payload` global gossip topic.
 
 An honest builder that has seen a `SignedBeaconBlock` referencing his signed
 bid, but that block was not timely and thus it is not the head of the builder's
-chain, may choose to withhold their execution payload. For this the builder
+chain, may choose to withhold their execution payload. For this, the builder
 should act as if no block was produced and not broadcast the payload.

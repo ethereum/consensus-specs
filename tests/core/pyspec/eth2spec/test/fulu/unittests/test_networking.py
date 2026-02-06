@@ -8,6 +8,7 @@ from eth2spec.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
+    with_all_phases_from_to,
     with_fulu_and_later,
 )
 from eth2spec.test.helpers.blob import (
@@ -16,6 +17,10 @@ from eth2spec.test.helpers.blob import (
 from eth2spec.test.helpers.block import (
     sign_block,
 )
+from eth2spec.test.helpers.constants import (
+    FULU,
+    GLOAS,
+)
 from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
@@ -23,7 +28,7 @@ from eth2spec.test.helpers.forks import (
     is_post_gloas,
 )
 
-# Helper functions
+# Helpers
 
 
 def compute_data_column_sidecar(spec, state):
@@ -41,21 +46,31 @@ def compute_data_column_sidecar(spec, state):
     cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
 
     if is_post_gloas(spec):
-        block.body.signed_execution_payload_bid.message.blob_kzg_commitments_root = spec.List[
+        block.body.signed_execution_payload_bid.message.blob_kzg_commitments = spec.List[
             spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK
-        ](blob_kzg_commitments).hash_tree_root()
-        signed_block = sign_block(spec, state, block, proposer_index=0)
-        return spec.get_data_column_sidecars_from_block(
-            signed_block, blob_kzg_commitments, cells_and_kzg_proofs
-        )[0]
+        ](blob_kzg_commitments)
     else:
         block.body.blob_kzg_commitments = blob_kzg_commitments
         block.body.execution_payload.transactions = [opaque_tx]
         block.body.execution_payload.block_hash = compute_el_block_hash(
             spec, block.body.execution_payload, state
         )
-        signed_block = sign_block(spec, state, block, proposer_index=0)
-        return spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)[0]
+
+    signed_block = sign_block(spec, state, block, proposer_index=0)
+    sidecar = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)[0]
+    return sidecar, blob_kzg_commitments
+
+
+def _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments):
+    if is_post_gloas(spec):
+        return spec.verify_data_column_sidecar(sidecar, blob_kzg_commitments)
+    return spec.verify_data_column_sidecar(sidecar)
+
+
+def _verify_data_column_sidecar_kzg_proofs(spec, sidecar, blob_kzg_commitments):
+    if is_post_gloas(spec):
+        return spec.verify_data_column_sidecar_kzg_proofs(sidecar, blob_kzg_commitments)
+    return spec.verify_data_column_sidecar_kzg_proofs(sidecar)
 
 
 # Tests for verify_data_column_sidecar
@@ -65,67 +80,69 @@ def compute_data_column_sidecar(spec, state):
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__valid(spec, state):
-    sidecar = compute_data_column_sidecar(spec, state)
-    assert spec.verify_data_column_sidecar(sidecar)
+    sidecar, blob_kzg_commitments = compute_data_column_sidecar(spec, state)
+    assert _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments)
 
 
 @with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_zero_blobs(spec, state):
-    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar, blob_kzg_commitments = compute_data_column_sidecar(spec, state)
     sidecar.column = []
-    sidecar.kzg_commitments = []
     sidecar.kzg_proofs = []
-    assert not spec.verify_data_column_sidecar(sidecar)
+    if is_post_gloas(spec):
+        blob_kzg_commitments = []
+    else:
+        sidecar.kzg_commitments = []
+    assert not _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments)
 
 
 @with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_index(spec, state):
-    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar, blob_kzg_commitments = compute_data_column_sidecar(spec, state)
     sidecar.index = 128
-    assert not spec.verify_data_column_sidecar(sidecar)
+    assert not _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments)
 
 
 @with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_mismatch_len_column(spec, state):
-    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar, blob_kzg_commitments = compute_data_column_sidecar(spec, state)
     sidecar.column = sidecar.column[1:]
-    assert not spec.verify_data_column_sidecar(sidecar)
+    assert not _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments)
 
 
 @with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_commitments(spec, state):
-    sidecar = compute_data_column_sidecar(spec, state)
-    sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
-    assert not spec.verify_data_column_sidecar(sidecar)
+    sidecar, blob_kzg_commitments = compute_data_column_sidecar(spec, state)
+    if is_post_gloas(spec):
+        del blob_kzg_commitments[0]
+    else:
+        sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
+    assert not _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments)
 
 
 @with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_mismatch_len_kzg_proofs(spec, state):
-    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar, blob_kzg_commitments = compute_data_column_sidecar(spec, state)
     sidecar.kzg_proofs = sidecar.kzg_proofs[1:]
-    assert not spec.verify_data_column_sidecar(sidecar)
+    assert not _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments)
 
 
-@with_fulu_and_later
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar__invalid_kzg_commitments_over_max_blobs(spec, state):
-    sidecar = compute_data_column_sidecar(spec, state)
-
-    if is_post_gloas(spec):
-        slot = sidecar.slot
-    else:
-        slot = sidecar.signed_block_header.message.slot
+    sidecar, blob_kzg_commitments = compute_data_column_sidecar(spec, state)
+    slot = sidecar.signed_block_header.message.slot
     epoch = spec.compute_epoch_at_slot(slot)
     max_blobs = spec.get_blob_parameters(epoch).max_blobs_per_block
 
@@ -133,7 +150,7 @@ def test_verify_data_column_sidecar__invalid_kzg_commitments_over_max_blobs(spec
         sidecar.kzg_commitments.append(sidecar.kzg_commitments[0])
     assert len(sidecar.kzg_commitments) > max_blobs
 
-    assert not spec.verify_data_column_sidecar(sidecar)
+    assert not _verify_data_column_sidecar(spec, sidecar, blob_kzg_commitments)
 
 
 # Tests for verify_data_column_sidecar_kzg_proofs
@@ -143,71 +160,65 @@ def test_verify_data_column_sidecar__invalid_kzg_commitments_over_max_blobs(spec
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__valid(spec, state):
-    sidecar = compute_data_column_sidecar(spec, state)
-    assert spec.verify_data_column_sidecar_kzg_proofs(sidecar)
+    sidecar, blob_kzg_commitments = compute_data_column_sidecar(spec, state)
+    assert _verify_data_column_sidecar_kzg_proofs(spec, sidecar, blob_kzg_commitments)
 
 
 @with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_column(spec, state):
-    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar, blob_kzg_commitments = compute_data_column_sidecar(spec, state)
     sidecar.column[0] = sidecar.column[1]
-    assert not spec.verify_data_column_sidecar_kzg_proofs(sidecar)
+    assert not _verify_data_column_sidecar_kzg_proofs(spec, sidecar, blob_kzg_commitments)
 
 
 @with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_commitment(spec, state):
-    sidecar = compute_data_column_sidecar(spec, state)
-    sidecar.kzg_commitments[0] = sidecar.kzg_commitments[1]
-    assert not spec.verify_data_column_sidecar_kzg_proofs(sidecar)
+    sidecar, blob_kzg_commitments = compute_data_column_sidecar(spec, state)
+    if is_post_gloas(spec):
+        blob_kzg_commitments[0] = blob_kzg_commitments[1]
+    else:
+        sidecar.kzg_commitments[0] = sidecar.kzg_commitments[1]
+    assert not _verify_data_column_sidecar_kzg_proofs(spec, sidecar, blob_kzg_commitments)
 
 
 @with_fulu_and_later
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_kzg_proofs__invalid_wrong_proof(spec, state):
-    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar, blob_kzg_commitments = compute_data_column_sidecar(spec, state)
     sidecar.kzg_proofs[0] = sidecar.kzg_proofs[1]
-    assert not spec.verify_data_column_sidecar_kzg_proofs(sidecar)
+    assert not _verify_data_column_sidecar_kzg_proofs(spec, sidecar, blob_kzg_commitments)
 
 
 # Tests for verify_data_column_sidecar_inclusion_proof
 
 
-@with_fulu_and_later
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__valid(spec, state):
-    if is_post_gloas(spec):
-        # Skip for Gloas as inclusion proof fields were removed
-        return
-    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar, _ = compute_data_column_sidecar(spec, state)
     assert spec.verify_data_column_sidecar_inclusion_proof(sidecar)
 
 
-@with_fulu_and_later
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__invalid_missing_commitment(spec, state):
-    if is_post_gloas(spec):
-        # Skip for Gloas as inclusion proof fields were removed
-        return
-    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar, _ = compute_data_column_sidecar(spec, state)
     sidecar.kzg_commitments = sidecar.kzg_commitments[1:]
     assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
 
 
-@with_fulu_and_later
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 @single_phase
 def test_verify_data_column_sidecar_inclusion_proof__invalid_duplicate_commitment(spec, state):
-    if is_post_gloas(spec):
-        # Skip for Gloas as inclusion proof fields were removed
-        return
-    sidecar = compute_data_column_sidecar(spec, state)
+    sidecar, _ = compute_data_column_sidecar(spec, state)
     sidecar.kzg_commitments = sidecar.kzg_commitments + [sidecar.kzg_commitments[0]]
     assert not spec.verify_data_column_sidecar_inclusion_proof(sidecar)
 

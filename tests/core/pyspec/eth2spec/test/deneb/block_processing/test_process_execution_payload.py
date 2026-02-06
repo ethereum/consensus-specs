@@ -6,7 +6,6 @@ from eth2spec.test.context import (
     with_deneb_and_later,
 )
 from eth2spec.test.helpers.blob import (
-    get_max_blob_count,
     get_sample_blob_tx,
 )
 from eth2spec.test.helpers.execution_payload import (
@@ -15,7 +14,7 @@ from eth2spec.test.helpers.execution_payload import (
     get_execution_payload_header,
 )
 from eth2spec.test.helpers.forks import is_post_gloas
-from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.keys import builder_privkeys, privkeys
 
 
 def run_execution_payload_processing(
@@ -34,15 +33,14 @@ def run_execution_payload_processing(
     if is_post_gloas(spec):
         envelope = spec.ExecutionPayloadEnvelope(
             payload=execution_payload,
-            blob_kzg_commitments=blob_kzg_commitments,
             slot=state.slot,
-            builder_index=spec.get_beacon_proposer_index(state),
+            builder_index=spec.BUILDER_INDEX_SELF_BUILD,
         )
         kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
             blob_kzg_commitments
         )
-        # In Gloas, blob_kzg_commitments_root is stored in latest_execution_payload_bid, not latest_execution_payload_header
-        state.latest_execution_payload_bid.blob_kzg_commitments_root = kzg_list.hash_tree_root()
+        # In Gloas, blob_kzg_commitments is stored in latest_execution_payload_bid, not latest_execution_payload_header
+        state.latest_execution_payload_bid.blob_kzg_commitments = kzg_list
         state.latest_execution_payload_bid.builder_index = envelope.builder_index
         # Ensure bid fields match payload for assertions to pass
         state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
@@ -58,10 +56,6 @@ def run_execution_payload_processing(
         ]
         amount = payment.withdrawal.amount
         if amount > 0:
-            exit_queue_epoch = spec.compute_exit_epoch_and_update_churn(post_state, amount)
-            payment.withdrawal.withdrawable_epoch = spec.Epoch(
-                exit_queue_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-            )
             post_state.builder_pending_withdrawals.append(payment.withdrawal)
         post_state.builder_pending_payments[
             spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
@@ -70,7 +64,10 @@ def run_execution_payload_processing(
         post_state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] = 0b1
         post_state.latest_block_hash = execution_payload.block_hash
         envelope.state_root = post_state.hash_tree_root()
-        privkey = privkeys[envelope.builder_index]
+        if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
+            privkey = privkeys[state.latest_block_header.proposer_index]
+        else:
+            privkey = builder_privkeys[envelope.builder_index]
         signature = spec.get_execution_payload_envelope_signature(
             state,
             envelope,
@@ -449,29 +446,4 @@ def test_invalid_correct_input__execution_invalid(spec, state):
         state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
     yield from run_execution_payload_processing(
         spec, state, execution_payload, blob_kzg_commitments, valid=False, execution_valid=False
-    )
-
-
-@with_deneb_and_later
-@spec_state_test
-def test_invalid_exceed_max_blobs_per_block(spec, state):
-    """
-    The blob transaction and commitments are correct but the number of blobs exceeds the `MAX_BLOBS_PER_BLOCK`.
-    """
-    execution_payload = build_empty_execution_payload(spec, state)
-
-    opaque_tx, _, blob_kzg_commitments, _ = get_sample_blob_tx(
-        spec, blob_count=get_max_blob_count(spec, state) + 1
-    )
-
-    execution_payload.transactions = [opaque_tx]
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
-
-    # Make the parent block full in Gloas and set up bid to match payload
-    if is_post_gloas(spec):
-        state.latest_block_hash = execution_payload.parent_hash
-        state.latest_execution_payload_bid.gas_limit = execution_payload.gas_limit
-        state.latest_execution_payload_bid.block_hash = execution_payload.block_hash
-    yield from run_execution_payload_processing(
-        spec, state, execution_payload, blob_kzg_commitments, valid=False
     )

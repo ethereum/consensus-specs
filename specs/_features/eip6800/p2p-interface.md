@@ -6,14 +6,14 @@
 
 - [Introduction](#introduction)
 - [Modification in EIP-6800](#modification-in-eip-6800)
-  - [Helper functions](#helper-functions)
+  - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for
+This document contains the consensus-layer networking specifications for
 EIP-6800.
 
 The specification of these changes continues in the same format as the network
@@ -21,7 +21,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modification in EIP-6800
 
-### Helper functions
+### Helpers
 
 #### Modified `compute_fork_version`
 

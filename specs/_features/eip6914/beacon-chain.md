@@ -7,7 +7,7 @@
 - [Introduction](#introduction)
 - [Preset](#preset)
   - [Time parameters](#time-parameters)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Predicates](#predicates)
     - [`is_reusable_validator`](#is_reusable_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -18,7 +18,7 @@
 
 ## Introduction
 
-This is the beacon chain specification to assign new deposits to existing
+These are the beacon-chain specifications to assign new deposits to existing
 validator records. Refers to
 [EIP-6914](https://github.com/ethereum/EIPs/pull/6914).
 
@@ -33,7 +33,7 @@ validator records. Refers to
 | ---------------------------- | -------------------------- | ------ | --------- |
 | `SAFE_EPOCHS_TO_REUSE_INDEX` | `uint64(2**16)` (= 65,536) | epochs | ~0.8 year |
 
-## Helper functions
+## Helpers
 
 ### Predicates
 

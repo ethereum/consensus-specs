@@ -18,8 +18,7 @@
     - [Attester slashings](#attester-slashings)
     - [Attestations](#attestations)
     - [Deposits](#deposits)
-    - [Execution payload](#execution-payload)
-    - [Execution Requests](#execution-requests)
+    - [Execution requests](#execution-requests)
   - [Constructing the `BlobSidecar`s](#constructing-the-blobsidecars)
     - [Sidecar](#sidecar)
 - [Attesting](#attesting)
@@ -42,9 +41,9 @@ definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the
-updated Beacon Chain doc of [Electra](./beacon-chain.md) are requisite for this
-document and used throughout. Please see related Beacon Chain doc before
-continuing and use them as a reference throughout.
+updated beacon-chain specifications of [Electra](./beacon-chain.md) are
+requisite for this document and used throughout. Please see related beacon-chain
+specifications before continuing and use them as a reference throughout.
 
 ## Helpers
 
@@ -208,49 +207,7 @@ def get_eth1_vote(state: BeaconState, eth1_chain: Sequence[Eth1Block]) -> Eth1Da
     )
 ```
 
-#### Execution payload
-
-`prepare_execution_payload` is updated from the Deneb specs.
-
-*Note*: In this section, `state` is the state of the slot for the block proposal
-_without_ the block yet applied. That is, `state` is the `previous_state`
-processed through any empty slots up to the assigned slot using
-`process_slots(previous_state, slot)`.
-
-*Note*: The only change to `prepare_execution_payload` is the new definition of
-`get_expected_withdrawals`.
-
-```python
-def prepare_execution_payload(
-    state: BeaconState,
-    safe_block_hash: Hash32,
-    finalized_block_hash: Hash32,
-    suggested_fee_recipient: ExecutionAddress,
-    execution_engine: ExecutionEngine,
-) -> Optional[PayloadId]:
-    # Verify consistency of the parent hash with respect to the previous execution payload header
-    parent_hash = state.latest_execution_payload_header.block_hash
-
-    # [Modified in EIP7251]
-    # Set the forkchoice head and initiate the payload build process
-    withdrawals, _ = get_expected_withdrawals(state)
-
-    payload_attributes = PayloadAttributes(
-        timestamp=compute_time_at_slot(state, state.slot),
-        prev_randao=get_randao_mix(state, get_current_epoch(state)),
-        suggested_fee_recipient=suggested_fee_recipient,
-        withdrawals=withdrawals,
-        parent_beacon_block_root=hash_tree_root(state.latest_block_header),
-    )
-    return execution_engine.notify_forkchoice_updated(
-        head_block_hash=parent_hash,
-        safe_block_hash=safe_block_hash,
-        finalized_block_hash=finalized_block_hash,
-        payload_attributes=payload_attributes,
-    )
-```
-
-#### Execution Requests
+#### Execution requests
 
 *[New in Electra]*
 

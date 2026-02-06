@@ -14,9 +14,11 @@ from eth2spec.test.helpers.execution_payload import (
     build_randomized_execution_payload,
     compute_el_block_hash_for_block,
 )
+from eth2spec.test.helpers.genesis import build_mock_builder
 from eth2spec.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
 )
+from eth2spec.test.helpers.keys import builder_privkeys
 from eth2spec.test.helpers.multi_operations import (
     build_random_block_from_state_for_next_slot,
     get_random_bls_to_execution_changes,
@@ -24,6 +26,7 @@ from eth2spec.test.helpers.multi_operations import (
     get_random_sync_aggregate,
     prepare_state_and_get_random_deposits,
 )
+from eth2spec.test.helpers.payload_attestation import get_random_payload_attestations
 from eth2spec.test.helpers.random import (
     patch_state_to_non_leaking,
     randomize_state as randomize_state_helper,
@@ -117,6 +120,20 @@ def randomize_state_fulu(spec, state, stats, exit_fraction=0.1, slash_fraction=0
         exit_fraction=exit_fraction,
         slash_fraction=slash_fraction,
     )
+    return scenario_state
+
+
+def randomize_state_gloas(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_fulu(
+        spec,
+        state,
+        stats,
+        exit_fraction=exit_fraction,
+        slash_fraction=slash_fraction,
+    )
+
+    _add_random_builders(spec, state)
+
     return scenario_state
 
 
@@ -302,6 +319,29 @@ def random_block_fulu(spec, state, signed_blocks, scenario_state, rng=None):
     return block
 
 
+def random_block_gloas(spec, state, signed_blocks, scenario_state, rng=None):
+    if rng is None:
+        rng = Random(3456)
+
+    # Get random Altair block
+    block = random_block_altair_with_cycling_sync_committee_participation(
+        spec, state, signed_blocks, scenario_state
+    )
+
+    # Add bls_to_execution_changes
+    block.body.bls_to_execution_changes = get_random_bls_to_execution_changes(
+        spec, state, num_address_changes=rng.randint(1, spec.MAX_BLS_TO_EXECUTION_CHANGES)
+    )
+
+    # Add signed_execution_payload_bid
+    block.body.signed_execution_payload_bid = _build_random_signed_bid(spec, state, block, rng)
+
+    # Add payload_attestations
+    block.body.payload_attestations = get_random_payload_attestations(spec, state, rng)
+
+    return block
+
+
 # validations
 
 
@@ -364,6 +404,82 @@ def transition_with_random_block(block_randomizer):
     return {
         "block_producer": block_randomizer,
     }
+
+
+# builders
+
+
+def _add_random_builders(spec, state, rng=None):
+    """Add random builders to state for gloas testing."""
+    if rng is None:
+        rng = Random(999)
+
+    num_builders = rng.randint(0, 8)
+
+    for i in range(num_builders):
+        balance = spec.MIN_DEPOSIT_AMOUNT + rng.randint(0, 10) * spec.EFFECTIVE_BALANCE_INCREMENT
+        builder = build_mock_builder(spec, i, balance)
+        state.builders.append(builder)
+
+
+# bids
+
+
+def _build_random_signed_bid(spec, state, block, rng):
+    """Build a random SignedExecutionPayloadBid, using either self-build or a real builder."""
+    # Get random blobs to calculate the root
+    _, _, blob_kzg_commitments, _ = get_sample_blob_tx(
+        spec, blob_count=rng.randint(0, spec.config.MAX_BLOBS_PER_BLOCK), rng=rng
+    )
+    kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
+        blob_kzg_commitments
+    )
+
+    # Find active builders
+    active_builders = [
+        i for i in range(len(state.builders)) if spec.is_active_builder(state, spec.BuilderIndex(i))
+    ]
+
+    # Use actual builder or self-build
+    use_real_builder = len(active_builders) > 0 and rng.choice([True, False])
+
+    if use_real_builder:
+        builder_index = spec.BuilderIndex(rng.choice(active_builders))
+        builder = state.builders[builder_index]
+        pending = spec.get_pending_balance_to_withdraw_for_builder(state, builder_index)
+        min_balance = spec.MIN_DEPOSIT_AMOUNT + pending
+        available = builder.balance - min_balance if builder.balance > min_balance else 0
+        block_hash = spec.Hash32(rng.randbytes(32))
+        fee_recipient = builder.execution_address
+        value = spec.Gwei(rng.randint(0, available)) if available > 0 else spec.Gwei(0)
+    else:
+        builder_index = spec.BUILDER_INDEX_SELF_BUILD
+        block_hash = spec.Hash32(b"\x01" + b"\x00" * 31)
+        fee_recipient = spec.ExecutionAddress()
+        value = spec.Gwei(0)
+
+    bid = spec.ExecutionPayloadBid(
+        parent_block_hash=state.latest_block_hash,
+        parent_block_root=block.parent_root,
+        block_hash=block_hash,
+        prev_randao=spec.get_randao_mix(state, spec.get_current_epoch(state)),
+        fee_recipient=fee_recipient,
+        gas_limit=spec.uint64(30000000),
+        builder_index=builder_index,
+        slot=block.slot,
+        value=value,
+        execution_payment=spec.Gwei(0),
+        blob_kzg_commitments_root=kzg_list.hash_tree_root(),
+    )
+
+    if use_real_builder:
+        signature = spec.get_execution_payload_bid_signature(
+            state, bid, builder_privkeys[builder_index]
+        )
+    else:
+        signature = spec.G2_POINT_AT_INFINITY
+
+    return spec.SignedExecutionPayloadBid(message=bid, signature=signature)
 
 
 # setup and test gen

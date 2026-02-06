@@ -13,7 +13,7 @@ from eth2spec.test.helpers.forks import (
     is_post_electra,
     is_post_gloas,
 )
-from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.keys import builder_privkeys
 from eth2spec.test.helpers.withdrawals import get_expected_withdrawals
 from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 
@@ -91,7 +91,7 @@ def get_execution_payload_bid(spec, state, execution_payload):
         builder_index=builder_index,
         slot=state.slot,
         value=spec.Gwei(0),
-        blob_kzg_commitments_root=kzg_list.hash_tree_root(),
+        blob_kzg_commitments=kzg_list,
     )
 
 
@@ -318,7 +318,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
     parent_block_root = hash_tree_root(state.latest_block_header)
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
     # Use self-build: builder_index is the same as the beacon proposer index
-    builder_index = spec.get_beacon_proposer_index(state)
+    builder_index = spec.BUILDER_INDEX_SELF_BUILD
     # Set block_hash to a different value than spec.Hash32(),
     # to distinguish it from the genesis block hash and have
     # is_parent_node_full correctly return False
@@ -334,7 +334,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
         builder_index=builder_index,
         slot=state.slot,
         value=spec.Gwei(0),
-        blob_kzg_commitments_root=kzg_list.hash_tree_root(),
+        blob_kzg_commitments=kzg_list,
     )
 
 
@@ -342,13 +342,12 @@ def build_empty_signed_execution_payload_bid(spec, state):
     if not is_post_gloas(spec):
         return
     message = build_empty_post_gloas_execution_payload_bid(spec, state)
-    proposer_index = spec.get_beacon_proposer_index(state)
 
     # For self-builds, use point at infinity signature as per spec
-    if message.builder_index == proposer_index:
+    if message.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
         signature = spec.G2_POINT_AT_INFINITY
     else:
-        privkey = privkeys[message.builder_index]
+        privkey = builder_privkeys[message.builder_index]
         signature = spec.get_execution_payload_bid_signature(state, message, privkey)
 
     return spec.SignedExecutionPayloadBid(
@@ -441,7 +440,7 @@ def build_state_with_incomplete_transition(spec, state):
         bid = spec.ExecutionPayloadBid(
             slot=state.slot,
             value=spec.Gwei(0),
-            blob_kzg_commitments_root=kzgs.hash_tree_root(),
+            blob_kzg_commitments=kzgs,
         )
         state = build_state_with_execution_payload_bid(spec, state, bid)
     else:

@@ -4,13 +4,12 @@
 
 - [Introduction](#introduction)
 - [Modifications in Fulu](#modifications-in-fulu)
-  - [Helper functions](#helper-functions)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`DataColumnsByRootIdentifier`](#datacolumnsbyrootidentifier)
   - [Helpers](#helpers)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
     - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
     - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
     - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
@@ -23,7 +22,7 @@
       - [Blob subnets](#blob-subnets)
         - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
-        - [Distributed Blob Publishing using blobs retrieved from local execution layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
+        - [Distributed blob publishing using blobs retrieved from local execution-layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [Status v2](#status-v2)
@@ -37,43 +36,19 @@
       - [`eth2` field](#eth2-field)
       - [Custody group count](#custody-group-count)
       - [Next fork digest](#next-fork-digest)
-- [Peer Scoring](#peer-scoring)
+- [Peer scoring](#peer-scoring)
 - [Supernodes](#supernodes)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for Fulu.
+This document contains the consensus-layer networking specifications for Fulu.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Fulu
-
-### Helper functions
-
-#### Modified `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= FULU_FORK_EPOCH:
-        return FULU_FORK_VERSION
-    if epoch >= ELECTRA_FORK_EPOCH:
-        return ELECTRA_FORK_VERSION
-    if epoch >= DENEB_FORK_EPOCH:
-        return DENEB_FORK_VERSION
-    if epoch >= CAPELLA_FORK_EPOCH:
-        return CAPELLA_FORK_VERSION
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
 
 ### Preset
 
@@ -103,7 +78,29 @@ class DataColumnsByRootIdentifier(Container):
 
 ### Helpers
 
-##### `verify_data_column_sidecar`
+#### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
+
+#### `verify_data_column_sidecar`
 
 ```python
 def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
@@ -132,7 +129,7 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     return True
 ```
 
-##### `verify_data_column_sidecar_kzg_proofs`
+#### `verify_data_column_sidecar_kzg_proofs`
 
 ```python
 def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
@@ -151,7 +148,7 @@ def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     )
 ```
 
-##### `verify_data_column_sidecar_inclusion_proof`
+#### `verify_data_column_sidecar_inclusion_proof`
 
 ```python
 def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bool:
@@ -167,7 +164,7 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
     )
 ```
 
-##### `compute_subnet_for_data_column_sidecar`
+#### `compute_subnet_for_data_column_sidecar`
 
 ```python
 def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetID:
@@ -197,7 +194,7 @@ Where
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the Fulu fork to support upgraded types.
+Some gossip meshes are upgraded in Fulu to support upgraded types.
 
 #### Topics and messages
 
@@ -208,7 +205,7 @@ Some gossip meshes are upgraded in the Fulu fork to support upgraded types.
 *Updated validation*
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
-  limitation defined in Consensus Layer -- i.e. validate that
+  limitation defined in the consensus layer -- i.e. validate that
   `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
 
 ##### Blob subnets
@@ -272,7 +269,7 @@ all the sidecars of the same block, it verifies against the same set of
 result of the arguments tuple
 `(sidecar.kzg_commitments, sidecar.kzg_commitments_inclusion_proof, sidecar.signed_block_header)`.
 
-###### Distributed Blob Publishing using blobs retrieved from local execution layer client
+###### Distributed blob publishing using blobs retrieved from local execution-layer client
 
 Honest nodes SHOULD query `engine_getBlobsV2` as soon as they receive a valid
 `beacon_block` or `data_column_sidecar` from gossip. If ALL blobs matching
@@ -524,7 +521,7 @@ limit the number of blocks and sidecars in the response.
 Clients SHOULD include a sidecar in the response as soon as it passes the gossip
 validation rules. Clients SHOULD NOT respond with sidecars related to blocks
 that fail gossip validation rules. Clients SHOULD NOT respond with sidecars
-related to blocks that fail the beacon chain state transition
+related to blocks that fail the beacon-chain state transition
 
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by
@@ -621,7 +618,7 @@ A new entry is added to the ENR under the key `nfd`, short for _next fork
 digest_. This entry communicates the digest of the next scheduled fork,
 regardless of whether it is a regular or a Blob-Parameters-Only fork. This new
 entry MUST be added once `FULU_FORK_EPOCH` is assigned any value other than
-`FAR_FUTURE_EPOCH`. Adding this entry prior to the Fulu fork will not impact
+`FAR_FUTURE_EPOCH`. Adding this entry prior to the Fulu upgrade will not impact
 peering as nodes will ignore unknown ENR entries and `nfd` mismatches do not
 cause disconnects.
 
@@ -639,11 +636,11 @@ purposes of sustained peering. If there is a mismatch, the node MUST NOT
 disconnect before the fork boundary, but it MAY disconnect at/after the fork
 boundary.
 
-Nodes unprepared to follow the Fulu fork will be unaware of `nfd` entries.
+Nodes unprepared to follow the Fulu upgrade will be unaware of `nfd` entries.
 However, their existing comparison of `eth2` entries (concretely
 `next_fork_epoch`) is sufficient to detect upcoming divergence.
 
-## Peer Scoring
+## Peer scoring
 
 Due to the deterministic custody functions, a node knows exactly what a peer
 should be able to respond to. In the event that a peer does not respond to

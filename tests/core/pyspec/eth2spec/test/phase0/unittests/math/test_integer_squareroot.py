@@ -23,8 +23,10 @@ def test_integer_squareroot(spec):
         uint64_n = spec.uint64(n)
         assert spec.integer_squareroot(uint64_n) == isqrt(n)
 
+    bad = False
     try:
         spec.integer_squareroot(spec.uint64(2**64))
-        assert False
+        bad = True
     except ValueError:
         pass
+    assert not bad
