@@ -431,10 +431,6 @@ def _build_random_signed_bid(spec, state, block, rng):
     _, _, blob_kzg_commitments, _ = get_sample_blob_tx(
         spec, blob_count=rng.randint(0, spec.config.MAX_BLOBS_PER_BLOCK), rng=rng
     )
-    kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
-        blob_kzg_commitments
-    )
-
     # Find active builders
     active_builders = [
         i for i in range(len(state.builders)) if spec.is_active_builder(state, spec.BuilderIndex(i))
@@ -469,7 +465,7 @@ def _build_random_signed_bid(spec, state, block, rng):
         slot=block.slot,
         value=value,
         execution_payment=spec.Gwei(0),
-        blob_kzg_commitments_root=kzg_list.hash_tree_root(),
+        blob_kzg_commitments=list(blob_kzg_commitments),
     )
 
     if use_real_builder:
