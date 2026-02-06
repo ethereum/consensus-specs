@@ -427,10 +427,11 @@ def _add_random_builders(spec, state, rng=None):
 
 def _build_random_signed_bid(spec, state, block, rng):
     """Build a random SignedExecutionPayloadBid, using either self-build or a real builder."""
-    # Get random blobs to calculate the root
+    # Get sample blobs
     _, _, blob_kzg_commitments, _ = get_sample_blob_tx(
         spec, blob_count=rng.randint(0, spec.config.MAX_BLOBS_PER_BLOCK), rng=rng
     )
+
     # Find active builders
     active_builders = [
         i for i in range(len(state.builders)) if spec.is_active_builder(state, spec.BuilderIndex(i))
