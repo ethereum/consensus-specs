@@ -6,6 +6,17 @@ class Phase0SpecBuilder(BaseSpecBuilder):
     fork: str = PHASE0
 
     @classmethod
+    def classes(cls) -> str:
+        return """
+class GossipIgnore(Exception):
+    pass
+
+
+class GossipReject(Exception):
+    pass
+"""
+
+    @classmethod
     def imports(cls, preset_name: str) -> str:
         return """from lru import LRU
 from collections import defaultdict
