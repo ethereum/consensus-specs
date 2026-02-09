@@ -198,11 +198,6 @@ def test_process_deposit_request_set_start_index_only_once(spec, state):
     assert state.deposit_requests_start_index == initial_start_index
 
 
-#
-# Additional coverage tests
-#
-
-
 @with_electra_and_later
 @spec_state_test
 def test_process_deposit_request_eth1_credentials(spec, state):
