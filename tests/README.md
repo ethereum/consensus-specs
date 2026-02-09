@@ -199,7 +199,7 @@ add the `next_slot` call, and then run it to verify this).
 
 It is important to make sure that the system rejects invalid input, so our next
 step is to deal with cases where the protocol is supposed to reject something.
-To see such a test, look at `test_prev_slot_block_transition` (in the same file
+To see such a test, look at `test_invalid_prev_slot_block_transition` (in the same file
 we used previously,
 `~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`).
 
