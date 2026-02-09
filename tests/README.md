@@ -206,7 +206,7 @@ we used previously,
 ```python
 @with_all_phases
 @spec_state_test
-def test_prev_slot_block_transition(spec, state):
+def test_invalid_prev_slot_block_transition(spec, state):
     spec.process_slots(state, state.slot + 1)
     block = build_empty_block(spec, state, slot=state.slot)
 ```
