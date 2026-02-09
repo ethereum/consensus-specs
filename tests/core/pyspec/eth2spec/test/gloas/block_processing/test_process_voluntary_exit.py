@@ -5,6 +5,7 @@ from eth2spec.test.context import (
     with_gloas_and_later,
 )
 from eth2spec.test.helpers.keys import builder_pubkey_to_privkey
+from eth2spec.test.helpers.state import next_slots
 from eth2spec.test.helpers.voluntary_exits import sign_voluntary_exit
 
 
@@ -16,12 +17,10 @@ def test_builder_voluntary_exit_success(spec, state):
     pubkey = state.builders[builder_index].pubkey
     privkey = builder_pubkey_to_privkey[pubkey]
 
-    # Manually set finalized checkpoint to make builder active
-    state.finalized_checkpoint.epoch = spec.Epoch(2)
-
-    assert spec.is_active_builder(state, builder_index), (
-        f"Builder not active: deposit={state.builders[builder_index].deposit_epoch}, finalized={state.finalized_checkpoint.epoch}"
-    )
+    epoch = spec.get_current_epoch(state)
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)
+    state.finalized_checkpoint.epoch = epoch
+    assert spec.is_active_builder(state, builder_index)
 
     assert spec.get_pending_balance_to_withdraw_for_builder(state, builder_index) == 0
 
@@ -52,7 +51,9 @@ def test_builder_voluntary_exit_with_pending_payment(spec, state):
     pubkey = state.builders[builder_index].pubkey
     privkey = builder_pubkey_to_privkey[pubkey]
 
-    state.finalized_checkpoint.epoch = spec.Epoch(2)
+    epoch = spec.get_current_epoch(state)
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)
+    state.finalized_checkpoint.epoch = epoch
     assert spec.is_active_builder(state, builder_index)
 
     # Add pending payment for this builder
@@ -66,15 +67,12 @@ def test_builder_voluntary_exit_with_pending_payment(spec, state):
         ),
     )
     state.builder_pending_payments[0] = payment
-
     pending_balance = spec.get_pending_balance_to_withdraw_for_builder(state, builder_index)
     assert pending_balance == payment_amount
 
-    current_epoch = spec.get_current_epoch(state)
-
     validator_index = spec.convert_builder_index_to_validator_index(builder_index)
     voluntary_exit = spec.VoluntaryExit(
-        epoch=current_epoch,
+        epoch=spec.get_current_epoch(state),
         validator_index=validator_index,
     )
     signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, privkey)
@@ -93,9 +91,12 @@ def test_builder_voluntary_exit_with_pending_withdrawal(spec, state):
     pubkey = state.builders[builder_index].pubkey
     privkey = builder_pubkey_to_privkey[pubkey]
 
-    state.finalized_checkpoint.epoch = spec.Epoch(2)
+    epoch = spec.get_current_epoch(state)
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)
+    state.finalized_checkpoint.epoch = epoch
     assert spec.is_active_builder(state, builder_index)
 
+    # Add pending withdrawal for this builder
     withdrawal_amount = spec.MIN_ACTIVATION_BALANCE
     withdrawal = spec.BuilderPendingWithdrawal(
         fee_recipient=spec.ExecutionAddress(b"\x70" * 20),
@@ -103,15 +104,12 @@ def test_builder_voluntary_exit_with_pending_withdrawal(spec, state):
         builder_index=builder_index,
     )
     state.builder_pending_withdrawals.append(withdrawal)
-
     pending_balance = spec.get_pending_balance_to_withdraw_for_builder(state, builder_index)
     assert pending_balance == withdrawal_amount
 
-    current_epoch = spec.get_current_epoch(state)
-
     validator_index = spec.convert_builder_index_to_validator_index(builder_index)
     voluntary_exit = spec.VoluntaryExit(
-        epoch=current_epoch,
+        epoch=spec.get_current_epoch(state),
         validator_index=validator_index,
     )
     signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, privkey)
@@ -129,16 +127,17 @@ def test_builder_voluntary_exit_invalid_signature(spec, state):
     """Test builder voluntary exit with invalid signature."""
     builder_index = 0
 
-    state.finalized_checkpoint.epoch = spec.Epoch(2)
+    epoch = spec.get_current_epoch(state)
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)
+    state.finalized_checkpoint.epoch = epoch
     assert spec.is_active_builder(state, builder_index)
-
-    current_epoch = spec.get_current_epoch(state)
 
     validator_index = spec.convert_builder_index_to_validator_index(builder_index)
     voluntary_exit = spec.VoluntaryExit(
-        epoch=current_epoch,
+        epoch=spec.get_current_epoch(state),
         validator_index=validator_index,
     )
+    # Use the wrong privkey so the signature is invalid
     signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, 12345)
 
     yield "pre", state
@@ -155,16 +154,18 @@ def test_builder_voluntary_exit_inactive_builder(spec, state):
     pubkey = state.builders[builder_index].pubkey
     privkey = builder_pubkey_to_privkey[pubkey]
 
-    current_epoch = spec.get_current_epoch(state)
-    state.builders[builder_index].deposit_epoch = current_epoch
+    # Set builder's deposit epoch to a non-finalized epoch
+    state.builders[builder_index].deposit_epoch = spec.Epoch(1)
 
-    state.finalized_checkpoint.epoch = current_epoch
-
+    epoch = spec.get_current_epoch(state)
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)
+    state.finalized_checkpoint.epoch = epoch
+    assert state.finalized_checkpoint.epoch == 0
     assert not spec.is_active_builder(state, builder_index)
 
     validator_index = spec.convert_builder_index_to_validator_index(builder_index)
     voluntary_exit = spec.VoluntaryExit(
-        epoch=current_epoch,
+        epoch=spec.get_current_epoch(state),
         validator_index=validator_index,
     )
     signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, privkey)
@@ -183,16 +184,17 @@ def test_builder_voluntary_exit_already_exited(spec, state):
     pubkey = state.builders[builder_index].pubkey
     privkey = builder_pubkey_to_privkey[pubkey]
 
-    state.finalized_checkpoint.epoch = spec.Epoch(2)
-    current_epoch = spec.get_current_epoch(state)
+    # Set builder's withdrawable epoch which indicates it has initiated an exit
+    epoch = spec.get_current_epoch(state)
+    state.builders[builder_index].withdrawable_epoch = epoch + 10
 
-    state.builders[builder_index].withdrawable_epoch = current_epoch + 10
-
+    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)
+    state.finalized_checkpoint.epoch = epoch
     assert not spec.is_active_builder(state, builder_index)
 
     validator_index = spec.convert_builder_index_to_validator_index(builder_index)
     voluntary_exit = spec.VoluntaryExit(
-        epoch=current_epoch,
+        epoch=spec.get_current_epoch(state),
         validator_index=validator_index,
     )
     signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, privkey)
