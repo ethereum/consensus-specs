@@ -245,7 +245,8 @@ def is_payload_data_available(store: Store, root: Root) -> bool:
     """
     Return whether the blob data for the beacon block with root ``root``
     was voted as present by the PTC, and was locally determined to be available.
-    Implemnetations MAY return `True` if the node have recovered all the blob data.
+    Implemnetations MAY return `True` if the node has recovered all the blob data
+    *before* the deadline returned from `get_payload_attestation_due_ms`.
     """
     # The beacon block root must be known
     assert root in store.payload_data_availability_vote
