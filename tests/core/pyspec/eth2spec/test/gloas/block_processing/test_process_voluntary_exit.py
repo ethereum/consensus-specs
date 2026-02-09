@@ -11,7 +11,7 @@ from eth2spec.test.helpers.voluntary_exits import sign_voluntary_exit
 
 @with_gloas_and_later
 @spec_state_test
-def test_builder_voluntary_exit_success(spec, state):
+def test_builder_voluntary_exit__success(spec, state):
     """Test successful builder voluntary exit with no pending balance."""
     builder_index = 0
     pubkey = state.builders[builder_index].pubkey
@@ -45,7 +45,7 @@ def test_builder_voluntary_exit_success(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_builder_voluntary_exit_with_pending_payment(spec, state):
+def test_builder_voluntary_exit__invalid__pending_payment(spec, state):
     """Test that builder cannot exit while having pending payment."""
     builder_index = 0
     pubkey = state.builders[builder_index].pubkey
@@ -85,7 +85,7 @@ def test_builder_voluntary_exit_with_pending_payment(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_builder_voluntary_exit_with_pending_withdrawal(spec, state):
+def test_builder_voluntary_exit__invalid__pending_withdrawal(spec, state):
     """Test that builder cannot exit while having pending withdrawal."""
     builder_index = 0
     pubkey = state.builders[builder_index].pubkey
@@ -123,7 +123,7 @@ def test_builder_voluntary_exit_with_pending_withdrawal(spec, state):
 @with_gloas_and_later
 @spec_state_test
 @always_bls
-def test_builder_voluntary_exit_invalid_signature(spec, state):
+def test_builder_voluntary_exit__invalid__bad_signature(spec, state):
     """Test builder voluntary exit with invalid signature."""
     builder_index = 0
 
@@ -148,7 +148,7 @@ def test_builder_voluntary_exit_invalid_signature(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_builder_voluntary_exit_inactive_builder(spec, state):
+def test_builder_voluntary_exit__invalid__inactive_deposit_epoch(spec, state):
     """Test that inactive builders cannot exit."""
     builder_index = 0
     pubkey = state.builders[builder_index].pubkey
@@ -178,7 +178,7 @@ def test_builder_voluntary_exit_inactive_builder(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_builder_voluntary_exit_already_exited(spec, state):
+def test_builder_voluntary_exit__invalid__inactive_already_exited(spec, state):
     """Test that already-exited builders cannot exit again."""
     builder_index = 0
     pubkey = state.builders[builder_index].pubkey
