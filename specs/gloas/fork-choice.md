@@ -104,7 +104,6 @@ on `validate_on_attestation`.
 def update_latest_messages(
     store: Store, attesting_indices: Sequence[ValidatorIndex], attestation: Attestation
 ) -> None:
-    # [Modified in Gloas:EIP7732]
     slot = attestation.data.slot
     beacon_block_root = attestation.data.beacon_block_root
     payload_present = attestation.data.index == 1
