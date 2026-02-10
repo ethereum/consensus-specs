@@ -1,4 +1,4 @@
-# EIP8148 -- The Beacon Chain
+# EIP-8148 -- The Beacon Chain
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -33,14 +33,13 @@
       - [New `process_set_sweep_threshold_request`](#new-process_set_sweep_threshold_request)
   - [Execution payload processing](#execution-payload-processing)
     - [Modified `process_execution_payload`](#modified-process_execution_payload)
-- [Testing](#testing)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
 This upgrade adds custom validator sweep threshold functionality to the beacon
-chain as part of the eip8148 upgrade.
+chain as part of the EIP-8148 upgrade.
 
 This document specifies the beacon chain changes required to support these
 custom thresholds. The upgrade introduces a new request type within the
@@ -70,7 +69,7 @@ control their balance withdrawals more precisely.
 
 | Name                                           | Value                 | Description                                                                                       |
 | ---------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------- |
-| `MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16) | *[New in eip8148]* Maximum number of execution layer set sweep threshold requests in each payload |
+| `MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16) | *[New in EIP8148]* Maximum number of execution layer set sweep threshold requests in each payload |
 
 ## Containers
 
@@ -125,7 +124,7 @@ class BeaconState(Container):
     builder_pending_withdrawals: List[BuilderPendingWithdrawal, BUILDER_PENDING_WITHDRAWALS_LIMIT]
     latest_block_hash: Hash32
     payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    # [New in eip8148]
+    # [New in EIP8148]
     validator_sweep_thresholds: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
 ```
 
@@ -136,7 +135,7 @@ class ExecutionRequests(Container):
     deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]
     withdrawals: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
     consolidations: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]
-    # [New in eip8148]
+    # [New in EIP8148]
     sweep_thresholds: List[SetSweepThresholdRequest, MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD]
 ```
 
@@ -164,15 +163,15 @@ def is_partially_withdrawable_validator(
     """
     Check if ``validator`` is partially withdrawable.
     """
-    # [Modified in eip8148]
+    # [Modified in EIP8148]
     effective_sweep_threshold = get_effective_sweep_threshold(validator, sweep_threshold)
-    # [Modified in eip8148]
+    # [Modified in EIP8148]
     has_effective_sweep_threshold = validator.effective_balance >= effective_sweep_threshold
-    # [Modified in eip8148]
+    # [Modified in EIP8148]
     has_excess_balance = balance > effective_sweep_threshold
     return (
         has_execution_withdrawal_credential(validator)
-        # [Modified in eip8148]
+        # [Modified in EIP8148]
         and has_effective_sweep_threshold
         and has_excess_balance
     )
@@ -208,7 +207,7 @@ def add_validator_to_registry(
     validator = get_validator_from_deposit(pubkey, withdrawal_credentials, amount)
     set_or_append_list(state.validators, index, validator)
     set_or_append_list(state.balances, index, amount)
-    # [New in eip8148]
+    # [New in EIP8148]
     set_or_append_list(state.validator_sweep_thresholds, index, Gwei(0))
     set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
@@ -232,7 +231,7 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
         (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
         (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
-        # [New in eip8148]
+        # [New in EIP8148]
         (SWEEP_THRESHOLD_REQUEST_TYPE, execution_requests.sweep_thresholds),
     ]
 
@@ -246,9 +245,6 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
 #### Withdrawals
 
 ##### Modified `get_validators_sweep_withdrawals`
-
-*Note*: The function `get_validators_sweep_withdrawals` is modified to support
-eip8148.
 
 ```python
 def get_validators_sweep_withdrawals(
@@ -273,7 +269,7 @@ def get_validators_sweep_withdrawals(
 
         validator = state.validators[validator_index]
         balance = get_balance_after_withdrawals(state, validator_index, all_withdrawals)
-        # [New in eip8148]
+        # [New in EIP8148]
         sweep_threshold = state.validator_sweep_thresholds[validator_index]
         if is_fully_withdrawable_validator(validator, balance, epoch):
             withdrawals.append(
@@ -285,14 +281,14 @@ def get_validators_sweep_withdrawals(
                 )
             )
             withdrawal_index += WithdrawalIndex(1)
-        # [Modified in eip8148]
+        # [Modified in EIP8148]
         elif is_partially_withdrawable_validator(validator, balance, sweep_threshold):
             withdrawals.append(
                 Withdrawal(
                     index=withdrawal_index,
                     validator_index=validator_index,
                     address=ExecutionAddress(validator.withdrawal_credentials[12:]),
-                    # [Modified in eip8148]
+                    # [Modified in EIP8148]
                     amount=balance - get_effective_sweep_threshold(validator, sweep_threshold),
                 )
             )
@@ -434,7 +430,7 @@ def process_execution_payload(
     for_ops(requests.deposits, process_deposit_request)
     for_ops(requests.withdrawals, process_withdrawal_request)
     for_ops(requests.consolidations, process_consolidation_request)
-    # [New in eip8148]
+    # [New in EIP8148]
     for_ops(requests.sweep_thresholds, process_set_sweep_threshold_request)
 
     # Queue the builder payment
@@ -454,7 +450,3 @@ def process_execution_payload(
     if verify:
         assert envelope.state_root == hash_tree_root(state)
 ```
-
-## Testing
-
-TBD
