@@ -531,13 +531,13 @@ def test_process_execution_payload_bid_sufficient_balance_with_pending_payments(
 @spec_state_test
 def test_process_execution_payload_bid_insufficient_balance_with_pending_withdrawals(spec, state):
     """
-    Test builder with sufficient balance for bid alone but insufficient when considering pending withdrawals and min activation balance
+    Test builder with sufficient balance for bid alone but insufficient when considering pending withdrawals and min deposit amount
     """
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
-    # Set up scenario: balance=32000000000 + 1000, bid=600, existing_withdrawal=500
-    # Total needed: 600 + 500 + 32000000000 = 32000001100 > 32000001000 (should fail)
-    balance = spec.MIN_ACTIVATION_BALANCE + spec.Gwei(1000)  # 32 ETH + 1000 gwei
+    # Set up scenario: balance=1000000000 + 1000, bid=600, existing_withdrawal=500
+    # Total needed: 600 + 500 + 1000000000 = 1000001100 > 1000001000 (should fail)
+    balance = spec.MIN_DEPOSIT_AMOUNT + spec.Gwei(1000)  # 1 ETH + 1000 gwei
     bid_amount = spec.Gwei(600)
     existing_withdrawal = spec.Gwei(500)
 
