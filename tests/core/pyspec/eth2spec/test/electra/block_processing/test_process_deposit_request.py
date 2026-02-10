@@ -272,3 +272,47 @@ def test_process_deposit_request_pending_deposit_slot_binding(spec, state):
         deposit_request=deposit_request,
         expected_pending_deposit_slot=expected_slot,
     )
+
+
+@with_electra_and_later
+@spec_state_test
+def test_process_deposit_request_undefined_credential_prefix(spec, state):
+    """
+    Test deposit with undefined credential prefix (0x04) routes to validator queue.
+
+    Input State Configured:
+        - New validator pubkey
+        - Undefined/invalid credential prefix (0x04)
+
+    Output State Verified:
+        - Pending deposit added to validator queue
+        - Credentials preserved as-is in pending deposit
+
+    Note:
+        This test documents current behavior. Consider whether undefined credential
+        prefixes should raise an exception instead of being silently accepted.
+    """
+    amount = spec.MIN_ACTIVATION_BALANCE
+
+    # Create withdrawal credentials with undefined prefix (0x04)
+    undefined_prefix = b"\x04"
+    withdrawal_credentials = undefined_prefix + b"\x00" * 11 + b"\x59" * 20
+
+    deposit_request = prepare_process_deposit_request(
+        spec,
+        state,
+        amount=amount,
+        signed=True,
+        withdrawal_credentials=withdrawal_credentials,
+    )
+    pre_state = state.copy()
+
+    yield from run_deposit_request_processing_helper(spec, state, deposit_request)
+
+    assert_process_deposit_request(
+        spec,
+        state,
+        pre_state,
+        deposit_request=deposit_request,
+        expected_pending_deposit_credentials=withdrawal_credentials,
+    )
