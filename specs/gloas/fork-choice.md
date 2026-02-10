@@ -351,12 +351,9 @@ extending the payload.
 
 ```python
 def should_extend_payload(store: Store, root: Root) -> bool:
-    is_payload_timely_and_available = is_payload_timely(store, root) and is_payload_data_available(
-        store, root
-    )
     proposer_root = store.proposer_boost_root
     return (
-        is_payload_timely_and_available
+        (is_payload_timely(store, root) and is_payload_data_available(store, root))
         or proposer_root == Root()
         or store.blocks[proposer_root].parent_root != root
         or is_parent_node_full(store, store.blocks[proposer_root])
