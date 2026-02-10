@@ -44,15 +44,6 @@ def test_prepare_process_deposit_request_custom_amount(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-def test_prepare_process_deposit_request_custom_index(spec, state):
-    """Test prepare_process_deposit_request with custom request_index."""
-    custom_index = 42
-    deposit_request = prepare_process_deposit_request(spec, state, request_index=custom_index)
-    assert deposit_request.index == custom_index
-
-
-@with_electra_and_later
-@spec_state_test
 def test_prepare_process_deposit_request_existing_validator(spec, state):
     """Test prepare_process_deposit_request for top-up of existing validator."""
     validator_index = 0  # Use first existing validator
@@ -68,17 +59,6 @@ def test_prepare_process_deposit_request_signed(spec, state):
 
     # Signature should not be empty when signed
     assert deposit_request.signature != spec.BLSSignature()
-
-
-@with_electra_and_later
-@spec_state_test
-def test_prepare_process_deposit_request_state_override(spec, state):
-    """Test prepare_process_deposit_request with state override."""
-    custom_start_index = 123
-    prepare_process_deposit_request(spec, state, deposit_requests_start_index=custom_start_index)
-
-    # State should have the overridden value
-    assert state.deposit_requests_start_index == custom_start_index
 
 
 @with_electra_and_later
@@ -122,21 +102,18 @@ def test_assert_process_deposit_request_start_index_set(spec, state):
     # Ensure start index is UNSET
     state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
 
-    request_index = 42
-    deposit_request = prepare_process_deposit_request(
-        spec, state, request_index=request_index, signed=True
-    )
+    deposit_request = prepare_process_deposit_request(spec, state, signed=True)
 
     pre_state = state.copy()
     spec.process_deposit_request(state, deposit_request)
 
-    # Should be set to the request index
+    # Should be set to the request index (default: 0)
     assert_process_deposit_request(
         spec,
         state,
         pre_state,
         deposit_request=deposit_request,
-        expected_deposit_requests_start_index=request_index,
+        expected_deposit_requests_start_index=0,
     )
 
 
@@ -144,14 +121,11 @@ def test_assert_process_deposit_request_start_index_set(spec, state):
 @spec_state_test
 def test_assert_process_deposit_request_start_index_unchanged(spec, state):
     """Test that deposit_requests_start_index is NOT changed when already set (Electra/Fulu only)."""
-    # Set a custom start index
+    # Set a non-zero start index (different from default request index of 0)
     initial_start_index = 100
     state.deposit_requests_start_index = initial_start_index
 
-    request_index = 42  # Different from initial_start_index
-    deposit_request = prepare_process_deposit_request(
-        spec, state, request_index=request_index, signed=True
-    )
+    deposit_request = prepare_process_deposit_request(spec, state, signed=True)
 
     pre_state = state.copy()
     spec.process_deposit_request(state, deposit_request)
@@ -163,7 +137,6 @@ def test_assert_process_deposit_request_start_index_unchanged(spec, state):
         pre_state,
         deposit_request=deposit_request,
         expected_deposit_requests_start_index=initial_start_index,
-        start_index_unchanged=True,
     )
 
 

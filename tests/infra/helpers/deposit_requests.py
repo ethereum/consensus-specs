@@ -37,19 +37,13 @@ def prepare_process_deposit_request(
     spec,
     state,
     advance_epochs=None,
-    advance_epochs_after=None,
     validator_index=None,
     builder_index=None,
-    request_index=None,
     pubkey=None,
-    privkey=None,
     withdrawal_credentials=None,
     amount=None,
-    signature=None,
     signed=False,
     for_builder=False,
-    deposit_requests_start_index=None,
-    pending_deposits=None,
     builders=None,
     builder_modifications=None,
 ):
@@ -69,26 +63,17 @@ def prepare_process_deposit_request(
         spec: The spec object.
         state: The beacon state to modify.
         advance_epochs: Number of epochs to advance before setup.
-        advance_epochs_after: Number of epochs to advance after creating request.
         validator_index: Index for pubkey lookup. If None, uses len(state.validators) for new
             validator. Ignored if for_builder=True or builder_index is set.
         builder_index: Index for builder pubkey lookup. If set, implies for_builder=True.
             If None with for_builder=True, uses len(state.builders).
-        request_index: The deposit request index field (uint64). Default: 0. Only relevant
-            for testing deposit_requests_start_index transition in Electra/Fulu; ignored
-            in Gloas+ and for builder deposits.
         pubkey: Explicit BLSPubkey. Default: derived from validator_index or builder_index.
-        privkey: Explicit private key for signing. Default: derived from index.
         withdrawal_credentials: Explicit Bytes32 credentials. Default: BLS prefix (0x00) for
             validators, Builder prefix (0x03) for builders.
         amount: Deposit amount in Gwei. Default: MIN_ACTIVATION_BALANCE.
-        signature: Explicit BLSSignature. Default: empty unless signed=True.
         signed: If True, sign with valid BLS signature.
         for_builder: If True, create a builder deposit using builder keys and
             BUILDER_WITHDRAWAL_PREFIX (Gloas+).
-        deposit_requests_start_index: Override state.deposit_requests_start_index
-            (to test conditional set logic in Electra/Fulu).
-        pending_deposits: Override state.pending_deposits list.
         builders: Override state.builders list entirely. Use [] for empty registry.
         builder_modifications: Dict mapping builder index to dict of field modifications.
             Supported fields: "withdrawable_epoch", "balance".
@@ -113,9 +98,7 @@ def prepare_process_deposit_request(
         # Builder deposit: use builder keys
         index = builder_index if builder_index is not None else len(state.builders)
         effective_pubkey = pubkey if pubkey is not None else builder_pubkeys[index]
-        effective_privkey = (
-            privkey if privkey is not None else builder_pubkey_to_privkey[effective_pubkey]
-        )
+        effective_privkey = builder_pubkey_to_privkey[effective_pubkey]
         effective_amount = amount if amount is not None else spec.MIN_ACTIVATION_BALANCE
 
         # Default withdrawal credentials: Builder prefix (0x03)
@@ -131,7 +114,7 @@ def prepare_process_deposit_request(
         # Validator deposit: use validator keys
         index = validator_index if validator_index is not None else len(state.validators)
         effective_pubkey = pubkey if pubkey is not None else pubkeys[index]
-        effective_privkey = privkey if privkey is not None else privkeys[index]
+        effective_privkey = privkeys[index]
         effective_amount = amount if amount is not None else spec.MIN_ACTIVATION_BALANCE
 
         # Default withdrawal credentials: BLS prefix + hash(pubkey)[1:]
@@ -142,15 +125,7 @@ def prepare_process_deposit_request(
                 spec.BLS_WITHDRAWAL_PREFIX + spec.hash(effective_pubkey)[1:]
             )
 
-    effective_request_index = request_index if request_index is not None else 0
-
     # Phase 4: Apply state overrides (before creating request)
-    if deposit_requests_start_index is not None:
-        state.deposit_requests_start_index = deposit_requests_start_index
-
-    if pending_deposits is not None:
-        state.pending_deposits = pending_deposits
-
     if builders is not None:
         state.builders = builders
 
@@ -181,20 +156,13 @@ def prepare_process_deposit_request(
     )
 
     # Phase 6: Build deposit request object
-    effective_signature = signature if signature is not None else deposit_data.signature
-
     deposit_request = spec.DepositRequest(
         pubkey=deposit_data.pubkey,
         withdrawal_credentials=deposit_data.withdrawal_credentials,
         amount=deposit_data.amount,
-        signature=effective_signature,
-        index=effective_request_index,
+        signature=deposit_data.signature,
+        index=0,
     )
-
-    # Phase 7: Advance epochs if requested (after setup)
-    if advance_epochs_after is not None:
-        for _ in range(advance_epochs_after):
-            next_epoch(spec, state)
 
     return deposit_request
 
@@ -214,12 +182,10 @@ def assert_process_deposit_request(
     state_unchanged=False,
     is_builder_deposit=None,
     expected_deposit_requests_start_index=None,
-    expected_pending_deposits_count=None,
     expected_pending_deposit_pubkey=None,
     expected_pending_deposit_amount=None,
     expected_pending_deposit_slot=None,
     expected_pending_deposit_credentials=None,
-    start_index_unchanged=False,
     expected_builder_balance=None,
     expected_builder_balance_delta=None,
     expected_builder_count=None,
@@ -246,9 +212,7 @@ def assert_process_deposit_request(
 
     TEST-SPECIFIC CHECKS (controlled by parameters):
     - expected_deposit_requests_start_index: Exact value check
-    - expected_pending_deposits_count: Exact count check
     - expected_pending_deposit_*: Check specific fields of the new deposit
-    - start_index_unchanged: Assert start index was not modified
     - expected_builder_balance: Exact builder balance check
     - expected_builder_balance_delta: Builder balance change check
     - expected_builder_count: Exact builder count check
@@ -266,12 +230,10 @@ def assert_process_deposit_request(
         state_unchanged: If True, asserts state equals pre_state (for rejected requests)
         is_builder_deposit: If True, use builder deposit assertions. Auto-detected if None.
         expected_deposit_requests_start_index: Expected value of deposit_requests_start_index
-        expected_pending_deposits_count: Expected length of pending_deposits
         expected_pending_deposit_pubkey: Expected pubkey of new pending deposit
         expected_pending_deposit_amount: Expected amount of new pending deposit
         expected_pending_deposit_slot: Expected slot of new pending deposit
         expected_pending_deposit_credentials: Expected withdrawal_credentials of new pending deposit
-        start_index_unchanged: If True, assert start index equals pre_state value
         expected_builder_balance: Expected balance of the builder after deposit
         expected_builder_balance_delta: Expected change in builder balance
         expected_builder_count: Expected exact count of builders after deposit
@@ -500,13 +462,4 @@ def assert_process_deposit_request(
             f"got={state.deposit_requests_start_index}"
         )
 
-    if expected_pending_deposits_count is not None:
-        assert len(state.pending_deposits) == expected_pending_deposits_count, (
-            f"pending_deposits count: expected={expected_pending_deposits_count}, "
-            f"got={len(state.pending_deposits)}"
-        )
 
-    if start_index_unchanged:
-        assert state.deposit_requests_start_index == pre_state.deposit_requests_start_index, (
-            "Expected deposit_requests_start_index to remain unchanged"
-        )
