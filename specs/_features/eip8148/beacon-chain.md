@@ -390,7 +390,6 @@ def process_execution_payload(
     # Verify consistency with the committed bid
     committed_bid = state.latest_execution_payload_bid
     assert envelope.builder_index == committed_bid.builder_index
-    assert committed_bid.blob_kzg_commitments_root == hash_tree_root(envelope.blob_kzg_commitments)
     assert committed_bid.prev_randao == payload.prev_randao
 
     # Verify consistency with expected withdrawals
@@ -406,12 +405,13 @@ def process_execution_payload(
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
     # Verify commitments are under limit
     assert (
-        len(envelope.blob_kzg_commitments)
+        len(committed_bid.blob_kzg_commitments)
         <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
     )
     # Verify the execution payload is valid
     versioned_hashes = [
-        kzg_commitment_to_versioned_hash(commitment) for commitment in envelope.blob_kzg_commitments
+        kzg_commitment_to_versioned_hash(commitment)
+        for commitment in committed_bid.blob_kzg_commitments
     ]
     requests = envelope.execution_requests
     assert execution_engine.verify_and_notify_new_payload(
