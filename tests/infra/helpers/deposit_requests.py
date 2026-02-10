@@ -461,5 +461,3 @@ def assert_process_deposit_request(
             f"deposit_requests_start_index: expected={expected_deposit_requests_start_index}, "
             f"got={state.deposit_requests_start_index}"
         )
-
-
