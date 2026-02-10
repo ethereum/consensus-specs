@@ -23,6 +23,7 @@ from .helpers.constants import (
     EIP7441,
     EIP7805,
     EIP7928,
+    EIP8148,
     ELECTRA,
     FULU,
     GLOAS,
@@ -657,6 +658,7 @@ with_gloas_and_later = with_all_phases_from(GLOAS, all_phases=ALLOWED_TEST_RUNNE
 with_eip7441_and_later = with_all_phases_from(EIP7441, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7805_and_later = with_all_phases_from(EIP7805, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip7928_and_later = with_all_phases_from(EIP7928, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip8148_and_later = with_all_phases_from(EIP8148, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 with_bellatrix_only = with_phases([BELLATRIX])
 
