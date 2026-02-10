@@ -1,10 +1,29 @@
 import pytest
 
-from eth2spec.test.helpers.forks import is_post_electra, is_post_fulu, is_post_gloas
+from eth2spec.test.helpers.forks import (
+    is_post_eip8148,
+    is_post_electra,
+    is_post_fulu,
+    is_post_gloas,
+)
 from tests.infra.helpers.withdrawals import (
     assert_process_withdrawals_pre_gloas,
     get_expected_withdrawals,
 )
+
+
+def check_is_partially_withdrawable_validator(spec, state, validator_index, balance=None):
+    """Call ``is_partially_withdrawable_validator`` with the correct arguments for the fork."""
+    validator = state.validators[validator_index]
+    if balance is None:
+        balance = state.balances[validator_index]
+    if is_post_eip8148(spec):
+        return spec.is_partially_withdrawable_validator(
+            validator,
+            balance,
+            state.validator_sweep_thresholds[validator_index],
+        )
+    return spec.is_partially_withdrawable_validator(validator, balance)
 
 
 def set_validator_fully_withdrawable(spec, state, index, withdrawable_epoch=None):
@@ -65,7 +84,7 @@ def set_validator_partially_withdrawable(spec, state, index, excess_balance=1000
             balance=spec.MAX_EFFECTIVE_BALANCE + excess_balance,
         )
 
-    assert spec.is_partially_withdrawable_validator(state.validators[index], state.balances[index])
+    assert check_is_partially_withdrawable_validator(spec, state, index)
 
 
 def sample_withdrawal_indices(spec, state, rng, num_full_withdrawals, num_partial_withdrawals):
