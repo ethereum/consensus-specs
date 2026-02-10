@@ -18,16 +18,19 @@ This document describes the process of the eip8148 upgrade.
 
 Warning: this configuration is not definitive.
 
-| Name | Value |
-| - | - |
-| `eip8148_FORK_VERSION` | `Version('0x06000000')` |
-| `eip8148_FORK_EPOCH` | `Epoch(18446744073709551615)` **TBD** |
+| Name                   | Value                                 |
+| ---------------------- | ------------------------------------- |
+| `eip8148_FORK_VERSION` | `Version('0x06000000')`               |
+| `eip8148_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Fork to eip8148
 
-If `state.slot % SLOTS_PER_EPOCH == 0` and `compute_epoch_at_slot(state.slot) == eip8148_FORK_EPOCH`, an irregular state change is made to upgrade to eip8148.
+If `state.slot % SLOTS_PER_EPOCH == 0` and
+`compute_epoch_at_slot(state.slot) == eip8148_FORK_EPOCH`, an irregular state
+change is made to upgrade to eip8148.
 
-The upgrade occurs after the completion of the inner loop of `process_slots` that sets `state.slot` equal to `eip8148_FORK_EPOCH * SLOTS_PER_EPOCH`.
+The upgrade occurs after the completion of the inner loop of `process_slots`
+that sets `state.slot` equal to `eip8148_FORK_EPOCH * SLOTS_PER_EPOCH`.
 
 ```python
 def upgrade_to_eip8148(pre: gloas.BeaconState) -> BeaconState:

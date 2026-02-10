@@ -25,10 +25,10 @@
     - [Modified `add_validator_to_registry`](#modified-add_validator_to_registry)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
-    - [Withdrawals](#withdrawals)
-      - [Modified `get_validators_sweep_withdrawals`](#modified-get_validators_sweep_withdrawals)
     - [Execution payload](#execution-payload)
       - [Modified `get_execution_requests_list`](#modified-get_execution_requests_list)
+    - [Withdrawals](#withdrawals)
+      - [Modified `get_validators_sweep_withdrawals`](#modified-get_validators_sweep_withdrawals)
     - [Operations](#operations)
       - [New `process_set_sweep_threshold_request`](#new-process_set_sweep_threshold_request)
   - [Execution payload processing](#execution-payload-processing)
@@ -39,9 +39,14 @@
 
 ## Introduction
 
-This upgrade adds custom validator sweep threshold functionality to the beacon chain as part of the eip8148 upgrade.
+This upgrade adds custom validator sweep threshold functionality to the beacon
+chain as part of the eip8148 upgrade.
 
-This document specifies the beacon chain changes required to support these custom thresholds. The upgrade introduces a new request type within the execution payload, triggered by execution layer transactions, which updates a validator's sweep configuration in the beacon state. This allows validators to control their balance withdrawals more precisely.
+This document specifies the beacon chain changes required to support these
+custom thresholds. The upgrade introduces a new request type within the
+execution payload, triggered by execution layer transactions, which updates a
+validator's sweep configuration in the beacon state. This allows validators to
+control their balance withdrawals more precisely.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
 
@@ -50,22 +55,22 @@ This document specifies the beacon chain changes required to support these custo
 ### New execution layer triggered request type
 
 | Name                           | Value            |
-| ----------------------------   | ---------------- |
+| ------------------------------ | ---------------- |
 | `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1('0x03')` |
 
 ### Sweep threshold validation
 
-| Name                        | Value                                         |
-| --------------------------- | --------------------------------------------- |
-| `MIN_SWEEP_THRESHOLD`       | `MIN_ACTIVATION_BALANCE + Gwei(2**0 * 10**9)` |
+| Name                  | Value                                         |
+| --------------------- | --------------------------------------------- |
+| `MIN_SWEEP_THRESHOLD` | `MIN_ACTIVATION_BALANCE + Gwei(2**0 * 10**9)` |
 
 ## Preset
 
 ### Execution
 
-| Name                                           | Value                     | Description                                                                                         |
-| ----------------------------------------       | ------------------------- | --------------------------------------------------------------------------------------------------- |
-| `MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16)     | *[New in eip8148]* Maximum number of execution layer set sweep threshold requests in each payload   |
+| Name                                           | Value                 | Description                                                                                       |
+| ---------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------- |
+| `MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD` | `uint64(2**4)` (= 16) | *[New in eip8148]* Maximum number of execution layer set sweep threshold requests in each payload |
 
 ## Containers
 
@@ -153,7 +158,9 @@ class SetSweepThresholdRequest(Container):
 #### Modified `is_partially_withdrawable_validator`
 
 ```python
-def is_partially_withdrawable_validator(validator: Validator, balance: Gwei, sweep_threshold: Gwei) -> bool:
+def is_partially_withdrawable_validator(
+    validator: Validator, balance: Gwei, sweep_threshold: Gwei
+) -> bool:
     """
     Check if ``validator`` is partially withdrawable.
     """
@@ -179,7 +186,7 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei, swe
 def get_effective_sweep_threshold(validator: Validator, sweep_threshold: Gwei) -> Gwei:
     """
     Get effective sweep threshold for ``validator``.
-    """ 
+    """
     if sweep_threshold != 0:
         return sweep_threshold
     else:
@@ -190,7 +197,8 @@ def get_effective_sweep_threshold(validator: Validator, sweep_threshold: Gwei) -
 
 #### Modified `add_validator_to_registry`
 
-*Note*: The function `add_validator_to_registry` is modified to initialize the item in the `validator_sweep_thresholds` list.
+*Note*: The function `add_validator_to_registry` is modified to initialize the
+item in the `validator_sweep_thresholds` list.
 
 ```python
 def add_validator_to_registry(
@@ -239,7 +247,8 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
 
 ##### Modified `get_validators_sweep_withdrawals`
 
-*Note*: The function `get_validators_sweep_withdrawals` is modified to support eip8148.
+*Note*: The function `get_validators_sweep_withdrawals` is modified to support
+eip8148.
 
 ```python
 def get_validators_sweep_withdrawals(
@@ -297,10 +306,12 @@ def get_validators_sweep_withdrawals(
 
 #### Operations
 
-###### New `process_set_sweep_threshold_request`
+##### New `process_set_sweep_threshold_request`
 
 ```python
-def process_set_sweep_threshold_request(state: BeaconState, set_sweep_threshold_request: SetSweepThresholdRequest) -> None:
+def process_set_sweep_threshold_request(
+    state: BeaconState, set_sweep_threshold_request: SetSweepThresholdRequest
+) -> None:
     threshold = set_sweep_threshold_request.threshold
 
     validator_pubkeys = [v.pubkey for v in state.validators]
@@ -340,7 +351,7 @@ def process_set_sweep_threshold_request(state: BeaconState, set_sweep_threshold_
     # Ensure threshold is a multiple of the EFFECTIVE_BALANCE_INCREMENT
     if threshold % EFFECTIVE_BALANCE_INCREMENT != 0:
         return
-    
+
     if MIN_SWEEP_THRESHOLD <= threshold < MAX_EFFECTIVE_BALANCE_ELECTRA:
         # Set custom sweep threshold
         state.validator_sweep_thresholds[index] = threshold
