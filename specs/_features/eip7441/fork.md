@@ -35,7 +35,7 @@ Warning: this configuration is not definitive.
 
 | Name                   | Value                                 |
 | ---------------------- | ------------------------------------- |
-| `EIP7441_FORK_VERSION` | `Version('0x08000000')`               |
+| `EIP7441_FORK_VERSION` | `Version('0xe7441000')`               |
 | `EIP7441_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Fork to EIP-7441
