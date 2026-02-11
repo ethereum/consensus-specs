@@ -18,6 +18,7 @@ GLOAS = SpecForkName("gloas")
 EIP7441 = SpecForkName("eip7441")
 EIP7805 = SpecForkName("eip7805")
 EIP7928 = SpecForkName("eip7928")
+EIP8025 = SpecForkName("eip8025")
 EIP8148 = SpecForkName("eip8148")
 
 #
@@ -38,6 +39,7 @@ ALL_PHASES = (
     # Experimental patches
     EIP7805,
     EIP7928,
+    EIP8025,
     EIP8148,
 )
 # The forks that have light client specs
@@ -62,6 +64,7 @@ PREVIOUS_FORK_OF = {
     EIP7441: CAPELLA,
     EIP7805: FULU,
     EIP7928: FULU,
+    EIP8025: FULU,
     EIP8148: GLOAS,
 }
 

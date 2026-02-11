@@ -9,6 +9,7 @@ from .constants import (
     EIP7441,
     EIP7805,
     EIP7928,
+    EIP8025,
     EIP8148,
     ELECTRA,
     FULU,
@@ -29,6 +30,7 @@ PREVIOUS_FORK_OF = {
     EIP7441: CAPELLA,
     EIP7805: FULU,
     EIP7928: FULU,
+    EIP8025: FULU,
     EIP8148: GLOAS,
 }
 

@@ -15,6 +15,7 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	eip7441   \
 	eip7805   \
 	eip7928   \
+	eip8025   \
 	eip8148
 
 # A list of fake targets.
