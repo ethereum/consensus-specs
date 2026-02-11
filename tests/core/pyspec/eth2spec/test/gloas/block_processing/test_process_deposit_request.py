@@ -1,6 +1,7 @@
 from eth2spec.test.context import always_bls, spec_state_test, with_gloas_and_later
 from eth2spec.test.helpers.deposits import (
     build_deposit_data,
+    make_withdrawal_credentials,
     prepare_builder_deposit_request,
     prepare_deposit_request,
     prepare_pending_deposit,
@@ -421,8 +422,8 @@ def test_process_deposit_request__routing__pending_deposit_valid_signature(spec,
     amount = spec.MIN_DEPOSIT_AMOUNT
 
     # Add a pending deposit with a valid signature for this pubkey
-    pending_withdrawal_credentials = (
-        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\xab" * 20
+    pending_withdrawal_credentials = make_withdrawal_credentials(
+        spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\xab"
     )
     pending_deposit = prepare_pending_deposit(
         spec,
@@ -434,7 +435,9 @@ def test_process_deposit_request__routing__pending_deposit_valid_signature(spec,
     state.pending_deposits.append(pending_deposit)
 
     # Now create a deposit request with builder credentials for the same pubkey
-    withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
+    withdrawal_credentials = make_withdrawal_credentials(
+        spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
+    )
     deposit_data = build_deposit_data(
         spec,
         new_pubkey,
@@ -491,14 +494,18 @@ def test_process_deposit_request__routing__pending_deposit_invalid_signature(spe
     invalid_pending_deposit = spec.PendingDeposit(
         pubkey=new_builder_pubkey,
         amount=amount,
-        withdrawal_credentials=spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\xab" * 20,
+        withdrawal_credentials=make_withdrawal_credentials(
+            spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\xab"
+        ),
         signature=spec.BLSSignature(),  # Invalid empty signature
         slot=spec.GENESIS_SLOT,
     )
     state.pending_deposits.append(invalid_pending_deposit)
 
     # Now create a deposit request with builder credentials for the same pubkey
-    withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
+    withdrawal_credentials = make_withdrawal_credentials(
+        spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
+    )
     deposit_data = build_deposit_data(
         spec,
         new_builder_pubkey,
@@ -555,16 +562,18 @@ def test_process_deposit_request__routing__pending_deposits_invalid_then_valid(s
         invalid_pending_deposit = spec.PendingDeposit(
             pubkey=new_pubkey,
             amount=amount,
-            withdrawal_credentials=spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
-            + b"\x00" * 11
-            + b"\xab" * 20,
+            withdrawal_credentials=make_withdrawal_credentials(
+                spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\xab"
+            ),
             signature=spec.BLSSignature(),  # Invalid empty signature
             slot=spec.GENESIS_SLOT,
         )
         state.pending_deposits.append(invalid_pending_deposit)
 
     # Add a valid pending deposit after the invalid ones
-    valid_withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\xcd" * 20
+    valid_withdrawal_credentials = make_withdrawal_credentials(
+        spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\xcd"
+    )
     valid_pending_deposit = prepare_pending_deposit(
         spec,
         new_validator_index,
@@ -575,7 +584,9 @@ def test_process_deposit_request__routing__pending_deposits_invalid_then_valid(s
     state.pending_deposits.append(valid_pending_deposit)
 
     # Now create a deposit request with builder credentials for the same pubkey
-    withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
+    withdrawal_credentials = make_withdrawal_credentials(
+        spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
+    )
     deposit_data = build_deposit_data(
         spec,
         new_pubkey,
@@ -624,7 +635,9 @@ def test_process_deposit_request__routing__pending_deposit_builder_credentials(s
     amount = spec.MIN_DEPOSIT_AMOUNT
 
     # Add a pending deposit with builder credentials and a valid signature
-    pending_withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\xab" * 20
+    pending_withdrawal_credentials = make_withdrawal_credentials(
+        spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\xab"
+    )
     pending_deposit = prepare_pending_deposit(
         spec,
         new_validator_index,
@@ -635,7 +648,9 @@ def test_process_deposit_request__routing__pending_deposit_builder_credentials(s
     state.pending_deposits.append(pending_deposit)
 
     # Now create another deposit request with builder credentials for the same pubkey
-    withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
+    withdrawal_credentials = make_withdrawal_credentials(
+        spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
+    )
     deposit_data = build_deposit_data(
         spec,
         new_pubkey,

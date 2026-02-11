@@ -20,6 +20,11 @@ from eth2spec.utils.ssz.ssz_impl import hash_tree_root
 from eth2spec.utils.ssz.ssz_typing import List
 
 
+def make_withdrawal_credentials(spec, prefix, address_byte):
+    """Create withdrawal credentials with the given prefix and a 20-byte address from a repeated byte."""
+    return prefix + b"\x00" * 11 + address_byte * 20
+
+
 def mock_deposit(spec, state, index):
     """
     Mock validator at ``index`` as having just made a deposit
