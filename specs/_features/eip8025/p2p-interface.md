@@ -12,6 +12,8 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 - [Table of contents](#table-of-contents)
 - [Constants](#constants)
   - [Execution](#execution)
+- [Helpers](#helpers)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [MetaData](#metadata)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
@@ -36,6 +38,32 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 | Name                               | Value       |
 | ---------------------------------- | ----------- |
 | `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)` |
+
+## Helpers
+
+### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= EIP8025_FORK_EPOCH:
+        return EIP8025_FORK_VERSION
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ## MetaData
 

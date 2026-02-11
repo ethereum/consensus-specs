@@ -13,7 +13,7 @@ from eth2spec.test.helpers.execution_payload import (
     compute_el_block_hash,
     get_execution_payload_header,
 )
-from eth2spec.test.helpers.forks import is_post_gloas
+from eth2spec.test.helpers.forks import is_post_eip8025, is_post_gloas
 from eth2spec.test.helpers.keys import builder_privkeys, privkeys
 
 
@@ -97,22 +97,21 @@ def run_execution_payload_processing(
             assert new_payload_request.execution_payload == execution_payload
             return execution_valid
 
-    if not valid:
+    def call_process_execution_payload():
+        engine = TestEngine()
         if is_post_gloas(spec):
-            expect_assertion_error(
-                lambda: spec.process_execution_payload(state, signed_envelope, TestEngine())
-            )
+            spec.process_execution_payload(state, signed_envelope, engine)
+        elif is_post_eip8025(spec):
+            spec.process_execution_payload(state, body, engine, spec.PROOF_ENGINE)
         else:
-            expect_assertion_error(
-                lambda: spec.process_execution_payload(state, body, TestEngine())
-            )
+            spec.process_execution_payload(state, body, engine)
+
+    if not valid:
+        expect_assertion_error(call_process_execution_payload)
         yield "post", None
         return
 
-    if is_post_gloas(spec):
-        spec.process_execution_payload(state, signed_envelope, TestEngine())
-    else:
-        spec.process_execution_payload(state, body, TestEngine())
+    call_process_execution_payload()
 
     # Make sure we called the engine
     assert called_new_block
