@@ -6,7 +6,7 @@ from eth2spec.test.helpers.deposits import (
     prepare_deposit_request,
     prepare_pending_deposit,
 )
-from eth2spec.test.helpers.keys import builder_pubkey_to_privkey, privkeys, pubkeys
+from eth2spec.test.helpers.keys import builder_pubkey_to_privkey, pubkeys
 from eth2spec.test.helpers.state import next_epoch
 
 
@@ -417,8 +417,6 @@ def test_process_deposit_request__routing__pending_deposit_valid_signature(spec,
     """Test that pubkey with pending deposit with valid signature goes to validator queue."""
     # Use a pubkey that doesn't exist as validator or builder yet
     new_validator_index = len(state.validators)
-    new_pubkey = pubkeys[new_validator_index]
-    privkey = privkeys[new_validator_index]
     amount = spec.MIN_DEPOSIT_AMOUNT
 
     # Add a pending deposit with a valid signature for this pubkey
@@ -435,23 +433,15 @@ def test_process_deposit_request__routing__pending_deposit_valid_signature(spec,
     state.pending_deposits.append(pending_deposit)
 
     # Now create a deposit request with builder credentials for the same pubkey
-    withdrawal_credentials = make_withdrawal_credentials(
-        spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
-    )
-    deposit_data = build_deposit_data(
+    deposit_request = prepare_deposit_request(
         spec,
-        new_pubkey,
-        privkey,
+        new_validator_index,
         amount,
-        withdrawal_credentials,
+        index=0,
+        withdrawal_credentials=make_withdrawal_credentials(
+            spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
+        ),
         signed=True,
-    )
-    deposit_request = spec.DepositRequest(
-        pubkey=deposit_data.pubkey,
-        withdrawal_credentials=deposit_data.withdrawal_credentials,
-        amount=deposit_data.amount,
-        signature=deposit_data.signature,
-        index=spec.uint64(0),
     )
 
     pre_builder_count = len(state.builders)
@@ -470,7 +460,7 @@ def test_process_deposit_request__routing__pending_deposit_valid_signature(spec,
     # Should add to validator pending deposits queue instead
     assert len(state.pending_deposits) == pre_pending_deposits_count + 1
     new_pending_deposit = state.pending_deposits[pre_pending_deposits_count]
-    assert new_pending_deposit.pubkey == new_pubkey
+    assert new_pending_deposit.pubkey == deposit_request.pubkey
     assert new_pending_deposit.amount == amount
 
 
@@ -503,23 +493,17 @@ def test_process_deposit_request__routing__pending_deposit_invalid_signature(spe
     state.pending_deposits.append(invalid_pending_deposit)
 
     # Now create a deposit request with builder credentials for the same pubkey
-    withdrawal_credentials = make_withdrawal_credentials(
-        spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
-    )
-    deposit_data = build_deposit_data(
+    deposit_request = prepare_deposit_request(
         spec,
-        new_builder_pubkey,
-        privkey,
+        0,
         amount,
-        withdrawal_credentials,
+        index=0,
+        pubkey=new_builder_pubkey,
+        privkey=privkey,
+        withdrawal_credentials=make_withdrawal_credentials(
+            spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
+        ),
         signed=True,
-    )
-    deposit_request = spec.DepositRequest(
-        pubkey=deposit_data.pubkey,
-        withdrawal_credentials=deposit_data.withdrawal_credentials,
-        amount=deposit_data.amount,
-        signature=deposit_data.signature,
-        index=spec.uint64(0),
     )
 
     pre_builder_count = len(state.builders)
@@ -554,7 +538,6 @@ def test_process_deposit_request__routing__pending_deposits_invalid_then_valid(s
     # Use a pubkey that doesn't exist as validator or builder yet
     new_validator_index = len(state.validators)
     new_pubkey = pubkeys[new_validator_index]
-    privkey = privkeys[new_validator_index]
     amount = spec.MIN_DEPOSIT_AMOUNT
 
     # Add multiple pending deposits with invalid signatures first
@@ -584,23 +567,15 @@ def test_process_deposit_request__routing__pending_deposits_invalid_then_valid(s
     state.pending_deposits.append(valid_pending_deposit)
 
     # Now create a deposit request with builder credentials for the same pubkey
-    withdrawal_credentials = make_withdrawal_credentials(
-        spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
-    )
-    deposit_data = build_deposit_data(
+    deposit_request = prepare_deposit_request(
         spec,
-        new_pubkey,
-        privkey,
+        new_validator_index,
         amount,
-        withdrawal_credentials,
+        index=0,
+        withdrawal_credentials=make_withdrawal_credentials(
+            spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
+        ),
         signed=True,
-    )
-    deposit_request = spec.DepositRequest(
-        pubkey=deposit_data.pubkey,
-        withdrawal_credentials=deposit_data.withdrawal_credentials,
-        amount=deposit_data.amount,
-        signature=deposit_data.signature,
-        index=spec.uint64(0),
     )
 
     pre_builder_count = len(state.builders)
@@ -630,8 +605,6 @@ def test_process_deposit_request__routing__pending_deposit_builder_credentials(s
     """Test that pubkey with pending deposit with builder credentials goes to validator queue."""
     # Use a pubkey that doesn't exist as validator or builder yet
     new_validator_index = len(state.validators)
-    new_pubkey = pubkeys[new_validator_index]
-    privkey = privkeys[new_validator_index]
     amount = spec.MIN_DEPOSIT_AMOUNT
 
     # Add a pending deposit with builder credentials and a valid signature
@@ -648,23 +621,15 @@ def test_process_deposit_request__routing__pending_deposit_builder_credentials(s
     state.pending_deposits.append(pending_deposit)
 
     # Now create another deposit request with builder credentials for the same pubkey
-    withdrawal_credentials = make_withdrawal_credentials(
-        spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
-    )
-    deposit_data = build_deposit_data(
+    deposit_request = prepare_deposit_request(
         spec,
-        new_pubkey,
-        privkey,
+        new_validator_index,
         amount,
-        withdrawal_credentials,
+        index=0,
+        withdrawal_credentials=make_withdrawal_credentials(
+            spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
+        ),
         signed=True,
-    )
-    deposit_request = spec.DepositRequest(
-        pubkey=deposit_data.pubkey,
-        withdrawal_credentials=deposit_data.withdrawal_credentials,
-        amount=deposit_data.amount,
-        signature=deposit_data.signature,
-        index=spec.uint64(0),
     )
 
     pre_builder_count = len(state.builders)
@@ -683,5 +648,5 @@ def test_process_deposit_request__routing__pending_deposit_builder_credentials(s
     # Should add to validator pending deposits queue instead
     assert len(state.pending_deposits) == pre_pending_deposits_count + 1
     new_pending_deposit = state.pending_deposits[pre_pending_deposits_count]
-    assert new_pending_deposit.pubkey == new_pubkey
+    assert new_pending_deposit.pubkey == deposit_request.pubkey
     assert new_pending_deposit.amount == amount
