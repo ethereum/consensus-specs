@@ -60,7 +60,8 @@ def on_slot_start_after_past_attestations_applied_and_append_step(spec, store, t
 
 @dataclass
 class SystemRun:
-    number_of_slots: int
+    number_of_slots: int = None
+    end_slot: int = None
     participation_rate: int = 100
     has_proposal: bool = True
     release_att_pool: bool = True
@@ -73,6 +74,7 @@ class SystemRun:
     attesting_root_slot_offset: int = None
     slashing_percentage: int = None
     slash_participants_in_slot_with_offset: int = None
+    graffiti: str = None
 
     def get_block_root_by_slot(self, store, slot):
         block_roots_at_slot = [r for (r, b) in store.blocks.items() if b.slot == slot]
@@ -104,6 +106,14 @@ class SystemRun:
 
     def is_pure_slashing(self):
         return self.number_of_slots == 0 and self.has_slashing()
+
+    def get_number_of_slots(self, current_slot):
+        assert self.number_of_slots != None or self.end_slot != None
+        if self.number_of_slots is not None:
+            return self.number_of_slots
+        else:
+            assert self.end_slot > current_slot
+            return self.end_slot - current_slot
 
 
 class FCRTest:
@@ -165,7 +175,12 @@ class FCRTest:
             return self.spec.MAX_ATTESTATIONS
 
     def add_and_apply_block(
-        self, parent_root=None, release_att_pool=True, graffiti: str = None, include_atts=True
+        self,
+        parent_root=None,
+        release_att_pool=True,
+        graffiti: str = None,
+        include_atts=True,
+        attestations=None,
     ):
         if parent_root is None:
             parent_root = self.head()
@@ -184,7 +199,10 @@ class FCRTest:
         # Build a block for current_slot with attestations from pool
         # build_empty_block will advance the state to current_slot if necessary
         block = build_empty_block(self.spec, parent_state, current_slot)
-        if include_atts:
+        if attestations is not None:
+            for attestation in attestations[: self.max_attestations()]:
+                block.body.attestations.append(attestation)
+        elif include_atts:
             for attestation in self.attestation_pool[: self.max_attestations()]:
                 block.body.attestations.append(attestation)
 
@@ -202,7 +220,7 @@ class FCRTest:
 
         return block.hash_tree_root()
 
-    def attest(self, block_root=None, slot=None, participation_rate=100):
+    def attest(self, block_root=None, slot=None, participation_rate=100, include_in_pool=True):
         assert 0 <= participation_rate <= 100
 
         # Do not attest if participation is zero
@@ -219,13 +237,13 @@ class FCRTest:
 
         att_state = self.store.block_states[block_root].copy()
 
+        # Advance state if needed
+        transition_to(self.spec, att_state, slot)
+
         # Prevent attesting if slot is incorrect
         # or too old such that committee shuffling would be incorrect
         assert slot >= att_state.slot
         assert self.spec.get_current_epoch(att_state) == self.spec.compute_epoch_at_slot(slot)
-
-        # Advance state if needed
-        transition_to(self.spec, att_state, slot)
 
         # Sample sleepy validators
         if participation_rate < 100:
@@ -243,7 +261,8 @@ class FCRTest:
             block_root,
             participation_fn=(lambda slot, index, committee: committee - sleepy_participants),
         )
-        self.attestation_pool.extend(attestations)
+        if include_in_pool:
+            self.attestation_pool.extend(attestations)
 
         # Yield test data
         for attestation in attestations:
@@ -270,26 +289,47 @@ class FCRTest:
             self.spec, self.store, self.test_steps
         )
 
-    def next_slot_with_block_and_apply_attestations(self, participation_rate=100):
-        block_root = self.add_and_apply_block(parent_root=self.head())
-        self.attest(
+    def next_slot_with_block_and_apply_attestations(
+        self,
+        participation_rate=100,
+        parent_root=None,
+        graffiti=None,
+        release_att_pool=True,
+        include_atts=True,
+    ):
+        block_root = self.add_and_apply_block(
+            parent_root=parent_root,
+            graffiti=graffiti,
+            release_att_pool=release_att_pool,
+            include_atts=include_atts,
+        )
+        attestations = self.attest(
             block_root=self.head(), slot=self.current_slot(), participation_rate=participation_rate
         )
         self.next_slot()
-        self.apply_attestations()
+        self.apply_attestations(attestations)
         return block_root
 
-    def next_slot_with_block_and_fast_confirmation(self, participation_rate=100):
-        block_root = self.next_slot_with_block_and_apply_attestations(participation_rate)
+    def next_slot_with_block_and_fast_confirmation(
+        self,
+        participation_rate=100,
+        parent_root=None,
+        graffiti=None,
+        release_att_pool=True,
+        include_atts=True,
+    ):
+        block_root = self.next_slot_with_block_and_apply_attestations(
+            participation_rate, parent_root, graffiti, release_att_pool, include_atts
+        )
         self.run_fast_confirmation()
         return block_root
 
     def attest_and_next_slot_with_fast_confirmation(
         self, block_root=None, slot=None, participation_rate=100
     ):
-        self.attest(block_root, slot, participation_rate)
+        attestations = self.attest(block_root, slot, participation_rate)
         self.next_slot()
-        self.apply_attestations()
+        self.apply_attestations(attestations)
         self.run_fast_confirmation()
 
     def run_slots_with_blocks_and_fast_confirmation(self, number_of_slots, participation_rate=100):
@@ -365,23 +405,27 @@ class FCRTest:
         elif run.slashing_percentage is not None and run.slashing_percentage > 0:
             self.apply_attester_slashing(slashing_percentage=run.slashing_percentage)
 
-    def execute_run(self, run: SystemRun):
+    def execute_run(self, run: SystemRun) -> list[object]:
         debug_print(run)
 
         if run.is_pure_slashing():
             # Apply slashing and return
             self.execute_slashing(run)
-            return
+            return []
 
         tip_root = run.get_branch_root(self.store, self.head(), self.current_slot())
-        for _ in range(run.number_of_slots):
+        built_chain = []
+        number_of_slots = run.get_number_of_slots(self.current_slot())
+        for _ in range(number_of_slots):
             # Propose
             if run.has_proposal:
                 tip_root = self.add_and_apply_block(
                     parent_root=tip_root,
                     release_att_pool=run.release_att_pool,
                     include_atts=run.atts_in_block,
+                    graffiti=run.graffiti,
                 )
+                built_chain.append(tip_root)
 
             # Attest
             attesting_root = run.get_attesting_root(
@@ -423,6 +467,8 @@ class FCRTest:
             f"effective_participation={effective_participation}, "
             f"UJ[head].epoch={self.store.unrealized_justifications[self.head()].epoch}"
         )
+
+        return built_chain
 
 
 @dataclass
