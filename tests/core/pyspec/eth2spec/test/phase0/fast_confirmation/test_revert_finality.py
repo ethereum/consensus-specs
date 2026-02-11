@@ -504,8 +504,7 @@ def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivo
 
     # Inject late equivocations 
     equivocating_before = set(store.equivocating_indices)
-    for _ in range(3):
-        fcr.apply_attester_slashing(slashing_percentage=25, slot=fcr.current_slot())
+    fcr.apply_attester_slashing(slashing_percentage=75, slot=fcr.current_slot())
     assert len(store.equivocating_indices) > len(equivocating_before), \
         "Slashing had no effect"
 
