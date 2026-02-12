@@ -12,7 +12,6 @@
 - [Constants](#constants)
   - [Execution](#execution)
   - [Domains](#domains)
-- [Configuration](#configuration)
 - [Containers](#containers)
   - [New `PublicInput`](#new-publicinput)
   - [New `ExecutionProof`](#new-executionproof)
@@ -58,14 +57,6 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 | ------------------------ | -------------------------- |
 | `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0D000000')` |
 
-## Configuration
-
-*Note*: The configuration values are not definitive.
-
-| Name                      | Value         |
-| ------------------------- | ------------- |
-| `MAX_WHITELISTED_PROVERS` | `uint64(256)` |
-
 ## Containers
 
 ### New `PublicInput`
@@ -89,7 +80,7 @@ class ExecutionProof(Container):
 ```python
 class SignedExecutionProof(Container):
     message: ExecutionProof
-    prover_pubkey: BLSPubkey
+    validator_index: ValidatorIndex
     signature: BLSSignature
 ```
 
@@ -231,17 +222,14 @@ def process_execution_proof(
     proof_engine: ProofEngine,
 ) -> None:
     proof_message = signed_proof.message
-    prover_pubkey = signed_proof.prover_pubkey
 
-    # Verify prover is whitelisted
-    validator_pubkeys = [v.pubkey for v in state.validators]
-    assert prover_pubkey in validator_pubkeys
-    validator_index = ValidatorIndex(validator_pubkeys.index(prover_pubkey))
-    assert is_active_validator(state.validators[validator_index], get_current_epoch(state))
+    # Verify prover is an active validator
+    validator = state.validators[signed_proof.validator_index]
+    assert is_active_validator(validator, get_current_epoch(state))
 
     domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
     signing_root = compute_signing_root(proof_message, domain)
-    assert bls.Verify(prover_pubkey, signing_root, signed_proof.signature)
+    assert bls.Verify(validator.pubkey, signing_root, signed_proof.signature)
 
     # Verify the execution proof
     assert proof_engine.verify_execution_proof(proof_message)
