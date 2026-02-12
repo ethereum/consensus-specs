@@ -119,7 +119,8 @@ The following validations MUST pass before forwarding the
   validator's public key.
 - _[REJECT]_ `proof.proof_data` is non-empty.
 - _[REJECT]_ `proof.proof_data` is not larger than `MAX_PROOF_SIZE`.
-- _[REJECT]_ `proof` is a valid execution proof.
+- _[REJECT]_ All of the conditions within `process_execution_proof` pass
+  validation.
 - _[IGNORE]_ The proof is the first proof received for the tuple
   `(proof.public_input.new_payload_request_root, proof.proof_type)` -- i.e. the
   first *valid* proof for `proof.proof_type` from any prover.
