@@ -99,25 +99,30 @@ Where
 
 This topic is used to propagate `SignedExecutionProof` messages.
 
-The following validations MUST pass before forwarding a proof on the network:
+The following validations MUST pass before forwarding the
+`signed_execution_proof` on the network, assuming the alias
+`proof = signed_execution_proof.message`:
 
 - _[IGNORE]_ The proof's corresponding new payload request (identified by
-  `proof.message.public_input.new_payload_request_root`) has been seen (via
-  gossip or non-gossip sources) (a client MAY queue proofs for processing once
-  the new payload request is retrieved).
+  `proof.public_input.new_payload_request_root`) has been seen (via gossip or
+  non-gossip sources) (a client MAY queue proofs for processing once the new
+  payload request is retrieved).
 - _[IGNORE]_ The proof is the first proof received for the tuple
-  `(proof.message.public_input.new_payload_request_root, proof.message.proof_type, proof.prover_pubkey)`
-  -- i.e. the first *valid or invalid* proof for `proof.message.proof_type` from
-  `proof.prover_pubkey`.
-- _[REJECT]_ `proof.prover_pubkey` is associated with an active validator.
-- _[REJECT]_ `proof.signature` is valid with respect to the prover's public key.
-- _[REJECT]_ `proof.message.proof_data` is non-empty.
-- _[REJECT]_ `proof.message.proof_data` is not larger than `MAX_PROOF_SIZE`.
-- _[REJECT]_ `proof.message` is a valid execution proof.
+  `(proof.public_input.new_payload_request_root, proof.proof_type, signed_execution_proof.validator_index)`
+  -- i.e. the first *valid or invalid* proof for `proof.proof_type` from
+  `signed_execution_proof.validator_index`.
+- _[REJECT]_ The validator with index `signed_execution_proof.validator_index`
+  is an active validator -- i.e.
+  `is_active_validator(state.validators[signed_execution_proof.validator_index], get_current_epoch(state))`
+  returns `True`.
+- _[REJECT]_ `signed_execution_proof.signature` is valid with respect to the
+  validator's public key.
+- _[REJECT]_ `proof.proof_data` is non-empty.
+- _[REJECT]_ `proof.proof_data` is not larger than `MAX_PROOF_SIZE`.
+- _[REJECT]_ `proof` is a valid execution proof.
 - _[IGNORE]_ The proof is the first proof received for the tuple
-  `(proof.message.public_input.new_payload_request_root, proof.message.proof_type)`
-  -- i.e. the first *valid* proof for `proof.message.proof_type` from any
-  prover.
+  `(proof.public_input.new_payload_request_root, proof.proof_type)` -- i.e. the
+  first *valid* proof for `proof.proof_type` from any prover.
 
 ## The Req/Resp domain
 
