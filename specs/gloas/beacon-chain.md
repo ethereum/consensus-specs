@@ -491,6 +491,9 @@ def is_parent_block_full(state: BeaconState) -> bool:
 
 #### New `is_pending_validator`
 
+*Note*: This function naively revalidates deposit signatures on every call.
+Implementations SHOULD cache verification results to avoid repeated work.
+
 ```python
 def is_pending_validator(state: BeaconState, pubkey: BLSPubkey) -> bool:
     """
@@ -1261,10 +1264,12 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     # Regardless of the withdrawal credentials prefix, if a builder/validator
     # already exists with this pubkey, apply the deposit to their balance
     is_builder = deposit_request.pubkey in builder_pubkeys
-    has_builder_prefix = is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
-    is_existing_validator = deposit_request.pubkey in validator_pubkeys
-    is_validator = is_existing_validator or is_pending_validator(state, deposit_request.pubkey)
-    if is_builder or (has_builder_prefix and not is_validator):
+    is_validator = deposit_request.pubkey in validator_pubkeys
+    if is_builder or (
+        is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
+        and not is_validator
+        and not is_pending_validator(state, deposit_request.pubkey)
+    ):
         # Apply builder deposits immediately
         apply_deposit_for_builder(
             state,
