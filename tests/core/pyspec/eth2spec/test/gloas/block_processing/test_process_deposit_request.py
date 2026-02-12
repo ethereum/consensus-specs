@@ -461,6 +461,7 @@ def test_process_deposit_request__routing__pending_deposit_valid_signature(spec,
     assert len(state.pending_deposits) == pre_pending_deposits_count + 1
     new_pending_deposit = state.pending_deposits[pre_pending_deposits_count]
     assert new_pending_deposit.pubkey == deposit_request.pubkey
+    assert new_pending_deposit.withdrawal_credentials == deposit_request.withdrawal_credentials
     assert new_pending_deposit.amount == amount
 
 
@@ -527,6 +528,9 @@ def test_process_deposit_request__routing__pending_deposit_invalid_signature(spe
     builder_index = builder_pubkeys_list.index(new_builder_pubkey)
     builder = state.builders[builder_index]
     assert builder.pubkey == new_builder_pubkey
+    assert builder.execution_address == spec.ExecutionAddress(
+        deposit_request.withdrawal_credentials[12:]
+    )
     assert builder.balance == amount
 
 
@@ -595,6 +599,7 @@ def test_process_deposit_request__routing__pending_deposits_invalid_then_valid(s
     assert len(state.pending_deposits) == pre_pending_deposits_count + 1
     new_pending_deposit = state.pending_deposits[pre_pending_deposits_count]
     assert new_pending_deposit.pubkey == new_pubkey
+    assert new_pending_deposit.withdrawal_credentials == deposit_request.withdrawal_credentials
     assert new_pending_deposit.amount == amount
 
 
@@ -649,4 +654,5 @@ def test_process_deposit_request__routing__pending_deposit_builder_credentials(s
     assert len(state.pending_deposits) == pre_pending_deposits_count + 1
     new_pending_deposit = state.pending_deposits[pre_pending_deposits_count]
     assert new_pending_deposit.pubkey == deposit_request.pubkey
+    assert new_pending_deposit.withdrawal_credentials == deposit_request.withdrawal_credentials
     assert new_pending_deposit.amount == amount
