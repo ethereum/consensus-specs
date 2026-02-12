@@ -107,6 +107,9 @@ The following validations MUST pass before forwarding the
   `proof.public_input.new_payload_request_root`) has been seen (via gossip or
   non-gossip sources) (a client MAY queue proofs for processing once the new
   payload request is retrieved).
+- _[IGNORE]_ No *valid* proof has already been received for the tuple
+  `(proof.public_input.new_payload_request_root, proof.proof_type)` -- i.e. no
+  *valid* proof for `proof.proof_type` from any prover has been received.
 - _[IGNORE]_ The proof is the first proof received for the tuple
   `(proof.public_input.new_payload_request_root, proof.proof_type, signed_execution_proof.validator_index)`
   -- i.e. the first *valid or invalid* proof for `proof.proof_type` from
@@ -121,9 +124,6 @@ The following validations MUST pass before forwarding the
 - _[REJECT]_ `proof.proof_data` is not larger than `MAX_PROOF_SIZE`.
 - _[REJECT]_ All of the conditions within `process_execution_proof` pass
   validation.
-- _[IGNORE]_ The proof is the first proof received for the tuple
-  `(proof.public_input.new_payload_request_root, proof.proof_type)` -- i.e. the
-  first *valid* proof for `proof.proof_type` from any prover.
 
 ## The Req/Resp domain
 
