@@ -1,4 +1,4 @@
-# EIP-8025 -- The Beacon Chain
+# EIP-8025 -- The Beacon ChainM       
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
