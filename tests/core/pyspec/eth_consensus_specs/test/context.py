@@ -9,6 +9,7 @@ import pytest
 from frozendict import frozendict
 from lru import LRU
 
+from eth_consensus_specs.test import context
 from eth_consensus_specs.utils import bls
 from tests.infra.pytest_plugins.yield_generator import MultiPhaseResult
 from tests.infra.yield_generator import vector_test
@@ -306,6 +307,7 @@ DEFAULT_BLS_ACTIVE = True
 is_pytest = True
 is_generator = False
 
+
 def dump_skipping_message(reason: str) -> None:
     message = f"[Skipped test] {reason}"
     if is_pytest:
@@ -585,13 +587,19 @@ def _run_test_case_with_phases(fn, phases, other_phases, kw, args, is_fork_trans
     # Return is ignored whenever multiple phases are ran.
     # This return is for test generators to emit python generators (yielding test vector outputs)
 
-    results: MultiPhaseResult = {}
+    if context.is_pytest and context.is_generator:
+        results: MultiPhaseResult = {}
+
+        for phase in run_phases:
+            ret = fn(spec=targets[phase], phases=phase_dir, *args, **kw)
+            results[phase] = ret
+
+        return results
 
     for phase in run_phases:
         ret = fn(spec=targets[phase], phases=phase_dir, *args, **kw)
-        results[phase] = ret
 
-    return results
+    return ret
 
 
 def with_phases(phases, other_phases=None):

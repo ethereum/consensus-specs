@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Mapping, Any
+from pathlib import Path
+from typing import Any, Mapping
 
 import _pytest
 import pytest
 
-from eth2spec.test.helpers.typing import SpecForkName
-from eth2spec.gen_helpers.gen_base.dumper import Dumper
-from eth2spec.test import context
+from eth_consensus_specs.gen_helpers.gen_base.dumper import Dumper
+from eth_consensus_specs.test import context
+from eth_consensus_specs.test.helpers.typing import SpecForkName
 from tests.infra.manifest import Manifest
-from pathlib import Path
 
-RUNNERS = ["kzg", "epoch_processing"]
+RUNNERS = ["kzg", "epoch_processing", "block_processing"]
 
 MultiPhaseResult = dict[SpecForkName, list]
 
@@ -93,11 +93,11 @@ class SpecTestFunction(pytest.Function):
 
 
 class YieldGeneratorPlugin:
-    output_dir: str = "generated-tests"
     dumper: Dumper | None = None
 
     def __init__(self, config):
         self.config = config
+        self.output_dir: str = config.getoption("--reftests-output")
 
     def register(self):
         self.config.pluginmanager.register(self, "yield_generator")
@@ -126,11 +126,12 @@ class YieldGeneratorPlugin:
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_protocol(self, item, nextitem):
-        print(f"\nRunning test: {item.name}")
+        if self.config.getoption("--reftests") is True:
+            print(f"\nRunning test: {item.name}")
 
         yield
 
-        if self.config.getoption("--pytest-reftests") is False:
+        if self.config.getoption("--reftests") is False:
             return
 
         if not isinstance(item, SpecTestFunction):
@@ -158,22 +159,17 @@ class YieldGeneratorPlugin:
             self.generate_test_vector(manifest, result)
 
     def pytest_collection_modifyitems(self, config, items):
+        if self.config.getoption("--reftests") is False:
+            return
+
         for i, item in enumerate(items):
             if isinstance(item, pytest.Function):
                 # Replace with custom item
                 items[i] = SpecTestFunction.from_function(item)
 
-    def pytest_addoption(self, parser):
-        """Add custom command-line options"""
-        parser.addoption(
-            "--pytest-reftests",
-            action="store_true",
-            default=True,
-            help="Vector tests generation"
-        )
-
     def pytest_configure(self, config):
-        if config.getoption("--pytest-reftests"):
+        if config.getoption("--reftests"):
+            context.is_pytest = True
             context.is_generator = True
 
     def generate_test_vector(self, manifest: Manifest, result: MultiPhaseResult | list) -> None:
@@ -181,15 +177,19 @@ class YieldGeneratorPlugin:
             for fork_name, phase_result in result.items():
                 self.generate_test_vector_phase(manifest, phase_result, fork_name)
 
-    def generate_test_vector_phase(self, manifest: Manifest, phase_result: list, fork_name: SpecForkName) -> None:
+    def generate_test_vector_phase(
+        self, manifest: Manifest, phase_result: list, fork_name: SpecForkName
+    ) -> None:
         dumper = self.get_dumper()
 
         manifest = manifest.override(Manifest(fork_name=fork_name, preset_name="mainnet"))
-        assert manifest.is_complete(), f"Manifest must be complete to generate test vector for {manifest}"
+        assert manifest.is_complete(), (
+            f"Manifest must be complete to generate test vector for {manifest}"
+        )
 
         dir = (
             Path(self.output_dir)
-            / manifest.preset_name # type: ignore
+            / manifest.preset_name  # type: ignore
             / manifest.fork_name
             / manifest.runner_name
             / manifest.handler_name
@@ -217,6 +217,18 @@ class YieldGeneratorPlugin:
         if self.dumper is None:
             self.dumper = Dumper()
         return self.dumper
+
+
+def pytest_addoption(parser):
+    """Add custom command-line options"""
+    parser.addoption(
+        "--reftests", action="store_true", default=False, help="Vector tests generation"
+    )
+    parser.addoption(
+        "--reftests-output",
+        default="generated-tests",
+        help="Output directory for generated test vectors",
+    )
 
 
 def pytest_configure(config):
