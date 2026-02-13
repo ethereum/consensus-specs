@@ -70,19 +70,11 @@ class Dumper:
         with path.open("wb") as f:
             f.write(compress(data))
 
-    def dump_manifest(self, test_case: TestCase) -> None:
+    def dump_manifest(self, dir: Path, manifest_data: dict) -> None:
         """Write manifest.yml file containing test case metadata."""
-        manifest_data = {
-            "preset": test_case.preset_name,
-            "fork": test_case.fork_name,
-            "runner": test_case.runner_name,
-            "handler": test_case.handler_name,
-            "suite": test_case.suite_name,
-            "case": test_case.case_name,
-        }
         # Use cfg_yaml which has block style formatting (default_flow_style=False)
         # This ensures each field appears on a separate line, matching data.yaml format
-        self._dump_yaml(test_case.dir, "manifest", manifest_data, self.cfg_yaml)
+        self._dump_yaml(dir, "manifest", manifest_data, self.cfg_yaml)
 
     def _dump_yaml(self, dir: Path, name: str, data: any, yaml_encoder: YAML) -> None:
         """Helper to write YAML files for test case."""
