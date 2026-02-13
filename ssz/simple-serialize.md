@@ -330,6 +330,12 @@ non-exhaustive list:
 - More elements than a list limit allows. Part of enforcing consensus.
 - An out-of-bounds selected index in an `Union`.
 - An out-of-bounds type selector in a `CompatibleUnion`.
+- Incomplete data in a `CompatibleUnion` where the input is shorter than
+  required for the selected type.
+- Corrupted input in a `CompatibleUnion` where the data contains invalid values
+  or malformed content.
+- Inner type validation failures in a `CompatibleUnion` where the deserialized
+  data fails validation for the selected type.
 
 Efficient algorithms for computing this object can be found in
 [the implementations](#implementations).
@@ -383,10 +389,10 @@ We first define helper functions:
     recursively:
     - If `len(chunks) == 0`: the root is a zero value, `Bytes32()`.
     - Otherwise: compute the root using `hash(a, b)`
-      - `a`: Recursively merkleize chunks beyond `num_leaves` using
-        `merkleize_progressive(chunks[num_leaves:], num_leaves * 4)`.
-      - `b`: Merkleize the first up to `num_leaves` chunks as a binary tree
+      - `a`: Merkleize the first up to `num_leaves` chunks as a binary tree
         using `merkleize(chunks[:num_leaves], num_leaves)`.
+      - `b`: Recursively merkleize chunks beyond `num_leaves` using
+        `merkleize_progressive(chunks[num_leaves:], num_leaves * 4)`.
 - `mix_in_active_fields`: Given a Merkle root `root` and an `active_fields`
   configuration return `hash(root, pack_bits(active_fields))`. Note that
   `active_fields` is restricted to ≤ 256 bits.
@@ -468,7 +474,7 @@ value. Parsers may ignore additional JSON fields.
 | `ProgressiveList[byte]`               | hex-byte-string | `"0x1122"`                               |
 | `Bitlist[N]`                          | hex-byte-string | `"0x1122"`                               |
 | `ProgressiveBitlist`                  | hex-byte-string | `"0x1122"`                               |
-| `Union[type_0, type_1, ...]`          | selector-object | `{ "selector": number, "data": type_N }` |
+| `Union[type_0, type_1, ...]`          | selector-object | `{ "selector": string, "data": type_N }` |
 | `CompatibleUnion({selector: type})`   | selector-object | `{ "selector": string, "data": type }`   |
 
 Integers are encoded as strings to avoid loss of precision in 64-bit values.

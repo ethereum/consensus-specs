@@ -27,8 +27,8 @@ This document describes the process of the Capella upgrade.
 
 The fork is triggered at epoch `CAPELLA_FORK_EPOCH`.
 
-Note that for the pure Capella networks, we don't apply `upgrade_to_capella`
-since it starts with Capella version logic.
+*Note*: For the pure Capella networks, the `upgrade_to_capella` function is
+applied to transition the genesis state to this fork.
 
 ### Upgrading the state
 

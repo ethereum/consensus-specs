@@ -32,13 +32,12 @@ def setup_test(spec, state):
 
 
 @with_light_client
-@spec_state_test_with_matching_config
 @with_config_overrides(
     {
         "BLOB_SCHEDULE": sample_blob_schedule(),
     },
-    emit=False,
 )
+@spec_state_test_with_matching_config
 def test_process_light_client_update_not_timeout(spec, state):
     genesis_block, store = setup_test(spec, state)
 
@@ -70,13 +69,12 @@ def test_process_light_client_update_not_timeout(spec, state):
 
 
 @with_light_client
-@spec_state_test_with_matching_config
 @with_config_overrides(
     {
         "BLOB_SCHEDULE": sample_blob_schedule(),
     },
-    emit=False,
 )
+@spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_at_period_boundary(spec, state):
     genesis_block, store = setup_test(spec, state)
@@ -111,13 +109,12 @@ def test_process_light_client_update_at_period_boundary(spec, state):
 
 
 @with_light_client
-@spec_state_test_with_matching_config
 @with_config_overrides(
     {
         "BLOB_SCHEDULE": sample_blob_schedule(),
     },
-    emit=False,
 )
+@spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_timeout(spec, state):
     genesis_block, store = setup_test(spec, state)
@@ -152,13 +149,12 @@ def test_process_light_client_update_timeout(spec, state):
 
 
 @with_light_client
-@spec_state_test_with_matching_config
 @with_config_overrides(
     {
         "BLOB_SCHEDULE": sample_blob_schedule(),
     },
-    emit=False,
 )
+@spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_finality_updated(spec, state):
     _, store = setup_test(spec, state)

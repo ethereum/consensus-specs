@@ -1,16 +1,14 @@
 # Fulu -- Polynomial Commitments Sampling
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Public Methods](#public-methods)
-- [Custom types](#custom-types)
+- [Public methods](#public-methods)
+- [Types](#types)
 - [Cryptographic types](#cryptographic-types)
 - [Preset](#preset)
   - [Blob](#blob)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [BLS12-381 helpers](#bls12-381-helpers)
     - [`cell_to_coset_evals`](#cell_to_coset_evals)
     - [`coset_evals_to_cell`](#coset_evals_to_cell)
@@ -52,10 +50,10 @@
 This document extends
 [polynomial-commitments.md](../deneb/polynomial-commitments.md) with the
 functions required for data availability sampling (DAS). It is not part of the
-core Deneb spec but an extension that can be optionally implemented to allow
-nodes to reduce their load using DAS.
+core Deneb specification but an extension that can be optionally implemented to
+allow nodes to reduce their load using DAS.
 
-## Public Methods
+## Public methods
 
 For any KZG library extended to support DAS, functions flagged as "Public
 method" MUST be provided by the underlying KZG library as public functions. All
@@ -70,7 +68,7 @@ The following is a list of the public methods:
 - [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
 - [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
-## Custom types
+## Types
 
 | Name              | SSZ equivalent                                                  | Description                                                                  |
 | ----------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -102,7 +100,7 @@ cell or line).
 | `CELLS_PER_EXT_BLOB`                     | `FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL` | The number of cells in an extended blob                  |
 | `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` | `b'RCKZGCBATCH__V1_'`                                    |                                                          |
 
-## Helper functions
+## Helpers
 
 ### BLS12-381 helpers
 
@@ -363,8 +361,6 @@ def evaluate_polynomialcoeff(
 ```
 
 ### KZG multiproofs
-
-Extended KZG functions for multiproofs
 
 #### `compute_kzg_proof_multi_impl`
 

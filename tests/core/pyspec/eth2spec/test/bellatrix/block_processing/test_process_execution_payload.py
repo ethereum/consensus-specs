@@ -20,7 +20,7 @@ from eth2spec.test.helpers.execution_payload import (
     get_execution_payload_header,
 )
 from eth2spec.test.helpers.forks import is_post_gloas
-from eth2spec.test.helpers.keys import privkeys
+from eth2spec.test.helpers.keys import builder_privkeys, privkeys
 from eth2spec.test.helpers.state import next_slot
 
 
@@ -45,7 +45,10 @@ def run_execution_payload_processing(
         post_state = state.copy()
         post_state.latest_block_hash = execution_payload.block_hash
         envelope.state_root = post_state.hash_tree_root()
-        privkey = privkeys[envelope.builder_index]
+        if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
+            privkey = privkeys[state.latest_block_header.proposer_index]
+        else:
+            privkey = builder_privkeys[envelope.builder_index]
         signature = spec.get_execution_payload_envelope_signature(
             state,
             envelope,
@@ -55,13 +58,13 @@ def run_execution_payload_processing(
             message=envelope,
             signature=signature,
         )
+        yield "signed_envelope", signed_envelope
     else:
         body = spec.BeaconBlockBody(execution_payload=execution_payload)
+        yield "body", body
 
     yield "pre", state
     yield "execution", {"execution_valid": execution_valid}
-    if not is_post_gloas(spec):
-        yield "body", body
 
     called_new_block = False
 

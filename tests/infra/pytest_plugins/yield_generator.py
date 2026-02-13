@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Mapping, Any
+from pathlib import Path
+from typing import Any, Mapping
 
 import _pytest
 import pytest
 
-from eth2spec.test.helpers.typing import SpecForkName
 from eth2spec.gen_helpers.gen_base.dumper import Dumper
 from eth2spec.test import context
+from eth2spec.test.helpers.typing import SpecForkName
 from tests.infra.manifest import Manifest
-from pathlib import Path
 
 RUNNERS = ["kzg", "epoch_processing"]
 
@@ -158,6 +158,9 @@ class YieldGeneratorPlugin:
             self.generate_test_vector(manifest, result)
 
     def pytest_collection_modifyitems(self, config, items):
+        if self.config.getoption("--pytest-reftests") is False:
+            return
+
         for i, item in enumerate(items):
             if isinstance(item, pytest.Function):
                 # Replace with custom item
@@ -166,14 +169,12 @@ class YieldGeneratorPlugin:
     def pytest_addoption(self, parser):
         """Add custom command-line options"""
         parser.addoption(
-            "--pytest-reftests",
-            action="store_true",
-            default=True,
-            help="Vector tests generation"
+            "--pytest-reftests", action="store_true", default=True, help="Vector tests generation"
         )
 
     def pytest_configure(self, config):
         if config.getoption("--pytest-reftests"):
+            context.is_python = True
             context.is_generator = True
 
     def generate_test_vector(self, manifest: Manifest, result: MultiPhaseResult | list) -> None:
@@ -181,15 +182,19 @@ class YieldGeneratorPlugin:
             for fork_name, phase_result in result.items():
                 self.generate_test_vector_phase(manifest, phase_result, fork_name)
 
-    def generate_test_vector_phase(self, manifest: Manifest, phase_result: list, fork_name: SpecForkName) -> None:
+    def generate_test_vector_phase(
+        self, manifest: Manifest, phase_result: list, fork_name: SpecForkName
+    ) -> None:
         dumper = self.get_dumper()
 
         manifest = manifest.override(Manifest(fork_name=fork_name, preset_name="mainnet"))
-        assert manifest.is_complete(), f"Manifest must be complete to generate test vector for {manifest}"
+        assert manifest.is_complete(), (
+            f"Manifest must be complete to generate test vector for {manifest}"
+        )
 
         dir = (
             Path(self.output_dir)
-            / manifest.preset_name # type: ignore
+            / manifest.preset_name  # type: ignore
             / manifest.fork_name
             / manifest.runner_name
             / manifest.handler_name

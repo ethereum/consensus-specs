@@ -1,7 +1,8 @@
 # Ethereum Proof-of-Stake Consensus Specifications
 
 [![Join the chat at https://discord.gg/qGpsxSA](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/qGpsxSA)
-[![testgen](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml/badge.svg?branch=dev&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml)
+[![nightly-tests](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml/badge.svg?branch=master&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml)
+[![nightly-reftests](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml/badge.svg?branch=master&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml)
 
 This repository hosts the current Ethereum
 [proof-of-stake](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/)
@@ -26,12 +27,12 @@ ready.
 | 3    | **Capella**   | `194048`   | [Specs](specs/capella), [Tests](tests/core/pyspec/eth2spec/test/capella)     |
 | 4    | **Deneb**     | `269568`   | [Specs](specs/deneb), [Tests](tests/core/pyspec/eth2spec/test/deneb)         |
 | 5    | **Electra**   | `364032`   | [Specs](specs/electra), [Tests](tests/core/pyspec/eth2spec/test/electra)     |
+| 6    | **Fulu**      | `411392`   | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu)           |
 
 ### In-development Specifications
 
 | Seq. | Code Name | Fork Epoch | Links                                                                |
 | ---- | --------- | ---------- | -------------------------------------------------------------------- |
-| 6    | **Fulu**  | TBD        | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu)   |
 | 7    | **Gloas** | TBD        | [Specs](specs/gloas), [Tests](tests/core/pyspec/eth2spec/test/gloas) |
 
 ### Accompanying documents
@@ -52,12 +53,10 @@ functionality can be found in the following repositories:
 
 ### Reference tests
 
-Reference tests built from the executable Python spec are available in the
-[Ethereum Proof-of-Stake Consensus Spec Tests](https://github.com/ethereum/consensus-spec-tests)
-repository. Compressed tarballs are available for each release
-[here](https://github.com/ethereum/consensus-spec-tests/releases). Nightly
-reference tests are available
-[here](https://github.com/ethereum/consensus-specs/actions/workflows/generate_vectors.yml).
+Reference tests built from the executable Python specifications are available in
+the release assets for each release in this repository. There are also *nightly*
+reference tests which are built from the latest version of the specifications
+[here](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml).
 
 ## Contributors
 

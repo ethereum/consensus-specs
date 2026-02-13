@@ -276,12 +276,12 @@ source of information about the latest verified block hash of the execution
 layer.
 
 For every slot a validator is randomly selected as the proposer. The proposer
-proposes a block for the current head of the consensus layer chain (built on the
+proposes a block for the current head of the consensus-layer chain (built on the
 previous block). That block includes the block hash of the proposed new head of
 the execution layer.
 
 For every slot there is also a randomly selected committee of validators that
-needs to vote whether the new consensus layer block is valid, which requires the
+needs to vote whether the new consensus-layer block is valid, which requires the
 proposed head of the execution chain to also be a valid block. These votes are
 called
 [attestations](https://notes.ethereum.org/@hww/aggregation#112-Attestation), and
@@ -401,7 +401,7 @@ In the last line you can see two conditions being asserted:
 2. `state.slot <= data.slot + SLOTS_PER_EPOCH` which verifies that the
    attestation doesn't arrive too late.
 
-This is how the consensus layer tests deal with edge cases, by asserting the
+This is how the consensus-layer tests deal with edge cases, by asserting the
 conditions required for the values to be legitimate. In the case of these
 particular conditions, they are tested
 [here](https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L87-L104).
@@ -447,13 +447,9 @@ ignore it)
 
 So far we've ran tests against the formal specifications. This is a way to check
 the specifications are what we expect, but it doesn't actually check the beacon
-chain clients. The way these tests get applied by clients is that every few
-weeks
-[new test specifications are released](https://github.com/ethereum/consensus-spec-tests/releases),
-in a format
-[documented here](https://github.com/ethereum/consensus-specs/tree/master/tests/formats).
-All the consensus layer clients implement test-runners that consume the test
-vectors in this standard format.
+chain clients. Consensus-layer clients implement test-runners that
+consume/execute these reference tests to ensure they have implemented the
+specifications properly.
 
 ______________________________________________________________________
 

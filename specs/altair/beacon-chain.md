@@ -3,11 +3,11 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Participation flag indices](#participation-flag-indices)
   - [Incentivization weights](#incentivization-weights)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
   - [Misc](#misc)
 - [Preset](#preset)
   - [Rewards and penalties](#rewards-and-penalties)
@@ -21,7 +21,7 @@
   - [New containers](#new-containers)
     - [`SyncAggregate`](#syncaggregate)
     - [`SyncCommittee`](#synccommittee)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Crypto](#crypto)
   - [Misc](#misc-1)
     - [`add_flag`](#add_flag)
@@ -55,17 +55,17 @@
 
 ## Introduction
 
-Altair is the first beacon chain hard fork. Its main features are:
+Altair is the first beacon-chain upgrade. Its main features are:
 
-- sync committees to support light clients
-- incentive accounting reforms to reduce spec complexity
-- penalty parameter updates towards their planned maximally punitive values
+- Sync committees to support light clients
+- Incentive accounting reforms to reduce specification complexity
+- Penalty parameter updates towards their planned maximally punitive values
 
-## Custom types
+## Types
 
 | Name                 | SSZ equivalent | Description                                                |
 | -------------------- | -------------- | ---------------------------------------------------------- |
-| `ParticipationFlags` | `uint8`        | a succinct representation of 8 boolean participation flags |
+| `ParticipationFlags` | `uint8`        | A succinct representation of 8 boolean participation flags |
 
 ## Constants
 
@@ -90,7 +90,7 @@ Altair is the first beacon chain hard fork. Its main features are:
 
 *Note*: The sum of the weights equal `WEIGHT_DENOMINATOR`.
 
-### Domain types
+### Domains
 
 | Name                                    | Value                      |
 | --------------------------------------- | -------------------------- |
@@ -111,9 +111,6 @@ Altair is the first beacon chain hard fork. Its main features are:
 This patch updates a few configuration values to move penalty parameters closer
 to their final, maximum security values.
 
-*Note*: The spec does *not* override previous configuration values but instead
-creates new values and replaces usage throughout.
-
 | Name                                      | Value                              |
 | ----------------------------------------- | ---------------------------------- |
 | `INACTIVITY_PENALTY_QUOTIENT_ALTAIR`      | `uint64(3 * 2**24)` (= 50,331,648) |
@@ -133,8 +130,8 @@ creates new values and replaces usage throughout.
 
 | Name                             | Value                 | Description                      |
 | -------------------------------- | --------------------- | -------------------------------- |
-| `INACTIVITY_SCORE_BIAS`          | `uint64(2**2)` (= 4)  | score points per inactive epoch  |
-| `INACTIVITY_SCORE_RECOVERY_RATE` | `uint64(2**4)` (= 16) | score points per leak-free epoch |
+| `INACTIVITY_SCORE_BIAS`          | `uint64(2**2)` (= 4)  | Score points per inactive epoch  |
+| `INACTIVITY_SCORE_RECOVERY_RATE` | `uint64(2**4)` (= 16) | Score points per leak-free epoch |
 
 ## Containers
 
@@ -209,7 +206,7 @@ class SyncCommittee(Container):
     aggregate_pubkey: BLSPubkey
 ```
 
-## Helper functions
+## Helpers
 
 ### Crypto
 
@@ -365,19 +362,23 @@ def get_attestation_participation_flag_indices(
     """
     Return the flag indices that are satisfied by an attestation.
     """
+    # Matching source
     if data.target.epoch == get_current_epoch(state):
         justified_checkpoint = state.current_justified_checkpoint
     else:
         justified_checkpoint = state.previous_justified_checkpoint
-
-    # Matching roots
     is_matching_source = data.source == justified_checkpoint
-    is_matching_target = is_matching_source and data.target.root == get_block_root(
-        state, data.target.epoch
-    )
-    is_matching_head = is_matching_target and data.beacon_block_root == get_block_root_at_slot(
-        state, data.slot
-    )
+
+    # Matching target
+    target_root = get_block_root(state, data.target.epoch)
+    target_root_matches = data.target.root == target_root
+    is_matching_target = is_matching_source and target_root_matches
+
+    # Matching head
+    head_root = get_block_root_at_slot(state, data.slot)
+    head_root_matches = data.beacon_block_root == head_root
+    is_matching_head = is_matching_target and head_root_matches
+
     assert is_matching_source
 
     participation_flag_indices = []
@@ -456,7 +457,9 @@ calculating the proposer reward.
 
 ```python
 def slash_validator(
-    state: BeaconState, slashed_index: ValidatorIndex, whistleblower_index: ValidatorIndex = None
+    state: BeaconState,
+    slashed_index: ValidatorIndex,
+    whistleblower_index: Optional[ValidatorIndex] = None,
 ) -> None:
     """
     Slash the validator with index ``slashed_index``.
@@ -571,12 +574,36 @@ def add_validator_to_registry(
 def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) -> None:
     # Verify sync committee aggregate signature signing over the previous slot block root
     committee_pubkeys = state.current_sync_committee.pubkeys
-    participant_pubkeys = [
-        pubkey for pubkey, bit in zip(committee_pubkeys, sync_aggregate.sync_committee_bits) if bit
-    ]
+    committee_bits = sync_aggregate.sync_committee_bits
+    if sum(committee_bits) == SYNC_COMMITTEE_SIZE:
+        # All members participated - use precomputed aggregate key
+        participant_pubkeys = [state.current_sync_committee.aggregate_pubkey]
+    elif sum(committee_bits) > SYNC_COMMITTEE_SIZE // 2:
+        # More than half participated - subtract non-participant keys.
+        # First determine nonparticipating members
+        non_participant_pubkeys = [
+            pubkey for pubkey, bit in zip(committee_pubkeys, committee_bits) if not bit
+        ]
+        # Compute aggregate of non-participants
+        non_participant_aggregate = eth_aggregate_pubkeys(non_participant_pubkeys)
+        # Subtract non-participants from the full aggregate
+        # This is equivalent to: aggregate_pubkey + (-non_participant_aggregate)
+        participant_pubkey = bls.add(
+            bls.bytes48_to_G1(state.current_sync_committee.aggregate_pubkey),
+            bls.neg(bls.bytes48_to_G1(non_participant_aggregate)),
+        )
+        participant_pubkeys = [BLSPubkey(bls.G1_to_bytes48(participant_pubkey))]
+    else:
+        # Less than half participated - aggregate participant keys
+        participant_pubkeys = [
+            pubkey
+            for pubkey, bit in zip(committee_pubkeys, sync_aggregate.sync_committee_bits)
+            if bit
+        ]
     previous_slot = max(state.slot, Slot(1)) - Slot(1)
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(previous_slot))
     signing_root = compute_signing_root(get_block_root_at_slot(state, previous_slot), domain)
+    # Note: eth_fast_aggregate_verify works with a singleton list containing an aggregated key
     assert eth_fast_aggregate_verify(
         participant_pubkeys, signing_root, sync_aggregate.sync_committee_signature
     )

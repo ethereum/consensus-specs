@@ -63,6 +63,7 @@ def check_file(file_path):
 
             # Check if the fork comment is within a Python-style comment
             comment_start = match.start()
+            comment_end = match.end()
 
             # Find if there's a # before the fork comment on this line
             hash_pos = line.rfind("#", 0, comment_start)
@@ -81,6 +82,21 @@ def check_file(file_path):
                             "comment": match.group(),
                             "error_type": "inline_comment",
                             "message": f"Fork comment '{match.group()}' should be on its own line",
+                        }
+                    )
+                    continue
+
+                # Check if there's any non-whitespace content after the fork comment
+                content_after_comment = line[comment_end:].strip()
+                if content_after_comment:
+                    violations.append(
+                        {
+                            "file": file_path,
+                            "line": line_num,
+                            "content": line.strip(),
+                            "comment": match.group(),
+                            "error_type": "text_after_comment",
+                            "message": f"Text after fork comment should be on a separate line",
                         }
                     )
 
@@ -115,9 +131,6 @@ def main():
             print()
 
         sys.exit(1)
-    else:
-        print("No fork comment violations found.")
-        sys.exit(0)
 
 
 if __name__ == "__main__":

@@ -1,14 +1,14 @@
 # EIP-7805 -- Networking
 
-This document contains the consensus-layer networking specification for
+This document contains the consensus-layer networking specifications for
 EIP-7805.
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Modifications in EIP-7805](#modifications-in-eip-7805)
-  - [Helper functions](#helper-functions)
-    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Configuration](#configuration)
+  - [Helpers](#helpers)
+    - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -21,7 +21,14 @@ EIP-7805.
 
 ## Modifications in EIP-7805
 
-### Helper functions
+### Configuration
+
+| Name                           | Value            | Description                                                |
+| ------------------------------ | ---------------- | ---------------------------------------------------------- |
+| `MAX_REQUEST_INCLUSION_LIST`   | `2**4` (= 16)    | Maximum number of inclusion list in a single request       |
+| `MAX_BYTES_PER_INCLUSION_LIST` | `2**13` (= 8192) | Maximum size of the inclusion list's transactions in bytes |
+
+### Helpers
 
 #### Modified `compute_fork_version`
 
@@ -46,13 +53,6 @@ def compute_fork_version(epoch: Epoch) -> Version:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
 ```
-
-### Configuration
-
-| Name                           | Value            | Description                                                |
-| ------------------------------ | ---------------- | ---------------------------------------------------------- |
-| `MAX_REQUEST_INCLUSION_LIST`   | `2**4` (= 16)    | Maximum number of inclusion list in a single request       |
-| `MAX_BYTES_PER_INCLUSION_LIST` | `2**13` (= 8192) | Maximum size of the inclusion list's transactions in bytes |
 
 ### The gossip domain: gossipsub
 

@@ -107,8 +107,11 @@ def execute_test(test_case: TestCase, dumper: Dumper):
         method = getattr(dumper, f"dump_{kind}")
         method(test_case.dir, name, data)
 
-    if meta:
+    if meta and test_case.dir is not None:
         dumper.dump_meta(test_case.dir, meta)
+
+    # Always write manifest.yml for every test case
+    dumper.dump_manifest(test_case.dir)
 
 
 def run_generator(input_test_cases: Iterable[TestCase], args=None):

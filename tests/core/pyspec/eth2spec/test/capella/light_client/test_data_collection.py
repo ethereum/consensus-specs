@@ -24,7 +24,6 @@ from eth2spec.test.helpers.light_client_data_collection import (
         "DENEB_FORK_EPOCH": 1 * 8,  # SyncCommitteePeriod 1
         "ELECTRA_FORK_EPOCH": 2 * 8,  # SyncCommitteePeriod 2
     },
-    emit=False,
 )
 @with_state
 @with_matching_spec_config(emitted_fork=ELECTRA)
@@ -40,7 +39,6 @@ def test_deneb_electra_reorg_aligned(spec, phases, state):
         "DENEB_FORK_EPOCH": 1 * 8 + 4,  # SyncCommitteePeriod 1 (+ 4 epochs)
         "ELECTRA_FORK_EPOCH": 3 * 8 + 4,  # SyncCommitteePeriod 3 (+ 4 epochs)
     },
-    emit=False,
 )
 @with_state
 @with_matching_spec_config(emitted_fork=ELECTRA)

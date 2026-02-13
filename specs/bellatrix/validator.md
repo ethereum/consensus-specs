@@ -31,9 +31,9 @@ definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the
-updated Beacon Chain doc of [Bellatrix](./beacon-chain.md) are requisite for
-this document and used throughout. Please see related Beacon Chain doc before
-continuing and use them as a reference throughout.
+updated beacon-chain specifications of [Bellatrix](./beacon-chain.md) are
+requisite for this document and used throughout. Please see related beacon-chain
+specifications before continuing and use them as a reference throughout.
 
 ## Helpers
 
@@ -81,7 +81,7 @@ def get_terminal_pow_block(pow_chain: Dict[Hash32, PowBlock]) -> Optional[PowBlo
 ```
 
 *Note*: This function does *not* use simple serialize `hash_tree_root` as to
-avoid requiring simple serialize hashing capabilities in the Execution Layer.
+avoid requiring simple serialize hashing capabilities in the execution layer.
 
 ## Protocols
 
@@ -113,7 +113,7 @@ All validator responsibilities remain unchanged other than those noted below.
 Namely, the transition block handling and the addition of `ExecutionPayload`.
 
 *Note*: A validator must not propose on or attest to a block that isn't deemed
-valid, i.e. hasn't yet passed the beacon chain state transition and execution
+valid, i.e. hasn't yet passed the beacon-chain state transition and execution
 validations. In future upgrades, an "execution Proof-of-Custody" will be
 integrated to prevent outsourcing of execution payload validations.
 
@@ -127,19 +127,19 @@ To obtain an execution payload, a block proposer building a block on top of a
 `state` must take the following actions:
 
 1. Set
-   `payload_id = prepare_execution_payload(state, pow_chain, safe_block_hash, finalized_block_hash, suggested_fee_recipient, execution_engine)`,
+   `payload_id = prepare_execution_payload(state, safe_block_hash, finalized_block_hash, suggested_fee_recipient, execution_engine, pow_chain)`,
    where:
    - `state` is the state object after applying `process_slots(state, slot)`
      transition to the resulting state of the parent block processing
-   - `pow_chain` is a `Dict[Hash32, PowBlock]` dictionary that abstractly
-     represents all blocks in the PoW chain with block hash as the dictionary
-     key
    - `safe_block_hash` is the return value of the
      `get_safe_execution_block_hash(store: Store)` function call
    - `finalized_block_hash` is the block hash of the latest finalized execution
      payload (`Hash32()` if none yet finalized)
    - `suggested_fee_recipient` is the value suggested to be used for the
      `fee_recipient` field of the execution payload
+   - `pow_chain` is a `Dict[Hash32, PowBlock]` dictionary that abstractly
+     represents all blocks in the PoW chain with block hash as the dictionary
+     key
 
 ```python
 def prepare_execution_payload(
