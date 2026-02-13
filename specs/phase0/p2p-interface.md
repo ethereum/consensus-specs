@@ -722,7 +722,7 @@ name and follow this structure (relaxed BNF grammar):
 request   ::= <encoding-dependent-header> | <encoded-payload>
 response  ::= <response_chunk>*
 response_chunk  ::= <result> | <encoding-dependent-header> | <encoded-payload>
-result    ::= “0” | “1” | “2” | [“128” ... ”255”]
+result    ::= “0” | “1” | “2” | "3" | [“128” ... ”255”]
 ```
 
 The encoding-dependent header may carry metadata or assertions such as the
