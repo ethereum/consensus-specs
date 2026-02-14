@@ -210,7 +210,7 @@ construct the `payload_attestations` field in `BeaconBlockBody`:
   given `PayloadAttestation` object. For this the proposer needs to fill the
   `aggregation_bits` field by using the relative position of the validator
   indices with respect to the PTC that is obtained from
-  `get_ptc(state, block_slot - 1)`.
+  `get_ptc(state, Slot(block_slot - 1))`.
 
 ##### ExecutionPayload
 
