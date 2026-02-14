@@ -604,7 +604,7 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
     # [New in Gloas:EIP7732]
     # If attesting for a full node, the payload must be known
     if attestation.data.index == 1:
-        assert  attestation.data.beacon_block_root in store.execution_payload_states
+        assert attestation.data.beacon_block_root in store.execution_payload_states
 
     # LMD vote must be consistent with FFG vote target
     assert target.root == get_checkpoint_block(
