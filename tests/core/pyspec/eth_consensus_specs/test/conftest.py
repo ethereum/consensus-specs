@@ -1,10 +1,13 @@
+import os
 import sys
 
 import pytest
 
 from eth_consensus_specs.test import context
 from eth_consensus_specs.test.helpers.constants import ALL_PHASES, ALLOWED_TEST_RUNNER_FORKS
+from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls as bls_utils
+from eth_consensus_specs.utils.ckzg_utils import apply_ckzg_to_spec, load_trusted_setup
 
 # We import pytest only when it's present, i.e. when we are running tests.
 # The test-cases themselves can be generated without installing pytest.
@@ -64,6 +67,14 @@ def pytest_addoption(parser):
             "fastest: use milagro for signatures and arkworks for everything else (e.g. KZG)"
         ),
     )
+    parser.addoption(
+        "--kzg-type",
+        action="store",
+        type=str,
+        default="ckzg",
+        choices=["spec", "ckzg"],
+        help="kzg-type: use specified KZG implementation (default: ckzg)",
+    )
 
 
 def _validate_fork_name(forks):
@@ -119,3 +130,25 @@ def bls_type(request):
         bls_utils.use_fastest()
     else:
         raise Exception(f"unrecognized bls type: {bls_type}")
+
+
+def _apply_ckzg():
+    """
+    Patch all spec modules to use ckzg for KZG functions.
+    """
+    repo_root = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..")
+    ts_path = os.path.join(
+        repo_root, "presets", "mainnet", "trusted_setups", "trusted_setup_4096.json"
+    )
+    ts = load_trusted_setup(ts_path)
+
+    for preset_specs in spec_targets.values():
+        for spec in preset_specs.values():
+            apply_ckzg_to_spec(spec, ts)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def kzg_type(request):
+    kzg_type = request.config.getoption("--kzg-type")
+    if kzg_type == "ckzg":
+        _apply_ckzg()

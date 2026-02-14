@@ -48,7 +48,7 @@ jobs:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
       - name: test-${{ matrix.fork }}
-        run: make test component=pyspec preset=mainnet fork=${{ matrix.fork }}
+        run: make test component=pyspec preset=mainnet fork=${{ matrix.fork }} kzg=spec
       - name: Prepare test results for upload
         if: always()
         run: cp -r ./tests/core/pyspec/test-reports ./tests/core/pyspec/test-results-mainnet-${{ matrix.fork }}-${{ github.run_number }}

@@ -10,6 +10,7 @@ readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10, <3.14"
 urls = { homepage = "https://github.com/ethereum/consensus-specs" }
 dependencies = [
+  "ckzg==2.1.5",
   "curdleproofs==0.1.2",
   "eth-typing==5.2.1",
   "eth-utils==5.3.1",
