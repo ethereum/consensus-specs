@@ -17,7 +17,8 @@
     - [Broadcasting `SignedProposerPreferences`](#broadcasting-signedproposerpreferences)
     - [Constructing `signed_execution_payload_bid`](#constructing-signed_execution_payload_bid)
     - [Constructing `payload_attestations`](#constructing-payload_attestations)
-    - [Preparing `ExecutionPayload`](#preparing-executionpayload)
+    - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [ExecutionPayload](#executionpayload)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing a payload attestation](#constructing-a-payload-attestation)
 - [Modified functions](#modified-functions)
@@ -209,7 +210,21 @@ construct the `payload_attestations` field in `BeaconBlockBody`:
   indices with respect to the PTC that is obtained from
   `get_ptc(state, block_slot - 1)`.
 
-#### Preparing `ExecutionPayload`
+#### Constructing the `BeaconBlockBody`
+
+##### ExecutionPayload
+
+`prepare_execution_payload` is updated from the Deneb specification to pass
+`state.latest_block_hash` as the head block hash.
+
+*Note*: In this section, `state` is the state of the slot for the block proposal
+_without_ the block yet applied. That is, `state` is the `previous_state`
+processed through any empty slots up to the assigned slot using
+`process_slots(previous_state, slot)`.
+
+*Note*: The only change made to `prepare_execution_payload` is to set the
+`head_block_hash` to `state.latest_block_hash` when calling
+`notify_forkchoice_updated()`.
 
 ```python
 def prepare_execution_payload(
