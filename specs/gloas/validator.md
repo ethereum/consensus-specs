@@ -13,13 +13,14 @@
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Attestation](#attestation)
   - [Sync Committee participations](#sync-committee-participations)
-  - [Block proposal](#block-proposal)
+  - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Broadcasting `SignedProposerPreferences`](#broadcasting-signedproposerpreferences)
-    - [Constructing `signed_execution_payload_bid`](#constructing-signed_execution_payload_bid)
-    - [Constructing `payload_attestations`](#constructing-payload_attestations)
-    - [Preparing `ExecutionPayload`](#preparing-executionpayload)
-  - [Payload timeliness attestation](#payload-timeliness-attestation)
-    - [Constructing a payload attestation](#constructing-a-payload-attestation)
+    - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [Signed execution payload bid](#signed-execution-payload-bid)
+      - [Payload attestations](#payload-attestations)
+      - [ExecutionPayload](#executionpayload)
+  - [Payload timeliness attestation proposal](#payload-timeliness-attestation-proposal)
+    - [Constructing the `PayloadAttestationMessage`](#constructing-the-payloadattestationmessage)
 - [Modified functions](#modified-functions)
   - [Modified `get_data_column_sidecars_from_column_sidecar`](#modified-get_data_column_sidecars_from_column_sidecar)
 
@@ -109,7 +110,7 @@ alias `data = attestation.data`, the validator should set this field as follows:
 Sync committee duties are not changed for validators, however the submission
 deadline is changed with `SYNC_MESSAGE_DUE_BPS_GLOAS`.
 
-### Block proposal
+### Block and sidecar proposal
 
 Validators are still expected to propose `SignedBeaconBlock` at the beginning of
 any slot during which `is_proposer(state, validator_index)` returns `True`. The
@@ -165,7 +166,9 @@ def get_proposer_preferences_signature(
     return bls.Sign(privkey, signing_root)
 ```
 
-#### Constructing `signed_execution_payload_bid`
+#### Constructing the `BeaconBlockBody`
+
+##### Signed execution payload bid
 
 To obtain `signed_execution_payload_bid`, a block proposer building a block on
 top of a `state` MUST take the following actions in order to construct the
@@ -186,12 +189,12 @@ top of a `state` MUST take the following actions in order to construct the
   - The `bid.parent_block_hash` equals the state's `latest_block_hash`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
 - Select one bid and set
-  `body.signed_execution_payload_bid = signed_execution_payload_bid`.
+  `block.body.signed_execution_payload_bid = signed_execution_payload_bid`.
 
 *Note:* The execution address encoded in the `fee_recipient` field in the
 `signed_execution_payload_bid.message` will receive the builder payment.
 
-#### Constructing `payload_attestations`
+##### Payload attestations
 
 Up to `MAX_PAYLOAD_ATTESTATIONS` aggregate payload attestations can be included
 in the block. The block proposer MUST take the following actions in order to
@@ -209,7 +212,7 @@ construct the `payload_attestations` field in `BeaconBlockBody`:
   indices with respect to the PTC that is obtained from
   `get_ptc(state, block_slot - 1)`.
 
-#### Preparing `ExecutionPayload`
+##### ExecutionPayload
 
 ```python
 def prepare_execution_payload(
@@ -236,7 +239,7 @@ def prepare_execution_payload(
     )
 ```
 
-### Payload timeliness attestation
+### Payload timeliness attestation proposal
 
 Some validators are selected to submit payload timeliness attestations.
 Validators should call `get_ptc_assignment` at the beginning of an epoch to be
@@ -246,7 +249,7 @@ A validator should create and broadcast the `payload_attestation_message` to the
 global execution attestation subnet within the first
 `get_payload_attestation_due_ms(epoch)` milliseconds of the slot.
 
-#### Constructing a payload attestation
+#### Constructing the `PayloadAttestationMessage`
 
 If a validator is in the payload attestation committee for the current slot (as
 obtained from `get_ptc_assignment` above) then the validator should prepare a

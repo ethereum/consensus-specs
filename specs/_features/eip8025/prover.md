@@ -10,7 +10,8 @@
 - [Introduction](#introduction)
 - [Helpers](#helpers)
   - [New `get_execution_proof_signature`](#new-get_execution_proof_signature)
-- [Constructing `SignedExecutionProof`](#constructing-signedexecutionproof)
+- [Execution proof proposal](#execution-proof-proposal)
+  - [Constructing the `SignedExecutionProof`](#constructing-the-signedexecutionproof)
 - [Honest prover relay](#honest-prover-relay)
 
 <!-- mdformat-toc end -->
@@ -42,7 +43,9 @@ def get_execution_proof_signature(
     return bls.Sign(privkey, signing_root)
 ```
 
-## Constructing `SignedExecutionProof`
+## Execution proof proposal
+
+### Constructing the `SignedExecutionProof`
 
 An honest prover who is an active validator and wants to generate execution
 proofs for a `BeaconBlockBody` performs the following steps:
