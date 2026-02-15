@@ -64,29 +64,32 @@ class SpecTestFunction(pytest.Function):
 
         suite_name = getattr(self.obj, "suite_name", "pyspec_tests")
 
-        case_name = self.name
+        case_name = self.originalname or self.name
         if case_name.startswith("test_"):
             case_name = case_name[5:]
+
+        preset = self.callspec.params.get("preset") if hasattr(self, "callspec") else None
 
         manifest = Manifest(
             runner_name=runner_name,
             handler_name=handler_name,
             case_name=case_name,
             suite_name=suite_name,
+            preset_name=preset,
         )
 
         if hasattr(self.obj, "manifest") and self.obj.manifest is not None:
             manifest = self.obj.manifest.override(manifest)
 
-        self.obj.manifest = manifest
+        self.manifest = manifest
 
     def runtest(self):
         super().runtest()
 
     def get_manifest(self) -> Manifest | None:
-        if not hasattr(self.obj, "manifest") or self.obj.manifest is None:
+        if not hasattr(self, "manifest") or self.manifest is None:
             return None
-        return self.obj.manifest
+        return self.manifest
 
     def get_result(self) -> MultiPhaseResult | list | None:
         return self.result
@@ -182,7 +185,7 @@ class YieldGeneratorPlugin:
     ) -> None:
         dumper = self.get_dumper()
 
-        manifest = manifest.override(Manifest(fork_name=fork_name, preset_name="mainnet"))
+        manifest = manifest.override(Manifest(fork_name=fork_name))
         assert manifest.is_complete(), (
             f"Manifest must be complete to generate test vector for {manifest}"
         )
@@ -225,7 +228,9 @@ def pytest_addoption(parser):
         "--reftests", action="store_true", default=False, help="Vector tests generation"
     )
     parser.addoption(
-        "--reftests-output", default="generated-tests", help="Output directory for generated test vectors"
+        "--reftests-output",
+        default="generated-tests",
+        help="Output directory for generated test vectors",
     )
 
 

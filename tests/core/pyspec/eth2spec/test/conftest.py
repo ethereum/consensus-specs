@@ -33,10 +33,10 @@ def fixture(*args, **kwargs):
 def pytest_addoption(parser):
     parser.addoption(
         "--preset",
-        action="store",
+        action="append",
         type=str,
-        default="minimal",
-        help="preset: make the pyspec use the specified preset",
+        default=None,
+        help="preset: make the pyspec use the specified preset. Can be repeated, e.g., --preset=minimal --preset=mainnet",
     )
     parser.addoption(
         "--fork",
@@ -75,9 +75,20 @@ def _validate_fork_name(forks):
             )
 
 
+def pytest_generate_tests(metafunc):
+    if "preset" in metafunc.fixturenames:
+        presets = metafunc.config.getoption("--preset")
+        if presets is None:
+            if metafunc.config.getoption("--reftests", default=False):
+                presets = ["minimal", "mainnet"]
+            else:
+                presets = ["minimal"]
+        metafunc.parametrize("preset", presets, indirect=True)
+
+
 @fixture(autouse=True)
 def preset(request):
-    preset_value = request.config.getoption("--preset")
+    preset_value = request.param
     context.DEFAULT_TEST_PRESET = preset_value
     # The eth2spec package is built inside tests/core/pyspec/, causing it to be
     # imported under two paths: "eth2spec.test.context" and
