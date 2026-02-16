@@ -296,6 +296,18 @@ class YieldGeneratorPlugin:
             method = getattr(dumper, f"dump_{kind}")
             method(dir, name, data)
 
+        if meta:
+            dumper.dump_meta(dir, meta)
+
+        dumper.dump_manifest(dir, {
+            "preset": manifest.preset_name,
+            "fork": manifest.fork_name,
+            "runner": manifest.runner_name,
+            "handler": manifest.handler_name,
+            "suite": manifest.suite_name,
+            "case": manifest.case_name,
+        })
+
     def get_dumper(self):
         if self.dumper is None:
             self.dumper = Dumper()
