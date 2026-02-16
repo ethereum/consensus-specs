@@ -12,7 +12,62 @@ from eth2spec.test import context
 from eth2spec.test.helpers.typing import SpecForkName
 from tests.infra.manifest import Manifest
 
-RUNNERS = ["kzg", "epoch_processing", "block_processing"]
+RUNNERS = {
+    # Simple runners: pkg == runner_name, default handler_name (strip "test_")
+    "bls": {},
+    "finality": {},
+    "fork_choice": {},
+    "genesis": {},
+    "kzg": {},
+    "merkle_proof": {},
+    "networking": {},
+    "random": {},
+    "rewards": {},
+    "ssz_static": {},
+    "sync": {},
+    # Operations: path has "block_processing", runner is "operations"
+    "block_processing": {
+        "runner_name": "operations",
+        "handler_name_map": {
+            "test_process_sync_aggregate_random": "sync_aggregate",
+        },
+        "handler_name_strip": ["test_process_"],
+    },
+    # Epoch processing with custom handler derivation
+    "epoch_processing": {
+        "handler_name_map": {
+            "test_apply_pending_deposit": "pending_deposits",
+        },
+        "handler_name_strip": ["test_process_", "test_apply_"],
+    },
+    # Sanity with special-case mappings
+    "sanity": {
+        "handler_name_map": {
+            "test_deposit_transition": "blocks",
+            "test_lookahead": "blocks",
+            "test_lookahead_slots": "slots",
+        },
+    },
+    # Light client
+    "light_client": {
+        "handler_name_map": {
+            "test_sync_protocol": "sync",
+        },
+    },
+    # Fork with fixed handler
+    "fork": {
+        "handler_name_fixed": "fork",
+    },
+    # Transition with fixed handler
+    "transition": {
+        "handler_name_fixed": "core",
+    },
+    # Shuffling with fixed handler and custom suite
+    "shuffling": {
+        "handler_name_fixed": "core",
+        "suite_name": "shuffle",
+    },
+}
 
 MultiPhaseResult = dict[SpecForkName, list]
 
@@ -48,21 +103,46 @@ class SpecTestFunction(pytest.Function):
 
         return self
 
+    @staticmethod
+    def _find_runner(path: Path) -> tuple[str, dict] | None:
+        """Walk up parent directories to find the closest matching runner pkg.
+
+        Skips unittests directories (not associated with generators).
+        Returns (pkg_name, config) or None.
+        """
+        for parent in path.parents:
+            if parent.name == "unittests":
+                return None
+            if parent.name in RUNNERS:
+                return parent.name, RUNNERS[parent.name]
+        return None
+
+    @staticmethod
+    def _derive_handler_name(config: dict, module_name: str) -> str:
+        """Derive handler_name from runner config and module name."""
+        if "handler_name_fixed" in config:
+            return config["handler_name_fixed"]
+        if module_name in config.get("handler_name_map", {}):
+            return config["handler_name_map"][module_name]
+        strips = config.get("handler_name_strip", ["test_"])
+        handler_name = module_name
+        for prefix in strips:
+            handler_name = handler_name.replace(prefix, "")
+        return handler_name
+
     def manifest_guess(self) -> None:
         print("guessing manifest for:", self.name)
         path = self.parent.path
-        str_path = str(path)
-        filename = path.name
+        module_name = path.name.replace(".py", "")
 
-        possible_runners = [runner for runner in RUNNERS if runner in str_path]
-        if len(possible_runners) == 1:
-            runner_name = possible_runners[0]
-        else:
+        result = self._find_runner(path)
+        if result is None:
             return
+        pkg_name, config = result
 
-        handler_name = filename.replace("test_", "").replace(".py", "")
-
-        suite_name = getattr(self.obj, "suite_name", "pyspec_tests")
+        runner_name = config.get("runner_name", pkg_name)
+        handler_name = self._derive_handler_name(config, module_name)
+        suite_name = config.get("suite_name", getattr(self.obj, "suite_name", "pyspec_tests"))
 
         case_name = self.originalname or self.name
         if case_name.startswith("test_"):
