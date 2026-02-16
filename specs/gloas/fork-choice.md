@@ -94,7 +94,7 @@ class LatestMessage(object):
 
 ### Modified `update_latest_messages`
 
-*Note*: the function `update_latest_messages` is updated to use the attestation
+*Note*: The function `update_latest_messages` is updated to use the attestation
 slot instead of target. Notice that this function is only called on validated
 attestations and validators cannot attest twice in the same epoch without
 equivocating. Notice also that target epoch number and slot number are validated

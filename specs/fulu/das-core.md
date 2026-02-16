@@ -212,7 +212,7 @@ The particular columns/groups that a node custodies are selected pseudo-randomly
 as a function (`get_custody_groups`) of the node-id and custody size --
 importantly this function can be run by any party as the inputs are all public.
 
-*Note*: increasing the `custody_size` parameter for a given `node_id` extends
+*Note*: Increasing the `custody_size` parameter for a given `node_id` extends
 the returned list (rather than being an entirely new shuffle) such that if
 `custody_size` is unknown, the default `CUSTODY_REQUIREMENT` will be correct for
 a subset of the node's custody.
