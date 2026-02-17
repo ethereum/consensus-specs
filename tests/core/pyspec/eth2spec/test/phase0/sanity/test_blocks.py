@@ -51,6 +51,7 @@ from eth2spec.test.helpers.multi_operations import (
 from eth2spec.test.helpers.proposer_slashings import (
     check_proposer_slashing_effect,
     get_valid_proposer_slashing,
+    get_valid_proposer_slashings,
 )
 from eth2spec.test.helpers.state import (
     get_balance,
@@ -550,15 +551,7 @@ def test_multiple_different_proposer_slashings_same_block(spec, state):
     pre_state = state.copy()
 
     num_slashings = 3
-    proposer_slashings = []
-    for i in range(num_slashings):
-        slashed_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[i]
-        assert not state.validators[slashed_index].slashed
-
-        proposer_slashing = get_valid_proposer_slashing(
-            spec, state, slashed_index=slashed_index, signed_1=True, signed_2=True
-        )
-        proposer_slashings.append(proposer_slashing)
+    proposer_slashings = get_valid_proposer_slashings(spec, state, num_slashings)
 
     yield "pre", state
 

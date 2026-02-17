@@ -127,7 +127,7 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
     )
 
     data = aggregates[0].data
-    aggregation_bits = Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]()
+    aggregation_bits = AggregationBits()
     for a in aggregates:
         for b in a.aggregation_bits:
             aggregation_bits.append(b)
@@ -249,17 +249,11 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         prev_request_type = request_type
 
         if request_type == DEPOSIT_REQUEST_TYPE:
-            deposits = ssz_deserialize(
-                List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD], request_data
-            )
+            deposits = ssz_deserialize(DepositRequests, request_data)
         elif request_type == WITHDRAWAL_REQUEST_TYPE:
-            withdrawals = ssz_deserialize(
-                List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD], request_data
-            )
+            withdrawals = ssz_deserialize(WithdrawalRequests, request_data)
         elif request_type == CONSOLIDATION_REQUEST_TYPE:
-            consolidations = ssz_deserialize(
-                List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD], request_data
-            )
+            consolidations = ssz_deserialize(ConsolidationRequests, request_data)
 
     return ExecutionRequests(
         deposits=deposits,
@@ -296,9 +290,9 @@ updated field assignments:
 ### Construct aggregate
 
 - Set `attestation_data.index = 0`.
-- Let `aggregation_bits` be a
-  `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` of length
-  `len(committee)`, where each bit set from each individual attestation is set
-  to `0b1`.
-- Set `attestation.committee_bits = committee_bits`, where `committee_bits` has
-  the bit set corresponding to `committee_index` in each individual attestation.
+- Set `aggregate_attestation.aggregation_bits` to an `AggregationBits` of length
+  `len(committee)` with the bits corresponding to the `attester_index` of each
+  `SingleAttestation` inputs set to `0b1`.
+- Set `aggregate_attestation.committee_bits` to a
+  `Bitvector[MAX_COMMITTEES_PER_SLOT]` with the single bit corresponding to the
+  shared `committee_index` across all `SingleAttestation` inputs set to `0b1`.

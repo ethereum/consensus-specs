@@ -36,9 +36,7 @@ def run_execution_payload_processing(
             slot=state.slot,
             builder_index=spec.BUILDER_INDEX_SELF_BUILD,
         )
-        kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
-            blob_kzg_commitments
-        )
+        kzg_list = spec.ProgressiveList[spec.KZGCommitment](blob_kzg_commitments)
         # In Gloas, blob_kzg_commitments is stored in latest_execution_payload_bid, not latest_execution_payload_header
         state.latest_execution_payload_bid.blob_kzg_commitments = kzg_list
         state.latest_execution_payload_bid.builder_index = envelope.builder_index

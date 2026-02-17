@@ -1,3 +1,5 @@
+from random import Random
+
 from eth2spec.test.context import (
     always_bls,
     expect_assertion_error,
@@ -8,6 +10,11 @@ from eth2spec.test.helpers.execution_payload import (
     build_empty_execution_payload,
 )
 from eth2spec.test.helpers.keys import builder_privkeys, privkeys
+from eth2spec.test.helpers.multi_operations import (
+    get_random_consolidation_requests,
+    get_random_deposit_requests,
+    get_random_withdrawal_requests,
+)
 
 
 def run_execution_payload_processing(
@@ -83,15 +90,7 @@ def prepare_execution_payload_envelope(
         execution_payload = build_empty_execution_payload(spec, state)
 
     if execution_requests is None:
-        execution_requests = spec.ExecutionRequests(
-            deposits=spec.List[spec.DepositRequest, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD](),
-            withdrawals=spec.List[
-                spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
-            ](),
-            consolidations=spec.List[
-                spec.ConsolidationRequest, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
-            ](),
-        )
+        execution_requests = spec.ExecutionRequests()
 
     # Create a copy of state for computing state_root after execution payload processing
     if state_root is None:
@@ -175,7 +174,7 @@ def setup_state_with_payload_bid(
         prev_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
 
     if blob_kzg_commitments is None:
-        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+        blob_kzg_commitments = spec.ProgressiveList[spec.KZGCommitment]()
 
     # Create and set the latest execution payload bid
     bid = spec.ExecutionPayloadBid(
@@ -192,10 +191,8 @@ def setup_state_with_payload_bid(
     )
     state.latest_execution_payload_bid = bid
 
-    # Setup withdrawals root
-    state.payload_expected_withdrawals = spec.List[
-        spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
-    ]()
+    # Setup expected withdrawals
+    state.payload_expected_withdrawals = spec.ProgressiveList[spec.Withdrawal]()
 
     # Add pending payment if value > 0
     if value > 0:
@@ -376,7 +373,9 @@ def test_process_execution_payload_with_blob_commitments(spec, state):
         state,
         builder_index,
         spec.Gwei(3000000),
-        blob_kzg_commitments=[spec.KZGCommitment(b"\x42" * 48), spec.KZGCommitment(b"\x43" * 48)],
+        blob_kzg_commitments=spec.ProgressiveList[spec.KZGCommitment](
+            [spec.KZGCommitment(b"\x42" * 48), spec.KZGCommitment(b"\x43" * 48)]
+        ),
     )
 
     execution_payload = build_empty_execution_payload(spec, state)
@@ -430,7 +429,7 @@ def test_process_execution_payload_with_execution_requests(spec, state):
 
     # Create execution requests
     execution_requests = spec.ExecutionRequests(
-        deposits=spec.List[spec.DepositRequest, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD](
+        deposits=spec.DepositRequests(
             [
                 spec.DepositRequest(
                     pubkey=spec.BLSPubkey(b"\x01" * 48),
@@ -441,7 +440,7 @@ def test_process_execution_payload_with_execution_requests(spec, state):
                 )
             ]
         ),
-        withdrawals=spec.List[spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD](
+        withdrawals=spec.WithdrawalRequests(
             [
                 spec.WithdrawalRequest(
                     source_address=spec.ExecutionAddress(b"\x04" * 20),
@@ -450,9 +449,7 @@ def test_process_execution_payload_with_execution_requests(spec, state):
                 )
             ]
         ),
-        consolidations=spec.List[
-            spec.ConsolidationRequest, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
-        ](
+        consolidations=spec.ConsolidationRequests(
             [
                 spec.ConsolidationRequest(
                     source_address=spec.ExecutionAddress(b"\x06" * 20),
@@ -508,6 +505,73 @@ def test_process_execution_payload_with_execution_requests(spec, state):
     assert cleared_payment.weight == empty_payment.weight
     assert cleared_payment.withdrawal.amount == empty_payment.withdrawal.amount
     assert cleared_payment.withdrawal.builder_index == empty_payment.withdrawal.builder_index
+
+
+def run_execution_payload_with_invalid_execution_requests_test(spec, state, execution_requests):
+    """
+    Test execution payload processing with invalid execution requests
+    """
+    setup_state_with_payload_bid(spec, state, spec.BUILDER_INDEX_SELF_BUILD, spec.Gwei(0))
+
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.block_hash = state.latest_execution_payload_bid.block_hash
+    execution_payload.gas_limit = state.latest_execution_payload_bid.gas_limit
+    execution_payload.parent_hash = state.latest_block_hash
+
+    signed_envelope = prepare_execution_payload_envelope(
+        spec,
+        state,
+        builder_index=spec.BUILDER_INDEX_SELF_BUILD,
+        execution_payload=execution_payload,
+        execution_requests=execution_requests,
+    )
+
+    yield from run_execution_payload_processing(spec, state, signed_envelope, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_execution_payload_too_many_deposit_requests(spec, state):
+    rng = Random(3456)
+    yield from run_execution_payload_with_invalid_execution_requests_test(
+        spec,
+        state,
+        spec.ExecutionRequests(
+            deposits=get_random_deposit_requests(
+                spec, state, rng, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD + 1
+            )
+        ),
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_execution_payload_too_many_withdrawal_requests(spec, state):
+    rng = Random(3456)
+    yield from run_execution_payload_with_invalid_execution_requests_test(
+        spec,
+        state,
+        spec.ExecutionRequests(
+            withdrawals=get_random_withdrawal_requests(
+                spec, state, rng, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD + 1
+            )
+        ),
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_execution_payload_too_many_consolidation_requests(spec, state):
+    rng = Random(3456)
+    yield from run_execution_payload_with_invalid_execution_requests_test(
+        spec,
+        state,
+        spec.ExecutionRequests(
+            consolidations=get_random_consolidation_requests(
+                spec, state, rng, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD + 1
+            )
+        ),
+    )
 
 
 #
@@ -647,10 +711,8 @@ def test_process_execution_payload_missing_expected_withdrawal(spec, state):
         address=b"\x22" * 20,
         amount=spec.Gwei(1),
     )
-    state.payload_expected_withdrawals = spec.List[
-        spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
-    ]([withdrawal])
-    execution_payload.withdrawals = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD]()
+    state.payload_expected_withdrawals = spec.ProgressiveList[spec.Withdrawal]([withdrawal])
+    execution_payload.withdrawals = spec.ProgressiveList[spec.Withdrawal]()
 
     signed_envelope = prepare_execution_payload_envelope(
         spec, state, builder_index=builder_index, execution_payload=execution_payload

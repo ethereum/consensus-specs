@@ -79,7 +79,7 @@ def get_execution_payload_bid(spec, state, execution_payload):
         raise ValueError("get_execution_payload_bid only available for gloas and later")
 
     parent_block_root = hash_tree_root(state.latest_block_header)
-    kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+    kzg_list = spec.ProgressiveList[spec.KZGCommitment]()
     builder_index = spec.get_beacon_proposer_index(state)
 
     return spec.ExecutionPayloadBid(
@@ -316,7 +316,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
     if not is_post_gloas(spec):
         return
     parent_block_root = hash_tree_root(state.latest_block_header)
-    kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+    kzg_list = spec.ProgressiveList[spec.KZGCommitment]()
     # Use self-build: builder_index is the same as the beacon proposer index
     builder_index = spec.BUILDER_INDEX_SELF_BUILD
     # Set block_hash to a different value than spec.Hash32(),
@@ -371,7 +371,6 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         if randao_mix is None:
             randao_mix = spec.get_randao_mix(state, spec.get_current_epoch(state))
     timestamp = spec.compute_time_at_slot(state, state.slot)
-    empty_txs = spec.List[spec.Transaction, spec.MAX_TRANSACTIONS_PER_PAYLOAD]()
 
     payload = spec.ExecutionPayload(
         parent_hash=parent_hash,
@@ -387,7 +386,6 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         gas_limit=latest.gas_limit,
         timestamp=timestamp,
         extra_data=spec.ByteList[spec.MAX_EXTRA_DATA_BYTES](),
-        transactions=empty_txs,
     )
     if not is_post_gloas(spec):
         payload.state_root = latest.state_root  # no changes to the state
@@ -436,7 +434,7 @@ def build_randomized_execution_payload(spec, state, rng):
 def build_state_with_incomplete_transition(spec, state):
     if is_post_gloas(spec):
         # In Gloas, we need to set up the execution payload bid instead
-        kzgs = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+        kzgs = spec.ProgressiveList[spec.KZGCommitment]()
         bid = spec.ExecutionPayloadBid(
             slot=state.slot,
             value=spec.Gwei(0),

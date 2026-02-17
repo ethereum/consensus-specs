@@ -10,6 +10,8 @@ from eth2spec.test.context import (
     spec_test,
     with_all_phases,
     with_custom_state,
+    with_gloas_and_later,
+    with_presets,
 )
 from eth2spec.test.helpers.attestations import sign_indexed_attestation
 from eth2spec.test.helpers.attester_slashings import (
@@ -19,6 +21,7 @@ from eth2spec.test.helpers.attester_slashings import (
     get_valid_attester_slashing,
     get_valid_attester_slashing_by_indices,
 )
+from eth2spec.test.helpers.constants import MINIMAL
 from eth2spec.test.helpers.proposer_slashings import (
     get_min_slashing_penalty_quotient,
     get_whistleblower_reward_quotient,
@@ -527,4 +530,27 @@ def test_invalid_unsorted_att_2(spec, state):
     indices[1], indices[2] = indices[2], indices[1]  # unsort second and third index
     sign_indexed_attestation(spec, state, attester_slashing.attestation_2)
 
+    yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
+
+
+@with_gloas_and_later
+@with_presets(
+    [MINIMAL],
+    reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
+)
+@spec_test
+@with_custom_state(
+    balances_fn=lambda spec: [spec.MAX_EFFECTIVE_BALANCE]
+    * (spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT + 1),
+    threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
+)
+@single_phase
+def test_invalid_too_many_attesting_indices(spec, state):
+    indices = [
+        spec.ValidatorIndex(i)
+        for i in range(spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT + 1)
+    ]
+    attester_slashing = get_valid_attester_slashing_by_indices(
+        spec, state, indices, signed_1=True, signed_2=True
+    )
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)

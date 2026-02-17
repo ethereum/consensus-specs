@@ -66,10 +66,10 @@ longer required in Gloas. The KZG commitments are now located at
 ```python
 class DataColumnSidecar(Container):
     index: ColumnIndex
-    column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    column: ProgressiveList[Cell]
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments`
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    kzg_proofs: ProgressiveList[KZGProof]
     # [Modified in Gloas:EIP7732]
     # Removed `signed_block_header`
     # [Modified in Gloas:EIP7732]
@@ -134,7 +134,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 def verify_data_column_sidecar_kzg_proofs(
     sidecar: DataColumnSidecar,
     # [New in Gloas:EIP7732]
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    kzg_commitments: ProgressiveList[KZGCommitment],
 ) -> bool:
     """
     Verify if the KZG proofs are correct.
@@ -158,7 +158,7 @@ def verify_data_column_sidecar_kzg_proofs(
 def verify_data_column_sidecar(
     sidecar: DataColumnSidecar,
     # [New in Gloas:EIP7732]
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    kzg_commitments: ProgressiveList[KZGCommitment],
 ) -> bool:
     """
     Verify if the data column sidecar is valid.
@@ -235,6 +235,14 @@ The *type* of the payload of this topic changes to the (modified)
 There are no new validations for this topic. However, all validations with
 regards to the `ExecutionPayload` are removed:
 
+- _[REJECT]_ The number of operations is within limits -- i.e. validate that
+  `len(body.deposits) <= MAX_DEPOSITS` and
+  `len(body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS` and
+  `len(body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA` and
+  `len(body.attestations) <= MAX_ATTESTATIONS_ELECTRA` and
+  `len(body.voluntary_exits) <= MAX_VOLUNTARY_EXITS` and
+  `len(body.bls_to_execution_changes) <= MAX_BLS_TO_EXECUTION_CHANGES` and
+  `len(body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS`
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in the consensus layer -- i.e. validate that
   `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
@@ -275,8 +283,15 @@ This topic is used to propagate execution payload messages as
 The following validations MUST pass before forwarding the
 `signed_execution_payload_envelope` on the network, assuming the alias
 `envelope = signed_execution_payload_envelope.message`,
-`payload = envelope.payload`:
+`payload = envelope.payload`,
+`execution_requests = envelope.execution_requests`:
 
+- _[REJECT]_ The number of execution requests is within limits -- i.e. validate
+  that `len(execution_requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD`
+  and
+  `len(execution_requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`
+  and
+  `len(execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`
 - _[IGNORE]_ The envelope's block root `envelope.block_root` has been seen (via
   gossip or non-gossip sources) (a client MAY queue payload for processing once
   the block is retrieved).

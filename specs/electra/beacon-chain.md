@@ -3,6 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Custom types](#custom-types)
 - [Constants](#constants)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
@@ -125,6 +126,16 @@ Electra is a consensus-layer upgrade containing a number of features. Including:
 - [EIP-7549](https://eips.ethereum.org/EIPS/eip-7549): Move committee index
   outside Attestation
 - [EIP-7691](https://eips.ethereum.org/EIPS/eip-7691): Blob throughput increase
+
+## Custom types
+
+| Name                    | SSZ equivalent                                                                 | Description                                                        |
+| ----------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `AggregationBits`       | `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]`              | Combined participation info across all participating subcommittees |
+| `AttestingIndices`      | `List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` | List of attesting validator indices                                |
+| `DepositRequests`       | `List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]`                       | List of deposit requests pertaining to an execution payload        |
+| `WithdrawalRequests`    | `List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]`                 | List of withdrawal requests pertaining to an execution payload     |
+| `ConsolidationRequests` | `List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]`           | List of withdrawal requests pertaining to an execution payload     |
 
 ## Constants
 
@@ -296,11 +307,11 @@ class ConsolidationRequest(Container):
 ```python
 class ExecutionRequests(Container):
     # [New in Electra:EIP6110]
-    deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]
+    deposits: DepositRequests
     # [New in Electra:EIP7002:EIP7251]
-    withdrawals: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
+    withdrawals: WithdrawalRequests
     # [New in Electra:EIP7251]
-    consolidations: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]
+    consolidations: ConsolidationRequests
 ```
 
 #### `SingleAttestation`
@@ -352,7 +363,7 @@ class BeaconBlockBody(Container):
 ```python
 class Attestation(Container):
     # [Modified in Electra:EIP7549]
-    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]
+    aggregation_bits: AggregationBits
     data: AttestationData
     signature: BLSSignature
     # [New in Electra:EIP7549]
@@ -364,7 +375,7 @@ class Attestation(Container):
 ```python
 class IndexedAttestation(Container):
     # [Modified in Electra:EIP7549]
-    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]
+    attesting_indices: AttestingIndices
     data: AttestationData
     signature: BLSSignature
 ```
@@ -1397,7 +1408,7 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
     return [
         request_type + ssz_serialize(request_data)
         for request_type, request_data in requests
-        if len(request_data) != 0
+        if request_data
     ]
 ```
 
