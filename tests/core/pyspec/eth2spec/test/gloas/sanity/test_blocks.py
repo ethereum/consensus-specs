@@ -2,6 +2,9 @@ from eth2spec.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
+from eth2spec.test.gloas.block_processing.test_process_payload_attestation import (
+    prepare_signed_payload_attestation,
+)
 from eth2spec.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
@@ -11,9 +14,6 @@ from eth2spec.test.helpers.payload_attestation import (
 from eth2spec.test.helpers.state import (
     state_transition_and_sign_block,
 )
-from eth2spec.test.gloas.block_processing.test_process_payload_attestation import (
-        prepare_signed_payload_attestation,
-    )
 
 
 @with_gloas_and_later
@@ -26,9 +26,11 @@ def test_payload_attestation_included_in_block(spec, state):
 
     # Advance to next slot to allow payload attestations for the parent block
     block = build_empty_block_for_next_slot(spec, state)
-    
+
     # Get random payload attestations for the parent block
-    payload_attestations = get_random_payload_attestations(spec, state, rng=__import__('random').Random(1234))
+    payload_attestations = get_random_payload_attestations(
+        spec, state, rng=__import__("random").Random(1234)
+    )
     block.body.payload_attestations = payload_attestations
 
     signed_block = state_transition_and_sign_block(spec, state, block)
@@ -46,18 +48,18 @@ def test_payload_attestation_with_full_participation(spec, state):
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
-    
+
     # Get PTC for parent block slot
     parent_slot = state.latest_block_header.slot
     ptc = spec.get_ptc(state, parent_slot)
-    
+
     if len(ptc) > 0:
         # Create payload attestation with all PTC members
         parent_header = state.latest_block_header.copy()
         if parent_header.state_root == spec.Root():
             parent_header.state_root = spec.hash_tree_root(state)
         beacon_block_root = spec.hash_tree_root(parent_header)
-        
+
         payload_attestation = prepare_signed_payload_attestation(
             spec,
             state,
@@ -83,19 +85,19 @@ def test_payload_attestation_with_partial_participation(spec, state):
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
-    
+
     parent_slot = state.latest_block_header.slot
     ptc = spec.get_ptc(state, parent_slot)
-    
+
     if len(ptc) > 0:
         # Create payload attestation with half of the PTC members
-        attesting_indices = ptc[:len(ptc) // 2] if len(ptc) > 1 else ptc
-        
+        attesting_indices = ptc[: len(ptc) // 2] if len(ptc) > 1 else ptc
+
         parent_header = state.latest_block_header.copy()
         if parent_header.state_root == spec.Root():
             parent_header.state_root = spec.hash_tree_root(state)
         beacon_block_root = spec.hash_tree_root(parent_header)
-        
+
         payload_attestation = prepare_signed_payload_attestation(
             spec,
             state,
@@ -121,16 +123,16 @@ def test_payload_attestation_payload_not_present(spec, state):
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
-    
+
     parent_slot = state.latest_block_header.slot
     ptc = spec.get_ptc(state, parent_slot)
-    
+
     if len(ptc) > 0:
         parent_header = state.latest_block_header.copy()
         if parent_header.state_root == spec.Root():
             parent_header.state_root = spec.hash_tree_root(state)
         beacon_block_root = spec.hash_tree_root(parent_header)
-        
+
         payload_attestation = prepare_signed_payload_attestation(
             spec,
             state,
@@ -156,20 +158,20 @@ def test_multiple_payload_attestations_in_block(spec, state):
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
-    
+
     parent_slot = state.latest_block_header.slot
     ptc = spec.get_ptc(state, parent_slot)
-    
+
     payload_attestations = []
     if len(ptc) > 1:
         parent_header = state.latest_block_header.copy()
         if parent_header.state_root == spec.Root():
             parent_header.state_root = spec.hash_tree_root(state)
         beacon_block_root = spec.hash_tree_root(parent_header)
-        
+
         # Create multiple attestations with different participants
         half = len(ptc) // 2
-        
+
         # First attestation: first half with payload present
         attestation_1 = prepare_signed_payload_attestation(
             spec,
@@ -180,7 +182,7 @@ def test_multiple_payload_attestations_in_block(spec, state):
             attesting_indices=ptc[:half],
         )
         payload_attestations.append(attestation_1)
-        
+
         # Second attestation: second half with payload not present
         attestation_2 = prepare_signed_payload_attestation(
             spec,
@@ -191,13 +193,14 @@ def test_multiple_payload_attestations_in_block(spec, state):
             attesting_indices=ptc[half:],
         )
         payload_attestations.append(attestation_2)
-    
+
     block.body.payload_attestations = payload_attestations
 
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield "blocks", [signed_block]
     yield "post", state
+
 
 @with_gloas_and_later
 @spec_state_test
@@ -208,10 +211,10 @@ def test_invalid_payload_attestation_wrong_beacon_block_root(spec, state):
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
-    
+
     parent_slot = state.latest_block_header.slot
     ptc = spec.get_ptc(state, parent_slot)
-    
+
     if len(ptc) > 0:
         wrong_root = spec.Root(b"\x42" * 32)
         payload_attestation = prepare_signed_payload_attestation(
@@ -229,6 +232,7 @@ def test_invalid_payload_attestation_wrong_beacon_block_root(spec, state):
     yield "blocks", [signed_block]
     yield "post", None
 
+
 @with_gloas_and_later
 @spec_state_test
 def test_invalid_payload_attestation_too_old_slot(spec, state):
@@ -239,17 +243,17 @@ def test_invalid_payload_attestation_too_old_slot(spec, state):
 
     # Advance state to slot 3
     spec.process_slots(state, state.slot + 3)
-    
+
     block = build_empty_block_for_next_slot(spec, state)
-    
+
     ptc = spec.get_ptc(state, state.slot - 2)
-    
+
     if len(ptc) > 0:
         parent_header = state.latest_block_header.copy()
         if parent_header.state_root == spec.Root():
             parent_header.state_root = spec.hash_tree_root(state)
         beacon_block_root = spec.hash_tree_root(parent_header)
-        
+
         payload_attestation = prepare_signed_payload_attestation(
             spec,
             state,
@@ -275,16 +279,16 @@ def test_invalid_payload_attestation_invalid_signature(spec, state):
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
-    
+
     parent_slot = state.latest_block_header.slot
     ptc = spec.get_ptc(state, parent_slot)
-    
+
     if len(ptc) > 0:
         parent_header = state.latest_block_header.copy()
         if parent_header.state_root == spec.Root():
             parent_header.state_root = spec.hash_tree_root(state)
         beacon_block_root = spec.hash_tree_root(parent_header)
-        
+
         payload_attestation = prepare_signed_payload_attestation(
             spec,
             state,
