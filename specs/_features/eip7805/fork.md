@@ -33,8 +33,23 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and
 change is made to upgrade to EIP-7805.
 
 ```python
-def upgrade_to_eip7805(pre: fulu.BeaconState) -> BeaconState:
-    epoch = fulu.get_current_epoch(pre)
+def upgrade_to_eip7805(pre: gloas.BeaconState) -> BeaconState:
+    epoch = gloas.get_current_epoch(pre)
+    latest_execution_payload_bid = ExecutionPayloadBid(
+        parent_block_hash=pre.latest_execution_payload_bid.parent_block_hash,
+        parent_block_root=pre.latest_execution_payload_bid.parent_block_root,
+        block_hash=pre.latest_execution_payload_bid.block_hash,
+        prev_randao=pre.latest_execution_payload_bid.prev_randao,
+        fee_recipient=pre.latest_execution_payload_bid.fee_recipient,
+        gas_limit=pre.latest_execution_payload_bid.gas_limit,
+        builder_index=pre.latest_execution_payload_bid.builder_index,
+        slot=pre.latest_execution_payload_bid.slot,
+        value=pre.latest_execution_payload_bid.value,
+        execution_payment=pre.latest_execution_payload_bid.execution_payment,
+        blob_kzg_commitments=pre.latest_execution_payload_bid.blob_kzg_commitments,
+        # [New in EIP7805]
+        inclusion_list_bits=Bitvector[INCLUSION_LIST_COMMITTEE_SIZE](),
+    )
 
     post = BeaconState(
         genesis_time=pre.genesis_time,
@@ -66,7 +81,8 @@ def upgrade_to_eip7805(pre: fulu.BeaconState) -> BeaconState:
         inactivity_scores=pre.inactivity_scores,
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
-        latest_execution_payload_header=pre.latest_execution_payload_header,
+        # [Modified in EIP7805]
+        latest_execution_payload_bid=latest_execution_payload_bid,
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         historical_summaries=pre.historical_summaries,
@@ -80,6 +96,13 @@ def upgrade_to_eip7805(pre: fulu.BeaconState) -> BeaconState:
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
         proposer_lookahead=pre.proposer_lookahead,
+        builders=pre.builders,
+        next_withdrawal_builder_index=pre.next_withdrawal_builder_index,
+        execution_payload_availability=pre.execution_payload_availability,
+        builder_pending_payments=pre.builder_pending_payments,
+        builder_pending_withdrawals=pre.builder_pending_withdrawals,
+        latest_block_hash=pre.latest_block_hash,
+        payload_expected_withdrawals=pre.payload_expected_withdrawals,
     )
 
     return post

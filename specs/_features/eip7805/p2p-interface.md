@@ -39,6 +39,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     if epoch >= EIP7805_FORK_EPOCH:
         return EIP7805_FORK_VERSION
+    if epoch >= GLOAS_FORK_EPOCH:
+        return GLOAS_FORK_VERSION
     if epoch >= FULU_FORK_EPOCH:
         return FULU_FORK_VERSION
     if epoch >= ELECTRA_FORK_EPOCH:
@@ -90,8 +92,8 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
   `message.inclusion_list_committee_root`.
 - _[IGNORE]_ The `message` is either the first or second valid message received
   from the validator with index `message.validator_index`.
-- _[REJECT]_ The signature of `inclusion_list.signature` is valid with respect
-  to the validator's public key.
+- _[REJECT]_ The signature of `signed_inclusion_list.signature` is valid with
+  respect to the validator's public key.
 
 ### The Req/Resp domain
 
