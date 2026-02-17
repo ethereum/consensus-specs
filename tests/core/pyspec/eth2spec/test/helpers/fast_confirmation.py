@@ -220,7 +220,7 @@ class FCRTest:
 
         return block.hash_tree_root()
 
-    def attest(self, block_root=None, slot=None, participation_rate=100, include_in_pool=True):
+    def attest(self, block_root=None, slot=None, participation_rate=100, pool_and_disseminate=True):
         assert 0 <= participation_rate <= 100
 
         # Do not attest if participation is zero
@@ -261,14 +261,14 @@ class FCRTest:
             block_root,
             participation_fn=(lambda slot, index, committee: committee - sleepy_participants),
         )
-        if include_in_pool:
+        if pool_and_disseminate:
             self.attestation_pool.extend(attestations)
 
-        # Yield test data
-        for attestation in attestations:
-            att_tuple = (get_attestation_file_name(attestation), attestation)
-            self.blockchain_artefacts.append(att_tuple)
-            self.test_steps.append({"attestation": att_tuple[0]})
+            # Yield test data
+            for attestation in attestations:
+                att_tuple = (get_attestation_file_name(attestation), attestation)
+                self.blockchain_artefacts.append(att_tuple)
+                self.test_steps.append({"attestation": att_tuple[0]})
 
         return attestations
 

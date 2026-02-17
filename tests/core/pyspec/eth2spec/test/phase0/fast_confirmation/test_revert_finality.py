@@ -667,7 +667,7 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
 
         # Attest to RED but withhold attestations
         red_atts_in_slot = fcr.attest(
-            block_root=red_tip, participation_rate=100, include_in_pool=False
+            block_root=red_tip, participation_rate=100, pool_and_disseminate=False
         )
         red_attestations.extend(red_atts_in_slot)
 
