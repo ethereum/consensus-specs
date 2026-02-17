@@ -137,7 +137,15 @@ def test_get_sync_committee_message(spec, state):
     block_root = spec.Root(block.hash_tree_root())
     if is_post_eip7805(spec):
         store = spec.get_forkchoice_store(state, block)
-        block_root = spec.get_attester_head(store, block_root)
+        spec.process_slots(state, state.slot + 1)
+        child_block = spec.BeaconBlock(
+            slot=state.slot,
+            parent_root=block_root,
+            state_root=state.hash_tree_root(),
+        )
+        child_block_root = spec.Root(child_block.hash_tree_root())
+        store.blocks[child_block_root] = child_block
+        block_root = spec.get_attester_head(store, child_block_root)
     sync_committee_message = spec.get_sync_committee_message(
         state=state,
         block_root=block_root,
