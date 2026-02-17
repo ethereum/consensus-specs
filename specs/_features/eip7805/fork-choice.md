@@ -361,9 +361,6 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
 ### Modified `on_execution_payload`
 
-*Note*: The only modification is the addition of the inclusion list constraints
-check.
-
 ```python
 def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEnvelope) -> None:
     """

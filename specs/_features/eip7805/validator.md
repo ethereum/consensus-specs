@@ -153,10 +153,6 @@ _without_ the block yet applied. That is, `state` is the `previous_state`
 processed through any empty slots up to the assigned slot using
 `process_slots(previous_state, slot)`.
 
-*Note*: The only change made to `prepare_execution_payload` is to call
-`get_inclusion_list_store` and `get_inclusion_list_transactions` to set the new
-`inclusion_list_transactions` field of `PayloadAttributes`.
-
 *Note*: A proposer should produce an execution payload that satisfies the
 inclusion list constraints with respect to the inclusion lists gathered up to
 `get_proposer_inclusion_list_cutoff_ms(epoch)` milliseconds into the slot.
