@@ -17,14 +17,12 @@
   - [New `is_inclusion_list_satisfied_block`](#new-is_inclusion_list_satisfied_block)
   - [New `get_attester_head`](#new-get_attester_head)
   - [Modified `get_proposer_head`](#modified-get_proposer_head)
-  - [Modified `update_proposer_boost_root`](#modified-update_proposer_boost_root)
   - [New `get_view_freeze_cutoff_ms`](#new-get_view_freeze_cutoff_ms)
   - [New `get_inclusion_list_submission_due_ms`](#new-get_inclusion_list_submission_due_ms)
   - [New `get_proposer_inclusion_list_cutoff_ms`](#new-get_proposer_inclusion_list_cutoff_ms)
 - [Handlers](#handlers)
   - [New `on_inclusion_list`](#new-on_inclusion_list)
   - [Modified `on_execution_payload`](#modified-on_execution_payload)
-  - [Modified `on_block`](#modified-on_block)
 
 <!-- mdformat-toc end -->
 
@@ -289,30 +287,6 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
         return head_root
 ```
 
-### Modified `update_proposer_boost_root`
-
-```python
-def update_proposer_boost_root(store: Store, root: Root) -> None:
-    is_first_block = store.proposer_boost_root == Root()
-    is_timely = store.block_timeliness[root][ATTESTATION_TIMELINESS_INDEX]
-    # [New in EIP7805]
-    is_inclusion_list_satisfied = is_inclusion_list_satisfied_block(store, root)
-
-    # [Modified in EIP7805]
-    # Add proposer score boost if the block is the first timely block
-    # for this slot, with the same proposer as the canonical chain
-    # and satisfies the inclusion list constraints.
-    if is_timely and is_first_block and is_inclusion_list_satisfied:
-        head_state = copy(store.block_states[get_head(store).root])
-        slot = get_current_slot(store)
-        if head_state.slot < slot:
-            process_slots(head_state, slot)
-        block = store.blocks[root]
-        # Only update if the proposer is the same as on the canonical chain
-        if block.proposer_index == get_beacon_proposer_index(head_state):
-            store.proposer_boost_root = root
-```
-
 ### New `get_view_freeze_cutoff_ms`
 
 ```python
@@ -389,71 +363,4 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
 
     # Add new state for this payload to the store
     store.payload_states[envelope.beacon_block_root] = state
-```
-
-### Modified `on_block`
-
-*Note*: The only modification is made to `update_proposer_boost_root` through
-the inclusion list constraints check.
-
-```python
-def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
-    """
-    Run ``on_block`` upon receiving a new block.
-    """
-    block = signed_block.message
-    # Parent block must be known
-    assert block.parent_root in store.block_states
-
-    # Check if this blocks builds on empty or full parent block
-    parent_block = store.blocks[block.parent_root]
-    bid = block.body.signed_execution_payload_bid.message
-    parent_bid = parent_block.body.signed_execution_payload_bid.message
-    # Make a copy of the state to avoid mutability issues
-    if is_parent_node_full(store, block):
-        assert block.parent_root in store.payload_states
-        state = copy(store.payload_states[block.parent_root])
-    else:
-        assert bid.parent_block_hash == parent_bid.parent_block_hash
-        state = copy(store.block_states[block.parent_root])
-
-    # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
-    current_slot = get_current_slot(store)
-    assert current_slot >= block.slot
-
-    # Check that block is later than the finalized epoch slot (optimization to reduce calls to get_ancestor)
-    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-    assert block.slot > finalized_slot
-    # Check block is a descendant of the finalized block at the checkpoint finalized slot
-    finalized_checkpoint_block = get_checkpoint_block(
-        store,
-        block.parent_root,
-        store.finalized_checkpoint.epoch,
-    )
-    assert store.finalized_checkpoint.root == finalized_checkpoint_block
-
-    # Check the block is valid and compute the post-state
-    block_root = hash_tree_root(block)
-    state_transition(state, signed_block, True)
-
-    # Add new block to the store
-    store.blocks[block_root] = block
-    # Add new state for this block to the store
-    store.block_states[block_root] = state
-    # Add a new PTC voting for this block to the store
-    store.payload_timeliness_vote[block_root] = [False] * PTC_SIZE
-    store.payload_data_availability_vote[block_root] = [False] * PTC_SIZE
-
-    # Notify the store about the payload_attestations in the block
-    notify_ptc_messages(store, state, block.body.payload_attestations)
-
-    record_block_timeliness(store, block_root)
-    # [Modified in EIP7805]
-    update_proposer_boost_root(store, block_root)
-
-    # Update checkpoints in store if necessary
-    update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
-
-    # Eagerly compute unrealized justification and finality.
-    compute_pulled_up_tip(store, block_root)
 ```
