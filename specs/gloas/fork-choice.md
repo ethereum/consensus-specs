@@ -34,6 +34,7 @@
   - [Modified `is_head_late`](#modified-is_head_late)
   - [Modified `is_head_weak`](#modified-is_head_weak)
   - [Modified `is_parent_strong`](#modified-is_parent_strong)
+  - [Modified `get_latest_message_epoch`](#modified-get_latest_message_epoch)
   - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
   - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
   - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
@@ -136,6 +137,11 @@ class Store(object):
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
+    confirmed_root: Root
+    previous_epoch_observed_justified_checkpoint: Checkpoint
+    current_epoch_observed_justified_checkpoint: Checkpoint
+    previous_slot_head: Root
+    current_slot_head: Root
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
@@ -173,6 +179,11 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         unrealized_justified_checkpoint=justified_checkpoint,
         unrealized_finalized_checkpoint=finalized_checkpoint,
         proposer_boost_root=proposer_boost_root,
+        confirmed_root=anchor_root,
+        previous_epoch_observed_justified_checkpoint=justified_checkpoint,
+        current_epoch_observed_justified_checkpoint=justified_checkpoint,
+        previous_slot_head=anchor_root,
+        current_slot_head=anchor_root,
         equivocating_indices=set(),
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
@@ -669,6 +680,13 @@ def is_parent_strong(store: Store, root: Root) -> bool:
     parent_node = ForkChoiceNode(root=block.parent_root, payload_status=parent_payload_status)
     parent_weight = get_attestation_score(store, parent_node, justified_state)
     return parent_weight > parent_threshold
+```
+
+### Modified `get_latest_message_epoch`
+
+```python
+def get_latest_message_epoch(latest_message: LatestMessage) -> Epoch:
+    return compute_epoch_at_slot(latest_message.slot)
 ```
 
 ### Modified `get_attestation_due_ms`

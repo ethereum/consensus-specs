@@ -248,3 +248,7 @@ BLOB_SCHEDULE:
     MAX_BLOBS_PER_BLOCK: 15
   - EPOCH: 419072  # January 7, 2026, 01:01:11am UTC
     MAX_BLOBS_PER_BLOCK: 21
+
+# Fast Confirmation Rule
+# ---------------------------------------------------------------
+CONFIRMATION_BYZANTINE_THRESHOLD: 25
