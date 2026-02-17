@@ -96,6 +96,13 @@ eip8025:
       - 'presets/*/eip8025.yaml'
       - 'pysetup/spec_builders/eip8025.py'
 
+eip8148:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/_features/eip8148/**'
+      - 'presets/*/eip8148.yaml'
+      - 'pysetup/spec_builders/eip8148.py'
+
 testing:
   - changed-files:
     - any-glob-to-any-file:

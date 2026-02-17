@@ -12,6 +12,7 @@ from eth2spec.test.helpers.state import (
     next_slot,
 )
 from eth2spec.test.helpers.withdrawals import (
+    check_is_partially_withdrawable_validator,
     prepare_expected_withdrawals,
     prepare_pending_withdrawal,
     run_withdrawals_processing,
@@ -57,8 +58,7 @@ def test_success_no_max_effective_balance_compounding(spec, state):
         spec, state, validator_index, effective_balance
     )
 
-    validator = state.validators[validator_index]
-    assert not spec.is_partially_withdrawable_validator(validator, state.balances[validator_index])
+    assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -80,8 +80,7 @@ def test_success_no_excess_balance_compounding(spec, state):
         spec, state, validator_index, effective_balance
     )
 
-    validator = state.validators[validator_index]
-    assert not spec.is_partially_withdrawable_validator(validator, state.balances[validator_index])
+    assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -104,8 +103,7 @@ def test_success_excess_balance_but_no_max_effective_balance_compounding(spec, s
         spec, state, validator_index, effective_balance, balance
     )
 
-    validator = state.validators[validator_index]
-    assert not spec.is_partially_withdrawable_validator(validator, state.balances[validator_index])
+    assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -390,13 +388,13 @@ def test_pending_withdrawals_with_ineffective_sweep_on_top(spec, state):
     )
 
     # Check that validator is partially withdrawable before pending withdrawal is processed
-    assert spec.is_partially_withdrawable_validator(
-        state.validators[validator_index], state.balances[validator_index]
-    )
+    assert check_is_partially_withdrawable_validator(spec, state, validator_index)
     # And is not partially withdrawable thereafter
-    assert not spec.is_partially_withdrawable_validator(
-        state.validators[validator_index],
-        state.balances[validator_index] - pending_withdrawal.amount,
+    assert not check_is_partially_withdrawable_validator(
+        spec,
+        state,
+        validator_index,
+        balance=state.balances[validator_index] - pending_withdrawal.amount,
     )
 
     next_slot(spec, state)
@@ -446,13 +444,19 @@ def test_pending_withdrawals_with_ineffective_sweep_on_top_2(spec, state):
     state.balances[validator_index] = (
         spec.MAX_EFFECTIVE_BALANCE_ELECTRA + spec.EFFECTIVE_BALANCE_INCREMENT
     )
-    assert spec.is_partially_withdrawable_validator(
-        state.validators[validator_index],
-        state.balances[validator_index] - pending_withdrawal_0.amount,
+    assert check_is_partially_withdrawable_validator(
+        spec,
+        state,
+        validator_index,
+        balance=state.balances[validator_index] - pending_withdrawal_0.amount,
     )
-    assert not spec.is_partially_withdrawable_validator(
-        state.validators[validator_index],
-        state.balances[validator_index] - pending_withdrawal_0.amount - pending_withdrawal_1.amount,
+    assert not check_is_partially_withdrawable_validator(
+        spec,
+        state,
+        validator_index,
+        balance=state.balances[validator_index]
+        - pending_withdrawal_0.amount
+        - pending_withdrawal_1.amount,
     )
 
     next_slot(spec, state)
@@ -502,9 +506,13 @@ def test_pending_withdrawals_with_effective_sweep_on_top(spec, state):
     state.balances[validator_index] = (
         spec.MAX_EFFECTIVE_BALANCE_ELECTRA + spec.EFFECTIVE_BALANCE_INCREMENT * 2
     )
-    assert spec.is_partially_withdrawable_validator(
-        state.validators[validator_index],
-        state.balances[validator_index] - pending_withdrawal_0.amount - pending_withdrawal_1.amount,
+    assert check_is_partially_withdrawable_validator(
+        spec,
+        state,
+        validator_index,
+        balance=state.balances[validator_index]
+        - pending_withdrawal_0.amount
+        - pending_withdrawal_1.amount,
     )
 
     next_slot(spec, state)
@@ -554,9 +562,7 @@ def test_pending_withdrawals_with_sweep_different_validator(spec, state):
         balance=(spec.MAX_EFFECTIVE_BALANCE_ELECTRA + spec.EFFECTIVE_BALANCE_INCREMENT),
     )
 
-    assert spec.is_partially_withdrawable_validator(
-        state.validators[validator_index_1], state.balances[validator_index_1]
-    )
+    assert check_is_partially_withdrawable_validator(spec, state, validator_index_1)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -689,9 +695,7 @@ def test_partially_withdrawable_validator_compounding_max_plus_one(spec, state):
     set_compounding_withdrawal_credential_with_balance(
         spec, state, validator_index, balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA + 1
     )
-    assert spec.is_partially_withdrawable_validator(
-        state.validators[validator_index], state.balances[validator_index]
-    )
+    assert check_is_partially_withdrawable_validator(spec, state, validator_index)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -716,9 +720,7 @@ def test_partially_withdrawable_validator_compounding_exact_max(spec, state):
     """Test compounding validator with balance exactly equal to MAX_EFFECTIVE_BALANCE_ELECTRA"""
     validator_index = 0
     set_compounding_withdrawal_credential_with_balance(spec, state, validator_index)
-    assert not spec.is_partially_withdrawable_validator(
-        state.validators[validator_index], state.balances[validator_index]
-    )
+    assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -749,9 +751,7 @@ def test_partially_withdrawable_validator_compounding_max_minus_one(spec, state)
         effective_balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA - spec.EFFECTIVE_BALANCE_INCREMENT,
         balance=spec.MAX_EFFECTIVE_BALANCE_ELECTRA - 1,
     )
-    assert not spec.is_partially_withdrawable_validator(
-        state.validators[validator_index], state.balances[validator_index]
-    )
+    assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -782,9 +782,7 @@ def test_partially_withdrawable_validator_compounding_min_plus_one(spec, state):
         effective_balance=spec.MIN_ACTIVATION_BALANCE,
         balance=spec.MIN_ACTIVATION_BALANCE + 1,
     )
-    assert not spec.is_partially_withdrawable_validator(
-        state.validators[validator_index], state.balances[validator_index]
-    )
+    assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -815,9 +813,7 @@ def test_partially_withdrawable_validator_compounding_exact_min(spec, state):
         effective_balance=spec.MIN_ACTIVATION_BALANCE,
         balance=spec.MIN_ACTIVATION_BALANCE,
     )
-    assert not spec.is_partially_withdrawable_validator(
-        state.validators[validator_index], state.balances[validator_index]
-    )
+    assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -848,9 +844,7 @@ def test_partially_withdrawable_validator_compounding_min_minus_one(spec, state)
         effective_balance=spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT,
         balance=spec.MIN_ACTIVATION_BALANCE - 1,
     )
-    assert not spec.is_partially_withdrawable_validator(
-        state.validators[validator_index], state.balances[validator_index]
-    )
+    assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)

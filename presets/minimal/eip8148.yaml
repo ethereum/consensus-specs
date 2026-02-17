@@ -1,0 +1,6 @@
+# Minimal preset - EIP8148
+
+# Execution
+# ---------------------------------------------------------------
+# 2**4 (= 16)
+MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD: 16

@@ -4,6 +4,9 @@ from eth2spec.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
+from eth2spec.test.helpers.withdrawals import (
+    check_is_partially_withdrawable_validator,
+)
 from tests.infra.helpers.builders import add_builder_to_registry
 from tests.infra.helpers.withdrawals import (
     assert_process_withdrawals,
@@ -443,9 +446,7 @@ def test_compounding_validator_partial_withdrawal(spec, state):
         compounding_indices=[validator_index],
     )
 
-    assert spec.is_partially_withdrawable_validator(
-        state.validators[validator_index], state.balances[validator_index]
-    )
+    assert check_is_partially_withdrawable_validator(spec, state, validator_index)
 
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
