@@ -75,9 +75,9 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 ### Execution
 
-| Name                             | Value                    | Description                                                                     |
-| -------------------------------- | ------------------------ | ------------------------------------------------------------------------------- |
-| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | Upgrade independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` |
+| Name                             | Value                     | Description                                                                     |
+| -------------------------------- | ------------------------- | ------------------------------------------------------------------------------- |
+| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4,096) | Upgrade independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` |
 
 ## Configuration
 
