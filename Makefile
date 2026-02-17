@@ -193,7 +193,7 @@ VENV = .venv
 # Use editable installs for all non-generation targets, but use non-editable
 # installs for generators. More details: ethereum/consensus-specs#4633.
 UV_RUN    = uv run
-UV_RUN_NE = uv run --no-editable --reinstall-package=eth2spec
+UV_RUN_NE = uv run --no-editable --reinstall-package=eth-consensus-specs
 
 # Sync dependencies using uv.
 _sync: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
