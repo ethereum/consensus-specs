@@ -22,7 +22,7 @@ jobs:
       - name: Create tag
         id: tag
         run: |
-          version="v$(cat consensus-specs/tests/core/pyspec/eth2spec/VERSION.txt)"
+          version="v$(cat consensus-specs/tests/core/pyspec/eth_consensus_specs/VERSION.txt)"
           cd consensus-specs
           if git rev-parse "refs/tags/$version" >/dev/null 2>&1; then
             echo "Error: Tag $version already exists"

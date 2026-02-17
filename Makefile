@@ -231,7 +231,7 @@ test: MAYBE_PARALLEL := $(if $(k),,-n auto)
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
 test: PRESET := $(if $(filter fw,$(component)),,--preset=$(if $(preset),$(preset),minimal))
 test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),fastest))
-test: MAYBE_ETH2SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth2spec)
+test: MAYBE_SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth_consensus_specs)
 test: MAYBE_INFRA := $(if $(filter pyspec,$(component)),,$(CURDIR)/tests/infra)
 test: _pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
@@ -246,7 +246,7 @@ test: _pyspec
 		--html=$(TEST_REPORT_DIR)/test_results.html \
 		--self-contained-html \
 		$(MAYBE_INFRA) \
-		$(MAYBE_ETH2SPEC)
+		$(MAYBE_SPEC)
 
 ###############################################################################
 # Coverage
@@ -255,7 +255,7 @@ test: _pyspec
 TEST_PRESET_TYPE ?= minimal
 COV_HTML_OUT=$(PYSPEC_DIR)/.htmlcov
 COV_INDEX_FILE=$(COV_HTML_OUT)/index.html
-COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
+COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth_consensus_specs.$S.$(TEST_PRESET_TYPE))
 
 # Run pytest with coverage tracking
 _test_with_coverage: MAYBE_TEST := $(if $(k),-k=$(k))
@@ -269,7 +269,7 @@ _test_with_coverage: _pyspec
 		$(COVERAGE_SCOPE) \
 		--cov-report="html:$(COV_HTML_OUT)" \
 		--cov-branch \
-		$(PYSPEC_DIR)/eth2spec
+		$(PYSPEC_DIR)/eth_consensus_specs
 
 # Run tests with coverage then open the coverage report.
 # See `make test` for a list of options.
@@ -309,7 +309,7 @@ LINT_DIFF_BEFORE := .lint_diff_before
 LINT_DIFF_AFTER := .lint_diff_after
 MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md')
 MYPY_PACKAGE_BASE := $(subst /,.,$(PYSPEC_DIR:$(CURDIR)/%=%))
-MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p $(MYPY_PACKAGE_BASE).eth2spec.$S)
+MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p $(MYPY_PACKAGE_BASE).eth_consensus_specs.$S)
 
 # Check for mistakes.
 lint: _pyspec

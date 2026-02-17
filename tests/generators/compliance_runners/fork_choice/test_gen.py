@@ -1,8 +1,8 @@
 from os import path
 
-from eth2spec.gen_helpers.gen_base import gen_runner
-from eth2spec.gen_helpers.gen_base.args import create_arg_parser
-from eth2spec.test.helpers.constants import ELECTRA, MINIMAL
+from eth_consensus_specs.gen_helpers.gen_base import gen_runner
+from eth_consensus_specs.gen_helpers.gen_base.args import create_arg_parser
+from eth_consensus_specs.test.helpers.constants import ELECTRA, MINIMAL
 
 from .instantiators.test_case import enumerate_test_cases, prepare_bls
 

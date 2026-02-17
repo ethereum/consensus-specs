@@ -1,11 +1,11 @@
 """Tests for the with_config_overrides decorator."""
 
-from eth2spec.test.context import (
+from eth_consensus_specs.test.context import (
     get_copy_of_spec,
     with_config_overrides,
 )
-from eth2spec.test.helpers.constants import MINIMAL
-from eth2spec.test.helpers.specs import spec_targets
+from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.specs import spec_targets
 
 
 # Test helper to get a spec instance for testing

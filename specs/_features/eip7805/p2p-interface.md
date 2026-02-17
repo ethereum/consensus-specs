@@ -106,7 +106,7 @@ determined by `compute_epoch_at_slot(signed_inclusion_list.message.slot)`.
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`         | Chunk SSZ type                 |
 | ---------------------- | ------------------------------ |

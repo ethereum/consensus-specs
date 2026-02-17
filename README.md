@@ -19,21 +19,21 @@ ready.
 
 ### Stable Specifications
 
-| Seq. | Code Name     | Fork Epoch | Links                                                                        |
-| ---- | ------------- | ---------- | ---------------------------------------------------------------------------- |
-| 0    | **Phase0**    | `0`        | [Specs](specs/phase0), [Tests](tests/core/pyspec/eth2spec/test/phase0)       |
-| 1    | **Altair**    | `74240`    | [Specs](specs/altair), [Tests](tests/core/pyspec/eth2spec/test/altair)       |
-| 2    | **Bellatrix** | `144896`   | [Specs](specs/bellatrix), [Tests](tests/core/pyspec/eth2spec/test/bellatrix) |
-| 3    | **Capella**   | `194048`   | [Specs](specs/capella), [Tests](tests/core/pyspec/eth2spec/test/capella)     |
-| 4    | **Deneb**     | `269568`   | [Specs](specs/deneb), [Tests](tests/core/pyspec/eth2spec/test/deneb)         |
-| 5    | **Electra**   | `364032`   | [Specs](specs/electra), [Tests](tests/core/pyspec/eth2spec/test/electra)     |
-| 6    | **Fulu**      | `411392`   | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth2spec/test/fulu)           |
+| Seq. | Code Name     | Fork Epoch | Links                                                                                   |
+| ---- | ------------- | ---------- | --------------------------------------------------------------------------------------- |
+| 0    | **Phase0**    | `0`        | [Specs](specs/phase0), [Tests](tests/core/pyspec/eth_consensus_specs/test/phase0)       |
+| 1    | **Altair**    | `74240`    | [Specs](specs/altair), [Tests](tests/core/pyspec/eth_consensus_specs/test/altair)       |
+| 2    | **Bellatrix** | `144896`   | [Specs](specs/bellatrix), [Tests](tests/core/pyspec/eth_consensus_specs/test/bellatrix) |
+| 3    | **Capella**   | `194048`   | [Specs](specs/capella), [Tests](tests/core/pyspec/eth_consensus_specs/test/capella)     |
+| 4    | **Deneb**     | `269568`   | [Specs](specs/deneb), [Tests](tests/core/pyspec/eth_consensus_specs/test/deneb)         |
+| 5    | **Electra**   | `364032`   | [Specs](specs/electra), [Tests](tests/core/pyspec/eth_consensus_specs/test/electra)     |
+| 6    | **Fulu**      | `411392`   | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth_consensus_specs/test/fulu)           |
 
 ### In-development Specifications
 
-| Seq. | Code Name | Fork Epoch | Links                                                                |
-| ---- | --------- | ---------- | -------------------------------------------------------------------- |
-| 7    | **Gloas** | TBD        | [Specs](specs/gloas), [Tests](tests/core/pyspec/eth2spec/test/gloas) |
+| Seq. | Code Name | Fork Epoch | Links                                                                           |
+| ---- | --------- | ---------- | ------------------------------------------------------------------------------- |
+| 7    | **Gloas** | TBD        | [Specs](specs/gloas), [Tests](tests/core/pyspec/eth_consensus_specs/test/gloas) |
 
 ### Accompanying documents
 

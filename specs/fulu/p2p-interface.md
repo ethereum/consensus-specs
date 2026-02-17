@@ -464,7 +464,7 @@ determined by
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `epoch`                     | Chunk SSZ type           |
 | --------------------------- | ------------------------ |
@@ -529,7 +529,7 @@ determined by
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `epoch`                     | Chunk SSZ type           |
 | --------------------------- | ------------------------ |

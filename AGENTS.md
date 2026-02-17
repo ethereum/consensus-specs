@@ -67,7 +67,7 @@ operates.
 
 ```
 /tests/
-  core/pyspec/eth2spec/
+  core/pyspec/eth_consensus_specs/
     <fork>/              # Assembled pyspec (do not edit)
     test/<fork>/         # Test cases organized by fork
       block_processing/
@@ -121,8 +121,8 @@ manually. New spec files need these TOC markers added manually:
 
 Special HTML comments control spec parsing:
 
-- `<!-- eth2spec: skip -->` - Skip the next code block (used for non-executable
-  specs like `p2p-interface.md`)
+- `<!-- eth_consensus_specs: skip -->` - Skip the next code block (used for
+  non-executable specs like `p2p-interface.md`)
 - `<!-- predefined-type -->` - Type is defined externally
 - `<!-- predefined -->` - Constant is predefined or function-dependent
 
@@ -409,7 +409,7 @@ def test_example(spec, state):
 ### Adding a new helper function
 
 1. Add the Python function to the appropriate spec markdown file
-2. Add tests in `tests/core/pyspec/eth2spec/test/`
+2. Add tests in `tests/core/pyspec/eth_consensus_specs/test/`
 3. Run `make lint` to run checks
 
 ### Modifying an existing function
@@ -445,7 +445,7 @@ Adding a new fork (e.g., "foobar") requires updates to many files:
 - `pysetup/spec_builders/foobar.py` - Create SpecBuilder class
 - `pysetup/spec_builders/__init__.py` - Import and register the SpecBuilder
 
-**4. Test infrastructure (`tests/core/pyspec/eth2spec/test/`):**
+**4. Test infrastructure (`tests/core/pyspec/eth_consensus_specs/test/`):**
 
 - `helpers/constants.py` - Add constant, update `ALL_PHASES`,
   `PREVIOUS_FORK_OF`, `POST_FORK_OF`

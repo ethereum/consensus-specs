@@ -10,9 +10,9 @@ from ruamel.yaml import YAML
 from snappy import uncompress
 from tqdm import tqdm
 
-from eth2spec.test.context import expect_assertion_error
-from eth2spec.test.helpers.specs import spec_targets
-from eth2spec.utils import bls
+from eth_consensus_specs.test.context import expect_assertion_error
+from eth_consensus_specs.test.helpers.specs import spec_targets
+from eth_consensus_specs.utils import bls
 
 bls.bls_active = False
 

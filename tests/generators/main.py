@@ -1,7 +1,7 @@
 import importlib
 import os
 
-from eth2spec.gen_helpers.gen_base import gen_runner
+from eth_consensus_specs.gen_helpers.gen_base import gen_runner
 
 if __name__ == "__main__":
     current_dir = os.path.dirname(__file__)

@@ -1992,7 +1992,7 @@ syncing from a checkpoint must backfill.
 epoch range, we use the worst case event of a very large validator size
 (`>= MIN_PER_EPOCH_CHURN_LIMIT * CHURN_LIMIT_QUOTIENT`).
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 ```python
 MIN_EPOCHS_FOR_BLOCK_REQUESTS = (
