@@ -1,10 +1,10 @@
 import random
 
-from eth2spec.test.helpers.state import (
+from eth_consensus_specs.test.helpers.state import (
     next_slot,
     transition_to,
 )
-from eth2spec.utils import bls
+from eth_consensus_specs.utils import bls
 
 from .helpers import (
     advance_state_to_anchor_epoch,

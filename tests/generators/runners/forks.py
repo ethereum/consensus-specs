@@ -1,9 +1,12 @@
 from collections.abc import Iterable
 from importlib import import_module
 
-from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
-from eth2spec.gen_helpers.gen_from_tests.gen import generate_from_tests, get_expected_modules
-from eth2spec.test.helpers.constants import ALL_PRESETS, POST_FORK_OF
+from eth_consensus_specs.gen_helpers.gen_base.gen_typing import TestCase
+from eth_consensus_specs.gen_helpers.gen_from_tests.gen import (
+    generate_from_tests,
+    get_expected_modules,
+)
+from eth_consensus_specs.test.helpers.constants import ALL_PRESETS, POST_FORK_OF
 
 
 def get_test_cases() -> Iterable[TestCase]:

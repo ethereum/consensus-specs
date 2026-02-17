@@ -101,8 +101,8 @@ ignore = [
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
-known-first-party = ["eth2spec"]
+known-first-party = ["eth_consensus_specs"]
 order-by-type = false
 
 [tool.setuptools.dynamic]
-version = { file = "tests/core/pyspec/eth2spec/VERSION.txt" }
+version = { file = "tests/core/pyspec/eth_consensus_specs/VERSION.txt" }

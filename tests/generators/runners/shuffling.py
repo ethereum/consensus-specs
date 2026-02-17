@@ -1,9 +1,9 @@
 import random
 from collections.abc import Iterable
 
-from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
-from eth2spec.phase0 import mainnet as spec_mainnet, minimal as spec_minimal
-from eth2spec.test.helpers.constants import ALL_PRESETS, MAINNET, MINIMAL, PHASE0
+from eth_consensus_specs.gen_helpers.gen_base.gen_typing import TestCase
+from eth_consensus_specs.phase0 import mainnet as spec_mainnet, minimal as spec_minimal
+from eth_consensus_specs.test.helpers.constants import ALL_PRESETS, MAINNET, MINIMAL, PHASE0
 
 
 def generate_random_bytes(rng=None):

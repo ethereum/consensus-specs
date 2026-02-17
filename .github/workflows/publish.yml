@@ -7,7 +7,7 @@ on:
 
 jobs:
   publish:
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    runs-on: ubuntu-latest
     permissions:
       id-token: write
     steps:
