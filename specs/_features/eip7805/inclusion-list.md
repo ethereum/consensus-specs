@@ -111,6 +111,10 @@ def get_inclusion_list_transactions(
 def get_inclusion_list_bits(
     store: InclusionListStore, state: BeaconState, slot: Slot
 ) -> Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]:
+    """
+    Return a ``Bitvector`` over inclusion list committee indices with bits set
+    for valid, non-equivocating inclusion list submissions for the given ``slot``.
+    """
     inclusion_list_committee = get_inclusion_list_committee(state, slot)
     inclusion_list_committee_root = hash_tree_root(inclusion_list_committee)
     key = (slot, inclusion_list_committee_root)
@@ -135,6 +139,10 @@ def is_inclusion_list_bits_inclusive(
     slot: Slot,
     inclusion_list_bits: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE],
 ) -> bool:
+    """
+    Return ``True`` if and only if ``inclusion_list_bits`` is a superset of
+    the locally observed inclusion list bits for the given ``slot``.
+    """
     local_inclusion_list_bits = get_inclusion_list_bits(store, state, slot)
 
     return all(
