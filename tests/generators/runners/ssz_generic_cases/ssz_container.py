@@ -165,10 +165,9 @@ def invalid_container_cases(rng: Random, name: str, typ: type[View], offsets: Se
         f"{name}_extra_byte",
         invalid_test_case(
             typ,
-            lambda rng, typ=typ: serialize(
-                container_case_fn(rng, RandomizationMode.mode_max_count, typ)
-            )
-            + b"\x00",
+            lambda rng, typ=typ: (
+                serialize(container_case_fn(rng, RandomizationMode.mode_max_count, typ)) + b"\x00"
+            ),
             rng,
         ),
     )

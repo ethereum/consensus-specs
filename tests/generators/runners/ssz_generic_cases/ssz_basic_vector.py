@@ -80,10 +80,10 @@ def invalid_cases():
                             f"vec_{name}_{length}_{mode.to_name()}_{description}",
                             invalid_test_case(
                                 Vector[typ, length],
-                                lambda rng, mode=mode, typ=typ, length=length, data=data: serialize(
-                                    basic_vector_case_fn(rng, mode, typ, length)
-                                )[:-1]
-                                + data,
+                                lambda rng, mode=mode, typ=typ, length=length, data=data: (
+                                    serialize(basic_vector_case_fn(rng, mode, typ, length))[:-1]
+                                    + data
+                                ),
                                 rng,
                             ),
                         )
@@ -128,10 +128,10 @@ def invalid_cases():
                     f"vec_{name}_{length}_{mode.to_name()}_one_byte_more",
                     invalid_test_case(
                         Vector[typ, length],
-                        lambda rng, mode=mode, typ=typ, length=length: serialize(
-                            basic_vector_case_fn(rng, mode, typ, length)
-                        )
-                        + serialize(basic_vector_case_fn(rng, mode, uint8, 1)),
+                        lambda rng, mode=mode, typ=typ, length=length: (
+                            serialize(basic_vector_case_fn(rng, mode, typ, length))
+                            + serialize(basic_vector_case_fn(rng, mode, uint8, 1))
+                        ),
                         rng,
                     ),
                 )

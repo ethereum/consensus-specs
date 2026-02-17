@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools==80.9.0"]
+requires = ["setuptools==82.0.0"]
 
 [project]
 name = "eth2spec"
@@ -13,16 +13,16 @@ dependencies = [
   "curdleproofs==0.1.2",
   "eth-typing==5.2.1",
   "eth-utils==5.3.1",
-  "frozendict==2.4.6",
-  "lru-dict==1.3.0",
-  "marko==2.2.0",
+  "frozendict==2.4.7",
+  "lru-dict==1.4.1",
+  "marko==2.2.2",
   "milagro_bls_binding==1.9.0",
   "py_arkworks_bls12381==0.3.8",
   "py_ecc==8.0.0",
   "pycryptodome==3.23.0",
   "remerkleable @ git+https://github.com/ethereum/remerkleable@4c07ef2e9078b36e7887581f8966ea6b18b8e695",
-  "ruamel.yaml==0.18.15",
-  "setuptools==80.9.0",
+  "ruamel.yaml==0.19.1",
+  "setuptools==82.0.0",
   "trie==3.1.0",
 ]
 
@@ -30,35 +30,35 @@ dependencies = [
 test = [
   "deepdiff==8.6.1",
   "pytest-cov==7.0.0",
-  "pytest-html==4.1.1",
+  "pytest-html==4.2.0",
   "pytest-xdist==3.8.0",
-  "pytest==8.4.2",
+  "pytest==9.0.2",
 ]
 lint = [
   "codespell==2.4.1",
   "mdformat-gfm-alerts==2.0.0",
-  "mdformat-gfm==0.4.1",
+  "mdformat-gfm==1.0.0",
   "mdformat-ruff==0.1.3",
-  "mdformat-toc==0.3.0",
-  "mdformat==0.7.22",
-  "mypy==1.18.2",
-  "ruff==0.13.2",
+  "mdformat-toc==0.5.0",
+  "mdformat==1.0.0",
+  "mypy==1.19.1",
+  "ruff==0.15.1",
 ]
 generator = [
-  "filelock==3.19.1",
+  "filelock==3.24.2",
   "minizinc==0.10.0",
-  "pathos==0.3.4",
-  "psutil==7.1.0",
-  "pytest==8.4.2",
+  "pathos==0.3.5",
+  "psutil==7.2.2",
+  "pytest==9.0.2",
   "python-snappy==0.7.3",
-  "rich==14.1.0",
-  "tqdm==4.67.1",
+  "rich==14.3.2",
+  "tqdm==4.67.3",
 ]
 docs = [
   "mdx-truly-sane-lists==1.3",
   "mkdocs-awesome-pages-plugin==2.10.1",
-  "mkdocs-gen-files==0.5.0",
-  "mkdocs-material==9.6.20",
+  "mkdocs-gen-files==0.6.0",
+  "mkdocs-material==9.7.1",
   "mkdocs==1.6.1",
 ]
 

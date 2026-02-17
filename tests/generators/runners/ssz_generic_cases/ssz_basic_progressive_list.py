@@ -77,10 +77,10 @@ def invalid_cases():
                             f"proglist_{name}_{length}_{mode.to_name()}_{description}",
                             invalid_test_case(
                                 ProgressiveList[typ],
-                                lambda rng, mode=mode, typ=typ, length=length, data=data: serialize(
-                                    progressive_list_case_fn(rng, mode, typ, length)
-                                )[:-1]
-                                + data,
+                                lambda rng, mode=mode, typ=typ, length=length, data=data: (
+                                    serialize(progressive_list_case_fn(rng, mode, typ, length))[:-1]
+                                    + data
+                                ),
                                 rng,
                             ),
                         )
@@ -105,10 +105,10 @@ def invalid_cases():
                         f"proglist_{name}_{length}_{mode.to_name()}_one_byte_more",
                         invalid_test_case(
                             ProgressiveList[typ],
-                            lambda rng, mode=mode, typ=typ, length=length: serialize(
-                                progressive_list_case_fn(rng, mode, typ, length)
-                            )
-                            + serialize(uint_case_fn(rng, mode, uint8)),
+                            lambda rng, mode=mode, typ=typ, length=length: (
+                                serialize(progressive_list_case_fn(rng, mode, typ, length))
+                                + serialize(uint_case_fn(rng, mode, uint8))
+                            ),
                             rng,
                         ),
                     )
