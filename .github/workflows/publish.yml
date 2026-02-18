@@ -22,6 +22,8 @@ jobs:
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
+      - name: Generate specs
+        run: uv run python -m pysetup.generate_specs --all-forks
       - name: Build package
         run: uv build
       - name: Publish to PyPI
