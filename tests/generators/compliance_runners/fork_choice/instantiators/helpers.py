@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
 
-from eth2spec.test.helpers.attestations import (
+from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
 )
-from eth2spec.test.helpers.block import (
+from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
     sign_block,
 )
-from eth2spec.test.helpers.fork_choice import (
+from eth_consensus_specs.test.helpers.fork_choice import (
     add_attestation,
     add_attester_slashing,
     add_block,
@@ -20,10 +20,10 @@ from eth2spec.test.helpers.fork_choice import (
     run_on_attester_slashing,
     run_on_block,
 )
-from eth2spec.test.helpers.state import (
+from eth_consensus_specs.test.helpers.state import (
     next_slot,
 )
-from eth2spec.utils.ssz.ssz_typing import View
+from eth_consensus_specs.utils.ssz.ssz_typing import View
 
 from .debug_helpers import print_epoch, print_head
 

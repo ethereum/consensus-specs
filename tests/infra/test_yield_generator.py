@@ -1,4 +1,4 @@
-from eth2spec.test import context
+from eth_consensus_specs.test import context
 
 from .yield_generator import _yield_generator_post_processing, vector_test
 

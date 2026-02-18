@@ -234,10 +234,10 @@ be activated when total deposits for the validator pubkey meet or exceed
 Deposits cannot be processed into the beacon chain until the proof-of-work block
 in which they were deposited or any of its descendants is added to the beacon
 chain `state.eth1_data`. This takes _a minimum_ of `ETH1_FOLLOW_DISTANCE` Eth1
-blocks (~8 hours) plus `EPOCHS_PER_ETH1_VOTING_PERIOD` epochs (~6.8 hours). Once
-the requisite proof-of-work block data is added, the deposit will normally be
-added to a beacon-chain block and processed into the `state.validators` within
-an epoch or two. The validator is then in a queue to be activated.
+blocks plus `EPOCHS_PER_ETH1_VOTING_PERIOD` epochs. Once the requisite
+proof-of-work block data is added, the deposit will normally be added to a
+beacon-chain block and processed into the `state.validators` within an epoch or
+two. The validator is then in a queue to be activated.
 
 ### Validator index
 
@@ -254,7 +254,7 @@ any point and should be stored locally.
 
 In normal operation, the validator is quickly activated, at which point the
 validator is added to the shuffling and begins validation after an additional
-`MAX_SEED_LOOKAHEAD` epochs (25.6 minutes).
+`MAX_SEED_LOOKAHEAD` epochs.
 
 The function [`is_active_validator`](./beacon-chain.md#is_active_validator) can
 be used to check if a validator is active during a given epoch. Usage is as
@@ -390,8 +390,7 @@ Note that the parent's slot must be strictly less than the slot of the block
 about to be proposed, i.e. `parent.slot < slot`.
 
 There is one proposer per slot, so if there are N active validators any
-individual validator will on average be assigned to propose once per N slots
-(e.g. at 312,500 validators = 10 million ETH, that's once per ~6 weeks).
+individual validator will on average be assigned to propose once per N slots.
 
 *Note*: In this section, `state` is the state of the slot for the block proposal
 _without_ the block yet applied. That is, `state` is the `previous_state`

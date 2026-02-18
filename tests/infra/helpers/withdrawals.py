@@ -1,4 +1,4 @@
-from eth2spec.test.helpers.forks import is_post_electra, is_post_gloas
+from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_gloas
 
 
 def set_parent_block_full(spec, state):
@@ -165,7 +165,7 @@ def prepare_process_withdrawals(
             state.validators[validator_index].exit_epoch = current_epoch + offset
 
     # Import here to avoid circular imports
-    from tests.core.pyspec.eth2spec.test.helpers.withdrawals import (  # noqa: PLC0415
+    from tests.core.pyspec.eth_consensus_specs.test.helpers.withdrawals import (  # noqa: PLC0415
         prepare_pending_withdrawal,
         set_compounding_withdrawal_credential_with_balance,
         set_validator_fully_withdrawable,

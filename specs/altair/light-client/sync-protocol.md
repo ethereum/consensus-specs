@@ -77,10 +77,10 @@ Additional documents describe how the light client sync protocol can be used:
 
 ### Misc
 
-| Name                              | Value                                                | Unit       | Duration    |
-| --------------------------------- | ---------------------------------------------------- | ---------- | ----------- |
-| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1`                                                  | validators |             |
-| `UPDATE_TIMEOUT`                  | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots      | ~27.3 hours |
+| Name                              | Value                                                | Unit       |
+| --------------------------------- | ---------------------------------------------------- | ---------- |
+| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1`                                                  | validators |
+| `UPDATE_TIMEOUT`                  | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots      |
 
 ## Containers
 

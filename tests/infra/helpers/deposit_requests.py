@@ -1,14 +1,14 @@
 import pytest
 
-from eth2spec.test.helpers.deposits import build_deposit_data
-from eth2spec.test.helpers.forks import is_post_gloas
-from eth2spec.test.helpers.keys import (
+from eth_consensus_specs.test.helpers.deposits import build_deposit_data
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
+from eth_consensus_specs.test.helpers.keys import (
     builder_pubkey_to_privkey,
     builder_pubkeys,
     privkeys,
     pubkeys,
 )
-from eth2spec.test.helpers.state import next_epoch
+from eth_consensus_specs.test.helpers.state import next_epoch
 
 
 def run_deposit_request_processing(spec, state, deposit_request, valid=True):

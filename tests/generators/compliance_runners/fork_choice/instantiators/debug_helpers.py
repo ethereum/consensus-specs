@@ -1,4 +1,4 @@
-from eth2spec.test.helpers.state import (
+from eth_consensus_specs.test.helpers.state import (
     transition_to,
 )
 
