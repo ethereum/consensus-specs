@@ -226,6 +226,8 @@ def prepare_execution_payload(
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=get_expected_withdrawals(state).withdrawals,
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
+        # [New in Gloas:EIP7843]
+        slot_number=state.slot,
     )
     return execution_engine.notify_forkchoice_updated(
         # [Modified in Gloas:EIP7732]
