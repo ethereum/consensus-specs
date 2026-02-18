@@ -1,0 +1,80 @@
+name: Nightly Pytest Reference Tests
+
+defaults:
+  run:
+    shell: zsh -e {0}
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: The repository to use (e.g. user/consensus-specs)
+        default: ethereum/consensus-specs
+        type: string
+        required: true
+      ref:
+        description: The branch, tag or SHA to checkout and build from
+        default: master
+        type: string
+        required: true
+  schedule:
+    - cron: "0 4 * * *"
+
+jobs:
+  generate-tests:
+    timeout-minutes: 720 # 12 hours
+    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    strategy:
+      fail-fast: false
+      matrix:
+        fork:
+          - phase0
+          - altair
+          - bellatrix
+          - capella
+          - deneb
+          - electra
+          - fulu
+          - gloas
+          - eip7805
+          - eip7928
+        preset:
+          - minimal
+          - mainnet
+          - general
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: ${{ inputs.repo }}
+          path: "consensus-specs"
+          ref: ${{ inputs.ref }}
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version-file: "consensus-specs/pyproject.toml"
+      - name: Install uv ${{ vars.UV_VERSION }}
+        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
+        with:
+          enable-cache: true
+          version: ${{ vars.UV_VERSION }}
+      - name: Generate tests
+        run: |
+          cd consensus-specs
+          set -o pipefail
+          make test component=pyspec reftests=true preset=${{ matrix.preset }} fork=${{ matrix.fork }} 2>&1 | tee ../pytest-reftests.log
+      - name: Archive test vectors
+        run: |
+          cd pytest-reftests
+          tar -czvf tests.tar.gz tests/
+      - name: Upload test vectors
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: pytest-reftests-${{ matrix.preset }}-${{ matrix.fork }}
+          path: pytest-reftests/tests.tar.gz
+      - name: Upload pytest-reftests.log
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: pytest-reftests-${{ matrix.preset }}-${{ matrix.fork }}.log
+          path: pytest-reftests.log
