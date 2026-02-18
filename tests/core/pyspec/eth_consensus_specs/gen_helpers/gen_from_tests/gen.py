@@ -61,7 +61,7 @@ def generate_from_tests(
         )
 
         if hasattr(tfn, "manifest") and tfn.manifest is not None:
-            manifest = tfn.manifest.override(manifest)
+            manifest = tfn.manifest.with_defaults(manifest)
 
         yield TestCase.from_manifest(
             manifest,

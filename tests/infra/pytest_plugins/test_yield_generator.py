@@ -6,7 +6,6 @@ from unittest.mock import MagicMock
 # yield_generator -> dumper -> context -> yield_generator.
 # When context initiates the chain, the partial module resolution works correctly.
 from eth2spec.test import context  # noqa: F401
-
 from tests.infra.manifest import Manifest
 from tests.infra.pytest_plugins.yield_generator import SpecTestFunction
 
@@ -40,6 +39,14 @@ class TestDeriveHandlerName:
             config, "test_process_sync_aggregate_random"
         )
         assert result == "sync_aggregate"
+
+    def test_strip_only_removes_prefix(self):
+        """removeprefix must not strip occurrences in the middle of the name."""
+        config = {
+            "handler_name_strip": ["test_"],
+        }
+        result = SpecTestFunction._derive_handler_name(config, "contest_results")
+        assert result == "contest_results"
 
     def test_custom_strip_prefixes(self):
         config = {
