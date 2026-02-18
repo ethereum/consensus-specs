@@ -6,6 +6,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.constants import ELECTRA, FULU
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys, pubkeys
+from eth_consensus_specs.utils import bls
 from tests.infra.helpers.deposit_requests import (
     assert_process_deposit_request,
     prepare_process_deposit_request,
@@ -59,6 +60,16 @@ def test_prepare_process_deposit_request_signed(spec, state):
 
     # Signature should not be empty when signed
     assert deposit_request.signature != spec.BLSSignature()
+
+    # Verify the signature is valid
+    deposit_message = spec.DepositMessage(
+        pubkey=deposit_request.pubkey,
+        withdrawal_credentials=deposit_request.withdrawal_credentials,
+        amount=deposit_request.amount,
+    )
+    domain = spec.compute_domain(spec.DOMAIN_DEPOSIT)
+    signing_root = spec.compute_signing_root(deposit_message, domain)
+    assert bls.Verify(deposit_request.pubkey, signing_root, deposit_request.signature)
 
 
 @with_electra_and_later
