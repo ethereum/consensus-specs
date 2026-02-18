@@ -375,7 +375,8 @@ def assert_process_deposit_request(
             )
             # Verify exactly one original builder was replaced and it met reuse criteria
             changed_indices = [
-                i for i in range(len(pre_state.builders))
+                i
+                for i in range(len(pre_state.builders))
                 if state.builders[i] != pre_state.builders[i]
             ]
             assert len(changed_indices) == 1, (
