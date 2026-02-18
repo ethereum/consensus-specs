@@ -4,7 +4,7 @@ from eth_consensus_specs.test.context import (
     with_electra_and_later,
     with_gloas_and_later,
 )
-from eth_consensus_specs.test.helpers.constants import ELECTRA, FULU
+from eth_consensus_specs.test.helpers.constants import ELECTRA, GLOAS
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys, pubkeys
 from eth_consensus_specs.utils import bls
 from tests.infra.helpers.deposit_requests import (
@@ -106,7 +106,7 @@ def test_run_and_assert_deposit_request_processing(spec, state):
     )
 
 
-@with_all_phases_from_to(ELECTRA, FULU)
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_assert_process_deposit_request_start_index_set(spec, state):
     """Test that deposit_requests_start_index is set when UNSET (Electra/Fulu only)."""
@@ -128,7 +128,7 @@ def test_assert_process_deposit_request_start_index_set(spec, state):
     )
 
 
-@with_all_phases_from_to(ELECTRA, FULU)
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_assert_process_deposit_request_start_index_unchanged(spec, state):
     """Test that deposit_requests_start_index is NOT changed when already set (Electra/Fulu only)."""
