@@ -80,7 +80,7 @@ def pytest_generate_tests(metafunc):
         presets = metafunc.config.getoption("--preset")
         if presets is None:
             if metafunc.config.getoption("--reftests", default=False):
-                presets = ["minimal", "mainnet"]
+                presets = ["minimal", "mainnet", "general"]
             else:
                 presets = ["minimal"]
         metafunc.parametrize("preset", presets, indirect=True)
@@ -89,14 +89,17 @@ def pytest_generate_tests(metafunc):
 @fixture(autouse=True)
 def preset(request):
     preset_value = request.param
-    context.DEFAULT_TEST_PRESET = preset_value
+    # "general" tests are preset-independent; use "minimal" for spec loading
+    # while keeping the callspec as "general" for correct output paths.
+    spec_preset = "minimal" if preset_value == "general" else preset_value
+    context.DEFAULT_TEST_PRESET = spec_preset
     # The eth2spec package is built inside tests/core/pyspec/, causing it to be
     # imported under two paths: "eth2spec.test.context" and
     # "tests.core.pyspec.eth2spec.test.context". Python treats these as separate
     # modules with independent module-level variables.
     alt_context = sys.modules.get("tests.core.pyspec.eth2spec.test.context")
     if alt_context is not None:
-        alt_context.DEFAULT_TEST_PRESET = preset_value
+        alt_context.DEFAULT_TEST_PRESET = spec_preset
 
 
 @fixture(autouse=True)

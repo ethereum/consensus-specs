@@ -235,10 +235,29 @@ class YieldGeneratorPlugin:
         if self.config.getoption("--reftests") is False:
             return
 
+        selected = []
+        deselected = []
+
         for i, item in enumerate(items):
             if isinstance(item, pytest.Function):
                 # Replace with custom item
                 items[i] = SpecTestFunction.from_function(item)
+                item = items[i]
+
+            # Deselect tests parametrized with preset="general" that don't
+            # have an explicit @manifest(preset_name="general") decorator.
+            preset = item.callspec.params.get("preset") if hasattr(item, "callspec") else None
+            if preset == "general":
+                func_manifest = getattr(item.obj, "manifest", None)
+                if func_manifest is None or func_manifest.preset_name != "general":
+                    deselected.append(item)
+                    continue
+
+            selected.append(item)
+
+        if deselected:
+            config.hook.pytest_deselected(items=deselected)
+            items[:] = selected
 
     def pytest_configure(self, config):
         if config.getoption("--reftests"):
