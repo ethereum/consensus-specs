@@ -278,11 +278,11 @@ def test_process_deposit_request_pending_deposit_slot_binding(spec, state):
 @spec_state_test
 def test_process_deposit_request_undefined_credential_prefix(spec, state):
     """
-    Test deposit with undefined credential prefix (0x04) routes to validator queue.
+    Test deposit with undefined credential prefix (0x7f) routes to validator queue.
 
     Input State Configured:
         - New validator pubkey
-        - Undefined/invalid credential prefix (0x04)
+        - Undefined/invalid credential prefix (0x7f)
 
     Output State Verified:
         - Pending deposit added to validator queue
@@ -294,8 +294,8 @@ def test_process_deposit_request_undefined_credential_prefix(spec, state):
     """
     amount = spec.MIN_ACTIVATION_BALANCE
 
-    # Create withdrawal credentials with undefined prefix (0x04)
-    undefined_prefix = b"\x04"
+    # Create withdrawal credentials with undefined prefix (0x7f)
+    undefined_prefix = b"\x7f"
     withdrawal_credentials = undefined_prefix + b"\x00" * 11 + b"\x59" * 20
 
     deposit_request = prepare_process_deposit_request(

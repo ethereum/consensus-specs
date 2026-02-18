@@ -247,72 +247,74 @@ def test_process_deposit_request__builder_top_up_invalid_sig(spec, state):
 #
 
 
-@with_gloas_and_later
-@spec_state_test
-def test_process_deposit_request__new_builder_zero_amount(spec, state):
-    """
-    Test fresh builder deposit with zero amount creates a builder with zero balance.
+# jtraglia: impossible input because of deposit contract
+# @with_gloas_and_later
+# @spec_state_test
+# def test_process_deposit_request__new_builder_zero_amount(spec, state):
+#     """
+#     Test fresh builder deposit with zero amount creates a builder with zero balance.
+#
+#     Input State Configured:
+#         - Valid beacon state with existing builders
+#         - Deposit request with amount = 0
+#
+#     Output State Verified:
+#         - New builder created in registry
+#         - Builder balance is zero
+#         - Builder has correct pubkey and execution address
+#         - No pending deposits added (builder deposits are immediate)
+#     """
+#     deposit_request = prepare_process_deposit_request(
+#         spec, state, for_builder=True, amount=0, signed=True
+#     )
+#     pre_state = state.copy()
+#
+#     yield from run_deposit_request_processing(spec, state, deposit_request)
+#
+#     assert_process_deposit_request(
+#         spec,
+#         state,
+#         pre_state,
+#         deposit_request=deposit_request,
+#         is_builder_deposit=True,
+#         expected_builder_balance=spec.Gwei(0),
+#         expected_execution_address=spec.ExecutionAddress(
+#             deposit_request.withdrawal_credentials[12:]
+#         ),
+#     )
 
-    Input State Configured:
-        - Valid beacon state with existing builders
-        - Deposit request with amount = 0
 
-    Output State Verified:
-        - New builder created in registry
-        - Builder balance is zero
-        - Builder has correct pubkey and execution address
-        - No pending deposits added (builder deposits are immediate)
-    """
-    deposit_request = prepare_process_deposit_request(
-        spec, state, for_builder=True, amount=0, signed=True
-    )
-    pre_state = state.copy()
-
-    yield from run_deposit_request_processing(spec, state, deposit_request)
-
-    assert_process_deposit_request(
-        spec,
-        state,
-        pre_state,
-        deposit_request=deposit_request,
-        is_builder_deposit=True,
-        expected_builder_balance=spec.Gwei(0),
-        expected_execution_address=spec.ExecutionAddress(
-            deposit_request.withdrawal_credentials[12:]
-        ),
-    )
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_process_deposit_request__new_builder_below_minimum(spec, state):
-    """
-    Test builder deposit with amount below MIN_DEPOSIT_AMOUNT.
-
-    Input State Configured:
-        - Valid beacon state with existing builders
-        - Deposit request with amount = MIN_DEPOSIT_AMOUNT - 1
-
-    Output State Verified:
-        - New builder created (below-minimum amounts are accepted for builders)
-        - Builder balance equals deposit amount
-    """
-    amount = spec.MIN_DEPOSIT_AMOUNT - 1
-    deposit_request = prepare_process_deposit_request(
-        spec, state, for_builder=True, amount=amount, signed=True
-    )
-    pre_state = state.copy()
-
-    yield from run_deposit_request_processing(spec, state, deposit_request)
-
-    assert_process_deposit_request(
-        spec,
-        state,
-        pre_state,
-        deposit_request=deposit_request,
-        is_builder_deposit=True,
-        expected_builder_balance=amount,
-    )
+# jtraglia: impossible input because of deposit contract
+# @with_gloas_and_later
+# @spec_state_test
+# def test_process_deposit_request__new_builder_below_minimum(spec, state):
+#     """
+#     Test builder deposit with amount below MIN_DEPOSIT_AMOUNT.
+#
+#     Input State Configured:
+#         - Valid beacon state with existing builders
+#         - Deposit request with amount = MIN_DEPOSIT_AMOUNT - 1
+#
+#     Output State Verified:
+#         - New builder created (below-minimum amounts are accepted for builders)
+#         - Builder balance equals deposit amount
+#     """
+#     amount = spec.MIN_DEPOSIT_AMOUNT - 1
+#     deposit_request = prepare_process_deposit_request(
+#         spec, state, for_builder=True, amount=amount, signed=True
+#     )
+#     pre_state = state.copy()
+#
+#     yield from run_deposit_request_processing(spec, state, deposit_request)
+#
+#     assert_process_deposit_request(
+#         spec,
+#         state,
+#         pre_state,
+#         deposit_request=deposit_request,
+#         is_builder_deposit=True,
+#         expected_builder_balance=amount,
+#     )
 
 
 @with_gloas_and_later
