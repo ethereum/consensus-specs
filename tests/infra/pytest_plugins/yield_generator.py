@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, TypedDict
 
 import _pytest
 import pytest
@@ -12,7 +12,16 @@ from eth2spec.test import context
 from eth2spec.test.helpers.typing import SpecForkName
 from tests.infra.manifest import Manifest
 
-RUNNERS = {
+
+class RunnerConfig(TypedDict, total=False):
+    runner_name: str
+    handler_name_fixed: str
+    handler_name_map: dict[str, str]
+    handler_name_strip: list[str]
+    suite_name: str
+
+
+RUNNERS: dict[str, RunnerConfig] = {
     # Simple runners: pkg == runner_name, default handler_name (strip "test_")
     "bls": {},
     "finality": {},
@@ -104,7 +113,7 @@ class SpecTestFunction(pytest.Function):
         return self
 
     @staticmethod
-    def _find_runner(path: Path) -> tuple[str, dict] | None:
+    def _find_runner(path: Path) -> tuple[str, RunnerConfig] | None:
         """Walk up parent directories to find the closest matching runner pkg.
 
         Skips unittests directories (not associated with generators).
@@ -118,7 +127,7 @@ class SpecTestFunction(pytest.Function):
         return None
 
     @staticmethod
-    def _derive_handler_name(config: dict, module_name: str) -> str:
+    def _derive_handler_name(config: RunnerConfig, module_name: str) -> str:
         """Derive handler_name from runner config and module name."""
         if "handler_name_fixed" in config:
             return config["handler_name_fixed"]
@@ -127,13 +136,12 @@ class SpecTestFunction(pytest.Function):
         strips = config.get("handler_name_strip", ["test_"])
         handler_name = module_name
         for prefix in strips:
-            handler_name = handler_name.replace(prefix, "")
+            handler_name = handler_name.removeprefix(prefix)
         return handler_name
 
     def manifest_guess(self) -> None:
-        print("guessing manifest for:", self.name)
         path = self.parent.path
-        module_name = path.name.replace(".py", "")
+        module_name = path.stem
 
         result = self._find_runner(path)
         if result is None:
@@ -159,12 +167,9 @@ class SpecTestFunction(pytest.Function):
         )
 
         if hasattr(self.obj, "manifest") and self.obj.manifest is not None:
-            manifest = self.obj.manifest.override(manifest)
+            manifest = self.obj.manifest.with_defaults(manifest)
 
         self.manifest = manifest
-
-    def runtest(self):
-        super().runtest()
 
     def get_manifest(self) -> Manifest | None:
         if not hasattr(self, "manifest") or self.manifest is None:
@@ -209,9 +214,6 @@ class YieldGeneratorPlugin:
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_protocol(self, item, nextitem):
-        if self.config.getoption("--reftests") is True:
-            print(f"\nRunning test: {item.name}")
-
         yield
 
         if self.config.getoption("--reftests") is False:
@@ -223,20 +225,8 @@ class YieldGeneratorPlugin:
         manifest = item.get_manifest()
         result = item.get_result()
 
-        if manifest is not None:
-            print(f"\nManifest from {item.name}:")
-            print(manifest)
-        else:
-            print(f"\nNo manifest found for {item.name}")
-
         if manifest is not None and result is None:
-            print(f"\nWarning: manifest but vector not created for {item.name}")
-
-        if result is not None:
-            if isinstance(result, dict) and isinstance(list(result.keys())[0], str):
-                print(f"\nMulti-phase test result for {item.name}")
-            else:
-                print(f"\nSingle-phase test result for {item.name}")
+            item.warn(pytest.PytestWarning(f"manifest but vector not created for {item.name}"))
 
         if manifest is not None and result is not None:
             self.generate_test_vector(manifest, result)
@@ -259,18 +249,23 @@ class YieldGeneratorPlugin:
         if isinstance(result, dict):
             for fork_name, phase_result in result.items():
                 self.generate_test_vector_phase(manifest, phase_result, fork_name)
+        else:
+            assert manifest.fork_name is not None, (
+                f"fork_name must be set for single-phase test: {manifest}"
+            )
+            self.generate_test_vector_phase(manifest, result, manifest.fork_name)
 
     def generate_test_vector_phase(
         self, manifest: Manifest, phase_result: list, fork_name: SpecForkName
     ) -> None:
         dumper = self.get_dumper()
 
-        manifest = manifest.override(Manifest(fork_name=fork_name))
+        manifest = manifest.with_defaults(Manifest(fork_name=fork_name))
         assert manifest.is_complete(), (
             f"Manifest must be complete to generate test vector for {manifest}"
         )
 
-        dir = (
+        output_dir = (
             Path(self.output_dir)
             / manifest.preset_name  # type: ignore
             / manifest.fork_name
@@ -280,7 +275,7 @@ class YieldGeneratorPlugin:
             / manifest.case_name
         )
 
-        outputs: list[tuple[str, str, Any]] = []
+        outputs: list[tuple[str, Any, Any]] = []
         meta: dict[str, Any] = {}
 
         for name, kind, data in phase_result:
@@ -290,16 +285,15 @@ class YieldGeneratorPlugin:
                 method = getattr(dumper, f"dump_{kind}", None)
                 if method is None:
                     raise ValueError(f"Unknown kind {kind!r}")
-                outputs.append((name, kind, data))
+                outputs.append((name, method, data))
 
-        for name, kind, data in outputs:
-            method = getattr(dumper, f"dump_{kind}")
-            method(dir, name, data)
+        for name, method, data in outputs:
+            method(output_dir, name, data)
 
         if meta:
-            dumper.dump_meta(dir, meta)
+            dumper.dump_meta(output_dir, meta)
 
-        dumper.dump_manifest(dir, {
+        dumper.dump_manifest(output_dir, {
             "preset": manifest.preset_name,
             "fork": manifest.fork_name,
             "runner": manifest.runner_name,
