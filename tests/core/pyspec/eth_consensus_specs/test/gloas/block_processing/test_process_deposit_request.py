@@ -728,7 +728,6 @@ def test_process_deposit_request__routing__validator_pubkey_builder_credentials(
     """Test that existing validator pubkey with builder credentials goes to validator queue."""
     validator_pubkey = state.validators[0].pubkey
     amount = spec.MIN_DEPOSIT_AMOUNT
-    pre_builder_count = len(state.builders)
 
     # Create builder withdrawal credentials - but use existing validator pubkey
     withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
@@ -756,7 +755,6 @@ def test_process_deposit_request__routing__validator_pubkey_builder_credentials(
         is_builder_deposit=False,
         expected_pending_deposit_pubkey=validator_pubkey,
         expected_pending_deposit_amount=amount,
-        expected_builder_count=pre_builder_count,
     )
 
 
@@ -766,7 +764,6 @@ def test_process_deposit_request__routing__validator_pubkey_validator_credential
     """Test that existing validator pubkey with validator credentials goes to validator queue."""
     validator_pubkey = state.validators[0].pubkey
     amount = spec.MIN_DEPOSIT_AMOUNT
-    pre_builder_count = len(state.builders)
 
     # Create deposit with validator (non-builder) credentials for existing validator
     deposit_request = prepare_process_deposit_request(
@@ -789,7 +786,6 @@ def test_process_deposit_request__routing__validator_pubkey_validator_credential
         is_builder_deposit=False,
         expected_pending_deposit_pubkey=validator_pubkey,
         expected_pending_deposit_amount=amount,
-        expected_builder_count=pre_builder_count,
     )
 
 
@@ -800,7 +796,6 @@ def test_process_deposit_request__routing__new_pubkey_validator_credentials(spec
     # Use a pubkey that doesn't exist as validator or builder (new validator index)
     new_pubkey = pubkeys[len(state.validators)]
     amount = spec.MIN_DEPOSIT_AMOUNT
-    pre_builder_count = len(state.builders)
 
     # Create deposit with validator (non-builder) credentials for new validator
     deposit_request = prepare_process_deposit_request(
@@ -822,7 +817,6 @@ def test_process_deposit_request__routing__new_pubkey_validator_credentials(spec
         is_builder_deposit=False,
         expected_pending_deposit_pubkey=new_pubkey,
         expected_pending_deposit_amount=amount,
-        expected_builder_count=pre_builder_count,
     )
 
 
@@ -842,7 +836,6 @@ def test_process_deposit_request__routing__new_pubkey_eth1_credentials(spec, sta
     """
     new_pubkey = pubkeys[len(state.validators)]
     amount = spec.MIN_DEPOSIT_AMOUNT
-    pre_builder_count = len(state.builders)
 
     # Create ETH1 withdrawal credentials (0x01 prefix)
     withdrawal_credentials = (
@@ -861,7 +854,6 @@ def test_process_deposit_request__routing__new_pubkey_eth1_credentials(spec, sta
 
     yield from run_deposit_request_processing(spec, state, deposit_request)
 
-    # is_builder_deposit=False triggers builder count unchanged check
     assert_process_deposit_request(
         spec,
         state,
@@ -870,7 +862,6 @@ def test_process_deposit_request__routing__new_pubkey_eth1_credentials(spec, sta
         is_builder_deposit=False,
         expected_pending_deposit_pubkey=new_pubkey,
         expected_pending_deposit_credentials=withdrawal_credentials,
-        expected_builder_count=pre_builder_count,
     )
 
 
@@ -899,7 +890,6 @@ def test_process_deposit_request__routing__new_pubkey_compounding_credentials(sp
     """
     new_pubkey = pubkeys[len(state.validators)]
     amount = spec.MIN_DEPOSIT_AMOUNT
-    pre_builder_count = len(state.builders)
 
     # Create compounding withdrawal credentials (0x02 prefix)
     withdrawal_credentials = (
@@ -918,7 +908,6 @@ def test_process_deposit_request__routing__new_pubkey_compounding_credentials(sp
 
     yield from run_deposit_request_processing(spec, state, deposit_request)
 
-    # is_builder_deposit=False triggers builder count unchanged check
     assert_process_deposit_request(
         spec,
         state,
@@ -927,7 +916,6 @@ def test_process_deposit_request__routing__new_pubkey_compounding_credentials(sp
         is_builder_deposit=False,
         expected_pending_deposit_pubkey=new_pubkey,
         expected_pending_deposit_credentials=withdrawal_credentials,
-        expected_builder_count=pre_builder_count,
     )
 
 
@@ -965,7 +953,6 @@ def test_process_deposit_request__routing__pending_deposit_valid_signature(spec,
         signed=True,
     )
 
-    pre_builder_count = len(state.builders)
     pre_state = state.copy()
 
     yield from run_deposit_request_processing(spec, state, deposit_request)
@@ -977,7 +964,6 @@ def test_process_deposit_request__routing__pending_deposit_valid_signature(spec,
         pre_state,
         deposit_request=deposit_request,
         is_builder_deposit=False,
-        expected_builder_count=pre_builder_count,
     )
 
 
@@ -1147,7 +1133,6 @@ def test_process_deposit_request__routing__pending_deposits_invalid_then_valid(s
         signed=True,
     )
 
-    pre_builder_count = len(state.builders)
     pre_state = state.copy()
 
     yield from run_deposit_request_processing(spec, state, deposit_request)
@@ -1159,7 +1144,6 @@ def test_process_deposit_request__routing__pending_deposits_invalid_then_valid(s
         pre_state,
         deposit_request=deposit_request,
         is_builder_deposit=False,
-        expected_builder_count=pre_builder_count,
     )
 
 
@@ -1197,7 +1181,6 @@ def test_process_deposit_request__routing__pending_deposit_builder_credentials(s
         signed=True,
     )
 
-    pre_builder_count = len(state.builders)
     pre_state = state.copy()
 
     yield from run_deposit_request_processing(spec, state, deposit_request)
@@ -1209,5 +1192,4 @@ def test_process_deposit_request__routing__pending_deposit_builder_credentials(s
         pre_state,
         deposit_request=deposit_request,
         is_builder_deposit=False,
-        expected_builder_count=pre_builder_count,
     )
