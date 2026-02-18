@@ -167,11 +167,19 @@ def prepare_process_deposit_request(
     return deposit_request
 
 
-def _is_builder_deposit(spec, deposit_request):
-    """Check if a deposit request is for a builder (has BUILDER_WITHDRAWAL_PREFIX)."""
+def _is_builder_deposit(spec, pre_state, deposit_request):
+    """Check if request routes to builder path under Gloas+ deposit routing rules."""
     if not is_post_gloas(spec):
         return False
-    return deposit_request.withdrawal_credentials[0:1] == spec.BUILDER_WITHDRAWAL_PREFIX
+    builder_pubkeys = {builder.pubkey for builder in pre_state.builders}
+    validator_pubkeys = {v.pubkey for v in pre_state.validators}
+    is_builder = deposit_request.pubkey in builder_pubkeys
+    is_validator = deposit_request.pubkey in validator_pubkeys
+    return is_builder or (
+        spec.is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
+        and not is_validator
+        and not spec.is_pending_validator(pre_state, deposit_request.pubkey)
+    )
 
 
 def assert_process_deposit_request(
@@ -252,7 +260,7 @@ def assert_process_deposit_request(
 
     # Auto-detect builder deposit if not specified
     if is_builder_deposit is None:
-        is_builder_deposit = _is_builder_deposit(spec, deposit_request)
+        is_builder_deposit = _is_builder_deposit(spec, pre_state, deposit_request)
 
     if is_builder_deposit and is_post_gloas(spec):
         # BUILDER DEPOSIT ASSERTIONS (Gloas+)
