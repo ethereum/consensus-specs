@@ -1,11 +1,11 @@
-from eth2spec.test.context import (
+from eth_consensus_specs.test.context import (
     spec_state_test,
     with_all_phases_from_to,
     with_electra_and_later,
     with_gloas_and_later,
 )
-from eth2spec.test.helpers.constants import ELECTRA, FULU
-from eth2spec.test.helpers.keys import builder_pubkeys, pubkeys
+from eth_consensus_specs.test.helpers.constants import ELECTRA, FULU
+from eth_consensus_specs.test.helpers.keys import builder_pubkeys, pubkeys
 from tests.infra.helpers.deposit_requests import (
     assert_process_deposit_request,
     prepare_process_deposit_request,
