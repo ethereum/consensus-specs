@@ -24,6 +24,7 @@ from .utils import install_sigint_handler, time_since
 
 # Flag that the runner does NOT run test via pytest
 context.is_pytest = False
+context.is_generator = True
 
 
 def get_shared_prefix(test_cases, min_segments=3):
@@ -104,13 +105,21 @@ def execute_test(test_case: TestCase, dumper: Dumper):
 
     for name, kind, data in outputs:
         method = getattr(dumper, f"dump_{kind}")
-        method(test_case, name, data)
+        method(test_case.dir, name, data)
 
-    if meta:
-        dumper.dump_meta(test_case, meta)
+    if meta and test_case.dir is not None:
+        dumper.dump_meta(test_case.dir, meta)
 
     # Always write manifest.yml for every test case
-    dumper.dump_manifest(test_case)
+    manifest_data = {
+        "preset": test_case.preset_name,
+        "fork": test_case.fork_name,
+        "runner": test_case.runner_name,
+        "handler": test_case.handler_name,
+        "suite": test_case.suite_name,
+        "case": test_case.case_name,
+    }
+    dumper.dump_manifest(test_case.dir, manifest_data)
 
 
 def run_generator(input_test_cases: Iterable[TestCase], args=None):

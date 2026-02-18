@@ -33,10 +33,10 @@ def fixture(*args, **kwargs):
 def pytest_addoption(parser):
     parser.addoption(
         "--preset",
-        action="store",
+        action="append",
         type=str,
-        default="minimal",
-        help="preset: make the pyspec use the specified preset",
+        default=None,
+        help="preset: make the pyspec use the specified preset. Can be repeated, e.g., --preset=minimal --preset=mainnet",
     )
     parser.addoption(
         "--fork",
@@ -75,17 +75,31 @@ def _validate_fork_name(forks):
             )
 
 
+def pytest_generate_tests(metafunc):
+    if "preset" in metafunc.fixturenames:
+        presets = metafunc.config.getoption("--preset")
+        if presets is None:
+            if metafunc.config.getoption("--reftests", default=False):
+                presets = ["minimal", "mainnet", "general"]
+            else:
+                presets = ["minimal"]
+        metafunc.parametrize("preset", presets, indirect=True)
+
+
 @fixture(autouse=True)
 def preset(request):
-    preset_value = request.config.getoption("--preset")
-    context.DEFAULT_TEST_PRESET = preset_value
-    # The eth_consensus_specs package is built inside tests/core/pyspec/, causing it to be
-    # imported under two paths: "eth_consensus_specs.test.context" and
-    # "tests.core.pyspec.eth_consensus_specs.test.context". Python treats these as separate
+    preset_value = request.param
+    # "general" tests are preset-independent; use "minimal" for spec loading
+    # while keeping the callspec as "general" for correct output paths.
+    spec_preset = "minimal" if preset_value == "general" else preset_value
+    context.DEFAULT_TEST_PRESET = spec_preset
+    # The eth2spec package is built inside tests/core/pyspec/, causing it to be
+    # imported under two paths: "eth2spec.test.context" and
+    # "tests.core.pyspec.eth2spec.test.context". Python treats these as separate
     # modules with independent module-level variables.
     alt_context = sys.modules.get("tests.core.pyspec.eth_consensus_specs.test.context")
     if alt_context is not None:
-        alt_context.DEFAULT_TEST_PRESET = preset_value
+        alt_context.DEFAULT_TEST_PRESET = spec_preset
 
 
 @fixture(autouse=True)
@@ -119,3 +133,6 @@ def bls_type(request):
         bls_utils.use_fastest()
     else:
         raise Exception(f"unrecognized bls type: {bls_type}")
+
+
+pytest_plugins = ["tests.infra.pytest_plugins.yield_generator"]

@@ -1,10 +1,10 @@
+from pathlib import Path
+
 from eth_utils import encode_hex
 from ruamel.yaml import YAML
 from snappy import compress
 
 from eth_consensus_specs.test import context
-
-from .gen_typing import TestCase
 
 
 def get_default_yaml():
@@ -48,45 +48,37 @@ def get_cfg_yaml():
 class Dumper:
     """Helper for dumping test case outputs (cfg, data, meta, ssz)."""
 
-    def __init__(self, default_yaml: YAML = None, cfg_yaml: YAML = None):
+    def __init__(self, default_yaml: YAML | None = None, cfg_yaml: YAML | None = None):
         self.default_yaml = default_yaml or get_default_yaml()
         self.cfg_yaml = cfg_yaml or get_cfg_yaml()
 
-    def dump_meta(self, test_case: TestCase, meta: dict) -> None:
+    def dump_meta(self, dir: Path, meta: dict) -> None:
         if not meta:
             return
-        self._dump_yaml(test_case, "meta", meta, self.default_yaml)
+        self._dump_yaml(dir, "meta", meta, self.default_yaml)
 
-    def dump_cfg(self, test_case: TestCase, name: str, data: any) -> None:
-        self._dump_yaml(test_case, name, data, self.cfg_yaml)
+    def dump_cfg(self, dir: Path, name: str, data: any) -> None:
+        self._dump_yaml(dir, name, data, self.cfg_yaml)
 
-    def dump_data(self, test_case: TestCase, name: str, data: any) -> None:
-        self._dump_yaml(test_case, name, data, self.default_yaml)
+    def dump_data(self, dir: Path, name: str, data: any) -> None:
+        self._dump_yaml(dir, name, data, self.default_yaml)
 
-    def dump_ssz(self, test_case: TestCase, name: str, data: bytes) -> None:
+    def dump_ssz(self, dir: Path, name: str, data: bytes) -> None:
         """Compress and write SSZ data for test case."""
-        path = test_case.dir / f"{name}.ssz_snappy"
+        path = dir / f"{name}.ssz_snappy"
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("wb") as f:
             f.write(compress(data))
 
-    def dump_manifest(self, test_case: TestCase) -> None:
+    def dump_manifest(self, dir: Path, manifest_data: dict) -> None:
         """Write manifest.yml file containing test case metadata."""
-        manifest_data = {
-            "preset": test_case.preset_name,
-            "fork": test_case.fork_name,
-            "runner": test_case.runner_name,
-            "handler": test_case.handler_name,
-            "suite": test_case.suite_name,
-            "case": test_case.case_name,
-        }
         # Use cfg_yaml which has block style formatting (default_flow_style=False)
         # This ensures each field appears on a separate line, matching data.yaml format
-        self._dump_yaml(test_case, "manifest", manifest_data, self.cfg_yaml)
+        self._dump_yaml(dir, "manifest", manifest_data, self.cfg_yaml)
 
-    def _dump_yaml(self, test_case: TestCase, name: str, data: any, yaml_encoder: YAML) -> None:
+    def _dump_yaml(self, dir: Path, name: str, data: any, yaml_encoder: YAML) -> None:
         """Helper to write YAML files for test case."""
-        path = test_case.dir / f"{name}.yaml"
+        path = dir / f"{name}.yaml"
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w") as f:
             yaml_encoder.dump(data, f)

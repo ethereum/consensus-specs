@@ -36,16 +36,16 @@ def test_manifest_decorator_all_params():
     assert test_function.manifest.case_name == "valid_attestation"
 
 
-def test_manifest_override():
-    """Test that Manifest.override() works correctly."""
-    base_manifest = Manifest(fork_name="phase0", preset_name="minimal")
-    override_manifest = Manifest(fork_name="altair", runner_name="test")
+def test_manifest_with_defaults():
+    """Test that Manifest.with_defaults() works correctly."""
+    defaults = Manifest(fork_name="phase0", preset_name="minimal")
+    partial = Manifest(fork_name="altair", runner_name="test")
 
-    result = override_manifest.override(base_manifest)
+    result = partial.with_defaults(defaults)
 
-    assert result.fork_name == "altair"  # Override takes precedence
-    assert result.preset_name == "minimal"  # Falls back to base
-    assert result.runner_name == "test"  # From override
+    assert result.fork_name == "altair"  # Explicit value takes precedence
+    assert result.preset_name == "minimal"  # Falls back to defaults
+    assert result.runner_name == "test"  # From partial
     assert result.handler_name is None
     assert result.suite_name is None
     assert result.case_name is None

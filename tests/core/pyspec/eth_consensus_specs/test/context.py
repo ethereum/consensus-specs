@@ -10,6 +10,7 @@ from frozendict import frozendict
 from lru import LRU
 
 from eth_consensus_specs.utils import bls
+from tests.infra.pytest_plugins.yield_generator import MultiPhaseResult
 from tests.infra.yield_generator import vector_test
 
 from .exceptions import SkippedTest
@@ -303,6 +304,7 @@ DEFAULT_BLS_ACTIVE = True
 
 
 is_pytest = True
+is_generator = False
 
 
 def dump_skipping_message(reason: str) -> None:
@@ -583,6 +585,16 @@ def _run_test_case_with_phases(fn, phases, other_phases, kw, args, is_fork_trans
 
     # Return is ignored whenever multiple phases are ran.
     # This return is for test generators to emit python generators (yielding test vector outputs)
+
+    if is_pytest and is_generator:
+        results: MultiPhaseResult = {}
+
+        for phase in run_phases:
+            ret = fn(spec=targets[phase], phases=phase_dir, *args, **kw)
+            results[phase] = ret
+
+        return results
+
     for phase in run_phases:
         ret = fn(spec=targets[phase], phases=phase_dir, *args, **kw)
 
@@ -788,7 +800,7 @@ def _with_config_overrides_emit(config_overrides, emitted_fork=None):
 def only_generator(reason):
     def _decorator(inner):
         def _wrapper(*args, **kwargs):
-            if is_pytest:
+            if not is_generator and is_pytest:
                 dump_skipping_message(reason)
                 return None
             return inner(*args, **kwargs)

@@ -66,7 +66,7 @@ def vector_test(fn):
     def wrapper_generator(*args, **kw) -> Generator | None:
         # check generator mode, may be None/else.
         # "pop" removes it, so it is not passed to the inner function.
-        if kw.pop("generator_mode", False) is True:
+        if kw.pop("generator_mode", False) is True or context.is_generator is True:
             # return the yielding function as a generator object.
             return _yield_generator_post_processing(fn(*args, **kw))
         else:
@@ -78,7 +78,7 @@ def vector_test(fn):
         # Lazy import to avoid circular dependency with eth_consensus_specs.test.context
         from eth_consensus_specs.test import context  # noqa: PLC0415
 
-        if not context.is_pytest:
+        if context.is_generator:
             return wrapper_generator
         else:
             # pytest does not support yielded data in the outer function,

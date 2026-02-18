@@ -13,16 +13,16 @@ class Manifest:
     suite_name: str | None = None
     case_name: str | None = None
 
-    def override(self, manifest: Manifest) -> Manifest:
+    def with_defaults(self, defaults: Manifest) -> Manifest:
         return Manifest(
-            fork_name=self.fork_name if self.fork_name is not None else manifest.fork_name,
-            preset_name=self.preset_name if self.preset_name is not None else manifest.preset_name,
-            runner_name=self.runner_name if self.runner_name is not None else manifest.runner_name,
+            fork_name=self.fork_name if self.fork_name is not None else defaults.fork_name,
+            preset_name=self.preset_name if self.preset_name is not None else defaults.preset_name,
+            runner_name=self.runner_name if self.runner_name is not None else defaults.runner_name,
             handler_name=self.handler_name
             if self.handler_name is not None
-            else manifest.handler_name,
-            suite_name=self.suite_name if self.suite_name is not None else manifest.suite_name,
-            case_name=self.case_name if self.case_name is not None else manifest.case_name,
+            else defaults.handler_name,
+            suite_name=self.suite_name if self.suite_name is not None else defaults.suite_name,
+            case_name=self.case_name if self.case_name is not None else defaults.case_name,
         )
 
     def is_complete(self) -> bool:
@@ -66,7 +66,7 @@ def manifest(
         )
 
         if _manifest is not None:
-            func.manifest = func.manifest.override(_manifest)
+            func.manifest = func.manifest.with_defaults(_manifest)
 
         return func
 
