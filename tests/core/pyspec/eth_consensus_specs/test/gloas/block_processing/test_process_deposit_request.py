@@ -828,7 +828,7 @@ def test_process_deposit_request__routing__new_pubkey_eth1_credentials(spec, sta
 
     Input State Configured:
         - New pubkey (not existing validator or builder)
-        - ETH1_WITHDRAWAL_PREFIX credentials
+        - ETH1_ADDRESS_WITHDRAWAL_PREFIX credentials
 
     Output State Verified:
         - No new builder created (builder count unchanged)
