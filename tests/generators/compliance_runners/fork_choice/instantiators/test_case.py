@@ -6,19 +6,19 @@ from typing import Any
 
 from ruamel.yaml import YAML
 
-from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
-from eth2spec.test.context import (
+from eth_consensus_specs.gen_helpers.gen_base.gen_typing import TestCase
+from eth_consensus_specs.test.context import (
     spec_state_test,
     with_altair_and_later,
 )
-from eth2spec.test.helpers.fork_choice import (
+from eth_consensus_specs.test.helpers.fork_choice import (
     get_attestation_file_name,
     get_attester_slashing_file_name,
     get_block_file_name,
     on_tick_and_append_step,
     output_store_checks,
 )
-from eth2spec.utils import bls
+from eth_consensus_specs.utils import bls
 
 from .block_cover import gen_block_cover_test_data
 from .block_tree import gen_block_tree_test_data

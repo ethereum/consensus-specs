@@ -1,10 +1,10 @@
 from itertools import permutations
 from random import Random
 
-from eth2spec.debug.random_value import RandomizationMode
-from eth2spec.test.exceptions import SkippedTest
-from eth2spec.utils.ssz.ssz_impl import deserialize, serialize
-from eth2spec.utils.ssz.ssz_typing import (
+from eth_consensus_specs.debug.random_value import RandomizationMode
+from eth_consensus_specs.test.exceptions import SkippedTest
+from eth_consensus_specs.utils.ssz.ssz_impl import deserialize, serialize
+from eth_consensus_specs.utils.ssz.ssz_typing import (
     CompatibleUnion,
     View,
 )
@@ -59,14 +59,12 @@ def valid_compatible_union_cases(rng: Random, name: str, typ: type[View]):
                 yield (
                     f"{name}_{mode.to_name()}_selector_{option}_chaos_{variation}",
                     valid_test_case(
-                        lambda rng,
-                        mode=mode,
-                        typ=typ,
-                        elem_type=elem_type,
-                        option=option: deserialize(
-                            typ,
-                            bytes([option])
-                            + serialize(container_case_fn(rng, mode, elem_type, chaos=True)),
+                        lambda rng, mode=mode, typ=typ, elem_type=elem_type, option=option: (
+                            deserialize(
+                                typ,
+                                bytes([option])
+                                + serialize(container_case_fn(rng, mode, elem_type, chaos=True)),
+                            )
                         ),
                         rng,
                     ),
@@ -76,14 +74,12 @@ def valid_compatible_union_cases(rng: Random, name: str, typ: type[View]):
                     yield (
                         f"{name}_{mode.to_name()}_selector_{option}_{variation}",
                         valid_test_case(
-                            lambda rng,
-                            mode=mode,
-                            typ=typ,
-                            elem_type=elem_type,
-                            option=option: deserialize(
-                                typ,
-                                bytes([option])
-                                + serialize(container_case_fn(rng, mode, elem_type)),
+                            lambda rng, mode=mode, typ=typ, elem_type=elem_type, option=option: (
+                                deserialize(
+                                    typ,
+                                    bytes([option])
+                                    + serialize(container_case_fn(rng, mode, elem_type)),
+                                )
                             ),
                             rng,
                         ),

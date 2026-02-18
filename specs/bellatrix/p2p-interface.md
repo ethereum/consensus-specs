@@ -149,7 +149,7 @@ down-scoring or disconnection.
 Request and Response remain unchanged. Bellatrix fork-digest is introduced to
 the `context` enum to specify Bellatrix block type.
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 | ------------------------ | ----------------------------- |
@@ -164,7 +164,7 @@ the `context` enum to specify Bellatrix block type.
 Request and Response remain unchanged. Bellatrix fork-digest is introduced to
 the `context` enum to specify Bellatrix block type.
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 | ------------------------ | ----------------------------- |

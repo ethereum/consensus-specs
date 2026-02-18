@@ -116,7 +116,7 @@ details on how to handle transitioning gossip topics for Capella.
 The Capella fork-digest is introduced to the `context` enum to specify Capella
 block type.
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 | ------------------------ | ----------------------------- |
@@ -132,7 +132,7 @@ block type.
 The Capella fork-digest is introduced to the `context` enum to specify Capella
 block type.
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 | ------------------------ | ----------------------------- |

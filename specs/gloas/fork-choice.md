@@ -94,7 +94,7 @@ class LatestMessage(object):
 
 ### Modified `update_latest_messages`
 
-*Note*: the function `update_latest_messages` is updated to use the attestation
+*Note*: The function `update_latest_messages` is updated to use the attestation
 slot instead of target. Notice that this function is only called on validated
 attestations and validators cannot attest twice in the same epoch without
 equivocating. Notice also that target epoch number and slot number are validated
@@ -146,7 +146,7 @@ class Store(object):
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
-    execution_payload_states: Dict[Root, BeaconState] = field(default_factory=dict)
+    payload_states: Dict[Root, BeaconState] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
     payload_timeliness_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
@@ -176,11 +176,12 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         equivocating_indices=set(),
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},
+        # [New in Gloas:EIP7732]
         block_timeliness={anchor_root: [True, True]},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
         # [New in Gloas:EIP7732]
-        execution_payload_states={anchor_root: copy(anchor_state)},
+        payload_states={anchor_root: copy(anchor_state)},
         # [New in Gloas:EIP7732]
         payload_timeliness_vote={
             anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
@@ -231,7 +232,7 @@ def is_payload_timely(store: Store, root: Root) -> bool:
 
     # If the payload is not locally available, the payload
     # is not considered available regardless of the PTC vote
-    if root not in store.execution_payload_states:
+    if root not in store.payload_states:
         return False
 
     return sum(store.payload_timeliness_vote[root]) > PAYLOAD_TIMELY_THRESHOLD
@@ -250,7 +251,7 @@ def is_payload_data_available(store: Store, root: Root) -> bool:
 
     # If the payload is not locally available, the blob data
     # is not considered available regardless of the PTC vote
-    if root not in store.execution_payload_states:
+    if root not in store.payload_states:
         return False
 
     return sum(store.payload_data_availability_vote[root]) > DATA_AVAILABILITY_TIMELY_THRESHOLD
@@ -487,7 +488,7 @@ def get_node_children(
 ) -> Sequence[ForkChoiceNode]:
     if node.payload_status == PAYLOAD_STATUS_PENDING:
         children = [ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_EMPTY)]
-        if node.root in store.execution_payload_states:
+        if node.root in store.payload_states:
             children.append(ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_FULL))
         return children
     else:
@@ -745,8 +746,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     parent_bid = parent_block.body.signed_execution_payload_bid.message
     # Make a copy of the state to avoid mutability issues
     if is_parent_node_full(store, block):
-        assert block.parent_root in store.execution_payload_states
-        state = copy(store.execution_payload_states[block.parent_root])
+        assert block.parent_root in store.payload_states
+        state = copy(store.payload_states[block.parent_root])
     else:
         assert bid.parent_block_hash == parent_bid.parent_block_hash
         state = copy(store.block_states[block.parent_root])
@@ -836,7 +837,7 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
     process_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
 
     # Add new state for this payload to the store
-    store.execution_payload_states[envelope.beacon_block_root] = state
+    store.payload_states[envelope.beacon_block_root] = state
 ```
 
 ### New `on_payload_attestation_message`

@@ -1,10 +1,10 @@
 from collections.abc import Callable, Sequence
 from random import Random
 
-from eth2spec.debug.random_value import get_random_ssz_object, RandomizationMode
-from eth2spec.test.exceptions import SkippedTest
-from eth2spec.utils.ssz.ssz_impl import deserialize, serialize
-from eth2spec.utils.ssz.ssz_typing import (
+from eth_consensus_specs.debug.random_value import get_random_ssz_object, RandomizationMode
+from eth_consensus_specs.test.exceptions import SkippedTest
+from eth_consensus_specs.utils.ssz.ssz_impl import deserialize, serialize
+from eth_consensus_specs.utils.ssz.ssz_typing import (
     Bitlist,
     Bitvector,
     byte,
@@ -165,10 +165,9 @@ def invalid_container_cases(rng: Random, name: str, typ: type[View], offsets: Se
         f"{name}_extra_byte",
         invalid_test_case(
             typ,
-            lambda rng, typ=typ: serialize(
-                container_case_fn(rng, RandomizationMode.mode_max_count, typ)
-            )
-            + b"\x00",
+            lambda rng, typ=typ: (
+                serialize(container_case_fn(rng, RandomizationMode.mode_max_count, typ)) + b"\x00"
+            ),
             rng,
         ),
     )
