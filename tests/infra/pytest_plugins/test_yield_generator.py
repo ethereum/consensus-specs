@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 # Import context first to resolve the circular dependency:
 # yield_generator -> dumper -> context -> yield_generator.
 # When context initiates the chain, the partial module resolution works correctly.
-from eth2spec.test import context  # noqa: F401
+from eth_consensus_specs.test import context  # noqa: F401
 from tests.infra.manifest import Manifest
 from tests.infra.pytest_plugins.yield_generator import SpecTestFunction
 
@@ -35,9 +35,7 @@ class TestDeriveHandlerName:
             },
             "handler_name_strip": ["test_process_"],
         }
-        result = SpecTestFunction._derive_handler_name(
-            config, "test_process_sync_aggregate_random"
-        )
+        result = SpecTestFunction._derive_handler_name(config, "test_process_sync_aggregate_random")
         assert result == "sync_aggregate"
 
     def test_strip_only_removes_prefix(self):
@@ -61,10 +59,17 @@ class TestDeriveHandlerName:
 
 def _make_stub(name, path, originalname=None, obj=None, callspec=None):
     """Build a stub with the attributes manifest_guess reads."""
-    stub = MagicMock(spec=[
-        "name", "parent", "obj", "originalname", "manifest",
-        "_find_runner", "_derive_handler_name",
-    ])
+    stub = MagicMock(
+        spec=[
+            "name",
+            "parent",
+            "obj",
+            "originalname",
+            "manifest",
+            "_find_runner",
+            "_derive_handler_name",
+        ]
+    )
     stub.name = name
     stub.parent = SimpleNamespace(path=path)
     stub.originalname = originalname or name

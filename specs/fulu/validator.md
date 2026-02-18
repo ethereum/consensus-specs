@@ -185,7 +185,7 @@ then constructing the list of cells and proofs for each blob (as defined in the
 example below) using the blobs bundle in the response, and finally by calling
 `get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)`.
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 ```python
 cells_and_kzg_proofs = []

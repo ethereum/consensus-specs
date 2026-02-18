@@ -1,7 +1,7 @@
 from random import Random
 
-from eth2spec.debug.random_value import get_random_ssz_object, RandomizationMode
-from eth2spec.utils.ssz.ssz_typing import ProgressiveBitlist
+from eth_consensus_specs.debug.random_value import get_random_ssz_object, RandomizationMode
+from eth_consensus_specs.utils.ssz.ssz_typing import ProgressiveBitlist
 
 from .ssz_bitlist import INVALID_BITLIST_CASES
 from .ssz_test_case import invalid_test_case, valid_test_case
@@ -67,11 +67,13 @@ def valid_cases():
                 yield (
                     f"progbitlist_{mode.to_name()}_{length}_{variation}",
                     valid_test_case(
-                        lambda rng,
-                        mode=mode,
-                        length=length,
-                        variation=variation: progressive_bitlist_case_fn(
-                            rng, mode, length, force_final_bit=[None, True, False][variation % 3]
+                        lambda rng, mode=mode, length=length, variation=variation: (
+                            progressive_bitlist_case_fn(
+                                rng,
+                                mode,
+                                length,
+                                force_final_bit=[None, True, False][variation % 3],
+                            )
                         ),
                         rng,
                     ),

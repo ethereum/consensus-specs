@@ -8,7 +8,7 @@ class DenebSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth2spec.capella import {preset_name} as capella
+from eth_consensus_specs.capella import {preset_name} as capella
 """
 
     @classmethod

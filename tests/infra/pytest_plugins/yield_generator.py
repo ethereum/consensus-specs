@@ -7,9 +7,9 @@ from typing import Any, TypedDict
 import _pytest
 import pytest
 
-from eth2spec.gen_helpers.gen_base.dumper import Dumper
-from eth2spec.test import context
-from eth2spec.test.helpers.typing import SpecForkName
+from eth_consensus_specs.gen_helpers.gen_base.dumper import Dumper
+from eth_consensus_specs.test import context
+from eth_consensus_specs.test.helpers.typing import SpecForkName
 from tests.infra.manifest import Manifest
 
 
@@ -312,14 +312,17 @@ class YieldGeneratorPlugin:
         if meta:
             dumper.dump_meta(output_dir, meta)
 
-        dumper.dump_manifest(output_dir, {
-            "preset": manifest.preset_name,
-            "fork": manifest.fork_name,
-            "runner": manifest.runner_name,
-            "handler": manifest.handler_name,
-            "suite": manifest.suite_name,
-            "case": manifest.case_name,
-        })
+        dumper.dump_manifest(
+            output_dir,
+            {
+                "preset": manifest.preset_name,
+                "fork": manifest.fork_name,
+                "runner": manifest.runner_name,
+                "handler": manifest.handler_name,
+                "suite": manifest.suite_name,
+                "case": manifest.case_name,
+            },
+        )
 
     def get_dumper(self):
         if self.dumper is None:

@@ -1,8 +1,8 @@
 from random import Random
 
-from eth2spec.debug.random_value import get_random_ssz_object, RandomizationMode
-from eth2spec.utils.ssz.ssz_impl import serialize
-from eth2spec.utils.ssz.ssz_typing import (
+from eth_consensus_specs.debug.random_value import get_random_ssz_object, RandomizationMode
+from eth_consensus_specs.utils.ssz.ssz_impl import serialize
+from eth_consensus_specs.utils.ssz.ssz_typing import (
     BasicView,
     boolean,
     uint8,
@@ -80,10 +80,10 @@ def invalid_cases():
                             f"vec_{name}_{length}_{mode.to_name()}_{description}",
                             invalid_test_case(
                                 Vector[typ, length],
-                                lambda rng, mode=mode, typ=typ, length=length, data=data: serialize(
-                                    basic_vector_case_fn(rng, mode, typ, length)
-                                )[:-1]
-                                + data,
+                                lambda rng, mode=mode, typ=typ, length=length, data=data: (
+                                    serialize(basic_vector_case_fn(rng, mode, typ, length))[:-1]
+                                    + data
+                                ),
                                 rng,
                             ),
                         )
@@ -128,10 +128,10 @@ def invalid_cases():
                     f"vec_{name}_{length}_{mode.to_name()}_one_byte_more",
                     invalid_test_case(
                         Vector[typ, length],
-                        lambda rng, mode=mode, typ=typ, length=length: serialize(
-                            basic_vector_case_fn(rng, mode, typ, length)
-                        )
-                        + serialize(basic_vector_case_fn(rng, mode, uint8, 1)),
+                        lambda rng, mode=mode, typ=typ, length=length: (
+                            serialize(basic_vector_case_fn(rng, mode, typ, length))
+                            + serialize(basic_vector_case_fn(rng, mode, uint8, 1))
+                        ),
                         rng,
                     ),
                 )

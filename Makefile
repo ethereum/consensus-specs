@@ -14,7 +14,8 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	eip6800   \
 	eip7441   \
 	eip7805   \
-	eip7928
+	eip7928   \
+	eip8025
 
 # A list of fake targets.
 .PHONY: \
@@ -140,10 +141,6 @@ help-verbose:
 	@echo "    make reftests runner=operations preset=mainnet fork=fulu k=invalid_committee_index"
 	@echo "    make reftests runner=bls threads=1 verbose=true"
 	@echo ""
-	@echo "  Tip:"
-	@echo "    Use the following command to list available runners:"
-	@echo "    ls -1 tests/generators/runners | grep -v '/$$' | sed 's/\.py$$//'"
-	@echo ""
 	@echo "$(BOLD)make comptests$(NORM)"
 	@echo ""
 	@echo "  Generates compliance tests for fork choice. These tests verify that"
@@ -197,7 +194,7 @@ VENV = .venv
 # Use editable installs for all non-generation targets, but use non-editable
 # installs for generators. More details: ethereum/consensus-specs#4633.
 UV_RUN    = uv run
-UV_RUN_NE = uv run --no-editable --reinstall-package=eth2spec
+UV_RUN_NE = uv run --no-editable --reinstall-package=eth-consensus-specs
 
 # Sync dependencies using uv.
 _sync: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
@@ -236,7 +233,7 @@ test: MAYBE_PARALLEL := $(if $(k),,-n auto)
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
 test: PRESET := $(if $(filter fw,$(component)),,--preset=$(if $(preset),$(preset),minimal))
 test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),fastest))
-test: MAYBE_ETH2SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth2spec)
+test: MAYBE_SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth_consensus_specs)
 test: MAYBE_INFRA := $(if $(filter pyspec,$(component)),,$(CURDIR)/tests/infra)
 test: MAYBE_REFTESTS := $(if $(filter true,$(reftests)),--reftests --reftests-output $(PYTEST_REFTESTS_DIR))
 test: _pyspec
@@ -253,7 +250,7 @@ test: _pyspec
 		--self-contained-html \
 		$(MAYBE_REFTESTS) \
 		$(MAYBE_INFRA) \
-		$(MAYBE_ETH2SPEC)
+		$(MAYBE_SPEC)
 
 ###############################################################################
 # Coverage
@@ -262,7 +259,7 @@ test: _pyspec
 TEST_PRESET_TYPE ?= minimal
 COV_HTML_OUT=$(PYSPEC_DIR)/.htmlcov
 COV_INDEX_FILE=$(COV_HTML_OUT)/index.html
-COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth2spec.$S.$(TEST_PRESET_TYPE))
+COVERAGE_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth_consensus_specs.$S.$(TEST_PRESET_TYPE))
 
 # Run pytest with coverage tracking
 _test_with_coverage: MAYBE_TEST := $(if $(k),-k=$(k))
@@ -276,7 +273,7 @@ _test_with_coverage: _pyspec
 		$(COVERAGE_SCOPE) \
 		--cov-report="html:$(COV_HTML_OUT)" \
 		--cov-branch \
-		$(PYSPEC_DIR)/eth2spec
+		$(PYSPEC_DIR)/eth_consensus_specs
 
 # Run tests with coverage then open the coverage report.
 # See `make test` for a list of options.
@@ -316,7 +313,7 @@ LINT_DIFF_BEFORE := .lint_diff_before
 LINT_DIFF_AFTER := .lint_diff_after
 MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md')
 MYPY_PACKAGE_BASE := $(subst /,.,$(PYSPEC_DIR:$(CURDIR)/%=%))
-MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p $(MYPY_PACKAGE_BASE).eth2spec.$S)
+MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p $(MYPY_PACKAGE_BASE).eth_consensus_specs.$S)
 
 # Check for mistakes.
 lint: _pyspec
@@ -327,6 +324,7 @@ lint: _pyspec
 	@$(UV_RUN) python $(CURDIR)/scripts/check_fork_comments.py
 	@$(UV_RUN) python $(CURDIR)/scripts/fix_trailing_whitespace.py
 	@$(UV_RUN) python $(CURDIR)/scripts/check_markdown_headings.py
+	@$(UV_RUN) python $(CURDIR)/scripts/check_value_annotations.py
 	@$(UV_RUN) mdformat --number --wrap=80 $(MARKDOWN_FILES)
 	@$(UV_RUN) ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
 	@$(UV_RUN) ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py

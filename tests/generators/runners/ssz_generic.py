@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 
-from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
-from eth2spec.test.helpers.constants import PHASE0
+from eth_consensus_specs.gen_helpers.gen_base.gen_typing import TestCase
+from eth_consensus_specs.test.helpers.constants import PHASE0
 
 from .ssz_generic_cases import (
     ssz_basic_progressive_list,

@@ -45,6 +45,7 @@
     - [New `is_attestation_same_slot`](#new-is_attestation_same_slot)
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
     - [New `is_parent_block_full`](#new-is_parent_block_full)
+    - [New `is_pending_validator`](#new-is_pending_validator)
   - [Misc](#misc-2)
     - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
     - [New `convert_validator_index_to_builder_index`](#new-convert_validator_index_to_builder_index)
@@ -486,6 +487,29 @@ processing the execution payload bid in the block.
 ```python
 def is_parent_block_full(state: BeaconState) -> bool:
     return state.latest_execution_payload_bid.block_hash == state.latest_block_hash
+```
+
+#### New `is_pending_validator`
+
+*Note*: This function naively revalidates deposit signatures on every call.
+Implementations SHOULD cache verification results to avoid repeated work.
+
+```python
+def is_pending_validator(state: BeaconState, pubkey: BLSPubkey) -> bool:
+    """
+    Check if a pending deposit with a valid signature is in the queue for the given pubkey.
+    """
+    for pending_deposit in state.pending_deposits:
+        if pending_deposit.pubkey != pubkey:
+            continue
+        if is_valid_deposit_signature(
+            pending_deposit.pubkey,
+            pending_deposit.withdrawal_credentials,
+            pending_deposit.amount,
+            pending_deposit.signature,
+        ):
+            return True
+    return False
 ```
 
 ### Misc
@@ -1241,8 +1265,11 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     # already exists with this pubkey, apply the deposit to their balance
     is_builder = deposit_request.pubkey in builder_pubkeys
     is_validator = deposit_request.pubkey in validator_pubkeys
-    is_builder_prefix = is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
-    if is_builder or (is_builder_prefix and not is_validator):
+    if is_builder or (
+        is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
+        and not is_validator
+        and not is_pending_validator(state, deposit_request.pubkey)
+    ):
         # Apply builder deposits immediately
         apply_deposit_for_builder(
             state,

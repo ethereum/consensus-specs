@@ -1,9 +1,9 @@
 from collections.abc import Callable
 from random import Random
 
-from eth2spec.debug.encode import encode
-from eth2spec.utils.ssz.ssz_impl import deserialize, hash_tree_root, serialize
-from eth2spec.utils.ssz.ssz_typing import View
+from eth_consensus_specs.debug.encode import encode
+from eth_consensus_specs.utils.ssz.ssz_impl import deserialize, hash_tree_root, serialize
+from eth_consensus_specs.utils.ssz.ssz_typing import View
 
 
 def safe_lambda(fn: Callable):

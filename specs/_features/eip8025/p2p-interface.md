@@ -12,6 +12,8 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 - [Table of contents](#table-of-contents)
 - [Constants](#constants)
   - [Execution](#execution)
+- [Helpers](#helpers)
+  - [Modified `compute_fork_version`](#modified-compute_fork_version)
 - [MetaData](#metadata)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
@@ -36,6 +38,32 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 | Name                               | Value       |
 | ---------------------------------- | ----------- |
 | `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)` |
+
+## Helpers
+
+### Modified `compute_fork_version`
+
+```python
+def compute_fork_version(epoch: Epoch) -> Version:
+    """
+    Return the fork version at the given ``epoch``.
+    """
+    if epoch >= EIP8025_FORK_EPOCH:
+        return EIP8025_FORK_VERSION
+    if epoch >= FULU_FORK_EPOCH:
+        return FULU_FORK_VERSION
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return ELECTRA_FORK_VERSION
+    if epoch >= DENEB_FORK_EPOCH:
+        return DENEB_FORK_VERSION
+    if epoch >= CAPELLA_FORK_EPOCH:
+        return CAPELLA_FORK_VERSION
+    if epoch >= BELLATRIX_FORK_EPOCH:
+        return BELLATRIX_FORK_VERSION
+    if epoch >= ALTAIR_FORK_EPOCH:
+        return ALTAIR_FORK_VERSION
+    return GENESIS_FORK_VERSION
+```
 
 ## MetaData
 
@@ -71,25 +99,34 @@ Where
 
 This topic is used to propagate `SignedExecutionProof` messages.
 
-The following validations MUST pass before forwarding a proof on the network:
+The following validations MUST pass before forwarding the
+`signed_execution_proof` on the network, assuming the alias
+`proof = signed_execution_proof.message`:
 
 - _[IGNORE]_ The proof's corresponding new payload request (identified by
-  `proof.message.public_input.new_payload_request_root`) has been seen (via
-  gossip or non-gossip sources) (a client MAY queue proofs for processing once
-  the new payload request is retrieved).
+  `proof.public_input.new_payload_request_root`) has been seen (via gossip or
+  non-gossip sources) (a client MAY queue proofs for processing once the new
+  payload request is retrieved).
+- _[IGNORE]_ No *valid* proof has already been received for the tuple
+  `(proof.public_input.new_payload_request_root, proof.proof_type)` -- i.e. no
+  *valid* proof for `proof.proof_type` from any prover has been received.
 - _[IGNORE]_ The proof is the first proof received for the tuple
-  `(proof.message.public_input.new_payload_request_root, proof.message.proof_type, proof.prover_pubkey)`
-  -- i.e. the first *valid or invalid* proof for `proof.message.proof_type` from
-  `proof.prover_pubkey`.
-- _[REJECT]_ `proof.prover_pubkey` is associated with an active validator.
-- _[REJECT]_ `proof.signature` is valid with respect to the prover's public key.
-- _[REJECT]_ `proof.message.proof_data` is non-empty.
-- _[REJECT]_ `proof.message.proof_data` is not larger than `MAX_PROOF_SIZE`.
-- _[REJECT]_ `proof.message` is a valid execution proof.
-- _[IGNORE]_ The proof is the first proof received for the tuple
-  `(proof.message.public_input.new_payload_request_root, proof.message.proof_type)`
-  -- i.e. the first *valid* proof for `proof.message.proof_type` from any
-  prover.
+  `(proof.public_input.new_payload_request_root, proof.proof_type, signed_execution_proof.validator_index)`
+  -- i.e. the first *valid or invalid* proof for `proof.proof_type` from
+  `signed_execution_proof.validator_index`.
+- _[REJECT]_ The validator with index `signed_execution_proof.validator_index`
+  is an active validator -- i.e.
+  `is_active_validator(state.validators[signed_execution_proof.validator_index], get_current_epoch(state))`
+  returns `True`.
+- _[REJECT]_ `signed_execution_proof.signature` is valid with respect to the
+  validator's public key.
+- _[REJECT]_ `proof.proof_data` is non-empty.
+- _[REJECT]_ `proof.proof_data` is not larger than `MAX_PROOF_SIZE`.
+- _[REJECT]_ All of the conditions within `process_execution_proof` pass
+  validation.
+- _[IGNORE]_ No *valid* proof has already been received for the tuple
+  `(proof.public_input.new_payload_request_root, proof.proof_type)` -- i.e. no
+  *valid* proof for `proof.proof_type` from any prover has been received.
 
 ## The Req/Resp domain
 

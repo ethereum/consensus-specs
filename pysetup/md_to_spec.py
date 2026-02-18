@@ -415,7 +415,7 @@ class MarkdownToSpec:
         body = html.body.strip()
 
         # This comment marks that we should skip the next element
-        if body == "<!-- eth2spec: skip -->":
+        if body == "<!-- eth_consensus_specs: skip -->":
             self._skip_element()
 
         # Handle list-of-records tables

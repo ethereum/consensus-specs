@@ -257,6 +257,9 @@ And instead the following validations are set in place with the alias
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in the consensus layer -- i.e. validate that
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
+- _[IGNORE]_ The block's parent execution payload (defined by
+  `bid.parent_block_hash`) has been seen (via gossip or non-gossip sources) (a
+  client MAY queue blocks for processing once the parent payload is retrieved).
 - If `execution_payload` verification of block's execution payload parent by an
   execution node **is complete**:
   - [REJECT] The block's execution payload parent (defined by
@@ -442,7 +445,7 @@ The following validations are removed:
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 | ------------------------ | ----------------------------- |
@@ -459,7 +462,7 @@ The following validations are removed:
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 | ------------------------ | ----------------------------- |
@@ -505,7 +508,7 @@ determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`       | Chunk SSZ type                         |
 | -------------------- | -------------------------------------- |
@@ -522,7 +525,7 @@ determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`       | Chunk SSZ type                         |
 | -------------------- | -------------------------------------- |

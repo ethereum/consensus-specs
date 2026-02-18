@@ -22,7 +22,7 @@ jobs:
       - name: Create tag
         id: tag
         run: |
-          version="v$(cat consensus-specs/tests/core/pyspec/eth2spec/VERSION.txt)"
+          version="v$(cat consensus-specs/tests/core/pyspec/eth_consensus_specs/VERSION.txt)"
           cd consensus-specs
           if git rev-parse "refs/tags/$version" >/dev/null 2>&1; then
             echo "Error: Tag $version already exists"
@@ -40,7 +40,7 @@ jobs:
         with:
           name: ${{ steps.tag.outputs.name }}
           tag: ${{ steps.tag.outputs.name }}
-          commitish: ${{ github.sha }}
+          include-pre-releases: true
           prerelease: ${{ contains(steps.tag.outputs.name, '-') }}
           publish: false
         env:
@@ -54,7 +54,7 @@ jobs:
 
       # Install dependencies
       - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
+        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7.3.0
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
