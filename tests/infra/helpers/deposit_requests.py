@@ -373,6 +373,27 @@ def assert_process_deposit_request(
                 f"slot_reused=True: builder count should be unchanged: "
                 f"pre={len(pre_state.builders)}, post={len(state.builders)}"
             )
+            # Verify exactly one original builder was replaced and it met reuse criteria
+            changed_indices = [
+                i for i in range(len(pre_state.builders))
+                if state.builders[i] != pre_state.builders[i]
+            ]
+            assert len(changed_indices) == 1, (
+                f"slot_reused=True: exactly one builder should change: "
+                f"changed_indices={changed_indices}"
+            )
+            reused_idx = changed_indices[0]
+            pre_builder = pre_state.builders[reused_idx]
+            current_epoch = spec.get_current_epoch(pre_state)
+            assert pre_builder.withdrawable_epoch <= current_epoch, (
+                f"slot_reused=True: reused builder at index {reused_idx} must have "
+                f"withdrawable_epoch <= current_epoch: "
+                f"withdrawable_epoch={pre_builder.withdrawable_epoch}, current_epoch={current_epoch}"
+            )
+            assert pre_builder.balance == 0, (
+                f"slot_reused=True: reused builder at index {reused_idx} must have "
+                f"zero balance: balance={pre_builder.balance}"
+            )
         elif slot_reused is False:
             assert len(state.builders) == len(pre_state.builders) + 1, (
                 f"slot_reused=False: builder count should increase by 1: "
