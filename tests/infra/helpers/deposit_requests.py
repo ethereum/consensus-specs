@@ -438,10 +438,11 @@ def assert_process_deposit_request(
                 "deposit_requests_start_index should not change in Gloas+"
             )
 
-        # INVARIANT: Builder count unchanged
-        assert len(state.builders) == len(pre_state.builders), (
-            "Builder count should not change during validator deposit processing"
-        )
+        # INVARIANT: Builder count unchanged (Gloas+ only, builders don't exist pre-Gloas)
+        if is_post_gloas(spec):
+            assert len(state.builders) == len(pre_state.builders), (
+                "Builder count should not change during validator deposit processing"
+            )
 
         # INVARIANT: Validator count unchanged (new validators created during epoch processing)
         assert len(state.validators) == len(pre_state.validators), (
