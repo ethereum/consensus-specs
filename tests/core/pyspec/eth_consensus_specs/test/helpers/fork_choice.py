@@ -405,7 +405,7 @@ def run_on_execution_payload(spec, store, signed_envelope, valid=True):
 
     # Verify the envelope was processed, block should now have FULL state
     envelope_root = signed_envelope.message.beacon_block_root
-    assert envelope_root in store.execution_payload_states
+    assert envelope_root in store.payload_states
 
 
 def get_execution_payload_envelope_file_name(signed_envelope):
