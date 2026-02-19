@@ -21,12 +21,6 @@
       - [ExecutionPayload](#executionpayload)
   - [Inclusion list proposal](#inclusion-list-proposal)
     - [Constructing the `SignedInclusionList`](#constructing-the-signedinclusionlist)
-  - [Attesting](#attesting)
-    - [Attestation data](#attestation-data)
-      - [Modified LMD GHOST vote](#modified-lmd-ghost-vote)
-  - [Sync committee](#sync-committee)
-    - [Sync committee messages](#sync-committee-messages)
-      - [Prepare sync committee message](#prepare-sync-committee-message)
 
 <!-- mdformat-toc end -->
 
@@ -233,28 +227,3 @@ def get_inclusion_list_signature(
 Then the validator assembles
 `signed_inclusion_list = SignedInclusionList(message=inclusion_list, signature=signature)`
 and broadcasts it on the `inclusion_list` global gossip topic.
-
-### Attesting
-
-#### Attestation data
-
-*Note*: The only change made to `attestation_data` is to call
-`get_attester_head()` to set the `beacon_block_root` field of
-`attestation_data`.
-
-##### Modified LMD GHOST vote
-
-Set `attestation_data.beacon_block_root = get_attester_head(store, head_root)`.
-
-### Sync committee
-
-#### Sync committee messages
-
-##### Prepare sync committee message
-
-*Note*: The only change made to `get_sync_committee_message` is to call
-`get_attester_head()` to set the `block_root` parameter of
-`get_sync_committee_message`.
-
-Set `block_root = get_attester_head(store, head_root)` when calling
-`get_sync_committee_message(state, block_root, validator_index, privkey)`.

@@ -14,9 +14,8 @@
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [New `record_payload_inclusion_list_satisfaction`](#new-record_payload_inclusion_list_satisfaction)
-  - [New `is_inclusion_list_satisfied_block`](#new-is_inclusion_list_satisfied_block)
-  - [New `get_attester_head`](#new-get_attester_head)
-  - [Modified `get_proposer_head`](#modified-get_proposer_head)
+  - [New `is_payload_inclusion_list_satisfied`](#new-is_payload_inclusion_list_satisfied)
+  - [Modified `should_extend_payload`](#modified-should_extend_payload)
   - [New `get_view_freeze_cutoff_ms`](#new-get_view_freeze_cutoff_ms)
   - [New `get_inclusion_list_submission_due_ms`](#new-get_inclusion_list_submission_due_ms)
   - [New `get_proposer_inclusion_list_cutoff_ms`](#new-get_proposer_inclusion_list_cutoff_ms)
@@ -105,8 +104,8 @@ class PayloadAttributes(object):
 
 ### Modified `Store`
 
-*Note*: `Store` is modified to track the execution payloads that do not satisfy
-the inclusion list constraints.
+*Note*: `Store` is modified to track whether the execution payloads satisfy the
+inclusion list constraints.
 
 ```python
 @dataclass
@@ -133,7 +132,7 @@ class Store(object):
         default_factory=dict
     )
     # [New in EIP7805]
-    unsatisfied_inclusion_list_payloads: Set[Hash32] = field(default_factory=Set)
+    payload_inclusion_list_satisfaction: Dict[Root, boolean] = field(default_factory=dict)
 ```
 
 ### Modified `get_forkchoice_store`
@@ -168,7 +167,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
             anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
         },
         # [New in EIP7805]
-        unsatisfied_inclusion_list_payloads=set(),
+        payload_inclusion_list_satisfaction={anchor_root: True},
     )
 ```
 
@@ -184,7 +183,11 @@ inclusion list constraints.
 
 ```python
 def record_payload_inclusion_list_satisfaction(
-    store: Store, state: BeaconState, payload: ExecutionPayload, execution_engine: ExecutionEngine
+    store: Store,
+    state: BeaconState,
+    root: Root,
+    payload: ExecutionPayload,
+    execution_engine: ExecutionEngine,
 ) -> None:
     inclusion_list_transactions = get_inclusion_list_transactions(
         get_inclusion_list_store(), state, Slot(state.slot - 1)
@@ -192,99 +195,46 @@ def record_payload_inclusion_list_satisfaction(
     is_inclusion_list_satisfied = execution_engine.is_inclusion_list_satisfied(
         payload, inclusion_list_transactions
     )
-    if not is_inclusion_list_satisfied:
-        store.unsatisfied_inclusion_list_payloads.add(payload.block_hash)
+    store.payload_inclusion_list_satisfaction[root] = is_inclusion_list_satisfied
 ```
 
-### New `is_inclusion_list_satisfied_block`
+### New `is_payload_inclusion_list_satisfied`
 
 ```python
-def is_inclusion_list_satisfied_block(store: Store, root: Root) -> bool:
-    block = store.blocks[root]
-    bid = block.body.signed_execution_payload_bid.message
-    parent_block = store.blocks[block.parent_root]
+def is_payload_inclusion_list_satisfied(store: Store, root: Root) -> bool:
+    """
+    Return whether the execution payload for the beacon block with root ``root``
+    satisfied the inclusion list constraints, and was locally determined to be available.
+    """
+    # The beacon block root must be known
+    assert root in store.payload_inclusion_list_satisfaction
 
-    return (
-        block.slot != parent_block.slot + 1
-        or not is_parent_node_full(store, block)
-        or bid.parent_block_hash not in store.unsatisfied_inclusion_list_payloads
-    )
+    # If the payload is not locally available, the payload
+    # is not considered to satisfy the inclusion list constraints
+    if root not in store.payload_states:
+        return False
+
+    return store.payload_inclusion_list_satisfaction[root]
 ```
 
-### New `get_attester_head`
+### Modified `should_extend_payload`
+
+*Note*: `should_extend_payload` is modified to not extend a payload if it does
+not satisfy the inclusion list constraints.
 
 ```python
-def get_attester_head(store: Store, head_root: Root) -> Root:
-    if not is_inclusion_list_satisfied_block(store, head_root):
-        head_block = store.blocks[head_root]
-        return head_block.parent_root
-
-    return head_root
-```
-
-### Modified `get_proposer_head`
-
-```python
-def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
-    head_block = store.blocks[head_root]
-    parent_root = head_block.parent_root
-    parent_block = store.blocks[parent_root]
-
-    # Only re-org the head block if it arrived later than the attestation deadline.
-    head_late = is_head_late(store, head_root)
-
-    # Do not re-org on an epoch boundary where the proposer shuffling could change.
-    shuffling_stable = is_shuffling_stable(slot)
-
-    # Ensure that the FFG information of the new head will be competitive with the current head.
-    ffg_competitive = is_ffg_competitive(store, head_root, parent_root)
-
-    # Do not re-org if the chain is not finalizing with acceptable frequency.
-    finalization_ok = is_finalization_ok(store, slot)
-
-    # Only re-org if we are proposing on-time.
-    proposing_on_time = is_proposing_on_time(store)
-
-    # Only re-org a single slot at most.
-    parent_slot_ok = parent_block.slot + 1 == head_block.slot
-    current_time_ok = head_block.slot + 1 == slot
-    single_slot_reorg = parent_slot_ok and current_time_ok
-
-    # Check that the head has few enough votes to be overpowered by our proposer boost.
-    assert store.proposer_boost_root != head_root  # ensure boost has worn off
-    head_weak = is_head_weak(store, head_root)
-
-    # Check that the missing votes are assigned to the parent and not being hoarded.
-    parent_strong = is_parent_strong(store, head_root)
-
-    # Re-org more aggressively if there is a proposer equivocation in the previous slot.
-    proposer_equivocation = is_proposer_equivocation(store, head_root)
-
+def should_extend_payload(store: Store, root: Root) -> bool:
     # [New in EIP7805]
-    # Check that the head satisfies the inclusion list constraints
-    inclusion_list_unsatisfied = not is_inclusion_list_satisfied_block(store, head_root)
+    if not is_payload_inclusion_list_satisfied(store, root):
+        return False
 
-    # [Modified in EIP7805]
-    reorg_prerequisites = all(
-        [
-            shuffling_stable,
-            ffg_competitive,
-            finalization_ok,
-            proposing_on_time,
-            single_slot_reorg,
-            head_weak,
-            parent_strong,
-        ]
+    proposer_root = store.proposer_boost_root
+    return (
+        (is_payload_timely(store, root) and is_payload_data_available(store, root))
+        or proposer_root == Root()
+        or store.blocks[proposer_root].parent_root != root
+        or is_parent_node_full(store, store.blocks[proposer_root])
     )
-
-    # [Modified in EIP7805]
-    if reorg_prerequisites and (head_late or inclusion_list_unsatisfied):
-        # We can re-org the current head by building upon its parent block.
-        return parent_root
-    elif all([head_weak, current_time_ok, proposer_equivocation]):
-        return parent_root
-    else:
-        return head_root
 ```
 
 ### New `get_view_freeze_cutoff_ms`
