@@ -395,6 +395,37 @@ def add_block(
     return store.block_states[signed_block.message.hash_tree_root()]
 
 
+def run_on_execution_payload(spec, store, signed_envelope, valid=True):
+    """Process execution payload envelope through the fork choice store."""
+    if not valid:
+        expect_assertion_error(lambda: spec.on_execution_payload(store, signed_envelope))
+        return
+
+    spec.on_execution_payload(store, signed_envelope)
+
+    # Verify the envelope was processed, block should now have FULL state
+    envelope_root = signed_envelope.message.beacon_block_root
+    assert envelope_root in store.execution_payload_states
+
+
+def get_execution_payload_envelope_file_name(signed_envelope):
+    return f"execution_payload_envelope_{encode_hex(signed_envelope.hash_tree_root())}"
+
+
+def add_execution_payload(spec, store, signed_envelope, test_steps, valid=True):
+    file_name = get_execution_payload_envelope_file_name(signed_envelope)
+    yield file_name, signed_envelope
+
+    if not valid:
+        run_on_execution_payload(spec, store, signed_envelope, valid=False)
+        test_steps.append({"execution_payload": file_name, "valid": False})
+        return
+
+    run_on_execution_payload(spec, store, signed_envelope, valid=True)
+    test_steps.append({"execution_payload": file_name, "valid": True})
+    output_store_checks(spec, store, test_steps)
+
+
 def run_on_attester_slashing(spec, store, attester_slashing, valid=True):
     if not valid:
         expect_assertion_error(lambda: spec.on_attester_slashing(store, attester_slashing))
