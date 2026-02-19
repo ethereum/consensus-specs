@@ -136,10 +136,7 @@ def _apply_ckzg():
     """
     Patch all spec modules to use ckzg for KZG functions.
     """
-    repo_root = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..")
-    ts_path = os.path.join(
-        repo_root, "presets", "mainnet", "trusted_setups", "trusted_setup_4096.json"
-    )
+    ts_path = request.config.rootdir / "presets" / "mainnet" / "trusted_setups" / "trusted_setup_4096.json"
     ts = load_trusted_setup(ts_path)
 
     for preset_specs in spec_targets.values():
