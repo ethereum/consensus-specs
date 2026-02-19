@@ -470,7 +470,6 @@ wheels = [
 name = "eth-consensus-specs"
 source = { editable = "." }
 dependencies = [
-    { name = "ckzg" },
     { name = "curdleproofs" },
     { name = "eth-remerkleable" },
     { name = "eth-typing" },
@@ -516,6 +515,7 @@ lint = [
     { name = "ruff" },
 ]
 test = [
+    { name = "ckzg" },
     { name = "deepdiff" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -525,7 +525,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ckzg", specifier = "==2.1.5" },
+    { name = "ckzg", marker = "extra == 'test'", specifier = "==2.1.5" },
     { name = "codespell", marker = "extra == 'lint'", specifier = "==2.4.1" },
     { name = "curdleproofs", specifier = "==0.1.2" },
     { name = "deepdiff", marker = "extra == 'test'", specifier = "==8.6.1" },

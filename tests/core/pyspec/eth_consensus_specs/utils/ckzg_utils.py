@@ -4,8 +4,8 @@ import tempfile
 
 import ckzg
 
-# Cache loaded trusted setups by file path.
-_trusted_setup_cache: dict[str, object] = {}
+# Cache loaded trusted setups by (file path, precompute).
+_trusted_setup_cache: dict[tuple[str, int], object] = {}
 
 
 def load_trusted_setup(json_path: str, precompute: int = 0) -> object:

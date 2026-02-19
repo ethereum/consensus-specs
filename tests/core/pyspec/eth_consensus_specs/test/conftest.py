@@ -1,4 +1,3 @@
-import os
 import sys
 
 import pytest
@@ -132,11 +131,17 @@ def bls_type(request):
         raise Exception(f"unrecognized bls type: {bls_type}")
 
 
-def _apply_ckzg():
+def _apply_ckzg(request):
     """
     Patch all spec modules to use ckzg for KZG functions.
     """
-    ts_path = request.config.rootdir / "presets" / "mainnet" / "trusted_setups" / "trusted_setup_4096.json"
+    ts_path = (
+        request.config.rootdir
+        / "presets"
+        / "mainnet"
+        / "trusted_setups"
+        / "trusted_setup_4096.json"
+    )
     ts = load_trusted_setup(ts_path)
 
     for preset_specs in spec_targets.values():
@@ -148,4 +153,4 @@ def _apply_ckzg():
 def kzg_type(request):
     kzg_type = request.config.getoption("--kzg-type")
     if kzg_type == "ckzg":
-        _apply_ckzg()
+        _apply_ckzg(request)
