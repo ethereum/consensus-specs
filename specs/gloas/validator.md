@@ -239,7 +239,7 @@ def prepare_execution_payload(
     )
 ```
 
-### Payload timeliness attestation proposal
+### Payload timeliness attestation
 
 Some validators are selected to submit payload timeliness attestations.
 Validators should call `get_ptc_assignment` at the beginning of an epoch to be

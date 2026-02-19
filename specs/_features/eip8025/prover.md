@@ -43,7 +43,7 @@ def get_execution_proof_signature(
     return bls.Sign(privkey, signing_root)
 ```
 
-## Execution proof proposal
+## Execution proof
 
 ### Constructing the `SignedExecutionProof`
 
