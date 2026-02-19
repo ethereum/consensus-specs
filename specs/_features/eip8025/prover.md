@@ -10,7 +10,7 @@
 - [Introduction](#introduction)
 - [Helpers](#helpers)
   - [New `get_execution_proof_signature`](#new-get_execution_proof_signature)
-- [Execution proof proposal](#execution-proof-proposal)
+- [Execution proof](#execution-proof)
   - [Constructing the `SignedExecutionProof`](#constructing-the-signedexecutionproof)
 - [Honest prover relay](#honest-prover-relay)
 

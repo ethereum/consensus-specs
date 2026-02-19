@@ -19,7 +19,7 @@
       - [Signed execution payload bid](#signed-execution-payload-bid)
       - [Payload attestations](#payload-attestations)
       - [ExecutionPayload](#executionpayload)
-  - [Payload timeliness attestation proposal](#payload-timeliness-attestation-proposal)
+  - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing the `PayloadAttestationMessage`](#constructing-the-payloadattestationmessage)
 - [Modified functions](#modified-functions)
   - [Modified `get_data_column_sidecars_from_column_sidecar`](#modified-get_data_column_sidecars_from_column_sidecar)
