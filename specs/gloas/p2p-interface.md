@@ -221,11 +221,11 @@ The following validations are added:
 - _[REJECT]_ `aggregate.data.index < 2`.
 - _[REJECT]_ `aggregate.data.index == 0` if `block.slot == aggregate.data.slot`.
 - _[REJECT]_ If `aggregate.data.index == 1` (payload present for a past block)
-  the corresponding execution payload for `block` passes validation. 
-- _[IGNORE]_ If the `aggregate.data.index == 1` (payload present for a past block)
-  the corresponding execution payload for `block` has been seen. 
-  Clients that have not seen the payload MAY queue the attestation and SHOULD
-  request the payload envelope by root from the block's bid (e.g.
+  the corresponding execution payload for `block` passes validation.
+- _[IGNORE]_ If the `aggregate.data.index == 1` (payload present for a past
+  block) the corresponding execution payload for `block` has been seen. Clients
+  that have not seen the payload MAY queue the attestation and SHOULD request
+  the payload envelope by root from the block's bid (e.g.
   `block.body.signed_execution_payload_bid.message.block_hash`) using
   `ExecutionPayloadEnvelopesByRoot` (a client MAY queue attestations for
   processing once the payload is retrieved).
@@ -441,12 +441,12 @@ The following validations are added:
 - _[REJECT]_ `attestation.data.index < 2`.
 - _[REJECT]_ `attestation.data.index == 0` if
   `block.slot == attestation.data.slot`.
-- _[REJECT]_ If `attestation.data.index == 1` (payload present for a past block),
-  the execution payload for `block` passes validation.
-- _[IGNORE]_ If `attestation.data.index == 1` (payload present for a past block),
-  the execution payload for `block` has been seen.
-  Client that haven't seen the payload MAY queue the attestation and  SHOULD
-  request the payload envelope by root from the block's bid (e.g.
+- _[REJECT]_ If `attestation.data.index == 1` (payload present for a past
+  block), the execution payload for `block` passes validation.
+- _[IGNORE]_ If `attestation.data.index == 1` (payload present for a past
+  block), the execution payload for `block` has been seen. Client that haven't
+  seen the payload MAY queue the attestation and SHOULD request the payload
+  envelope by root from the block's bid (e.g.
   `block.body.signed_execution_payload_bid.message.block_hash`) using
   `ExecutionPayloadEnvelopesByRoot` (a client MAY queue attestations for
   processing once the payload is retrieved).
@@ -574,8 +574,8 @@ the responding peer is missing payload envelopes.
 No more than `MAX_REQUEST_PAYLOADS` may be requested at a time.
 
 ExecutionPayloadEnvelopesByRoot is primarily used to recover recent execution
-payload envelopes (e.g. when receiving a payload attestation with revealed
-status as true but never received a payload).
+payload envelopes and attestations (e.g. when receiving a payload attestation or
+attestation with revealed status as true but never received a payload).
 
 The request MUST be encoded as an SSZ-field.
 
