@@ -336,10 +336,10 @@ def is_payload_timely(store: Store, root: Root, payload_arrival_time: Optional[u
     if payload_arrival_time is None:
         return False
 
-    if root not in store.execution_payloads:
+    if root not in store.payload_envelopes:
         return False
 
-    signed_envelope = store.execution_payloads[root]
+    signed_envelope = store.payload_envelopes[root]
     payload_size = get_payload_size(signed_envelope.message)
 
     block = store.blocks[root]

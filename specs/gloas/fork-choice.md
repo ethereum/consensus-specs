@@ -144,6 +144,8 @@ class Store(object):
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
+    payload_envelopes: Dict[Root, SignedExecutionPayloadEnvelope] = field(default_factory=dict)
+    # [New in Gloas:EIP7732]
     payload_states: Dict[Root, BeaconState] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
     payload_timeliness_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
@@ -151,8 +153,6 @@ class Store(object):
     payload_data_availability_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
         default_factory=dict
     )
-    # [New in Gloas:EIP7732]
-    execution_payloads: Dict[Root, SignedExecutionPayloadEnvelope] = field(default_factory=dict)
 ```
 
 ### Modified `get_forkchoice_store`
@@ -833,7 +833,7 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
     process_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
 
     # Add payload and payload state to the store
-    store.execution_payloads[envelope.beacon_block_root] = signed_envelope
+    store.payload_envelopes[envelope.beacon_block_root] = signed_envelope
     store.payload_states[envelope.beacon_block_root] = state
 ```
 
