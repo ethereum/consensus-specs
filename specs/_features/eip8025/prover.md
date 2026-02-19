@@ -48,13 +48,13 @@ def get_execution_proof_signature(
 ### Constructing the `SignedExecutionProof`
 
 An honest prover who is an active validator and wants to generate execution
-proofs for a `BeaconBlockBody` performs the following steps:
+proofs for a `BeaconBlock` performs the following steps:
 
-1. Extract `NewPayloadRequest` from `BeaconBlockBody`:
-   - `execution_payload = body.execution_payload`
-   - `versioned_hashes = [kzg_commitment_to_versioned_hash(c) for c in body.blob_kzg_commitments]`
-   - `parent_beacon_block_root = state.latest_block_header.parent_root`
-   - `execution_requests = body.execution_requests`
+1. Extract `NewPayloadRequest` from `BeaconBlock`:
+   - `execution_payload = block.body.execution_payload`
+   - `versioned_hashes = [kzg_commitment_to_versioned_hash(c) for c in block.body.blob_kzg_commitments]`
+   - `parent_beacon_block_root = block.parent_root`
+   - `execution_requests = block.body.execution_requests`
 2. Create `ProofAttributes` with desired proof types.
 3. Call
    `proof_gen_id = proof_engine.request_proofs(new_payload_request, proof_attributes)`
