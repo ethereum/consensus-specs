@@ -310,11 +310,11 @@ def get_payload_attestation_message(
     assert root != Root()
     block = store.blocks[root]
     state = store.block_states[root]
-    payload_present = is_payload_present(store, root)
+    payload_timely = is_payload_timely(store, root)
     data = PayloadAttestationData(
         beacon_block_root=root,
         slot=block.slot,
-        payload_present=payload_present,
+        payload_timely=payload_timely,
     )
     signature = get_payload_attestation_message_signature(state, data, privkey)
     return PayloadAttestationMessage(
@@ -325,11 +325,11 @@ def get_payload_attestation_message(
 ```
 
 ```python
-def is_payload_present(store: Store, root: Root) -> bool:
+def is_payload_timely(store: Store, root: Root) -> bool:
     """
-    Check if the payload for the given block root is present and timely.
-    A payload is considered present if it has been seen and arrived on time
-    based on its snappy-compressed size.
+    Check if the payload for the given block root arrived on time.
+    A payload is considered timely if it has been seen and arrived before the
+    deadline based on its snappy-compressed size.
     """
     if root not in store.execution_payloads:
         return False
