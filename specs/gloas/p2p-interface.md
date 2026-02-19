@@ -220,8 +220,11 @@ The following validations are added:
 
 - _[REJECT]_ `aggregate.data.index < 2`.
 - _[REJECT]_ `aggregate.data.index == 0` if `block.slot == aggregate.data.slot`.
-- _[IGNORE]_ If `aggregate.data.index == 1` (payload present for a past block)
-  and the execution payload for `block` has not been seen, a client SHOULD
+- _[REJECT]_ If `aggregate.data.index == 1` (payload present for a past block)
+  the corresponding execution payload for `block` passes validation. 
+- _[IGNORE]_ If the `aggregate.data.index == 1` (payload present for a past block)
+  the corresponding execution payload for `block` has been seen. 
+  Clients that have not seen the payload MAY queue the attestation and SHOULD
   request the payload envelope by root from the block's bid (e.g.
   `block.body.signed_execution_payload_bid.message.block_hash`) using
   `ExecutionPayloadEnvelopesByRoot` (a client MAY queue attestations for
