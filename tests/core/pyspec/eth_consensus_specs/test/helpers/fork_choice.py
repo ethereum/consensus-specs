@@ -378,6 +378,12 @@ def add_block(
         run_on_block(spec, store, signed_block, valid=True)
         _append_step()
 
+    # [Gloas] Simulate receiving the execution payload so that
+    # store.payload_states is populated for future attestations with index == 1
+    if is_post_gloas(spec):
+        block_root = signed_block.message.hash_tree_root()
+        store.payload_states[block_root] = store.block_states[block_root].copy()
+
     # An on_block step implies receiving block's attestations
     for attestation in signed_block.message.body.attestations:
         run_on_attestation(spec, store, attestation, is_from_block=True, valid=True)

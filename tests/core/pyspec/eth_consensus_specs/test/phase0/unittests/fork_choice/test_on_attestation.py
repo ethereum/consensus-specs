@@ -227,6 +227,11 @@ def test_on_attestation_target_checkpoint_not_in_store_diff_slot(spec, state):
     # add target block to store
     spec.on_block(store, signed_target_block)
 
+    # [Gloas] Simulate receiving the execution payload
+    if is_post_gloas(spec):
+        block_root = signed_target_block.message.hash_tree_root()
+        store.payload_states[block_root] = store.block_states[block_root].copy()
+
     # target checkpoint state is not yet in store
 
     attestation_slot = target_block.slot + 1
