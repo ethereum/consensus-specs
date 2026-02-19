@@ -72,6 +72,7 @@ help-verbose:
 	@echo "    fork=<fork>       Test specific fork (phase0, altair, bellatrix, capella, etc.)"
 	@echo "    preset=<preset>   Use specific preset (mainnet or minimal; default: minimal)"
 	@echo "    bls=<type>        BLS library type (py_ecc, milagro, arkworks, fastest; default: fastest)"
+	@echo "    kzg=<type>        KZG library type (spec, ckzg; default: ckzg)"
 	@echo "    component=<value> Test component: (all, pyspec, fw; default: all)"
 	@echo ""
 	@echo "  Examples:"
@@ -231,6 +232,7 @@ test: MAYBE_PARALLEL := $(if $(k),,-n auto)
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
 test: PRESET := $(if $(filter fw,$(component)),,--preset=$(if $(preset),$(preset),minimal))
 test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),fastest))
+test: KZG := $(if $(filter fw,$(component)),,--kzg-type=$(if $(kzg),$(kzg),ckzg))
 test: MAYBE_SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth_consensus_specs)
 test: MAYBE_INFRA := $(if $(filter pyspec,$(component)),,$(CURDIR)/tests/infra)
 test: _pyspec
@@ -242,6 +244,7 @@ test: _pyspec
 		$(MAYBE_FORK) \
 		$(PRESET) \
 		$(BLS) \
+		$(KZG) \
 		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
 		--html=$(TEST_REPORT_DIR)/test_results.html \
 		--self-contained-html \
