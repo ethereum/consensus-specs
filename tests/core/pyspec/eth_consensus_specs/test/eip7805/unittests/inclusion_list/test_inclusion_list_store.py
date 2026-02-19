@@ -316,7 +316,7 @@ def test_inclusion_list_store_view_freeze_cutoff(spec, state):
         # Advance time to after the view freeze cutoff.
         epoch = spec.get_current_store_epoch(forkchoice_store)
         view_freeze_cutoff_ceiling = spec.get_view_freeze_cutoff_ms(epoch) // 1000 + 1
-        assert view_freeze_cutoff_ceiling < spec.config.SECONDS_PER_SLOT
+        assert view_freeze_cutoff_ceiling < spec.config.SLOT_DURATION_MS // 1000
 
         time = forkchoice_store.time + view_freeze_cutoff_ceiling
         spec.on_tick(forkchoice_store, time)

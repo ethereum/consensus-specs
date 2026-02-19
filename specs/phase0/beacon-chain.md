@@ -333,7 +333,6 @@ and other types of chain instances may use a different configuration.
 
 | Name                                  | Value                     |     Unit     |  Duration  |
 | ------------------------------------- | ------------------------- | :----------: | :--------: |
-| `SECONDS_PER_SLOT` *deprecated*       | `uint64(12)`              |   seconds    | 12 seconds |
 | `SLOT_DURATION_MS`                    | `uint64(12000)`           | milliseconds | 12 seconds |
 | `SECONDS_PER_ETH1_BLOCK`              | `uint64(14)`              |   seconds    | 14 seconds |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256)    |    epochs    |            |
@@ -880,7 +879,7 @@ def compute_committee(
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
     slots_since_genesis = slot - GENESIS_SLOT
-    return uint64(state.genesis_time + slots_since_genesis * SECONDS_PER_SLOT)
+    return uint64(state.genesis_time + slots_since_genesis * SLOT_DURATION_MS // 1000)
 ```
 
 #### `compute_epoch_at_slot`

@@ -48,7 +48,7 @@ def test_from_syncing_to_invalid(spec, state):
 
     current_time = (
         spec.SAFE_SLOTS_TO_IMPORT_OPTIMISTICALLY * 10 + state.slot
-    ) * spec.config.SECONDS_PER_SLOT + fc_store.genesis_time
+    ) * spec.config.SLOT_DURATION_MS // 1000 + fc_store.genesis_time
     on_tick_and_append_step(spec, fc_store, current_time, test_steps)
 
     # Block 0
