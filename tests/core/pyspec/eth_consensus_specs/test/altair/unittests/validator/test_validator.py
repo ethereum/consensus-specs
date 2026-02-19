@@ -12,7 +12,6 @@ from eth_consensus_specs.test.helpers.constants import (
     MAINNET,
     MINIMAL,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_eip7805
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkey_to_privkey, pubkeys
 from eth_consensus_specs.test.helpers.state import transition_to
 from eth_consensus_specs.test.helpers.sync_committee import compute_sync_committee_signature
@@ -135,17 +134,6 @@ def test_get_sync_committee_message(spec, state):
     validator_index = 0
     block = spec.BeaconBlock(state_root=state.hash_tree_root())
     block_root = spec.Root(block.hash_tree_root())
-    if is_post_eip7805(spec):
-        store = spec.get_forkchoice_store(state, block)
-        spec.process_slots(state, state.slot + 1)
-        child_block = spec.BeaconBlock(
-            slot=state.slot,
-            parent_root=block_root,
-            state_root=state.hash_tree_root(),
-        )
-        child_block_root = spec.Root(child_block.hash_tree_root())
-        store.blocks[child_block_root] = child_block
-        block_root = spec.get_attester_head(store, child_block_root)
     sync_committee_message = spec.get_sync_committee_message(
         state=state,
         block_root=block_root,
