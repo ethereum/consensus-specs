@@ -13,7 +13,7 @@
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [Modified `get_payload`](#modified-get_payload)
-- [Block proposal](#block-proposal)
+- [Block and sidecar proposal](#block-and-sidecar-proposal)
   - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
     - [Attester slashings](#attester-slashings)
     - [Attestations](#attestations)
@@ -101,7 +101,7 @@ def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadRespo
     ...
 ```
 
-## Block proposal
+## Block and sidecar proposal
 
 ### Constructing the `BeaconBlockBody`
 

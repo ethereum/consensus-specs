@@ -28,6 +28,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
+  "ckzg==2.1.5",
   "deepdiff==8.6.1",
   "pytest-cov==7.0.0",
   "pytest-html==4.2.0",
