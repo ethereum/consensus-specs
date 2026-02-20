@@ -14,7 +14,7 @@
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [New `notify_ptc_messages`](#new-notify_ptc_messages)
-  - [New `is_payload_timely`](#new-is_payload_timely)
+  - [New `has_payload_quorum`](#new-has_payload_quorum)
   - [New `is_payload_data_available`](#new-is_payload_data_available)
   - [New `get_parent_payload_status`](#new-get_parent_payload_status)
   - [New `is_parent_node_full`](#new-is_parent_node_full)
@@ -89,7 +89,7 @@ class ForkChoiceNode(Container):
 class LatestMessage(object):
     slot: Slot
     root: Root
-    payload_present: boolean
+    payload_timely: boolean
 ```
 
 ### Modified `update_latest_messages`
@@ -106,7 +106,7 @@ def update_latest_messages(
 ) -> None:
     slot = attestation.data.slot
     beacon_block_root = attestation.data.beacon_block_root
-    payload_present = attestation.data.index == 1
+    payload_timely = attestation.data.index == 1
     non_equivocating_attesting_indices = [
         i for i in attesting_indices if i not in store.equivocating_indices
     ]
@@ -114,9 +114,7 @@ def update_latest_messages(
         if i not in store.latest_messages or slot > store.latest_messages[i].slot:
             # [Modified in Gloas:EIP7732]
             store.latest_messages[i] = LatestMessage(
-                slot=slot,
-                root=beacon_block_root,
-                payload_present=payload_present,
+                slot=slot, root=beacon_block_root, payload_timely=payload_timely
             )
 ```
 
@@ -145,6 +143,8 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
+    # [New in Gloas:EIP7732]
+    payload_envelopes: Dict[Root, SignedExecutionPayloadEnvelope] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
     payload_states: Dict[Root, BeaconState] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
@@ -219,13 +219,13 @@ def notify_ptc_messages(
             )
 ```
 
-### New `is_payload_timely`
+### New `has_payload_quorum`
 
 ```python
-def is_payload_timely(store: Store, root: Root) -> bool:
+def has_payload_quorum(store: Store, root: Root) -> bool:
     """
     Return whether the execution payload for the beacon block with root ``root``
-    was voted as present by the PTC, and was locally determined to be available.
+    was voted as timely by the PTC, and was locally determined to be available.
     """
     # The beacon block root must be known
     assert root in store.payload_timeliness_vote
@@ -328,7 +328,7 @@ def is_supporting_vote(store: Store, node: ForkChoiceNode, message: LatestMessag
             return True
         if message.slot <= block.slot:
             return False
-        if message.payload_present:
+        if message.payload_timely:
             return node.payload_status == PAYLOAD_STATUS_FULL
         else:
             return node.payload_status == PAYLOAD_STATUS_EMPTY
@@ -353,7 +353,7 @@ extending the payload.
 def should_extend_payload(store: Store, root: Root) -> bool:
     proposer_root = store.proposer_boost_root
     return (
-        (is_payload_timely(store, root) and is_payload_data_available(store, root))
+        (has_payload_quorum(store, root) and is_payload_data_available(store, root))
         or proposer_root == Root()
         or store.blocks[proposer_root].parent_root != root
         or is_parent_node_full(store, store.blocks[proposer_root])
@@ -470,7 +470,7 @@ def get_weight(
         message = LatestMessage(
             slot=get_current_slot(store),
             root=store.proposer_boost_root,
-            payload_present=False,
+            payload_timely=False,
         )
         if is_supporting_vote(store, node, message):
             proposer_score = get_proposer_score(store)
@@ -832,7 +832,8 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
     # Process the execution payload
     process_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
 
-    # Add new state for this payload to the store
+    # Add payload and payload state to the store
+    store.payload_envelopes[envelope.beacon_block_root] = signed_envelope
     store.payload_states[envelope.beacon_block_root] = state
 ```
 
@@ -873,7 +874,7 @@ def on_payload_attestation_message(
     # Update the votes for the block
     ptc_index = ptc.index(ptc_message.validator_index)
     payload_timeliness_vote = store.payload_timeliness_vote[data.beacon_block_root]
-    payload_timeliness_vote[ptc_index] = data.payload_present
+    payload_timeliness_vote[ptc_index] = data.payload_timely
     payload_data_availability_vote = store.payload_data_availability_vote[data.beacon_block_root]
     payload_data_availability_vote[ptc_index] = data.blob_data_available
 ```
