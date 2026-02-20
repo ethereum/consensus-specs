@@ -1,0 +1,6058 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ethereum.github.io/consensus-specs/ssz/simple-serialize/">
+      
+      
+        <link rel="prev" href="../merkle-proofs/">
+      
+      
+        <link rel="next" href="../../sync/optimistic/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>SimpleSerialize (SSZ) - Ethereum Consensus Specs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#simpleserialize-ssz" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Ethereum Consensus Specs" class="md-header__button md-logo" aria-label="Ethereum Consensus Specs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ethereum Consensus Specs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              SimpleSerialize (SSZ)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../specs/phase0/beacon-chain/" class="md-tabs__link">
+          
+  
+  
+  Specs
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../docs/new-feature/" class="md-tabs__link">
+          
+  
+  
+  Docs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../fork_choice/safe-block/" class="md-tabs__link">
+          
+  
+  
+  Fork choice
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../light-client/" class="md-tabs__link">
+          
+  
+  
+  Light client
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../merkle-proofs/" class="md-tabs__link">
+          
+  
+  
+  Ssz
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../sync/optimistic/" class="md-tabs__link">
+          
+  
+  
+  Sync
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Ethereum Consensus Specs" class="md-nav__button md-logo" aria-label="Ethereum Consensus Specs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Ethereum Consensus Specs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ethereum Proof-of-Stake Consensus Specifications
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Phase0
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Phase0
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/phase0/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beacon Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/phase0/deposit-contract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deposit Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/phase0/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork Choice
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/phase0/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/phase0/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/phase0/weak-subjectivity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Weak Subjectivity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Altair
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Altair
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/altair/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beacon Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/altair/bls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BLS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/altair/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork Choice
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/altair/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/altair/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/altair/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2_7" id="__nav_2_2_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Light Client
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Light Client
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/altair/light-client/full-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Full Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/altair/light-client/light-client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Light Client
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/altair/light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/altair/light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sync Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bellatrix
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Bellatrix
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/bellatrix/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beacon Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/bellatrix/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork Choice
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/bellatrix/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/bellatrix/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/bellatrix/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capella
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Capella
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/capella/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beacon Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/capella/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork Choice
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/capella/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/capella/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/capella/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4_6" id="__nav_2_4_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Light Client
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Light Client
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/capella/light-client/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/capella/light-client/full-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Full Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/capella/light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/capella/light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sync Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deneb
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Deneb
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/deneb/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beacon Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/deneb/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork Choice
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/deneb/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/deneb/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/deneb/polynomial-commitments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Polynomial Commitments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/deneb/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_5_7" id="__nav_2_5_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Light Client
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Light Client
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/deneb/light-client/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/deneb/light-client/full-node/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Full Node
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/deneb/light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/deneb/light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sync Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Electra
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Electra
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/electra/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beacon Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/electra/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/electra/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/electra/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/electra/weak-subjectivity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Weak Subjectivity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6_6" id="__nav_2_6_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Light Client
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_6_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Light Client
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/electra/light-client/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/electra/light-client/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/electra/light-client/sync-protocol/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sync Protocol
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fulu
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Fulu
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/fulu/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beacon Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/fulu/das-core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DAS Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/fulu/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork Choice
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/fulu/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/fulu/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/fulu/polynomial-commitments-sampling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Polynomial Commitments Sampling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/fulu/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_8" id="__nav_2_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Gloas
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Gloas
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/gloas/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beacon Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/gloas/builder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/gloas/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork Choice
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/gloas/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/gloas/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/gloas/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9" id="__nav_2_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Heze
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Heze
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/heze/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beacon Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/heze/builder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/heze/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork Choice
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/heze/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/heze/inclusion-list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inclusion List
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/heze/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/heze/validator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_10" id="__nav_2_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_10_1" id="__nav_2_10_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eip6800
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_10_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Eip6800
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip6800/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beacon Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip6800/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip6800/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_10_2" id="__nav_2_10_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eip6914
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_10_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Eip6914
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip6914/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beacon Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip6914/fork-choice/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork Choice
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_10_3" id="__nav_2_10_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eip7441
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_10_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Eip7441
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip7441/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beacon Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip7441/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_10_4" id="__nav_2_10_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eip7928
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_10_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Eip7928
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip7928/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beacon Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip7928/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip7928/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_10_5" id="__nav_2_10_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Eip8025
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_10_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Eip8025
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip8025/beacon-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beacon Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip8025/fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip8025/p2p-interface/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    P2P Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip8025/proof-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proof Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/_features/eip8025/prover/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prover
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Docs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../docs/new-feature/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How to add a new feature proposal in consensus-specs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../docs/release/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Procedure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork choice
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Fork choice
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../fork_choice/safe-block/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork Choice -- Safe Block
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fork Choice -- Core
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Fork Choice -- Core
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/phase0/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    phase0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/bellatrix/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    bellatrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/capella/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    capella
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/deneb/fork-choice" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    deneb
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Light client
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Light client
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../light-client/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/altair/light-client/sync-protocol" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Altair
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/capella/light-client/sync-protocol" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capella
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../specs/deneb/light-client/sync-protocol" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deneb
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ssz
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Ssz
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../merkle-proofs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Merkle proof formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SimpleSerialize (SSZ)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SimpleSerialize (SSZ)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#constants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constants
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Typing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#composite-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Composite types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#variable-size-and-fixed-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variable-size and fixed-size
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#byte" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Byte
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aliases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aliases
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#default-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default values
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Default values">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#is_zero" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        is_zero
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#illegal-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Illegal types
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Illegal types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compatible-merkleization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatible Merkleization
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#serialization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serialization
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Serialization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uintn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        uintN
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#boolean" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        boolean
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bitvectorn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bitvector[N]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bitlistn-progressivebitlist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bitlist[N], ProgressiveBitlist
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vectors-containers-progressive-containers-lists-progressive-lists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vectors, containers, progressive containers, lists, progressive lists
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#union" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Union
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compatible-unions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatible unions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deserialization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deserialization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#merkleization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Merkleization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summaries-and-expansions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summaries and expansions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#json-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JSON mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sync
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Sync
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../sync/optimistic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Optimistic Sync
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#constants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constants
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#typing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typing
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Typing">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#composite-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Composite types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#variable-size-and-fixed-size" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variable-size and fixed-size
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#byte" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Byte
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aliases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aliases
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#default-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default values
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Default values">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#is_zero" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        is_zero
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#illegal-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Illegal types
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Illegal types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compatible-merkleization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatible Merkleization
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#serialization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serialization
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Serialization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uintn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        uintN
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#boolean" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        boolean
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bitvectorn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bitvector[N]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bitlistn-progressivebitlist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bitlist[N], ProgressiveBitlist
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vectors-containers-progressive-containers-lists-progressive-lists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vectors, containers, progressive containers, lists, progressive lists
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#union" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Union
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compatible-unions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatible unions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deserialization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deserialization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#merkleization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Merkleization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summaries-and-expansions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summaries and expansions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#json-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JSON mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="simpleserialize-ssz">SimpleSerialize (SSZ)<a class="headerlink" href="#simpleserialize-ssz" title="Permanent link">&para;</a></h1>
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
+
+<ul>
+<li><a href="#constants">Constants</a></li>
+<li><a href="#typing">Typing</a></li>
+<li><a href="#basic-types">Basic types</a></li>
+<li><a href="#composite-types">Composite types</a></li>
+<li><a href="#variable-size-and-fixed-size">Variable-size and fixed-size</a></li>
+<li><a href="#byte">Byte</a></li>
+<li><a href="#aliases">Aliases</a></li>
+<li><a href="#default-values">Default values</a><ul>
+<li><a href="#is_zero"><code>is_zero</code></a></li>
+</ul>
+</li>
+<li><a href="#illegal-types">Illegal types</a><ul>
+<li><a href="#compatible-merkleization">Compatible Merkleization</a></li>
+</ul>
+</li>
+<li><a href="#serialization">Serialization</a></li>
+<li><a href="#uintn"><code>uintN</code></a></li>
+<li><a href="#boolean"><code>boolean</code></a></li>
+<li><a href="#bitvectorn"><code>Bitvector[N]</code></a></li>
+<li><a href="#bitlistn-progressivebitlist"><code>Bitlist[N]</code>, <code>ProgressiveBitlist</code></a></li>
+<li><a href="#vectors-containers-progressive-containers-lists-progressive-lists">Vectors, containers, progressive containers, lists, progressive lists</a></li>
+<li><a href="#union">Union</a></li>
+<li><a href="#compatible-unions">Compatible unions</a></li>
+<li><a href="#deserialization">Deserialization</a></li>
+<li><a href="#merkleization">Merkleization</a></li>
+<li><a href="#summaries-and-expansions">Summaries and expansions</a></li>
+<li><a href="#implementations">Implementations</a></li>
+<li><a href="#json-mapping">JSON mapping</a></li>
+</ul>
+<!-- mdformat-toc end -->
+
+<h2 id="constants">Constants<a class="headerlink" href="#constants" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BYTES_PER_CHUNK</code></td>
+<td><code>32</code></td>
+<td>Number of bytes per chunk.</td>
+</tr>
+<tr>
+<td><code>BYTES_PER_LENGTH_OFFSET</code></td>
+<td><code>4</code></td>
+<td>Number of bytes per serialized length offset.</td>
+</tr>
+<tr>
+<td><code>BITS_PER_BYTE</code></td>
+<td><code>8</code></td>
+<td>Number of bits per byte.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="typing">Typing<a class="headerlink" href="#typing" title="Permanent link">&para;</a></h2>
+<h3 id="basic-types">Basic types<a class="headerlink" href="#basic-types" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>uintN</code>: <code>N</code>-bit unsigned integer (where <code>N in [8, 16, 32, 64, 128, 256]</code>)</li>
+<li><code>byte</code>: 8-bit opaque data container, equivalent in serialization and hashing
+  to <code>uint8</code></li>
+<li><code>boolean</code>: <code>True</code> or <code>False</code></li>
+</ul>
+<h3 id="composite-types">Composite types<a class="headerlink" href="#composite-types" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>container</strong>: ordered heterogeneous collection of values</li>
+<li>python dataclass notation with key-type pairs, e.g.
+  <div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-0-3">3</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1"></a><span style="color: #66D9EF">class</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">ContainerExample</span><span style="color: #F8F8F2">(Container):</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2"></a>    <span style="color: #F8F8F2">foo:</span> <span style="color: #F8F8F2">uint64</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3"></a>    <span style="color: #F8F8F2">bar:</span> <span style="color: #F8F8F2">boolean</span>
+</code></pre></div></td></tr></table></div></li>
+<li><strong>progressive container</strong> <em>[EIP-7495, currently unused]</em>: ordered
+  heterogeneous collection of values with stable Merkleization</li>
+<li>python dataclass notation with key-type pairs, e.g.
+  <div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-6">6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-7">7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-1-8">8</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1"></a><span style="color: #66D9EF">class</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">Square</span><span style="color: #F8F8F2">(ProgressiveContainer(active_fields</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">[</span><span style="color: #AE81FF">1</span><span style="color: #F8F8F2">,</span> <span style="color: #AE81FF">0</span><span style="color: #F8F8F2">,</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">])):</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2"></a>    <span style="color: #F8F8F2">side:</span> <span style="color: #F8F8F2">uint16</span>  <span style="color: #959077"># Merkleized at field index #0 (location of first 1 in `active_fields`)</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3"></a>    <span style="color: #F8F8F2">color:</span> <span style="color: #F8F8F2">uint8</span>  <span style="color: #959077"># Merkleized at field index #2 (location of second 1 in `active_fields`)</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6"></a><span style="color: #66D9EF">class</span><span style="color: #F8F8F2"> </span><span style="color: #A6E22E">Circle</span><span style="color: #F8F8F2">(ProgressiveContainer(active_fields</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">,</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">,</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">])):</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7"></a>    <span style="color: #F8F8F2">radius:</span> <span style="color: #F8F8F2">uint16</span>  <span style="color: #959077"># Merkleized at field index #1 (location of first 1 in `active_fields`)</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8"></a>    <span style="color: #F8F8F2">color:</span> <span style="color: #F8F8F2">uint8</span>  <span style="color: #959077"># Merkleized at field index #2 (location of second 1 in `active_fields`)</span>
+</code></pre></div></td></tr></table></div></li>
+<li><strong>vector</strong>: ordered fixed-length homogeneous collection, with <code>N</code> values</li>
+<li>notation <code>Vector[type, N]</code>, e.g. <code>Vector[uint64, N]</code></li>
+<li><strong>list</strong>: ordered variable-length homogeneous collection, limited to <code>N</code>
+  values</li>
+<li>notation <code>List[type, N]</code>, e.g. <code>List[uint64, N]</code></li>
+<li><strong>progressive list</strong> <em>[EIP-7916, currently unused]</em>: ordered variable-length
+  homogeneous collection, without limit</li>
+<li>notation <code>ProgressiveList[type]</code>, e.g. <code>ProgressiveList[uint64]</code></li>
+<li><strong>bitvector</strong>: ordered fixed-length collection of <code>boolean</code> values, with <code>N</code>
+  bits</li>
+<li>notation <code>Bitvector[N]</code></li>
+<li><strong>bitlist</strong>: ordered variable-length collection of <code>boolean</code> values, limited
+  to <code>N</code> bits</li>
+<li>notation <code>Bitlist[N]</code></li>
+<li><strong>progressive bitlist</strong> <em>[EIP-7916, currently unused]</em>: ordered
+  variable-length collection of <code>boolean</code> values, without limit</li>
+<li>notation <code>ProgressiveBitlist</code></li>
+<li><strong>union</strong>: union type containing one of the given subtypes</li>
+<li>notation <code>Union[type_0, type_1, ...]</code>, e.g. <code>union[None, uint64, uint32]</code></li>
+<li><strong>compatible union</strong> <em>[EIP-8016, currently unused]</em>: union type containing one
+  of the given subtypes with compatible Merkleization</li>
+<li>notation <code>CompatibleUnion({selector: type})</code>, e.g.
+    <code>CompatibleUnion({1: Square, 2: Circle})</code></li>
+</ul>
+<p><em>Note</em>: Both <code>Vector[boolean, N]</code> and <code>Bitvector[N]</code> are valid, yet distinct due
+to their different serialization requirements. Similarly, both
+<code>List[boolean, N]</code> and <code>Bitlist[N]</code> are valid, yet distinct. Generally
+<code>Bitvector[N]</code>/<code>Bitlist[N]</code> are preferred because of their serialization
+efficiencies.</p>
+<h3 id="variable-size-and-fixed-size">Variable-size and fixed-size<a class="headerlink" href="#variable-size-and-fixed-size" title="Permanent link">&para;</a></h3>
+<p>We recursively define "variable-size" types to be lists, progressive lists,
+unions, compatible unions, bitlists, progressive bitlists, and all composite
+types that contain a variable-size type. All other types are said to be
+"fixed-size".</p>
+<h3 id="byte">Byte<a class="headerlink" href="#byte" title="Permanent link">&para;</a></h3>
+<p>Although the SSZ serialization of <code>byte</code> is equivalent to that of <code>uint8</code>, the
+former is used for opaque data while the latter is intended as a number.</p>
+<h3 id="aliases">Aliases<a class="headerlink" href="#aliases" title="Permanent link">&para;</a></h3>
+<p>For convenience we alias:</p>
+<ul>
+<li><code>bit</code> to <code>boolean</code></li>
+<li><code>BytesN</code> and <code>ByteVector[N]</code> to <code>Vector[byte, N]</code> (this is <em>not</em> a basic type)</li>
+<li><code>ByteList[N]</code> to <code>List[byte, N]</code></li>
+<li><code>ProgressiveByteList</code> to <code>ProgressiveList[byte]</code></li>
+</ul>
+<p>Aliases are semantically equivalent to their underlying type and therefore share
+canonical representations both in SSZ and in related formats.</p>
+<h3 id="default-values">Default values<a class="headerlink" href="#default-values" title="Permanent link">&para;</a></h3>
+<p>Assuming a helper function <code>default(type)</code> which returns the default value for
+<code>type</code>, we can recursively define the default value for all types.</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Default Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uintN</code></td>
+<td><code>0</code></td>
+</tr>
+<tr>
+<td><code>boolean</code></td>
+<td><code>False</code></td>
+</tr>
+<tr>
+<td><code>Container</code></td>
+<td><code>[default(type) for type in container]</code></td>
+</tr>
+<tr>
+<td><code>ProgressiveContainer(active_fields)</code></td>
+<td><code>[default(type) for type in progressive_container]</code></td>
+</tr>
+<tr>
+<td><code>Vector[type, N]</code></td>
+<td><code>[default(type)] * N</code></td>
+</tr>
+<tr>
+<td><code>Bitvector[N]</code></td>
+<td><code>[False] * N</code></td>
+</tr>
+<tr>
+<td><code>List[type, N]</code></td>
+<td><code>[]</code></td>
+</tr>
+<tr>
+<td><code>ProgressiveList[type]</code></td>
+<td><code>[]</code></td>
+</tr>
+<tr>
+<td><code>Bitlist[N]</code></td>
+<td><code>[]</code></td>
+</tr>
+<tr>
+<td><code>ProgressiveBitlist</code></td>
+<td><code>[]</code></td>
+</tr>
+<tr>
+<td><code>Union[type_0, type_1, ...]</code></td>
+<td><code>default(type_0)</code></td>
+</tr>
+<tr>
+<td><code>CompatibleUnion({selector: type})</code></td>
+<td>n/a (error)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="is_zero"><code>is_zero</code><a class="headerlink" href="#is_zero" title="Permanent link">&para;</a></h4>
+<p>An SSZ object is called zeroed (and thus, <code>is_zero(object)</code> returns true) if it
+is equal to the default value for that type.</p>
+<h3 id="illegal-types">Illegal types<a class="headerlink" href="#illegal-types" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Empty vector types (<code>Vector[type, 0]</code>, <code>Bitvector[0]</code>) are illegal.</li>
+<li>Containers with no fields are illegal.</li>
+<li><code>ProgressiveContainer</code> with no fields are illegal.</li>
+<li><code>ProgressiveContainer</code> with an <code>active_fields</code> configuration of more than 256
+  entries are illegal.</li>
+<li><code>ProgressiveContainer</code> with an <code>active_fields</code> configuration ending in <code>0</code> are
+  illegal.</li>
+<li><code>ProgressiveContainer</code> with an <code>active_fields</code> configuration with a different
+  count of <code>1</code> than fields are illegal.</li>
+<li>The <code>None</code> type option in a <code>Union</code> type is only legal as the first option
+  (i.e. with index zero).</li>
+<li><code>CompatibleUnion({})</code> without any type options are illegal.</li>
+<li><code>CompatibleUnion({selector: type})</code> with a selector outside <code>uint8(1)</code> through
+  <code>uint8(127)</code> are illegal.</li>
+<li><code>CompatibleUnion({selector: type})</code> with a type option that has incompatible
+  Merkleization with another type option are illegal.</li>
+</ul>
+<h4 id="compatible-merkleization">Compatible Merkleization<a class="headerlink" href="#compatible-merkleization" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Types are compatible with themselves.</li>
+<li><code>byte</code> is compatible with <code>uint8</code> and vice versa.</li>
+<li><code>Bitlist[N]</code> are compatible if they share the same capacity <code>N</code>.</li>
+<li><code>Bitvector[N]</code> are compatible if they share the same capacity <code>N</code>.</li>
+<li><code>List[type, N]</code> are compatible if <code>type</code> is compatible and they share the same
+  capacity <code>N</code>.</li>
+<li><code>Vector[type, N]</code> are compatible if <code>type</code> is compatible and they share the
+  same capacity <code>N</code>.</li>
+<li><code>ProgressiveList[type]</code> are compatible if <code>type</code> is compatible.</li>
+<li><code>Container</code> are compatible if they share the same field names in the same
+  order, and all field types are compatible.</li>
+<li><code>ProgressiveContainer(active_fields)</code> are compatible if all <code>1</code> entries in
+  both type's <code>active_fields</code> correspond to fields with shared names and
+  compatible types, and no other field name is shared across both types.</li>
+<li><code>CompatibleUnion</code> are compatible with each other if all type options across
+  both <code>CompatibleUnion</code> are compatible.</li>
+<li>All other types are incompatible.</li>
+</ul>
+<h2 id="serialization">Serialization<a class="headerlink" href="#serialization" title="Permanent link">&para;</a></h2>
+<p>We recursively define the <code>serialize</code> function which consumes an object <code>value</code>
+(of the type specified) and returns a bytestring of type <code>bytes</code>.</p>
+<p><em>Note</em>: In the function definitions below (<code>serialize</code>, <code>hash_tree_root</code>,
+<code>is_variable_size</code>, etc.) objects implicitly carry their type.</p>
+<h3 id="uintn"><code>uintN</code><a class="headerlink" href="#uintn" title="Permanent link">&para;</a></h3>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-2-2">2</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1"></a><span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">N</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">[</span><span style="color: #AE81FF">8</span><span style="color: #F8F8F2">,</span> <span style="color: #AE81FF">16</span><span style="color: #F8F8F2">,</span> <span style="color: #AE81FF">32</span><span style="color: #F8F8F2">,</span> <span style="color: #AE81FF">64</span><span style="color: #F8F8F2">,</span> <span style="color: #AE81FF">128</span><span style="color: #F8F8F2">,</span> <span style="color: #AE81FF">256</span><span style="color: #F8F8F2">]</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2"></a><span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">value</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">to_bytes(N</span> <span style="color: #FF4689">//</span> <span style="color: #F8F8F2">BITS_PER_BYTE,</span> <span style="color: #E6DB74">&quot;little&quot;</span><span style="color: #F8F8F2">)</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="boolean"><code>boolean</code><a class="headerlink" href="#boolean" title="Permanent link">&para;</a></h3>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-3-2">2</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1"></a><span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">value</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">(</span><span style="color: #66D9EF">True</span><span style="color: #F8F8F2">,</span> <span style="color: #66D9EF">False</span><span style="color: #F8F8F2">)</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2"></a><span style="color: #66D9EF">return</span> <span style="color: #E6DB74">b&quot;</span><span style="color: #AE81FF">\x01</span><span style="color: #E6DB74">&quot;</span> <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">value</span> <span style="color: #FF4689">is</span> <span style="color: #66D9EF">True</span> <span style="color: #66D9EF">else</span> <span style="color: #E6DB74">b&quot;</span><span style="color: #AE81FF">\x00</span><span style="color: #E6DB74">&quot;</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="bitvectorn"><code>Bitvector[N]</code><a class="headerlink" href="#bitvectorn" title="Permanent link">&para;</a></h3>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-4-4">4</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1"></a><span style="color: #F8F8F2">array</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">]</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">((N</span> <span style="color: #FF4689">+</span> <span style="color: #AE81FF">7</span><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">//</span> <span style="color: #AE81FF">8</span><span style="color: #F8F8F2">)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2"></a><span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">i</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">range(N):</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3"></a>    <span style="color: #F8F8F2">array[i</span> <span style="color: #FF4689">//</span> <span style="color: #AE81FF">8</span><span style="color: #F8F8F2">]</span> <span style="color: #FF4689">|=</span> <span style="color: #F8F8F2">value[i]</span> <span style="color: #FF4689">&lt;&lt;</span> <span style="color: #F8F8F2">(i</span> <span style="color: #FF4689">%</span> <span style="color: #AE81FF">8</span><span style="color: #F8F8F2">)</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4"></a><span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">bytes(array)</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="bitlistn-progressivebitlist"><code>Bitlist[N]</code>, <code>ProgressiveBitlist</code><a class="headerlink" href="#bitlistn-progressivebitlist" title="Permanent link">&para;</a></h3>
+<p>Note that from the offset coding, the length (in bytes) of the bitlist is known.
+An additional <code>1</code> bit is added to the end, at index <code>e</code> where <code>e</code> is the length
+of the bitlist (not the limit), so that the length in bits will also be known.</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-5-5">5</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1"></a><span style="color: #F8F8F2">array</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[</span><span style="color: #AE81FF">0</span><span style="color: #F8F8F2">]</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">((len(value)</span> <span style="color: #FF4689">//</span> <span style="color: #AE81FF">8</span><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">+</span> <span style="color: #AE81FF">1</span><span style="color: #F8F8F2">)</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2"></a><span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">i</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">range(len(value)):</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3"></a>    <span style="color: #F8F8F2">array[i</span> <span style="color: #FF4689">//</span> <span style="color: #AE81FF">8</span><span style="color: #F8F8F2">]</span> <span style="color: #FF4689">|=</span> <span style="color: #F8F8F2">value[i]</span> <span style="color: #FF4689">&lt;&lt;</span> <span style="color: #F8F8F2">(i</span> <span style="color: #FF4689">%</span> <span style="color: #AE81FF">8</span><span style="color: #F8F8F2">)</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4"></a><span style="color: #F8F8F2">array[len(value)</span> <span style="color: #FF4689">//</span> <span style="color: #AE81FF">8</span><span style="color: #F8F8F2">]</span> <span style="color: #FF4689">|=</span> <span style="color: #AE81FF">1</span> <span style="color: #FF4689">&lt;&lt;</span> <span style="color: #F8F8F2">(len(value)</span> <span style="color: #FF4689">%</span> <span style="color: #AE81FF">8</span><span style="color: #F8F8F2">)</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5"></a><span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">bytes(array)</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="vectors-containers-progressive-containers-lists-progressive-lists">Vectors, containers, progressive containers, lists, progressive lists<a class="headerlink" href="#vectors-containers-progressive-containers-lists-progressive-lists" title="Permanent link">&para;</a></h3>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-1"> 1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-2"> 2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-3"> 3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-4"> 4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-5"> 5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-6"> 6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-7"> 7</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-8"> 8</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-9"> 9</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-10">10</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-11">11</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-12">12</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-13">13</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-14">14</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-15">15</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-16">16</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-6-17">17</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1"></a><span style="color: #959077"># Recursively serialize</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2"></a><span style="color: #F8F8F2">fixed_parts</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[serialize(element)</span> <span style="color: #66D9EF">if</span> <span style="color: #FF4689">not</span> <span style="color: #F8F8F2">is_variable_size(element)</span> <span style="color: #66D9EF">else</span> <span style="color: #66D9EF">None</span> <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">element</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">value]</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3"></a><span style="color: #F8F8F2">variable_parts</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[serialize(element)</span> <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">is_variable_size(element)</span> <span style="color: #66D9EF">else</span> <span style="color: #E6DB74">b&quot;&quot;</span> <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">element</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">value]</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4"></a>
+<a id="__codelineno-6-5" name="__codelineno-6-5"></a><span style="color: #959077"># Compute and check lengths</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6"></a><span style="color: #F8F8F2">fixed_lengths</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[len(part)</span> <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">part</span> <span style="color: #FF4689">!=</span> <span style="color: #66D9EF">None</span> <span style="color: #66D9EF">else</span> <span style="color: #F8F8F2">BYTES_PER_LENGTH_OFFSET</span> <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">part</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">fixed_parts]</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7"></a><span style="color: #F8F8F2">variable_lengths</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[len(part)</span> <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">part</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">variable_parts]</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8"></a><span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">sum(fixed_lengths</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">variable_lengths)</span> <span style="color: #FF4689">&lt;</span> <span style="color: #AE81FF">2</span> <span style="color: #FF4689">**</span> <span style="color: #F8F8F2">(BYTES_PER_LENGTH_OFFSET</span> <span style="color: #FF4689">*</span> <span style="color: #F8F8F2">BITS_PER_BYTE)</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9"></a>
+<a id="__codelineno-6-10" name="__codelineno-6-10"></a><span style="color: #959077"># Interleave offsets of variable-size parts with fixed-size parts</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11"></a><span style="color: #F8F8F2">variable_offsets</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12"></a>    <span style="color: #F8F8F2">serialize(uint32(sum(fixed_lengths</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">variable_lengths[:i])))</span> <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">i</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">range(len(value))</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13"></a><span style="color: #F8F8F2">]</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14"></a><span style="color: #F8F8F2">fixed_parts</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">[part</span> <span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">part</span> <span style="color: #FF4689">!=</span> <span style="color: #66D9EF">None</span> <span style="color: #66D9EF">else</span> <span style="color: #F8F8F2">variable_offsets[i]</span> <span style="color: #66D9EF">for</span> <span style="color: #F8F8F2">i,</span> <span style="color: #F8F8F2">part</span> <span style="color: #FF4689">in</span> <span style="color: #F8F8F2">enumerate(fixed_parts)]</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15"></a>
+<a id="__codelineno-6-16" name="__codelineno-6-16"></a><span style="color: #959077"># Return the concatenation of the fixed-size parts (offsets interleaved) with the variable-size parts</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17"></a><span style="color: #66D9EF">return</span> <span style="color: #E6DB74">b&quot;&quot;</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">join(fixed_parts</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">variable_parts)</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="union">Union<a class="headerlink" href="#union" title="Permanent link">&para;</a></h3>
+<p>A <code>value</code> as <code>Union[T...]</code> type has properties <code>value.value</code> with the contained
+value, and <code>value.selector</code> which indexes the selected <code>Union</code> type option <code>T</code>.</p>
+<p>A <code>Union</code>:</p>
+<ul>
+<li>May have multiple selectors with the same type.</li>
+<li>Should not use selectors above 127 (i.e. highest bit is set), these are
+  reserved for backwards compatible extensions.</li>
+<li>Must have at least 1 type option.</li>
+<li>May have <code>None</code> as first type option, i.e. <code>selector == 0</code></li>
+<li>Must have at least 2 type options if the first is <code>None</code></li>
+<li>Is always considered a variable-length type, even if all type options have an
+  equal fixed-length.</li>
+</ul>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-1">1</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-2">2</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-3">3</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-4">4</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-5">5</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-6">6</a></span>
+<span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-7-7">7</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1"></a><span style="color: #66D9EF">if</span> <span style="color: #F8F8F2">value</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">value</span> <span style="color: #FF4689">is</span> <span style="color: #66D9EF">None</span><span style="color: #F8F8F2">:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2"></a>    <span style="color: #66D9EF">assert</span> <span style="color: #F8F8F2">value</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">selector</span> <span style="color: #FF4689">==</span> <span style="color: #AE81FF">0</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3"></a>    <span style="color: #66D9EF">return</span> <span style="color: #E6DB74">b&quot;</span><span style="color: #AE81FF">\x00</span><span style="color: #E6DB74">&quot;</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4"></a><span style="color: #66D9EF">else</span><span style="color: #F8F8F2">:</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5"></a>    <span style="color: #F8F8F2">serialized_bytes</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">serialize(value</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">value)</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6"></a>    <span style="color: #F8F8F2">serialized_selector_index</span> <span style="color: #FF4689">=</span> <span style="color: #F8F8F2">value</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">selector</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">to_bytes(</span><span style="color: #AE81FF">1</span><span style="color: #F8F8F2">,</span> <span style="color: #E6DB74">&quot;little&quot;</span><span style="color: #F8F8F2">)</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7"></a>    <span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">serialized_selector_index</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">serialized_bytes</span>
+</code></pre></div></td></tr></table></div>
+<h3 id="compatible-unions">Compatible unions<a class="headerlink" href="#compatible-unions" title="Permanent link">&para;</a></h3>
+<p>A <code>value</code> as <code>CompatibleUnion({selector: type})</code> has properties <code>value.data</code>
+with the contained value, and <code>value.selector</code> which indexes the selected type
+option.</p>
+<div class="highlight" style="background: #272822"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span style="color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px;"><a href="#__codelineno-8-1">1</a></span></pre></div></td><td class="code"><div><pre style="line-height: 125%;"><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1"></a><span style="color: #66D9EF">return</span> <span style="color: #F8F8F2">value</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">selector</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">to_bytes(</span><span style="color: #AE81FF">1</span><span style="color: #F8F8F2">,</span> <span style="color: #E6DB74">&quot;little&quot;</span><span style="color: #F8F8F2">)</span> <span style="color: #FF4689">+</span> <span style="color: #F8F8F2">serialize(value</span><span style="color: #FF4689">.</span><span style="color: #F8F8F2">data)</span>
+</code></pre></div></td></tr></table></div>
+<h2 id="deserialization">Deserialization<a class="headerlink" href="#deserialization" title="Permanent link">&para;</a></h2>
+<p>Because serialization is an injective function (i.e. two distinct objects of the
+same type will serialize to different values) any bytestring has at most one
+object it could deserialize to.</p>
+<p>Deserialization can be implemented using a recursive algorithm. The
+deserialization of basic objects is easy, and from there we can find a simple
+recursive algorithm for all fixed-size objects. For variable-size objects we
+have to do one of the following depending on what kind of object it is:</p>
+<ul>
+<li>Vector/list/progressive list of a variable-size object: The serialized data
+  will start with offsets of all the serialized objects
+  (<code>BYTES_PER_LENGTH_OFFSET</code> bytes each).</li>
+<li>Using the first offset, we can compute the length of the list (divide by
+    <code>BYTES_PER_LENGTH_OFFSET</code>), as it gives us the total number of bytes in the
+    offset data.</li>
+<li>The size of each object in the vector/list/progressive list can be inferred
+    from the difference of two offsets. To get the size of the last object, the
+    total number of bytes has to be known (it is not generally possible to
+    deserialize an SSZ object of unknown length)</li>
+<li>Containers/progressive containers follow the same principles as vectors, with
+  the difference that there may be fixed-size objects in a container/progressive
+  container as well. This means the <code>fixed_parts</code> data will contain offsets as
+  well as fixed-size objects.</li>
+<li>In the case of bitlists/progressive bitlists, the length in bits cannot be
+  uniquely inferred from the number of bytes in the object. Because of this,
+  they have a bit at the end that is always set. This bit has to be used to
+  infer the size of the bitlist in bits.</li>
+<li>In the case of unions/compatible unions, the first byte of the deserialization
+  scope is deserialized as type selector, the remainder of the scope is
+  deserialized as the selected type.</li>
+</ul>
+<p>Note that deserialization requires hardening against invalid inputs. A
+non-exhaustive list:</p>
+<ul>
+<li>Offsets: out of order, out of range, mismatching minimum element size.</li>
+<li>Scope: Extra unused bytes, not aligned with element size.</li>
+<li>More elements than a list limit allows. Part of enforcing consensus.</li>
+<li>An out-of-bounds selected index in an <code>Union</code>.</li>
+<li>An out-of-bounds type selector in a <code>CompatibleUnion</code>.</li>
+<li>Incomplete data in a <code>CompatibleUnion</code> where the input is shorter than
+  required for the selected type.</li>
+<li>Corrupted input in a <code>CompatibleUnion</code> where the data contains invalid values
+  or malformed content.</li>
+<li>Inner type validation failures in a <code>CompatibleUnion</code> where the deserialized
+  data fails validation for the selected type.</li>
+</ul>
+<p>Efficient algorithms for computing this object can be found in
+<a href="#implementations">the implementations</a>.</p>
+<h2 id="merkleization">Merkleization<a class="headerlink" href="#merkleization" title="Permanent link">&para;</a></h2>
+<p>We first define helper functions:</p>
+<ul>
+<li><code>size_of(B)</code>, where <code>B</code> is a basic type: the length, in bytes, of the
+  serialized form of the basic type.</li>
+<li><code>chunk_count(type)</code>: calculate the amount of leaves for merkleization of the
+  type.</li>
+<li>all basic types: <code>1</code></li>
+<li><code>Bitlist[N]</code> and <code>Bitvector[N]</code>: <code>(N + 255) // 256</code> (dividing by chunk size,
+    rounding up)</li>
+<li><code>List[B, N]</code> and <code>Vector[B, N]</code>, where <code>B</code> is a basic type:
+    <code>(N * size_of(B) + 31) // 32</code> (dividing by chunk size, rounding up)</li>
+<li><code>List[C, N]</code> and <code>Vector[C, N]</code>, where <code>C</code> is a composite type: <code>N</code></li>
+<li>containers: <code>len(fields)</code></li>
+<li><code>get_active_fields(value)</code>, where <code>value</code> is of type
+  <code>ProgressiveContainer(active_fields)</code>: return <code>active_fields</code>.</li>
+<li><code>pack(values)</code>: Given ordered objects of the same basic type:
+  1. Serialize <code>values</code> into bytes.
+  2. If not aligned to a multiple of <code>BYTES_PER_CHUNK</code> bytes, right-pad with
+     zeroes to the next multiple.
+  3. Partition the bytes into <code>BYTES_PER_CHUNK</code>-byte chunks.
+  4. Return the chunks.</li>
+<li><code>pack_bits(bits)</code>: Given the bits of bitlist or bitvector, get
+  <code>bitfield_bytes</code> by packing them in bytes and aligning to the start. The
+  length-delimiting bit for bitlists is excluded. Then return
+  <code>pack(bitfield_bytes)</code>.</li>
+<li><code>next_pow_of_two(i)</code>: get the next power of 2 of <code>i</code>, if not already a power
+  of 2, with 0 mapping to 1. Examples:
+  <code>0-&gt;1, 1-&gt;1, 2-&gt;2, 3-&gt;4, 4-&gt;4, 6-&gt;8, 9-&gt;16</code></li>
+<li><code>merkleize(chunks, limit=None)</code>: Given ordered <code>BYTES_PER_CHUNK</code>-byte chunks,
+  merkleize the chunks, and return the root:</li>
+<li>The merkleization depends on the effective input, which must be
+    padded/limited:<ul>
+<li>if no limit: pad the <code>chunks</code> with zeroed chunks to
+  <code>next_pow_of_two(len(chunks))</code> (virtually for memory efficiency).</li>
+<li>if <code>limit &gt;= len(chunks)</code>, pad the <code>chunks</code> with zeroed chunks to
+  <code>next_pow_of_two(limit)</code> (virtually for memory efficiency).</li>
+<li>if <code>limit &lt; len(chunks)</code>: do not merkleize, input exceeds limit. Raise an
+  error instead.</li>
+</ul>
+</li>
+<li>Then, merkleize the chunks (empty input is padded to 1 zero chunk):<ul>
+<li>If <code>1</code> chunk: the root is the chunk itself.</li>
+<li>If <code>&gt; 1</code> chunks: merkleize as binary tree.</li>
+</ul>
+</li>
+<li><code>merkleize_progressive(chunks, num_leaves=1)</code>: Given ordered
+  <code>BYTES_PER_CHUNK</code>-byte chunks:</li>
+<li>The merkleization depends on the number of input chunks and is defined
+    recursively:<ul>
+<li>If <code>len(chunks) == 0</code>: the root is a zero value, <code>Bytes32()</code>.</li>
+<li>Otherwise: compute the root using <code>hash(a, b)</code></li>
+<li><code>a</code>: Merkleize the first up to <code>num_leaves</code> chunks as a binary tree
+    using <code>merkleize(chunks[:num_leaves], num_leaves)</code>.</li>
+<li><code>b</code>: Recursively merkleize chunks beyond <code>num_leaves</code> using
+    <code>merkleize_progressive(chunks[num_leaves:], num_leaves * 4)</code>.</li>
+</ul>
+</li>
+<li><code>mix_in_active_fields</code>: Given a Merkle root <code>root</code> and an <code>active_fields</code>
+  configuration return <code>hash(root, pack_bits(active_fields))</code>. Note that
+  <code>active_fields</code> is restricted to ≤ 256 bits.</li>
+<li><code>mix_in_length</code>: Given a Merkle root <code>root</code> and a length <code>length</code> (<code>"uint256"</code>
+  little-endian serialization) return <code>hash(root, length)</code>.</li>
+<li><code>mix_in_selector</code>: Given a Merkle root <code>root</code> and a type selector <code>selector</code>
+  (<code>"uint8"</code> serialization) return <code>hash(root, selector)</code>.</li>
+</ul>
+<p>We now define Merkleization <code>hash_tree_root(value)</code> of an object <code>value</code>
+recursively:</p>
+<ul>
+<li><code>merkleize(pack(value))</code> if <code>value</code> is a basic object or a vector of basic
+  objects.</li>
+<li><code>merkleize(pack_bits(value), limit=chunk_count(type))</code> if <code>value</code> is a
+  bitvector.</li>
+<li><code>mix_in_length(merkleize(pack(value), limit=chunk_count(type)), len(value))</code>
+  if <code>value</code> is a list of basic objects.</li>
+<li><code>mix_in_length(merkleize_progressive(pack(value)), len(value))</code> if <code>value</code> is
+  a progressive list of basic objects.</li>
+<li><code>mix_in_length(merkleize(pack_bits(value), limit=chunk_count(type)), len(value))</code>
+  if <code>value</code> is a bitlist.</li>
+<li><code>mix_in_length(merkleize_progressive(pack_bits(value)), len(value))</code> if
+  <code>value</code> is a progressive bitlist.</li>
+<li><code>merkleize([hash_tree_root(element) for element in value])</code> if <code>value</code> is a
+  vector of composite objects or a container.</li>
+<li><code>mix_in_active_fields(merkleize_progressive([hash_tree_root(element) for element in value]), get_active_fields(value))</code>
+  if <code>value</code> is a progressive container.</li>
+<li><code>mix_in_length(merkleize([hash_tree_root(element) for element in value], limit=chunk_count(type)), len(value))</code>
+  if <code>value</code> is a list of composite objects.</li>
+<li><code>mix_in_length(merkleize_progressive([hash_tree_root(element) for element in value]), len(value))</code>
+  if <code>value</code> is a progressive list of composite objects.</li>
+<li><code>mix_in_selector(hash_tree_root(value.value), value.selector)</code> if <code>value</code> is
+  of union type, and <code>value.value</code> is not <code>None</code></li>
+<li><code>mix_in_selector(Bytes32(), 0)</code> if <code>value</code> is of union type, and <code>value.value</code>
+  is <code>None</code></li>
+<li><code>mix_in_selector(hash_tree_root(value.data), value.selector)</code> if <code>value</code> is of
+  compatible union type.</li>
+</ul>
+<h2 id="summaries-and-expansions">Summaries and expansions<a class="headerlink" href="#summaries-and-expansions" title="Permanent link">&para;</a></h2>
+<p>Let <code>A</code> be an object derived from another object <code>B</code> by replacing some of the
+(possibly nested) values of <code>B</code> by their <code>hash_tree_root</code>. We say <code>A</code> is a
+"summary" of <code>B</code>, and that <code>B</code> is an "expansion" of <code>A</code>. Notice
+<code>hash_tree_root(A) == hash_tree_root(B)</code>.</p>
+<p>We similarly define "summary types" and "expansion types". For example,
+<a href="../../specs/phase0/beacon-chain/#beaconblock"><code>BeaconBlock</code></a> is an expansion
+type of
+<a href="../../specs/phase0/beacon-chain/#beaconblockheader"><code>BeaconBlockHeader</code></a>. Notice
+that objects expand to at most one object of a given expansion type. For
+example, <code>BeaconBlockHeader</code> objects uniquely expand to <code>BeaconBlock</code> objects.</p>
+<h2 id="implementations">Implementations<a class="headerlink" href="#implementations" title="Permanent link">&para;</a></h2>
+<p>See https://github.com/ethereum/consensus-specs/issues/2138 for a list of
+current known implementations.</p>
+<h2 id="json-mapping">JSON mapping<a class="headerlink" href="#json-mapping" title="Permanent link">&para;</a></h2>
+<p>The canonical JSON mapping assigns to each SSZ type a corresponding JSON
+encoding, enabling an SSZ schema to also define the JSON encoding.</p>
+<p>When decoding JSON data, all fields in the SSZ schema must be present with a
+value. Parsers may ignore additional JSON fields.</p>
+<table>
+<thead>
+<tr>
+<th>SSZ</th>
+<th>JSON</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uintN</code></td>
+<td>string</td>
+<td><code>"0"</code></td>
+</tr>
+<tr>
+<td><code>byte</code></td>
+<td>hex-byte-string</td>
+<td><code>"0x00"</code></td>
+</tr>
+<tr>
+<td><code>boolean</code></td>
+<td>bool</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>Container</code></td>
+<td>object</td>
+<td><code>{ "field": ... }</code></td>
+</tr>
+<tr>
+<td><code>ProgressiveContainer(active_fields)</code></td>
+<td>object</td>
+<td><code>{ "field": ... }</code></td>
+</tr>
+<tr>
+<td><code>Vector[type, N]</code></td>
+<td>array</td>
+<td><code>[element, ...]</code></td>
+</tr>
+<tr>
+<td><code>Vector[byte, N]</code></td>
+<td>hex-byte-string</td>
+<td><code>"0x1122"</code></td>
+</tr>
+<tr>
+<td><code>Bitvector[N]</code></td>
+<td>hex-byte-string</td>
+<td><code>"0x1122"</code></td>
+</tr>
+<tr>
+<td><code>List[type, N]</code></td>
+<td>array</td>
+<td><code>[element, ...]</code></td>
+</tr>
+<tr>
+<td><code>List[byte, N]</code></td>
+<td>hex-byte-string</td>
+<td><code>"0x1122"</code></td>
+</tr>
+<tr>
+<td><code>ProgressiveList[type]</code></td>
+<td>array</td>
+<td><code>[element, ...]</code></td>
+</tr>
+<tr>
+<td><code>ProgressiveList[byte]</code></td>
+<td>hex-byte-string</td>
+<td><code>"0x1122"</code></td>
+</tr>
+<tr>
+<td><code>Bitlist[N]</code></td>
+<td>hex-byte-string</td>
+<td><code>"0x1122"</code></td>
+</tr>
+<tr>
+<td><code>ProgressiveBitlist</code></td>
+<td>hex-byte-string</td>
+<td><code>"0x1122"</code></td>
+</tr>
+<tr>
+<td><code>Union[type_0, type_1, ...]</code></td>
+<td>selector-object</td>
+<td><code>{ "selector": string, "data": type_N }</code></td>
+</tr>
+<tr>
+<td><code>CompatibleUnion({selector: type})</code></td>
+<td>selector-object</td>
+<td><code>{ "selector": string, "data": type }</code></td>
+</tr>
+</tbody>
+</table>
+<p>Integers are encoded as strings to avoid loss of precision in 64-bit values.</p>
+<p>Aliases are encoded as their underlying type.</p>
+<p><code>hex-byte-string</code> is a <code>0x</code>-prefixed hex encoding of byte data, as it would
+appear in an SSZ stream.</p>
+<p><code>List</code>, <code>ProgressiveList</code>, and <code>Vector</code> of <code>byte</code> (and aliases thereof) are
+encoded as <code>hex-byte-string</code>. <code>Bitlist</code>, <code>ProgressiveBitlist</code>, and <code>Bitvector</code>
+similarly map their SSZ-byte encodings to a <code>hex-byte-string</code>.</p>
+<p><code>Union</code> and <code>CompatibleUnion</code> are encoded as an object with a <code>selector</code> and
+<code>data</code> field, where the contents of <code>data</code> change according to the selector.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/ethereum/consensus-specs" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "search"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
