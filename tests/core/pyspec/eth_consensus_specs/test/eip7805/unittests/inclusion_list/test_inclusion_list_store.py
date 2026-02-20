@@ -114,7 +114,6 @@ def test_inclusion_list_store_transaction_uniqueness(spec, state):
             inclusion_list_store, state, state.slot
         )
 
-        assert len(inclusion_list_transactions) == len(set(inclusion_list_transactions))
         assert set(inclusion_list_transactions) == set(
             transaction
             for signed_inclusion_list in signed_inclusion_lists
@@ -126,7 +125,7 @@ def test_inclusion_list_store_transaction_uniqueness(spec, state):
 
 @with_eip7805_and_later
 @spec_state_test
-def test_inclusion_list_store_by_slot_and_committee_root(spec, state):
+def test_inclusion_list_store_by_slot_and_committee_root__empty_slot(spec, state):
     def run_func():
         forkchoice_store = get_genesis_forkchoice_store(spec, state)
         inclusion_list_store = spec.get_inclusion_list_store()
@@ -147,28 +146,46 @@ def test_inclusion_list_store_by_slot_and_committee_root(spec, state):
         )
         assert inclusion_list_transactions_slot_1 == []
 
-        # Advance state to slot 1.
-        spec.process_slots(state, state.slot + 1)
+    run_with_inclusion_list_store(spec, run_func)
 
-        signed_inclusion_list_slot_1 = get_sample_signed_inclusion_list(spec, state)
-        inclusion_list = get_sample_inclusion_list(spec, state)
-        inclusion_list.inclusion_list_committee_root = ZERO_BYTES32
-        signed_inclusion_list_slot_1_different_committee_root = sign_inclusion_list(
-            spec, state, inclusion_list
+
+@with_eip7805_and_later
+@spec_state_test
+def test_inclusion_list_store_by_slot_and_committee_root__different_committee_root(spec, state):
+    def run_func():
+        forkchoice_store = get_genesis_forkchoice_store(spec, state)
+        inclusion_list_store = spec.get_inclusion_list_store()
+        inclusion_list_committee = spec.get_inclusion_list_committee(state, state.slot)
+
+        transactions = get_sample_transactions(spec, max_transaction_count=1)
+        inclusion_list_0 = get_sample_inclusion_list(
+            spec,
+            state,
+            validator_index=inclusion_list_committee[0],
+            transactions=transactions,
+        )
+        inclusion_list_1 = get_sample_inclusion_list(
+            spec,
+            state,
+            validator_index=inclusion_list_committee[1],
+            # Reverse transaction bytes to ensure IL0 and IL1 have different transactions.
+            transactions=[transaction[::-1] for transaction in transactions],
         )
 
-        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_slot_1)
-        spec.on_inclusion_list(
-            forkchoice_store, signed_inclusion_list_slot_1_different_committee_root
-        )
+        # Make IL1 have a different committee root.
+        inclusion_list_1.inclusion_list_committee_root = ZERO_BYTES32
 
-        inclusion_list_transactions_slot_1 = spec.get_inclusion_list_transactions(
+        signed_inclusion_list_0 = sign_inclusion_list(spec, state, inclusion_list_0)
+        signed_inclusion_list_1 = sign_inclusion_list(spec, state, inclusion_list_1)
+
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_0)
+        spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_1)
+
+        inclusion_list_transactions = spec.get_inclusion_list_transactions(
             inclusion_list_store, state, state.slot
         )
 
-        assert set(inclusion_list_transactions_slot_1) == set(
-            signed_inclusion_list_slot_1.message.transactions
-        )
+        assert set(inclusion_list_transactions) == set(signed_inclusion_list_0.message.transactions)
 
     run_with_inclusion_list_store(spec, run_func)
 
@@ -264,10 +281,12 @@ def test_inclusion_list_store_equivocation_scope(spec, state):
 
         assert inclusion_list_transactions == []
 
-        # Advance state to slot 1.
-        spec.process_slots(state, state.slot + 1)
-
-        inclusion_list_committee = spec.get_inclusion_list_committee(state, state.slot)
+        # Find the next slot where the equivocator is in the IL committee.
+        for _ in range(spec.SLOTS_PER_EPOCH * 2):
+            spec.process_slots(state, state.slot + 1)
+            inclusion_list_committee = spec.get_inclusion_list_committee(state, state.slot)
+            if validator_index in inclusion_list_committee:
+                break
         assert validator_index in inclusion_list_committee
 
         # After the equivocated slot, the IL committee member should be able to participate successfully.

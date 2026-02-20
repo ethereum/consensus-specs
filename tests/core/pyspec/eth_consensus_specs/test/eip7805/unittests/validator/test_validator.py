@@ -20,7 +20,7 @@ def inclusion_committee_balances(spec):
     return [spec.MAX_EFFECTIVE_BALANCE] * spec.SLOTS_PER_EPOCH * spec.INCLUSION_LIST_COMMITTEE_SIZE
 
 
-def run_get_inclusion_committee_assignments(spec, state, epoch, valid=True):
+def run_get_inclusion_list_committee_assignments(spec, state, epoch, valid=True):
     rng = random.Random(7805)
 
     start_slot = spec.compute_start_slot_at_epoch(epoch)
@@ -35,7 +35,9 @@ def run_get_inclusion_committee_assignments(spec, state, epoch, valid=True):
 
     for slot, committee, validator_index in inclusion_assignments:
         try:
-            assigned_slot = spec.get_inclusion_committee_assignment(state, epoch, validator_index)
+            assigned_slot = spec.get_inclusion_list_committee_assignment(
+                state, epoch, validator_index
+            )
             assert assigned_slot == slot
             if assigned_slot is not None:
                 assert spec.compute_epoch_at_slot(assigned_slot) == epoch
@@ -54,7 +56,7 @@ def run_get_inclusion_committee_assignments(spec, state, epoch, valid=True):
 @single_phase
 def test_get_inclusion_committee_assignment_current_epoch(spec, state):
     epoch = spec.get_current_epoch(state)
-    run_get_inclusion_committee_assignments(spec, state, epoch, valid=True)
+    run_get_inclusion_list_committee_assignments(spec, state, epoch, valid=True)
 
 
 @with_eip7805_and_later
@@ -65,7 +67,7 @@ def test_get_inclusion_committee_assignment_current_epoch(spec, state):
 @single_phase
 def test_get_inclusion_committee_assignment_next_epoch(spec, state):
     epoch = spec.get_current_epoch(state) + 1
-    run_get_inclusion_committee_assignments(spec, state, epoch, valid=True)
+    run_get_inclusion_list_committee_assignments(spec, state, epoch, valid=True)
 
 
 @with_eip7805_and_later
@@ -76,7 +78,7 @@ def test_get_inclusion_committee_assignment_next_epoch(spec, state):
 @single_phase
 def test_get_inclusion_committee_assignment_out_bound_epoch(spec, state):
     epoch = spec.get_current_epoch(state) + 2
-    run_get_inclusion_committee_assignments(spec, state, epoch, valid=False)
+    run_get_inclusion_list_committee_assignments(spec, state, epoch, valid=False)
 
 
 @with_eip7805_and_later
