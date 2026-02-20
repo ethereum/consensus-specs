@@ -56,9 +56,7 @@ def test_on_execution_payload(spec, state):
     check_head_against_root(spec, store, block_root)
     head = spec.get_head(store)
     assert head.payload_status == spec.PAYLOAD_STATUS_EMPTY
-    test_steps.append(
-        {"checks": {"head_payload_status": int(spec.PAYLOAD_STATUS_EMPTY)}}
-    )
+    test_steps.append({"checks": {"head_payload_status": int(spec.PAYLOAD_STATUS_EMPTY)}})
 
     # Builder reveals execution payload
     envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
@@ -68,9 +66,7 @@ def test_on_execution_payload(spec, state):
     assert block_root in store.payload_states
     head = spec.get_head(store)
     assert head.payload_status == spec.PAYLOAD_STATUS_FULL
-    test_steps.append(
-        {"checks": {"head_payload_status": int(spec.PAYLOAD_STATUS_FULL)}}
-    )
+    test_steps.append({"checks": {"head_payload_status": int(spec.PAYLOAD_STATUS_FULL)}})
 
     # On receiving a block of next slot, chain continues after payload reveal
     block_2 = build_empty_block_for_next_slot(spec, state)
@@ -83,8 +79,6 @@ def test_on_execution_payload(spec, state):
     # Head moved to block 2 with EMPTY status
     head = spec.get_head(store)
     assert head.payload_status == spec.PAYLOAD_STATUS_EMPTY
-    test_steps.append(
-        {"checks": {"head_payload_status": int(spec.PAYLOAD_STATUS_EMPTY)}}
-    )
+    test_steps.append({"checks": {"head_payload_status": int(spec.PAYLOAD_STATUS_EMPTY)}})
 
     yield "steps", test_steps
