@@ -1,4 +1,6 @@
-# EIP-7805 -- The Beacon Chain
+# Heze -- The Beacon Chain
+
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
@@ -25,11 +27,10 @@
 
 ## Introduction
 
-These are the beacon-chain specifications to add EIP-7805 / fork-choice
-enforced, committee-based inclusion list (FOCIL) mechanism to allow forced
-transaction inclusion.
+Heze is a consensus-layer upgrade containing a number of features. Including:
 
-*Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
+- [EIP-7805](https://eips.ethereum.org/EIPS/eip-7805): Fork-choice enforced
+  Inclusion Lists (FOCIL)
 
 ## Constants
 
@@ -86,7 +87,7 @@ class ExecutionPayloadBid(Container):
     value: Gwei
     execution_payment: Gwei
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    # [New in EIP7805]
+    # [New in Heze:EIP7805]
     inclusion_list_bits: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]
 ```
 
@@ -94,7 +95,7 @@ class ExecutionPayloadBid(Container):
 
 ```python
 class SignedExecutionPayloadBid(Container):
-    # [Modified in EIP7805]
+    # [Modified in Heze:EIP7805]
     message: ExecutionPayloadBid
     signature: BLSSignature
 ```
@@ -127,7 +128,7 @@ class BeaconState(Container):
     inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
-    # [Modified in EIP7805]
+    # [Modified in Heze:EIP7805]
     latest_execution_payload_bid: ExecutionPayloadBid
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex

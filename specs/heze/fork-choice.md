@@ -1,4 +1,6 @@
-# EIP-7805 -- Fork Choice
+# Heze -- Fork Choice
+
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
@@ -27,7 +29,7 @@
 
 ## Introduction
 
-This is the modification of the fork choice accompanying the EIP-7805 upgrade.
+This is the modification of the fork choice accompanying the Heze upgrade.
 
 ## Configuration
 
@@ -98,7 +100,7 @@ class PayloadAttributes(object):
     suggested_fee_recipient: ExecutionAddress
     withdrawals: Sequence[Withdrawal]
     parent_beacon_block_root: Root
-    # [New in EIP7805]
+    # [New in Heze:EIP7805]
     inclusion_list_transactions: Sequence[Transaction]
 ```
 
@@ -131,7 +133,7 @@ class Store(object):
     payload_data_availability_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
         default_factory=dict
     )
-    # [New in EIP7805]
+    # [New in Heze:EIP7805]
     payload_inclusion_list_satisfaction: Dict[Root, boolean] = field(default_factory=dict)
 ```
 
@@ -166,7 +168,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         payload_data_availability_vote={
             anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
         },
-        # [New in EIP7805]
+        # [New in Heze:EIP7805]
         payload_inclusion_list_satisfaction={anchor_root: True},
     )
 ```
@@ -224,7 +226,7 @@ not satisfy the inclusion list constraints.
 
 ```python
 def should_extend_payload(store: Store, root: Root) -> bool:
-    # [New in EIP7805]
+    # [New in Heze:EIP7805]
     if not is_payload_inclusion_list_satisfied(store, root):
         return False
 
@@ -304,7 +306,7 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
     # Process the execution payload
     process_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
 
-    # [New in EIP7805]
+    # [New in Heze:EIP7805]
     # Check if this payload satisfies the inclusion list constraints
     # If not, add this payload to the store as inclusion list constraints unsatisfied
     record_payload_inclusion_list_satisfaction(

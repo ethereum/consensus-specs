@@ -1,9 +1,10 @@
-# EIP-7805 -- Honest Validator
+# Heze -- Honest Validator
+
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Prerequisites](#prerequisites)
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
 - [Helpers](#helpers)
@@ -27,19 +28,7 @@
 ## Introduction
 
 This document represents the changes to be made in the code of an "honest
-validator" to implement EIP-7805.
-
-## Prerequisites
-
-This document is an extension of the
-[Gloas -- Honest Validator](../../gloas/validator.md) guide. All behaviors and
-definitions defined in this document, and documents it extends, carry over
-unless explicitly noted or overridden.
-
-All terminology, constants, functions, and protocol mechanics defined in the
-updated beacon-chain specifications of [EIP-7805](./beacon-chain.md) are
-requisite for this document and used throughout. Please see related beacon-chain
-specifications before continuing and use them as a reference throughout.
+validator" to implement Heze.
 
 ## Configuration
 
@@ -166,7 +155,7 @@ def prepare_execution_payload(
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=get_expected_withdrawals(state).withdrawals,
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
-        # [New in EIP7805]
+        # [New in Heze:EIP7805]
         inclusion_list_transactions=get_inclusion_list_transactions(
             get_inclusion_list_store(), state, Slot(state.slot - 1)
         ),

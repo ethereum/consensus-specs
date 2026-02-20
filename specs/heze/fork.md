@@ -1,4 +1,4 @@
-# EIP-7805 -- Fork Logic
+# Heze -- Fork Logic
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -6,34 +6,34 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-- [Fork to EIP-7805](#fork-to-eip-7805)
+- [Fork to Heze](#fork-to-heze)
   - [Upgrading the state](#upgrading-the-state)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This document describes the process of the EIP-7805 upgrade.
+This document describes the process of the Heze upgrade.
 
 ## Configuration
 
 Warning: this configuration is not definitive.
 
-| Name                   | Value                                 |
-| ---------------------- | ------------------------------------- |
-| `EIP7805_FORK_VERSION` | `Version('0xe7805000')`               |
-| `EIP7805_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
+| Name                | Value                                 |
+| ------------------- | ------------------------------------- |
+| `HEZE_FORK_VERSION` | `Version('0x08000000')`               |
+| `HEZE_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
-## Fork to EIP-7805
+## Fork to Heze
 
 ### Upgrading the state
 
 If `state.slot % SLOTS_PER_EPOCH == 0` and
-`compute_epoch_at_slot(state.slot) == EIP7805_FORK_EPOCH`, an irregular state
-change is made to upgrade to EIP-7805.
+`compute_epoch_at_slot(state.slot) == HEZE_FORK_EPOCH`, an irregular state
+change is made to upgrade to Heze.
 
 ```python
-def upgrade_to_eip7805(pre: gloas.BeaconState) -> BeaconState:
+def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
     epoch = gloas.get_current_epoch(pre)
     latest_execution_payload_bid = ExecutionPayloadBid(
         parent_block_hash=pre.latest_execution_payload_bid.parent_block_hash,
@@ -47,7 +47,7 @@ def upgrade_to_eip7805(pre: gloas.BeaconState) -> BeaconState:
         value=pre.latest_execution_payload_bid.value,
         execution_payment=pre.latest_execution_payload_bid.execution_payment,
         blob_kzg_commitments=pre.latest_execution_payload_bid.blob_kzg_commitments,
-        # [New in EIP7805]
+        # [New in Heze:EIP7805]
         inclusion_list_bits=Bitvector[INCLUSION_LIST_COMMITTEE_SIZE](),
     )
 
@@ -57,8 +57,8 @@ def upgrade_to_eip7805(pre: gloas.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            # [Modified in EIP7805]
-            current_version=EIP7805_FORK_VERSION,
+            # [Modified in Heze:EIP7805]
+            current_version=HEZE_FORK_VERSION,
             epoch=epoch,
         ),
         latest_block_header=pre.latest_block_header,
@@ -81,7 +81,7 @@ def upgrade_to_eip7805(pre: gloas.BeaconState) -> BeaconState:
         inactivity_scores=pre.inactivity_scores,
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
-        # [Modified in EIP7805]
+        # [Modified in Heze:EIP7805]
         latest_execution_payload_bid=latest_execution_payload_bid,
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,

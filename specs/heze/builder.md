@@ -1,4 +1,4 @@
-# EIP-7805 -- Honest Builder
+# Heze -- Honest Builder
 
 *Note*: This document is a work-in-progress for researchers and implementers.
 
@@ -13,7 +13,7 @@
 ## Introduction
 
 This document represents the changes to be made in the code of an "honest
-builder" to implement EIP-7805.
+builder" to implement Heze.
 
 ## Builder activities
 

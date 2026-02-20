@@ -6,7 +6,7 @@ from eth_consensus_specs.test.context import (
     with_state,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.constants import ELECTRA, PHASE0
+from eth_consensus_specs.test.helpers.constants import ELECTRA, FULU, PHASE0
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_deposit_request,
     prepare_state_and_deposit,
@@ -18,7 +18,6 @@ from eth_consensus_specs.test.helpers.typing import SpecForkName
 from eth_consensus_specs.test.utils.utils import with_meta_tags
 from tests.infra.template_test import (
     template_test_upgrades_all,
-    template_test_upgrades_from,
     template_test_upgrades_from_to,
 )
 
@@ -226,7 +225,7 @@ def _template_test_after_fork_new_validator_active_pre_electra(
 _template_test_after_fork_new_validator_active_pre_electra()
 
 
-@template_test_upgrades_from(ELECTRA)
+@template_test_upgrades_from_to(ELECTRA, FULU)
 def _template_test_after_fork_new_validator_active_post_electra(
     pre_spec: SpecForkName, post_spec: SpecForkName
 ) -> tuple[Callable, str]:

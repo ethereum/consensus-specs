@@ -1,9 +1,9 @@
-from ..constants import EIP7805
+from ..constants import HEZE
 from .base import BaseSpecBuilder
 
 
-class EIP7805SpecBuilder(BaseSpecBuilder):
-    fork: str = EIP7805
+class HezeSpecBuilder(BaseSpecBuilder):
+    fork: str = HEZE
 
     @classmethod
     def imports(cls, preset_name: str):
