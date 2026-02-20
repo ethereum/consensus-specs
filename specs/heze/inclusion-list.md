@@ -1,4 +1,6 @@
-# EIP-7805 -- Inclusion List
+# Heze -- Inclusion List
+
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
@@ -17,7 +19,7 @@
 
 ## Introduction
 
-These are the inclusion list specifications to implement EIP-7805.
+These are the inclusion list specifications to implement Heze.
 
 ## Containers
 

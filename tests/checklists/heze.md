@@ -1,4 +1,4 @@
-# EIP-7805 Test Checklist
+# Heze Test Checklist
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=2 --minlevel=2 -->
 

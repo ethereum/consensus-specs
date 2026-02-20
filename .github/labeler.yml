@@ -54,6 +54,13 @@ gloas:
       - 'presets/*/gloas.yaml'
       - 'pysetup/spec_builders/gloas.py'
 
+heze:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'specs/heze/**'
+      - 'presets/*/heze.yaml'
+      - 'pysetup/spec_builders/heze.py'
+
 eip6800:
   - changed-files:
     - any-glob-to-any-file:
@@ -74,13 +81,6 @@ eip7441:
       - 'specs/_features/eip7441/**'
       - 'presets/*/eip7441.yaml'
       - 'pysetup/spec_builders/eip7441.py'
-
-eip7805:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'specs/_features/eip7805/**'
-      - 'presets/*/eip7805.yaml'
-      - 'pysetup/spec_builders/eip7805.py'
 
 eip7928:
   - changed-files:

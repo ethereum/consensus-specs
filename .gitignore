@@ -23,6 +23,7 @@ tests/core/pyspec/eth_consensus_specs/deneb/
 tests/core/pyspec/eth_consensus_specs/electra/
 tests/core/pyspec/eth_consensus_specs/fulu/
 tests/core/pyspec/eth_consensus_specs/gloas/
+tests/core/pyspec/eth_consensus_specs/heze/
 tests/core/pyspec/eth_consensus_specs/eip*/
 
 # coverage reports

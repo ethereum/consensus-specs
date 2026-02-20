@@ -32,7 +32,7 @@ jobs:
           - electra
           - fulu
           - gloas
-          - eip7805
+          - heze
           - eip7928
           - eip8025
     steps:

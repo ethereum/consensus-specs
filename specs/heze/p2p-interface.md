@@ -1,11 +1,11 @@
-# EIP-7805 -- Networking
+# Heze -- Networking
 
-This document contains the consensus-layer networking specifications for
-EIP-7805.
+*Note*: This document is a work-in-progress for researchers and implementers.
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
-- [Modifications in EIP-7805](#modifications-in-eip-7805)
+- [Introduction](#introduction)
+- [Modifications in Heze](#modifications-in-heze)
   - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
@@ -19,7 +19,14 @@ EIP-7805.
 
 <!-- mdformat-toc end -->
 
-## Modifications in EIP-7805
+## Introduction
+
+This document contains the consensus-layer networking specifications for Heze.
+
+The specification of these changes continues in the same format as the network
+specifications of previous upgrades, and assumes them as pre-requisite.
+
+## Modifications in Heze
 
 ### Configuration
 
@@ -37,8 +44,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     Return the fork version at the given ``epoch``.
     """
-    if epoch >= EIP7805_FORK_EPOCH:
-        return EIP7805_FORK_VERSION
+    if epoch >= HEZE_FORK_EPOCH:
+        return HEZE_FORK_VERSION
     if epoch >= GLOAS_FORK_EPOCH:
         return GLOAS_FORK_VERSION
     if epoch >= FULU_FORK_EPOCH:
@@ -69,7 +76,7 @@ are given in this table:
 
 ##### Global topics
 
-EIP-7805 introduces a new global topic for inclusion lists.
+Heze introduces a new global topic for inclusion lists.
 
 ###### `inclusion_list`
 
@@ -110,9 +117,9 @@ Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth_consensus_specs: skip -->
 
-| `fork_version`         | Chunk SSZ type                 |
-| ---------------------- | ------------------------------ |
-| `EIP7805_FORK_VERSION` | `EIP-7805.SignedInclusionList` |
+| `fork_version`      | Chunk SSZ type             |
+| ------------------- | -------------------------- |
+| `HEZE_FORK_VERSION` | `heze.SignedInclusionList` |
 
 Request Content:
 
