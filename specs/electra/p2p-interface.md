@@ -7,6 +7,7 @@
   - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
+    - [Modified `compute_max_request_blob_sidecars`](#modified-compute_max_request_blob_sidecars)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -38,10 +39,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 *[New in Electra:EIP7691]*
 
-| Name                                | Value                                                    | Description                                                       |
-| ----------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA` | Maximum number of blob sidecars in a single request               |
-| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`                                                      | The number of blob sidecar subnets used in the gossipsub protocol |
+| Name                                | Value | Description                                                       |
+| ----------------------------------- | ----- | ----------------------------------------------------------------- |
+| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`   | The number of blob sidecar subnets used in the gossipsub protocol |
 
 ### Helpers
 
@@ -63,6 +63,17 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
+```
+
+#### Modified `compute_max_request_blob_sidecars`
+
+```python
+def compute_max_request_blob_sidecars() -> uint64:
+    """
+    Return the maximum number of blob sidecars in a single request.
+    """
+    # [Modified in Electra:EIP7691]
+    return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK_ELECTRA)
 ```
 
 ### The gossip domain: gossipsub
@@ -187,28 +198,8 @@ beacon block type.
 
 *[Modified in Electra:EIP7691]*
 
-Request Content:
-
-```
-(
-  start_slot: Slot
-  count: uint64
-)
-```
-
-Response Content:
-
-```
-(
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
-)
-```
-
-*Updated validation*
-
-Clients MUST respond with at least the blob sidecars of the first blob-carrying
-block that exists in the range, if they have it, and no more than
-`MAX_REQUEST_BLOB_SIDECARS_ELECTRA` sidecars.
+*Note*: The `compute_max_request_blob_sidecars` function has been modified which
+affects the request, response, and validation logic.
 
 ##### BlobSidecarsByRoot v1
 
@@ -216,22 +207,5 @@ block that exists in the range, if they have it, and no more than
 
 *[Modified in Electra:EIP7691]*
 
-Request Content:
-
-```
-(
-  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
-)
-```
-
-Response Content:
-
-```
-(
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS_ELECTRA]
-)
-```
-
-*Updated validation*
-
-No more than `MAX_REQUEST_BLOB_SIDECARS_ELECTRA` may be requested at a time.
+*Note*: The `compute_max_request_blob_sidecars` function has been modified which
+affects the request, response, and validation logic.

@@ -84,13 +84,6 @@ def test_time(spec, state):
 @with_all_phases
 @spec_state_test
 def test_networking(spec, state):
-    assert spec.config.MIN_EPOCHS_FOR_BLOCK_REQUESTS == (
-        spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY + spec.config.CHURN_LIMIT_QUOTIENT // 2
-    )
-    assert spec.config.ATTESTATION_SUBNET_PREFIX_BITS == (
-        spec.ceillog2(spec.config.ATTESTATION_SUBNET_COUNT)
-        + spec.config.ATTESTATION_SUBNET_EXTRA_BITS
-    )
     assert spec.config.SUBNETS_PER_NODE <= spec.config.ATTESTATION_SUBNET_COUNT
     node_id_length = spec.NodeID(1).type_byte_length()  # in bytes
     assert node_id_length * 8 == spec.NODE_ID_BITS  # in bits

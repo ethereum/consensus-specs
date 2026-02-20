@@ -395,7 +395,7 @@ def finalized_spec_object(spec_object: SpecObject) -> SpecObject:
     custom_types = {}
     ssz_objects = spec_object.ssz_objects
     for name, value in spec_object.custom_types.items():
-        if any(k in name for k in all_config_dependencies):
+        if any(name in k for k in all_config_dependencies):
             custom_types[name] = value
         else:
             ssz_objects[name] = gen_new_type_definition(name, value)
