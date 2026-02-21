@@ -194,6 +194,12 @@ def get_sync_subcommittee_pubkeys(
 - _[REJECT]_ The aggregator's validator index is in the declared subcommittee of
   the current sync committee -- i.e.
   `state.validators[contribution_and_proof.aggregator_index].pubkey in get_sync_subcommittee_pubkeys(state, contribution.subcommittee_index)`.
+- _[IGNORE]_ The block being signed
+  (`contribution_and_proof.contribution.beacon_block_root`) has been seen (via
+  gossip or non-gossip sources) (a client MAY queue sync committee contributions
+  for processing once block is received)
+- _[REJECT]_ The block being signed
+  (`contribution_and_proof.contribution.beacon_block_root`) passes validation.
 - _[IGNORE]_ A valid sync committee contribution with equal `slot`,
   `beacon_block_root` and `subcommittee_index` whose `aggregation_bits` is
   non-strict superset has _not_ already been seen.
@@ -234,12 +240,20 @@ The following validations MUST pass before forwarding the
   `subnet_id in compute_subnets_for_sync_committee(state, sync_committee_message.validator_index)`.
   Note this validation implies the validator is part of the broader current sync
   committee along with the correct subcommittee.
+- _[IGNORE]_ The block being signed (`sync_committee_message.beacon_block_root`)
+  has been seen (via gossip or non-gossip sources) (a client MAY queue sync
+  committee messages for processing once block is retrieved).
+- _[REJECT]_ The block being signed (`sync_committee_message.beacon_block_root`)
+  passes validation.
 - _[IGNORE]_ There has been no other valid sync committee message for the
   declared `slot` for the validator referenced by
-  `sync_committee_message.validator_index` (this requires maintaining a cache of
-  size `SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT` for each subnet that
-  can be flushed after each slot). Note this validation is _per topic_ so that
-  for a given `slot`, multiple messages could be forwarded with the same
+  `sync_committee_message.validator_index`, unless the block being signed
+  (`beacon_block_root`) matches the local head as selected by fork choice, and
+  the earlier valid sync committee message does not match (this requires
+  maintaining a cache of size
+  `SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT` for each subnet that can
+  be flushed after each slot). Note this validation is _per topic_ so that for a
+  given `slot`, multiple messages could be forwarded with the same
   `validator_index` as long as the `subnet_id`s are distinct.
 - _[REJECT]_ The `signature` is valid for the message `beacon_block_root` for
   the validator referenced by `validator_index`.
