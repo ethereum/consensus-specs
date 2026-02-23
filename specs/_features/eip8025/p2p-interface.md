@@ -2,8 +2,8 @@
 
 This document contains the networking specifications for EIP-8025.
 
-*Note*: This specification is built upon [Fulu](../../fulu/p2p-interface.md) and
-imports proof types from [proof-engine.md](./proof-engine.md).
+*Note*: This specification is built upon [Gloas](../../gloas/p2p-interface.md)
+and imports proof types from [proof-engine.md](./proof-engine.md).
 
 ## Table of contents
 
