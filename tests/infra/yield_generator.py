@@ -81,7 +81,7 @@ def vector_test(fn):
         if context.is_generator:
             return wrapper_generator
         else:
-            # pytest does not support yielded data in the outer function,
+            # when pytest is not running in generator mode, we should drain the yields
             # so we need to wrap it like this.
             return _drain_wrapper(fn)
     else:
