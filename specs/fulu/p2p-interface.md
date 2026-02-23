@@ -112,10 +112,9 @@ class PartialDataColumnSidecar(Container):
 #### `PartialDataColumnPartsMetadata`
 
 Peers communicate the cells available with a bitmap. A set bit (`1`) at index
-`i` means that the peer has the cell at index `i`. The bitmap is encoded as a
-`Bitlist`. Peers explicitly request cells with a second request bitmap of the
-same length that is set to `1` if the peer would like to receive or provide this
-cell.
+`i` means that the peer has the cell at index `i`. Peers explicitly request
+cells with a second request bitmap of the same length that is set to `1` if the
+peer would like to receive or provide this cell.
 
 This is encoded as the following SSZ container:
 
