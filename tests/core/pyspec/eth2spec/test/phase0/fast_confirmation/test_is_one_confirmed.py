@@ -632,8 +632,8 @@ def test_is_one_confirmed_fails_with_competing_branch(spec, state):
     )
 
     # Split attestations: ~50% for B1, ~50% for B2
-    fcr.attest(block_root=block_b1, participation_rate=50, include_in_pool=True)
-    fcr.attest(block_root=block_b2, participation_rate=50, include_in_pool=True)
+    fcr.attest(block_root=block_b1, participation_rate=50, pool_and_disseminate=True)
+    fcr.attest(block_root=block_b2, participation_rate=50, pool_and_disseminate=True)
 
     fcr.next_slot_and_apply_attestations()
     fcr.run_fast_confirmation()

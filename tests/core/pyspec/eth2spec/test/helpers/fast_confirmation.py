@@ -46,6 +46,10 @@ def output_fast_confirmation_checks(spec, store, test_steps):
             "epoch": int(store.current_epoch_observed_justified_checkpoint.epoch),
             "root": encode_hex(store.current_epoch_observed_justified_checkpoint.root),
         },
+        "previous_epoch_greatest_unrealized_checkpoint": {
+            "epoch": int(store.previous_epoch_greatest_unrealized_checkpoint.epoch),
+            "root": encode_hex(store.previous_epoch_greatest_unrealized_checkpoint.root),
+        },
         "previous_slot_head": encode_hex(store.previous_slot_head),
         "current_slot_head": encode_hex(store.current_slot_head),
         "confirmed_root": encode_hex(store.confirmed_root),
