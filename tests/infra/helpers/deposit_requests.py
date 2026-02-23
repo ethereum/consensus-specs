@@ -409,6 +409,13 @@ def assert_process_deposit_request(
     else:
         # VALIDATOR DEPOSIT ASSERTIONS
 
+        # Guard: expected_builder_count is meaningless for validator deposits
+        # (builder count is an invariant that should never change).
+        assert expected_builder_count is None, (
+            "expected_builder_count must not be used with validator deposits: "
+            "builder count is invariant for validator deposits"
+        )
+
         # INVARIANT: pending_deposits increases by exactly 1
         assert len(state.pending_deposits) == len(pre_state.pending_deposits) + 1, (
             f"pending_deposits should increase by 1: "
