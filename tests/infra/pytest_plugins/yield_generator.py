@@ -206,7 +206,12 @@ class YieldGeneratorPlugin:
         if hasattr(result, "__await__") or hasattr(result, "__aiter__"):
             _pytest.compat.async_fail(pyfuncitem.nodeid)
         elif result is not None:
-            if not isinstance(result, dict) and isinstance(result, Iterable):
+            if isinstance(result, dict):
+                # Multi-phase result: consume generators eagerly so exceptions
+                # (including Skipped) are raised during test execution where
+                # pytest can handle them properly.
+                pyfuncitem.result = {k: list(v) if v is not None else v for k, v in result.items()}
+            elif isinstance(result, Iterable):
                 pyfuncitem.result = list(result)
             else:
                 pyfuncitem.result = result

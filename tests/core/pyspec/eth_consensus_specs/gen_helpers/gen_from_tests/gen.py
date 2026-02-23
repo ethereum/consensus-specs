@@ -11,9 +11,7 @@ from tests.infra.manifest import Manifest
 
 
 def generate_case_fn(tfn, phase, preset, bls_active):
-    return lambda: tfn(
-        phase=phase, preset=preset, bls_active=bls_active
-    )
+    return lambda: tfn(phase=phase, preset=preset, bls_active=bls_active)
 
 
 def generate_from_tests(
@@ -65,9 +63,7 @@ def generate_from_tests(
 
         yield TestCase.from_manifest(
             manifest,
-            case_fn=generate_case_fn(
-                tfn, phase=phase, preset=preset_name, bls_active=bls_active
-            ),
+            case_fn=generate_case_fn(tfn, phase=phase, preset=preset_name, bls_active=bls_active),
         )
 
 
