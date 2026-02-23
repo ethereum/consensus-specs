@@ -427,7 +427,9 @@ class TestVectorTest:
             decorated = vector_test(generator_function)
 
             # Call with args and kwargs (is_generator=True so result is always a generator)
-            result = decorated("arg1", "arg2", param1="value1", param2="value2", generator_mode=False)
+            result = decorated(
+                "arg1", "arg2", param1="value1", param2="value2", generator_mode=False
+            )
             list(result)  # consume generator to trigger inner function
 
             # Verify args and kwargs were passed through
