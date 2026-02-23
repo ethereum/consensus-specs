@@ -87,7 +87,6 @@ class PlainFCTestCase(TestCase):
         solution, seed = self.test_dna.solution, self.test_dna.variation_seed
         mut_seed = self.test_dna.mutation_seed
         return yield_mutation_test_case(
-            generator_mode=True,
             phase=phase,
             preset=preset,
             bls_active=bls_active,

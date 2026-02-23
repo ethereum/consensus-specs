@@ -14,17 +14,13 @@ from rich.live import Live
 from rich.table import Table
 from rich.text import Text
 
-from eth_consensus_specs.test import context
+from eth_consensus_specs.test import context  # noqa: F401 — imported to break circular import chain
 from eth_consensus_specs.test.exceptions import SkippedTest
 
 from .args import parse_arguments
 from .dumper import Dumper
 from .gen_typing import TestCase
 from .utils import install_sigint_handler, time_since
-
-# Flag that the runner does NOT run test via pytest
-context.is_pytest = False
-context.is_generator = True
 
 
 def get_shared_prefix(test_cases, min_segments=3):

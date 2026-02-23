@@ -94,18 +94,6 @@ class TestVectorTest:
         assert decorated is simple_function
         assert decorated() == "result"
 
-    def test_with_non_generator_function_with_generator_mode(self):
-        """Test that non-generator functions ignore generator_mode parameter."""
-
-        def simple_function():
-            return "result"
-
-        # Apply the decorator
-        decorated = vector_test(simple_function)
-
-        # Should still work the same even with generator_mode
-        assert decorated() == "result"
-
     def test_with_generator_is_pytest_true_is_generator_false(self):
         """Test generator function when is_pytest=True and is_generator=False (drain mode)."""
 
@@ -209,8 +197,8 @@ class TestVectorTest:
             context.is_pytest = original_is_pytest
             context.is_generator = original_is_generator
 
-    def test_with_generator_is_pytest_false_generator_mode_true(self):
-        """Test generator function when is_pytest=False, is_generator=True and generator_mode=True."""
+    def test_with_generator_is_pytest_false_is_generator_true(self):
+        """Test generator function when is_pytest=False and is_generator=True."""
 
         def generator_function():
             yield ("key1", "value1")
@@ -227,9 +215,8 @@ class TestVectorTest:
             # Apply the decorator
             decorated = vector_test(generator_function)
 
-            # When is_generator=True and generator_mode=True, should return a generator
-            # with post-processing
-            result = decorated(generator_mode=True)
+            # When is_generator=True, should return a generator with post-processing
+            result = decorated()
 
             # Should be a generator
             assert hasattr(result, "__iter__")
@@ -243,122 +230,6 @@ class TestVectorTest:
             assert items[0] == ("key1", "data", "value1")
             assert items[1] == ("key2", "data", "value2")
             assert items[2] == ("key3", "ssz", b"bytes_value")
-
-        finally:
-            context.is_pytest = original_is_pytest
-            context.is_generator = original_is_generator
-
-    def test_with_generator_is_pytest_false_generator_mode_false(self):
-        """Test generator function when is_pytest=False, is_generator=True and generator_mode=False.
-
-        When is_generator=True, the generator path is always taken regardless of generator_mode,
-        so we still get a generator back.
-        """
-
-        call_count = 0
-
-        def generator_function():
-            nonlocal call_count
-            call_count += 1
-            yield ("key1", "value1")
-            call_count += 1
-            yield ("key2", "value2")
-            call_count += 1
-
-        # Temporarily set context
-        original_is_pytest = context.is_pytest
-        original_is_generator = context.is_generator
-        try:
-            context.is_pytest = False
-            context.is_generator = True
-
-            # Apply the decorator
-            decorated = vector_test(generator_function)
-
-            # When is_generator=True, generator_mode is ignored — always returns a generator
-            call_count = 0
-            result = decorated(generator_mode=False)
-
-            # Should be a generator (is_generator=True overrides generator_mode=False)
-            assert hasattr(result, "__iter__")
-            assert hasattr(result, "__next__")
-            list(result)  # consume it
-
-            # Should have iterated through all yields
-            assert call_count == 3
-
-        finally:
-            context.is_pytest = original_is_pytest
-            context.is_generator = original_is_generator
-
-    def test_with_generator_is_pytest_false_no_generator_mode(self):
-        """Test generator function when is_pytest=False, is_generator=True and generator_mode not passed."""
-
-        call_count = 0
-
-        def generator_function():
-            nonlocal call_count
-            call_count += 1
-            yield ("key1", "value1")
-            call_count += 1
-            yield ("key2", "value2")
-            call_count += 1
-
-        # Temporarily set context
-        original_is_pytest = context.is_pytest
-        original_is_generator = context.is_generator
-        try:
-            context.is_pytest = False
-            context.is_generator = True
-
-            # Apply the decorator
-            decorated = vector_test(generator_function)
-
-            # When is_generator=True and generator_mode not passed, is_generator makes it
-            # return a post-processed generator
-            call_count = 0
-            result = decorated()
-
-            # Should be a generator (is_generator=True triggers generator path)
-            assert hasattr(result, "__iter__")
-            assert hasattr(result, "__next__")
-            list(result)  # consume it
-
-            # Should have iterated through all yields
-            assert call_count == 3
-
-        finally:
-            context.is_pytest = original_is_pytest
-            context.is_generator = original_is_generator
-
-    def test_with_generator_mode_parameter_is_popped(self):
-        """Test that generator_mode parameter is removed before calling inner function."""
-
-        received_kwargs = {}
-
-        def generator_function(**kwargs):
-            nonlocal received_kwargs
-            received_kwargs = kwargs
-            yield ("key1", "value1")
-
-        # Temporarily set context
-        original_is_pytest = context.is_pytest
-        original_is_generator = context.is_generator
-        try:
-            context.is_pytest = False
-            context.is_generator = True
-
-            # Apply the decorator
-            decorated = vector_test(generator_function)
-
-            # Call with generator_mode and another kwarg
-            result = decorated(generator_mode=True, other_param="test_value")
-            list(result)  # Consume generator
-
-            # generator_mode should have been popped
-            assert "generator_mode" not in received_kwargs
-            # But other params should be passed through
-            assert received_kwargs["other_param"] == "test_value"
 
         finally:
             context.is_pytest = original_is_pytest
@@ -390,8 +261,7 @@ class TestVectorTest:
             # Apply the decorator
             decorated = vector_test(generator_function)
 
-            # Call with generator_mode=True
-            result = decorated(generator_mode=True)
+            result = decorated()
             items = list(result)
 
             # Verify post-processing was applied correctly
@@ -426,17 +296,13 @@ class TestVectorTest:
             # Apply the decorator
             decorated = vector_test(generator_function)
 
-            # Call with args and kwargs (is_generator=True so result is always a generator)
-            result = decorated(
-                "arg1", "arg2", param1="value1", param2="value2", generator_mode=False
-            )
+            # Call with args and kwargs
+            result = decorated("arg1", "arg2", param1="value1", param2="value2")
             list(result)  # consume generator to trigger inner function
 
             # Verify args and kwargs were passed through
             assert received_args == ("arg1", "arg2")
             assert received_kwargs == {"param1": "value1", "param2": "value2"}
-            # generator_mode should have been popped
-            assert "generator_mode" not in received_kwargs
 
         finally:
             context.is_pytest = original_is_pytest

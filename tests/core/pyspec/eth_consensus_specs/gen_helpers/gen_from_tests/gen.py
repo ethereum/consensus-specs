@@ -10,9 +10,9 @@ from eth_consensus_specs.test.helpers.typing import PresetBaseName, SpecForkName
 from tests.infra.manifest import Manifest
 
 
-def generate_case_fn(tfn, generator_mode, phase, preset, bls_active):
+def generate_case_fn(tfn, phase, preset, bls_active):
     return lambda: tfn(
-        generator_mode=generator_mode, phase=phase, preset=preset, bls_active=bls_active
+        phase=phase, preset=preset, bls_active=bls_active
     )
 
 
@@ -66,7 +66,7 @@ def generate_from_tests(
         yield TestCase.from_manifest(
             manifest,
             case_fn=generate_case_fn(
-                tfn, generator_mode=True, phase=phase, preset=preset_name, bls_active=bls_active
+                tfn, phase=phase, preset=preset_name, bls_active=bls_active
             ),
         )
 

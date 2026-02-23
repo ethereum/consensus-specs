@@ -2,8 +2,12 @@ import importlib
 import os
 
 from eth_consensus_specs.gen_helpers.gen_base import gen_runner
+from eth_consensus_specs.test import context
 
 if __name__ == "__main__":
+    context.is_pytest = False
+    context.is_generator = True
+
     current_dir = os.path.dirname(__file__)
     runners_dir = os.path.join(current_dir, "runners")
 
