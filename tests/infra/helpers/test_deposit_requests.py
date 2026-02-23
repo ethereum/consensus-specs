@@ -58,9 +58,6 @@ def test_prepare_process_deposit_request_signed(spec, state):
     """Test prepare_process_deposit_request with signed=True."""
     deposit_request = prepare_process_deposit_request(spec, state, signed=True)
 
-    # Signature should not be empty when signed
-    assert deposit_request.signature != spec.BLSSignature()
-
     # Verify the signature is valid
     deposit_message = spec.DepositMessage(
         pubkey=deposit_request.pubkey,
