@@ -72,12 +72,16 @@ def test_fcr_invariants_monotone_and_canonical(spec, state):
 def test_observed_justified_checkpoints_update_timing(spec, state):
     """
     Test the timing of observed justified checkpoint updates:
+
     1. At genesis, both current_epoch_observed_justified_checkpoint and
-     previous_epoch_observed_justified_checkpoint equal the anchor checkpoint
-    2. During mid-epoch slots, observed checkpoints are NOT updated
-    3. At the last slot of an epoch, observed checkpoints ARE updated:
-       - previous_epoch_observed := current_epoch_observed
-       - current_epoch_observed := unrealized_justified_checkpoint
+       previous_epoch_observed_justified_checkpoint equal the anchor checkpoint
+    2. At the last slot of epoch e, only the GU snapshot is taken:
+       previous_epoch_greatest_unrealized_checkpoint := unrealized_justified_checkpoint
+       (observed checkpoints do NOT rotate yet)
+    3. At the first slot of epoch e+1, observed checkpoints ARE rotated:
+       previous_epoch_observed := current_epoch_observed
+       current_epoch_observed := previous_epoch_greatest_unrealized_checkpoint
+    4. During other mid-epoch slots, nothing changes
     """
     fcr = FCRTest(spec, seed=1)
     store = fcr.initialize(state)
@@ -93,25 +97,28 @@ def test_observed_justified_checkpoints_update_timing(spec, state):
     assert store.current_epoch_observed_justified_checkpoint.root == anchor_root
     assert store.current_epoch_observed_justified_checkpoint.epoch == anchor_epoch
 
-    # Run through epoch 0 to get to epoch 2
+    # Run through epochs 0 and 1 to get to epoch 2
     while fcr.current_slot() < 2 * S:
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
     assert fcr.current_slot() == 2 * S  # First slot of epoch 2
 
     # 2. Check mid-epoch slots don't update observed checkpoints
-    # Record values at start of epoch 2
+    # Record values at start of epoch 2 (rotation just happened here)
     prev_at_epoch2_start = store.previous_epoch_observed_justified_checkpoint
     curr_at_epoch2_start = store.current_epoch_observed_justified_checkpoint
 
-    # Run through mid-epoch slots (slots 1 to S-2 within epoch 1)
+    # Run through mid-epoch slots of epoch 2 (not last slot, not first slot of next epoch)
     last_slot_of_epoch2 = 3 * S - 1
     while fcr.current_slot() < last_slot_of_epoch2 - 1:
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
-        # Should NOT be a GU sampling slot
+        # Should NOT be either a GU sampling slot or an epoch start
+        assert not spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot())), (
+            f"Slot {fcr.current_slot()} should not be an epoch start"
+        )
         assert not spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot() + 1)), (
-            f"Slot {fcr.current_slot()} should not trigger GU sampling"
+            f"Slot {fcr.current_slot()} should not be the last slot of an epoch"
         )
 
         # Observed checkpoints should NOT have changed
@@ -122,29 +129,57 @@ def test_observed_justified_checkpoints_update_timing(spec, state):
             f"current_epoch_observed changed at mid-epoch slot {fcr.current_slot()}"
         )
 
-    # 3. Check last slot of epoch DOES update observed checkpoints
+    # 3. Check last slot of epoch 2: GU snapshot taken, but NO rotation of observed checkpoints
     assert fcr.current_slot() == last_slot_of_epoch2 - 1
 
-    # Record state before the critical slot
+    # Record state before the last slot
+    prev_before_last_slot = store.previous_epoch_observed_justified_checkpoint
     curr_before_last_slot = store.current_epoch_observed_justified_checkpoint
 
-    # Advance to last slot of epoch 1 and run FCR
+    # Advance to last slot of epoch 2
     fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
     assert fcr.current_slot() == last_slot_of_epoch2
     assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot() + 1)), (
-        f"Slot {fcr.current_slot()} should trigger GU sampling (next slot is epoch start)"
+        f"Slot {fcr.current_slot()} should be the last slot of the epoch"
     )
 
-    # After update_fast_confirmation_variables runs:
-    # - previous_epoch_observed should now equal what current_epoch_observed was
-    # - current_epoch_observed should now equal unrealized_justified_checkpoint
-    assert store.previous_epoch_observed_justified_checkpoint == curr_before_last_slot, (
-        "previous_epoch_observed should have been set to old current_epoch_observed"
-    )
+    # After last slot: GU snapshot is taken into previous_epoch_greatest_unrealized_checkpoint
     assert (
-        store.current_epoch_observed_justified_checkpoint == store.unrealized_justified_checkpoint
-    ), "current_epoch_observed should equal unrealized_justified_checkpoint after sampling"
+        store.previous_epoch_greatest_unrealized_checkpoint == store.unrealized_justified_checkpoint
+    ), "previous_epoch_greatest_unrealized_checkpoint should snapshot unrealized at last slot"
+
+    # But observed checkpoints should NOT have rotated yet
+    assert store.previous_epoch_observed_justified_checkpoint == prev_before_last_slot, (
+        "previous_epoch_observed should NOT change at last slot of epoch"
+    )
+    assert store.current_epoch_observed_justified_checkpoint == curr_before_last_slot, (
+        "current_epoch_observed should NOT change at last slot of epoch"
+    )
+
+    # 4. Check first slot of epoch 3: NOW the rotation happens
+    # Record the snapshot and current_observed before crossing the boundary
+    gu_snapshot = store.previous_epoch_greatest_unrealized_checkpoint
+    curr_before_epoch_start = store.current_epoch_observed_justified_checkpoint
+
+    # Advance to first slot of epoch 3
+    fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    first_slot_of_epoch3 = 3 * S
+    assert fcr.current_slot() == first_slot_of_epoch3
+    assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot())), (
+        f"Slot {fcr.current_slot()} should be the first slot of the epoch"
+    )
+
+    # After epoch start: observed checkpoints rotate
+    # previous_observed := old current_observed
+    assert store.previous_epoch_observed_justified_checkpoint == curr_before_epoch_start, (
+        "previous_epoch_observed should now equal what current_epoch_observed was before rotation"
+    )
+    # current_observed := the GU snapshot taken at the last slot of the previous epoch
+    assert store.current_epoch_observed_justified_checkpoint == gu_snapshot, (
+        "current_epoch_observed should now equal the GU snapshot from last slot of previous epoch"
+    )
 
     yield from fcr.get_test_artefacts()
 
@@ -159,12 +194,15 @@ def test_observed_justified_checkpoints_update_timing(spec, state):
 @single_phase
 def test_observed_justified_checkpoints_properties_across_epochs(spec, state):
     """
-    Test properties of observed justified checkpoints across multiple epochs:
 
-    1. At each epoch boundary, previous := current, current := unrealized
-    2. Observed checkpoint epochs never decrease under full participation
-    3. current_observed equals unrealized at sampling moment (last slot of epoch)
-    4. previous_observed is always one epoch behind current_observed
+    1. At the last slot of epoch e, the GU snapshot is taken:
+       previous_epoch_greatest_unrealized_checkpoint := unrealized_justified_checkpoint
+    2. At the first slot of epoch e+1, observed checkpoints rotate:
+       previous_observed := current_observed
+       current_observed := previous_epoch_greatest_unrealized_checkpoint
+    3. Observed checkpoint epochs never decrease under full participation
+    4. The cascade holds: previous_observed at epoch e+1 start ==
+       current_observed at epoch e start
     """
     fcr = FCRTest(spec, seed=1)
     store = fcr.initialize(state)
@@ -174,69 +212,98 @@ def test_observed_justified_checkpoints_properties_across_epochs(spec, state):
     prev_current_observed_epoch = store.current_epoch_observed_justified_checkpoint.epoch
     prev_previous_observed_epoch = store.previous_epoch_observed_justified_checkpoint.epoch
 
-    observed_history = []
+    # Records sampled at the first slot of each epoch (where rotation happens)
+    observed_at_epoch_start = []
 
     for epoch in range(4):  # Run through epochs 0, 1, 2, 3
         last_slot = (epoch + 1) * S - 1
+        first_slot_next_epoch = (epoch + 1) * S
 
         # Run to last slot of this epoch
         while fcr.current_slot() < last_slot:
             fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
-            # Observed checkpoint epochs never decrease under full participation -- check at every slot
+            # Observed checkpoint epochs never decrease under full participation
             current_observed_epoch = store.current_epoch_observed_justified_checkpoint.epoch
             previous_observed_epoch = store.previous_epoch_observed_justified_checkpoint.epoch
 
             assert current_observed_epoch >= prev_current_observed_epoch, (
-                f"current_epoch_observed went backwards: {prev_current_observed_epoch} -> {current_observed_epoch}"
+                f"current_epoch_observed went backwards: "
+                f"{prev_current_observed_epoch} -> {current_observed_epoch}"
             )
             assert previous_observed_epoch >= prev_previous_observed_epoch, (
-                f"previous_epoch_observed went backwards: {prev_previous_observed_epoch} -> {previous_observed_epoch}"
+                f"previous_epoch_observed went backwards: "
+                f"{prev_previous_observed_epoch} -> {previous_observed_epoch}"
             )
 
             prev_current_observed_epoch = current_observed_epoch
             prev_previous_observed_epoch = previous_observed_epoch
 
-        # Now at last slot of epoch
+        # Now at last slot of epoch — verify GU snapshot is taken
         assert fcr.current_slot() == last_slot
         assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot() + 1))
 
-        # === Current_observed equals unrealized at sampling moment
         assert (
-            store.current_epoch_observed_justified_checkpoint
+            store.previous_epoch_greatest_unrealized_checkpoint
             == store.unrealized_justified_checkpoint
-        ), f"At epoch {epoch} last slot: current_observed != unrealized"
+        ), f"At epoch {epoch} last slot: GU snapshot != unrealized"
 
-        # Record for cascade check
-        observed_history.append(
+        # Record the GU snapshot and current_observed before rotation
+        gu_snapshot = store.previous_epoch_greatest_unrealized_checkpoint
+        curr_observed_before_rotation = store.current_epoch_observed_justified_checkpoint
+
+        # Advance to first slot of next epoch — rotation happens here
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+        assert fcr.current_slot() == first_slot_next_epoch
+        assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot()))
+
+        # Verify rotation happened correctly
+        assert (
+            store.previous_epoch_observed_justified_checkpoint == curr_observed_before_rotation
+        ), f"At epoch {epoch + 1} start: previous_observed != old current_observed"
+        assert store.current_epoch_observed_justified_checkpoint == gu_snapshot, (
+            f"At epoch {epoch + 1} start: current_observed != GU snapshot from last slot"
+        )
+
+        # Monotonicity check continues through epoch start
+        current_observed_epoch = store.current_epoch_observed_justified_checkpoint.epoch
+        previous_observed_epoch = store.previous_epoch_observed_justified_checkpoint.epoch
+
+        assert current_observed_epoch >= prev_current_observed_epoch, (
+            f"current_epoch_observed went backwards at epoch start: "
+            f"{prev_current_observed_epoch} -> {current_observed_epoch}"
+        )
+        assert previous_observed_epoch >= prev_previous_observed_epoch, (
+            f"previous_epoch_observed went backwards at epoch start: "
+            f"{prev_previous_observed_epoch} -> {previous_observed_epoch}"
+        )
+
+        prev_current_observed_epoch = current_observed_epoch
+        prev_previous_observed_epoch = previous_observed_epoch
+
+        # Record state at epoch start for cascade check
+        observed_at_epoch_start.append(
             {
-                "epoch": epoch,
-                "previous_observed_epoch": int(
-                    store.previous_epoch_observed_justified_checkpoint.epoch
-                ),
-                "current_observed_epoch": int(
-                    store.current_epoch_observed_justified_checkpoint.epoch
-                ),
+                "epoch": epoch + 1,
+                "previous_observed": store.previous_epoch_observed_justified_checkpoint,
                 "current_observed": store.current_epoch_observed_justified_checkpoint,
+                "previous_observed_epoch": int(previous_observed_epoch),
+                "current_observed_epoch": int(current_observed_epoch),
             }
         )
 
-    # At epoch E's last slot, previous_observed should equal what current_observed was at epoch E-1's last slot
-    for i in range(1, len(observed_history)):
-        prev_record = observed_history[i - 1]
-        curr_record = observed_history[i]
+    # at epoch e+1 start, previous_observed should equal
+    # what current_observed was at epoch e start
+    for i in range(1, len(observed_at_epoch_start)):
+        prev_record = observed_at_epoch_start[i - 1]
+        curr_record = observed_at_epoch_start[i]
 
-        assert curr_record["previous_observed_epoch"] == prev_record["current_observed_epoch"], (
-            f"Cascade broken at epoch {curr_record['epoch']}: "
+        assert curr_record["previous_observed"] == prev_record["current_observed"], (
+            f"Cascade broken at epoch {curr_record['epoch']} start: "
             f"previous_observed={curr_record['previous_observed_epoch']} "
             f"but prior current_observed was {prev_record['current_observed_epoch']}"
         )
-
-    # previous_observed at epoch 2 end should equal current_observed at epoch 1 end
-    assert (
-        store.previous_epoch_observed_justified_checkpoint
-        == observed_history[2]["current_observed"]
-    ), "previous_observed at epoch 3 end should equal current_observed at epoch 2 end"
 
     yield from fcr.get_test_artefacts()
 
@@ -324,5 +391,135 @@ def test_slot_head_variables_updated_every_slot(spec, state):
 
         # Update tracking for next iteration
         curr_slot_head_before = actual_current
+
+    yield from fcr.get_test_artefacts()
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_gu_snapshot_initialization_and_stability(spec, state):
+    """
+    Test properties of previous_epoch_greatest_unrealized_checkpoint:
+
+    1. At genesis, it equals the anchor checkpoint (same as other observed variables)
+    2. It is only updated at the last slot of an epoch (GU sampling moment)
+    3. Between the snapshot (last slot of epoch e) and the rotation (first slot
+       of epoch e+1), the snapshot value remains stable even if
+       unrealized_justified_checkpoint changes due to epoch processing
+    """
+    fcr = FCRTest(spec, seed=1)
+    store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+
+    # 1. Check initialization — should equal anchor checkpoint at genesis
+    anchor_checkpoint = store.finalized_checkpoint
+    assert store.previous_epoch_greatest_unrealized_checkpoint == anchor_checkpoint, (
+        "previous_epoch_greatest_unrealized_checkpoint should equal anchor at genesis"
+    )
+
+    # Run through epoch 0 into epoch 1
+    while fcr.current_slot() < S:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Now at first slot of epoch 1 — run mid-epoch and verify snapshot doesn't change
+    gu_snapshot_after_epoch0 = store.previous_epoch_greatest_unrealized_checkpoint
+
+    last_slot_of_epoch1 = 2 * S - 1
+    while fcr.current_slot() < last_slot_of_epoch1 - 1:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+        # 2. Snapshot should NOT change during mid-epoch slots
+        assert store.previous_epoch_greatest_unrealized_checkpoint == gu_snapshot_after_epoch0, (
+            f"GU snapshot changed at mid-epoch slot {fcr.current_slot()}"
+        )
+
+    # Advance to last slot of epoch 1 — new snapshot is taken
+    fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    assert fcr.current_slot() == last_slot_of_epoch1
+
+    # 3. Snapshot should now reflect the current unrealized_justified_checkpoint
+    snapshot_at_last_slot = store.previous_epoch_greatest_unrealized_checkpoint
+    assert snapshot_at_last_slot == store.unrealized_justified_checkpoint, (
+        "GU snapshot should equal unrealized at last slot of epoch"
+    )
+
+    # Record snapshot before crossing into next epoch
+    snapshot_before_epoch_start = store.previous_epoch_greatest_unrealized_checkpoint
+
+    # Advance to first slot of epoch 2 — epoch processing may advance unrealized
+    fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    assert fcr.current_slot() == 2 * S
+
+    # The rotation should use the snapshot value, NOT the (possibly updated) unrealized
+    assert store.current_epoch_observed_justified_checkpoint == snapshot_before_epoch_start, (
+        "Rotation should use the GU snapshot, not the live unrealized_justified_checkpoint"
+    )
+
+    yield from fcr.get_test_artefacts()
+
+
+@with_altair_and_later
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_observed_justified_stable_during_last_slot(spec, state):
+    """
+    At the last slot of an epoch, the observed justified checkpoints used by is_one_confirmed must still
+    reflect the old values, not the new ones.
+
+    Concretely: run from epoch start through the entire epoch. Record the
+    observed values at the second-to-last slot. Verify they are identical
+    at the last slot.
+
+    It verifies that current_epoch_observed_justified_checkpoint and
+    previous_epoch_observed_justified_checkpoint have the same value at the
+    last slot of the epoch as they did at the first slot
+    """
+    fcr = FCRTest(spec, seed=1)
+    store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+
+    # Run to epoch 2 to have meaningful justified checkpoints
+    while fcr.current_slot() < 2 * S:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Now at first slot of epoch 2 — record observed checkpoints
+    curr_observed_at_epoch_start = store.current_epoch_observed_justified_checkpoint
+    prev_observed_at_epoch_start = store.previous_epoch_observed_justified_checkpoint
+
+    # Run through the entire epoch, all the way to the last slot
+    last_slot_of_epoch2 = 3 * S - 1
+    while fcr.current_slot() < last_slot_of_epoch2:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    assert fcr.current_slot() == last_slot_of_epoch2
+
+    # Observed checkpoints must be the same as at epoch start
+    # This is what the old code got wrong — it would have rotated them here
+    assert store.current_epoch_observed_justified_checkpoint == curr_observed_at_epoch_start, (
+        "current_epoch_observed must remain stable throughout the entire epoch "
+        "(including the last slot)"
+    )
+    assert store.previous_epoch_observed_justified_checkpoint == prev_observed_at_epoch_start, (
+        "previous_epoch_observed must remain stable throughout the entire epoch "
+        "(including the last slot)"
+    )
+
+    # But the GU snapshot should have been taken
+    assert (
+        store.previous_epoch_greatest_unrealized_checkpoint == store.unrealized_justified_checkpoint
+    ), "GU snapshot should be taken at last slot even though observed checkpoints don't rotate"
 
     yield from fcr.get_test_artefacts()

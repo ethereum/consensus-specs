@@ -173,6 +173,9 @@ The following fields are used by the Fast Confirmation Rule:
 - `current_epoch_observed_justified_checkpoint`: a justified checkpoint that has
   been observed by all honest nodes at the beginning of the current epoch
   assuming synchrony.
+- `previous_epoch_greatest_unrealized_checkpoint`: a greatest unrealized
+  justified checkpoint at the start of the last slot of the previous epoch
+  according to a local view.
 - `previous_slot_head`: the head at the start of the previous slot.
 - `current_slot_head`: the head at the start of the current slot.
 
@@ -189,6 +192,7 @@ class Store(object):
     confirmed_root: Root
     previous_epoch_observed_justified_checkpoint: Checkpoint
     current_epoch_observed_justified_checkpoint: Checkpoint
+    previous_epoch_greatest_unrealized_checkpoint: Checkpoint
     previous_slot_head: Root
     current_slot_head: Root
     equivocating_indices: Set[ValidatorIndex]
@@ -230,6 +234,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         confirmed_root=anchor_root,
         previous_epoch_observed_justified_checkpoint=justified_checkpoint,
         current_epoch_observed_justified_checkpoint=justified_checkpoint,
+        previous_epoch_greatest_unrealized_checkpoint=justified_checkpoint,
         previous_slot_head=anchor_root,
         current_slot_head=anchor_root,
         equivocating_indices=set(),

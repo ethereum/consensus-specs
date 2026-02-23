@@ -9,6 +9,7 @@ from eth2spec.test.context import (
     with_presets,
 )
 from eth2spec.test.helpers.fast_confirmation import (
+    debug_print,
     FCRTest,
     SystemRun,
 )
@@ -28,18 +29,7 @@ Test on restart to GU
 @single_phase
 def test_fcr_restarts_to_gu_when_all_conditions_met(spec, state):
     """
-    Test that confirmed_root restarts to GU (not finalized) when all conditions are met:
-    1. At epoch start
-    2. GU.epoch + 1 == current_epoch (GU is fresh)
-    3. GU == unrealized_justifications[head]
-    4. slot(confirmed) < slot(block(GU))
-
-    Strategy:
-    - Epochs 0-4: 100% participation, confirmations and justification advance
-    - Last slot of epoch 4: GU sampling happens, then late slashing arrives
-    - Epoch 5 start: reconfirmation fails due to slashed weight
-      * GU (epoch 4) is fresh, slot(finalized) < slot(GU)
-      * → restart to GU instead of staying at finalized
+    DEBUG: Verify restart-to-GU path is actually triggered.
     """
     fcr = FCRTest(spec, seed=1)
     store = fcr.initialize(state)
@@ -54,43 +44,62 @@ def test_fcr_restarts_to_gu_when_all_conditions_met(spec, state):
     assert fcr.current_slot() == epoch5_start - 1
     assert store.finalized_checkpoint.epoch >= spec.Epoch(2)
 
+    assert store.previous_epoch_greatest_unrealized_checkpoint.epoch == spec.Epoch(4), (
+        f"GU snapshot should be epoch 4, got {store.previous_epoch_greatest_unrealized_checkpoint.epoch}"
+    )
+
+    confirmed_before = store.confirmed_root
+    finalized_root = store.finalized_checkpoint.root
+    assert confirmed_before != finalized_root, (
+        "Precondition: confirmed should be ahead of finalized"
+    )
+
     # Last slot of epoch 4: build block, attest
     block_root = fcr.add_and_apply_block(parent_root=fcr.head())
     lslot_atts = fcr.attest(block_root=block_root, slot=fcr.current_slot(), participation_rate=100)
 
-    # Late slashing arrives during last slot of epoch 4 (before crossing into epoch 5)
+    # Late slashing arrives during last slot of epoch 4
     fcr.apply_attester_slashing(slashing_percentage=50, slot=fcr.current_slot())
 
-    # Cross into epoch 5 atomically: tick + apply attestations
+    # Cross into epoch 5
     fcr.next_slot()
     fcr.apply_attestations(lslot_atts)
 
-    assert fcr.current_slot() == epoch5_start
-    assert spec.is_start_slot_at_epoch(fcr.current_slot())
+    # Before FCR: check reconfirmation status
+    debug_print(
+        f"is_confirmed_chain_safe before FCR: {spec.is_confirmed_chain_safe(store, confirmed_before)}"
+    )
+    debug_print(f"confirmed_before slot: {store.blocks[confirmed_before].slot}")
+    debug_print(f"finalized slot: {store.blocks[finalized_root].slot}")
+    debug_print(f"equivocating_indices: {len(store.equivocating_indices)}")
 
-    # Verify preconditions for restart-to-GU
-    confirmed_before = store.confirmed_root
-    gu = store.current_epoch_observed_justified_checkpoint
-    finalized = store.finalized_checkpoint.root
-    head = fcr.head()
-    head_uj = store.unrealized_justifications[head]
-    current_epoch = spec.get_current_store_epoch(store)
-
-    gu_slot = spec.get_block_slot(store, gu.root)
-    finalized_slot = spec.get_block_slot(store, finalized)
-
-    assert gu.epoch + 1 == current_epoch, f"GU not fresh: {gu.epoch} + 1 != {current_epoch}"
-    assert confirmed_before != finalized, "Should have confirmations before FCR"
-    assert gu == head_uj, "GU != head's UJ"
-    assert finalized_slot < gu_slot, f"slot(finalized)={finalized_slot} >= slot(GU)={gu_slot}"
-    assert gu.root != finalized, "GU == finalized (test not meaningful)"
-
-    # Run FCR - should reset due to reconfirmation failure, then restart to GU
     fcr.run_fast_confirmation()
 
-    # Verify restart to GU (not finalized)
-    assert store.confirmed_root == gu.root, "Should restart to GU"
-    assert store.confirmed_root != finalized, "Should NOT stay at finalized"
+    assert fcr.current_slot() == epoch5_start
+    assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot()))
+
+    gu = store.current_epoch_observed_justified_checkpoint
+    current_epoch = spec.get_current_store_epoch(store)
+    finalized_root = store.finalized_checkpoint.root
+
+    debug_print("\nAfter FCR:")
+    debug_print(f"gu.epoch: {gu.epoch}, current_epoch: {current_epoch}")
+    debug_print(f"confirmed_root slot: {store.blocks[store.confirmed_root].slot}")
+    debug_print(f"gu.root slot: {store.blocks[gu.root].slot}")
+    debug_print(f"finalized slot: {store.blocks[finalized_root].slot}")
+    debug_print(f"confirmed == gu.root: {store.confirmed_root == gu.root}")
+    debug_print(f"confirmed == finalized: {store.confirmed_root == finalized_root}")
+    debug_print(f"confirmed == confirmed_before: {store.confirmed_root == confirmed_before}")
+
+    assert gu.epoch + 1 == current_epoch, (
+        f"GU should be fresh after rotation: {gu.epoch} + 1 != {current_epoch}"
+    )
+
+    assert store.confirmed_root != confirmed_before, (
+        "Confirmed root should have changed (reconfirmation failed)"
+    )
+    assert store.confirmed_root == gu.root, "Should restart to GU root"
+    assert store.confirmed_root != finalized_root, "Should NOT stay at finalized"
 
     yield from fcr.get_test_artefacts()
 
@@ -136,6 +145,11 @@ def test_fcr_restarts_to_gu_and_confirms_beyond_gu(spec, state):
     assert fcr.current_slot() == epoch5_start - 1
     assert store.finalized_checkpoint.epoch >= spec.Epoch(2)
 
+    # Verify GU snapshot is fresh before crossing
+    assert store.previous_epoch_greatest_unrealized_checkpoint.epoch == spec.Epoch(4), (
+        f"GU snapshot should be epoch 4, got {store.previous_epoch_greatest_unrealized_checkpoint.epoch}"
+    )
+
     # Last slot of epoch 4: build block, attest
     block_root = fcr.add_and_apply_block(parent_root=fcr.head())
     lslot_atts = fcr.attest(block_root=block_root, slot=fcr.current_slot(), participation_rate=100)
@@ -149,34 +163,27 @@ def test_fcr_restarts_to_gu_and_confirms_beyond_gu(spec, state):
         )
     )
 
-    # Cross into epoch 5 atomically: tick + apply attestations
+    # Cross into epoch 5 atomically: tick + apply attestations + FCR
     fcr.next_slot()
     fcr.apply_attestations(lslot_atts)
+    fcr.run_fast_confirmation()
 
     assert fcr.current_slot() == epoch5_start
-    assert spec.is_start_slot_at_epoch(fcr.current_slot())
+    assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot()))
 
-    # Verify preconditions for restart-to-GU
-    confirmed_before = store.confirmed_root
+    # Verify postconditions after FCR (rotation has happened)
     gu = store.current_epoch_observed_justified_checkpoint
     finalized = store.finalized_checkpoint.root
-    head = fcr.head()
-    head_uj = store.unrealized_justifications[head]
     current_epoch = spec.get_current_store_epoch(store)
 
     gu_slot = spec.get_block_slot(store, gu.root)
     finalized_slot = spec.get_block_slot(store, finalized)
 
     assert gu.epoch + 1 == current_epoch, f"GU not fresh: {gu.epoch} + 1 != {current_epoch}"
-    assert confirmed_before != finalized, "Should have confirmations before FCR"
-    assert gu == head_uj, "GU != head's UJ"
-    assert finalized_slot < gu_slot, f"slot(finalized)={finalized_slot} >= slot(GU)={gu_slot}"
     assert gu.root != finalized, "GU == finalized (test not meaningful)"
+    assert finalized_slot < gu_slot, f"slot(finalized)={finalized_slot} >= slot(GU)={gu_slot}"
 
-    # Run FCR - should reset due to reconfirmation failure, then restart to GU
-    fcr.run_fast_confirmation()
-
-    # Verify restart to GU (not finalized)
+    # Verify restart to GU and advance further (not finalized)
     assert store.confirmed_root == expected_confirmed_root_after_restart, (
         "Should restart to GU and advance further"
     )

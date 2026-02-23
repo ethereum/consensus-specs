@@ -616,7 +616,7 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
       * Global UJ stays (C, 2) due to "first received wins"
     - Epoch 3: BLACK branch continues with 100% participation, confirmations advance
     - Epoch 3 last slot:
-      * FCR runs → GU sampled = (C, 2)
+      * GU snapshot taken = (C, 2)
       * THEN BLACK block b' released with epoch 3 attestations → justifies (d, 3)
     - Epoch 4: justified = (d, 3) so BLACK is canonical, but GU = (C, 2)
       * bcand (BLACK, epoch 3) ⊁ GU (C, epoch 2) → RESET
@@ -711,14 +711,15 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
             parent_root=black_tip, graffiti=f"black_e3_{fcr.current_slot()}", include_atts=False
         )
 
-    # Last slot of epoch 3: First run FCR (GU sampling), THEN release b'
+    # Last slot of epoch 3
     assert fcr.current_slot() == epoch4_start - 1
     assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot() + 1))
 
-    # Check GU = (C, 2)
-    gu = store.current_epoch_observed_justified_checkpoint
-    assert gu.root == c_red
-    assert gu.epoch == spec.Epoch(2)
+    # Check GU snapshot = (C, 2) — use the snapshot field, not current_observed
+    # (rotation hasn't happened yet, it happens at epoch 4 start inside FCR)
+    gu_snapshot = store.previous_epoch_greatest_unrealized_checkpoint
+    assert gu_snapshot.root == c_red, "GU snapshot should point to c_red"
+    assert gu_snapshot.epoch == spec.Epoch(2)
 
     # NOW release b' with epoch 3 attestations → justifies (d_root, 3)
     b_prime = fcr.add_and_apply_block(
@@ -732,9 +733,9 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
     assert uj_of_b_prime.root == epoch3_black_checkpoint
     assert spec.is_ancestor(store, uj_of_b_prime.root, c_double_prime)
 
-    # GU should STILL be (C, 2)
-    assert store.current_epoch_observed_justified_checkpoint.root == c_red
-    assert store.current_epoch_observed_justified_checkpoint.epoch == spec.Epoch(2)
+    # GU snapshot should STILL be (C, 2) — releasing b' doesn't change it
+    assert store.previous_epoch_greatest_unrealized_checkpoint.root == c_red
+    assert store.previous_epoch_greatest_unrealized_checkpoint.epoch == spec.Epoch(2)
 
     fcr.attest(block_root=b_prime, slot=fcr.current_slot(), participation_rate=100)
 
@@ -743,32 +744,38 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
     fcr.apply_attestations()
 
     assert fcr.current_slot() == epoch4_start
-    assert spec.is_start_slot_at_epoch(fcr.current_slot())
+    assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot()))
 
-    # Verify preconditions: reset is due to bcand ⊁ GU
-    head_before_fcr = fcr.head()
+    # Verify preconditions BEFORE FCR
     confirmed_before_fcr = store.confirmed_root
     current_epoch = spec.get_current_store_epoch(store)
-    gu_root = store.current_epoch_observed_justified_checkpoint.root
     confirmed_epoch = spec.get_block_epoch(store, confirmed_before_fcr)
 
-    bcand_too_old = confirmed_epoch + 1 < current_epoch
-    bcand_not_canonical = not spec.is_ancestor(store, head_before_fcr, confirmed_before_fcr)
-    bcand_not_descendant_of_gu = not spec.is_ancestor(store, confirmed_before_fcr, gu_root)
+    # bcand is NOT too old (epoch(bcand) + 1 >= current_epoch)
+    assert not (confirmed_epoch + 1 < current_epoch), "bcand should NOT be too old"
 
-    # These must be FALSE - otherwise reset would be due to these, not bcand ⊁ GU
-    assert not bcand_too_old, "bcand should NOT be too old"
-    assert not bcand_not_canonical, "bcand should be canonical"
+    # bcand IS on the canonical chain (bcand ≼ head)
+    head_before_fcr = fcr.head()
+    assert spec.is_ancestor(store, head_before_fcr, confirmed_before_fcr), (
+        "bcand should be canonical"
+    )
 
-    # This must be TRUE - this is what triggers the reset
-    assert bcand_not_descendant_of_gu, "bcand should NOT be descendant of GU"
-
-    # Run FCR and verify reset
+    # Run FCR — rotation happens, then reset check
     fcr.run_fast_confirmation()
 
+    # Verify GU after rotation
+    gu = store.current_epoch_observed_justified_checkpoint
+    assert gu.root == c_red, "GU should be c_red after rotation"
+    assert gu.epoch == spec.Epoch(2)
+
+    # Verify bcand is NOT a descendant of GU — this is what triggers the reset
+    assert not spec.is_ancestor(store, confirmed_before_fcr, gu.root), (
+        "bcand should NOT be descendant of GU — this triggers the reset"
+    )
+
+    # Verify reset to finalized
     confirmed_after_fcr = store.confirmed_root
     finalized = store.finalized_checkpoint.root
-
     assert confirmed_after_fcr == finalized, (
         "confirmed_root should reset to finalized due to bcand ⊁ GU"
     )

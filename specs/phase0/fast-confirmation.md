@@ -704,12 +704,18 @@ def update_fast_confirmation_variables(store: Store) -> None:
     store.previous_slot_head = store.current_slot_head
     store.current_slot_head = get_head(store)
 
-    # Update observed justified checkpoint at the beginning of the last slot of an epoch.
+    # Update greatest unrealized justified checkpoint at the last slot of an epoch.
     if is_start_slot_at_epoch(Slot(get_current_slot(store) + 1)):
+        store.previous_epoch_greatest_unrealized_checkpoint = store.unrealized_justified_checkpoint
+
+    # Update observed justified checkpoints at the start of an epoch.
+    if is_start_slot_at_epoch(get_current_slot(store)):
         store.previous_epoch_observed_justified_checkpoint = (
             store.current_epoch_observed_justified_checkpoint
         )
-        store.current_epoch_observed_justified_checkpoint = store.unrealized_justified_checkpoint
+        store.current_epoch_observed_justified_checkpoint = (
+            store.previous_epoch_greatest_unrealized_checkpoint
+        )
 ```
 
 #### `find_latest_confirmed_descendant`

@@ -168,15 +168,17 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
     """
     Test that FCR correctly handles an empty slot at the epoch boundary.
 
-    The last slot of an epoch is when GU sampling happens. If this slot is empty,
-    the sampling should still occur correctly.
+    The last slot of an epoch is when the GU snapshot is taken. If this slot
+    is empty, the snapshot should still occur correctly. The rotation of
+    observed checkpoints happens at the first slot of the next epoch.
 
     1. Build chain through most of epoch 0
     2. Make the last slot of epoch 0 empty (slot 7)
     3. Cross into epoch 1 with blocks
     4. Verify:
-       - GU sampling occurred correctly at the empty last slot
-       - Epoch boundary logic works correctly
+       - GU snapshot taken correctly at the empty last slot
+       - Observed checkpoints do NOT rotate at the last slot
+       - Observed checkpoints DO rotate at epoch 1 start
        - No spurious resets
     """
     fcr = FCRTest(spec, seed=1)
@@ -195,6 +197,7 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
     head_before_empty = fcr.head()
     confirmed_before_empty = store.confirmed_root
     current_observed_before = store.current_epoch_observed_justified_checkpoint
+    previous_observed_before = store.previous_epoch_observed_justified_checkpoint
 
     # With 100% participation, head should be confirmed
     assert confirmed_before_empty == head_before_empty
@@ -208,18 +211,32 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
 
     assert fcr.current_slot() == last_slot_epoch0  # slot 7
     assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot() + 1)), (
-        "Should be last slot of epoch (GU sampling slot)"
+        "Should be last slot of epoch (GU snapshot slot)"
     )
 
-    # Run FCR at slot 7 (empty slot) - this triggers GU sampling
+    # Run FCR at slot 7 (empty slot) - this triggers GU snapshot
     fcr.run_fast_confirmation()
 
-    # GU sampling should have happened
-    assert store.previous_epoch_observed_justified_checkpoint == current_observed_before
+    # GU snapshot should have been taken
+    assert (
+        store.previous_epoch_greatest_unrealized_checkpoint == store.unrealized_justified_checkpoint
+    ), "GU snapshot should be taken at last slot of epoch even during empty slot"
+
+    # Observed checkpoints should NOT have rotated (PR #25 fix)
+    assert store.current_epoch_observed_justified_checkpoint == current_observed_before, (
+        "current_epoch_observed should NOT change at last slot of epoch"
+    )
+    assert store.previous_epoch_observed_justified_checkpoint == previous_observed_before, (
+        "previous_epoch_observed should NOT change at last slot of epoch"
+    )
 
     # Head unchanged (empty slot), confirmed stays the same
     assert fcr.head() == head_before_empty
     assert store.confirmed_root == head_before_empty
+
+    # Record values before crossing into epoch 1
+    gu_snapshot = store.previous_epoch_greatest_unrealized_checkpoint
+    curr_observed_before_rotation = store.current_epoch_observed_justified_checkpoint
 
     # Attest at slot 7, then cross into epoch 1 (slot 8) WITH A BLOCK
     fcr.attest_and_next_slot_with_fast_confirmation(
@@ -228,6 +245,14 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
 
     assert fcr.current_slot() == epoch1_start  # slot 8
     assert spec.is_start_slot_at_epoch(fcr.current_slot())
+
+    # Rotation should have happened at epoch start
+    assert store.previous_epoch_observed_justified_checkpoint == curr_observed_before_rotation, (
+        "previous_observed should now equal old current_observed after rotation at epoch start"
+    )
+    assert store.current_epoch_observed_justified_checkpoint == gu_snapshot, (
+        "current_observed should now equal GU snapshot after rotation at epoch start"
+    )
 
     # Propose block at epoch 1 start
     first_block_epoch1 = fcr.add_and_apply_block(
@@ -284,18 +309,19 @@ def test_fcr_empty_slots_at_epoch_boundary_both_sides(spec, state):
     Test that FCR correctly handles empty slots on both sides of an epoch boundary.
 
     Both the last slot of epoch 0 AND the first slot of epoch 1 are empty.
-    This tests:
-    - GU sampling at empty last slot of epoch
-    - Epoch-start logic at empty first slot of new epoch
+    This tests the two-step mechanism:
+    - GU snapshot at empty last slot of epoch (no rotation)
+    - Rotation at empty first slot of new epoch
     - Interaction between these two critical moments
 
     1. Build chain through epoch 0 until slot 5
-    2. Slot 6, 7 (last of epoch 0): EMPTY - GU sampling happens at slot 7
-    3. Slot 8 (first of epoch 1): EMPTY - epoch-start logic runs here
+    2. Slot 6, 7 (last of epoch 0): EMPTY - GU snapshot taken at slot 7
+    3. Slot 8 (first of epoch 1): EMPTY - rotation happens here
     4. Slot 9: first block of epoch 1
     5. Verify:
-       - GU sampling occurred correctly at slot 7
-       - Epoch boundary logic works correctly at slot 8
+       - GU snapshot taken correctly at slot 7
+       - Observed checkpoints NOT rotated at slot 7
+       - Observed checkpoints rotated at slot 8
        - No spurious resets
        - Confirmations continue after resuming blocks
     """
@@ -307,8 +333,6 @@ def test_fcr_empty_slots_at_epoch_boundary_both_sides(spec, state):
     epoch1_start = S  # slot 8
 
     # Build until we're at slot 6
-    # next_slot_with_block_and_fast_confirmation places block then advances
-    # So after the loop, current_slot == 6 and last block was at slot 5
     while fcr.current_slot() < last_slot_epoch0 - 1:
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
     assert fcr.current_slot() == last_slot_epoch0 - 1  # slot 6
@@ -318,6 +342,7 @@ def test_fcr_empty_slots_at_epoch_boundary_both_sides(spec, state):
     assert head_slot == 5, f"Last block should be at slot 5, got {head_slot}"
 
     current_observed_before = store.current_epoch_observed_justified_checkpoint
+    previous_observed_before = store.previous_epoch_observed_justified_checkpoint
 
     # Slot 6: EMPTY
     fcr.attest_and_next_slot_with_fast_confirmation(
@@ -325,24 +350,35 @@ def test_fcr_empty_slots_at_epoch_boundary_both_sides(spec, state):
     )
     assert fcr.current_slot() == last_slot_epoch0  # slot 7
 
-    # Slot 7: Last slot of epoch 0 (EMPTY) - GU sampling happens here
+    # Slot 7: Last slot of epoch 0 (EMPTY) - GU snapshot happens here
     assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot() + 1)), (
         "Slot 7 should be last slot of epoch 0"
     )
 
-    # Verify GU sampling happened
-    assert store.previous_epoch_observed_justified_checkpoint == current_observed_before, (
-        "GU sampling should have shifted previous := current"
+    # GU snapshot should have been taken
+    assert (
+        store.previous_epoch_greatest_unrealized_checkpoint == store.unrealized_justified_checkpoint
+    ), "GU snapshot should be taken at last slot of epoch"
+
+    # Observed checkpoints should NOT have rotated (PR #25)
+    assert store.current_epoch_observed_justified_checkpoint == current_observed_before, (
+        "current_epoch_observed should NOT change at last slot of epoch"
+    )
+    assert store.previous_epoch_observed_justified_checkpoint == previous_observed_before, (
+        "previous_epoch_observed should NOT change at last slot of epoch"
     )
 
-    current_observed_after_sampling = store.current_epoch_observed_justified_checkpoint
     assert fcr.head() == head_before_empty
+
+    # Record values before crossing into epoch 1
+    gu_snapshot = store.previous_epoch_greatest_unrealized_checkpoint
+    curr_observed_before_rotation = store.current_epoch_observed_justified_checkpoint
 
     slot7_atts = fcr.attest(
         block_root=head_before_empty, slot=fcr.current_slot(), participation_rate=100
     )
 
-    # Slot 8: First slot of epoch 1 (EMPTY)
+    # Slot 8: First slot of epoch 1 (EMPTY) - rotation happens here
     fcr.next_slot()
     fcr.apply_attestations(slot7_atts)
 
@@ -352,8 +388,13 @@ def test_fcr_empty_slots_at_epoch_boundary_both_sides(spec, state):
     fcr.run_fast_confirmation()
 
     assert fcr.head() == head_before_empty
-    assert store.current_epoch_observed_justified_checkpoint == current_observed_after_sampling, (
-        "GU should not change at epoch start (only at epoch end)"
+
+    # Rotation should have happened at epoch start
+    assert store.previous_epoch_observed_justified_checkpoint == curr_observed_before_rotation, (
+        "previous_observed should now equal old current_observed after rotation at epoch start"
+    )
+    assert store.current_epoch_observed_justified_checkpoint == gu_snapshot, (
+        "current_observed should now equal GU snapshot after rotation at epoch start"
     )
 
     # Slot 8: Attest and move to Slot 9

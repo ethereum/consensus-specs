@@ -122,6 +122,7 @@ class Store(object):
     confirmed_root: Root
     previous_epoch_observed_justified_checkpoint: Checkpoint
     current_epoch_observed_justified_checkpoint: Checkpoint
+    previous_epoch_greatest_unrealized_checkpoint: Checkpoint
     previous_slot_head: Root
     current_slot_head: Root
     equivocating_indices: Set[ValidatorIndex]
@@ -156,6 +157,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         confirmed_root=anchor_root,
         previous_epoch_observed_justified_checkpoint=justified_checkpoint,
         current_epoch_observed_justified_checkpoint=justified_checkpoint,
+        previous_epoch_greatest_unrealized_checkpoint=justified_checkpoint,
         previous_slot_head=anchor_root,
         current_slot_head=anchor_root,
         equivocating_indices=set(),
