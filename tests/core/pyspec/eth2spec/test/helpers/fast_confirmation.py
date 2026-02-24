@@ -57,8 +57,8 @@ def output_fast_confirmation_checks(spec, store, test_steps):
     test_steps.append({"checks": basic_checks | fcr_checks})
 
 
-def on_slot_start_after_past_attestations_applied_and_append_step(spec, store, test_steps):
-    spec.on_slot_start_after_past_attestations_applied(store)
+def on_fast_confirmation_and_append_step(spec, store, test_steps):
+    spec.on_fast_confirmation(store)
     output_fast_confirmation_checks(spec, store, test_steps)
 
 
@@ -289,9 +289,7 @@ class FCRTest:
         self.apply_attestations()
 
     def run_fast_confirmation(self):
-        on_slot_start_after_past_attestations_applied_and_append_step(
-            self.spec, self.store, self.test_steps
-        )
+        on_fast_confirmation_and_append_step(self.spec, self.store, self.test_steps)
 
     def next_slot_with_block_and_apply_attestations(
         self,
