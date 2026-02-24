@@ -99,6 +99,14 @@ def pytest_generate_tests(metafunc):
 @fixture(autouse=True)
 def preset(request):
     preset_value = request.param
+    manifest_preset = getattr(getattr(request.function, "manifest", None), "preset_name", None)
+
+    if preset_value == "general" and manifest_preset != "general":
+        pytest.skip("not a general test")
+
+    if preset_value != "general" and manifest_preset == "general":
+        pytest.skip("general-only test")
+
     # "general" tests are preset-independent; use "minimal" for spec loading
     # while keeping the callspec as "general" for correct output paths.
     spec_preset = "minimal" if preset_value == "general" else preset_value
