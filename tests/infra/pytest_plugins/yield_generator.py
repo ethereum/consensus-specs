@@ -80,7 +80,6 @@ RUNNERS: dict[str, RunnerConfig] = {
 }
 
 
-
 class SpecTestFunction(pytest.Function):
     """Custom pytest.Function subclass that captures test results.
 

@@ -74,7 +74,7 @@ help-verbose:
 	@echo "    bls=<type>        BLS library type (py_ecc, milagro, arkworks, fastest; default: fastest)"
 	@echo "    kzg=<type>        KZG library type (spec, ckzg; default: ckzg)"
 	@echo "    component=<value> Test component: (all, pyspec, fw; default: all)"
-	@echo "    reftests=true     Enable reference test generation (default: disabled)"
+	@echo "    reftests=<bool>   Generate reference tests (default: false)"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make test"
