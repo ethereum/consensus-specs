@@ -11,8 +11,7 @@ from lru import LRU
 
 from eth_consensus_specs.test import context
 from eth_consensus_specs.utils import bls
-from tests.infra.pytest_plugins.yield_generator import MultiPhaseResult
-from tests.infra.yield_generator import vector_test
+from tests.infra.yield_generator import MultiPhaseResult, vector_test
 
 from .exceptions import SkippedTest
 from .helpers.constants import (

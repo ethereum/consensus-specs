@@ -11,6 +11,7 @@ from eth_consensus_specs.gen_helpers.gen_base.dumper import Dumper
 from eth_consensus_specs.test import context
 from eth_consensus_specs.test.helpers.typing import SpecForkName
 from tests.infra.manifest import Manifest
+from tests.infra.yield_generator import MultiPhaseResult
 
 
 class RunnerConfig(TypedDict, total=False):
@@ -78,7 +79,6 @@ RUNNERS: dict[str, RunnerConfig] = {
     },
 }
 
-MultiPhaseResult = dict[SpecForkName, list]
 
 
 class SpecTestFunction(pytest.Function):

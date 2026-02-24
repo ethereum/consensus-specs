@@ -2,8 +2,11 @@ import functools
 import inspect
 from collections.abc import Generator, Iterable
 
+from eth_consensus_specs.test.helpers.typing import SpecForkName
 from eth_consensus_specs.utils.ssz.ssz_impl import serialize
 from eth_consensus_specs.utils.ssz.ssz_typing import View
+
+MultiPhaseResult = dict[SpecForkName, list]
 
 
 def _yield_generator_post_processing(vector: Iterable) -> Generator:
