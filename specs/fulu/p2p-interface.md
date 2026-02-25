@@ -422,14 +422,10 @@ subnet (gossipsub topic), it can be used for all subnets.
 Due to the nature of partial messages, it is possible to get the
 `PartialDataColumnHeader` with no cells, and get cells in a future response.
 
-For all partial messages:
-
-- _[IGNORE]_ If the received partial message contains only cell data, the node
-  has seen the corresponding `PartialDataColumnHeader`.
-
 For verifying the `PartialDataColumnHeader` in a partial message:
 
-- _[IGNORE]_ The header is the first valid header for the given block root.
+- _[REJECT]_ If a valid header was previously received, the received header MUST
+  equal the previously valid header.
 - _[REJECT]_ The hash of the block header in `signed_block_header` MUST be the
   same as the partial message's group id.
 - _[REJECT]_ The header's `kzg_commitments` list is non-empty.
@@ -463,8 +459,16 @@ For verifying the `PartialDataColumnHeader` in a partial message:
 
 For verifying the cells in a partial message:
 
+- _[IGNORE]_ If the received partial message contains only cell data, the node
+  has seen a valid corresponding `PartialDataColumnHeader`.
+- _[IGNORE]_ The corresponding header is not from a future slot. See related
+  header check above for more details
+- _[IGNORE]_ The corresponding header is from a slot greater than the latest
+  finalized slot. See related header check above for more details
 - _[REJECT]_ The cells present bitmap length is equal to the number of KZG
   commitments in the `PartialDataColumnHeader`.
+- _[REJECT]_ For cells the receiver already has, The sidecar's cell and proof
+  data are equal to the local copy.
 - _[REJECT]_ The sidecar's cell and proof data is valid as verified by
   `verify_partial_data_column_sidecar_kzg_proofs(sidecar, header.kzg_commitments, column_index)`.
 
