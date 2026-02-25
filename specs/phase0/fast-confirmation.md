@@ -12,13 +12,12 @@
       - [`get_block_epoch`](#get_block_epoch)
       - [`get_checkpoint_for_block`](#get_checkpoint_for_block)
       - [`get_current_target`](#get_current_target)
-      - [`get_checkpoint_state`](#get_checkpoint_state)
       - [`is_start_slot_at_epoch`](#is_start_slot_at_epoch)
       - [`is_ancestor`](#is_ancestor)
       - [`get_ancestor_roots`](#get_ancestor_roots)
     - [State helpers](#state-helpers)
       - [`get_slot_committee`](#get_slot_committee)
-      - [`get_current_target_state`](#get_current_target_state)
+      - [`get_pulled_up_head_state`](#get_pulled_up_head_state)
       - [`get_previous_balance_source`](#get_previous_balance_source)
       - [`get_current_balance_source`](#get_current_balance_source)
     - [LMD-GHOST helpers](#lmd-ghost-helpers)
@@ -123,22 +122,6 @@ def get_current_target(store: Store) -> Checkpoint:
     return get_checkpoint_for_block(store, head, current_epoch)
 ```
 
-##### `get_checkpoint_state`
-
-```python
-def get_checkpoint_state(store: Store, checkpoint: Checkpoint) -> BeaconState:
-    """
-    Return the ``checkpoint`` state.
-    """
-    if checkpoint in store.checkpoint_states:
-        return store.checkpoint_states[checkpoint]
-    else:
-        base_state = copy(store.block_states[checkpoint.root])
-        if base_state.slot < compute_start_slot_at_epoch(checkpoint.epoch):
-            process_slots(base_state, compute_start_slot_at_epoch(checkpoint.epoch))
-        return base_state
-```
-
 ##### `is_start_slot_at_epoch`
 
 ```python
@@ -208,14 +191,21 @@ def get_slot_committee(store: Store, slot: Slot) -> set[ValidatorIndex]:
     return participants
 ```
 
-##### `get_current_target_state`
+##### `get_pulled_up_head_state`
 
 ```python
-def get_current_target_state(store: Store) -> BeaconState:
+def get_pulled_up_head_state(store: Store) -> BeaconState:
     """
-    Return the state of the current epoch target.
+    Return the state of the head pulled up to the current epoch if needed.
     """
-    return get_checkpoint_state(store, get_current_target(store))
+    head = get_head(store)
+    head_state = store.block_states[head]
+    if get_current_epoch(head_state) < get_current_store_epoch(store):
+        pulled_up_state = copy(head_state)
+        process_slots(pulled_up_state, compute_start_slot_at_epoch(get_current_store_epoch(store)))
+        return pulled_up_state
+    else:
+        return head_state
 ```
 
 ##### `get_previous_balance_source`
@@ -592,15 +582,15 @@ def get_current_target_score(store: Store) -> Gwei:
     Return the estimate of FFG support of the current epoch target by using LMD-GHOST votes.
     """
     target = get_current_target(store)
-    target_state = get_current_target_state(store)
+    state = get_pulled_up_head_state(store)
     unslashed_and_active_indices = [
         i
-        for i in get_active_validator_indices(target_state, get_current_epoch(target_state))
-        if not target_state.validators[i].slashed
+        for i in get_active_validator_indices(state, get_current_epoch(state))
+        if not state.validators[i].slashed
     ]
     return Gwei(
         sum(
-            target_state.validators[i].effective_balance
+            state.validators[i].effective_balance
             for i in unslashed_and_active_indices
             if (
                 i in store.latest_messages
@@ -631,8 +621,8 @@ def compute_honest_ffg_support_for_current_target(store: Store) -> Gwei:
     """
     current_slot = get_current_slot(store)
     current_epoch = compute_epoch_at_slot(current_slot)
-    target_state = get_current_target_state(store)
-    total_active_balance = get_total_active_balance(target_state)
+    state = get_pulled_up_head_state(store)
+    total_active_balance = get_total_active_balance(state)
 
     # Compute FFG support for the target
     ffg_support_for_checkpoint = get_current_target_score(store)
@@ -672,8 +662,8 @@ def will_no_conflicting_checkpoint_be_justified(store: Store) -> bool:
     if get_current_target(store) == store.unrealized_justified_checkpoint:
         return True
 
-    target_state = get_current_target_state(store)
-    total_active_balance = get_total_active_balance(target_state)
+    state = get_pulled_up_head_state(store)
+    total_active_balance = get_total_active_balance(state)
     honest_ffg_support = compute_honest_ffg_support_for_current_target(store)
     return 3 * honest_ffg_support >= 1 * total_active_balance
 ```
@@ -688,8 +678,8 @@ def will_current_target_be_justified(store: Store) -> bool:
     """
     Return ``True`` if and only if the current target will eventually be justified.
     """
-    target_state = get_current_target_state(store)
-    total_active_balance = get_total_active_balance(target_state)
+    state = get_pulled_up_head_state(store)
+    total_active_balance = get_total_active_balance(state)
     honest_ffg_support = compute_honest_ffg_support_for_current_target(store)
     return 3 * honest_ffg_support >= 2 * total_active_balance
 ```
