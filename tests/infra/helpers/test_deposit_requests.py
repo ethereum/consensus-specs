@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 from eth_consensus_specs.test.context import (
     spec_state_test,
     with_all_phases_from_to,
@@ -81,71 +83,142 @@ def test_prepare_process_deposit_request_compounding_credentials(spec, state):
     assert deposit_request.withdrawal_credentials == compounding_credentials
 
 
-@with_electra_and_later
-@spec_state_test
-def test_run_and_assert_deposit_request_processing(spec, state):
-    """Test full flow: prepare, run, and assert."""
-    # Prepare the deposit request
-    deposit_request = prepare_process_deposit_request(spec, state, signed=True)
+def test_assert_validator_deposit():
+    """Test assert_process_deposit_request passes for a correct validator deposit."""
+    UNSET_VALUE = 2**64 - 1
 
-    # Save pre-state for assertions
-    pre_state = state.copy()
+    spec = MagicMock()
+    spec.UNSET_DEPOSIT_REQUESTS_START_INDEX = UNSET_VALUE
 
-    # Run processing (just process, don't yield for test vectors)
-    spec.process_deposit_request(state, deposit_request)
+    deposit_request = MagicMock()
+    deposit_request.pubkey = b"\x01" * 48
+    deposit_request.withdrawal_credentials = b"\x00" + b"\x01" * 31
+    deposit_request.amount = 32_000_000_000
+    deposit_request.signature = b"\x02" * 96
+    deposit_request.index = 0
 
-    # Assert the outcomes
-    assert_process_deposit_request(
-        spec,
-        state,
-        pre_state,
-        deposit_request=deposit_request,
-    )
+    slot = 100
+
+    pending_deposit = MagicMock()
+    pending_deposit.pubkey = deposit_request.pubkey
+    pending_deposit.withdrawal_credentials = deposit_request.withdrawal_credentials
+    pending_deposit.amount = deposit_request.amount
+    pending_deposit.signature = deposit_request.signature
+    pending_deposit.slot = slot
+
+    pre_state = MagicMock()
+    pre_state.pending_deposits = []
+    pre_state.validators = [MagicMock()]
+    pre_state.balances = [32_000_000_000]
+    pre_state.deposit_requests_start_index = UNSET_VALUE
+
+    state = MagicMock()
+    state.pending_deposits = [pending_deposit]
+    state.validators = [MagicMock()]
+    state.balances = [32_000_000_000]
+    state.deposit_requests_start_index = deposit_request.index
+    state.slot = slot
+
+    with patch("tests.infra.helpers.deposit_requests.is_post_gloas", return_value=False):
+        assert_process_deposit_request(
+            spec,
+            state,
+            pre_state,
+            deposit_request=deposit_request,
+        )
 
 
-@with_all_phases_from_to(ELECTRA, GLOAS)
-@spec_state_test
-def test_assert_process_deposit_request_start_index_set(spec, state):
+def test_assert_process_deposit_request_start_index_set():
     """Test that deposit_requests_start_index is set when UNSET (Electra/Fulu only)."""
-    # Ensure start index is UNSET
-    state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
+    UNSET_VALUE = 2**64 - 1
 
-    deposit_request = prepare_process_deposit_request(spec, state, signed=True)
+    spec = MagicMock()
+    spec.UNSET_DEPOSIT_REQUESTS_START_INDEX = UNSET_VALUE
 
-    pre_state = state.copy()
-    spec.process_deposit_request(state, deposit_request)
+    deposit_request = MagicMock()
+    deposit_request.pubkey = b"\x01" * 48
+    deposit_request.withdrawal_credentials = b"\x00" + b"\x01" * 31
+    deposit_request.amount = 32_000_000_000
+    deposit_request.signature = b"\x02" * 96
+    deposit_request.index = 0
 
-    # Should be set to the request index (default: 0)
-    assert_process_deposit_request(
-        spec,
-        state,
-        pre_state,
-        deposit_request=deposit_request,
-        expected_deposit_requests_start_index=0,
-    )
+    slot = 100
+
+    pending_deposit = MagicMock()
+    pending_deposit.pubkey = deposit_request.pubkey
+    pending_deposit.withdrawal_credentials = deposit_request.withdrawal_credentials
+    pending_deposit.amount = deposit_request.amount
+    pending_deposit.signature = deposit_request.signature
+    pending_deposit.slot = slot
+
+    pre_state = MagicMock()
+    pre_state.pending_deposits = []
+    pre_state.validators = [MagicMock()]
+    pre_state.balances = [32_000_000_000]
+    pre_state.deposit_requests_start_index = UNSET_VALUE
+
+    state = MagicMock()
+    state.pending_deposits = [pending_deposit]
+    state.validators = [MagicMock()]
+    state.balances = [32_000_000_000]
+    state.deposit_requests_start_index = 0
+    state.slot = slot
+
+    with patch("tests.infra.helpers.deposit_requests.is_post_gloas", return_value=False):
+        assert_process_deposit_request(
+            spec,
+            state,
+            pre_state,
+            deposit_request=deposit_request,
+            expected_deposit_requests_start_index=0,
+        )
 
 
-@with_all_phases_from_to(ELECTRA, GLOAS)
-@spec_state_test
-def test_assert_process_deposit_request_start_index_unchanged(spec, state):
+def test_assert_process_deposit_request_start_index_unchanged():
     """Test that deposit_requests_start_index is NOT changed when already set (Electra/Fulu only)."""
-    # Set a non-zero start index (different from default request index of 0)
+    UNSET_VALUE = 2**64 - 1
     initial_start_index = 100
+
+    spec = MagicMock()
+    spec.UNSET_DEPOSIT_REQUESTS_START_INDEX = UNSET_VALUE
+
+    deposit_request = MagicMock()
+    deposit_request.pubkey = b"\x01" * 48
+    deposit_request.withdrawal_credentials = b"\x00" + b"\x01" * 31
+    deposit_request.amount = 32_000_000_000
+    deposit_request.signature = b"\x02" * 96
+    deposit_request.index = 0
+
+    slot = 100
+
+    pending_deposit = MagicMock()
+    pending_deposit.pubkey = deposit_request.pubkey
+    pending_deposit.withdrawal_credentials = deposit_request.withdrawal_credentials
+    pending_deposit.amount = deposit_request.amount
+    pending_deposit.signature = deposit_request.signature
+    pending_deposit.slot = slot
+
+    pre_state = MagicMock()
+    pre_state.pending_deposits = []
+    pre_state.validators = [MagicMock()]
+    pre_state.balances = [32_000_000_000]
+    pre_state.deposit_requests_start_index = initial_start_index
+
+    state = MagicMock()
+    state.pending_deposits = [pending_deposit]
+    state.validators = [MagicMock()]
+    state.balances = [32_000_000_000]
     state.deposit_requests_start_index = initial_start_index
+    state.slot = slot
 
-    deposit_request = prepare_process_deposit_request(spec, state, signed=True)
-
-    pre_state = state.copy()
-    spec.process_deposit_request(state, deposit_request)
-
-    # Should remain unchanged
-    assert_process_deposit_request(
-        spec,
-        state,
-        pre_state,
-        deposit_request=deposit_request,
-        expected_deposit_requests_start_index=initial_start_index,
-    )
+    with patch("tests.infra.helpers.deposit_requests.is_post_gloas", return_value=False):
+        assert_process_deposit_request(
+            spec,
+            state,
+            pre_state,
+            deposit_request=deposit_request,
+            expected_deposit_requests_start_index=initial_start_index,
+        )
 
 
 # ============================================================================
@@ -182,28 +255,67 @@ def test_prepare_process_deposit_request_builder_custom_amount(spec, state):
     assert deposit_request.amount == custom_amount
 
 
-@with_gloas_and_later
+def test_assert_new_builder_deposit():
+    """Test assert_process_deposit_request passes for a new builder deposit."""
+    spec = MagicMock()
+
+    builder_pubkey = b"\x03" * 48
+    deposit_request = MagicMock()
+    deposit_request.pubkey = builder_pubkey
+    deposit_request.withdrawal_credentials = b"\x03" + b"\x00" * 11 + b"\x59" * 20
+    deposit_request.amount = 32_000_000_000
+    deposit_request.signature = b"\x02" * 96
+    deposit_request.index = 0
+
+    # Pre state: no builders
+    pre_state = MagicMock()
+    pre_state.pending_deposits = []
+    pre_state.validators = [MagicMock()]
+    pre_state.balances = [32_000_000_000]
+    pre_state.builders = []
+
+    # Post state: one new builder with matching pubkey
+    new_builder = MagicMock()
+    new_builder.pubkey = builder_pubkey
+    new_builder.balance = deposit_request.amount
+
+    state = MagicMock()
+    state.pending_deposits = []
+    state.validators = [MagicMock()]
+    state.balances = [32_000_000_000]
+    state.builders = [new_builder]
+
+    with patch("tests.infra.helpers.deposit_requests.is_post_gloas", return_value=True):
+        assert_process_deposit_request(
+            spec,
+            state,
+            pre_state,
+            deposit_request=deposit_request,
+            is_builder_deposit=True,
+        )
+
+
+@with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
-def test_run_and_assert_builder_deposit_processing(spec, state):
-    """Test full flow for builder deposit: prepare, run, and assert."""
-    # Prepare the builder deposit request
-    deposit_request = prepare_process_deposit_request(spec, state, for_builder=True, signed=True)
+def test_prepare_process_deposit_request_builder_credentials_before_gloas(spec, state):
+    """Test prepare_process_deposit_request with builder credentials (0x03) before Gloas."""
+    amount = spec.MIN_ACTIVATION_BALANCE
 
-    # Save pre-state for assertions
-    pre_state = state.copy()
-    pre_builder_count = len(state.builders)
+    # Builder withdrawal credentials (0x03 prefix) - no special meaning before Gloas
+    withdrawal_credentials = b"\x03" + b"\x00" * 11 + b"\x59" * 20
 
-    # Run processing
-    spec.process_deposit_request(state, deposit_request)
-
-    # Assert the outcomes (new builder created)
-    assert_process_deposit_request(
+    deposit_request = prepare_process_deposit_request(
         spec,
         state,
-        pre_state,
-        deposit_request=deposit_request,
-        is_builder_deposit=True,
+        amount=amount,
+        signed=True,
+        withdrawal_credentials=withdrawal_credentials,
     )
 
-    # Verify new builder was created
-    assert len(state.builders) == pre_builder_count + 1
+    # Should create a valid deposit request with the builder credentials preserved
+    assert deposit_request.withdrawal_credentials == withdrawal_credentials
+    assert deposit_request.amount == amount
+
+    # Should use validator keys (not builder keys) since for_builder is False
+    validator_index = len(state.validators)
+    assert deposit_request.pubkey == pubkeys[validator_index]
