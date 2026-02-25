@@ -10,12 +10,11 @@ from eth_consensus_specs.test.helpers.constants import (
 )
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_deposit_request,
-    run_deposit_request_processing,
 )
 from tests.infra.helpers.deposit_requests import (
     assert_process_deposit_request,
     prepare_process_deposit_request,
-    run_deposit_request_processing as run_deposit_request_processing_helper,
+    run_deposit_request_processing,
 )
 
 
@@ -28,7 +27,9 @@ def test_process_deposit_request_min_activation(spec, state):
     amount = spec.MIN_ACTIVATION_BALANCE
     deposit_request = prepare_deposit_request(spec, validator_index, amount, signed=True)
 
-    yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    pre_state = state.copy()
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+    assert_process_deposit_request(spec, state, pre_state, deposit_request=deposit_request)
 
 
 @with_electra_and_later
@@ -40,10 +41,9 @@ def test_process_deposit_request_extra_gwei(spec, state):
     amount = spec.EFFECTIVE_BALANCE_INCREMENT + spec.Gwei(1)
     deposit_request = prepare_deposit_request(spec, validator_index, amount, signed=True)
 
-    yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
-
-    # Ensure the deposit amount is not a multiple of ETH
-    assert state.pending_deposits[0].amount % spec.EFFECTIVE_BALANCE_INCREMENT == spec.Gwei(1)
+    pre_state = state.copy()
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+    assert_process_deposit_request(spec, state, pre_state, deposit_request=deposit_request)
 
 
 @with_electra_and_later
@@ -62,7 +62,9 @@ def test_process_deposit_request_max_effective_balance_compounding(spec, state):
         spec, validator_index, amount, signed=True, withdrawal_credentials=withdrawal_credentials
     )
 
-    yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    pre_state = state.copy()
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+    assert_process_deposit_request(spec, state, pre_state, deposit_request=deposit_request)
 
 
 @with_electra_and_later
@@ -83,7 +85,9 @@ def test_process_deposit_request_greater_than_max_effective_balance_compounding(
         withdrawal_credentials=withdrawal_credentials,
     )
 
-    yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    pre_state = state.copy()
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+    assert_process_deposit_request(spec, state, pre_state, deposit_request=deposit_request)
 
 
 @with_electra_and_later
@@ -96,7 +100,9 @@ def test_process_deposit_request_top_up_min_activation(spec, state):
     state.balances[validator_index] = spec.MIN_ACTIVATION_BALANCE
     state.validators[validator_index].effective_balance = spec.MIN_ACTIVATION_BALANCE
 
-    yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    pre_state = state.copy()
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+    assert_process_deposit_request(spec, state, pre_state, deposit_request=deposit_request)
 
 
 @with_electra_and_later
@@ -111,7 +117,9 @@ def test_process_deposit_request_top_up_still_less_than_min_activation(spec, sta
     state.balances[validator_index] = balance
     state.validators[validator_index].effective_balance = balance
 
-    yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    pre_state = state.copy()
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+    assert_process_deposit_request(spec, state, pre_state, deposit_request=deposit_request)
 
 
 @with_electra_and_later
@@ -133,7 +141,9 @@ def test_process_deposit_request_top_up_max_effective_balance_compounding(spec, 
         spec, validator_index, amount, signed=True, withdrawal_credentials=withdrawal_credentials
     )
 
-    yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    pre_state = state.copy()
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+    assert_process_deposit_request(spec, state, pre_state, deposit_request=deposit_request)
 
 
 @with_electra_and_later
@@ -146,7 +156,9 @@ def test_process_deposit_request_invalid_sig(spec, state):
     amount = spec.MIN_ACTIVATION_BALANCE
     deposit_request = prepare_deposit_request(spec, validator_index, amount)
 
-    yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    pre_state = state.copy()
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+    assert_process_deposit_request(spec, state, pre_state, deposit_request=deposit_request)
 
 
 @with_electra_and_later
@@ -160,7 +172,9 @@ def test_process_deposit_request_top_up_invalid_sig(spec, state):
     state.balances[validator_index] = spec.MIN_ACTIVATION_BALANCE
     state.validators[validator_index].effective_balance = spec.MIN_ACTIVATION_BALANCE
 
-    yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
+    pre_state = state.copy()
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+    assert_process_deposit_request(spec, state, pre_state, deposit_request=deposit_request)
 
 
 @with_all_phases_from_to(ELECTRA, GLOAS)
@@ -174,9 +188,15 @@ def test_process_deposit_request_set_start_index(spec, state):
     amount = spec.MIN_ACTIVATION_BALANCE
     deposit_request = prepare_deposit_request(spec, validator_index, amount, signed=True)
 
-    yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
-
-    assert state.deposit_requests_start_index == deposit_request.index
+    pre_state = state.copy()
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+    assert_process_deposit_request(
+        spec,
+        state,
+        pre_state,
+        deposit_request=deposit_request,
+        expected_deposit_requests_start_index=deposit_request.index,
+    )
 
 
 @with_electra_and_later
@@ -193,9 +213,15 @@ def test_process_deposit_request_set_start_index_only_once(spec, state):
     assert initial_start_index != deposit_request.index
     state.deposit_requests_start_index = initial_start_index
 
-    yield from run_deposit_request_processing(spec, state, deposit_request, validator_index)
-
-    assert state.deposit_requests_start_index == initial_start_index
+    pre_state = state.copy()
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+    assert_process_deposit_request(
+        spec,
+        state,
+        pre_state,
+        deposit_request=deposit_request,
+        expected_deposit_requests_start_index=initial_start_index,
+    )
 
 
 @with_electra_and_later
@@ -227,7 +253,7 @@ def test_process_deposit_request_eth1_credentials(spec, state):
     )
     pre_state = state.copy()
 
-    yield from run_deposit_request_processing_helper(spec, state, deposit_request)
+    yield from run_deposit_request_processing(spec, state, deposit_request)
 
     assert_process_deposit_request(
         spec,
@@ -263,7 +289,7 @@ def test_process_deposit_request_pending_deposit_slot_binding(spec, state):
 
     pre_state = state.copy()
 
-    yield from run_deposit_request_processing_helper(spec, state, deposit_request)
+    yield from run_deposit_request_processing(spec, state, deposit_request)
 
     assert_process_deposit_request(
         spec,
@@ -307,7 +333,7 @@ def test_process_deposit_request_undefined_credential_prefix(spec, state):
     )
     pre_state = state.copy()
 
-    yield from run_deposit_request_processing_helper(spec, state, deposit_request)
+    yield from run_deposit_request_processing(spec, state, deposit_request)
 
     assert_process_deposit_request(
         spec,
