@@ -413,6 +413,13 @@ The following validations are removed:
 | `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 
+*[Modified in Gloas:EIP7732]* Clients MUST support requesting blocks on the
+epoch range
+`[max(GENESIS_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`.
+If any root in the request content references a block earlier than this range,
+peers MAY respond with error code `3: ResourceUnavailable` or not include the
+block in the response.
+
 ##### ExecutionPayloadEnvelopesByRange v1
 
 **Protocol ID:**
@@ -504,8 +511,11 @@ The request MUST be encoded as an SSZ-field.
 The response MUST consist of zero or more `response_chunk`. Each successful
 `response_chunk` MUST contain a single `SignedExecutionPayloadEnvelope` payload.
 
-Clients MUST support requesting payload envelopes since the latest finalized
-epoch.
+Clients MUST support requesting payload envelopes on the epoch range
+`[max(GLOAS_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`.
+If any root in the request content references a block earlier than this range,
+peers MAY respond with error code `3: ResourceUnavailable` or not include the
+payload envelope in the response.
 
 Clients MUST respond with at least one payload envelope, if they have it.
 Clients MAY limit the number of payload envelopes in the response.
