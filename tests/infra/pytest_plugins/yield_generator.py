@@ -6,6 +6,7 @@ from typing import Any, TypedDict
 
 import _pytest
 import pytest
+from pytest import StashKey, TestReport
 
 from eth_consensus_specs.gen_helpers.gen_base.dumper import Dumper
 from eth_consensus_specs.test import context
@@ -181,6 +182,7 @@ class SpecTestFunction(pytest.Function):
 
 class YieldGeneratorPlugin:
     dumper: Dumper | None = None
+    phase_report_key: StashKey[dict[str, TestReport]] = StashKey()
 
     def __init__(self, config):
         self.config = config
@@ -216,6 +218,12 @@ class YieldGeneratorPlugin:
                 pyfuncitem.result = result
         return True
 
+    @pytest.hookimpl(wrapper=True, tryfirst=True)
+    def pytest_runtest_makereport(self, item, call):
+        rep = yield
+        item.stash.setdefault(self.phase_report_key, {})[rep.when] = rep
+        return rep
+
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_protocol(self, item, nextitem):
         yield
@@ -224,6 +232,12 @@ class YieldGeneratorPlugin:
             return
 
         if not isinstance(item, SpecTestFunction):
+            return
+
+        reports = item.stash.get(self.phase_report_key, {})
+        if reports.get("setup", None) is not None and reports["setup"].skipped:
+            return
+        if reports.get("call", None) is not None and reports["call"].skipped:
             return
 
         manifest = item.get_manifest()
