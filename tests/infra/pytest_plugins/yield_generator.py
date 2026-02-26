@@ -277,6 +277,15 @@ class YieldGeneratorPlugin:
     ) -> None:
         dumper = self.get_dumper()
 
+        # If the test yields a "fork" meta tag, use it as the fork_name.
+        # This is needed for fork transition tests where the run phase is the
+        # pre-fork but the output should be placed under the post-fork directory.
+        if manifest.fork_name is None:
+            for name, kind, data in phase_result:
+                if kind == "meta" and name == "fork":
+                    fork_name = data
+                    break
+
         manifest = manifest.with_defaults(Manifest(fork_name=fork_name))
         assert manifest.is_complete(), (
             f"Manifest must be complete to generate test vector for {manifest}"
