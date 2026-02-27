@@ -119,9 +119,9 @@ class SpecTestFunction(pytest.Function):
         Skips unittests directories (not associated with generators).
         Returns (pkg_name, config) or None.
         """
+        if "unittests" in path.parts:
+            return None
         for parent in path.parents:
-            if parent.name == "unittests":
-                return None
             if parent.name in RUNNERS:
                 return parent.name, RUNNERS[parent.name]
         return None
@@ -277,12 +277,12 @@ class YieldGeneratorPlugin:
     ) -> None:
         dumper = self.get_dumper()
 
-        # If the test yields a "fork" meta tag, use it as the fork_name.
-        # This is needed for fork transition tests where the run phase is the
+        # If the test yields a "fork" or "post_fork" meta tag, use it as fork_name.
+        # This is needed for fork/transition tests where the run phase is the
         # pre-fork but the output should be placed under the post-fork directory.
         if manifest.fork_name is None:
             for name, kind, data in phase_result:
-                if kind == "meta" and name == "fork":
+                if kind == "meta" and name in ("fork", "post_fork"):
                     fork_name = data
                     break
 
