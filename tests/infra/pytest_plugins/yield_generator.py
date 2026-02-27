@@ -208,10 +208,24 @@ class YieldGeneratorPlugin:
             _pytest.compat.async_fail(pyfuncitem.nodeid)
         elif result is not None:
             if isinstance(result, dict):
-                # Multi-phase result: consume generators eagerly so exceptions
-                # (including Skipped) are raised during test execution where
-                # pytest can handle them properly.
-                pyfuncitem.result = {k: list(v) if v is not None else v for k, v in result.items()}
+                # Multi-phase result: consume generators eagerly.
+                # Individual phases may skip (e.g. a test that requires
+                # MAX_ATTESTER_SLASHINGS >= 2 will skip for electra+).
+                # Catch per-phase skips so other phases still produce vectors.
+                consumed: dict = {}
+                last_skipped: BaseException | None = None
+                for k, v in result.items():
+                    if v is None:
+                        continue
+                    try:
+                        consumed[k] = list(v)
+                    except _pytest.outcomes.Skipped as exc:
+                        last_skipped = exc
+                        continue
+                if consumed:
+                    pyfuncitem.result = consumed
+                elif last_skipped is not None:
+                    raise last_skipped
             elif isinstance(result, Iterable):
                 pyfuncitem.result = list(result)
             else:
