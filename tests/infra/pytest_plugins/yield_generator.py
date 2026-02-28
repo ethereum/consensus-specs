@@ -275,6 +275,11 @@ class YieldGeneratorPlugin:
         if config.getoption("--reftests"):
             context.is_pytest = True
             context.is_generator = True
+            # Limit to TESTGEN_FORKS so experimental forks (eip7928, eip8025)
+            # don't produce output that the old generator wouldn't produce.
+            from eth_consensus_specs.test.helpers.constants import TESTGEN_FORKS
+
+            context.DEFAULT_PYTEST_FORKS = set(TESTGEN_FORKS)
 
     def generate_test_vector(self, manifest: Manifest, result: MultiPhaseResult | list) -> None:
         if isinstance(result, dict):
