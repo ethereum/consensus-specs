@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 # yield_generator -> dumper -> context -> yield_generator.
 # When context initiates the chain, the partial module resolution works correctly.
 from eth2spec.test import context  # noqa: F401
+
 from tests.infra.manifest import Manifest
 from tests.infra.pytest_plugins.yield_generator import SpecTestFunction
 

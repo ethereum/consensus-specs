@@ -622,28 +622,27 @@ def with_phases(phases, other_phases=None):
                     ret = _run_test_case_with_phases(
                         fn, _phases, _other_phases, kw, args, is_fork_transition=True
                     )
+                # When running pytest, go through `fork_metas` instead of using `phases`
+                elif is_pytest and is_generator:
+                    # In generator mode, accumulate results from all fork_metas
+                    # so that each fork transition produces a test vector.
+                    accumulated = {}
+                    for fork_meta in fork_metas:
+                        _phases = [fork_meta.pre_fork_name]
+                        _other_phases = [fork_meta.post_fork_name]
+                        ret = _run_test_case_with_phases(
+                            fn, _phases, _other_phases, kw, args, is_fork_transition=True
+                        )
+                        if isinstance(ret, dict):
+                            accumulated.update(ret)
+                    ret = accumulated if accumulated else None
                 else:
-                    # When running pytest, go through `fork_metas` instead of using `phases`
-                    if is_pytest and is_generator:
-                        # In generator mode, accumulate results from all fork_metas
-                        # so that each fork transition produces a test vector.
-                        accumulated = {}
-                        for fork_meta in fork_metas:
-                            _phases = [fork_meta.pre_fork_name]
-                            _other_phases = [fork_meta.post_fork_name]
-                            ret = _run_test_case_with_phases(
-                                fn, _phases, _other_phases, kw, args, is_fork_transition=True
-                            )
-                            if isinstance(ret, dict):
-                                accumulated.update(ret)
-                        ret = accumulated if accumulated else None
-                    else:
-                        for fork_meta in fork_metas:
-                            _phases = [fork_meta.pre_fork_name]
-                            _other_phases = [fork_meta.post_fork_name]
-                            ret = _run_test_case_with_phases(
-                                fn, _phases, _other_phases, kw, args, is_fork_transition=True
-                            )
+                    for fork_meta in fork_metas:
+                        _phases = [fork_meta.pre_fork_name]
+                        _other_phases = [fork_meta.post_fork_name]
+                        ret = _run_test_case_with_phases(
+                            fn, _phases, _other_phases, kw, args, is_fork_transition=True
+                        )
             else:
                 ret = _run_test_case_with_phases(fn, phases, other_phases, kw, args)
             return ret
