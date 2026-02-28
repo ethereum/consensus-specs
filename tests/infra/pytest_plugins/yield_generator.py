@@ -108,7 +108,7 @@ class SpecTestFunction(pytest.Function):
             fixtureinfo=getattr(f, "_fixtureinfo", None),
             originalname=f.originalname,
         )
-        self.manifest_guess()
+        self._infer_manifest()
 
         return self
 
@@ -139,7 +139,8 @@ class SpecTestFunction(pytest.Function):
             handler_name = handler_name.removeprefix(prefix)
         return handler_name
 
-    def manifest_guess(self) -> None:
+    def _infer_manifest(self) -> None:
+        """Infer manifest fields from the test's file path and runner config."""
         path = self.parent.path
         module_name = path.stem
 
@@ -181,15 +182,60 @@ class SpecTestFunction(pytest.Function):
 
 
 class YieldGeneratorPlugin:
-    dumper: Dumper | None = None
     phase_report_key: StashKey[dict[str, TestReport]] = StashKey()
 
     def __init__(self, config):
         self.config = config
         self.output_dir: str = config.getoption("--reftests-output")
+        self._dumper: Dumper | None = None
+
+    @property
+    def reftests_enabled(self) -> bool:
+        return bool(self.config.getoption("--reftests"))
+
+    @property
+    def dumper(self) -> Dumper:
+        if self._dumper is None:
+            self._dumper = Dumper()
+        return self._dumper
 
     def register(self):
         self.config.pluginmanager.register(self, "yield_generator")
+
+    @staticmethod
+    def _consume_result(result) -> MultiPhaseResult | list | None:
+        """Consume the raw return value of a spec test function.
+
+        Handles three cases:
+        - dict: multi-phase result; each value is eagerly consumed, with
+          per-phase skips caught so other phases still produce vectors.
+        - Iterable: single-phase generator result, consumed into a list.
+        - Other: returned as-is.
+        """
+        if result is None:
+            return None
+
+        if isinstance(result, dict):
+            consumed: dict = {}
+            last_skipped: BaseException | None = None
+            for k, v in result.items():
+                if v is None:
+                    continue
+                try:
+                    consumed[k] = list(v)
+                except _pytest.outcomes.Skipped as exc:
+                    last_skipped = exc
+                    continue
+            if consumed:
+                return consumed
+            elif last_skipped is not None:
+                raise last_skipped
+            return None
+
+        if isinstance(result, Iterable):
+            return list(result)
+
+        return result
 
     @pytest.hookimpl(tryfirst=True)
     def pytest_pyfunc_call(self, pyfuncitem: pytest.Function):
@@ -206,30 +252,8 @@ class YieldGeneratorPlugin:
         result = testfunction(**testargs)
         if hasattr(result, "__await__") or hasattr(result, "__aiter__"):
             _pytest.compat.async_fail(pyfuncitem.nodeid)
-        elif result is not None:
-            if isinstance(result, dict):
-                # Multi-phase result: consume generators eagerly.
-                # Individual phases may skip (e.g. a test that requires
-                # MAX_ATTESTER_SLASHINGS >= 2 will skip for electra+).
-                # Catch per-phase skips so other phases still produce vectors.
-                consumed: dict = {}
-                last_skipped: BaseException | None = None
-                for k, v in result.items():
-                    if v is None:
-                        continue
-                    try:
-                        consumed[k] = list(v)
-                    except _pytest.outcomes.Skipped as exc:
-                        last_skipped = exc
-                        continue
-                if consumed:
-                    pyfuncitem.result = consumed
-                elif last_skipped is not None:
-                    raise last_skipped
-            elif isinstance(result, Iterable):
-                pyfuncitem.result = list(result)
-            else:
-                pyfuncitem.result = result
+
+        pyfuncitem.result = self._consume_result(result)
         return True
 
     @pytest.hookimpl(wrapper=True, tryfirst=True)
@@ -238,20 +262,22 @@ class YieldGeneratorPlugin:
         item.stash.setdefault(self.phase_report_key, {})[rep.when] = rep
         return rep
 
+    def _should_generate(self, item) -> bool:
+        """Check whether a test vector should be generated for this item."""
+        if not self.reftests_enabled:
+            return False
+        if not isinstance(item, SpecTestFunction):
+            return False
+        reports = item.stash.get(self.phase_report_key, {})
+        return not any(
+            reports.get(phase) is not None and reports[phase].skipped for phase in ("setup", "call")
+        )
+
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_protocol(self, item, nextitem):
         yield
 
-        if self.config.getoption("--reftests") is False:
-            return
-
-        if not isinstance(item, SpecTestFunction):
-            return
-
-        reports = item.stash.get(self.phase_report_key, {})
-        if reports.get("setup", None) is not None and reports["setup"].skipped:
-            return
-        if reports.get("call", None) is not None and reports["call"].skipped:
+        if not self._should_generate(item):
             return
 
         manifest = item.get_manifest()
@@ -264,7 +290,7 @@ class YieldGeneratorPlugin:
             self.generate_test_vector(manifest, result)
 
     def pytest_collection_modifyitems(self, config, items):
-        if self.config.getoption("--reftests") is False:
+        if not self.reftests_enabled:
             return
 
         for i, item in enumerate(items):
@@ -272,7 +298,7 @@ class YieldGeneratorPlugin:
                 items[i] = SpecTestFunction.from_function(item)
 
     def pytest_configure(self, config):
-        if config.getoption("--reftests"):
+        if self.reftests_enabled:
             context.is_pytest = True
             context.is_generator = True
             # Limit to TESTGEN_FORKS so experimental forks (eip7928, eip8025)
@@ -281,30 +307,35 @@ class YieldGeneratorPlugin:
 
             context.DEFAULT_PYTEST_FORKS = set(TESTGEN_FORKS)
 
+    @staticmethod
+    def _resolve_fork_name(
+        manifest: Manifest, phase_result: list, default: SpecForkName
+    ) -> SpecForkName:
+        """Resolve fork name from manifest or yielded metadata.
+
+        For fork/transition tests the run phase is the pre-fork but the output
+        should be placed under the post-fork directory.
+        """
+        if manifest.fork_name is not None:
+            return default
+        for name, kind, data in phase_result:
+            if kind == "meta" and name in ("fork", "post_fork"):
+                return data
+        return default
+
     def generate_test_vector(self, manifest: Manifest, result: MultiPhaseResult | list) -> None:
         if isinstance(result, dict):
             for fork_name, phase_result in result.items():
-                self.generate_test_vector_phase(manifest, phase_result, fork_name)
+                resolved_fork = self._resolve_fork_name(manifest, phase_result, fork_name)
+                self._dump_phase(manifest, phase_result, resolved_fork)
         else:
             assert manifest.fork_name is not None, (
                 f"fork_name must be set for single-phase test: {manifest}"
             )
-            self.generate_test_vector_phase(manifest, result, manifest.fork_name)
+            self._dump_phase(manifest, result, manifest.fork_name)
 
-    def generate_test_vector_phase(
-        self, manifest: Manifest, phase_result: list, fork_name: SpecForkName
-    ) -> None:
-        dumper = self.get_dumper()
-
-        # If the test yields a "fork" or "post_fork" meta tag, use it as fork_name.
-        # This is needed for fork/transition tests where the run phase is the
-        # pre-fork but the output should be placed under the post-fork directory.
-        if manifest.fork_name is None:
-            for name, kind, data in phase_result:
-                if kind == "meta" and name in ("fork", "post_fork"):
-                    fork_name = data
-                    break
-
+    def _dump_phase(self, manifest: Manifest, phase_result: list, fork_name: SpecForkName) -> None:
+        """Write a single phase's test vector to disk."""
         manifest = manifest.with_defaults(Manifest(fork_name=fork_name))
         assert manifest.is_complete(), (
             f"Manifest must be complete to generate test vector for {manifest}"
@@ -327,7 +358,7 @@ class YieldGeneratorPlugin:
             if kind == "meta":
                 meta[name] = data
             else:
-                method = getattr(dumper, f"dump_{kind}", None)
+                method = getattr(self.dumper, f"dump_{kind}", None)
                 if method is None:
                     raise ValueError(f"Unknown kind {kind!r}")
                 outputs.append((name, method, data))
@@ -336,21 +367,19 @@ class YieldGeneratorPlugin:
             method(output_dir, name, data)
 
         if meta:
-            dumper.dump_meta(output_dir, meta)
+            self.dumper.dump_meta(output_dir, meta)
 
-        dumper.dump_manifest(output_dir, {
-            "preset": manifest.preset_name,
-            "fork": manifest.fork_name,
-            "runner": manifest.runner_name,
-            "handler": manifest.handler_name,
-            "suite": manifest.suite_name,
-            "case": manifest.case_name,
-        })
-
-    def get_dumper(self):
-        if self.dumper is None:
-            self.dumper = Dumper()
-        return self.dumper
+        self.dumper.dump_manifest(
+            output_dir,
+            {
+                "preset": manifest.preset_name,
+                "fork": manifest.fork_name,
+                "runner": manifest.runner_name,
+                "handler": manifest.handler_name,
+                "suite": manifest.suite_name,
+                "case": manifest.case_name,
+            },
+        )
 
 
 def pytest_addoption(parser):

@@ -36,9 +36,7 @@ class TestDeriveHandlerName:
             },
             "handler_name_strip": ["test_process_"],
         }
-        result = SpecTestFunction._derive_handler_name(
-            config, "test_process_sync_aggregate_random"
-        )
+        result = SpecTestFunction._derive_handler_name(config, "test_process_sync_aggregate_random")
         assert result == "sync_aggregate"
 
     def test_strip_only_removes_prefix(self):
@@ -61,11 +59,18 @@ class TestDeriveHandlerName:
 
 
 def _make_stub(name, path, originalname=None, obj=None, callspec=None):
-    """Build a stub with the attributes manifest_guess reads."""
-    stub = MagicMock(spec=[
-        "name", "parent", "obj", "originalname", "manifest",
-        "_find_runner", "_derive_handler_name",
-    ])
+    """Build a stub with the attributes _infer_manifest reads."""
+    stub = MagicMock(
+        spec=[
+            "name",
+            "parent",
+            "obj",
+            "originalname",
+            "manifest",
+            "_find_runner",
+            "_derive_handler_name",
+        ]
+    )
     stub.name = name
     stub.parent = SimpleNamespace(path=path)
     stub.originalname = originalname or name
@@ -77,8 +82,8 @@ def _make_stub(name, path, originalname=None, obj=None, callspec=None):
     return stub
 
 
-class TestManifestGuess:
-    """Tests for SpecTestFunction.manifest_guess."""
+class TestInferManifest:
+    """Tests for SpecTestFunction._infer_manifest."""
 
     def test_block_processing_runner(self):
         """block_processing maps runner to 'operations' and strips test_process_ from handler."""
@@ -86,7 +91,7 @@ class TestManifestGuess:
             name="test_success",
             path=Path("/x/block_processing/test_process_attestation.py"),
         )
-        SpecTestFunction.manifest_guess(stub)
+        SpecTestFunction._infer_manifest(stub)
         m = stub.manifest
         assert m.runner_name == "operations"
         assert m.handler_name == "attestation"
@@ -99,7 +104,7 @@ class TestManifestGuess:
             name="test_foo",
             path=Path("/x/unittests/test_foo.py"),
         )
-        SpecTestFunction.manifest_guess(stub)
+        SpecTestFunction._infer_manifest(stub)
         assert not hasattr(stub, "manifest") or isinstance(stub.manifest, MagicMock)
 
     def test_obj_manifest_overrides_guessed(self):
@@ -112,7 +117,7 @@ class TestManifestGuess:
             path=Path("/x/fork/test_fork.py"),
             obj=obj,
         )
-        SpecTestFunction.manifest_guess(stub)
+        SpecTestFunction._infer_manifest(stub)
         m = stub.manifest
         assert m.handler_name == "custom_handler"
         # Non-overridden fields still come from the guess
@@ -127,7 +132,7 @@ class TestManifestGuess:
             path=Path("/x/bls/test_verify.py"),
             callspec=callspec,
         )
-        SpecTestFunction.manifest_guess(stub)
+        SpecTestFunction._infer_manifest(stub)
         assert stub.manifest.preset_name == "mainnet"
 
     def test_obj_suite_name(self):
@@ -138,7 +143,7 @@ class TestManifestGuess:
             path=Path("/x/shuffling/test_shuffling.py"),
             obj=obj,
         )
-        SpecTestFunction.manifest_guess(stub)
+        SpecTestFunction._infer_manifest(stub)
         m = stub.manifest
         # shuffling has config suite_name="shuffle", which takes precedence over obj
         assert m.suite_name == "shuffle"
@@ -150,5 +155,5 @@ class TestManifestGuess:
             path=Path("/x/bls/test_verify.py"),
             obj=obj,
         )
-        SpecTestFunction.manifest_guess(stub2)
+        SpecTestFunction._infer_manifest(stub2)
         assert stub2.manifest.suite_name == "custom_suite"
