@@ -127,7 +127,7 @@ def run_phases(request):
         forks = [fork.lower() for fork in forks]
         _validate_fork_name(forks)
         context.DEFAULT_PYTEST_FORKS = set(forks)
-    else:
+    elif not context.is_generator:
         context.DEFAULT_PYTEST_FORKS = ALL_PHASES
 
 
