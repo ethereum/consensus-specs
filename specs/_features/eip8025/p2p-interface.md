@@ -16,6 +16,7 @@ imports proof types from [proof-engine.md](./proof-engine.md).
   - [`ProofByRootIdentifier`](#proofbyrootidentifier)
 - [Helpers](#helpers)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [New `compute_max_request_execution_proofs`](#new-compute_max_request_execution_proofs)
 - [MetaData](#metadata)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
@@ -37,10 +38,9 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 
 *Note*: The execution values are not definitive.
 
-| Name                               | Value                                                         |
-| ---------------------------------- | ------------------------------------------------------------- |
-| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)`                                                   |
-| `MAX_REQUEST_EXECUTION_PROOFS`     | `MAX_REQUEST_BLOCKS_DENEB * MAX_EXECUTION_PROOFS_PER_PAYLOAD` |
+| Name                               | Value       |
+| ---------------------------------- | ----------- |
+| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)` |
 
 ## Containers
 
@@ -49,7 +49,7 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 ```python
 class ProofByRootIdentifier(Container):
     block_root: Root
-    indices: List[uint64, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+    indices: Sequence[uint64]
 ```
 
 ## Helpers
@@ -76,6 +76,16 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
+```
+
+### New `compute_max_request_execution_proofs`
+
+```python
+def compute_max_request_execution_proofs() -> uint64:
+    """
+    Return the maximum number of execution proofs in a single request.
+    """
+    return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_EXECUTION_PROOFS_PER_PAYLOAD)
 ```
 
 ## MetaData
@@ -164,7 +174,7 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionProof, MAX_REQUEST_EXECUTION_PROOFS]
+  List[SignedExecutionProof, compute_max_request_execution_proofs()]
 )
 ```
 
@@ -174,7 +184,8 @@ list of `SignedExecutionProof` whose length is less than or equal to
 `requested_proofs_count = sum(len(r.indices) for r in request)`. It may be less
 in the case that the responding peer is missing blocks or proofs.
 
-No more than `MAX_REQUEST_EXECUTION_PROOFS` may be requested at a time.
+No more than `compute_max_request_execution_proofs()` may be requested at a
+time.
 
 The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `SignedExecutionProof` payload.
