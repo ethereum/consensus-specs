@@ -390,6 +390,10 @@ def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences)
     return state.proposer_lookahead[index] == preferences.validator_index
 ```
 
+*Note*: Nodes SHOULD subscribe to this topic at least one epoch before the fork
+activation. Proposers SHOULD broadcast their preferences in the epoch before the
+fork.
+
 ##### Blob subnets
 
 ###### `data_column_sidecar_{subnet_id}`

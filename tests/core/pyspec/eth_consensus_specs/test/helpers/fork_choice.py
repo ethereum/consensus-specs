@@ -174,11 +174,13 @@ def tick_and_add_block(
     if merge_block:
         assert spec.is_merge_transition_block(pre_state, signed_block.message.body)
 
-    block_time = pre_state.genesis_time + signed_block.message.slot * spec.config.SECONDS_PER_SLOT
+    block_time = (
+        pre_state.genesis_time + signed_block.message.slot * spec.config.SLOT_DURATION_MS // 1000
+    )
     while store.time < block_time:
         time = (
             pre_state.genesis_time
-            + (spec.get_current_slot(store) + 1) * spec.config.SECONDS_PER_SLOT
+            + (spec.get_current_slot(store) + 1) * spec.config.SLOT_DURATION_MS // 1000
         )
         on_tick_and_append_step(spec, store, time, test_steps)
 
@@ -223,7 +225,7 @@ def add_attestations(spec, store, attestations, test_steps, is_from_block=False)
 
 def tick_and_run_on_attestation(spec, store, attestation, test_steps, is_from_block=False):
     # Make get_current_slot(store) >= attestation.data.slot + 1
-    min_time_to_include = (attestation.data.slot + 1) * spec.config.SECONDS_PER_SLOT
+    min_time_to_include = (attestation.data.slot + 1) * spec.config.SLOT_DURATION_MS // 1000
     if store.time < min_time_to_include:
         spec.on_tick(store, min_time_to_include)
         test_steps.append({"tick": int(min_time_to_include)})

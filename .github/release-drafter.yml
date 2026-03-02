@@ -21,6 +21,10 @@ categories:
       - gloas
       - eip7732
       - eip7928
+  - title: Heze
+    labels:
+      - heze
+      - eip7805
 
   # Features
   - title: EIP-6800
@@ -29,8 +33,6 @@ categories:
     label: eip6914
   - title: EIP-7441
     label: eip7441
-  - title: EIP-7805
-    label: eip7805
   - title: EIP-7928
     label: eip7928
   - title: EIP-8025

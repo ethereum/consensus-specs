@@ -34,6 +34,7 @@ ready.
 | Seq. | Code Name | Fork Epoch | Links                                                                           |
 | ---- | --------- | ---------- | ------------------------------------------------------------------------------- |
 | 7    | **Gloas** | TBD        | [Specs](specs/gloas), [Tests](tests/core/pyspec/eth_consensus_specs/test/gloas) |
+| 8    | **Heze**  | TBD        | [Specs](specs/heze), [Tests](tests/core/pyspec/eth_consensus_specs/test/heze)   |
 
 ### Accompanying documents
 

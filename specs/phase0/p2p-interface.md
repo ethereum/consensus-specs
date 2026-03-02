@@ -18,6 +18,8 @@
     - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
     - [`is_valid_attestation_slot_time`](#is_valid_attestation_slot_time)
     - [`Seen`](#seen)
+    - [`compute_attestation_subnet_prefix_bits`](#compute_attestation_subnet_prefix_bits)
+    - [`compute_min_epochs_for_block_requests`](#compute_min_epochs_for_block_requests)
   - [MetaData](#metadata)
   - [Maximum message sizes](#maximum-message-sizes)
     - [`max_compressed_len`](#max_compressed_len)
@@ -96,7 +98,7 @@
     - [What is a typical rate limiting strategy?](#what-is-a-typical-rate-limiting-strategy)
     - [Why do we allow empty responses in block requests?](#why-do-we-allow-empty-responses-in-block-requests)
     - [Why does `BeaconBlocksByRange` let the server choose which branch to send blocks from?](#why-does-beaconblocksbyrange-let-the-server-choose-which-branch-to-send-blocks-from)
-    - [Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?](#why-are-blocksbyrange-requests-only-required-to-be-served-for-the-latest-min_epochs_for_block_requests-epochs)
+    - [Why are `BlocksByRange` requests only required to be served for the latest `compute_min_epochs_for_block_requests()` epochs?](#why-are-blocksbyrange-requests-only-required-to-be-served-for-the-latest-compute_min_epochs_for_block_requests-epochs)
     - [Why must the proposer signature be checked when backfilling blocks in the database?](#why-must-the-proposer-signature-be-checked-when-backfilling-blocks-in-the-database)
     - [What's the effect of empty slots on the sync algorithm?](#whats-the-effect-of-empty-slots-on-the-sync-algorithm)
   - [Discovery](#discovery)
@@ -218,21 +220,19 @@ We define the following Python custom types for type hinting and readability:
 
 This section outlines configurations that are used in this specification.
 
-| Name                                 | Value                                                                        | Description                                                                           |
-| ------------------------------------ | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `MAX_PAYLOAD_SIZE`                   | `10 * 2**20` (= 10,485,760, 10 MiB)                                          | The maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
-| `MAX_REQUEST_BLOCKS`                 | `2**10` (= 1,024)                                                            | Maximum number of blocks in a single request                                          |
-| `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `2**8` (= 256)                                                               | Number of epochs on a subnet subscription                                             |
-| `MIN_EPOCHS_FOR_BLOCK_REQUESTS`      | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33,024) | The minimum epoch range over which a node must serve blocks                           |
-| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32`                                                                         | The maximum number of slots during which an attestation can be propagated             |
-| `MAXIMUM_GOSSIP_CLOCK_DISPARITY`     | `500`                                                                        | The maximum **milliseconds** of clock disparity assumed between honest nodes          |
-| `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType('0x00000000')`                                                   | 4-byte domain for gossip message-id isolation of *invalid* snappy messages            |
-| `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType('0x01000000')`                                                   | 4-byte domain for gossip message-id isolation of *valid* snappy messages              |
-| `SUBNETS_PER_NODE`                   | `2`                                                                          | The number of long-lived subnets a beacon node should be subscribed to                |
-| `ATTESTATION_SUBNET_COUNT`           | `2**6` (= 64)                                                                | The number of attestation subnets used in the gossipsub protocol                      |
-| `ATTESTATION_SUBNET_EXTRA_BITS`      | `0`                                                                          | The number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
-| `ATTESTATION_SUBNET_PREFIX_BITS`     | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)`    |                                                                                       |
-| `MAX_CONCURRENT_REQUESTS`            | `2`                                                                          | Maximum number of concurrent requests per protocol ID that a client may issue         |
+| Name                                 | Value                               | Description                                                                           |
+| ------------------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------- |
+| `MAX_PAYLOAD_SIZE`                   | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
+| `MAX_REQUEST_BLOCKS`                 | `2**10` (= 1,024)                   | Maximum number of blocks in a single request                                          |
+| `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `2**8` (= 256)                      | Number of epochs on a subnet subscription                                             |
+| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32`                                | The maximum number of slots during which an attestation can be propagated             |
+| `MAXIMUM_GOSSIP_CLOCK_DISPARITY`     | `500`                               | The maximum **milliseconds** of clock disparity assumed between honest nodes          |
+| `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType('0x00000000')`          | 4-byte domain for gossip message-id isolation of *invalid* snappy messages            |
+| `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType('0x01000000')`          | 4-byte domain for gossip message-id isolation of *valid* snappy messages              |
+| `SUBNETS_PER_NODE`                   | `2`                                 | The number of long-lived subnets a beacon node should be subscribed to                |
+| `ATTESTATION_SUBNET_COUNT`           | `2**6` (= 64)                       | The number of attestation subnets used in the gossipsub protocol                      |
+| `ATTESTATION_SUBNET_EXTRA_BITS`      | `0`                                 | The number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
+| `MAX_CONCURRENT_REQUESTS`            | `2`                                 | Maximum number of concurrent requests per protocol ID that a client may issue         |
 
 ### Helpers
 
@@ -317,6 +317,26 @@ class Seen(object):
     attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
 ```
 
+#### `compute_attestation_subnet_prefix_bits`
+
+```python
+def compute_attestation_subnet_prefix_bits() -> uint64:
+    """
+    Return the number of NodeId bits to use when mapping to a subscribed subnet.
+    """
+    return uint64(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)
+```
+
+#### `compute_min_epochs_for_block_requests`
+
+```python
+def compute_min_epochs_for_block_requests() -> uint64:
+    """
+    Return the minimum epoch range over which a node must serve blocks.
+    """
+    return uint64(MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2)
+```
+
 ### MetaData
 
 Clients MUST locally store the following `MetaData`:
@@ -389,7 +409,7 @@ will be used:
   responses): 6
 - `mcache_gossip` (number of windows to gossip about): 3
 - `seen_ttl` (expiry time for cache of seen message ids, seconds):
-  SECONDS_PER_SLOT * SLOTS_PER_EPOCH * 2
+  SLOT_DURATION_MS * SLOTS_PER_EPOCH * 2 // 1000
 
 *Note*: Gossipsub v1.1 introduces a number of
 [additional parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#overview-of-new-parameters)
@@ -1418,22 +1438,22 @@ The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
 Clients MUST keep a record of signed blocks seen on the epoch range
-`[max(GENESIS_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`
+`[max(GENESIS_EPOCH, current_epoch - compute_min_epochs_for_block_requests()), current_epoch]`
 where `current_epoch` is defined by the current wall-clock time, and clients
 MUST support serving requests of blocks on this range.
 
 Peers that are unable to reply to block requests within the
-`MIN_EPOCHS_FOR_BLOCK_REQUESTS` epoch range SHOULD respond with error code
-`3: ResourceUnavailable`. Such peers that are unable to successfully reply to
-this range of requests MAY get descored or disconnected at any time.
+`compute_min_epochs_for_block_requests()` epoch range SHOULD respond with error
+code `3: ResourceUnavailable`. Such peers that are unable to successfully reply
+to this range of requests MAY get descored or disconnected at any time.
 
 *Note*: The above requirement implies that nodes that start from a recent weak
 subjectivity checkpoint MUST backfill the local block database to at least epoch
-`current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS` to be fully compliant with
-`BlocksByRange` requests. To safely perform such a backfill of blocks to the
-recent state, the node MUST validate both (1) the proposer signatures and (2)
-that the blocks form a valid chain up to the most recent block referenced in the
-weak subjectivity state.
+`current_epoch - compute_min_epochs_for_block_requests()` to be fully compliant
+with `BlocksByRange` requests. To safely perform such a backfill of blocks to
+the recent state, the node MUST validate both (1) the proposer signatures and
+(2) that the blocks form a valid chain up to the most recent block referenced in
+the weak subjectivity state.
 
 *Note*: Although clients that bootstrap from a weak subjectivity checkpoint can
 begin participating in the networking immediately, other peers MAY disconnect
@@ -1699,14 +1719,15 @@ should:
 
 ```python
 def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
-    node_id_prefix = node_id >> (NODE_ID_BITS - ATTESTATION_SUBNET_PREFIX_BITS)
+    prefix_bits = int(compute_attestation_subnet_prefix_bits())
+    node_id_prefix = node_id >> (NODE_ID_BITS - prefix_bits)
     node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
     permutation_seed = hash(
         uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
     )
     permutated_prefix = compute_shuffled_index(
         node_id_prefix,
-        1 << ATTESTATION_SUBNET_PREFIX_BITS,
+        1 << prefix_bits,
         permutation_seed,
     )
     return SubnetID((permutated_prefix + index) % ATTESTATION_SUBNET_COUNT)
@@ -2043,7 +2064,7 @@ Some examples of where messages could be duplicated:
 - `mcache_gossip`: 3, recommended default. This can be increased to 5 or 6 (~4
   seconds) if gossip times are longer than expected and the current window does
   not provide enough responsiveness during adverse conditions.
-- `seen_ttl`: `SLOTS_PER_EPOCH * SECONDS_PER_SLOT / heartbeat_interval`.
+- `seen_ttl`: `SLOTS_PER_EPOCH * SLOT_DURATION_MS / 1000 / heartbeat_interval`.
   Attestation gossip validity is bounded by an epoch, so this is the safe max
   bound.
 
@@ -2327,7 +2348,7 @@ send to the requester. The requester then goes on to validate the blocks and
 incorporate them in their own database -- because they follow the same rules,
 they should at this point arrive at the same canonical chain.
 
-#### Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?
+#### Why are `BlocksByRange` requests only required to be served for the latest `compute_min_epochs_for_block_requests()` epochs?
 
 Due to economic finality and weak subjectivity requirements of a proof-of-stake
 blockchain, for a new node to safely join the network the node must provide a
@@ -2338,16 +2359,18 @@ strategy.
 
 These checkpoints *in the worst case* (i.e. very large validator set and maximal
 allowed safety decay) must be from the most recent
-`MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs, and thus a user must be able to block
-sync to the head from this starting point. Thus, this defines the epoch range
-outside which nodes may prune blocks, and the epoch range that a new node
+`compute_min_epochs_for_block_requests()` epochs, and thus a user must be able
+to block sync to the head from this starting point. Thus, this defines the epoch
+range outside which nodes may prune blocks, and the epoch range that a new node
 syncing from a checkpoint must backfill.
 
-`MIN_EPOCHS_FOR_BLOCK_REQUESTS` is calculated using the arithmetic from
-`compute_weak_subjectivity_period` found in the
+`compute_min_epochs_for_block_requests()` is calculated using the arithmetic
+from `compute_weak_subjectivity_period` found in the
 [weak subjectivity guide](./weak-subjectivity.md). Specifically to find this max
 epoch range, we use the worst case event of a very large validator size
 (`>= MIN_PER_EPOCH_CHURN_LIMIT * CHURN_LIMIT_QUOTIENT`).
+
+\<<\<<\<<< HEAD
 
 <!-- eth_consensus_specs: skip -->
 
@@ -2358,6 +2381,10 @@ MIN_EPOCHS_FOR_BLOCK_REQUESTS = (
 ```
 
 Where `MAX_SAFETY_DECAY = 100` and thus `MIN_EPOCHS_FOR_BLOCK_REQUESTS = 33024`.
+
+\=======
+
+> > > > > > > d4d19294d (Add compute_min_epochs_for_block_requests() helper)
 
 #### Why must the proposer signature be checked when backfilling blocks in the database?
 

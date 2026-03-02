@@ -1,4 +1,4 @@
-import random
+from random import Random
 
 from eth_consensus_specs.test.context import (
     spec_state_test,
@@ -31,7 +31,7 @@ def test_builder_payment_deletion_current_epoch(spec, state):
         spec,
         state,
         advance_epochs=2,
-        slot_offset=random.randrange(spec.SLOTS_PER_EPOCH),
+        slot_offset=Random(1001).randrange(spec.SLOTS_PER_EPOCH),
         parent_root_2=b"\x99" * 32,  # Make headers different
         builder_payment_amount=spec.MIN_ACTIVATION_BALANCE,
         builder_payment_fee_recipient=b"\x42" * 20,
@@ -75,7 +75,7 @@ def test_builder_payment_deletion_previous_epoch(spec, state):
         state,
         advance_epochs=2,
         advance_epochs_after=1,  # Slot will be in previous epoch
-        slot_offset=random.randrange(spec.SLOTS_PER_EPOCH),
+        slot_offset=Random(1002).randrange(spec.SLOTS_PER_EPOCH),
         parent_root_2=b"\x99" * 32,  # Make headers different
         builder_payment_amount=spec.MIN_ACTIVATION_BALANCE,
         builder_payment_fee_recipient=b"\x43" * 20,
@@ -118,7 +118,7 @@ def test_builder_payment_deletion_too_late(spec, state):
         state,
         advance_epochs=2,
         advance_epochs_after=2,  # Slot will be outside 2-epoch window
-        slot_offset=random.randrange(spec.SLOTS_PER_EPOCH),
+        slot_offset=Random(1003).randrange(spec.SLOTS_PER_EPOCH),
         parent_root_2=b"\x99" * 32,  # Make headers different
         builder_payment_amount=spec.MIN_ACTIVATION_BALANCE,
         builder_payment_fee_recipient=b"\x46" * 20,
@@ -158,7 +158,7 @@ def test_builder_payment_empty_current_epoch(spec, state):
         spec,
         state,
         advance_epochs=2,
-        slot_offset=random.randrange(spec.SLOTS_PER_EPOCH),
+        slot_offset=Random(1004).randrange(spec.SLOTS_PER_EPOCH),
         parent_root_2=b"\x99" * 32,
         # No builder_payment_amount - payment slot stays empty
     )
@@ -199,7 +199,7 @@ def test_builder_payment_empty_previous_epoch(spec, state):
         state,
         advance_epochs=2,
         advance_epochs_after=1,
-        slot_offset=random.randrange(spec.SLOTS_PER_EPOCH),
+        slot_offset=Random(1005).randrange(spec.SLOTS_PER_EPOCH),
         parent_root_2=b"\x99" * 32,
         # No builder_payment_amount - payment slot stays empty
     )
@@ -240,7 +240,7 @@ def test_builder_payment_empty_old_epoch(spec, state):
         state,
         advance_epochs=2,
         advance_epochs_after=2,
-        slot_offset=random.randrange(spec.SLOTS_PER_EPOCH),
+        slot_offset=Random(1006).randrange(spec.SLOTS_PER_EPOCH),
         parent_root_2=b"\x99" * 32,
         # No builder_payment_amount - payment slot stays empty
     )

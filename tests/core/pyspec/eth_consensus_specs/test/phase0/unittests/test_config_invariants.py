@@ -76,7 +76,6 @@ def test_time(spec, state):
     assert spec.SLOTS_PER_HISTORICAL_ROOT % spec.SLOTS_PER_EPOCH == 0
     check_bound(spec.SLOTS_PER_HISTORICAL_ROOT, spec.SLOTS_PER_EPOCH, UINT64_MAX)
     check_bound(spec.MIN_ATTESTATION_INCLUSION_DELAY, 1, spec.SLOTS_PER_EPOCH)
-    assert spec.config.SECONDS_PER_SLOT * 1000 == spec.config.SLOT_DURATION_MS
     assert spec.config.ATTESTATION_DUE_BPS <= spec.BASIS_POINTS
     assert spec.config.AGGREGATE_DUE_BPS <= spec.BASIS_POINTS
 
@@ -84,13 +83,6 @@ def test_time(spec, state):
 @with_all_phases
 @spec_state_test
 def test_networking(spec, state):
-    assert spec.config.MIN_EPOCHS_FOR_BLOCK_REQUESTS == (
-        spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY + spec.config.CHURN_LIMIT_QUOTIENT // 2
-    )
-    assert spec.config.ATTESTATION_SUBNET_PREFIX_BITS == (
-        spec.ceillog2(spec.config.ATTESTATION_SUBNET_COUNT)
-        + spec.config.ATTESTATION_SUBNET_EXTRA_BITS
-    )
     assert spec.config.SUBNETS_PER_NODE <= spec.config.ATTESTATION_SUBNET_COUNT
     node_id_length = spec.NodeID(1).type_byte_length()  # in bytes
     assert node_id_length * 8 == spec.NODE_ID_BITS  # in bits

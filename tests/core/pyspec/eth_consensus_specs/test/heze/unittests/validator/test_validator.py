@@ -7,7 +7,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     spec_test,
     with_custom_state,
-    with_eip7805_and_later,
+    with_heze_and_later,
 )
 from eth_consensus_specs.test.helpers.inclusion_list import get_empty_inclusion_list
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
@@ -20,7 +20,7 @@ def inclusion_committee_balances(spec):
     return [spec.MAX_EFFECTIVE_BALANCE] * spec.SLOTS_PER_EPOCH * spec.INCLUSION_LIST_COMMITTEE_SIZE
 
 
-def run_get_inclusion_committee_assignments(spec, state, epoch, valid=True):
+def run_get_inclusion_list_committee_assignments(spec, state, epoch, valid=True):
     rng = random.Random(7805)
 
     start_slot = spec.compute_start_slot_at_epoch(epoch)
@@ -35,7 +35,9 @@ def run_get_inclusion_committee_assignments(spec, state, epoch, valid=True):
 
     for slot, committee, validator_index in inclusion_assignments:
         try:
-            assigned_slot = spec.get_inclusion_committee_assignment(state, epoch, validator_index)
+            assigned_slot = spec.get_inclusion_list_committee_assignment(
+                state, epoch, validator_index
+            )
             assert assigned_slot == slot
             if assigned_slot is not None:
                 assert spec.compute_epoch_at_slot(assigned_slot) == epoch
@@ -46,7 +48,7 @@ def run_get_inclusion_committee_assignments(spec, state, epoch, valid=True):
             assert valid
 
 
-@with_eip7805_and_later
+@with_heze_and_later
 @spec_test
 @with_custom_state(
     balances_fn=inclusion_committee_balances, threshold_fn=default_activation_threshold
@@ -54,10 +56,10 @@ def run_get_inclusion_committee_assignments(spec, state, epoch, valid=True):
 @single_phase
 def test_get_inclusion_committee_assignment_current_epoch(spec, state):
     epoch = spec.get_current_epoch(state)
-    run_get_inclusion_committee_assignments(spec, state, epoch, valid=True)
+    run_get_inclusion_list_committee_assignments(spec, state, epoch, valid=True)
 
 
-@with_eip7805_and_later
+@with_heze_and_later
 @spec_test
 @with_custom_state(
     balances_fn=inclusion_committee_balances, threshold_fn=default_activation_threshold
@@ -65,10 +67,10 @@ def test_get_inclusion_committee_assignment_current_epoch(spec, state):
 @single_phase
 def test_get_inclusion_committee_assignment_next_epoch(spec, state):
     epoch = spec.get_current_epoch(state) + 1
-    run_get_inclusion_committee_assignments(spec, state, epoch, valid=True)
+    run_get_inclusion_list_committee_assignments(spec, state, epoch, valid=True)
 
 
-@with_eip7805_and_later
+@with_heze_and_later
 @spec_test
 @with_custom_state(
     balances_fn=inclusion_committee_balances, threshold_fn=default_activation_threshold
@@ -76,10 +78,10 @@ def test_get_inclusion_committee_assignment_next_epoch(spec, state):
 @single_phase
 def test_get_inclusion_committee_assignment_out_bound_epoch(spec, state):
     epoch = spec.get_current_epoch(state) + 2
-    run_get_inclusion_committee_assignments(spec, state, epoch, valid=False)
+    run_get_inclusion_list_committee_assignments(spec, state, epoch, valid=False)
 
 
-@with_eip7805_and_later
+@with_heze_and_later
 @spec_state_test
 @always_bls
 def test_get_inclusion_list_signature(spec, state):

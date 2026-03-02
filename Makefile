@@ -11,9 +11,9 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	electra   \
 	fulu      \
 	gloas     \
+	heze      \
 	eip6800   \
 	eip7441   \
-	eip7805   \
 	eip7928   \
 	eip8025
 
@@ -228,7 +228,7 @@ TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
 test: MAYBE_TEST := $(if $(k),-k=$(k))
 # Disable parallelism when running a specific test.
 # Parallelism makes debugging difficult (print doesn't work).
-test: MAYBE_PARALLEL := $(if $(k),,-n auto)
+test: MAYBE_PARALLEL := $(if $(k),,-n logical)
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
 test: PRESET := $(if $(filter fw,$(component)),,--preset=$(if $(preset),$(preset),minimal))
 test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),fastest))
