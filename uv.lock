@@ -517,6 +517,7 @@ lint = [
 test = [
     { name = "ckzg" },
     { name = "deepdiff" },
+    { name = "psutil" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-html" },
@@ -551,6 +552,7 @@ requires-dist = [
     { name = "mypy", marker = "extra == 'lint'", specifier = "==1.19.1" },
     { name = "pathos", marker = "extra == 'generator'", specifier = "==0.3.5" },
     { name = "psutil", marker = "extra == 'generator'", specifier = "==7.2.2" },
+    { name = "psutil", marker = "extra == 'test'", specifier = "==7.2.2" },
     { name = "py-arkworks-bls12381", specifier = "==0.3.8" },
     { name = "py-ecc", specifier = "==8.0.0" },
     { name = "pycryptodome", specifier = "==3.23.0" },
