@@ -49,7 +49,7 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 ```python
 class ProofByRootIdentifier(Container):
     block_root: Root
-    indices: List[uint64, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+    proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
 ```
 
 ## Helpers
@@ -178,11 +178,11 @@ Response Content:
 )
 ```
 
-Requests execution proofs by block root and proof indices. The response is a
-list of `SignedExecutionProof` whose length is less than or equal to
+Requests execution proofs by block root and proof types. The response is a list
+of `SignedExecutionProof` whose length is less than or equal to
 `requested_proofs_count`, where
-`requested_proofs_count = sum(len(r.indices) for r in request)`. It may be less
-in the case that the responding peer is missing blocks or proofs.
+`requested_proofs_count = sum(len(r.proof_types) for r in request)`. It may be
+less in the case that the responding peer is missing blocks or proofs.
 
 No more than `compute_max_request_execution_proofs()` may be requested at a
 time.
