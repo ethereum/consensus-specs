@@ -49,7 +49,7 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 ```python
 class ProofByRootIdentifier(Container):
     block_root: Root
-    indices: Sequence[uint64]
+    indices: List[uint64, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
 ```
 
 ## Helpers
