@@ -537,8 +537,7 @@ def get_head(store: Store) -> ForkChoiceNode:
 ```python
 def record_block_timeliness(store: Store, root: Root) -> None:
     block = store.blocks[root]
-    ms_since_genesis = store.time_ms - store.genesis_time_ms
-    time_into_slot_ms = ms_since_genesis % SLOT_DURATION_MS
+    time_into_slot_ms = compute_time_into_slot_ms(store)
     epoch = get_current_store_epoch(store)
     attestation_threshold_ms = get_attestation_due_ms(epoch)
     # [New in Gloas:EIP7732]

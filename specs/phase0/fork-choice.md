@@ -28,9 +28,9 @@
     - [`get_head`](#get_head)
     - [`update_checkpoints`](#update_checkpoints)
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
-    - [`seconds_to_milliseconds`](#seconds_to_milliseconds)
-    - [`milliseconds_to_seconds`](#milliseconds_to_seconds)
-    - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
+    - [`compute_store_slot_at_time_ms`](#compute_store_slot_at_time_ms)
+    - [`compute_store_time_at_slot_ms`](#compute_store_time_at_slot_ms)
+    - [`compute_time_into_slot_ms`](#compute_time_into_slot_ms)
     - [`get_slot_component_duration_ms`](#get_slot_component_duration_ms)
     - [`get_attestation_due_ms`](#get_attestation_due_ms)
     - [`get_proposer_reorg_cutoff_ms`](#get_proposer_reorg_cutoff_ms)
@@ -224,7 +224,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 
 ```python
 def get_slots_since_genesis(store: Store) -> int:
-    return (store.time_ms - store.genesis_time_ms) // SLOT_DURATION_MS
+    return compute_store_slot_at_time_ms(store, store.time_ms) - GENESIS_SLOT
 ```
 
 #### `get_current_slot`
@@ -475,31 +475,34 @@ def update_unrealized_checkpoints(
         store.unrealized_finalized_checkpoint = unrealized_finalized_checkpoint
 ```
 
-#### `seconds_to_milliseconds`
+#### `compute_store_slot_at_time_ms`
 
 ```python
-def seconds_to_milliseconds(seconds: uint64) -> uint64:
+def compute_store_slot_at_time_ms(store: Store, time_ms: uint64) -> Slot:
     """
-    Convert seconds to milliseconds with overflow protection.
-    Returns ``UINT64_MAX`` if the result would overflow.
+    Compute the slot at ``time_ms`` from the genesis time in ``store``.
     """
-    if seconds > UINT64_MAX // 1000:
-        return UINT64_MAX
-    return seconds * 1000
+    return Slot(GENESIS_SLOT + (time_ms - store.genesis_time_ms) // SLOT_DURATION_MS)
 ```
 
-#### `milliseconds_to_seconds`
+#### `compute_store_time_at_slot_ms`
 
 ```python
-def milliseconds_to_seconds(milliseconds: uint64) -> uint64:
-    return milliseconds // 1000
+def compute_store_time_at_slot_ms(store: Store, slot: Slot) -> uint64:
+    """
+    Compute the time in milliseconds at ``slot`` from the genesis time in ``store``.
+    """
+    return store.genesis_time_ms + SLOT_DURATION_MS * (slot - GENESIS_SLOT)
 ```
 
-#### `compute_time_at_slot_ms`
+#### `compute_time_into_slot_ms`
 
 ```python
-def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> uint64:
-    return seconds_to_milliseconds(state.genesis_time) + SLOT_DURATION_MS * (slot - GENESIS_SLOT)
+def compute_time_into_slot_ms(store: Store) -> uint64:
+    """
+    Compute the elapsed time in milliseconds into the current slot.
+    """
+    return store.time_ms - compute_store_time_at_slot_ms(store, get_current_slot(store))
 ```
 
 #### `get_slot_component_duration_ms`
@@ -572,8 +575,7 @@ def is_finalization_ok(store: Store, slot: Slot) -> bool:
 
 ```python
 def is_proposing_on_time(store: Store) -> bool:
-    ms_since_genesis = store.time_ms - store.genesis_time_ms
-    time_into_slot_ms = ms_since_genesis % SLOT_DURATION_MS
+    time_into_slot_ms = compute_time_into_slot_ms(store)
     epoch = get_current_store_epoch(store)
     proposer_reorg_cutoff_ms = get_proposer_reorg_cutoff_ms(epoch)
     return time_into_slot_ms <= proposer_reorg_cutoff_ms
@@ -806,8 +808,7 @@ def update_latest_messages(
 ```python
 def record_block_timeliness(store: Store, root: Root) -> None:
     block = store.blocks[root]
-    ms_since_genesis = store.time_ms - store.genesis_time_ms
-    time_into_slot_ms = ms_since_genesis % SLOT_DURATION_MS
+    time_into_slot_ms = compute_time_into_slot_ms(store)
     epoch = get_current_store_epoch(store)
     attestation_threshold_ms = get_attestation_due_ms(epoch)
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
@@ -843,9 +844,9 @@ def update_proposer_boost_root(store: Store, root: Root) -> None:
 def on_tick(store: Store, time_ms: uint64) -> None:
     # If the ``store.time_ms`` falls behind, while loop catches up slot by slot
     # to ensure that every previous slot is processed with ``on_tick_per_slot``
-    tick_slot = (time_ms - store.genesis_time_ms) // SLOT_DURATION_MS
+    tick_slot = compute_store_slot_at_time_ms(store, time_ms)
     while get_current_slot(store) < tick_slot:
-        previous_time_ms = store.genesis_time_ms + (get_current_slot(store) + 1) * SLOT_DURATION_MS
+        previous_time_ms = compute_store_time_at_slot_ms(store, Slot(get_current_slot(store) + 1))
         on_tick_per_slot(store, previous_time_ms)
     on_tick_per_slot(store, time_ms)
 ```
