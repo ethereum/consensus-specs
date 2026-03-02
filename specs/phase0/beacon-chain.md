@@ -879,7 +879,8 @@ def compute_committee(
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
     slots_since_genesis = slot - GENESIS_SLOT
-    return uint64(state.genesis_time + slots_since_genesis * SLOT_DURATION_MS // 1000)
+    seconds_per_slot = SLOT_DURATION_MS // 1000
+    return uint64(state.genesis_time + slots_since_genesis * seconds_per_slot)
 ```
 
 #### `compute_epoch_at_slot`

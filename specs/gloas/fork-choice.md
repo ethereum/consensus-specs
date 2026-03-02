@@ -129,8 +129,8 @@ execution payload has not been revealed or has not been included on chain.
 ```python
 @dataclass
 class Store(object):
-    time: uint64
-    genesis_time: uint64
+    time_ms: uint64
+    genesis_time_ms: uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     unrealized_justified_checkpoint: Checkpoint
@@ -166,8 +166,8 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     proposer_boost_root = Root()
     return Store(
-        time=uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
-        genesis_time=anchor_state.genesis_time,
+        time_ms=compute_time_at_slot_ms(anchor_state, anchor_state.slot),
+        genesis_time_ms=seconds_to_milliseconds(anchor_state.genesis_time),
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         unrealized_justified_checkpoint=justified_checkpoint,
@@ -537,8 +537,8 @@ def get_head(store: Store) -> ForkChoiceNode:
 ```python
 def record_block_timeliness(store: Store, root: Root) -> None:
     block = store.blocks[root]
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    ms_since_genesis = store.time_ms - store.genesis_time_ms
+    time_into_slot_ms = ms_since_genesis % SLOT_DURATION_MS
     epoch = get_current_store_epoch(store)
     attestation_threshold_ms = get_attestation_due_ms(epoch)
     # [New in Gloas:EIP7732]

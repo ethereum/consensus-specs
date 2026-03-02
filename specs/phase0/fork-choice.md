@@ -29,6 +29,8 @@
     - [`update_checkpoints`](#update_checkpoints)
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
     - [`seconds_to_milliseconds`](#seconds_to_milliseconds)
+    - [`milliseconds_to_seconds`](#milliseconds_to_seconds)
+    - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
     - [`get_slot_component_duration_ms`](#get_slot_component_duration_ms)
     - [`get_attestation_due_ms`](#get_attestation_due_ms)
     - [`get_proposer_reorg_cutoff_ms`](#get_proposer_reorg_cutoff_ms)
@@ -75,8 +77,8 @@ The head block root associated with a `store` is defined as `get_head(store)`.
 At genesis, let `store = get_forkchoice_store(genesis_state, genesis_block)` and
 update `store` by running:
 
-- `on_tick(store, time)` whenever `time > store.time` where `time` is the
-  current Unix time
+- `on_tick(store, time_ms)` whenever `time_ms > store.time_ms` where `time_ms`
+  is the current Unix time in milliseconds
 - `on_block(store, block)` whenever a block `block: SignedBeaconBlock` is
   received
 - `on_attestation(store, attestation)` whenever an attestation `attestation` is
@@ -167,8 +169,8 @@ algorithm. The important fields being tracked are described below:
 ```python
 @dataclass
 class Store(object):
-    time: uint64
-    genesis_time: uint64
+    time_ms: uint64
+    genesis_time_ms: uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     unrealized_justified_checkpoint: Checkpoint
@@ -203,8 +205,8 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     proposer_boost_root = Root()
     return Store(
-        time=uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
-        genesis_time=anchor_state.genesis_time,
+        time_ms=compute_time_at_slot_ms(anchor_state, anchor_state.slot),
+        genesis_time_ms=seconds_to_milliseconds(anchor_state.genesis_time),
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         unrealized_justified_checkpoint=justified_checkpoint,
@@ -222,7 +224,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 
 ```python
 def get_slots_since_genesis(store: Store) -> int:
-    return (store.time - store.genesis_time) * 1000 // SLOT_DURATION_MS
+    return (store.time_ms - store.genesis_time_ms) // SLOT_DURATION_MS
 ```
 
 #### `get_current_slot`
@@ -486,6 +488,20 @@ def seconds_to_milliseconds(seconds: uint64) -> uint64:
     return seconds * 1000
 ```
 
+#### `milliseconds_to_seconds`
+
+```python
+def milliseconds_to_seconds(milliseconds: uint64) -> uint64:
+    return milliseconds // 1000
+```
+
+#### `compute_time_at_slot_ms`
+
+```python
+def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> uint64:
+    return seconds_to_milliseconds(state.genesis_time) + SLOT_DURATION_MS * (slot - GENESIS_SLOT)
+```
+
 #### `get_slot_component_duration_ms`
 
 ```python
@@ -556,8 +572,8 @@ def is_finalization_ok(store: Store, slot: Slot) -> bool:
 
 ```python
 def is_proposing_on_time(store: Store) -> bool:
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    ms_since_genesis = store.time_ms - store.genesis_time_ms
+    time_into_slot_ms = ms_since_genesis % SLOT_DURATION_MS
     epoch = get_current_store_epoch(store)
     proposer_reorg_cutoff_ms = get_proposer_reorg_cutoff_ms(epoch)
     return time_into_slot_ms <= proposer_reorg_cutoff_ms
@@ -689,11 +705,11 @@ def compute_pulled_up_tip(store: Store, block_root: Root) -> None:
 ##### `on_tick_per_slot`
 
 ```python
-def on_tick_per_slot(store: Store, time: uint64) -> None:
+def on_tick_per_slot(store: Store, time_ms: uint64) -> None:
     previous_slot = get_current_slot(store)
 
     # Update store time
-    store.time = time
+    store.time_ms = time_ms
 
     current_slot = get_current_slot(store)
 
@@ -790,8 +806,8 @@ def update_latest_messages(
 ```python
 def record_block_timeliness(store: Store, root: Root) -> None:
     block = store.blocks[root]
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    ms_since_genesis = store.time_ms - store.genesis_time_ms
+    time_into_slot_ms = ms_since_genesis % SLOT_DURATION_MS
     epoch = get_current_store_epoch(store)
     attestation_threshold_ms = get_attestation_due_ms(epoch)
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
@@ -824,16 +840,14 @@ def update_proposer_boost_root(store: Store, root: Root) -> None:
 #### `on_tick`
 
 ```python
-def on_tick(store: Store, time: uint64) -> None:
-    # If the ``store.time`` falls behind, while loop catches up slot by slot
+def on_tick(store: Store, time_ms: uint64) -> None:
+    # If the ``store.time_ms`` falls behind, while loop catches up slot by slot
     # to ensure that every previous slot is processed with ``on_tick_per_slot``
-    tick_slot = (time - store.genesis_time) * 1000 // SLOT_DURATION_MS
+    tick_slot = (time_ms - store.genesis_time_ms) // SLOT_DURATION_MS
     while get_current_slot(store) < tick_slot:
-        previous_time = (
-            store.genesis_time + (get_current_slot(store) + 1) * SLOT_DURATION_MS // 1000
-        )
-        on_tick_per_slot(store, previous_time)
-    on_tick_per_slot(store, time)
+        previous_time_ms = store.genesis_time_ms + (get_current_slot(store) + 1) * SLOT_DURATION_MS
+        on_tick_per_slot(store, previous_time_ms)
+    on_tick_per_slot(store, time_ms)
 ```
 
 #### `on_block`
