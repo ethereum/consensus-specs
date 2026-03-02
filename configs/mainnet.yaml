@@ -73,8 +73,6 @@ EIP8025_FORK_EPOCH: 18446744073709551615
 
 # Time parameters
 # ---------------------------------------------------------------
-# 12 seconds (*deprecated*)
-SECONDS_PER_SLOT: 12
 # 12000 milliseconds
 SLOT_DURATION_MS: 12000
 # 14 (estimate from Eth1 mainnet)

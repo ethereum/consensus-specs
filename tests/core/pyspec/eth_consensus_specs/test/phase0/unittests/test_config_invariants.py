@@ -76,7 +76,6 @@ def test_time(spec, state):
     assert spec.SLOTS_PER_HISTORICAL_ROOT % spec.SLOTS_PER_EPOCH == 0
     check_bound(spec.SLOTS_PER_HISTORICAL_ROOT, spec.SLOTS_PER_EPOCH, UINT64_MAX)
     check_bound(spec.MIN_ATTESTATION_INCLUSION_DELAY, 1, spec.SLOTS_PER_EPOCH)
-    assert spec.config.SECONDS_PER_SLOT * 1000 == spec.config.SLOT_DURATION_MS
     assert spec.config.ATTESTATION_DUE_BPS <= spec.BASIS_POINTS
     assert spec.config.AGGREGATE_DUE_BPS <= spec.BASIS_POINTS
 

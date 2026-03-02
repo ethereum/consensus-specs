@@ -295,7 +295,7 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
     test_events = []
 
     def slot_to_time(slot):
-        return slot * spec.config.SECONDS_PER_SLOT + genesis_time
+        return slot * spec.config.SLOT_DURATION_MS // 1000 + genesis_time
 
     def add_tick_step(time):
         test_events.append(("tick", time, None))
