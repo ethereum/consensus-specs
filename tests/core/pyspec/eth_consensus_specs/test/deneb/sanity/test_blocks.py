@@ -32,9 +32,11 @@ def run_block_with_blobs(
     blob_gas_used=1,
     excess_blob_gas=1,
     non_blob_tx_count=0,
-    rng=random.Random(7777),
+    rng=None,
     valid=True,
 ):
+    if rng is None:
+        rng = random.Random(7777)
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)

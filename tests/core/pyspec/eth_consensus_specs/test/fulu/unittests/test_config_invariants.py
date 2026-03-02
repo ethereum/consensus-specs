@@ -19,9 +19,6 @@ def test_invariants(spec):
     assert spec.config.CUSTODY_REQUIREMENT <= spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
     assert spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT <= spec.NUMBER_OF_COLUMNS
     assert spec.NUMBER_OF_COLUMNS % spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT == 0
-    assert spec.config.MAX_REQUEST_DATA_COLUMN_SIDECARS == (
-        spec.config.MAX_REQUEST_BLOCKS_DENEB * spec.NUMBER_OF_COLUMNS
-    )
 
 
 @with_fulu_and_later

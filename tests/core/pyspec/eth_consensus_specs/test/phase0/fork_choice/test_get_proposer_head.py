@@ -38,7 +38,7 @@ def test_basic_is_head_root(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
@@ -55,7 +55,7 @@ def test_basic_is_head_root(spec, state):
     next_slot(spec, state)
     slot = state.slot
 
-    current_time = slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    current_time = slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     proposer_head = spec.get_proposer_head(store, head_root, slot)
     assert proposer_head == head_root
@@ -80,13 +80,16 @@ def test_basic_is_parent_root(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
     next_epoch(spec, state)
     on_tick_and_append_step(
-        spec, store, store.genesis_time + state.slot * spec.config.SECONDS_PER_SLOT, test_steps
+        spec,
+        store,
+        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        test_steps,
     )
 
     # Fill epoch 1 to 3
@@ -124,7 +127,9 @@ def test_basic_is_parent_root(spec, state):
     epoch = spec.get_current_store_epoch(store)
     attestation_due_ms = spec.get_attestation_due_ms(epoch)
     attesting_cutoff = (attestation_due_ms + 999) // 1000
-    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time + attesting_cutoff
+    current_time = (
+        state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time + attesting_cutoff
+    )
     on_tick_and_append_step(spec, store, current_time, test_steps)
     assert store.time == current_time
 
