@@ -10,6 +10,7 @@
     - [`DataColumnsByRootIdentifier`](#datacolumnsbyrootidentifier)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
+    - [New `compute_max_request_data_column_sidecars`](#new-compute_max_request_data_column_sidecars)
     - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
     - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
     - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
@@ -60,11 +61,10 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 *[New in Fulu:EIP7594]*
 
-| Name                                           | Value                                          | Description                                                               |
-| ---------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                                          | The number of data column sidecar subnets used in the gossipsub protocol  |
-| `MAX_REQUEST_DATA_COLUMN_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS` | Maximum number of data column sidecars in a single request                |
-| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4,096 epochs)                       | The minimum epoch range over which a node must serve data column sidecars |
+| Name                                           | Value                    | Description                                                               |
+| ---------------------------------------------- | ------------------------ | ------------------------------------------------------------------------- |
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                    | The number of data column sidecar subnets used in the gossipsub protocol  |
+| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4,096 epochs) | The minimum epoch range over which a node must serve data column sidecars |
 
 ### Containers
 
@@ -98,6 +98,16 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
+```
+
+#### New `compute_max_request_data_column_sidecars`
+
+```python
+def compute_max_request_data_column_sidecars() -> uint64:
+    """
+    Return the maximum number of data column sidecars in a single request.
+    """
+    return uint64(MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS)
 ```
 
 #### `verify_data_column_sidecar`
@@ -382,7 +392,7 @@ Response Content:
 
 ```
 (
-  List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
+  List[DataColumnSidecar, compute_max_request_data_column_sidecars()]
 )
 ```
 
@@ -428,7 +438,7 @@ and/or temporarily ban such an un-synced or semi-synced client.
 
 Clients MUST respond with at least the data column sidecars of the first
 blob-carrying block that exists in the range, if they have it, and no more than
-`MAX_REQUEST_DATA_COLUMN_SIDECARS` sidecars.
+`compute_max_request_data_column_sidecars()` sidecars.
 
 Clients MUST include all data column sidecars of each block from which they
 include data column sidecars.
@@ -488,7 +498,7 @@ Response Content:
 
 ```
 (
-  List[DataColumnSidecar, MAX_REQUEST_DATA_COLUMN_SIDECARS]
+  List[DataColumnSidecar, compute_max_request_data_column_sidecars()]
 )
 ```
 
@@ -504,7 +514,8 @@ valid inclusion proof through `verify_data_column_sidecar_inclusion_proof`, and
 is correct w.r.t. the expected KZG commitments through
 `verify_data_column_sidecar_kzg_proofs`.
 
-No more than `MAX_REQUEST_DATA_COLUMN_SIDECARS` may be requested at a time.
+No more than `compute_max_request_data_column_sidecars()` may be requested at a
+time.
 
 The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `DataColumnSidecar` payload.
