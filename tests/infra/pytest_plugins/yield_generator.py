@@ -10,6 +10,7 @@ from pytest import StashKey, TestReport
 
 from eth_consensus_specs.gen_helpers.gen_base.dumper import Dumper
 from eth_consensus_specs.test import context
+from eth_consensus_specs.test.helpers.constants import TESTGEN_FORKS
 from eth_consensus_specs.test.helpers.typing import SpecForkName
 from tests.infra.manifest import Manifest
 from tests.infra.yield_generator import MultiPhaseResult
@@ -304,8 +305,6 @@ class YieldGeneratorPlugin:
             context.is_generator = True
             # Limit to TESTGEN_FORKS so experimental forks (eip7928, eip8025)
             # don't produce output that the old generator wouldn't produce.
-            from eth_consensus_specs.test.helpers.constants import TESTGEN_FORKS
-
             context.DEFAULT_PYTEST_FORKS = set(TESTGEN_FORKS)
 
     @staticmethod
