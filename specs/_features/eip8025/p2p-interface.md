@@ -12,8 +12,11 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 - [Table of contents](#table-of-contents)
 - [Constants](#constants)
   - [Execution](#execution)
+- [Containers](#containers)
+  - [`ProofByRootIdentifier`](#proofbyrootidentifier)
 - [Helpers](#helpers)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [New `compute_max_request_execution_proofs`](#new-compute_max_request_execution_proofs)
 - [MetaData](#metadata)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
@@ -39,6 +42,16 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 | ---------------------------------- | ----------- |
 | `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)` |
 
+## Containers
+
+### `ProofByRootIdentifier`
+
+```python
+class ProofByRootIdentifier(Container):
+    block_root: Root
+    proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+```
+
 ## Helpers
 
 ### Modified `compute_fork_version`
@@ -63,6 +76,16 @@ def compute_fork_version(epoch: Epoch) -> Version:
     if epoch >= ALTAIR_FORK_EPOCH:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
+```
+
+### New `compute_max_request_execution_proofs`
+
+```python
+def compute_max_request_execution_proofs() -> uint64:
+    """
+    Return the maximum number of execution proofs in a single request.
+    """
+    return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_EXECUTION_PROOFS_PER_PAYLOAD)
 ```
 
 ## MetaData
@@ -143,7 +166,7 @@ Request Content:
 
 ```
 (
-  block_root: Root
+  List[ProofByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]
 )
 ```
 
@@ -151,23 +174,24 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionProof, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+  List[SignedExecutionProof, compute_max_request_execution_proofs()]
 )
 ```
 
-Requests execution proofs for the given `block_root`. The response MUST contain
-all available proofs for the requested beacon block, up to
-`MAX_EXECUTION_PROOFS_PER_PAYLOAD`.
+Requests execution proofs by block root and proof types. The response is a list
+of `SignedExecutionProof` whose length is less than or equal to
+`requested_proofs_count`, where
+`requested_proofs_count = sum(len(r.proof_types) for r in request)`. It may be
+less in the case that the responding peer is missing blocks or proofs.
 
-The following validations MUST pass:
+No more than `compute_max_request_execution_proofs()` may be requested at a
+time.
 
-- _[REJECT]_ The `block_root` is a 32-byte value.
+The response MUST consist of zero or more `response_chunk`. Each _successful_
+`response_chunk` MUST contain a single `SignedExecutionProof` payload.
 
-The response MUST contain:
-
-- All available execution proofs for the requested `block_root`.
-- The response MUST NOT contain more than `MAX_EXECUTION_PROOFS_PER_PAYLOAD`
-  proofs.
+Clients MUST respond with at least one proof, if they have it. Clients MAY limit
+the number of proofs in the response.
 
 #### GetMetaData v4
 
