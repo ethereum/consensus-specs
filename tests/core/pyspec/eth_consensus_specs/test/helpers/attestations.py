@@ -6,6 +6,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
     is_post_deneb,
     is_post_electra,
+    is_post_gloas,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import (
@@ -282,7 +283,7 @@ def get_valid_attestation_at_slot(
 
 
 def next_slots_with_attestations(
-    spec, state, slot_count, fill_cur_epoch, fill_prev_epoch, participation_fn=None
+    spec, state, slot_count, fill_cur_epoch, fill_prev_epoch, participation_fn=None, _envelopes=None
 ):
     """
     participation_fn: (slot, committee_index, committee_indices_set) -> participants_indices_set
@@ -296,6 +297,7 @@ def next_slots_with_attestations(
             fill_cur_epoch,
             fill_prev_epoch,
             participation_fn,
+            _envelopes=_envelopes,
         )
         signed_blocks.append(signed_block)
 
@@ -323,7 +325,7 @@ def _add_valid_attestations(spec, state, block, slot_to_attest, participation_fn
 
 
 def next_epoch_with_attestations(
-    spec, state, fill_cur_epoch, fill_prev_epoch, participation_fn=None
+    spec, state, fill_cur_epoch, fill_prev_epoch, participation_fn=None, _envelopes=None
 ):
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
 
@@ -334,6 +336,7 @@ def next_epoch_with_attestations(
         fill_cur_epoch,
         fill_prev_epoch,
         participation_fn,
+        _envelopes=_envelopes,
     )
 
 
@@ -345,9 +348,14 @@ def state_transition_with_full_block(
     participation_fn=None,
     sync_aggregate=None,
     block=None,
+    _envelopes=None,
 ):
     """
     Build and apply a block with attestations at the calculated `slot_to_attest` of current epoch and/or previous epoch.
+
+    For Gloas: when ``_envelopes`` is provided, also applies ``process_execution_payload`` to the state
+    and appends the signed envelope to the list. This is opt-in because the default test attestations
+    (index=0 / payload_present=False) only support the EMPTY fork choice path.
     """
     if block is None:
         block = build_empty_block_for_next_slot(spec, state)
@@ -366,6 +374,13 @@ def state_transition_with_full_block(
         block.body.sync_aggregate = sync_aggregate
 
     signed_block = state_transition_and_sign_block(spec, state, block)
+
+    if _envelopes is not None and is_post_gloas(spec):
+        from eth_consensus_specs.test.helpers.execution_payload import apply_execution_payload_to_state
+
+        signed_envelope = apply_execution_payload_to_state(spec, state)
+        _envelopes.append(signed_envelope)
+
     return signed_block
 
 
