@@ -197,8 +197,6 @@ def tick_and_add_block(
     )
 
     # For Gloas: apply on_execution_payload to the store when an explicit envelope is provided.
-    # This is opt-in because the default test attestations (index=0 / payload_present=False)
-    # only support the EMPTY fork choice path.
     if envelope is not None and valid and post_state is not None:
         spec.on_execution_payload(store, envelope)
 

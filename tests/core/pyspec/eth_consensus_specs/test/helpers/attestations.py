@@ -355,8 +355,7 @@ def state_transition_with_full_block(
     Build and apply a block with attestations at the calculated `slot_to_attest` of current epoch and/or previous epoch.
 
     For Gloas: when ``envelopes`` is provided, also applies ``process_execution_payload`` to the state
-    and appends the signed envelope to the list. This is opt-in because the default test attestations
-    (index=0 / payload_present=False) only support the EMPTY fork choice path.
+    and appends the signed envelope to the list.
     """
     if block is None:
         block = build_empty_block_for_next_slot(spec, state)
