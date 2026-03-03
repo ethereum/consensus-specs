@@ -23,7 +23,7 @@ on:
 jobs:
   generate-tests:
     timeout-minutes: 720 # 12 hours
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
