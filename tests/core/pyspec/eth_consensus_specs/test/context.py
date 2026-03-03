@@ -9,7 +9,6 @@ import pytest
 from frozendict import frozendict
 from lru import LRU
 
-from eth_consensus_specs.test import context
 from eth_consensus_specs.utils import bls
 from tests.infra.yield_generator import MultiPhaseResult, vector_test
 
@@ -586,7 +585,7 @@ def _run_test_case_with_phases(fn, phases, other_phases, kw, args, is_fork_trans
     # Return is ignored whenever multiple phases are ran.
     # This return is for test generators to emit python generators (yielding test vector outputs)
 
-    if context.is_pytest and context.is_generator:
+    if is_pytest and is_generator:
         results: MultiPhaseResult = {}
 
         for phase in run_phases:
