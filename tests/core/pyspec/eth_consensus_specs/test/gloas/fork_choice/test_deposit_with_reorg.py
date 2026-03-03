@@ -16,7 +16,6 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     apply_next_slots_with_attestations,
     get_genesis_forkchoice_store_and_block,
-    get_store_post_state,
     tick_and_add_block,
 )
 from eth_consensus_specs.test.helpers.state import (
@@ -103,7 +102,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     prev_epoch_ancestor = store.blocks[prev_epoch_ancestor.parent_root]
     ancestor_root = prev_epoch_ancestor.hash_tree_root()
     # Use post-on_execution_payload state for the reorg base
-    another_fork_state = get_store_post_state(spec, store, ancestor_root).copy()
+    another_fork_state = store.payload_states[ancestor_root].copy()
 
     assert another_fork_state.pending_deposits == [pending_deposit]
 

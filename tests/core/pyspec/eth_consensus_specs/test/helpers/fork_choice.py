@@ -488,12 +488,6 @@ def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=Fa
     test_steps.append({"checks": checks})
 
 
-def get_store_post_state(spec, store, root):
-    """Return the appropriate post-state: payload_states for Gloas, block_states otherwise."""
-    if is_post_gloas(spec) and root in store.payload_states:
-        return store.payload_states[root]
-    return store.block_states[root]
-
 
 def apply_next_epoch_with_attestations(
     spec, state, store, fill_cur_epoch, fill_prev_epoch, participation_fn=None, test_steps=None
@@ -534,7 +528,7 @@ def apply_next_slots_with_attestations(
         last_signed_block = signed_block
 
     if with_execution_payload:
-        assert get_store_post_state(spec, store, block_root).hash_tree_root() == post_state.hash_tree_root()
+        assert store.payload_states[block_root].hash_tree_root() == post_state.hash_tree_root()
     else:
         assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
 
