@@ -512,9 +512,9 @@ def apply_next_epoch_with_attestations(
 
 def apply_next_slots_with_attestations(
     spec, state, store, slots, fill_cur_epoch, fill_prev_epoch, test_steps,
-    participation_fn=None, with_execution_payload=False,
+    participation_fn=None, with_payload_reveal=False,
 ):
-    envelopes = [] if with_execution_payload else None
+    envelopes = [] if with_payload_reveal else None
     _, new_signed_blocks, post_state = next_slots_with_attestations(
         spec, state, slots, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn,
         _envelopes=envelopes,
@@ -527,7 +527,7 @@ def apply_next_slots_with_attestations(
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
 
-    if with_execution_payload:
+    if with_payload_reveal:
         assert store.payload_states[block_root].hash_tree_root() == post_state.hash_tree_root()
     else:
         assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()

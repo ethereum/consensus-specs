@@ -82,11 +82,11 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     yield from tick_and_add_block(spec, store, signed_deposit_block, test_steps, envelope=deposit_envelope)
 
     # (2) finalize and process pending deposit on one fork
-    # Use with_execution_payload=True because on_execution_payload was applied to the deposit
+    # Use with_payload_reveal=True because on_execution_payload was applied to the deposit
     # block, so subsequent blocks must also apply on_execution_payload for consistency.
     slots = 4 * spec.SLOTS_PER_EPOCH - state.slot
     post_state, _, latest_block = yield from apply_next_slots_with_attestations(
-        spec, state, store, slots, True, True, test_steps, with_execution_payload=True
+        spec, state, store, slots, True, True, test_steps, with_payload_reveal=True
     )
 
     # check new validator has been created
@@ -109,7 +109,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     # skip a slot to create and process a fork block
     next_slot(spec, another_fork_state)
     post_state, _, _ = yield from apply_next_slots_with_attestations(
-        spec, another_fork_state, store, 1, True, True, test_steps, with_execution_payload=True
+        spec, another_fork_state, store, 1, True, True, test_steps, with_payload_reveal=True
     )
 
     # check new validator has been created on another fork
