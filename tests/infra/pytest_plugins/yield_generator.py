@@ -242,7 +242,7 @@ class YieldGeneratorPlugin:
     @pytest.hookimpl(tryfirst=True)
     def pytest_pyfunc_call(self, pyfuncitem: pytest.Function):
         if not isinstance(pyfuncitem, SpecTestFunction):
-            return False
+            return None
 
         pyfuncitem.result = None
 
@@ -395,5 +395,6 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
-    """Register the plugin."""
-    YieldGeneratorPlugin(config).register()
+    """Register the plugin only when --reftests is enabled."""
+    if config.getoption("--reftests", default=False):
+        YieldGeneratorPlugin(config).register()
