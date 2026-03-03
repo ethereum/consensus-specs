@@ -115,7 +115,7 @@ jobs:
           echo "PR title is valid"
 
   tests:
-    needs: [lint, framework, title]
+    needs: [lint, framework]
     runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
     strategy:
       matrix:
