@@ -516,7 +516,7 @@ def apply_next_slots_with_attestations(
     envelopes = [] if with_payload_reveal else None
     _, new_signed_blocks, post_state = next_slots_with_attestations(
         spec, state, slots, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn,
-        _envelopes=envelopes,
+        envelopes=envelopes,
     )
     for i, signed_block in enumerate(new_signed_blocks):
         block = signed_block.message
