@@ -599,7 +599,8 @@ def reveal_payload_to_state(spec, state, execution_requests=None):
     execution_payload.block_hash = state.latest_execution_payload_bid.block_hash
 
     signed_envelope = prepare_execution_payload_envelope(
-        spec, state,
+        spec,
+        state,
         execution_payload=execution_payload,
         execution_requests=execution_requests,
     )

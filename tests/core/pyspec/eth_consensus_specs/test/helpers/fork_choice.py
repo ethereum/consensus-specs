@@ -508,12 +508,24 @@ def apply_next_epoch_with_attestations(
 
 
 def apply_next_slots_with_attestations(
-    spec, state, store, slots, fill_cur_epoch, fill_prev_epoch, test_steps,
-    participation_fn=None, with_payload_reveal=False,
+    spec,
+    state,
+    store,
+    slots,
+    fill_cur_epoch,
+    fill_prev_epoch,
+    test_steps,
+    participation_fn=None,
+    with_payload_reveal=False,
 ):
     envelopes = [] if with_payload_reveal else None
     _, new_signed_blocks, post_state = next_slots_with_attestations(
-        spec, state, slots, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn,
+        spec,
+        state,
+        slots,
+        fill_cur_epoch,
+        fill_prev_epoch,
+        participation_fn=participation_fn,
         envelopes=envelopes,
     )
     for i, signed_block in enumerate(new_signed_blocks):

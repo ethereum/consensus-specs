@@ -52,9 +52,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
         deposits=spec.List[spec.DepositRequest, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD](
             [deposit_request]
         ),
-        withdrawals=spec.List[
-            spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
-        ](),
+        withdrawals=spec.List[spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD](),
         consolidations=spec.List[
             spec.ConsolidationRequest, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
         ](),
@@ -63,9 +61,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     deposit_block = build_empty_block_for_next_slot(spec, state)
     signed_deposit_block = state_transition_and_sign_block(spec, state, deposit_block)
 
-    deposit_envelope = reveal_payload_to_state(
-        spec, state, execution_requests=execution_requests
-    )
+    deposit_envelope = reveal_payload_to_state(spec, state, execution_requests=execution_requests)
 
     pending_deposit = spec.PendingDeposit(
         pubkey=deposit_request.pubkey,
@@ -77,7 +73,9 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
 
     assert state.pending_deposits == [pending_deposit]
 
-    yield from tick_and_add_block(spec, store, signed_deposit_block, test_steps, envelope=deposit_envelope)
+    yield from tick_and_add_block(
+        spec, store, signed_deposit_block, test_steps, envelope=deposit_envelope
+    )
 
     # (2) finalize and process pending deposit on one fork
     slots = 4 * spec.SLOTS_PER_EPOCH - state.slot
