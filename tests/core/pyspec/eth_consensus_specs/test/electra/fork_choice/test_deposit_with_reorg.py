@@ -28,7 +28,6 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-# TODO(jtraglia): In gloas, how do we set execution requests in the payload envelope?
 @with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
