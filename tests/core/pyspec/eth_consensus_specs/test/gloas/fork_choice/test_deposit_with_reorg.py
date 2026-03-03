@@ -60,10 +60,9 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
         ](),
     )
 
-    # on_block: process the beacon block
     deposit_block = build_empty_block_for_next_slot(spec, state)
     signed_deposit_block = state_transition_and_sign_block(spec, state, deposit_block)
-    # on_execution_payload: process the execution payload envelope with deposit
+
     deposit_envelope = reveal_payload_to_state(
         spec, state, execution_requests=execution_requests
     )
@@ -78,12 +77,9 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
 
     assert state.pending_deposits == [pending_deposit]
 
-    # Add the deposit block to the store (on_block + on_execution_payload with custom deposit envelope)
     yield from tick_and_add_block(spec, store, signed_deposit_block, test_steps, envelope=deposit_envelope)
 
     # (2) finalize and process pending deposit on one fork
-    # Use with_payload_reveal=True because on_execution_payload was applied to the deposit
-    # block, so subsequent blocks must also apply on_execution_payload for consistency.
     slots = 4 * spec.SLOTS_PER_EPOCH - state.slot
     post_state, _, latest_block = yield from apply_next_slots_with_attestations(
         spec, state, store, slots, True, True, test_steps, with_payload_reveal=True
