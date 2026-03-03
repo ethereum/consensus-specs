@@ -488,7 +488,6 @@ def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=Fa
     test_steps.append({"checks": checks})
 
 
-
 def apply_next_epoch_with_attestations(
     spec, state, store, fill_cur_epoch, fill_prev_epoch, participation_fn=None, test_steps=None
 ):
