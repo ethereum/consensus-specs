@@ -385,12 +385,12 @@ class YieldGeneratorPlugin:
 def pytest_addoption(parser):
     """Add custom command-line options"""
     parser.addoption(
-        "--reftests", action="store_true", default=False, help="Vector tests generation"
+        "--reftests", action="store_true", default=False, help="Generate reference tests"
     )
     parser.addoption(
         "--reftests-output",
-        default="generated-tests",
-        help="Output directory for generated test vectors",
+        default="reftests",
+        help="Output directory for reference tests",
     )
 
 
