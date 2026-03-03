@@ -6,8 +6,8 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
+    prepare_execution_payload_envelope,
 )
-from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
 
 
 def run_execution_payload_processing(
@@ -50,112 +50,6 @@ def run_execution_payload_processing(
     assert called_new_payload
 
     yield "post", state
-
-
-def prepare_execution_payload_envelope(
-    spec,
-    state,
-    builder_index=None,
-    slot=None,
-    beacon_block_root=None,
-    state_root=None,
-    execution_payload=None,
-    execution_requests=None,
-    valid_signature=True,
-):
-    """
-    Helper to create a signed execution payload envelope with customizable parameters.
-    Note: This should be called AFTER setting up the state with the committed bid.
-    """
-    if builder_index is None:
-        builder_index = spec.BUILDER_INDEX_SELF_BUILD
-
-    if slot is None:
-        slot = state.slot
-
-    if beacon_block_root is None:
-        # Cache latest block header state root if not already set
-        if state.latest_block_header.state_root == spec.Root():
-            state.latest_block_header.state_root = state.hash_tree_root()
-        beacon_block_root = state.latest_block_header.hash_tree_root()
-
-    if execution_payload is None:
-        execution_payload = build_empty_execution_payload(spec, state)
-
-    if execution_requests is None:
-        execution_requests = spec.ExecutionRequests(
-            deposits=spec.List[spec.DepositRequest, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD](),
-            withdrawals=spec.List[
-                spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
-            ](),
-            consolidations=spec.List[
-                spec.ConsolidationRequest, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
-            ](),
-        )
-
-    # Create a copy of state for computing state_root after execution payload processing
-    if state_root is None:
-        post_state = state.copy()
-        # Simulate the state changes that process_execution_payload will make
-
-        # Cache latest block header state root if empty (matches process_execution_payload)
-        previous_state_root = post_state.hash_tree_root()
-        if post_state.latest_block_header.state_root == spec.Root():
-            post_state.latest_block_header.state_root = previous_state_root
-
-        # Process execution requests if any
-        if execution_requests is not None:
-            for deposit in execution_requests.deposits:
-                spec.process_deposit_request(post_state, deposit)
-            for withdrawal in execution_requests.withdrawals:
-                spec.process_withdrawal_request(post_state, withdrawal)
-            for consolidation in execution_requests.consolidations:
-                spec.process_consolidation_request(post_state, consolidation)
-
-        # Process builder payment (only if amount > 0)
-        payment = post_state.builder_pending_payments[
-            spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
-        ]
-        if payment.withdrawal.amount > 0:
-            post_state.builder_pending_withdrawals.append(payment.withdrawal)
-
-        # Clear the pending payment
-        post_state.builder_pending_payments[
-            spec.SLOTS_PER_EPOCH + state.slot % spec.SLOTS_PER_EPOCH
-        ] = spec.BuilderPendingPayment()
-
-        # Update execution payload availability and latest block hash
-        post_state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] = 0b1
-        post_state.latest_block_hash = execution_payload.block_hash
-        state_root = post_state.hash_tree_root()
-
-    envelope = spec.ExecutionPayloadEnvelope(
-        payload=execution_payload,
-        execution_requests=execution_requests,
-        builder_index=builder_index,
-        beacon_block_root=beacon_block_root,
-        slot=slot,
-        state_root=state_root,
-    )
-
-    if valid_signature:
-        if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
-            privkey = privkeys[state.latest_block_header.proposer_index]
-        else:
-            privkey = builder_privkeys[envelope.builder_index]
-        signature = spec.get_execution_payload_envelope_signature(
-            state,
-            envelope,
-            privkey,
-        )
-    else:
-        # Invalid signature
-        signature = spec.BLSSignature()
-
-    return spec.SignedExecutionPayloadEnvelope(
-        message=envelope,
-        signature=signature,
-    )
 
 
 def setup_state_with_payload_bid(
