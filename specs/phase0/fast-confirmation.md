@@ -173,8 +173,8 @@ semantics MUST be preserved.
 
 ##### `get_slot_committee`
 
-*Note:* This function returns the committee for a specific slot and MUST only
-work for current and previous epoch.
+*Note:* This function returns the committee for a specific slot. It MUST support
+committees of epochs starting from `current_epoch - 2`.
 
 ```python
 def get_slot_committee(store: Store, slot: Slot) -> set[ValidatorIndex]:
@@ -434,6 +434,11 @@ def get_adversarial_weight(store: Store, balance_source: BeaconState, block_root
 
 ##### `compute_empty_slot_support_discount`
 
+*Note:* This function MAY compute parent's block support and adversarial weight
+for empty slots belonging to `current_epoch - 2`. It can only happen in
+reconfirmation, in all other cases the earliest possible epoch is
+`current_epoch - 1`.
+
 ```python
 def compute_empty_slot_support_discount(
     store: Store, balance_source: BeaconState, block_root: Root
@@ -552,15 +557,22 @@ def is_confirmed_chain_safe(store: Store, confirmed_root: Root) -> bool:
     if store.current_epoch_observed_justified_checkpoint.epoch + 1 >= current_epoch:
         # Exclude the justified checkpoint block if it is from the previous epoch
         # as then this block will always be canonical in this case.
-        start_root = store.current_epoch_observed_justified_checkpoint.root
+        start_root_exclusive = store.current_epoch_observed_justified_checkpoint.root
     else:
-        # Limit reconfirmation to the checkpoint block
+        # Limit reconfirmation to the first block of the previous epoch
         # as if it's successful, reconfirmation of the ancestors is implied.
-        checkpoint = get_checkpoint_for_block(store, confirmed_root, Epoch(current_epoch - 1))
-        start_root = store.blocks[checkpoint.root].parent_root
+        ancestor_at_previous_epoch_start = get_ancestor(
+            store, confirmed_root, compute_start_slot_at_epoch(Epoch(current_epoch - 1))
+        )
+        if get_block_epoch(store, ancestor_at_previous_epoch_start) + 1 == current_epoch:
+            # The parent of the first block of the previous epoch.
+            start_root_exclusive = store.blocks[ancestor_at_previous_epoch_start].parent_root
+        else:
+            # The last block of the epoch before the previous one.
+            start_root_exclusive = ancestor_at_previous_epoch_start
 
     # Run is_one_confirmed for each block in the confirmed chain with the previous epoch balance source.
-    chain_roots = get_ancestor_roots(store, confirmed_root, start_root)
+    chain_roots = get_ancestor_roots(store, confirmed_root, start_root_exclusive)
     return all(
         is_one_confirmed(store, get_previous_balance_source(store), root) for root in chain_roots
     )

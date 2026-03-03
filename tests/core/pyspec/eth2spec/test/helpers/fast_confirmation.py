@@ -156,6 +156,10 @@ class FCRTest:
     def head(self):
         return self.spec.get_head(self.store)
 
+    def get_parent(self, root):
+        parent_root = self.store.blocks[root].parent_root
+        return self.store.blocks[parent_root]
+
     def tick(self, slot):
         assert slot > self.current_slot() or slot == self.spec.GENESIS_SLOT
         new_time = slot * self.spec.config.SECONDS_PER_SLOT + self.store.genesis_time
