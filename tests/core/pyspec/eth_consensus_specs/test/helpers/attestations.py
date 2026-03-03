@@ -2,7 +2,7 @@ from lru import LRU
 
 from eth_consensus_specs.test.context import expect_assertion_error
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.execution_payload import apply_execution_payload_to_state
+from eth_consensus_specs.test.helpers.execution_payload import reveal_payload_to_state
 from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
     is_post_deneb,
@@ -377,7 +377,7 @@ def state_transition_with_full_block(
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     if _envelopes is not None and is_post_gloas(spec):
-        signed_envelope = apply_execution_payload_to_state(spec, state)
+        signed_envelope = reveal_payload_to_state(spec, state)
         _envelopes.append(signed_envelope)
 
     return signed_block

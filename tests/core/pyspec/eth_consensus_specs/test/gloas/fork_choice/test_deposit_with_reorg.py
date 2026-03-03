@@ -11,7 +11,7 @@ from eth_consensus_specs.test.helpers.deposits import (
     prepare_deposit_request,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
-    apply_execution_payload_to_state,
+    reveal_payload_to_state,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     apply_next_slots_with_attestations,
@@ -64,7 +64,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     deposit_block = build_empty_block_for_next_slot(spec, state)
     signed_deposit_block = state_transition_and_sign_block(spec, state, deposit_block)
     # on_execution_payload: process the execution payload envelope with deposit
-    deposit_envelope = apply_execution_payload_to_state(
+    deposit_envelope = reveal_payload_to_state(
         spec, state, execution_requests=execution_requests
     )
 

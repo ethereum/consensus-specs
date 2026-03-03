@@ -480,7 +480,7 @@ def get_random_tx(rng):
     return get_random_bytes_list(rng, rng.randint(1, 1000))
 
 
-def apply_execution_payload_to_state(spec, state, execution_requests=None):
+def reveal_payload_to_state(spec, state, execution_requests=None):
     """
     For Gloas and later: create an execution payload envelope and apply
     ``process_execution_payload`` to the state. Returns the signed envelope.
