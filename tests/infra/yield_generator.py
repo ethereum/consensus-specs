@@ -2,8 +2,11 @@ import functools
 import inspect
 from collections.abc import Generator, Iterable
 
+from eth_consensus_specs.test.helpers.typing import SpecForkName
 from eth_consensus_specs.utils.ssz.ssz_impl import serialize
 from eth_consensus_specs.utils.ssz.ssz_typing import View
+
+MultiPhaseResult = dict[SpecForkName, list]
 
 
 def _yield_generator_post_processing(vector: Iterable) -> Generator:
@@ -53,35 +56,25 @@ def _drain_wrapper(fn):
 
 def vector_test(fn):
     """
-    Decorator to make a test function optionally operate in "generator mode".
+    Decorator that wraps generator test functions based on context.is_generator.
 
-    This decorator is intended for test functions that yield data (i.e. are generator
-    functions). It lets callers request a generator object from the test by passing
-    generator_mode=True as a keyword when calling the decorated function. When
-    generator_mode is not requested the decorator will execute the generator to
-    completion and ignore all yielded values so the function behaves like a normal
-    (non-yielding) test function in test runners that do not support yielded tests.
+    When context.is_generator is True, the decorated function returns a generator
+    with post-processing applied to its yielded data. When context.is_generator is
+    False, the decorator drains the generator to completion, ignoring all yielded
+    values so the function behaves like a normal test in pytest.
     """
 
-    def wrapper_generator(*args, **kw) -> Generator | None:
-        # check generator mode, may be None/else.
-        # "pop" removes it, so it is not passed to the inner function.
-        if kw.pop("generator_mode", False) is True:
-            # return the yielding function as a generator object.
-            return _yield_generator_post_processing(fn(*args, **kw))
-        else:
-            # Just complete the function, ignore all yielded data
-            for _ in fn(*args, **kw):
-                continue
+    def wrapper_generator(*args, **kw) -> Generator:
+        return _yield_generator_post_processing(fn(*args, **kw))
 
     if inspect.isgeneratorfunction(fn):
         # Lazy import to avoid circular dependency with eth_consensus_specs.test.context
         from eth_consensus_specs.test import context  # noqa: PLC0415
 
-        if not context.is_pytest:
+        if context.is_generator:
             return wrapper_generator
         else:
-            # pytest does not support yielded data in the outer function,
+            # when pytest is not running in generator mode, we should drain the yields
             # so we need to wrap it like this.
             return _drain_wrapper(fn)
     else:

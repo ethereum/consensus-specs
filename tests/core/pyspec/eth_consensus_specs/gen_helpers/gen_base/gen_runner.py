@@ -14,16 +14,13 @@ from rich.live import Live
 from rich.table import Table
 from rich.text import Text
 
-from eth_consensus_specs.test import context
+from eth_consensus_specs.test import context  # noqa: F401 — imported to break circular import chain
 from eth_consensus_specs.test.exceptions import SkippedTest
 
 from .args import parse_arguments
 from .dumper import Dumper
 from .gen_typing import TestCase
 from .utils import install_sigint_handler, time_since
-
-# Flag that the runner does NOT run test via pytest
-context.is_pytest = False
 
 
 def get_shared_prefix(test_cases, min_segments=3):
@@ -104,13 +101,21 @@ def execute_test(test_case: TestCase, dumper: Dumper):
 
     for name, kind, data in outputs:
         method = getattr(dumper, f"dump_{kind}")
-        method(test_case, name, data)
+        method(test_case.dir, name, data)
 
     if meta:
-        dumper.dump_meta(test_case, meta)
+        dumper.dump_meta(test_case.dir, meta)
 
     # Always write manifest.yml for every test case
-    dumper.dump_manifest(test_case)
+    manifest_data = {
+        "preset": test_case.preset_name,
+        "fork": test_case.fork_name,
+        "runner": test_case.runner_name,
+        "handler": test_case.handler_name,
+        "suite": test_case.suite_name,
+        "case": test_case.case_name,
+    }
+    dumper.dump_manifest(test_case.dir, manifest_data)
 
 
 def run_generator(input_test_cases: Iterable[TestCase], args=None):

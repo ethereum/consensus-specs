@@ -10,7 +10,7 @@ from frozendict import frozendict
 from lru import LRU
 
 from eth_consensus_specs.utils import bls
-from tests.infra.yield_generator import vector_test
+from tests.infra.yield_generator import MultiPhaseResult, vector_test
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
@@ -303,6 +303,7 @@ DEFAULT_BLS_ACTIVE = True
 
 
 is_pytest = True
+is_generator = False
 
 
 def dump_skipping_message(reason: str) -> None:
@@ -583,6 +584,16 @@ def _run_test_case_with_phases(fn, phases, other_phases, kw, args, is_fork_trans
 
     # Return is ignored whenever multiple phases are ran.
     # This return is for test generators to emit python generators (yielding test vector outputs)
+
+    if is_pytest and is_generator:
+        results: MultiPhaseResult = {}
+
+        for phase in run_phases:
+            ret = fn(spec=targets[phase], phases=phase_dir, *args, **kw)
+            results[phase] = ret
+
+        return results
+
     for phase in run_phases:
         ret = fn(spec=targets[phase], phases=phase_dir, *args, **kw)
 
@@ -610,8 +621,21 @@ def with_phases(phases, other_phases=None):
                     ret = _run_test_case_with_phases(
                         fn, _phases, _other_phases, kw, args, is_fork_transition=True
                     )
+                # When running pytest, go through `fork_metas` instead of using `phases`
+                elif is_pytest and is_generator:
+                    # In generator mode, accumulate results from all fork_metas
+                    # so that each fork transition produces a test vector.
+                    accumulated = {}
+                    for fork_meta in fork_metas:
+                        _phases = [fork_meta.pre_fork_name]
+                        _other_phases = [fork_meta.post_fork_name]
+                        ret = _run_test_case_with_phases(
+                            fn, _phases, _other_phases, kw, args, is_fork_transition=True
+                        )
+                        if isinstance(ret, dict):
+                            accumulated.update(ret)
+                    ret = accumulated if accumulated else None
                 else:
-                    # When running pytest, go through `fork_metas` instead of using `phases`
                     for fork_meta in fork_metas:
                         _phases = [fork_meta.pre_fork_name]
                         _other_phases = [fork_meta.post_fork_name]
@@ -788,7 +812,7 @@ def _with_config_overrides_emit(config_overrides, emitted_fork=None):
 def only_generator(reason):
     def _decorator(inner):
         def _wrapper(*args, **kwargs):
-            if is_pytest:
+            if not is_generator and is_pytest:
                 dump_skipping_message(reason)
                 return None
             return inner(*args, **kwargs)

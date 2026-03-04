@@ -74,6 +74,7 @@ help-verbose:
 	@echo "    bls=<type>        BLS library type (py_ecc, milagro, arkworks, fastest; default: fastest)"
 	@echo "    kzg=<type>        KZG library type (spec, ckzg; default: ckzg)"
 	@echo "    component=<value> Test component: (all, pyspec, fw; default: all)"
+	@echo "    reftests=<bool>   Generate reference tests (default: false)"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make test"
@@ -223,6 +224,7 @@ _pyspec: _sync
 ###############################################################################
 
 TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
+PYTEST_REFTESTS_DIR = $(CURDIR)/../pytest-reftests/tests
 
 # Run pyspec tests.
 test: MAYBE_TEST := $(if $(k),-k=$(k))
@@ -230,11 +232,12 @@ test: MAYBE_TEST := $(if $(k),-k=$(k))
 # Parallelism makes debugging difficult (print doesn't work).
 test: MAYBE_PARALLEL := $(if $(k),,-n logical --dist=worksteal)
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
-test: PRESET := $(if $(filter fw,$(component)),,--preset=$(if $(preset),$(preset),minimal))
+test: PRESET := $(if $(filter fw,$(component)),,$(if $(preset),--preset=$(preset),))
 test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),fastest))
 test: KZG := $(if $(filter fw,$(component)),,--kzg-type=$(if $(kzg),$(kzg),ckzg))
 test: MAYBE_SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth_consensus_specs)
 test: MAYBE_INFRA := $(if $(filter pyspec,$(component)),,$(CURDIR)/tests/infra)
+test: MAYBE_REFTESTS := $(if $(filter true,$(reftests)),--reftests --reftests-output $(PYTEST_REFTESTS_DIR))
 test: _pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(UV_RUN) pytest \
@@ -248,6 +251,7 @@ test: _pyspec
 		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
 		--html=$(TEST_REPORT_DIR)/test_results.html \
 		--self-contained-html \
+		$(MAYBE_REFTESTS) \
 		$(MAYBE_INFRA) \
 		$(MAYBE_SPEC)
 
