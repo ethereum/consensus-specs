@@ -232,7 +232,7 @@ test: MAYBE_TEST := $(if $(k),-k=$(k))
 # Parallelism makes debugging difficult (print doesn't work).
 test: MAYBE_PARALLEL := $(if $(k),,-n logical --dist=worksteal)
 test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
-test: PRESET := $(if $(filter fw,$(component)),,--preset=$(if $(preset),$(preset),minimal))
+test: PRESET := $(if $(filter fw,$(component)),,$(if $(preset),--preset=$(preset),))
 test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),fastest))
 test: KZG := $(if $(filter fw,$(component)),,--kzg-type=$(if $(kzg),$(kzg),ckzg))
 test: MAYBE_SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth_consensus_specs)
