@@ -125,22 +125,16 @@ help-verbose:
 	@echo "  reference tests to the ../consensus-spec-tests/ directory."
 	@echo ""
 	@echo "  Parameters:"
-	@echo "    runner=<runner>   Generate tests for specific runner (bls, operations, etc.)"
-	@echo "    k=<test>          Generate specific test cases (comma-separated)"
-	@echo "    fork=<fork>       Generate for specific fork (comma-separated)"
-	@echo "    preset=<preset>   Generate for specific preset (comma-separated)"
-	@echo "    threads=N         Number of threads to use (default: auto)"
-	@echo "    verbose=true      Enable verbose output"
+	@echo "    k=<test>          Generate specific test cases (pytest -k expression)"
+	@echo "    fork=<fork>       Generate for specific fork"
+	@echo "    preset=<preset>   Generate for specific preset"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make reftests"
-	@echo "    make reftests runner=bls"
-	@echo "    make reftests runner=operations k=invalid_committee_index"
-	@echo "    make reftests runner=operations fork=fulu"
-	@echo "    make reftests runner=operations preset=mainnet"
-	@echo "    make reftests runner=operations k=invalid_committee_index,invalid_too_many_committee_bits"
-	@echo "    make reftests runner=operations preset=mainnet fork=fulu k=invalid_committee_index"
-	@echo "    make reftests runner=bls threads=1 verbose=true"
+	@echo "    make reftests k=invalid_committee_index"
+	@echo "    make reftests fork=fulu"
+	@echo "    make reftests preset=mainnet"
+	@echo "    make reftests preset=mainnet fork=fulu k=invalid_committee_index"
 	@echo ""
 	@echo "$(BOLD)make comptests$(NORM)"
 	@echo ""
@@ -192,8 +186,8 @@ help-verbose:
 
 VENV = .venv
 
-# Use editable installs for all non-generation targets, but use non-editable
-# installs for generators. More details: ethereum/consensus-specs#4633.
+# Use non-editable installs for compliance test generators.
+# More details: ethereum/consensus-specs#4633.
 UV_RUN    = uv run
 UV_RUN_NE = uv run --no-editable --reinstall-package=eth-consensus-specs
 
@@ -347,21 +341,21 @@ TEST_VECTOR_DIR = $(CURDIR)/../consensus-spec-tests/tests
 COMP_TEST_VECTOR_DIR = $(CURDIR)/../compliance-spec-tests/tests
 
 # Generate reference tests.
-reftests: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
-reftests: MAYBE_THREADS := $(if $(threads),--threads=$(threads))
-reftests: MAYBE_RUNNERS := $(if $(runner),--runners $(subst ${COMMA}, ,$(runner)))
-reftests: MAYBE_TESTS := $(if $(k),--cases $(subst ${COMMA}, ,$(k)))
-reftests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
-reftests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
+reftests: MAYBE_FORK := $(if $(fork),--fork=$(fork))
+reftests: MAYBE_PRESET := $(if $(preset),--preset=$(preset),)
+reftests: MAYBE_TEST := $(if $(k),-k=$(k))
 reftests: _pyspec
-	@$(UV_RUN_NE) python -m tests.generators.main \
-		--output $(TEST_VECTOR_DIR) \
-		$(MAYBE_VERBOSE) \
-		$(MAYBE_THREADS) \
-		$(MAYBE_RUNNERS) \
-		$(MAYBE_TESTS) \
-		$(MAYBE_FORKS) \
-		$(MAYBE_PRESETS)
+	@mkdir -p $(TEST_REPORT_DIR)
+	@$(UV_RUN) pytest \
+		-n logical --dist=worksteal \
+		--capture=no \
+		$(MAYBE_TEST) \
+		$(MAYBE_FORK) \
+		$(MAYBE_PRESET) \
+		--bls-type=fastest \
+		--kzg-type=ckzg \
+		--reftests --reftests-output $(TEST_VECTOR_DIR) \
+		$(PYSPEC_DIR)/eth_consensus_specs
 
 # Generate compliance tests (fork choice).
 comptests: FC_GEN_CONFIG := $(if $(fc_gen_config),$(fc_gen_config),tiny)
