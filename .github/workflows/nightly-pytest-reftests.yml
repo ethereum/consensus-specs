@@ -52,22 +52,22 @@ jobs:
           tar -czvf minimal.tar.gz tests/minimal
           tar -czvf mainnet.tar.gz tests/mainnet
       - name: Upload general.tar.gz
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: pytest-reftests-general
           path: pytest-reftests/general.tar.gz
       - name: Upload minimal.tar.gz
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: pytest-reftests-minimal
           path: pytest-reftests/minimal.tar.gz
       - name: Upload mainnet.tar.gz
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: pytest-reftests-mainnet
           path: pytest-reftests/mainnet.tar.gz
       - name: Upload pytest-reftests.log
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         if: always()
         with:
           name: pytest-reftests.log
