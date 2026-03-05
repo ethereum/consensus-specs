@@ -13,6 +13,7 @@ from eth_consensus_specs.utils import bls
 from eth_consensus_specs.utils.bls import only_with_bls
 from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root
 
+
 def get_proposer_index_maybe(spec, state, slot, proposer_index=None):
     if proposer_index is None:
         assert state.slot <= slot

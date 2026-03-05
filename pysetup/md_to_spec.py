@@ -440,7 +440,6 @@ class MarkdownToSpec:
                 self.spec["constant_vars"], self.spec["preset_dep_constant_vars"], self.preset_name
             )
 
-
     def _build_spec_object(self) -> SpecObject:
         """
         Returns the SpecObject using all collected data.
@@ -571,7 +570,6 @@ def _update_constant_vars_with_kzg_setups(
     constant_vars["KZG_SETUP_G2_MONOMIAL"] = VariableDefinition(
         constant_vars["KZG_SETUP_G2_MONOMIAL"].value, str(kzg_setups[2]), comment, None
     )
-
 
 
 @cache
