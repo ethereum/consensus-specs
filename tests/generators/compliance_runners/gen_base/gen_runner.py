@@ -16,9 +16,9 @@ from rich.text import Text
 
 from eth_consensus_specs.test import context  # noqa: F401 — imported to break circular import chain
 from eth_consensus_specs.test.exceptions import SkippedTest
+from tests.infra.dumper import Dumper
 
 from .args import parse_arguments
-from .dumper import Dumper
 from .gen_typing import TestCase
 from .utils import install_sigint_handler, time_since
 
@@ -122,10 +122,6 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
     start_time = time.time()
     if args is None:
         args = parse_arguments()
-
-    # Bail here if we are checking modules.
-    if args.modcheck:
-        return
 
     def debug_print(msg):
         """Only print if verbose is enabled."""
