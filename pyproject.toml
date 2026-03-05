@@ -44,7 +44,7 @@ lint = [
   "mdformat-toc==0.5.0",
   "mdformat==1.0.0",
   "mypy==1.19.1",
-  "ruff==0.15.1",
+  "ruff==0.15.4",
 ]
 generator = [
   "filelock==3.24.2",
