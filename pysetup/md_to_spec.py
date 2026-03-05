@@ -432,7 +432,7 @@ class MarkdownToSpec:
 
     def _finalize_types(self) -> None:
         """
-        Calls helper functions to update KZG and CURDLEPROOFS setups if needed.
+        Calls helper functions to update KZG setups if needed.
         """
         # Update KZG trusted setup if needed
         if any("KZG_SETUP" in name for name in self.spec["constant_vars"]):
@@ -440,11 +440,6 @@ class MarkdownToSpec:
                 self.spec["constant_vars"], self.spec["preset_dep_constant_vars"], self.preset_name
             )
 
-        # Update CURDLEPROOFS CRS if needed
-        if any("CURDLEPROOFS_CRS" in name for name in self.spec["constant_vars"]):
-            _update_constant_vars_with_curdleproofs_crs(
-                self.spec["constant_vars"], self.preset_name
-            )
 
     def _build_spec_object(self) -> SpecObject:
         """
@@ -535,32 +530,9 @@ def _load_kzg_trusted_setups(preset_name: str) -> tuple[list[str], list[str], li
     return trusted_setup_G1_monomial, trusted_setup_G1_lagrange, trusted_setup_G2_monomial
 
 
-@cache
-def _load_curdleproofs_crs(preset_name: str) -> dict[str, list[str]]:
-    """
-    NOTE: File generated from https://github.com/asn-d6/curdleproofs/blob/8e8bf6d4191fb6a844002f75666fb7009716319b/tests/crs.rs#L53-L67
-    """
-    file_path = (
-        str(Path(__file__).parent.parent)
-        + "/presets/"
-        + preset_name
-        + "/trusted_setups/curdleproofs_crs.json"
-    )
-
-    with open(file_path) as f:
-        json_data = json.load(f)
-
-    return json_data
-
-
 ALL_KZG_SETUPS = {
     "minimal": _load_kzg_trusted_setups("minimal"),
     "mainnet": _load_kzg_trusted_setups("mainnet"),
-}
-
-ALL_CURDLEPROOFS_CRS = {
-    "minimal": _load_curdleproofs_crs("minimal"),
-    "mainnet": _load_curdleproofs_crs("mainnet"),
 }
 
 
@@ -600,19 +572,6 @@ def _update_constant_vars_with_kzg_setups(
         constant_vars["KZG_SETUP_G2_MONOMIAL"].value, str(kzg_setups[2]), comment, None
     )
 
-
-def _update_constant_vars_with_curdleproofs_crs(
-    constant_vars: dict[str, VariableDefinition], preset_name: str
-) -> None:
-    comment = "noqa: E501"
-    constant_vars["CURDLEPROOFS_CRS"] = VariableDefinition(
-        None,
-        "curdleproofs.CurdleproofsCrs.from_json(json.dumps("
-        + str(ALL_CURDLEPROOFS_CRS[str(preset_name)]).replace("0x", "")
-        + "))",
-        comment,
-        None,
-    )
 
 
 @cache
