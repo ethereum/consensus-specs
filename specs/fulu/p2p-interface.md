@@ -421,7 +421,8 @@ subnet (gossipsub topic), it can be used for all subnets.
 Due to the nature of partial messages, it is possible to get the
 `PartialDataColumnHeader` with no cells, and get cells in a future response.
 
- For all partial messages:
+For all partial messages:
+
 - _[REJECT]_ A header and/or cells are present in the message (it is not
   semantically empty).
 
