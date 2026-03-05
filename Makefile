@@ -24,7 +24,6 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	coverage      \
 	help          \
 	lint          \
-	reftests      \
 	serve_docs    \
 	test
 
@@ -49,7 +48,6 @@ help-nonverbose:
 	@echo "make $(BOLD)comptests$(NORM)  -- generate compliance tests"
 	@echo "make $(BOLD)coverage$(NORM)   -- run pyspec tests with coverage"
 	@echo "make $(BOLD)lint$(NORM)       -- run linters and checks"
-	@echo "make $(BOLD)reftests$(NORM)   -- generate reference tests"
 	@echo "make $(BOLD)serve_docs$(NORM) -- start a local docs web server"
 	@echo "make $(BOLD)test$(NORM)       -- run pyspec tests"
 	@echo ""
@@ -84,6 +82,9 @@ help-verbose:
 	@echo "    make test preset=mainnet fork=deneb k=test_verify_kzg_proof"
 	@echo "    make test bls=arkworks"
 	@echo "    make test component=fw"
+	@echo "    make test reftests=true"
+	@echo "    make test reftests=true fork=fulu"
+	@echo "    make test reftests=true preset=mainnet fork=fulu k=invalid_committee_index"
 	@echo ""
 	@echo "$(BOLD)make coverage$(NORM)"
 	@echo ""
@@ -117,24 +118,6 @@ help-verbose:
 	@echo ""
 	@echo "$(BOLD)TEST GENERATION$(NORM)"
 	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
-	@echo ""
-	@echo "$(BOLD)make reftests$(NORM)"
-	@echo ""
-	@echo "  Generates reference test vectors for consensus spec tests. These tests are"
-	@echo "  used by client implementations to verify correctness. This command will write"
-	@echo "  reference tests to the ../consensus-spec-tests/ directory."
-	@echo ""
-	@echo "  Parameters:"
-	@echo "    k=<test>          Generate specific test cases (pytest -k expression)"
-	@echo "    fork=<fork>       Generate for specific fork"
-	@echo "    preset=<preset>   Generate for specific preset"
-	@echo ""
-	@echo "  Examples:"
-	@echo "    make reftests"
-	@echo "    make reftests k=invalid_committee_index"
-	@echo "    make reftests fork=fulu"
-	@echo "    make reftests preset=mainnet"
-	@echo "    make reftests preset=mainnet fork=fulu k=invalid_committee_index"
 	@echo ""
 	@echo "$(BOLD)make comptests$(NORM)"
 	@echo ""
@@ -218,7 +201,7 @@ _pyspec: _sync
 ###############################################################################
 
 TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
-PYTEST_REFTESTS_DIR = $(CURDIR)/../pytest-reftests/tests
+TEST_VECTOR_DIR = $(CURDIR)/../consensus-spec-tests/tests
 
 # Run pyspec tests.
 test: MAYBE_TEST := $(if $(k),-k=$(k))
@@ -231,7 +214,7 @@ test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),faste
 test: KZG := $(if $(filter fw,$(component)),,--kzg-type=$(if $(kzg),$(kzg),ckzg))
 test: MAYBE_SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth_consensus_specs)
 test: MAYBE_INFRA := $(if $(filter pyspec,$(component)),,$(CURDIR)/tests/infra)
-test: MAYBE_REFTESTS := $(if $(filter true,$(reftests)),--reftests --reftests-output $(PYTEST_REFTESTS_DIR))
+test: MAYBE_REFTESTS := $(if $(filter true,$(reftests)),--reftests --reftests-output $(TEST_VECTOR_DIR))
 test: _pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(UV_RUN) pytest \
@@ -337,25 +320,7 @@ lint: _pyspec
 ###############################################################################
 
 COMMA:= ,
-TEST_VECTOR_DIR = $(CURDIR)/../consensus-spec-tests/tests
 COMP_TEST_VECTOR_DIR = $(CURDIR)/../compliance-spec-tests/tests
-
-# Generate reference tests.
-reftests: MAYBE_FORK := $(if $(fork),--fork=$(fork))
-reftests: MAYBE_PRESET := $(if $(preset),--preset=$(preset),)
-reftests: MAYBE_TEST := $(if $(k),-k=$(k))
-reftests: _pyspec
-	@mkdir -p $(TEST_REPORT_DIR)
-	@$(UV_RUN) pytest \
-		-n logical --dist=worksteal \
-		--capture=no \
-		$(MAYBE_TEST) \
-		$(MAYBE_FORK) \
-		$(MAYBE_PRESET) \
-		--bls-type=fastest \
-		--kzg-type=ckzg \
-		--reftests --reftests-output $(TEST_VECTOR_DIR) \
-		$(PYSPEC_DIR)/eth_consensus_specs
 
 # Generate compliance tests (fork choice).
 comptests: FC_GEN_CONFIG := $(if $(fc_gen_config),$(fc_gen_config),tiny)
