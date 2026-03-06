@@ -63,16 +63,9 @@ reference tests which are built from the latest version of the specifications
 
 ### Prerequisites
 
-This project uses `uv` ([docs.astral.sh/uv](https://docs.astral.sh/uv/)) to
-manage its dependencies and virtual environment. `uv` can
-[download Python](https://docs.astral.sh/uv/guides/install-python/#installing-a-specific-version)
-for your target platform if one of the required versions (3.10-3.13) is not
-available natively.
+Install [`uv`](https://docs.astral.sh/uv/) with:
 
-`uv` can be installed via curl (recommended over a pip-install as it can
-self-update and manage Python versions):
-
-```console
+```
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
@@ -80,19 +73,19 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 Clone the repository with:
 
-```bash
+```
 git clone https://github.com/ethereum/consensus-specs.git
 ```
 
 Switch to the directory:
 
-```bash
+```
 cd consensus-specs
 ```
 
 View the help output:
 
-```bash
+```
 make help
 ```
 

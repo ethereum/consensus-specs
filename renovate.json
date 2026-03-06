@@ -4,6 +4,10 @@
   "schedule": ["before 12pm on monday"],
   "packageRules": [
     {
+      "matchDepNames": ["python"],
+      "enabled": false
+    },
+    {
       "matchManagers": ["uv"],
       "groupName": "python dependencies"
     },
