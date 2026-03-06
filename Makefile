@@ -12,7 +12,6 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	fulu      \
 	gloas     \
 	heze      \
-	eip6800   \
 	eip7928   \
 	eip8025
 
