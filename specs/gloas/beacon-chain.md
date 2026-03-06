@@ -833,7 +833,7 @@ def process_slot(state: BeaconState) -> None:
 
 #### Modified `process_epoch`
 
-*Note*: The function `process_epoch` is modified inGloas to call the new helpers
+*Note*: The function `process_epoch` is modified in Gloas to call the new helpers
 `process_builder_pending_payments` and `process_ptc_lookbehind`.
 
 ```python
