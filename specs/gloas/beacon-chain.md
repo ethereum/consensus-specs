@@ -881,12 +881,13 @@ def process_builder_pending_payments(state: BeaconState) -> None:
 ```python
 def process_ptc_lookbehind(state: BeaconState) -> None:
     """
-    Get the payload timeliness committee for the given ``slot``.
+    Update the cached PTC window for the previous and current epochs.
     """
-    # Shift out ptc members in the first epoch
+    # Shift out PTC members in the first epoch
     state.ptc_lookbehind[:SLOTS_PER_EPOCH] = state.ptc_lookbehind[SLOTS_PER_EPOCH:]
-    # Fill in the last epoch with new ptc indices
-    start_slot = state.slot + 1 - SLOTS_PER_EPOCH
+    # Fill in the last epoch with the PTC for the epoch that starts after this boundary
+    next_epoch = Epoch(get_current_epoch(state) + 1)
+    start_slot = compute_start_slot_at_epoch(next_epoch)
     last_epoch_committees = [
         compute_ptc(state, Slot(slot)) for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH)
     ]
