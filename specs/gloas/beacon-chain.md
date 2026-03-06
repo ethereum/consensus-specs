@@ -885,7 +885,7 @@ def process_ptc_lookbehind(state: BeaconState) -> None:
     """
     # Shift out ptc members in the first epoch
     state.ptc_lookbehind[:SLOTS_PER_EPOCH] = state.ptc_lookbehind[SLOTS_PER_EPOCH:]
-    # Fill in the last epoch withnew ptc indices
+    # Fill in the last epoch with new ptc indices
     start_slot = state.slot + 1 - SLOTS_PER_EPOCH
     last_epoch_committees = [
         compute_ptc(state, Slot(slot)) for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH)
