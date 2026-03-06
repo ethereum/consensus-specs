@@ -6,7 +6,6 @@ from typing import Any, TypedDict
 
 import _pytest
 import pytest
-from pytest import StashKey, TestReport
 
 from eth_consensus_specs.gen_helpers.gen_base.dumper import Dumper
 from eth_consensus_specs.test import context
@@ -184,8 +183,6 @@ class SpecTestFunction(pytest.Function):
 
 
 class YieldGeneratorPlugin:
-    phase_report_key: StashKey[dict[str, TestReport]] = StashKey()
-
     def __init__(self, config):
         self.config = config
         self.output_dir: str = config.getoption("--reftests-output")
@@ -255,41 +252,20 @@ class YieldGeneratorPlugin:
         if hasattr(result, "__await__") or hasattr(result, "__aiter__"):
             _pytest.compat.async_fail(pyfuncitem.nodeid)
 
-        pyfuncitem.result = self._consume_result(result)
+        consumed = self._consume_result(result)
+
+        # Write test vectors immediately to avoid holding data in memory
+        # while pytest runs reporting hooks between call and protocol phases.
+        if self.reftests_enabled and consumed is not None:
+            manifest = pyfuncitem.get_manifest()
+            if manifest is not None:
+                self.generate_test_vector(manifest, consumed)
+            else:
+                pyfuncitem.result = consumed
+        else:
+            pyfuncitem.result = consumed
+
         return True
-
-    @pytest.hookimpl(wrapper=True, tryfirst=True)
-    def pytest_runtest_makereport(self, item, call):
-        rep = yield
-        item.stash.setdefault(self.phase_report_key, {})[rep.when] = rep
-        return rep
-
-    def _should_generate(self, item) -> bool:
-        """Check whether a test vector should be generated for this item."""
-        if not self.reftests_enabled:
-            return False
-        if not isinstance(item, SpecTestFunction):
-            return False
-        reports = item.stash.get(self.phase_report_key, {})
-        return not any(
-            reports.get(phase) is not None and reports[phase].skipped for phase in ("setup", "call")
-        )
-
-    @pytest.hookimpl(hookwrapper=True)
-    def pytest_runtest_protocol(self, item, nextitem):
-        yield
-
-        if not self._should_generate(item):
-            return
-
-        manifest = item.get_manifest()
-        result = item.get_result()
-
-        if manifest is not None and result is None:
-            item.warn(pytest.PytestWarning(f"manifest but vector not created for {item.name}"))
-
-        if manifest is not None and result is not None:
-            self.generate_test_vector(manifest, result)
 
     def pytest_collection_modifyitems(self, config, items):
         if not self.reftests_enabled:
