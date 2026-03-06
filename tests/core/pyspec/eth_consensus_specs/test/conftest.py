@@ -120,7 +120,7 @@ def preset(request):
         alt_context.DEFAULT_TEST_PRESET = spec_preset
 
 
-@fixture(autouse=True)
+@fixture(autouse=True, scope="session")
 def run_phases(request):
     forks = request.config.getoption("--fork", default=None)
     if forks:
@@ -131,14 +131,14 @@ def run_phases(request):
         context.DEFAULT_PYTEST_FORKS = ALL_PHASES
 
 
-@fixture(autouse=True)
+@fixture(autouse=True, scope="session")
 def bls_default(request):
     disable_bls = request.config.getoption("--disable-bls")
     if disable_bls:
         context.DEFAULT_BLS_ACTIVE = False
 
 
-@fixture(autouse=True)
+@fixture(autouse=True, scope="session")
 def bls_type(request):
     bls_type = request.config.getoption("--bls-type")
     if bls_type == "py_ecc":
@@ -171,7 +171,7 @@ def _apply_ckzg(request):
             apply_ckzg_to_spec(spec, ts)
 
 
-@pytest.fixture(scope="session", autouse=True)
+@fixture(autouse=True, scope="session")
 def kzg_type(request):
     kzg_type = request.config.getoption("--kzg-type")
     if kzg_type == "ckzg":
