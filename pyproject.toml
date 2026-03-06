@@ -10,6 +10,7 @@ readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11, <3.14"
 urls = { homepage = "https://github.com/ethereum/consensus-specs" }
 dependencies = [
+  "eth-remerkleable==0.1.29",
   "eth-utils==5.3.1",
   "frozendict==2.4.7",
   "lru-dict==1.4.1",
@@ -17,23 +18,23 @@ dependencies = [
   "milagro_bls_binding==1.9.0",
   "py_arkworks_bls12381==0.4.1",
   "py_ecc==8.0.0",
-  "eth-remerkleable==0.1.29",
   "ruamel.yaml==0.19.1",
   "setuptools==82.0.0",
-  "trie==3.1.0",
 ]
 
 [project.optional-dependencies]
 test = [
   "ckzg==2.1.6",
-  "eth-hash[pycryptodome]==0.7.1",
   "deepdiff==8.6.1",
+  "eth-hash[pycryptodome]==0.7.1",
   "psutil==7.2.2",
   "pytest-cov==7.0.0",
   "pytest-html==4.2.0",
   "pytest-sugar==1.1.1",
   "pytest-xdist==3.8.0",
   "pytest==9.0.2",
+  "python-snappy==0.7.3",
+  "trie==3.1.0",
 ]
 lint = [
   "codespell==2.4.2",
@@ -48,9 +49,6 @@ lint = [
 generator = [
   "minizinc==0.10.0",
   "pathos==0.3.5",
-  "psutil==7.2.2",
-  "pytest==9.0.2",
-  "python-snappy==0.7.3",
   "rich==14.3.3",
   "tqdm==4.67.3",
 ]

@@ -368,7 +368,6 @@ dependencies = [
     { name = "py-ecc" },
     { name = "ruamel-yaml" },
     { name = "setuptools" },
-    { name = "trie" },
 ]
 
 [package.optional-dependencies]
@@ -382,9 +381,6 @@ docs = [
 generator = [
     { name = "minizinc" },
     { name = "pathos" },
-    { name = "psutil" },
-    { name = "pytest" },
-    { name = "python-snappy" },
     { name = "rich" },
     { name = "tqdm" },
 ]
@@ -408,6 +404,8 @@ test = [
     { name = "pytest-html" },
     { name = "pytest-sugar" },
     { name = "pytest-xdist" },
+    { name = "python-snappy" },
+    { name = "trie" },
 ]
 
 [package.metadata]
@@ -435,23 +433,21 @@ requires-dist = [
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = "==9.7.4" },
     { name = "mypy", marker = "extra == 'lint'", specifier = "==1.19.1" },
     { name = "pathos", marker = "extra == 'generator'", specifier = "==0.3.5" },
-    { name = "psutil", marker = "extra == 'generator'", specifier = "==7.2.2" },
     { name = "psutil", marker = "extra == 'test'", specifier = "==7.2.2" },
     { name = "py-arkworks-bls12381", specifier = "==0.4.1" },
     { name = "py-ecc", specifier = "==8.0.0" },
-    { name = "pytest", marker = "extra == 'generator'", specifier = "==9.0.2" },
     { name = "pytest", marker = "extra == 'test'", specifier = "==9.0.2" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = "==7.0.0" },
     { name = "pytest-html", marker = "extra == 'test'", specifier = "==4.2.0" },
     { name = "pytest-sugar", marker = "extra == 'test'", specifier = "==1.1.1" },
     { name = "pytest-xdist", marker = "extra == 'test'", specifier = "==3.8.0" },
-    { name = "python-snappy", marker = "extra == 'generator'", specifier = "==0.7.3" },
+    { name = "python-snappy", marker = "extra == 'test'", specifier = "==0.7.3" },
     { name = "rich", marker = "extra == 'generator'", specifier = "==14.3.3" },
     { name = "ruamel-yaml", specifier = "==0.19.1" },
     { name = "ruff", marker = "extra == 'lint'", specifier = "==0.15.5" },
     { name = "setuptools", specifier = "==82.0.0" },
     { name = "tqdm", marker = "extra == 'generator'", specifier = "==4.67.3" },
-    { name = "trie", specifier = "==3.1.0" },
+    { name = "trie", marker = "extra == 'test'", specifier = "==3.1.0" },
 ]
 provides-extras = ["test", "lint", "generator", "docs"]
 
