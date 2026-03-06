@@ -14,7 +14,7 @@ from eth_consensus_specs.capella import {preset_name} as capella
     @classmethod
     def classes(cls):
         return """
-BLSFieldElement = bls.Scalar
+BLSFieldElement: TypeAlias = bls.Scalar
 
 
 class Polynomial(list):
