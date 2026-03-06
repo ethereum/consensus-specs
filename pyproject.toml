@@ -16,7 +16,7 @@ dependencies = [
   "lru-dict==1.4.1",
   "marko==2.2.2",
   "milagro_bls_binding==1.9.0",
-  "py_arkworks_bls12381==0.3.8",
+  "py_arkworks_bls12381==0.4.1",
   "py_ecc==8.0.0",
   "pycryptodome==3.23.0",
   "eth-remerkleable==0.1.29",
