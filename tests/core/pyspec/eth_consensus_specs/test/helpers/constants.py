@@ -16,7 +16,6 @@ GLOAS = SpecForkName("gloas")
 HEZE = SpecForkName("heze")
 
 # Experimental phases (not included in default "ALL_PHASES"):
-EIP7441 = SpecForkName("eip7441")
 EIP7928 = SpecForkName("eip7928")
 EIP8025 = SpecForkName("eip8025")
 
@@ -45,7 +44,7 @@ LIGHT_CLIENT_TESTING_FORKS = [item for item in MAINNET_FORKS if item != PHASE0] 
 # The forks that output to the test vectors.
 TESTGEN_FORKS = (*MAINNET_FORKS, FULU, GLOAS, HEZE)
 # Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
-ALLOWED_TEST_RUNNER_FORKS = (*ALL_PHASES, EIP7441)
+ALLOWED_TEST_RUNNER_FORKS = ALL_PHASES
 
 # NOTE: the same definition as in `pysetup/md_doc_paths.py`
 PREVIOUS_FORK_OF = {
@@ -60,7 +59,6 @@ PREVIOUS_FORK_OF = {
     GLOAS: FULU,
     HEZE: GLOAS,
     # Experimental patches
-    EIP7441: CAPELLA,
     EIP7928: FULU,
     EIP8025: FULU,
 }
