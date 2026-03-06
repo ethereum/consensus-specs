@@ -16,6 +16,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     get_attester_slashing_file_name,
     get_block_file_name,
     get_execution_payload_envelope_file_name,
+    get_payload_attestation_message_file_name,
     on_tick_and_append_step,
     output_store_checks,
 )
@@ -256,6 +257,8 @@ def events_to_test_vector(events) -> list[Any]:
                 event_id = data
             elif event_kind == "execution_payload":
                 event_id = data
+            elif event_kind == "payload_attestation":
+                event_id = data
             else:
                 assert False, event_kind
             test_vector.append((current_time, (event_kind, event_id)))
@@ -299,6 +302,10 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
         envelope = message.payload
         yield get_execution_payload_envelope_file_name(envelope), envelope
 
+    for message in test_data.payload_atts:
+        ptc_message = message.payload
+        yield get_payload_attestation_message_file_name(ptc_message), ptc_message
+
     test_steps = []
     scheduler = MessageScheduler(spec, store)
 
@@ -328,6 +335,14 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                             assert recovery
                             _payload_id = get_execution_payload_envelope_file_name(event_data)
                             test_steps.append({"execution_payload": _payload_id, "valid": True})
+                        elif event_kind == "payload_attestation":
+                            assert recovery
+                            _payload_attestation_id = get_payload_attestation_message_file_name(
+                                event_data
+                            )
+                            test_steps.append(
+                                {"payload_attestation": _payload_attestation_id, "valid": True}
+                            )
                         else:
                             assert False
                 else:
@@ -360,6 +375,18 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                             else:
                                 assert False
                                 test_steps.append({"attestation": _attestation_id, "valid": True})
+                        elif event_kind == "execution_payload":
+                            assert recovery
+                            _payload_id = get_execution_payload_envelope_file_name(event_data)
+                            test_steps.append({"execution_payload": _payload_id, "valid": True})
+                        elif event_kind == "payload_attestation":
+                            _payload_attestation_id = get_payload_attestation_message_file_name(
+                                event_data
+                            )
+                            assert recovery
+                            test_steps.append(
+                                {"payload_attestation": _payload_attestation_id, "valid": True}
+                            )
                         else:
                             assert False
                 else:
@@ -389,6 +416,12 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
             envelope_id = get_execution_payload_envelope_file_name(envelope)
             valid = scheduler.process_payload(envelope)
             test_steps.append({"execution_payload": envelope_id, "valid": valid})
+            output_store_checks(spec, store, test_steps)
+        elif kind == "payload_attestation":
+            ptc_message = data
+            ptc_message_id = get_payload_attestation_message_file_name(ptc_message)
+            valid = scheduler.process_payload_attestation_message(ptc_message, is_from_block=False)
+            test_steps.append({"payload_attestation": ptc_message_id, "valid": valid})
             output_store_checks(spec, store, test_steps)
         else:
             raise ValueError(f"not implemented {kind}")

@@ -10,6 +10,9 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
+from eth_consensus_specs.test.helpers.keys import (
+    privkeys,
+)
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
     transition_to,
@@ -363,7 +366,7 @@ def _generate_sm_link_tree(
                 while spec.get_beacon_proposer_index(state) not in advanced_branch_tip.participants:
                     next_slot(spec, state)
 
-                tip_block, _, _, _ = produce_block(spec, state, [])
+                tip_block, _, _, _, _ = produce_block(spec, state, [])
                 new_signed_blocks.append(tip_block)
 
                 assert state.current_justified_checkpoint.epoch == sm_link.target, (
@@ -461,6 +464,75 @@ def _spoil_attestation(spec, rnd: random.Random, attestation):
     attestation.data.target.epoch = spec.GENESIS_EPOCH
 
 
+def _spoil_payload_attestation_message(spec, rnd: random.Random, state, ptc_message):
+    ptc = spec.get_ptc(state, ptc_message.data.slot)
+    for validator_index in range(len(state.validators)):
+        if validator_index not in ptc:
+            ptc_message.validator_index = validator_index
+            return
+    ptc_message.validator_index = (ptc_message.validator_index + 1) % len(state.validators)
+
+
+def _get_random_payload_attestation_messages(spec, state, rnd: random.Random):
+    """Build random PayloadAttestationMessage objects with diverse payload_present values."""
+    attested_slot = state.latest_block_header.slot
+    if attested_slot != state.slot or attested_slot == 0:
+        return []
+
+    parent_header = state.latest_block_header.copy()
+    if parent_header.state_root == spec.Root():
+        parent_header.state_root = spec.hash_tree_root(state)
+    beacon_block_root = spec.hash_tree_root(parent_header)
+
+    ptc = spec.get_ptc(state, attested_slot)
+    if len(ptc) == 0:
+        return []
+
+    num_attesters = rnd.randint(len(ptc) // 2, len(ptc))
+    attesting_indices = rnd.sample(list(ptc), num_attesters) if num_attesters > 0 else []
+    if not attesting_indices:
+        return []
+
+    messages = []
+    for validator_index in attesting_indices:
+        if validator_index >= len(privkeys):
+            continue
+        data = spec.PayloadAttestationData(
+            beacon_block_root=beacon_block_root,
+            slot=attested_slot,
+            payload_present=rnd.choice([True, False]),
+        )
+        messages.append(spec.PayloadAttestationMessage(
+            validator_index=validator_index,
+            data=data,
+            signature=spec.BLSSignature(),
+        ))
+
+    return messages
+
+
+def _disseminate(rnd, message, off_chain_list, in_block_list,
+                 off_chain_rate, on_chain_rate,
+                 with_invalid_messages, spoil_fn=None):
+    """
+    Randomly assigns a protocol message to off-chain, on-chain, or both dissemination paths.
+    Optionally spoils the message to make it invalid (off-chain only path).
+    """
+    choice = rnd.randint(0, 99)
+    if choice < off_chain_rate:
+        if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
+            if spoil_fn:
+                spoil_fn(message)
+            off_chain_list.append(ProtocolMessage(message, False))
+        else:
+            off_chain_list.append(ProtocolMessage(message, True))
+    elif choice < off_chain_rate + on_chain_rate:
+        in_block_list.append(message)
+    else:
+        off_chain_list.append(ProtocolMessage(message, True))
+        in_block_list.append(message)
+
+
 def _generate_block_tree(
     spec,
     anchor_tip: BranchTip,
@@ -469,7 +541,7 @@ def _generate_block_tree(
     block_parents,
     with_attester_slashings,
     with_invalid_messages,
-) -> ([], [], [], []):
+) -> ([], [], [], [], []):
     in_block_attestations = anchor_tip.attestations.copy()
     post_states = [anchor_tip.beacon_state.copy()]
     current_slot = anchor_tip.beacon_state.slot
@@ -478,9 +550,11 @@ def _generate_block_tree(
     in_block_attester_slashings = []
     attester_slashings_count = 0
     out_of_block_attestation_messages = []
+    out_of_block_pa_messages = []
     out_of_block_attester_slashing_messages = []
     signed_block_messages = []
     signed_envelope_messages = []
+    in_block_pa_messages = []
 
     while block_index < len(block_parents):
         envelope = None
@@ -505,15 +579,23 @@ def _generate_block_tree(
             ):
                 # Do not include attestations and slashings into invalid block
                 # as clients may opt in to process or not process attestations contained by invalid block
-                signed_block, _, _, _ = produce_block(spec, parent_state, [], [])
+                signed_block, _, _, _, _ = produce_block(spec, parent_state, [], [], [])
                 _spoil_block(spec, rnd, signed_block)
                 signed_block_messages.append(ProtocolMessage(signed_block, False))
                 # Append the parent state as the post state as if the block were not applied
                 post_states.append(parent_state)
             else:
-                signed_block, post_state, in_block_attestations, in_block_attester_slashings = (
+                (
+                    signed_block,
+                    post_state,
+                    in_block_attestations,
+                    in_block_attester_slashings,
+                    in_block_pa_messages,
+                ) = (
                     produce_block(
-                        spec, parent_state, in_block_attestations, in_block_attester_slashings
+                        spec, parent_state, in_block_attestations,
+                        in_block_attester_slashings,
+                        in_block_pa_messages
                     )
                 )
 
@@ -559,22 +641,21 @@ def _generate_block_tree(
 
             # Sample on chain and off chain attestations
             for a in attestations_in_slot:
-                choice = rnd.randint(0, 99)
-                if choice < OFF_CHAIN_ATTESTATION_RATE:
-                    if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
-                        _spoil_attestation(spec, rnd, a)
-                        attestation_message = ProtocolMessage(a, False)
-                    else:
-                        attestation_message = ProtocolMessage(a, True)
-                    out_of_block_attestation_messages.append(attestation_message)
-                elif choice < OFF_CHAIN_ATTESTATION_RATE + ON_CHAIN_ATTESTATION_RATE:
-                    in_block_attestations.insert(0, a)
-                else:
-                    out_of_block_attestation_messages.append(ProtocolMessage(a, True))
-                    in_block_attestations.insert(0, a)
+                _disseminate(rnd, a, out_of_block_attestation_messages, in_block_attestations,
+                             OFF_CHAIN_ATTESTATION_RATE, ON_CHAIN_ATTESTATION_RATE,
+                             with_invalid_messages,
+                             spoil_fn=lambda msg: _spoil_attestation(spec, rnd, msg))
 
         if is_post_gloas(spec) and envelope is not None:
             signed_envelope_messages.append(ProtocolMessage(envelope, True))
+
+            if is_post_gloas(spec):
+                for ptc_message in _get_random_payload_attestation_messages(spec, post_state, rnd):
+                    _disseminate(rnd, ptc_message, out_of_block_pa_messages, in_block_pa_messages,
+                                 OFF_CHAIN_ATTESTATION_RATE, ON_CHAIN_ATTESTATION_RATE,
+                                 with_invalid_messages,
+                                 spoil_fn=lambda msg: _spoil_payload_attestation_message(spec, rnd, post_state, msg))
+
 
         # Create attester slashing
         if with_attester_slashings and attester_slashings_count < MAX_ATTESTER_SLASHINGS:
@@ -585,21 +666,11 @@ def _generate_block_tree(
                     spec, state, indices, slot=current_slot, signed_1=True, signed_2=True
                 )
 
-                choice = rnd.randint(0, 99)
-                if choice < OFF_CHAIN_SLASHING_RATE:
-                    if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
-                        _spoil_attester_slashing(spec, rnd, attester_slashing)
-                        attester_slashing_message = ProtocolMessage(attester_slashing, False)
-                    else:
-                        attester_slashing_message = ProtocolMessage(attester_slashing, True)
-                    out_of_block_attester_slashing_messages.append(attester_slashing_message)
-                elif choice < OFF_CHAIN_SLASHING_RATE + ON_CHAIN_SLASHING_RATE:
-                    in_block_attester_slashings.append(attester_slashing)
-                else:
-                    out_of_block_attester_slashing_messages.append(
-                        ProtocolMessage(attester_slashing, True)
-                    )
-                    in_block_attester_slashings.append(attester_slashing)
+                _disseminate(rnd, attester_slashing,
+                             out_of_block_attester_slashing_messages, in_block_attester_slashings,
+                             OFF_CHAIN_SLASHING_RATE, ON_CHAIN_SLASHING_RATE,
+                             with_invalid_messages,
+                             spoil_fn=lambda msg: _spoil_attester_slashing(spec, rnd, msg))
 
                 attester_slashings_count += 1
 
@@ -632,6 +703,13 @@ def _generate_block_tree(
             "valid =",
             len([a for a in out_of_block_attestation_messages if a.valid]),
         )
+        print("on_payload_attestation_message:")
+        print("              ", "count =", len(out_of_block_pa_messages))
+        print(
+            "              ",
+            "valid =",
+            len([a for a in out_of_block_pa_messages if a.valid]),
+        )
         print("on_attester_slashing:")
         print("              ", "count =", len(out_of_block_attester_slashing_messages))
         print(
@@ -647,6 +725,7 @@ def _generate_block_tree(
             out_of_block_attester_slashing_messages, key=lambda a: a.payload.attestation_1.data.slot
         ),
         sorted(signed_envelope_messages, key=lambda e: e.payload.message.payload.slot_number),
+        sorted(out_of_block_pa_messages, key=lambda a: a.payload.data.slot),
     )
 
 
@@ -696,7 +775,13 @@ def gen_block_tree_test_data(
         seed = new_seed
 
     # Block tree model
-    block_tree, attestation_messages, attester_slashing_messages, envelopes = _generate_block_tree(
+    (
+        block_tree,
+        attestation_messages,
+        attester_slashing_messages,
+        envelopes,
+        payload_attestation_messages,
+    ) = _generate_block_tree(
         spec, highest_tip, rnd, debug, block_parents, with_attester_slashings, with_invalid_messages
     )
 
@@ -723,4 +808,5 @@ def gen_block_tree_test_data(
         attestation_messages,
         attester_slashing_messages,
         envelopes,
+        payload_attestation_messages,
     )

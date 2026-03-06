@@ -298,6 +298,10 @@ def get_sidecar_file_name(sidecar: DataColumnSidecar) -> str:
     return f"column_{encode_hex(sidecar.hash_tree_root())}"
 
 
+def get_payload_attestation_message_file_name(ptc_message):
+    return f"payload_attestation_{encode_hex(ptc_message.hash_tree_root())}"
+
+
 def on_tick_and_append_step(spec, store, time, test_steps):
     assert time >= store.time
     spec.on_tick(store, time)
@@ -393,6 +397,24 @@ def add_block(
     # An on_block step implies receiving block's attester slashings
     for attester_slashing in signed_block.message.body.attester_slashings:
         run_on_attester_slashing(spec, store, attester_slashing, valid=True)
+    
+    if is_post_gloas(spec):
+        # An on_block step implies receiving block's payload attestations (post GLOAS)
+        state = store.block_states[signed_block.message.hash_tree_root()]
+        for payload_attestation in signed_block.message.body.payload_attestations:
+            slot = payload_attestation.data.slot
+            ptc = spec.get_ptc(state, slot)
+            bits = payload_attestation.aggregation_bits
+            attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
+            for validator_index in attesting_indices:
+                ptc_message = spec.PayloadAttestationMessage(
+                    validator_index=validator_index,
+                    data=payload_attestation.data,
+                    signature=spec.BLSSignature()
+                )
+                run_on_payload_attestation_message(
+                    spec, store, ptc_message, is_from_block=True, valid=True
+                )
 
     block_root = signed_block.message.hash_tree_root()
     assert store.blocks[block_root] == signed_block.message
@@ -458,6 +480,27 @@ def add_attester_slashing(spec, store, attester_slashing, test_steps, valid=True
 
     run_on_attester_slashing(spec, store, attester_slashing)
     test_steps.append({"attester_slashing": slashing_file_name})
+
+
+def run_on_payload_attestation_message(spec, store, ptc_message, is_from_block=False, valid=True):
+    if not valid:
+        expect_assertion_error(lambda: spec.on_payload_attestation_message(store, ptc_message, is_from_block=is_from_block))
+        return
+    
+    spec.on_payload_attestation_message(store, ptc_message, is_from_block=is_from_block)
+
+
+def add_payload_attestation_message(spec, store, ptc_message, test_steps, valid=True):
+    ptc_file_name = get_payload_attestation_message_file_name(ptc_message)
+    yield ptc_file_name, ptc_message
+    
+    if not valid:
+        expect_assertion_error(lambda: spec.on_payload_attestation_message(store, ptc_message))
+        test_steps.append({"payload_attestation": ptc_file_name, "valid": False})
+        return
+
+    run_on_payload_attestation_message(spec, store, ptc_message)
+    test_steps.append({"payload_attestation": ptc_file_name})
 
 
 def _get_head_root(spec, store):
