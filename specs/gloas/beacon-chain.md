@@ -729,6 +729,9 @@ def get_attestation_participation_flag_indices(
 
 #### New `get_ptc`
 
+*Note*: `get_ptc` uses the cached `ptc_lookbehind` for previous and current
+epoch lookups, and computes next-epoch PTC assignments on demand.
+
 ```python
 def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     """
@@ -736,9 +739,13 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     """
     epoch = compute_epoch_at_slot(slot)
     state_epoch = get_current_epoch(state)
+    assert epoch <= state_epoch + 1
     if epoch < state_epoch:
+        assert epoch + 1 == state_epoch
         return state.ptc_lookbehind[slot % SLOTS_PER_EPOCH]
-    return state.ptc_lookbehind[SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH]
+    if epoch == state_epoch:
+        return state.ptc_lookbehind[SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH]
+    return compute_ptc(state, slot)
 ```
 
 #### New `get_indexed_payload_attestation`
