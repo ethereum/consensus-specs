@@ -329,10 +329,11 @@ no need to regenerate everything. Only the affected test cases need to be
 regenerated; the framework will delete the individual test case directories
 before regenerating them.
 
-Note that if a test case is removed from the framework, `make test reftests=true` will not
-delete previously generated reference tests for that case. The corresponding
-directories must be deleted manually, or the entire `../consensus-spec-tests`
-directory can be removed if regenerating everything is acceptable.
+Note that if a test case is removed from the framework,
+`make test reftests=true` will not delete previously generated reference tests
+for that case. The corresponding directories must be deleted manually, or the
+entire `../consensus-spec-tests` directory can be removed if regenerating
+everything is acceptable.
 
 To see available runners:
 
