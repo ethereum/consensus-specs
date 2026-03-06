@@ -27,8 +27,6 @@ categories:
       - eip7805
 
   # Features
-  - title: EIP-6800
-    label: eip6800
   - title: EIP-6914
     label: eip6914
   - title: EIP-7928
