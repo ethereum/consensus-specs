@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from random import Random
 
 from eth_utils import encode_hex
@@ -80,6 +80,14 @@ class SystemRun:
     slash_participants_in_slot_with_offset: int = None
     graffiti: str = None
 
+    def __str__(self):
+        output = []
+        for field in fields(self):
+            value = getattr(self, field.name)
+            if value is not None:
+                output.append(f"{field.name}={value}")
+        return f"{self.__class__.__name__}({', '.join(output)})"
+
     def get_block_root_by_slot(self, store, slot):
         block_roots_at_slot = [r for (r, b) in store.blocks.items() if b.slot == slot]
         assert len(block_roots_at_slot) > 0
@@ -120,6 +128,16 @@ class SystemRun:
             return self.end_slot - current_slot
 
 
+@dataclass
+class SlotRun(SystemRun):
+    number_of_slots: int = 1
+
+
+@dataclass
+class SlashingRun(SystemRun):
+    number_of_slots: int = 0
+
+
 class FCRTest:
     def __init__(self, spec, seed):
         self.spec = spec
@@ -156,9 +174,16 @@ class FCRTest:
     def head(self):
         return self.spec.get_head(self.store)
 
-    def get_parent(self, root):
-        parent_root = self.store.blocks[root].parent_root
+    def get_parent(self, block_root):
+        parent_root = self.store.blocks[block_root].parent_root
         return self.store.blocks[parent_root]
+
+    def get_children(self, block_root):
+        return [
+            root
+            for root in self.store.blocks.keys()
+            if self.store.blocks[root].parent_root == block_root
+        ]
 
     def tick(self, slot):
         assert slot > self.current_slot() or slot == self.spec.GENESIS_SLOT
@@ -412,7 +437,7 @@ class FCRTest:
             self.apply_attester_slashing(slashing_percentage=run.slashing_percentage)
 
     def execute_run(self, run: SystemRun) -> list[object]:
-        debug_print(run)
+        debug_print(f"slot {self.current_slot()}: {run}")
 
         if run.is_pure_slashing():
             # Apply slashing and return
@@ -458,23 +483,154 @@ class FCRTest:
             if run.with_fast_confirmation:
                 self.run_fast_confirmation()
 
-        if len(attestations) > 0:
-            effective_participation = (
-                len([bit for bit in attestations[0].aggregation_bits if bit])
-                * 100.0
-                / len(attestations[0].aggregation_bits)
-            )
-        else:
-            effective_participation = 0
-        debug_print(
-            f"current_slot={self.current_slot()}, "
-            f"head=({self.spec.get_block_slot(self.store, self.head())}, {self.head()}), "
-            f"confirmed_block=({self.spec.get_block_slot(self.store, self.store.confirmed_root)}, {self.store.confirmed_root}), "
-            f"effective_participation={effective_participation}, "
-            f"UJ[head].epoch={self.store.unrealized_justifications[self.head()].epoch}"
+        return built_chain
+
+    def compute_score_and_threshold(self, block_root) -> (int, int):
+        """
+        Computes one confirmed score and threshold.
+        """
+        spec = self.spec
+        store = self.store
+
+        current_slot = spec.get_current_slot(store)
+        block = store.blocks[block_root]
+        parent_block = store.blocks[block.parent_root]
+        balance_source = spec.get_current_balance_source(store)
+
+        score = spec.get_attestation_score(store, block_root, balance_source)
+        proposer_score = spec.compute_proposer_score(balance_source)
+        total_active_balance = spec.get_total_active_balance(balance_source)
+        maximum_support = spec.estimate_committee_weight_between_slots(
+            total_active_balance, spec.Slot(parent_block.slot + 1), spec.Slot(current_slot - 1)
+        )
+        support_discount = spec.get_support_discount(store, balance_source, block_root)
+        adversarial_weight = spec.get_adversarial_weight(store, balance_source, block_root)
+
+        # 0.5 * (maximum_support + proposer_score - support_discount) + adversarial_weight
+        threshold = (int(maximum_support) + int(proposer_score) - int(support_discount)) / 2 + int(
+            adversarial_weight
         )
 
-        return built_chain
+        return int(score), int(threshold)
+
+    def get_slot_root_info(self, block_root):
+        if block_root == self.spec.Root():
+            slot = self.spec.GENESIS_SLOT
+        else:
+            slot = self.spec.get_block_slot(self.store, block_root)
+        return f"{slot}: {str(block_root)[:6]}"
+
+    def get_checkpoint_info(self, checkpoint):
+        return f"{checkpoint.epoch}: {str(checkpoint.root)[:6]}"
+
+    def print_fast_confirmed_block_tree(self, start_root):
+        if not debug_print:
+            return
+
+        spec = self.spec
+        store = self.store
+
+        balance_source = spec.get_current_balance_source(store)
+        total_active_balance = spec.get_total_active_balance(balance_source)
+        one_committee_weight = int(total_active_balance // spec.SLOTS_PER_EPOCH)
+
+        def get_relative_score_and_threshold(block_root):
+            score, threshold = self.compute_score_and_threshold(block_root)
+            return score * 100 / one_committee_weight, threshold * 100 / one_committee_weight
+
+        def get_one_confirmed_info(block_root):
+            # Genesis block
+            if spec.get_block_slot(store, block_root) == spec.GENESIS_SLOT:
+                genesis_info = self.get_slot_root_info(block_root)
+                if block_root == store.confirmed_root:
+                    return f"\033[94m({genesis_info})\033[0m"
+                else:
+                    return f"\033[92m({genesis_info})\033[0m"
+
+            score, threshold = get_relative_score_and_threshold(block_root)
+            output = (
+                f"({self.get_slot_root_info(block_root)}, sc={score:.1f}%, th={threshold:.1f}%)"
+            )
+
+            if block_root == store.confirmed_root:
+                # Confirmed block in Blue if can be re-confirmed, Magenta otherwise
+                if score > threshold:
+                    return f"\033[94m{output}\033[0m"
+                else:
+                    return f"\033[95m{output}\033[0m"
+
+            # Other blocks in either green or red depending on whether they can be one_confirmed
+            if score > threshold:
+                return f"\033[92m{output}\033[0m"
+            else:
+                return f"\033[91m{output}\033[0m"
+
+        block_infos = []
+        block_root = start_root
+        while True:
+            block_infos.append(get_one_confirmed_info(block_root))
+            children = self.get_children(block_root)
+
+            # Continue accumulating if we are on a single branch with more blocks on it
+            if len(children) == 1:
+                block_root = children[0]
+                continue
+
+            # Print accumulated output if not
+            print(
+                f"parent({self.get_slot_root_info(store.blocks[start_root].parent_root)}): {', '.join(block_infos)}"
+            )
+
+            # Print subtrees if there are any
+            for root in children:
+                self.print_fast_confirmed_block_tree(root)
+
+            # Exit
+            break
+
+    def print_fast_confirmation_state(self):
+        if not debug_print:
+            return
+
+        spec = self.spec
+        store = self.store
+
+        # Print epoch and slot
+        print(
+            f"\nEpoch {self.current_epoch()}, Slot {self.current_slot() % self.spec.SLOTS_PER_EPOCH}:"
+        )
+
+        # Print block tree starting from the beginning of previous epoch
+        if self.current_epoch() == spec.GENESIS_EPOCH:
+            start_slot = spec.GENESIS_SLOT
+        else:
+            start_slot = spec.compute_start_slot_at_epoch(self.current_epoch() - 1)
+        start_root = spec.get_ancestor(store, self.head(), start_slot)
+        self.print_fast_confirmed_block_tree(start_root)
+
+        # Print head variables
+        def get_head_info(head_root):
+            vs = spec.get_voting_source(store, head_root)
+            uj = store.unrealized_justifications[head_root]
+            return f"{self.get_slot_root_info(head_root)}, vs=({self.get_checkpoint_info(vs)}), uj=({self.get_checkpoint_info(uj)})"
+
+        print(f"\nprev_head [{get_head_info(store.previous_slot_head)}]")
+        print(f"curr_head [{get_head_info(store.current_slot_head)}]")
+        print(f"head      [{get_head_info(self.head())}]")
+
+        # Print prev epoch GU and current target
+        curr_target = spec.get_current_target(store)
+        balance_source = spec.get_pulled_up_head_state(store)
+        total_active_balance = spec.get_total_active_balance(balance_source)
+        ffg_support = spec.compute_honest_ffg_support_for_current_target(store)
+        relative_support = int(ffg_support) * 100 / int(total_active_balance)
+
+        print(
+            f"\ncurr_target [{self.get_checkpoint_info(curr_target)}, ffg_support={relative_support:.1f}%]"
+        )
+        print(
+            f"prev_epoch_gu [{self.get_checkpoint_info(store.previous_epoch_greatest_unrealized_checkpoint)}]"
+        )
 
 
 @dataclass
