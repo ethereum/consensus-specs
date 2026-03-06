@@ -12,8 +12,10 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     add_attestation,
     add_attester_slashing,
     add_block,
+    add_execution_payload,
     get_attestation_file_name,
     get_attester_slashing_file_name,
+    get_execution_payload_envelope_file_name,
     get_block_file_name,
     on_tick_and_append_step,
     output_store_checks,
@@ -43,6 +45,7 @@ class FCTestData:
     blocks: list[ProtocolMessage]
     atts: list[ProtocolMessage] = field(default_factory=list)
     slashings: list[ProtocolMessage] = field(default_factory=list)
+    envelopes: list[ProtocolMessage] = field(default_factory=list)
     store_final_time: int = 0
 
 
@@ -315,6 +318,8 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
             return data.data.slot + 1
         elif event_kind == "attester_slashing":
             return max(data.attestation_1.data.slot, data.attestation_1.data.slot) + 1
+        elif event_kind == "execution_payload":
+            return data.message.payload.slot_number
         else:
             assert False
 
@@ -322,6 +327,7 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
         [("attestation", m.payload, m.valid) for m in test_data.atts]
         + [("attester_slashing", m.payload, m.valid) for m in test_data.slashings]
         + [("block", m.payload, m.valid) for m in test_data.blocks]
+        + [("execution_payload", m.payload, m.valid) for m in test_data.envelopes]
     )
 
     for event in sorted(messages, key=get_seffective_slot):
@@ -413,6 +419,10 @@ def yield_fork_choice_test_events(spec, test_data: FCTestData, test_events: list
         attester_slashing = message.payload
         yield get_attester_slashing_file_name(attester_slashing), attester_slashing.encode_bytes()
 
+    for message in test_data.envelopes:
+        envelope = message.payload
+        yield get_execution_payload_envelope_file_name(envelope), envelope.encode_bytes()
+
     test_steps = []
 
     def try_add_mesage(runner, message):
@@ -458,6 +468,11 @@ def yield_fork_choice_test_events(spec, test_data: FCTestData, test_events: list
             yield from add_attester_slashing(
                 spec, store, attester_slashing, test_steps, valid=valid
             )
+            output_store_checks(spec, store, test_steps)
+        elif event_kind == "execution_payload":
+            _, signed_envelope, valid = event
+            assert valid # invalid not supported yet
+            yield from add_execution_payload(spec, store, signed_envelope, test_steps, valid=valid)
             output_store_checks(spec, store, test_steps)
         else:
             raise ValueError("Unknown event " + str(event_kind))

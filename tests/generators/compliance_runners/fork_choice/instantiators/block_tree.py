@@ -3,9 +3,13 @@ import random
 from eth_consensus_specs.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
 )
+from eth_consensus_specs.test.helpers.execution_payload import (
+    build_signed_execution_payload_envelope
+)
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
     transition_to,
@@ -465,7 +469,7 @@ def _generate_block_tree(
     block_parents,
     with_attester_slashings,
     with_invalid_messages,
-) -> ([], [], []):
+) -> ([], [], [], []):
     in_block_attestations = anchor_tip.attestations.copy()
     post_states = [anchor_tip.beacon_state.copy()]
     current_slot = anchor_tip.beacon_state.slot
@@ -476,8 +480,10 @@ def _generate_block_tree(
     out_of_block_attestation_messages = []
     out_of_block_attester_slashing_messages = []
     signed_block_messages = []
+    signed_envelope_messages = []
 
     while block_index < len(block_parents):
+        envelope = None
         # Propose a block if slot shouldn't be empty
         if rnd.randint(1, 100) > EMPTY_SLOTS_RATE:
             # Advance parent state to the current slot
@@ -518,6 +524,12 @@ def _generate_block_tree(
                 # Update tips
                 block_tree_tips.discard(parent_index)
                 block_tree_tips.add(block_index)
+
+                block_root = signed_block.message.hash_tree_root()
+
+                if is_post_gloas(spec):
+                    # Builder reveals execution payload
+                    envelope = build_signed_execution_payload_envelope(spec, post_state, block_root, signed_block)
 
                 # Next block
             block_index += 1
@@ -560,6 +572,9 @@ def _generate_block_tree(
                 else:
                     out_of_block_attestation_messages.append(ProtocolMessage(a, True))
                     in_block_attestations.insert(0, a)
+
+        if is_post_gloas(spec) and envelope is not None:
+            signed_envelope_messages.append(ProtocolMessage(envelope, True))
 
         # Create attester slashing
         if with_attester_slashings and attester_slashings_count < MAX_ATTESTER_SLASHINGS:
@@ -631,6 +646,7 @@ def _generate_block_tree(
         sorted(
             out_of_block_attester_slashing_messages, key=lambda a: a.payload.attestation_1.data.slot
         ),
+        sorted(signed_envelope_messages, key=lambda e: e.payload.message.payload.slot_number),
     )
 
 
@@ -680,7 +696,7 @@ def gen_block_tree_test_data(
         seed = new_seed
 
     # Block tree model
-    block_tree, attestation_messages, attester_slashing_messages = _generate_block_tree(
+    block_tree, attestation_messages, attester_slashing_messages, envelopes = _generate_block_tree(
         spec, highest_tip, rnd, debug, block_parents, with_attester_slashings, with_invalid_messages
     )
 
@@ -706,4 +722,5 @@ def gen_block_tree_test_data(
         signed_block_messages,
         attestation_messages,
         attester_slashing_messages,
+        envelopes,
     )
