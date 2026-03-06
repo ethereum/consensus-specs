@@ -359,7 +359,6 @@ name = "eth-consensus-specs"
 source = { editable = "." }
 dependencies = [
     { name = "eth-remerkleable" },
-    { name = "eth-typing" },
     { name = "eth-utils" },
     { name = "frozendict" },
     { name = "lru-dict" },
@@ -367,7 +366,6 @@ dependencies = [
     { name = "milagro-bls-binding" },
     { name = "py-arkworks-bls12381" },
     { name = "py-ecc" },
-    { name = "pycryptodome" },
     { name = "ruamel-yaml" },
     { name = "setuptools" },
     { name = "trie" },
@@ -382,7 +380,6 @@ docs = [
     { name = "mkdocs-material" },
 ]
 generator = [
-    { name = "filelock" },
     { name = "minizinc" },
     { name = "pathos" },
     { name = "psutil" },
@@ -404,6 +401,7 @@ lint = [
 test = [
     { name = "ckzg" },
     { name = "deepdiff" },
+    { name = "eth-hash", extra = ["pycryptodome"] },
     { name = "psutil" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -417,10 +415,9 @@ requires-dist = [
     { name = "ckzg", marker = "extra == 'test'", specifier = "==2.1.6" },
     { name = "codespell", marker = "extra == 'lint'", specifier = "==2.4.2" },
     { name = "deepdiff", marker = "extra == 'test'", specifier = "==8.6.1" },
+    { name = "eth-hash", extras = ["pycryptodome"], marker = "extra == 'test'", specifier = "==0.7.1" },
     { name = "eth-remerkleable", specifier = "==0.1.29" },
-    { name = "eth-typing", specifier = "==5.2.1" },
     { name = "eth-utils", specifier = "==5.3.1" },
-    { name = "filelock", marker = "extra == 'generator'", specifier = "==3.25.0" },
     { name = "frozendict", specifier = "==2.4.7" },
     { name = "lru-dict", specifier = "==1.4.1" },
     { name = "marko", specifier = "==2.2.2" },
@@ -442,7 +439,6 @@ requires-dist = [
     { name = "psutil", marker = "extra == 'test'", specifier = "==7.2.2" },
     { name = "py-arkworks-bls12381", specifier = "==0.4.1" },
     { name = "py-ecc", specifier = "==8.0.0" },
-    { name = "pycryptodome", specifier = "==3.23.0" },
     { name = "pytest", marker = "extra == 'generator'", specifier = "==9.0.2" },
     { name = "pytest", marker = "extra == 'test'", specifier = "==9.0.2" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = "==7.0.0" },
@@ -466,6 +462,11 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ee/38/577b7bc9380ef9dff0f1dffefe0c9a1ded2385e7a06c306fd95afb6f9451/eth_hash-0.7.1.tar.gz", hash = "sha256:d2411a403a0b0a62e8247b4117932d900ffb4c8c64b15f92620547ca5ce46be5", size = 12227, upload-time = "2025-01-13T21:29:21.765Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/eb/db/f8775490669d28aca24871c67dd56b3e72105cb3bcae9a4ec65dd70859b3/eth_hash-0.7.1-py3-none-any.whl", hash = "sha256:0fb1add2adf99ef28883fd6228eb447ef519ea72933535ad1a0b28c6f65f868a", size = 8028, upload-time = "2025-01-13T21:29:19.365Z" },
+]
+
+[package.optional-dependencies]
+pycryptodome = [
+    { name = "pycryptodome" },
 ]
 
 [[package]]
@@ -512,15 +513,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/bb/ff/b4c0dc78fbe20c3e59c0c7334de0c27eb4001a2b2017999af398bf730817/execnet-2.1.1.tar.gz", hash = "sha256:5189b52c6121c24feae288166ab41b32549c7e2348652736540b9e6e7d4e72e3", size = 166524, upload-time = "2024-04-08T09:04:19.245Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/43/09/2aea36ff60d16dd8879bdb2f5b3ee0ba8d08cbbdcdfe870e695ce3784385/execnet-2.1.1-py3-none-any.whl", hash = "sha256:26dee51f1b80cebd6d0ca8e74dd8745419761d3bef34163928cbebbdc4749fdc", size = 40612, upload-time = "2024-04-08T09:04:17.414Z" },
-]
-
-[[package]]
-name = "filelock"
-version = "3.25.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/77/18/a1fd2231c679dcb9726204645721b12498aeac28e1ad0601038f94b42556/filelock-3.25.0.tar.gz", hash = "sha256:8f00faf3abf9dc730a1ffe9c354ae5c04e079ab7d3a683b7c32da5dd05f26af3", size = 40158, upload-time = "2026-03-01T15:08:45.916Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f9/0b/de6f54d4a8bedfe8645c41497f3c18d749f0bd3218170c667bf4b81d0cdd/filelock-3.25.0-py3-none-any.whl", hash = "sha256:5ccf8069f7948f494968fc0713c10e5c182a9c9d9eef3a636307a20c2490f047", size = 26427, upload-time = "2026-03-01T15:08:44.593Z" },
 ]
 
 [[package]]
