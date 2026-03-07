@@ -53,12 +53,6 @@ def create_arg_parser() -> argparse.ArgumentParser:
         help="Specify test cases to run with. Allows all if no test case names are specified.",
     )
     parser.add_argument(
-        "--modcheck",
-        action="store_true",
-        default=False,
-        help="Check generator modules, do not run any tests.",
-    )
-    parser.add_argument(
         "--verbose",
         action="store_true",
         default=False,

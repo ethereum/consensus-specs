@@ -44,7 +44,7 @@ jobs:
         run: |
           cd consensus-specs
           set -o pipefail
-          make reftests verbose=true 2>&1 | tee ../consensustestgen.log
+          make test reftests=true verbose=true 2>&1 | tee ../consensustestgen.log
           cp -r presets/ ../consensus-spec-tests/presets
           cp -r configs/ ../consensus-spec-tests/configs
       - name: Archive configurations

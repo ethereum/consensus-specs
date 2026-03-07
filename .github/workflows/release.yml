@@ -81,7 +81,7 @@ jobs:
       - name: Generate reference tests
         run: |
           cd consensus-specs
-          make reftests verbose=true
+          make test reftests=true verbose=true
 
       # Make tarballs
       - name: Create reference test tarballs
