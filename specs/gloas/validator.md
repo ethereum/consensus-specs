@@ -7,6 +7,9 @@
 - [Introduction](#introduction)
 - [Configuration](#configuration)
   - [Time parameters](#time-parameters)
+- [Helpers](#helpers)
+  - [New `get_payload_due_ms`](#new-get_payload_due_ms)
+  - [New `get_payload_size`](#new-get_payload_size)
 - [Validator assignment](#validator-assignment)
   - [Payload timeliness committee](#payload-timeliness-committee)
   - [Lookahead](#lookahead)
@@ -42,6 +45,35 @@ validator" to implement Gloas.
 | `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
 | `CONTRIBUTION_DUE_BPS_GLOAS`  | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
 | `PAYLOAD_ATTESTATION_DUE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
+| `MIN_PAYLOAD_DUE_BPS`         | `uint64(3000)` | basis points | 30% of `SLOT_DURATION_MS` |
+
+## Helpers
+
+### New `get_payload_due_ms`
+
+```python
+def get_payload_due_ms(payload_size: uint64) -> uint64:
+    """
+    Calculate the deadline for a payload based on its uncompressed size.
+    Interpolates linearly from ``MIN_PAYLOAD_DUE_BPS`` (size 0) to
+    ``PAYLOAD_ATTESTATION_DUE_BPS`` (size ``MAX_PAYLOAD_SIZE``).
+    """
+    assert payload_size <= MAX_PAYLOAD_SIZE
+    min_ms = get_slot_component_duration_ms(MIN_PAYLOAD_DUE_BPS)
+    max_ms = get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)
+    interpolated_ms = min_ms + (payload_size * (max_ms - min_ms)) // MAX_PAYLOAD_SIZE
+    return uint64(interpolated_ms)
+```
+
+### New `get_payload_size`
+
+```python
+def get_payload_size(envelope: ExecutionPayloadEnvelope) -> uint64:
+    """
+    Return the uncompressed size of the execution payload envelope.
+    """
+    return uint64(len(ssz_serialize(envelope)))
+```
 
 ## Validator assignment
 
@@ -251,40 +283,81 @@ global execution attestation subnet within the first
 
 #### Constructing the `PayloadAttestationMessage`
 
-If a validator is in the payload attestation committee for the current slot (as
-obtained from `get_ptc_assignment` above) then the validator should prepare a
-`PayloadAttestationMessage` for the current slot. Follow the logic below to
-create the `payload_attestation_message` and broadcast to the global
-`payload_attestation_message` pubsub topic within the first
-`get_payload_attestation_due_ms(epoch)` milliseconds of the slot.
+If validator is in the payload attestation committee for the current slot (as
+obtained from `get_ptc_assignment` above) and has seen a timely beacon block for
+the current slot from the expected proposer, the validator needs to send a
+`PayloadAttestationMessage` for the current slot, according to the following
+logic.
 
-The validator creates `payload_attestation_message` as follows:
+Let `validator_index` be the validator chosen to submit, `privkey` be the
+private key mapping to `state.validators[validator_index].pubkey`, used to sign
+the payload timeliness attestation, and `store` be the fork-choice store of the
+beacon node to which the validator is connected. The validator should call
+`get_payload_attestation_message(store, validator_index, privkey, payload_arrival_time)`
+and broadcast the result either (1) as soon as both the
+`SignedExecutionPayloadEnvelope` matching `store.proposer_boost_root` and its
+associated blob data have been received, or (2) at the
+`get_payload_attestation_due_ms(epoch)` deadline, whichever comes first.
 
-- If the validator has not seen any beacon block for the assigned slot, do not
-  submit a payload attestation; it will be ignored anyway.
-- Set `data.beacon_block_root` be the hash tree root of the beacon block seen
-  for the assigned slot.
-- Set `data.slot` to be the assigned slot.
-- If a previously seen `SignedExecutionPayloadEnvelope` references the block
-  with root `data.beacon_block_root`, set `data.payload_present` to `True`;
-  otherwise, set `data.payload_present` to `False`.
-- Set `payload_attestation_message.validator_index = validator_index` where
-  `validator_index` is the validator chosen to submit. The private key mapping
-  to `state.validators[validator_index].pubkey` is used to sign the payload
-  timeliness attestation.
-- Sign the `payload_attestation_message.data` using the helper
-  `get_payload_attestation_message_signature`.
+*Note*: The `payload_arrival_time` parameter should be the time at which the
+payload was first seen, independently of when blob data becomes available. If
+the validator has not seen the payload by the deadline, it should call
+`get_payload_attestation_message(store, validator_index, privkey, payload_arrival_time=None)`.
 
-Notice that the attester only signs the `PayloadAttestationData` and not the
-`validator_index` field in the message. Proposers need to aggregate these
-attestations as described above.
+```python
+def get_payload_attestation_message(
+    store: Store,
+    validator_index: ValidatorIndex,
+    privkey: int,
+    payload_arrival_time: Optional[uint64],
+) -> PayloadAttestationMessage:
+    root = store.proposer_boost_root
+    assert root != Root()
+    block = store.blocks[root]
+    state = store.block_states[root]
+    payload_timely = is_payload_timely(store, root, payload_arrival_time)
+    data = PayloadAttestationData(
+        beacon_block_root=root,
+        slot=block.slot,
+        payload_timely=payload_timely,
+    )
+    signature = get_payload_attestation_message_signature(state, data, privkey)
+    return PayloadAttestationMessage(
+        validator_index=validator_index,
+        data=data,
+        signature=signature,
+    )
+```
+
+```python
+def is_payload_timely(store: Store, root: Root, payload_arrival_time: Optional[uint64]) -> bool:
+    """
+    Check if the payload for the given block root arrived on time and its
+    associated blob data is available. A payload is considered timely if it
+    arrived before the deadline based on its uncompressed size.
+    """
+    if payload_arrival_time is None:
+        return False
+
+    if root not in store.payload_envelopes:
+        return False
+
+    signed_envelope = store.payload_envelopes[root]
+    payload_size = get_payload_size(signed_envelope.message)
+
+    block = store.blocks[root]
+    slot_start_time = store.genesis_time + block.slot * SECONDS_PER_SLOT
+    arrival_time_into_slot_ms = seconds_to_milliseconds(payload_arrival_time - slot_start_time)
+
+    return arrival_time_into_slot_ms <= get_payload_due_ms(payload_size)
+```
 
 ```python
 def get_payload_attestation_message_signature(
-    state: BeaconState, attestation: PayloadAttestationMessage, privkey: int
+    state: BeaconState, data: PayloadAttestationData, privkey: int
 ) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(attestation.data.slot))
-    signing_root = compute_signing_root(attestation.data, domain)
+    domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(data.slot))
+    signing_root = compute_signing_root(data, domain)
     return bls.Sign(privkey, signing_root)
 ```
 
