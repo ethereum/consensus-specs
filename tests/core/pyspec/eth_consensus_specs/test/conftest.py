@@ -90,7 +90,12 @@ def pytest_generate_tests(metafunc):
         presets = metafunc.config.getoption("--preset")
         if presets is None:
             if metafunc.config.getoption("--reftests", default=False):
-                presets = ["minimal", "mainnet", "general"]
+                # Avoid creating items that will be immediately skipped:
+                # "general" tests only run with "general" preset, others only
+                # run with "minimal"/"mainnet".
+                manifest = getattr(metafunc.function, "manifest", None)
+                is_general = manifest is not None and manifest.preset_name == "general"
+                presets = ["general"] if is_general else ["minimal", "mainnet"]
             else:
                 presets = ["minimal"]
         metafunc.parametrize("preset", presets, indirect=True)
