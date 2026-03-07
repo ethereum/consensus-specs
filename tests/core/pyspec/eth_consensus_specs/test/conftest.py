@@ -3,7 +3,7 @@ import sys
 import pytest
 
 from eth_consensus_specs.test import context
-from eth_consensus_specs.test.helpers.constants import ALL_PHASES, ALLOWED_TEST_RUNNER_FORKS
+from eth_consensus_specs.test.helpers.constants import ALLOWED_TEST_RUNNER_FORKS, TESTGEN_FORKS
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls as bls_utils
 from eth_consensus_specs.utils.ckzg_utils import apply_ckzg_to_spec, load_trusted_setup
@@ -100,6 +100,22 @@ def pytest_generate_tests(metafunc):
                 presets = ["minimal"]
         metafunc.parametrize("preset", presets, indirect=True)
 
+    fn = metafunc.function
+    phases = getattr(fn, "_phases", None)
+    if phases is not None:
+        phases = list(phases)
+        # Filter by --fork CLI option
+        fork_cli = metafunc.config.getoption("--fork", default=None)
+        if fork_cli:
+            fork_set = set(f.lower() for f in fork_cli)
+            _validate_fork_name(fork_set)
+            phases = [p for p in phases if p in fork_set]
+        # In generator mode, limit to TESTGEN_FORKS
+        if metafunc.config.getoption("--reftests", default=False):
+            phases = [p for p in phases if p in TESTGEN_FORKS]
+        if phases:
+            metafunc.parametrize("fork", phases, indirect=True)
+
 
 @fixture(autouse=True)
 def preset(request):
@@ -125,15 +141,14 @@ def preset(request):
         alt_context.DEFAULT_TEST_PRESET = spec_preset
 
 
-@fixture(autouse=True, scope="session")
-def run_phases(request):
-    forks = request.config.getoption("--fork", default=None)
-    if forks:
-        forks = [fork.lower() for fork in forks]
-        _validate_fork_name(forks)
-        context.DEFAULT_PYTEST_FORKS = set(forks)
-    elif not context.is_generator:
-        context.DEFAULT_PYTEST_FORKS = ALL_PHASES
+@fixture(autouse=True)
+def fork(request):
+    """Set the current fork for parametrized spec tests."""
+    fork_value = getattr(request, "param", None)
+    context.CURRENT_FORK = fork_value
+    alt_context = sys.modules.get("tests.core.pyspec.eth_consensus_specs.test.context")
+    if alt_context is not None:
+        alt_context.CURRENT_FORK = fork_value
 
 
 @fixture(autouse=True, scope="session")
@@ -181,6 +196,37 @@ def kzg_type(request):
     kzg_type = request.config.getoption("--kzg-type")
     if kzg_type == "ckzg":
         _apply_ckzg(request)
+
+
+def pytest_collection_modifyitems(config, items):
+    """Deselect spec tests that have no matching fork after --fork filtering."""
+    fork_cli = config.getoption("--fork", default=None)
+    reftests = config.getoption("--reftests", default=False)
+    if not fork_cli and not reftests:
+        return
+
+    remaining = []
+    deselected = []
+    for item in items:
+        # Check if this item has a fork param from parametrize
+        callspec = getattr(item, "callspec", None)
+        if callspec is not None and "fork" in callspec.params:
+            remaining.append(item)
+            continue
+
+        # Check if the test function has _phases (spec test without fork param)
+        fn = getattr(item, "function", None)
+        phases = getattr(fn, "_phases", None) if fn else None
+        if phases is not None:
+            # Spec test with no matching fork — deselect it
+            deselected.append(item)
+        else:
+            # Non-spec test — keep it
+            remaining.append(item)
+
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = remaining
 
 
 pytest_plugins = ["tests.infra.pytest_plugins.yield_generator"]
