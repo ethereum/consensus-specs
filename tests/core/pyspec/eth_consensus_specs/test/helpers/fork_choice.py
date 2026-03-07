@@ -169,6 +169,7 @@ def tick_and_add_block(
     block_not_found=False,
     is_optimistic=False,
     blob_data: BlobData | None = None,
+    envelope=None,
 ):
     pre_state = store.block_states[signed_block.message.parent_root]
     if merge_block:
@@ -194,6 +195,10 @@ def tick_and_add_block(
         is_optimistic=is_optimistic,
         blob_data=blob_data,
     )
+
+    # For Gloas: apply on_execution_payload to the store when an explicit envelope is provided.
+    if envelope is not None and valid and post_state is not None:
+        spec.on_execution_payload(store, envelope)
 
     return post_state
 
@@ -503,19 +508,38 @@ def apply_next_epoch_with_attestations(
 
 
 def apply_next_slots_with_attestations(
-    spec, state, store, slots, fill_cur_epoch, fill_prev_epoch, test_steps, participation_fn=None
+    spec,
+    state,
+    store,
+    slots,
+    fill_cur_epoch,
+    fill_prev_epoch,
+    test_steps,
+    participation_fn=None,
+    with_payload_reveal=False,
 ):
+    envelopes = [] if with_payload_reveal else None
     _, new_signed_blocks, post_state = next_slots_with_attestations(
-        spec, state, slots, fill_cur_epoch, fill_prev_epoch, participation_fn=participation_fn
+        spec,
+        state,
+        slots,
+        fill_cur_epoch,
+        fill_prev_epoch,
+        participation_fn=participation_fn,
+        envelopes=envelopes,
     )
-    for signed_block in new_signed_blocks:
+    for i, signed_block in enumerate(new_signed_blocks):
         block = signed_block.message
-        yield from tick_and_add_block(spec, store, signed_block, test_steps)
+        envelope = envelopes[i] if envelopes else None
+        yield from tick_and_add_block(spec, store, signed_block, test_steps, envelope=envelope)
         block_root = block.hash_tree_root()
         assert store.blocks[block_root] == block
         last_signed_block = signed_block
 
-    assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
+    if with_payload_reveal:
+        assert store.payload_states[block_root].hash_tree_root() == post_state.hash_tree_root()
+    else:
+        assert store.block_states[block_root].hash_tree_root() == post_state.hash_tree_root()
 
     return post_state, store, last_signed_block
 
