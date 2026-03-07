@@ -334,12 +334,12 @@ def test_inclusion_list_store_view_freeze_cutoff(spec, state):
 
         # Advance time to after the view freeze cutoff.
         epoch = spec.get_current_store_epoch(forkchoice_store)
-        view_freeze_cutoff_ceiling = spec.get_view_freeze_cutoff_ms(epoch) // 1000 + 1
-        assert view_freeze_cutoff_ceiling < spec.config.SLOT_DURATION_MS // 1000
+        view_freeze_cutoff_ms = spec.get_view_freeze_cutoff_ms(epoch) + 1
+        assert view_freeze_cutoff_ms < spec.config.SLOT_DURATION_MS
 
-        time = forkchoice_store.time + view_freeze_cutoff_ceiling
-        spec.on_tick(forkchoice_store, time)
-        assert forkchoice_store.time == time
+        time_ms = forkchoice_store.time_ms + view_freeze_cutoff_ms
+        spec.on_tick(forkchoice_store, time_ms)
+        assert forkchoice_store.time_ms == time_ms
 
         # An IL received after the view freeze cutoff should be ignored.
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_3)

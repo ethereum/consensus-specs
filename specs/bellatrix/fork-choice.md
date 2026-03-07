@@ -151,7 +151,7 @@ def should_override_forkchoice_update(store: Store, head_root: Root) -> bool:
 
     # Check the head weight only if the attestations from the head slot have already been applied.
     # Implementations may want to do this in different ways, e.g. by advancing
-    # `store.time` early, or by counting queued attestations during the head block's slot.
+    # `store.time_ms` early, or by counting queued attestations during the head block's slot.
     if current_slot > head_block.slot:
         head_weak = is_head_weak(store, head_root)
         parent_strong = is_parent_strong(store, head_root)

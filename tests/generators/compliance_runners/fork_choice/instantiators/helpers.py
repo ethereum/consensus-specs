@@ -291,19 +291,19 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
     Makes test events from `test_data`'s blocks, attestations and slashings, sorted by an effective slot.
     Each event is a triple ('tick'|'block'|'attestation'|'attester_slashing', message, valid).
     """
-    genesis_time = test_data.anchor_state.genesis_time
+    genesis_time_ms = spec.seconds_to_milliseconds(test_data.anchor_state.genesis_time)
     test_events = []
 
-    def slot_to_time(slot):
-        return slot * spec.config.SLOT_DURATION_MS // 1000 + genesis_time
+    def slot_to_time_ms(slot):
+        return slot * spec.config.SLOT_DURATION_MS + genesis_time_ms
 
-    def add_tick_step(time):
-        test_events.append(("tick", time, None))
+    def add_tick_step(time_ms):
+        test_events.append(("tick", time_ms, None))
 
     def add_message_step(kind, message):
         test_events.append((kind, message.payload, message.valid))
 
-    add_tick_step(slot_to_time(test_data.anchor_state.slot))
+    add_tick_step(slot_to_time_ms(test_data.anchor_state.slot))
     slot = test_data.anchor_state.slot
 
     def get_seffective_slot(message):
@@ -328,10 +328,10 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
         event_slot = get_seffective_slot(event)
         while slot < event_slot:
             slot += 1
-            add_tick_step(slot_to_time(slot))
+            add_tick_step(slot_to_time_ms(slot))
         add_message_step(event_kind, ProtocolMessage(message, valid))
 
-    if slot is None or slot_to_time(slot) < test_data.store_final_time:
+    if slot is None or slot_to_time_ms(slot) < test_data.store_final_time:
         add_tick_step(test_data.store_final_time)
 
     return test_events
@@ -421,15 +421,15 @@ def yield_fork_choice_test_events(
             return False
 
     # record initial tick
-    on_tick_and_append_step(spec, store, store.time, test_steps)
+    on_tick_and_append_step(spec, store, store.time_ms, test_steps)
 
     for event in test_events:
         event_kind = event[0]
         if event_kind == "tick":
-            _, time, _ = event
-            if time > store.time:
-                on_tick_and_append_step(spec, store, time, test_steps)
-                assert store.time == time
+            _, time_ms, _ = event
+            if time_ms > store.time_ms:
+                on_tick_and_append_step(spec, store, time_ms, test_steps)
+                assert store.time_ms == time_ms
         elif event_kind == "block":
             _, signed_block, valid = event
             if valid is None:

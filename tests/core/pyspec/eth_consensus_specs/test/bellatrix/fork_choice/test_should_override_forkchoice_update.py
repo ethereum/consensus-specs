@@ -39,9 +39,9 @@ def test_should_override_forkchoice_update__false(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
     block = build_empty_block_for_next_slot(spec, state)
@@ -56,8 +56,8 @@ def test_should_override_forkchoice_update__false(spec, state):
     next_slot(spec, state)
     slot = state.slot
 
-    current_time = slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
+    current_time_ms = slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
 
     should_override = spec.should_override_forkchoice_update(store, head_root)
     assert not should_override
@@ -85,15 +85,15 @@ def test_should_override_forkchoice_update__true(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     next_epoch(spec, state)
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.compute_time_at_slot_ms(state, state.slot),
         test_steps,
     )
 
@@ -128,15 +128,13 @@ def test_should_override_forkchoice_update__true(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # Make the head block late
-    # Round up to nearest second
     epoch = spec.get_current_store_epoch(store)
     attestation_due_ms = spec.get_attestation_due_ms(epoch)
-    attesting_cutoff = (attestation_due_ms + 999) // 1000
-    current_time = (
-        state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time + attesting_cutoff
+    current_time_ms = (
+        state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms + attestation_due_ms
     )
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     assert spec.get_current_slot(store) == block.slot

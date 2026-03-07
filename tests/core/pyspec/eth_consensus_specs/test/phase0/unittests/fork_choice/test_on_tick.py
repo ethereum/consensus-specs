@@ -10,12 +10,12 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-def run_on_tick(spec, store, time, new_justified_checkpoint=False):
+def run_on_tick(spec, store, time_ms, new_justified_checkpoint=False):
     previous_justified_checkpoint = store.justified_checkpoint
 
-    spec.on_tick(store, time)
+    spec.on_tick(store, time_ms)
 
-    assert store.time == time
+    assert store.time_ms == time_ms
 
     if new_justified_checkpoint:
         assert store.justified_checkpoint.epoch > previous_justified_checkpoint.epoch
@@ -28,7 +28,7 @@ def run_on_tick(spec, store, time, new_justified_checkpoint=False):
 @spec_state_test
 def test_basic(spec, state):
     store = get_genesis_forkchoice_store(spec, state)
-    run_on_tick(spec, store, store.time + 1)
+    run_on_tick(spec, store, store.time_ms + 1)
 
 
 """
@@ -61,7 +61,7 @@ def test_update_justified_single_on_store_finalized_chain(spec, state):
     run_on_tick(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.compute_time_at_slot_ms(state, state.slot),
         new_justified_checkpoint=True
     )
 """
@@ -113,5 +113,5 @@ def test_update_justified_single_not_on_store_finalized_chain(spec, state):
     run_on_tick(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.compute_time_at_slot_ms(state, state.slot),
     )

@@ -59,7 +59,7 @@ def test_genesis(spec, state):
     test_steps.append(
         {
             "checks": {
-                "genesis_time": int(store.genesis_time),
+                "genesis_time": int(store.genesis_time_ms),
                 "head": get_formatted_head_output(spec, store),
             }
         }
@@ -129,8 +129,8 @@ def test_split_tie_breaker_no_attestations(spec, state):
     signed_block_2 = state_transition_and_sign_block(spec, block_2_state, block_2)
 
     # Tick time past slot 1 so proposer score boost does not apply
-    time = store.genesis_time + (block_2.slot + 1) * spec.config.SLOT_DURATION_MS // 1000
-    on_tick_and_append_step(spec, store, time, test_steps)
+    time_ms = spec.compute_time_at_slot_ms(genesis_state, block_2.slot + 1)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
 
     yield from add_block(spec, store, signed_block_1, test_steps)
     yield from add_block(spec, store, signed_block_2, test_steps)
@@ -203,8 +203,8 @@ def test_filtered_block_tree(spec, state):
     assert state.current_justified_checkpoint.epoch > prev_state.current_justified_checkpoint.epoch
 
     # tick time forward and add blocks and attestations to store
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
+    current_time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
     for signed_block in signed_blocks:
         yield from add_block(spec, store, signed_block, test_steps)
 
@@ -245,10 +245,8 @@ def test_filtered_block_tree(spec, state):
             attestations.append(attestation)
 
     # tick time forward to be able to include up to the latest attestation
-    current_time = (
-        attestations[-1].data.slot + 1
-    ) * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
+    current_time_ms = spec.compute_time_at_slot_ms(state, attestations[-1].data.slot + 1)
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
 
     # include rogue block and associated attestations in the store
     yield from add_block(spec, store, signed_rogue_block, test_steps)
@@ -296,8 +294,8 @@ def test_proposer_boost_correct_head(spec, state):
     assert spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2)
 
     # Tick to block_1 slot time
-    time = store.genesis_time + block_1.slot * spec.config.SLOT_DURATION_MS // 1000
-    on_tick_and_append_step(spec, store, time, test_steps)
+    time_ms = spec.compute_time_at_slot_ms(genesis_state, block_1.slot)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
 
     # Process block_2
     yield from add_block(spec, store, signed_block_2, test_steps)
@@ -311,8 +309,8 @@ def test_proposer_boost_correct_head(spec, state):
     check_head_against_root(spec, store, spec.hash_tree_root(block_1))
 
     # After block_1.slot, the head should revert to block_2
-    time = store.genesis_time + (block_1.slot + 1) * spec.config.SLOT_DURATION_MS // 1000
-    on_tick_and_append_step(spec, store, time, test_steps)
+    time_ms = spec.compute_time_at_slot_ms(genesis_state, block_1.slot + 1)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
     assert store.proposer_boost_root == spec.Root()
     check_head_against_root(spec, store, spec.hash_tree_root(block_2))
     output_head_check(spec, store, test_steps)
@@ -367,8 +365,8 @@ def test_discard_equivocations_on_attester_slashing(spec, state):
     assert spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2)
 
     # Tick to (block_eqv.slot + 2) slot time
-    time = store.genesis_time + (block_eqv.slot + 2) * spec.config.SLOT_DURATION_MS // 1000
-    on_tick_and_append_step(spec, store, time, test_steps)
+    time_ms = spec.compute_time_at_slot_ms(genesis_state, block_eqv.slot + 2)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
 
     # Process block_1
     yield from add_block(spec, store, signed_block_1, test_steps)
@@ -439,9 +437,9 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
     store = spec.get_forkchoice_store(anchor_state, anchor_block)
 
     # Now generate the store checks
-    current_time = anchor_state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = spec.compute_time_at_slot_ms(anchor_state, anchor_state.slot)
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # Create two competing blocks at eqv_slot
     next_slots(spec, state, eqv_slot - state.slot - 1)
@@ -474,8 +472,8 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
     assert block_low_root < block_high_root
 
     # Tick to next slot so proposer boost does not apply
-    current_time = store.genesis_time + (block_1.slot + 1) * spec.config.SLOT_DURATION_MS // 1000
-    on_tick_and_append_step(spec, store, current_time, test_steps)
+    current_time_ms = spec.compute_time_at_slot_ms(anchor_state, block_1.slot + 1)
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
 
     # Check that block with higher root wins
     check_head_against_root(spec, store, block_high_root)
@@ -513,15 +511,15 @@ def test_voting_source_within_two_epoch(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     next_epoch(spec, state)
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.compute_time_at_slot_ms(state, state.slot),
         test_steps,
     )
 
@@ -597,15 +595,15 @@ def test_voting_source_beyond_two_epoch(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     next_epoch(spec, state)
     on_tick_and_append_step(
         spec,
         store,
-        store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000,
+        spec.compute_time_at_slot_ms(state, state.slot),
         test_steps,
     )
 
@@ -698,12 +696,12 @@ def test_incorrect_finalized(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield 'anchor_state', state
     yield 'anchor_block', anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     next_epoch(spec, state)
-    on_tick_and_append_step(spec, store, store.genesis_time + state.slot * spec.config.SLOT_DURATION_MS // 1000, test_steps)
+    on_tick_and_append_step(spec, store, store.genesis_time_ms + state.slot * spec.config.SLOT_DURATION_MS, test_steps)
 
     # Fill epoch 1 to 4
     for _ in range(4):

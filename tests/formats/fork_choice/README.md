@@ -51,11 +51,11 @@ types:
 
 #### `on_tick` execution step
 
-The parameter that is required for executing `on_tick(store, time)`.
+The parameter that is required for executing `on_tick(store, time_ms)`.
 
 ```yaml
 {
-    tick: int       -- to execute `on_tick(store, time)`.
+    tick: int       -- to execute `on_tick(store, time_ms)`.
     valid: bool     -- optional, default to `true`.
                        If it's `false`, this execution step is expected to be invalid.
 }
@@ -197,8 +197,8 @@ head: {
     slot: int,
     root: string,             -- Encoded 32-byte value from get_head(store)
 }
-time: int                     -- store.time
-genesis_time: int             -- store.genesis_time
+time: int                     -- milliseconds_to_seconds(store.time_ms)
+genesis_time: int             -- milliseconds_to_seconds(store.genesis_time_ms)
 justified_checkpoint: {
     epoch: int,               -- Integer value from store.justified_checkpoint.epoch
     root: string,             -- Encoded 32-byte value from store.justified_checkpoint.root
