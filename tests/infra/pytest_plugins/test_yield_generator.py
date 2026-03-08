@@ -7,26 +7,30 @@ from unittest.mock import MagicMock
 # When context initiates the chain, the partial module resolution works correctly.
 from eth_consensus_specs.test import context  # noqa: F401
 from tests.infra.manifest import Manifest
-from tests.infra.pytest_plugins.yield_generator import SpecTestFunction
+from tests.infra.pytest_plugins.yield_generator import (
+    _derive_handler_name,
+    _find_runner,
+    _infer_manifest,
+)
 
 
 class TestFindRunner:
-    """Tests for SpecTestFunction._find_runner."""
+    """Tests for _find_runner."""
 
     def test_returns_none_for_unittests(self):
         path = Path("/some/path/unittests/test_foo.py")
-        assert SpecTestFunction._find_runner(path) is None
+        assert _find_runner(path) is None
 
     def test_finds_closest_runner_when_multiple_in_path(self):
         # fork is closer to the file than sanity, so it wins
         path = Path("/some/path/sanity/fork/test_foo.py")
-        pkg_name, config = SpecTestFunction._find_runner(path)
+        pkg_name, config = _find_runner(path)
         assert pkg_name == "fork"
         assert config["handler_name_fixed"] == "fork"
 
 
 class TestDeriveHandlerName:
-    """Tests for SpecTestFunction._derive_handler_name."""
+    """Tests for _derive_handler_name."""
 
     def test_map_takes_precedence_over_strip(self):
         config = {
@@ -35,7 +39,7 @@ class TestDeriveHandlerName:
             },
             "handler_name_strip": ["test_process_"],
         }
-        result = SpecTestFunction._derive_handler_name(config, "test_process_sync_aggregate_random")
+        result = _derive_handler_name(config, "test_process_sync_aggregate_random")
         assert result == "sync_aggregate"
 
     def test_strip_only_removes_prefix(self):
@@ -43,18 +47,15 @@ class TestDeriveHandlerName:
         config = {
             "handler_name_strip": ["test_"],
         }
-        result = SpecTestFunction._derive_handler_name(config, "contest_results")
+        result = _derive_handler_name(config, "contest_results")
         assert result == "contest_results"
 
     def test_custom_strip_prefixes(self):
         config = {
             "handler_name_strip": ["test_process_", "test_apply_"],
         }
-        assert SpecTestFunction._derive_handler_name(config, "test_process_rewards") == "rewards"
-        assert (
-            SpecTestFunction._derive_handler_name(config, "test_apply_pending_deposit")
-            == "pending_deposit"
-        )
+        assert _derive_handler_name(config, "test_process_rewards") == "rewards"
+        assert _derive_handler_name(config, "test_apply_pending_deposit") == "pending_deposit"
 
 
 def _make_stub(name, path, originalname=None, obj=None, callspec=None):
@@ -65,24 +66,19 @@ def _make_stub(name, path, originalname=None, obj=None, callspec=None):
             "parent",
             "obj",
             "originalname",
-            "manifest",
-            "_find_runner",
-            "_derive_handler_name",
         ]
     )
     stub.name = name
     stub.parent = SimpleNamespace(path=path)
     stub.originalname = originalname or name
     stub.obj = obj if obj is not None else SimpleNamespace()
-    stub._find_runner = SpecTestFunction._find_runner
-    stub._derive_handler_name = SpecTestFunction._derive_handler_name
     if callspec is not None:
         stub.callspec = callspec
     return stub
 
 
 class TestInferManifest:
-    """Tests for SpecTestFunction._infer_manifest."""
+    """Tests for _infer_manifest."""
 
     def test_block_processing_runner(self):
         """block_processing maps runner to 'operations' and strips test_process_ from handler."""
@@ -90,8 +86,7 @@ class TestInferManifest:
             name="test_success",
             path=Path("/x/block_processing/test_process_attestation.py"),
         )
-        SpecTestFunction._infer_manifest(stub)
-        m = stub.manifest
+        m = _infer_manifest(stub)
         assert m.runner_name == "operations"
         assert m.handler_name == "attestation"
         assert m.case_name == "success"
@@ -103,8 +98,7 @@ class TestInferManifest:
             name="test_foo",
             path=Path("/x/unittests/test_foo.py"),
         )
-        SpecTestFunction._infer_manifest(stub)
-        assert not hasattr(stub, "manifest") or isinstance(stub.manifest, MagicMock)
+        assert _infer_manifest(stub) is None
 
     def test_obj_manifest_overrides_guessed(self):
         """A manifest attached to the test function overrides guessed fields."""
@@ -116,8 +110,7 @@ class TestInferManifest:
             path=Path("/x/fork/test_fork.py"),
             obj=obj,
         )
-        SpecTestFunction._infer_manifest(stub)
-        m = stub.manifest
+        m = _infer_manifest(stub)
         assert m.handler_name == "custom_handler"
         # Non-overridden fields still come from the guess
         assert m.runner_name == "fork"
@@ -131,8 +124,8 @@ class TestInferManifest:
             path=Path("/x/bls/test_verify.py"),
             callspec=callspec,
         )
-        SpecTestFunction._infer_manifest(stub)
-        assert stub.manifest.preset_name == "mainnet"
+        m = _infer_manifest(stub)
+        assert m.preset_name == "mainnet"
 
     def test_obj_suite_name(self):
         """suite_name from the test function object is used when present."""
@@ -142,8 +135,7 @@ class TestInferManifest:
             path=Path("/x/shuffling/test_shuffling.py"),
             obj=obj,
         )
-        SpecTestFunction._infer_manifest(stub)
-        m = stub.manifest
+        m = _infer_manifest(stub)
         # shuffling has config suite_name="shuffle", which takes precedence over obj
         assert m.suite_name == "shuffle"
         assert m.handler_name == "core"
@@ -154,5 +146,5 @@ class TestInferManifest:
             path=Path("/x/bls/test_verify.py"),
             obj=obj,
         )
-        SpecTestFunction._infer_manifest(stub2)
-        assert stub2.manifest.suite_name == "custom_suite"
+        m2 = _infer_manifest(stub2)
+        assert m2.suite_name == "custom_suite"

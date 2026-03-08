@@ -236,19 +236,20 @@ test: KZG := $(if $(filter fw,$(component)),,--kzg-type=$(if $(kzg),$(kzg),ckzg)
 test: MAYBE_SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth_consensus_specs)
 test: MAYBE_INFRA := $(if $(filter pyspec,$(component)),,$(CURDIR)/tests/infra)
 test: MAYBE_REFTESTS := $(if $(filter true,$(reftests)),--reftests --reftests-output $(PYTEST_REFTESTS_DIR))
+# In reftests mode, disable HTML/JUnit reports and capture (not needed, adds overhead).
+test: MAYBE_REPORTS := $(if $(filter true,$(reftests)),,--junitxml=$(TEST_REPORT_DIR)/test_results.xml --html=$(TEST_REPORT_DIR)/test_results.html --self-contained-html)
+test: MAYBE_CAPTURE := $(if $(filter true,$(reftests)),,--capture=no)
 test: _pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(UV_RUN) pytest \
 		$(MAYBE_PARALLEL) \
-		--capture=no \
+		$(MAYBE_CAPTURE) \
 		$(MAYBE_TEST) \
 		$(MAYBE_FORK) \
 		$(PRESET) \
 		$(BLS) \
 		$(KZG) \
-		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
-		--html=$(TEST_REPORT_DIR)/test_results.html \
-		--self-contained-html \
+		$(MAYBE_REPORTS) \
 		$(MAYBE_REFTESTS) \
 		$(MAYBE_INFRA) \
 		$(MAYBE_SPEC)

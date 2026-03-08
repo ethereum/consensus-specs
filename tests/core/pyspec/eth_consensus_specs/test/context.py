@@ -50,6 +50,9 @@ DEFAULT_TEST_PRESET = MINIMAL
 # Without pytest CLI arg or pyspec-test-generator 'run-phase' argument, this will be the config to apply.
 DEFAULT_PYTEST_FORKS = ALL_PHASES
 
+# Set by the pytest `fork` fixture for parametrized fork execution.
+CURRENT_FORK = None
+
 
 @dataclass(frozen=True)
 class ForkMeta:
@@ -564,6 +567,24 @@ def _get_available_phases(run_phases, other_phases):
     return available_phases
 
 
+def _run_test_for_fork(fn, fork, decorator_phases, other_phases, kw, args):
+    """Run a test case for a single fork (pytest-parametrized mode)."""
+    targets = _get_preset_targets(kw)
+
+    # Build phase_dir with all decorator phases for multi-phase access
+    # (e.g., light client tests need access to multiple fork specs)
+    available_phases = set(decorator_phases)
+    if other_phases is not None:
+        available_phases |= set(other_phases)
+    phase_dir = {p: targets[p] for p in available_phases}
+
+    ret = fn(spec=targets[fork], phases=phase_dir, *args, **kw)
+
+    if is_pytest and is_generator:
+        return {fork: ret}
+    return ret
+
+
 def _run_test_case_with_phases(fn, phases, other_phases, kw, args, is_fork_transition=False):
     run_phases = _get_run_phases(phases, kw)
 
@@ -607,44 +628,42 @@ def with_phases(phases, other_phases=None):
 
     def decorator(fn):
         def wrapper(*args, **kw):
-            if "fork_metas" in kw:
-                fork_metas = kw.pop("fork_metas")
-                if "phase" in kw:
-                    # When running test generator, it sets specific `phase`
+            if "phase" in kw:
+                # Ad-hoc generator mode: explicit phase kwarg — keep existing behavior
+                if "fork_metas" in kw:
+                    fork_metas = kw.pop("fork_metas")
                     phase = kw["phase"]
                     _phases = [phase]
                     if phase in POST_FORK_OF:
                         _other_phases = [POST_FORK_OF[phase]]
                     else:
                         _other_phases = None
-                    ret = _run_test_case_with_phases(
+                    return _run_test_case_with_phases(
                         fn, _phases, _other_phases, kw, args, is_fork_transition=True
                     )
-                # When running pytest, go through `fork_metas` instead of using `phases`
-                elif is_pytest and is_generator:
-                    # In generator mode, accumulate results from all fork_metas
-                    # so that each fork transition produces a test vector.
-                    accumulated = {}
-                    for fork_meta in fork_metas:
-                        _phases = [fork_meta.pre_fork_name]
-                        _other_phases = [fork_meta.post_fork_name]
-                        ret = _run_test_case_with_phases(
-                            fn, _phases, _other_phases, kw, args, is_fork_transition=True
-                        )
-                        if isinstance(ret, dict):
-                            accumulated.update(ret)
-                    ret = accumulated if accumulated else None
                 else:
-                    for fork_meta in fork_metas:
-                        _phases = [fork_meta.pre_fork_name]
-                        _other_phases = [fork_meta.post_fork_name]
-                        ret = _run_test_case_with_phases(
-                            fn, _phases, _other_phases, kw, args, is_fork_transition=True
-                        )
-            else:
-                ret = _run_test_case_with_phases(fn, phases, other_phases, kw, args)
-            return ret
+                    return _run_test_case_with_phases(fn, phases, other_phases, kw, args)
 
+            # Pytest mode: single fork from CURRENT_FORK (set by fixture)
+            fork = CURRENT_FORK
+            if fork is None:
+                dump_skipping_message("no fork specified")
+                return None
+
+            if "fork_metas" in kw:
+                fork_metas = kw.pop("fork_metas")
+                try:
+                    fork_meta = next(m for m in fork_metas if m.pre_fork_name == fork)
+                except StopIteration:
+                    dump_skipping_message(f"no fork_meta for fork: {fork}")
+                    return None
+                _other_phases = [fork_meta.post_fork_name]
+                return _run_test_for_fork(fn, fork, phases, _other_phases, kw, args)
+            else:
+                return _run_test_for_fork(fn, fork, phases, other_phases, kw, args)
+
+        wrapper._phases = tuple(phases)
+        wrapper._other_phases = other_phases
         return wrapper
 
     return decorator
@@ -815,6 +834,7 @@ def only_generator(reason):
                 return None
             return inner(*args, **kwargs)
 
+        _wrapper._phases = getattr(inner, "_phases", None)
         return _wrapper
 
     return _decorator
@@ -838,6 +858,8 @@ def set_fork_metas(fork_metas: Sequence[ForkMeta]):
         def wrapper(*args, **kwargs):
             return fn(*args, fork_metas=fork_metas, **kwargs)
 
+        # Propagate _phases from inner decorator for pytest parametrization
+        wrapper._phases = getattr(fn, "_phases", None)
         return wrapper
 
     return decorator
@@ -866,8 +888,9 @@ def with_fork_metas(fork_metas: Sequence[ForkMeta]):
     `post_tag`: a function to tag data as belonging to `post_fork_name` fork.
         Used to discriminate data during consumption of the generated spec tests.
     """
+    pre_forks = [m.pre_fork_name for m in fork_metas]
     run_yield_fork_meta = yield_fork_meta(fork_metas)
-    run_with_phases = with_phases(ALL_PHASES)
+    run_with_phases = with_phases(pre_forks)
     run_set_fork_metas = set_fork_metas(fork_metas)
 
     def decorator(fn):
