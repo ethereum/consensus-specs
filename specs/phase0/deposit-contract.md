@@ -38,9 +38,9 @@ updated for releases and may be out of sync during `dev` changes.
 
 | Name                       | Value                                        |
 | -------------------------- | -------------------------------------------- |
-| `DEPOSIT_CHAIN_ID`         | `1`                                          |
-| `DEPOSIT_NETWORK_ID`       | `1`                                          |
-| `DEPOSIT_CONTRACT_ADDRESS` | `0x00000000219ab540356cBB839Cbe05303d7705Fa` |
+| `DEPOSIT_CHAIN_ID`         | `100`                                        |
+| `DEPOSIT_NETWORK_ID`       | `100`                                        |
+| `DEPOSIT_CONTRACT_ADDRESS` | `0x0B98057eA310F4d31F2a452B414647007d1645d9` |
 
 ## Staking deposit contract
 

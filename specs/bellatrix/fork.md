@@ -18,8 +18,8 @@ This document describes the process of Bellatrix upgrade.
 
 | Name                     | Value                                          |
 | ------------------------ | ---------------------------------------------- |
-| `BELLATRIX_FORK_VERSION` | `Version('0x02000000')`                        |
-| `BELLATRIX_FORK_EPOCH`   | `Epoch(144896)` (Sept 6, 2022, 11:34:47am UTC) |
+| `BELLATRIX_FORK_VERSION` | `Version('0x02000064')`                        |
+| `BELLATRIX_FORK_EPOCH`   | `Epoch(385536)`                                |
 
 ## Fork to Bellatrix
 

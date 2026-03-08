@@ -1,6 +1,6 @@
-# Mainnet preset - Altair
+# Gnosis preset - Altair
 
-# Rewards and penalties
+# Updated penalty values
 # ---------------------------------------------------------------
 # 3 * 2**24 (= 50,331,648)
 INACTIVITY_PENALTY_QUOTIENT_ALTAIR: 50331648
@@ -9,16 +9,18 @@ MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR: 64
 # 2
 PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
 
+
 # Sync committee
 # ---------------------------------------------------------------
-# 2**9 (= 512) participants
+# 2**9 (= 512)
 SYNC_COMMITTEE_SIZE: 512
-# 2**8 (= 256) epochs
-EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 256
+# 2**9 (= 512)
+EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 512
+
 
 # Sync protocol
 # ---------------------------------------------------------------
-# 2**0 (= 1) participants
+# 1
 MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
-# SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD (= 32 * 256) epochs
+# SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD (= 32 * 256)
 UPDATE_TIMEOUT: 8192

@@ -22,8 +22,8 @@ Warning: this configuration is not definitive.
 
 | Name                | Value                                              |
 | ------------------- | -------------------------------------------------- |
-| `FULU_FORK_VERSION` | `Version('0x06000000')`                            |
-| `FULU_FORK_EPOCH`   | `Epoch(411392)` (December 3, 2025, 09:49:11pm UTC) |
+| `FULU_FORK_VERSION` | `Version('0x06000064')`                            |
+| `FULU_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD**              |
 
 ## Helpers
 

@@ -271,7 +271,8 @@ def run_test_full_random_operations(spec, state, rng=None):
     if rng is None:
         rng = Random(2080)
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
-    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+    # Use at least 2x to ensure state.slot >= SLOTS_PER_HISTORICAL_ROOT
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH * 2
 
     # prepare state for deposits before building block
     deposits = prepare_state_and_get_random_deposits(spec, state, rng)

@@ -19,8 +19,8 @@ the Altair upgrade, introducing light client support and other improvements.
 
 | Name                  | Value                                         |
 | --------------------- | --------------------------------------------- |
-| `ALTAIR_FORK_VERSION` | `Version('0x01000000')`                       |
-| `ALTAIR_FORK_EPOCH`   | `Epoch(74240)` (Oct 27, 2021, 10:56:23am UTC) |
+| `ALTAIR_FORK_VERSION` | `Version('0x01000064')`                       |
+| `ALTAIR_FORK_EPOCH`   | `Epoch(512)`                                  |
 
 ## Fork to Altair
 

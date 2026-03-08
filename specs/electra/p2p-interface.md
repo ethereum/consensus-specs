@@ -41,7 +41,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                | Value | Description                                                       |
 | ----------------------------------- | ----- | ----------------------------------------------------------------- |
-| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`   | The number of blob sidecar subnets used in the gossipsub protocol |
+| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `2`   | The number of blob sidecar subnets used in the gossipsub protocol |
 
 ### Helpers
 

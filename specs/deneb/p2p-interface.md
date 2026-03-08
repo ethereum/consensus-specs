@@ -59,8 +59,8 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | Name                                    | Value                    | Description                                                        |
 | --------------------------------------- | ------------------------ | ------------------------------------------------------------------ |
 | `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)           | Maximum number of blocks in a single request                       |
-| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4,096 epochs) | The minimum epoch range over which a node must serve blob sidecars |
-| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                      | The number of blob sidecar subnets used in the gossipsub protocol  |
+| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**14` (= 16,384 epochs) | The minimum epoch range over which a node must serve blob sidecars |
+| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                       | The number of blob sidecar subnets used in the gossipsub protocol  |
 
 ### Containers
 

@@ -85,7 +85,7 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 | Name                  | Value       | Description                                                                           |
 | --------------------- | ----------- | ------------------------------------------------------------------------------------- |
-| `MAX_BLOBS_PER_BLOCK` | `uint64(6)` | Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
+| `MAX_BLOBS_PER_BLOCK` | `uint64(2)` | Maximum number of blobs in a single block limited by `MAX_BLOB_COMMITMENTS_PER_BLOCK` |
 
 *Note*: The blob transactions are packed into the execution payload by the
 EL/builder with their corresponding blobs being independently transmitted and
@@ -96,7 +96,7 @@ independently defined by `MAX_BLOBS_PER_BLOCK`.
 
 | Name                                   | Value                |
 | -------------------------------------- | -------------------- |
-| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `uint64(2**3)` (= 8) |
+| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `uint64(2)` |
 
 ## Containers
 

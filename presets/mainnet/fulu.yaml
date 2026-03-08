@@ -1,8 +1,8 @@
-# Mainnet preset - Fulu
+# Gnosis preset - Fulu
 
 # Networking
 # ---------------------------------------------------------------
-# floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments')) (= 4)
+# floorlog2(get_generalized_index(BeaconBlockBody, 'blob_kzg_commitments') (= 4)
 KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH: 4
 
 # Blob

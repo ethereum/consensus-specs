@@ -21,7 +21,7 @@ Warning: this configuration is not definitive.
 
 | Name                | Value                                 |
 | ------------------- | ------------------------------------- |
-| `HEZE_FORK_VERSION` | `Version('0x08000000')`               |
+| `HEZE_FORK_VERSION` | `Version('0x08000064')`               |
 | `HEZE_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Fork to Heze

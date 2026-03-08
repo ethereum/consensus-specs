@@ -53,10 +53,8 @@ SHOULD be sorted by epoch in ascending order. The blob schedule MAY be empty.
 
 <!-- list-of-records:blob_schedule -->
 
-|  Epoch | Max Blobs Per Block |                             Date |
-| -----: | ------------------: | -------------------------------: |
-| 412672 |                  15 | December 9, 2025, 02:21:11pm UTC |
-| 419072 |                  21 |  January 7, 2026, 01:01:11am UTC |
+| Epoch | Max Blobs Per Block | Date |
+| ----: | ------------------: | ---: |
 
 ## Beacon chain state transition function
 

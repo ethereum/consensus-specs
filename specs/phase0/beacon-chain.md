@@ -261,7 +261,7 @@ directory.
 | Name                               | Value                     |  Unit  |
 | ---------------------------------- | ------------------------- | :----: |
 | `MIN_ATTESTATION_INCLUSION_DELAY`  | `uint64(2**0)` (= 1)      | slots  |
-| `SLOTS_PER_EPOCH`                  | `uint64(2**5)` (= 32)     | slots  |
+| `SLOTS_PER_EPOCH`                  | `uint64(16)`              | slots  |
 | `MIN_SEED_LOOKAHEAD`               | `uint64(2**0)` (= 1)      | epochs |
 | `MAX_SEED_LOOKAHEAD`               | `uint64(2**2)` (= 4)      | epochs |
 | `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `uint64(2**2)` (= 4)      | epochs |
@@ -281,7 +281,7 @@ directory.
 
 | Name                               | Value                          |
 | ---------------------------------- | ------------------------------ |
-| `BASE_REWARD_FACTOR`               | `uint64(2**6)` (= 64)          |
+| `BASE_REWARD_FACTOR`               | `uint64(25)`                   |
 | `WHISTLEBLOWER_REWARD_QUOTIENT`    | `uint64(2**9)` (= 512)         |
 | `PROPOSER_REWARD_QUOTIENT`         | `uint64(2**3)` (= 8)           |
 | `INACTIVITY_PENALTY_QUOTIENT`      | `uint64(2**26)` (= 67,108,864) |
@@ -324,20 +324,20 @@ and other types of chain instances may use a different configuration.
 
 | Name                                 | Value                                        |
 | ------------------------------------ | -------------------------------------------- |
-| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `uint64(2**14)` (= 16,384)                   |
-| `MIN_GENESIS_TIME`                   | `uint64(1606824000)` (Dec 1, 2020, 12pm UTC) |
-| `GENESIS_FORK_VERSION`               | `Version('0x00000000')`                      |
-| `GENESIS_DELAY`                      | `uint64(604800)` (7 days)                    |
+| `MIN_GENESIS_ACTIVE_VALIDATOR_COUNT` | `uint64(2**12)` (= 4,096)                       |
+| `MIN_GENESIS_TIME`                   | `uint64(1638968400)` (Dec 08, 2021, 13:00 UTC)  |
+| `GENESIS_FORK_VERSION`               | `Version('0x00000064')`                         |
+| `GENESIS_DELAY`                      | `uint64(6000)`                                  |
 
 ### Time parameters
 
 | Name                                  | Value                     |     Unit     |  Duration  |
 | ------------------------------------- | ------------------------- | :----------: | :--------: |
-| `SLOT_DURATION_MS`                    | `uint64(12000)`           | milliseconds | 12 seconds |
-| `SECONDS_PER_ETH1_BLOCK`              | `uint64(14)`              |   seconds    | 14 seconds |
+| `SLOT_DURATION_MS`                    | `uint64(5000)`            | milliseconds | 5 seconds  |
+| `SECONDS_PER_ETH1_BLOCK`              | `uint64(6)`               |   seconds    | 6 seconds  |
 | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256)    |    epochs    |            |
 | `SHARD_COMMITTEE_PERIOD`              | `uint64(2**8)` (= 256)    |    epochs    |            |
-| `ETH1_FOLLOW_DISTANCE`                | `uint64(2**11)` (= 2,048) | Eth1 blocks  |            |
+| `ETH1_FOLLOW_DISTANCE`                | `uint64(2**10)` (= 1,024) | Eth1 blocks  |            |
 
 ### Validator cycle
 
@@ -345,7 +345,7 @@ and other types of chain instances may use a different configuration.
 | --------------------------- | --------------------------------------- |
 | `EJECTION_BALANCE`          | `Gwei(2**4 * 10**9)` (= 16,000,000,000) |
 | `MIN_PER_EPOCH_CHURN_LIMIT` | `uint64(2**2)` (= 4)                    |
-| `CHURN_LIMIT_QUOTIENT`      | `uint64(2**16)` (= 65,536)              |
+| `CHURN_LIMIT_QUOTIENT`      | `uint64(2**12)` (= 4,096)               |
 
 ## Containers
 

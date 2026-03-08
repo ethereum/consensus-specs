@@ -122,7 +122,7 @@ to their final, maximum security values.
 | Name                               | Value                  | Unit       |
 | ---------------------------------- | ---------------------- | ---------- |
 | `SYNC_COMMITTEE_SIZE`              | `uint64(2**9)` (= 512) | validators |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs     |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**9)` (= 512) | epochs     |
 
 ## Configuration
 
