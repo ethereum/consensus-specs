@@ -96,6 +96,7 @@ jobs:
           archive: false
 
       - name: Delete intermediate artifacts
+        continue-on-error: true
         run: |
           artifact_ids=$(gh api actions/runs/${{ github.run_id }}/artifacts \
             --paginate --jq '.artifacts[]
