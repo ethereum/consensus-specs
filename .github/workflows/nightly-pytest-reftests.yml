@@ -21,7 +21,7 @@ on:
     - cron: "0 0 * * *"
 
 jobs:
-  generate-tests:
+  generate:
     timeout-minutes: 720 # 12 hours
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     strategy:
@@ -68,8 +68,8 @@ jobs:
           path: pytest-reftests/tests/${{ matrix.preset }}
           if-no-files-found: ignore
 
-  package-tests:
-    needs: generate-tests
+  package:
+    needs: generate
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     strategy:
       matrix:
