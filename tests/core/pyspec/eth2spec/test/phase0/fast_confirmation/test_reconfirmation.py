@@ -9,8 +9,10 @@ from eth2spec.test.context import (
     with_presets,
 )
 from eth2spec.test.helpers.fast_confirmation import (
+    Attesting,
     FCRTest,
-    SystemRun,
+    Slashing,
+    SlotSequence,
 )
 
 """
@@ -66,20 +68,14 @@ def test_reconfirmation_passes_wtih_empty_slots_prior_first_block(spec, state):
     # Epoch 3, Slot 3
 
     # Slash participants of (Epoch 2, last slot) and (Epoch 3, first slot)
-    fcr.execute_run(
-        SystemRun(
-            number_of_slots=0,
-            slashing_percentage=25,
-            slash_participants_in_slot_with_offset=-4,
-        )
-    )
-    fcr.execute_run(
-        SystemRun(
-            number_of_slots=0,
-            slashing_percentage=25,
-            slash_participants_in_slot_with_offset=-3,
-        )
-    )
+    Slashing(
+        percentage=25,
+        committee_slot_or_offset=-4,
+    ).execute(fcr)
+    Slashing(
+        percentage=25,
+        committee_slot_or_offset=-3,
+    ).execute(fcr)
 
     # Advance with block
     fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
@@ -120,7 +116,7 @@ def test_reconfirmation_passes_wtih_empty_slots_prior_first_block(spec, state):
     )
 
     # Run till last slot of Epoch 3
-    fcr.execute_run(SystemRun(end_slot=(4 * S - 1), participation_rate=100))
+    SlotSequence(end_slot=(4 * S - 1), attesting=Attesting(participation_rate=100)).execute(fcr)
 
     # Check the head was confirmed
     assert store.confirmed_root == fcr.head()

@@ -11,7 +11,7 @@ from eth2spec.test.context import (
 from eth2spec.test.helpers.fast_confirmation import (
     debug_print,
     FCRTest,
-    SystemRun,
+    Slashing,
 )
 
 """
@@ -56,14 +56,13 @@ def test_fcr_restarts_to_gu_when_all_conditions_met(spec, state):
 
     # Last slot of epoch 4: build block, attest
     block_root = fcr.add_and_apply_block(parent_root=fcr.head())
-    lslot_atts = fcr.attest(block_root=block_root, slot=fcr.current_slot(), participation_rate=100)
+    fcr.attest(block_root=block_root, slot=fcr.current_slot(), participation_rate=100)
 
     # Late slashing arrives during last slot of epoch 4
     fcr.apply_attester_slashing(slashing_percentage=50, slot=fcr.current_slot())
 
     # Cross into epoch 5
     fcr.next_slot()
-    fcr.apply_attestations(lslot_atts)
 
     # Before FCR: check reconfirmation status
     debug_print(
@@ -152,20 +151,15 @@ def test_fcr_restarts_to_gu_and_confirms_beyond_gu(spec, state):
 
     # Last slot of epoch 4: build block, attest
     block_root = fcr.add_and_apply_block(parent_root=fcr.head())
-    lslot_atts = fcr.attest(block_root=block_root, slot=fcr.current_slot(), participation_rate=100)
+    fcr.attest(block_root=block_root, slot=fcr.current_slot(), participation_rate=100)
 
     # Late slashing arrives during last slot of epoch 4 (before crossing into epoch 5)
     # Slash the whole committee of the last slot of epoch 4, this will make reconfirmation
     # for penultimate block slot fail and after restart advance confirmation to block in a slot before the penultimate one
-    fcr.execute_run(
-        SystemRun(
-            number_of_slots=0, slashing_percentage=100, slash_participants_in_slot_with_offset=0
-        )
-    )
+    Slashing(percentage=100, committee_slot_or_offset=0).execute(fcr)
 
     # Cross into epoch 5 atomically: tick + apply attestations + FCR
     fcr.next_slot()
-    fcr.apply_attestations(lslot_atts)
     fcr.run_fast_confirmation()
 
     assert fcr.current_slot() == epoch5_start
@@ -301,7 +295,7 @@ def test_fcr_no_restart_to_gu_because_gu_too_old(spec, state):
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=20)
 
     # Last slot of epoch 4, Epoch 4->5 boundary
-    fcr.next_slot_with_block_and_apply_attestations(participation_rate=20)
+    fcr.next_slot_with_block(participation_rate=20)
 
     assert fcr.current_slot() == 5 * S
     assert spec.is_start_slot_at_epoch(fcr.current_slot())

@@ -9,8 +9,9 @@ from eth2spec.test.context import (
     with_presets,
 )
 from eth2spec.test.helpers.fast_confirmation import (
+    Attesting,
     FCRTest,
-    SystemRun,
+    SlotSequence,
 )
 
 """
@@ -279,7 +280,9 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_at_epoch_boundary
 
     # Now vote 100% for M for remaining slots until epoch boundary
     # Extend M-side to accumulate enough weight to flip head
-    fcr.execute_run(SystemRun(end_slot=epoch2_start, branch_root=m_root, participation_rate=100))
+    SlotSequence(
+        end_slot=epoch2_start, branch_root=m_root, attesting=Attesting(participation_rate=100)
+    ).execute(fcr)
 
     # Now at epoch 2 start — FCR already ran atomically at the boundary
     assert fcr.current_slot() == epoch2_start
@@ -479,7 +482,6 @@ def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivo
     # Cross into epoch 3 atomically
     fcr.next_slot()
     assert fcr.current_slot() == epoch3_start
-    fcr.apply_attestations()
     fcr.run_fast_confirmation()
 
     # Outcome: reset fired, restart-to-GU worked
@@ -741,7 +743,6 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
 
     # Cross into Epoch 4
     fcr.next_slot()
-    fcr.apply_attestations()
 
     assert fcr.current_slot() == epoch4_start
     assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot()))

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields, replace
 from random import Random
 
 from eth_utils import encode_hex
@@ -62,82 +62,6 @@ def on_fast_confirmation_and_append_step(spec, store, test_steps):
     output_fast_confirmation_checks(spec, store, test_steps)
 
 
-@dataclass
-class SystemRun:
-    number_of_slots: int = None
-    end_slot: int = None
-    participation_rate: int = 100
-    has_proposal: bool = True
-    release_att_pool: bool = True
-    atts_in_block: bool = True
-    apply_atts: bool = True
-    with_fast_confirmation: bool = True
-    branch_root: object = None
-    branch_root_slot_offset: int = None
-    attesting_root: object = None
-    attesting_root_slot_offset: int = None
-    slashing_percentage: int = None
-    slash_participants_in_slot_with_offset: int = None
-    graffiti: str = None
-
-    def __str__(self):
-        output = []
-        for field in fields(self):
-            value = getattr(self, field.name)
-            if value is not None:
-                output.append(f"{field.name}={value}")
-        return f"{self.__class__.__name__}({', '.join(output)})"
-
-    def get_block_root_by_slot(self, store, slot):
-        block_roots_at_slot = [r for (r, b) in store.blocks.items() if b.slot == slot]
-        assert len(block_roots_at_slot) > 0
-        return block_roots_at_slot[0]
-
-    def get_attesting_root(self, store, default_root, current_slot):
-        if self.attesting_root_slot_offset != None:
-            attesting_block_slot = int(current_slot) + self.attesting_root_slot_offset
-            return self.get_block_root_by_slot(store, attesting_block_slot)
-        elif self.attesting_root != None:
-            return self.attesting_root
-        else:
-            return default_root
-
-    def get_branch_root(self, store, default_root, current_slot):
-        if self.branch_root != None:
-            return self.branch_root
-        elif self.branch_root_slot_offset != None:
-            branch_root_slot = int(current_slot) + self.branch_root_slot_offset
-            return self.get_block_root_by_slot(store, branch_root_slot)
-        else:
-            return default_root
-
-    def has_slashing(self):
-        return (
-            self.slashing_percentage != None or self.slash_participants_in_slot_with_offset != None
-        )
-
-    def is_pure_slashing(self):
-        return self.number_of_slots == 0 and self.has_slashing()
-
-    def get_number_of_slots(self, current_slot):
-        assert self.number_of_slots != None or self.end_slot != None
-        if self.number_of_slots is not None:
-            return self.number_of_slots
-        else:
-            assert self.end_slot > current_slot
-            return self.end_slot - current_slot
-
-
-@dataclass
-class SlotRun(SystemRun):
-    number_of_slots: int = 1
-
-
-@dataclass
-class SlashingRun(SystemRun):
-    number_of_slots: int = 0
-
-
 class FCRTest:
     def __init__(self, spec, seed):
         self.spec = spec
@@ -152,6 +76,7 @@ class FCRTest:
         self.store = store
         self.test_steps = test_steps
         self.attestation_pool = []
+        self.recent_attestations = []
         self.blockchain_artefacts = []
 
         # Tick
@@ -185,6 +110,29 @@ class FCRTest:
             if self.store.blocks[root].parent_root == block_root
         ]
 
+    def get_block_root_by_slot(self, slot):
+        block_roots_at_slot = [r for (r, b) in self.store.blocks.items() if b.slot == slot]
+        assert len(block_roots_at_slot) > 0
+        return block_roots_at_slot[0]
+
+    def resolve_slot_by_offset(self, offset_or_slot):
+        if offset_or_slot > 0:
+            return self.spec.Slot(offset_or_slot)
+        else:
+            return self.spec.Slot(int(self.current_slot()) + offset_or_slot)
+
+    def get_block_root_by_slot_offset(self, offset):
+        slot = self.resolve_slot_by_offset(offset)
+        return self.get_block_root_by_slot(slot)
+
+    def get_block_root_or_head(self, root, slot_offset):
+        if slot_offset != None:
+            return self.get_block_root_by_slot_offset(slot_offset)
+        elif root != None:
+            return root
+        else:
+            return self.head()
+
     def tick(self, slot):
         assert slot > self.current_slot() or slot == self.spec.GENESIS_SLOT
         new_time = slot * self.spec.config.SECONDS_PER_SLOT + self.store.genesis_time
@@ -193,6 +141,7 @@ class FCRTest:
 
     def next_slot(self):
         self.tick(self.current_slot() + 1)
+
         # Discard outdated attestations from the pool
         if self.current_slot() % self.spec.SLOTS_PER_EPOCH == 0:
             self.attestation_pool = [
@@ -200,6 +149,10 @@ class FCRTest:
                 for a in self.attestation_pool
                 if self.spec.compute_epoch_at_slot(a.data.slot) + 1 >= self.current_epoch()
             ]
+
+        # Apply recent attestations
+        self.apply_attestations(self.recent_attestations)
+        self.recent_attestations = []
 
     def max_attestations(self):
         if is_post_electra(self.spec):
@@ -296,6 +249,7 @@ class FCRTest:
         )
         if pool_and_disseminate:
             self.attestation_pool.extend(attestations)
+            self.recent_attestations.extend(attestations)
 
             # Yield test data
             for attestation in attestations:
@@ -305,22 +259,15 @@ class FCRTest:
 
         return attestations
 
-    def apply_attestations(self, attestations=None):
-        if attestations is None:
-            attestations = self.attestation_pool
-
+    def apply_attestations(self, attestations):
         # Apply attestations to the fork choice
         for attestation in attestations:
             self.spec.on_attestation(self.store, attestation, is_from_block=False)
 
-    def next_slot_and_apply_attestations(self):
-        self.next_slot()
-        self.apply_attestations()
-
     def run_fast_confirmation(self):
         on_fast_confirmation_and_append_step(self.spec, self.store, self.test_steps)
 
-    def next_slot_with_block_and_apply_attestations(
+    def next_slot_with_block(
         self,
         participation_rate=100,
         parent_root=None,
@@ -334,11 +281,10 @@ class FCRTest:
             release_att_pool=release_att_pool,
             include_atts=include_atts,
         )
-        attestations = self.attest(
+        self.attest(
             block_root=self.head(), slot=self.current_slot(), participation_rate=participation_rate
         )
         self.next_slot()
-        self.apply_attestations(attestations)
         return block_root
 
     def next_slot_with_block_and_fast_confirmation(
@@ -349,7 +295,7 @@ class FCRTest:
         release_att_pool=True,
         include_atts=True,
     ):
-        block_root = self.next_slot_with_block_and_apply_attestations(
+        block_root = self.next_slot_with_block(
             participation_rate, parent_root, graffiti, release_att_pool, include_atts
         )
         self.run_fast_confirmation()
@@ -358,9 +304,8 @@ class FCRTest:
     def attest_and_next_slot_with_fast_confirmation(
         self, block_root=None, slot=None, participation_rate=100
     ):
-        attestations = self.attest(block_root, slot, participation_rate)
+        self.attest(block_root, slot, participation_rate)
         self.next_slot()
-        self.apply_attestations(attestations)
         self.run_fast_confirmation()
 
     def run_slots_with_blocks_and_fast_confirmation(self, number_of_slots, participation_rate=100):
@@ -393,7 +338,7 @@ class FCRTest:
 
     def apply_attester_slashing(
         self, slashing_percentage: int = None, slashing_indices: list[int] = None, slot=None
-    ):
+    ) -> list[object]:
         if slot is None:
             slot = self.current_slot()
         state = self.store.block_states[self.head()].copy()
@@ -418,72 +363,6 @@ class FCRTest:
             self.blockchain_artefacts.append(artefact)
 
         return attester_slashing
-
-    def execute_slashing(self, run: SystemRun):
-        if run.slash_participants_in_slot_with_offset is not None:
-            if run.slashing_percentage is None:
-                slashing_percentage = 100
-            else:
-                slashing_percentage = run.slashing_percentage
-
-            if slashing_percentage > 0:
-                shuffling_source = self.store.block_states[self.head()]
-                slot = int(self.current_slot()) + run.slash_participants_in_slot_with_offset
-                participants = self.sample_fraction_of_participants(
-                    shuffling_source, slot, slashing_percentage
-                )
-                self.apply_attester_slashing(slashing_indices=participants)
-        elif run.slashing_percentage is not None and run.slashing_percentage > 0:
-            self.apply_attester_slashing(slashing_percentage=run.slashing_percentage)
-
-    def execute_run(self, run: SystemRun) -> list[object]:
-        debug_print(f"slot {self.current_slot()}: {run}")
-
-        if run.is_pure_slashing():
-            # Apply slashing and return
-            self.execute_slashing(run)
-            return []
-
-        tip_root = run.get_branch_root(self.store, self.head(), self.current_slot())
-        built_chain = []
-        number_of_slots = run.get_number_of_slots(self.current_slot())
-        for _ in range(number_of_slots):
-            # Propose
-            if run.has_proposal:
-                tip_root = self.add_and_apply_block(
-                    parent_root=tip_root,
-                    release_att_pool=run.release_att_pool,
-                    include_atts=run.atts_in_block,
-                    graffiti=run.graffiti,
-                )
-                built_chain.append(tip_root)
-
-            # Attest
-            attesting_root = run.get_attesting_root(
-                self.store, default_root=tip_root, current_slot=self.current_slot()
-            )
-            attestations = self.attest(
-                block_root=attesting_root,
-                slot=self.current_slot(),
-                participation_rate=run.participation_rate,
-            )
-
-            # Slash
-            if run.has_slashing():
-                self.execute_slashing(run)
-
-            # Next slot
-            self.next_slot()
-
-            # Apply attestations to the fork choice
-            if run.apply_atts:
-                self.apply_attestations(attestations)
-
-            # Run fast confirmation
-            if run.with_fast_confirmation:
-                self.run_fast_confirmation()
-
-        return built_chain
 
     def compute_score_and_threshold(self, block_root) -> (int, int):
         """
@@ -524,7 +403,7 @@ class FCRTest:
         return f"{checkpoint.epoch}: {str(checkpoint.root)[:6]}"
 
     def print_fast_confirmed_block_tree(self, start_root):
-        if not debug_print:
+        if not DEBUG:
             return
 
         spec = self.spec
@@ -589,7 +468,7 @@ class FCRTest:
             break
 
     def print_fast_confirmation_state(self):
-        if not debug_print:
+        if not DEBUG:
             return
 
         spec = self.spec
@@ -634,261 +513,187 @@ class FCRTest:
 
 
 @dataclass
-class CurrentEpochTestSpecification:
-    head_uj_fresh: bool = (
-        False  # <-> store.unrealized_justifications[head].epoch + 1 >= current_epoch
-    )
-    second_slot_call: bool = False  # <-> algorithm is called in the second slot of an epoch, this is the first slot when a block from the current epoch can possibly be confirmed
-    first_block_in_epoch: bool = False  # <-> confirm the first block in the current epoch
-    target_will_be_justified: bool = False  # <-> will_current_target_be_justified(store)
-    is_one_confirmed: (
-        bool  # <-> is_one_confirmed(store, get_current_balance_source(store), block_root)
-    ) = False
+class SystemRun:
+    def execute(self, fcr: FCRTest) -> object:
+        pass
 
-    def verify_preconditions(self, spec, store):
-        head = spec.get_head(store)
-        current_epoch = spec.get_current_store_epoch(store)
-        current_slot = spec.get_current_slot(store)
-        confirmed_epoch = spec.get_block_epoch(store, store.confirmed_root)
-        canonical_roots = spec.get_ancestor_roots(store, head, store.confirmed_root)
+    def __str__(self):
+        output = []
+        for f in fields(self):
+            value = getattr(self, f.name)
+            if value is not None:
+                output.append(f"{f.name}={value}")
+        return f"{self.__class__.__name__}({', '.join(output)})"
 
-        assert confirmed_epoch + 1 >= current_epoch
-        assert current_slot % spec.SLOTS_PER_EPOCH > 0
-        assert len(canonical_roots) > 0
 
-        assert self.second_slot_call == (current_slot % spec.SLOTS_PER_EPOCH == 1)
-        assert self.first_block_in_epoch == (confirmed_epoch + 1 == current_epoch)
-        assert self.head_uj_fresh == (
-            store.unrealized_justifications[head].epoch + 1 >= current_epoch
+@dataclass
+class PhaseRun(SystemRun):
+    pass
+
+
+@dataclass
+class Proposal(PhaseRun):
+    enabled: bool = True
+    parent_root: object = None
+    parent_root_slot_or_offset: int = None
+    release_att_pool: bool = True
+    atts_in_block: bool = True
+    graffiti: str = None
+
+    def execute(self, fcr: FCRTest) -> object:
+        if self.enabled:
+            parent_root = fcr.get_block_root_or_head(
+                self.parent_root, self.parent_root_slot_or_offset
+            )
+            return fcr.add_and_apply_block(
+                parent_root=parent_root,
+                release_att_pool=self.release_att_pool,
+                include_atts=self.atts_in_block,
+                graffiti=self.graffiti,
+            )
+        else:
+            return None
+
+
+@dataclass
+class Attesting(PhaseRun):
+    participation_rate: int = 100
+    block_root: object = None
+    block_slot_or_offset: int = None
+    committee_slot_or_offset: int = 0
+    apply_atts: bool = False
+    pool_and_disseminate: bool = True
+
+    def execute(self, fcr: FCRTest) -> object:
+        if self.participation_rate == 0:
+            return []
+
+        block_root = fcr.get_block_root_or_head(self.block_root, self.block_slot_or_offset)
+        slot = fcr.resolve_slot_by_offset(self.committee_slot_or_offset)
+        attestations = fcr.attest(
+            block_root=block_root,
+            slot=slot,
+            participation_rate=self.participation_rate,
+            pool_and_disseminate=self.pool_and_disseminate,
         )
-        assert self.target_will_be_justified == spec.will_current_target_be_justified(store)
-        if self.is_one_confirmed:
-            is_one_confirmed_list = [
-                spec.is_one_confirmed(store, spec.get_current_balance_source(store), root)
-                for root in canonical_roots
-            ]
-            debug_print(is_one_confirmed_list)
-            assert all(is_one_confirmed_list)
-        else:
-            assert not spec.is_one_confirmed(
-                store, spec.get_current_balance_source(store), spec.get_head(store)
+        if self.apply_atts:
+            fcr.apply_attestations(attestations)
+
+        return attestations
+
+
+@dataclass
+class Slashing(PhaseRun):
+    percentage: int = None
+    committee_slot_or_offset: int = None
+
+    def execute(self, fcr: FCRTest) -> object:
+        if self.percentage == None or self.percentage == 0:
+            return []
+
+        if self.committee_slot_or_offset is not None:
+            slot = fcr.resolve_slot_by_offset(self.committee_slot_or_offset)
+            shuffling_source = fcr.store.block_states[fcr.head()]
+            participants = fcr.sample_fraction_of_participants(
+                shuffling_source, slot, self.percentage
             )
-
-    def get_expected_confirmed_root(self, spec, store):
-        confirmed_epoch = spec.get_block_epoch(store, store.confirmed_root)
-        current_epoch = spec.get_current_store_epoch(store)
-
-        if confirmed_epoch < current_epoch and not self.target_will_be_justified:
-            return store.confirmed_root
-
-        if self.head_uj_fresh and self.is_one_confirmed:
-            # If any block is supposed to be confirmed
-            # the head is always expected to be the most recent confirmed one
-            return spec.get_head(store)
+            return fcr.apply_attester_slashing(slashing_indices=participants)
         else:
-            return store.confirmed_root
-
-    def first_block_at_mid_epoch(self):
-        return self.first_block_in_epoch and not self.second_slot_call
-
-    def one_confirmed_but_no_justification(self):
-        return self.is_one_confirmed and not self.target_will_be_justified
-
-    def first_block_in_second_slot(self):
-        return self.first_block_in_epoch and self.second_slot_call
+            return fcr.apply_attester_slashing(slashing_percentage=self.percentage)
 
 
-class CurrentEpochTestBuilder:
-    def __init__(self, spec, state, seed, test_spec: CurrentEpochTestSpecification):
-        self.spec = spec
-        self.state = state
-        self.seed = seed
-        self.test_spec = test_spec
+@dataclass
+class AdvanceSlot(PhaseRun):
+    with_fast_confirmation: bool = True
 
-    def create_mid_runs_with_fresh_head_uj(self) -> list[SystemRun]:
-        runs = []
-        if self.test_spec.second_slot_call:
-            # Nothing to do here
-            pass
-        elif (
-            self.test_spec.first_block_in_epoch
-            and self.test_spec.one_confirmed_but_no_justification()
-        ):
-            # Slash a fraction of validators each slot
-            # and leave yet enough unslashed to make is_one_confirmed to pass
-            # but will_current_target_be_justified to fail
-            runs.append(
-                SystemRun(
-                    number_of_slots=1,
-                    slashing_percentage=45,
-                    slash_participants_in_slot_with_offset=0,
-                )
-            )
-        elif self.test_spec.first_block_in_epoch:
-            # Move on to the seconds slot in an epoch
-            # with participation low enough to prevent confirming a block
-            # but still enough to confirm it a slot after if needed
-            runs.append(SystemRun(number_of_slots=1, participation_rate=85))
+    def execute(self, fcr: FCRTest) -> object:
+        # Next slot
+        fcr.next_slot()
+
+        # Run fast confirmation
+        if self.with_fast_confirmation:
+            fcr.run_fast_confirmation()
+
+        return fcr.current_slot()
+
+
+@dataclass
+class MultiPhaseRun(SystemRun):
+    proposal: Proposal = field(default_factory=lambda: Proposal())
+    attesting: Attesting = field(default_factory=lambda: Attesting())
+    slashing: Slashing = field(default_factory=lambda: Slashing())
+    advance_slot: AdvanceSlot = field(default_factory=lambda: AdvanceSlot())
+
+
+@dataclass
+class SlotRun(MultiPhaseRun):
+    def execute(self, fcr: FCRTest) -> object:
+        # Propose
+        tip_root = self.proposal.execute(fcr)
+
+        # Attest
+        attesting_instance = replace(self.attesting, block_root=tip_root, apply_atts=False)
+        attesting_instance.execute(fcr)
+
+        # Slash
+        self.slashing.execute(fcr)
+
+        # Next slot
+        self.advance_slot.execute(fcr)
+
+        return tip_root
+
+
+@dataclass
+class EmptySlotRun(SlotRun):
+    proposal: Proposal = field(default_factory=lambda: Proposal(enabled=False))
+
+
+@dataclass
+class SlotSequence(MultiPhaseRun):
+    number_of_slots: int = None
+    end_slot: int = None
+    branch_root: object = None
+    branch_root_slot_or_offset: int = None
+
+    def get_number_of_slots(self, current_slot):
+        assert self.number_of_slots != None or self.end_slot != None
+        if self.number_of_slots is not None:
+            return self.number_of_slots
         else:
-            # Move on to the seconds slot in an epoch
-            # and confirm a block
-            runs.append(SystemRun(number_of_slots=1))
+            assert self.end_slot > current_slot
+            return self.end_slot - current_slot
 
-            if self.test_spec.one_confirmed_but_no_justification():
-                # Slash entire committee that has already confirmed a block,
-                # this will result in will_current_target_be_justified to fail
-                runs.append(
-                    SystemRun(
-                        number_of_slots=0,
-                        slashing_percentage=100,
-                        slash_participants_in_slot_with_offset=-1,
-                    )
-                )
+    def execute(self, fcr: FCRTest) -> object:
+        debug_print(f"slot {fcr.current_slot()}: {self}")
 
-        return runs
+        tip_root = fcr.get_block_root_or_head(self.branch_root, self.branch_root_slot_or_offset)
+        built_chain = []
+        for _ in range(self.get_number_of_slots(fcr.current_slot())):
+            tip_root = SlotRun(
+                proposal=replace(self.proposal, parent_root=tip_root),
+                attesting=self.attesting,
+                slashing=self.slashing,
+                advance_slot=self.advance_slot,
+            ).execute(fcr)
+            built_chain.append(tip_root)
 
-    def create_mid_runs_with_stale_head_uj(self) -> list[SystemRun]:
-        # Run for an epoch with low onchain attestation inclusion
-        # to prevent UJ update while keep fast confirming blocks
-        slots_with_full_inclusion = self.spec.SLOTS_PER_EPOCH * 2 // 3
-        slots_with_zero_inclusion = self.spec.SLOTS_PER_EPOCH - slots_with_full_inclusion
-        runs = [
-            SystemRun(number_of_slots=slots_with_full_inclusion, atts_in_block=True),
-            SystemRun(number_of_slots=slots_with_zero_inclusion, atts_in_block=False),
-        ]
+        return built_chain
 
-        if self.test_spec.second_slot_call:
-            # Nothing to do here
-            pass
-        elif (
-            self.test_spec.first_block_in_epoch
-            and self.test_spec.one_confirmed_but_no_justification()
-        ):
-            # Slash a fraction of validators each slot
-            # and leave yet enough unslashed to make is_one_confirmed to pass
-            # but will_current_target_be_justified to fail
-            runs.append(
-                SystemRun(
-                    number_of_slots=1,
-                    slashing_percentage=45,
-                    slash_participants_in_slot_with_offset=0,
-                    atts_in_block=False,
-                )
-            )
-        elif self.test_spec.first_block_in_epoch:
-            # Move on to the seconds slot in an epoch
-            # without including atts in a block to prevent UJ update
-            # and low participation enough to prevent is_one_confirmed from being True
-            runs.append(SystemRun(number_of_slots=1, participation_rate=85, atts_in_block=False))
-        else:
-            # Create the following block tree:
-            #   B
-            #  /
-            # A -- C, where:
-            #
-            # UJ[B].epoch == current_epoch - 1
-            # UJ[C].epoch == current_epoch - 2
-            # C == head
-            #
-            # Create A and attest to A
-            runs.append(SystemRun(number_of_slots=1, atts_in_block=False))
-            # Create B but attest to A
-            # B includes attestations from previous epoch enough to update UJ
-            runs.append(
-                SystemRun(number_of_slots=1, atts_in_block=True, attesting_root_slot_offset=-1)
-            )
-            # Create C and attest to C, so C becomes the head, confirm A
-            runs.append(SystemRun(number_of_slots=1, branch_root_slot_offset=-2))
 
-            if self.test_spec.one_confirmed_but_no_justification():
-                # Slash entire committee that has confirmed block A,
-                # this will result in will_current_target_be_justified to fail
-                runs.append(
-                    SystemRun(
-                        number_of_slots=0,
-                        slashing_percentage=100,
-                        slash_participants_in_slot_with_offset=-3,
-                    )
-                )
+@dataclass
+class MultiCommitteeAttesting(PhaseRun):
+    attesting: Attesting = field(default_factory=lambda: Attesting())
+    committee_slot_or_offsets: list[int] = field(default_factory=list)
 
-        return runs
+    def execute(self, fcr: FCRTest) -> list[object]:
+        debug_print(f"slot {fcr.current_slot()}: {self}")
 
-    def create_mid_runs(self) -> list[SystemRun]:
-        if self.test_spec.head_uj_fresh:
-            return self.create_mid_runs_with_fresh_head_uj()
-        else:
-            return self.create_mid_runs_with_stale_head_uj()
+        attestations = []
+        for committee_slot_or_offset in self.committee_slot_or_offsets:
+            slot_atts = replace(
+                self.attesting, committee_slot_or_offset=committee_slot_or_offset
+            ).execute(fcr)
+            attestations.append(slot_atts)
 
-    def get_final_run_participation_rate(self) -> int:
-        if self.test_spec.is_one_confirmed:
-            # Full participation
-            return 100
-        elif self.test_spec.target_will_be_justified:
-            # Participation enough to justify a target
-            # but not enough to fast confirm
-            return 75
-        else:
-            # Participation enough neither to fast confirm
-            # nor to justify a target
-            return 0
-
-    def create_final_run(self) -> SystemRun:
-        if self.test_spec.first_block_at_mid_epoch():
-            if self.test_spec.one_confirmed_but_no_justification():
-                # Slash a fraction of validators each slot
-                # and leave yet enough unslashed to make is_one_confirmed to pass
-                # but will_current_target_be_justified to fail
-                slashing_percentage = 45
-            else:
-                slashing_percentage = 0
-
-            return SystemRun(
-                number_of_slots=1,
-                # Do not propose when the first block of the epoch
-                # should be confirmed mid epoch
-                has_proposal=False,
-                # Prevent UJ update unless UJ must be fresh
-                atts_in_block=self.test_spec.head_uj_fresh,
-                participation_rate=self.get_final_run_participation_rate(),
-                slashing_percentage=slashing_percentage,
-                slash_participants_in_slot_with_offset=0,
-                # Final run without fast confirmation as it will be triggered by the test execution
-                with_fast_confirmation=False,
-            )
-        else:
-            return SystemRun(
-                number_of_slots=1,
-                # Prevent UJ update unless UJ must be fresh
-                atts_in_block=self.test_spec.head_uj_fresh,
-                participation_rate=self.get_final_run_participation_rate(),
-                # Final run without fast confirmation as it will be triggered by the test execution
-                with_fast_confirmation=False,
-            )
-
-    def create_system_runs(self) -> list[SystemRun]:
-        if self.test_spec.second_slot_call:
-            assert self.test_spec.first_block_in_epoch, "Impossible in the second slot of an epoch"
-        if self.test_spec.one_confirmed_but_no_justification():
-            assert not self.test_spec.first_block_in_second_slot(), "The test is hard to build"
-
-        # Initial run to the second epoch
-        runs = [SystemRun(number_of_slots=self.spec.SLOTS_PER_EPOCH)]
-
-        # Mid runs depending on the test spec
-        runs.extend(self.create_mid_runs())
-
-        # Final run
-        runs.append(self.create_final_run())
-
-        return runs
-
-    def build(self):
-        fcr_test = FCRTest(self.spec, self.seed)
-        fcr_test.initialize(self.state)
-        for run in self.create_system_runs():
-            fcr_test.execute_run(run)
-
-        # Check preconditions are correct
-        self.test_spec.verify_preconditions(fcr_test.spec, fcr_test.store)
-
-        return fcr_test
+        return attestations

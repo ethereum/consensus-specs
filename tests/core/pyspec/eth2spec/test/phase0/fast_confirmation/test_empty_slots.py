@@ -203,11 +203,8 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
     assert confirmed_before_empty == head_before_empty
 
     # Attest at slot 6, then advance to slot 7 (last slot of epoch 0) - EMPTY
-    slot6_atts = fcr.attest(
-        block_root=head_before_empty, slot=fcr.current_slot(), participation_rate=100
-    )
+    fcr.attest(block_root=head_before_empty, slot=fcr.current_slot(), participation_rate=100)
     fcr.next_slot()
-    fcr.apply_attestations(slot6_atts)
 
     assert fcr.current_slot() == last_slot_epoch0  # slot 7
     assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot() + 1)), (
@@ -258,9 +255,7 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
     first_block_epoch1 = fcr.add_and_apply_block(
         parent_root=head_before_empty, graffiti="first_epoch1"
     )
-    slot8_atts = fcr.attest(
-        block_root=first_block_epoch1, slot=fcr.current_slot(), participation_rate=100
-    )
+    fcr.attest(block_root=first_block_epoch1, slot=fcr.current_slot(), participation_rate=100)
 
     assert fcr.head() == first_block_epoch1
     # Confirmed hasn't caught up yet
@@ -268,14 +263,11 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
 
     # Continue to next slot
     fcr.next_slot()
-    fcr.apply_attestations(slot8_atts)
     fcr.run_fast_confirmation()
 
     # Second block
     second_block = fcr.add_and_apply_block(parent_root=first_block_epoch1, graffiti="second_block")
-    slot9_atts = fcr.attest(
-        block_root=second_block, slot=fcr.current_slot(), participation_rate=100
-    )
+    fcr.attest(block_root=second_block, slot=fcr.current_slot(), participation_rate=100)
 
     assert fcr.head() == second_block
     # Confirmed still hasn't caught up
@@ -283,7 +275,6 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
 
     # Apply attestations for second block
     fcr.next_slot()
-    fcr.apply_attestations(slot9_atts)
     fcr.run_fast_confirmation()
 
     # Note: The exact timing of when confirmation catches up after an empty slot
@@ -374,13 +365,10 @@ def test_fcr_empty_slots_at_epoch_boundary_both_sides(spec, state):
     gu_snapshot = store.previous_epoch_greatest_unrealized_checkpoint
     curr_observed_before_rotation = store.current_epoch_observed_justified_checkpoint
 
-    slot7_atts = fcr.attest(
-        block_root=head_before_empty, slot=fcr.current_slot(), participation_rate=100
-    )
+    fcr.attest(block_root=head_before_empty, slot=fcr.current_slot(), participation_rate=100)
 
     # Slot 8: First slot of epoch 1 (EMPTY) - rotation happens here
     fcr.next_slot()
-    fcr.apply_attestations(slot7_atts)
 
     assert fcr.current_slot() == epoch1_start  # slot 8
     assert spec.is_start_slot_at_epoch(fcr.current_slot()), "Slot 8 should be first slot of epoch 1"

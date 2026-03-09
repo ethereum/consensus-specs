@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from eth2spec.test.context import (
     MINIMAL,
     spec_state_test,
@@ -5,10 +7,283 @@ from eth2spec.test.context import (
     with_presets,
 )
 from eth2spec.test.helpers.fast_confirmation import (
-    CurrentEpochTestBuilder,
-    CurrentEpochTestSpecification,
+    AdvanceSlot,
+    Attesting,
+    EmptySlotRun,
     FCRTest,
+    PhaseRun,
+    Proposal,
+    Slashing,
+    SlotRun,
+    SlotSequence,
 )
+
+
+@dataclass
+class CurrentEpochTestSpecification:
+    head_uj_fresh: bool = (
+        False  # <-> store.unrealized_justifications[head].epoch + 1 >= current_epoch
+    )
+    second_slot_call: bool = False  # <-> algorithm is called in the second slot of an epoch, this is the first slot when a block from the current epoch can possibly be confirmed
+    first_block_in_epoch: bool = False  # <-> confirm the first block in the current epoch
+    target_will_be_justified: bool = False  # <-> will_current_target_be_justified(store)
+    is_one_confirmed: (
+        bool  # <-> is_one_confirmed(store, get_current_balance_source(store), block_root)
+    ) = False
+
+    def verify_preconditions(self, spec, store):
+        head = spec.get_head(store)
+        current_epoch = spec.get_current_store_epoch(store)
+        current_slot = spec.get_current_slot(store)
+        confirmed_epoch = spec.get_block_epoch(store, store.confirmed_root)
+        canonical_roots = spec.get_ancestor_roots(store, head, store.confirmed_root)
+
+        assert confirmed_epoch + 1 >= current_epoch
+        assert current_slot % spec.SLOTS_PER_EPOCH > 0
+        assert len(canonical_roots) > 0
+
+        assert self.second_slot_call == (current_slot % spec.SLOTS_PER_EPOCH == 1)
+        assert self.first_block_in_epoch == (confirmed_epoch + 1 == current_epoch)
+        assert self.head_uj_fresh == (
+            store.unrealized_justifications[head].epoch + 1 >= current_epoch
+        )
+        assert self.target_will_be_justified == spec.will_current_target_be_justified(store)
+        if self.is_one_confirmed:
+            is_one_confirmed_list = [
+                spec.is_one_confirmed(store, spec.get_current_balance_source(store), root)
+                for root in canonical_roots
+            ]
+            assert all(is_one_confirmed_list)
+        else:
+            assert not spec.is_one_confirmed(
+                store, spec.get_current_balance_source(store), spec.get_head(store)
+            )
+
+    def get_expected_confirmed_root(self, spec, store):
+        confirmed_epoch = spec.get_block_epoch(store, store.confirmed_root)
+        current_epoch = spec.get_current_store_epoch(store)
+
+        if confirmed_epoch < current_epoch and not self.target_will_be_justified:
+            return store.confirmed_root
+
+        if self.head_uj_fresh and self.is_one_confirmed:
+            # If any block is supposed to be confirmed
+            # the head is always expected to be the most recent confirmed one
+            return spec.get_head(store)
+        else:
+            return store.confirmed_root
+
+    def first_block_at_mid_epoch(self):
+        return self.first_block_in_epoch and not self.second_slot_call
+
+    def one_confirmed_but_no_justification(self):
+        return self.is_one_confirmed and not self.target_will_be_justified
+
+    def first_block_in_second_slot(self):
+        return self.first_block_in_epoch and self.second_slot_call
+
+
+class CurrentEpochTestBuilder:
+    def __init__(self, spec, state, seed, test_spec: CurrentEpochTestSpecification):
+        self.spec = spec
+        self.state = state
+        self.seed = seed
+        self.test_spec = test_spec
+
+    def create_mid_runs_with_fresh_head_uj(self) -> list[PhaseRun]:
+        runs = []
+        if self.test_spec.second_slot_call:
+            # Nothing to do here
+            pass
+        elif (
+            self.test_spec.first_block_in_epoch
+            and self.test_spec.one_confirmed_but_no_justification()
+        ):
+            # Slash a fraction of validators each slot
+            # and leave yet enough unslashed to make is_one_confirmed to pass
+            # but will_current_target_be_justified to fail
+            runs.append(
+                SlotRun(
+                    slashing=Slashing(
+                        percentage=45,
+                        committee_slot_or_offset=0,
+                    )
+                )
+            )
+        elif self.test_spec.first_block_in_epoch:
+            # Move on to the seconds slot in an epoch
+            # with participation low enough to prevent confirming a block
+            # but still enough to confirm it a slot after if needed
+            runs.append(SlotRun(attesting=Attesting(participation_rate=85)))
+        else:
+            # Move on to the seconds slot in an epoch
+            # and confirm a block
+            runs.append(SlotRun())
+
+            if self.test_spec.one_confirmed_but_no_justification():
+                # Slash entire committee that has already confirmed a block,
+                # this will result in will_current_target_be_justified to fail
+                runs.append(
+                    Slashing(
+                        percentage=100,
+                        committee_slot_or_offset=-1,
+                    )
+                )
+
+        return runs
+
+    def create_mid_runs_with_stale_head_uj(self) -> list[PhaseRun]:
+        # Run for an epoch with low onchain attestation inclusion
+        # to prevent UJ update while keep fast confirming blocks
+        slots_with_full_inclusion = self.spec.SLOTS_PER_EPOCH * 2 // 3
+        slots_with_zero_inclusion = self.spec.SLOTS_PER_EPOCH - slots_with_full_inclusion
+        runs = [
+            SlotSequence(
+                number_of_slots=slots_with_full_inclusion, proposal=Proposal(atts_in_block=True)
+            ),
+            SlotSequence(
+                number_of_slots=slots_with_zero_inclusion, proposal=Proposal(atts_in_block=False)
+            ),
+        ]
+
+        if self.test_spec.second_slot_call:
+            # Nothing to do here
+            pass
+        elif (
+            self.test_spec.first_block_in_epoch
+            and self.test_spec.one_confirmed_but_no_justification()
+        ):
+            # Slash a fraction of validators each slot
+            # and leave yet enough unslashed to make is_one_confirmed to pass
+            # but will_current_target_be_justified to fail
+            runs.append(
+                SlotRun(
+                    proposal=Proposal(atts_in_block=False),
+                    slashing=Slashing(percentage=45, committee_slot_or_offset=0),
+                )
+            )
+        elif self.test_spec.first_block_in_epoch:
+            # Move on to the seconds slot in an epoch
+            # without including atts in a block to prevent UJ update
+            # and low participation enough to prevent is_one_confirmed from being True
+            runs.append(
+                SlotRun(
+                    proposal=Proposal(atts_in_block=False),
+                    attesting=Attesting(participation_rate=85),
+                )
+            )
+        else:
+            # Create the following block tree:
+            #   B
+            #  /
+            # A -- C, where:
+            #
+            # UJ[B].epoch == current_epoch - 1
+            # UJ[C].epoch == current_epoch - 2
+            # C == head
+            #
+            # Create A and attest to A
+            runs.append(SlotRun(proposal=Proposal(atts_in_block=False)))
+            # Create B but attest to A
+            # B includes attestations from previous epoch enough to update UJ
+            runs.append(
+                SlotRun(
+                    proposal=Proposal(atts_in_block=True),
+                    attesting=Attesting(block_slot_or_offset=-1),
+                )
+            )
+            # Create C and attest to C, so C becomes the head, confirm A
+            runs.append(SlotRun(proposal=Proposal(parent_root_slot_or_offset=-2)))
+
+            if self.test_spec.one_confirmed_but_no_justification():
+                # Slash entire committee that has confirmed block A,
+                # this will result in will_current_target_be_justified to fail
+                runs.append(
+                    Slashing(
+                        percentage=100,
+                        committee_slot_or_offset=-3,
+                    )
+                )
+
+        return runs
+
+    def create_mid_runs(self) -> list[PhaseRun]:
+        if self.test_spec.head_uj_fresh:
+            return self.create_mid_runs_with_fresh_head_uj()
+        else:
+            return self.create_mid_runs_with_stale_head_uj()
+
+    def get_final_run_participation_rate(self) -> int:
+        if self.test_spec.is_one_confirmed:
+            # Full participation
+            return 100
+        elif self.test_spec.target_will_be_justified:
+            # Participation enough to justify a target
+            # but not enough to fast confirm
+            return 75
+        else:
+            # Participation enough neither to fast confirm
+            # nor to justify a target
+            return 0
+
+    def create_final_run(self) -> PhaseRun:
+        if self.test_spec.first_block_at_mid_epoch():
+            if self.test_spec.one_confirmed_but_no_justification():
+                # Slash a fraction of validators each slot
+                # and leave yet enough unslashed to make is_one_confirmed to pass
+                # but will_current_target_be_justified to fail
+                slashing_percentage = 45
+            else:
+                slashing_percentage = 0
+
+            # Do not propose when the first block of the epoch
+            # should be confirmed mid epoch
+            return EmptySlotRun(
+                attesting=Attesting(participation_rate=self.get_final_run_participation_rate()),
+                slashing=Slashing(
+                    percentage=slashing_percentage,
+                    committee_slot_or_offset=0,
+                ),
+                # Final run without fast confirmation as it will be triggered by the test execution
+                advance_slot=AdvanceSlot(with_fast_confirmation=False),
+            )
+        else:
+            return SlotRun(
+                # Prevent UJ update unless UJ must be fresh
+                proposal=Proposal(atts_in_block=self.test_spec.head_uj_fresh),
+                attesting=Attesting(participation_rate=self.get_final_run_participation_rate()),
+                # Final run without fast confirmation as it will be triggered by the test execution
+                advance_slot=AdvanceSlot(with_fast_confirmation=False),
+            )
+
+    def create_system_runs(self) -> list[PhaseRun]:
+        if self.test_spec.second_slot_call:
+            assert self.test_spec.first_block_in_epoch, "Impossible in the second slot of an epoch"
+        if self.test_spec.one_confirmed_but_no_justification():
+            assert not self.test_spec.first_block_in_second_slot(), "The test is hard to build"
+
+        # Initial run to the second epoch
+        runs = [SlotSequence(number_of_slots=self.spec.SLOTS_PER_EPOCH)]
+
+        # Mid runs depending on the test spec
+        runs.extend(self.create_mid_runs())
+
+        # Final run
+        runs.append(self.create_final_run())
+
+        return runs
+
+    def build(self):
+        fcr_test = FCRTest(self.spec, self.seed)
+        fcr_test.initialize(self.state)
+        for run in self.create_system_runs():
+            run.execute(fcr_test)
+            fcr_test.print_fast_confirmation_state()
+
+        # Check preconditions are correct
+        self.test_spec.verify_preconditions(fcr_test.spec, fcr_test.store)
+
+        return fcr_test
 
 
 def run_current_epoch_test(fcr_test: FCRTest, test_spec: CurrentEpochTestSpecification):

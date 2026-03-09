@@ -635,7 +635,7 @@ def test_is_one_confirmed_fails_with_competing_branch(spec, state):
     fcr.attest(block_root=block_b1, participation_rate=50, pool_and_disseminate=True)
     fcr.attest(block_root=block_b2, participation_rate=50, pool_and_disseminate=True)
 
-    fcr.next_slot_and_apply_attestations()
+    fcr.next_slot()
     fcr.run_fast_confirmation()
 
     balance_source = spec.get_current_balance_source(store)
