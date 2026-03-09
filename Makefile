@@ -199,7 +199,7 @@ _pyspec: _sync
 ###############################################################################
 
 TEST_REPORT_DIR = $(PYSPEC_DIR)/test-reports
-TEST_VECTOR_DIR = $(CURDIR)/../consensus-spec-tests/tests
+REFTESTS_DIR = $(CURDIR)/reftests
 
 # Run pyspec tests.
 test: MAYBE_TEST := $(if $(k),-k=$(k))
@@ -212,7 +212,7 @@ test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),faste
 test: KZG := $(if $(filter fw,$(component)),,--kzg-type=$(if $(kzg),$(kzg),ckzg))
 test: MAYBE_SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth_consensus_specs)
 test: MAYBE_INFRA := $(if $(filter pyspec,$(component)),,$(CURDIR)/tests/infra)
-test: MAYBE_REFTESTS := $(if $(filter true,$(reftests)),--reftests --reftests-output $(TEST_VECTOR_DIR))
+test: MAYBE_REFTESTS := $(if $(filter true,$(reftests)),--reftests --reftests-output=$(REFTESTS_DIR))
 test: _pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(UV_RUN) pytest \

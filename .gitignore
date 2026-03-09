@@ -53,3 +53,6 @@ testResults
 
 # lint temporary files
 .lint_diff_*
+
+# reference tests
+reftests/

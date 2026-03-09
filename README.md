@@ -2,7 +2,6 @@
 
 [![Join the chat at https://discord.gg/qGpsxSA](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/qGpsxSA)
 [![nightly-tests](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml/badge.svg?branch=master&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml)
-[![nightly-reftests](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml/badge.svg?branch=master&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml)
 
 This repository hosts the current Ethereum
 [proof-of-stake](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/)
@@ -54,10 +53,10 @@ functionality can be found in the following repositories:
 
 ### Reference tests
 
-Reference tests built from the executable Python specifications are available in
-the release assets for each release in this repository. There are also *nightly*
-reference tests which are built from the latest version of the specifications
-[here](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml).
+Stable reference tests are available as
+[release assets](https://github.com/ethereum/consensus-specs/releases) and
+unstable reference tests are available as
+[nightly builds](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml).
 
 ## Contributors
 
