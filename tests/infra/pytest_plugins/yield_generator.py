@@ -8,10 +8,10 @@ import _pytest
 import pytest
 from pytest import StashKey, TestReport
 
-from eth_consensus_specs.gen_helpers.gen_base.dumper import Dumper
 from eth_consensus_specs.test import context
 from eth_consensus_specs.test.helpers.constants import TESTGEN_FORKS
 from eth_consensus_specs.test.helpers.typing import SpecForkName
+from tests.infra.dumper import Dumper
 from tests.infra.manifest import Manifest
 from tests.infra.yield_generator import MultiPhaseResult
 
