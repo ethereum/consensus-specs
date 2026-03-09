@@ -18,12 +18,29 @@ on:
         type: string
         required: true
   schedule:
-    - cron: "0 4 * * *"
+    - cron: "0 0 * * *"
 
 jobs:
   generate-tests:
     timeout-minutes: 720 # 12 hours
-    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
+    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    strategy:
+      fail-fast: false
+      matrix:
+        preset:
+          - general
+          - minimal
+          - mainnet
+        fork:
+          - phase0
+          - altair
+          - bellatrix
+          - capella
+          - deneb
+          - electra
+          - fulu
+          - gloas
+          - heze
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -40,35 +57,37 @@ jobs:
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
-      - name: Generate tests
+      - name: Generate ${{ matrix.preset }}-${{ matrix.fork }} tests
         run: |
           cd consensus-specs
-          set -o pipefail
-          make test component=pyspec reftests=true 2>&1 | tee ../pytest-reftests.log
-      - name: Archive test vectors
-        run: |
-          cd pytest-reftests
-          tar -czvf general.tar.gz tests/general
-          tar -czvf minimal.tar.gz tests/minimal
-          tar -czvf mainnet.tar.gz tests/mainnet
-      - name: Upload general.tar.gz
+          make test component=pyspec preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true
+      - name: Upload reference tests
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: pytest-reftests-general
-          path: pytest-reftests/general.tar.gz
-      - name: Upload minimal.tar.gz
+          name: pytest-reftests-${{ matrix.preset }}-${{ matrix.fork }}
+          path: pytest-reftests/tests/${{ matrix.preset }}
+          if-no-files-found: ignore
+
+  package-tests:
+    needs: generate-tests
+    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    strategy:
+      matrix:
+        preset:
+          - general
+          - minimal
+          - mainnet
+    steps:
+      - name: Download all ${{ matrix.preset }} artifacts
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          pattern: pytest-reftests-${{ matrix.preset }}-*
+          path: tests/${{ matrix.preset }}
+          merge-multiple: true
+      - name: Archive ${{ matrix.preset }} reference tests
+        run: tar -czvf ${{ matrix.preset }}.tar.gz tests/${{ matrix.preset }}
+      - name: Upload ${{ matrix.preset }}.tar.gz
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: pytest-reftests-minimal
-          path: pytest-reftests/minimal.tar.gz
-      - name: Upload mainnet.tar.gz
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          name: pytest-reftests-mainnet
-          path: pytest-reftests/mainnet.tar.gz
-      - name: Upload pytest-reftests.log
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        if: always()
-        with:
-          name: pytest-reftests.log
-          path: pytest-reftests.log
+          name: pytest-reftests-${{ matrix.preset }}
+          path: ${{ matrix.preset }}.tar.gz
