@@ -48,19 +48,23 @@ jobs:
           repository: ${{ inputs.repo }}
           path: "consensus-specs"
           ref: ${{ inputs.ref }}
-      - name: Set up Python
+
+      - name: Setup python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version-file: "consensus-specs/pyproject.toml"
+
       - name: Install uv
         uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
+
       - name: Generate tests
         run: |
           cd consensus-specs
           make test component=pyspec preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true
+
       - name: Upload reference tests
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -84,13 +88,16 @@ jobs:
           pattern: reftests-${{ matrix.preset }}-*
           path: tests/${{ matrix.preset }}
           merge-multiple: true
+
       - name: Archive reference tests
         run: tar -czvf ${{ matrix.preset }}.tar.gz tests/${{ matrix.preset }}
+
       - name: Upload ${{ matrix.preset }}.tar.gz
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           path: ${{ matrix.preset }}.tar.gz
           archive: false
+
       - name: Delete intermediate artifacts
         run: |
           artifact_ids=$(gh api actions/runs/${{ github.run_id }}/artifacts \
