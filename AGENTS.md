@@ -306,22 +306,19 @@ final sanity check before committing.
 
 ```bash
 # Generate all reference tests (runs both presets by default)
-make reftests
+make test reftests=true
 
 # AI agents should use verbose mode (default view uses dynamic tables)
-make reftests verbose=true
+make test reftests=true verbose=true
 
 # Generate tests for a specific fork
-make reftests fork=electra verbose=true
+make test reftests=true fork=electra verbose=true
 
 # Generate tests matching a pattern (omit the "test_" prefix)
-make reftests k=verify_kzg_proof verbose=true
-
-# Generate a specific test runner's suite
-make reftests runner=bls verbose=true
+make test reftests=true k=verify_kzg_proof verbose=true
 
 # Combine options
-make reftests preset=mainnet fork=deneb k=verify_kzg_proof verbose=true
+make test reftests=true preset=mainnet fork=deneb k=verify_kzg_proof verbose=true
 ```
 
 Reference tests are written to the `../consensus-spec-tests` directory, which is
@@ -332,7 +329,7 @@ no need to regenerate everything. Only the affected test cases need to be
 regenerated; the framework will delete the individual test case directories
 before regenerating them.
 
-Note that if a test case is removed from the framework, `make reftests` will not
+Note that if a test case is removed from the framework, `make test reftests=true` will not
 delete previously generated reference tests for that case. The corresponding
 directories must be deleted manually, or the entire `../consensus-spec-tests`
 directory can be removed if regenerating everything is acceptable.
