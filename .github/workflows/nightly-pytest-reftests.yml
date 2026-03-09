@@ -86,6 +86,11 @@ jobs:
           merge-multiple: true
       - name: Archive reference tests
         run: tar -czvf ${{ matrix.preset }}.tar.gz tests/${{ matrix.preset }}
+      - name: Upload ${{ matrix.preset }}.tar.gz
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          path: ${{ matrix.preset }}.tar.gz
+          archive: false
       - name: Delete intermediate artifacts
         run: |
           artifact_ids=$(gh api actions/runs/${{ github.run_id }}/artifacts \
@@ -98,8 +103,3 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-      - name: Upload ${{ matrix.preset }}.tar.gz
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        with:
-          path: ${{ matrix.preset }}.tar.gz
-          archive: false
