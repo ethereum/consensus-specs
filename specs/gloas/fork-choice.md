@@ -854,11 +854,11 @@ def on_payload_attestation_message(
     data = ptc_message.data
     # PTC attestation must be for a known block. If block is unknown, delay consideration until the block is found
     state = store.block_states[data.beacon_block_root]
-    ptc = get_ptc(state, data.slot)
     # PTC votes can only change the vote for their assigned beacon block, return early otherwise
     if data.slot != state.slot:
         return
     # Check that the attester is from the PTC
+    ptc = get_ptc(state, data.slot)
     assert ptc_message.validator_index in ptc
 
     # Verify the signature and check that its for the current slot if it is coming from the wire
