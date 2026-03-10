@@ -7,11 +7,11 @@ dynamic = ["version"]
 authors = [{ name = "ethereum" }]
 description = "Ethereum consensus layer specifications package"
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.11, <3.14"
+requires-python = ">=3.11, <3.15"
 urls = { homepage = "https://github.com/ethereum/consensus-specs" }
 dependencies = [
   "eth-remerkleable==0.1.29",
-  "eth-utils==5.3.1",
+  "eth-utils==6.0.0b1",
   "frozendict==2.4.7",
   "lru-dict==1.4.1",
   "marko==2.2.2",
