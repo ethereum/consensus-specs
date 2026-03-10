@@ -156,7 +156,7 @@ def test_fcr_restarts_to_gu_and_confirms_beyond_gu(spec, state):
     # Late slashing arrives during last slot of epoch 4 (before crossing into epoch 5)
     # Slash the whole committee of the last slot of epoch 4, this will make reconfirmation
     # for penultimate block slot fail and after restart advance confirmation to block in a slot before the penultimate one
-    Slashing(percentage=100, committee_slot_or_offset=0).execute(fcr)
+    Slashing(percentage=100, committee_slot_or_offset=fcr.current_slot()).execute(fcr)
 
     # Cross into epoch 5 atomically: tick + apply attestations + FCR
     fcr.next_slot()

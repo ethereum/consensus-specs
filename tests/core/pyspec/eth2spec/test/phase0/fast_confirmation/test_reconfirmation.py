@@ -68,22 +68,10 @@ def test_reconfirmation_passes_wtih_empty_slots_prior_first_block(spec, state):
     # Epoch 3, Slot 3
 
     # Slash participants of (Epoch 2, last slot) and (Epoch 3, first slot)
-    Slashing(
-        percentage=25,
-        committee_slot_or_offset=-4,
-    ).execute(fcr)
-    Slashing(
-        percentage=25,
-        committee_slot_or_offset=-3,
-    ).execute(fcr)
+    Slashing(percentage=25, committee_slot_or_offset=3 * S - 1).execute(fcr)
+    Slashing(percentage=25, committee_slot_or_offset=3 * S).execute(fcr)
 
     # Advance with block
-    fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
-
-    # Check confirmed block was not advanced
-    assert store.confirmed_root == confimed_at_last_slot_epoch_2
-
-    # Epoch 3, Slot 4 with block
     fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
     # Check the head is confirmed

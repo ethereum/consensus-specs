@@ -525,6 +525,9 @@ class SystemRun:
                 output.append(f"{f.name}={value}")
         return f"{self.__class__.__name__}({', '.join(output)})"
 
+    def copy(self, **changes):
+        return replace(self, **changes)
+
 
 @dataclass
 class PhaseRun(SystemRun):
@@ -560,22 +563,35 @@ class Attesting(PhaseRun):
     participation_rate: int = 100
     block_root: object = None
     block_slot_or_offset: int = None
-    committee_slot_or_offset: int = 0
+    committee_slot_or_offset: object = 0
     apply_atts: bool = False
     pool_and_disseminate: bool = True
+
+    def has_non_default_block(self) -> bool:
+        return self.block_root != None or self.block_slot_or_offset != None
+
+    def all_committee_slot_or_offsets(self):
+        if isinstance(self.committee_slot_or_offset, list):
+            yield from self.committee_slot_or_offset
+        else:
+            yield self.committee_slot_or_offset
 
     def execute(self, fcr: FCRTest) -> object:
         if self.participation_rate == 0:
             return []
 
         block_root = fcr.get_block_root_or_head(self.block_root, self.block_slot_or_offset)
-        slot = fcr.resolve_slot_by_offset(self.committee_slot_or_offset)
-        attestations = fcr.attest(
-            block_root=block_root,
-            slot=slot,
-            participation_rate=self.participation_rate,
-            pool_and_disseminate=self.pool_and_disseminate,
-        )
+        attestations = []
+        for committee_slot_or_offset in self.all_committee_slot_or_offsets():
+            attestations.extend(
+                fcr.attest(
+                    block_root=block_root,
+                    slot=fcr.resolve_slot_by_offset(committee_slot_or_offset),
+                    participation_rate=self.participation_rate,
+                    pool_and_disseminate=self.pool_and_disseminate,
+                )
+            )
+
         if self.apply_atts:
             fcr.apply_attestations(attestations)
 
@@ -604,15 +620,17 @@ class Slashing(PhaseRun):
 
 @dataclass
 class AdvanceSlot(PhaseRun):
+    next_slot: bool = True
     with_fast_confirmation: bool = True
 
     def execute(self, fcr: FCRTest) -> object:
         # Next slot
-        fcr.next_slot()
+        if self.next_slot:
+            fcr.next_slot()
 
-        # Run fast confirmation
-        if self.with_fast_confirmation:
-            fcr.run_fast_confirmation()
+            # Run fast confirmation
+            if self.with_fast_confirmation:
+                fcr.run_fast_confirmation()
 
         return fcr.current_slot()
 
@@ -620,20 +638,29 @@ class AdvanceSlot(PhaseRun):
 @dataclass
 class MultiPhaseRun(SystemRun):
     proposal: Proposal = field(default_factory=lambda: Proposal())
-    attesting: Attesting = field(default_factory=lambda: Attesting())
+    attesting: object = field(default_factory=lambda: Attesting())
     slashing: Slashing = field(default_factory=lambda: Slashing())
     advance_slot: AdvanceSlot = field(default_factory=lambda: AdvanceSlot())
 
 
 @dataclass
 class SlotRun(MultiPhaseRun):
+    def all_attestings(self) -> list[Attesting]:
+        if isinstance(self.attesting, list):
+            yield from self.attesting
+        else:
+            yield self.attesting
+
     def execute(self, fcr: FCRTest) -> object:
         # Propose
         tip_root = self.proposal.execute(fcr)
 
         # Attest
-        attesting_instance = replace(self.attesting, block_root=tip_root, apply_atts=False)
-        attesting_instance.execute(fcr)
+        for attesting in self.all_attestings():
+            if attesting.has_non_default_block():
+                attesting.execute(fcr)
+            else:
+                attesting.copy(block_root=tip_root).execute(fcr)
 
         # Slash
         self.slashing.execute(fcr)
@@ -671,7 +698,7 @@ class SlotSequence(MultiPhaseRun):
         built_chain = []
         for _ in range(self.get_number_of_slots(fcr.current_slot())):
             tip_root = SlotRun(
-                proposal=replace(self.proposal, parent_root=tip_root),
+                proposal=self.proposal.copy(parent_root=tip_root),
                 attesting=self.attesting,
                 slashing=self.slashing,
                 advance_slot=self.advance_slot,
@@ -679,21 +706,3 @@ class SlotSequence(MultiPhaseRun):
             built_chain.append(tip_root)
 
         return built_chain
-
-
-@dataclass
-class MultiCommitteeAttesting(PhaseRun):
-    attesting: Attesting = field(default_factory=lambda: Attesting())
-    committee_slot_or_offsets: list[int] = field(default_factory=list)
-
-    def execute(self, fcr: FCRTest) -> list[object]:
-        debug_print(f"slot {fcr.current_slot()}: {self}")
-
-        attestations = []
-        for committee_slot_or_offset in self.committee_slot_or_offsets:
-            slot_atts = replace(
-                self.attesting, committee_slot_or_offset=committee_slot_or_offset
-            ).execute(fcr)
-            attestations.append(slot_atts)
-
-        return attestations
