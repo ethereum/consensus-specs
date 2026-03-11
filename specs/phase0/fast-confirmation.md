@@ -633,8 +633,8 @@ def compute_honest_ffg_support_for_current_target(store: Store) -> Gwei:
     """
     current_slot = get_current_slot(store)
     current_epoch = compute_epoch_at_slot(current_slot)
-    state = get_pulled_up_head_state(store)
-    total_active_balance = get_total_active_balance(state)
+    balance_source = get_pulled_up_head_state(store)
+    total_active_balance = get_total_active_balance(balance_source)
 
     # Compute FFG support for the target
     ffg_support_for_checkpoint = get_current_target_score(store)
@@ -650,10 +650,14 @@ def compute_honest_ffg_support_for_current_target(store: Store) -> Gwei:
         remaining_ffg_weight // 100 * (100 - CONFIRMATION_BYZANTINE_THRESHOLD)
     )
 
+    # Compute potential adversarial weight
+    adversarial_weight = compute_adversarial_weight(
+        store, balance_source, compute_start_slot_at_epoch(current_epoch), Slot(current_slot - 1)
+    )
+
     # Compute min honest FFG support
     min_honest_ffg_support = ffg_support_for_checkpoint - min(
-        Gwei(ffg_weight_till_now // 100 * CONFIRMATION_BYZANTINE_THRESHOLD),
-        ffg_support_for_checkpoint,
+        adversarial_weight, ffg_support_for_checkpoint
     )
 
     return Gwei(min_honest_ffg_support + remaining_honest_ffg_weight)
