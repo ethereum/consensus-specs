@@ -1,6 +1,5 @@
 from .constants import (
     ALL_PHASES,
-    EIP7441,
     MAINNET,
     MINIMAL,
 )
@@ -10,8 +9,7 @@ from .typing import (
     SpecForkName,
 )
 
-# NOTE: special case like `ALLOWED_TEST_RUNNER_FORKS`
-ALL_EXECUTABLE_SPEC_NAMES = ALL_PHASES + (EIP7441,)
+ALL_EXECUTABLE_SPEC_NAMES = ALL_PHASES
 
 # import the spec for each fork and preset
 for fork in ALL_EXECUTABLE_SPEC_NAMES:

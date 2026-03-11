@@ -1,8 +1,9 @@
 # Ethereum Proof-of-Stake Consensus Specifications
 
-[![Join the chat at https://discord.gg/qGpsxSA](https://img.shields.io/badge/chat-on%20discord-blue.svg)](https://discord.gg/qGpsxSA)
 [![nightly-tests](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml/badge.svg?branch=master&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml)
-[![nightly-reftests](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml/badge.svg?branch=master&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml)
+[![image](https://img.shields.io/pypi/v/eth-consensus-specs.svg)](https://pypi.python.org/pypi/eth-consensus-specs)
+[![image](https://img.shields.io/pypi/l/eth-consensus-specs.svg)](https://pypi.python.org/pypi/eth-consensus-specs)
+[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?logo=discord&logoColor=white)](https://discord.gg/qGpsxSA)
 
 This repository hosts the current Ethereum
 [proof-of-stake](https://ethereum.org/en/developers/docs/consensus-mechanisms/pos/)
@@ -17,7 +18,7 @@ Core specifications for Ethereum proof-of-stake clients can be found in
 developed in parallel, and then consolidated into sequential upgrades when
 ready.
 
-### Stable Specifications
+### Stable specifications
 
 | Seq. | Code Name     | Fork Epoch | Links                                                                                   |
 | ---- | ------------- | ---------- | --------------------------------------------------------------------------------------- |
@@ -29,7 +30,7 @@ ready.
 | 5    | **Electra**   | `364032`   | [Specs](specs/electra), [Tests](tests/core/pyspec/eth_consensus_specs/test/electra)     |
 | 6    | **Fulu**      | `411392`   | [Specs](specs/fulu), [Tests](tests/core/pyspec/eth_consensus_specs/test/fulu)           |
 
-### In-development Specifications
+### Unstable specifications
 
 | Seq. | Code Name | Fork Epoch | Links                                                                           |
 | ---- | --------- | ---------- | ------------------------------------------------------------------------------- |
@@ -44,9 +45,6 @@ ready.
 
 ### External specifications
 
-Additional specifications and standards outside of requisite client
-functionality can be found in the following repositories:
-
 - [Beacon APIs](https://github.com/ethereum/beacon-apis)
 - [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
 - [Beacon Metrics](https://github.com/ethereum/beacon-metrics)
@@ -54,25 +52,18 @@ functionality can be found in the following repositories:
 
 ### Reference tests
 
-Reference tests built from the executable Python specifications are available in
-the release assets for each release in this repository. There are also *nightly*
-reference tests which are built from the latest version of the specifications
-[here](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-reftests.yml).
+- Stable reference tests are available as
+  [release assets](https://github.com/ethereum/consensus-specs/releases).
+- Unstable reference tests are available as
+  [nightly builds](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml).
 
 ## Contributors
 
 ### Prerequisites
 
-This project uses `uv` ([docs.astral.sh/uv](https://docs.astral.sh/uv/)) to
-manage its dependencies and virtual environment. `uv` can
-[download Python](https://docs.astral.sh/uv/guides/install-python/#installing-a-specific-version)
-for your target platform if one of the required versions (3.10-3.13) is not
-available natively.
+Install [`uv`](https://docs.astral.sh/uv/) with:
 
-`uv` can be installed via curl (recommended over a pip-install as it can
-self-update and manage Python versions):
-
-```console
+```
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
@@ -80,19 +71,19 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 Clone the repository with:
 
-```bash
-git clone https://github.com/ethereum/consensus-specs.git
+```
+git clone git@github.com:ethereum/consensus-specs.git
 ```
 
 Switch to the directory:
 
-```bash
+```
 cd consensus-specs
 ```
 
 View the help output:
 
-```bash
+```
 make help
 ```
 

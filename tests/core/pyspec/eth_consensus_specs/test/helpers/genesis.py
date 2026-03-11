@@ -4,10 +4,6 @@ from eth_consensus_specs.test.helpers.constants import (
     PHASE0,
     PREVIOUS_FORK_OF,
 )
-from eth_consensus_specs.test.helpers.eip7441 import (
-    compute_whisk_initial_k_commitment_cached,
-    compute_whisk_initial_tracker_cached,
-)
 from eth_consensus_specs.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
@@ -16,7 +12,6 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_bellatrix,
     is_post_capella,
     is_post_deneb,
-    is_post_eip7441,
     is_post_electra,
     is_post_fulu,
     is_post_gloas,
@@ -217,18 +212,6 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if is_post_electra(spec):
         state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
-
-    if is_post_eip7441(spec):
-        vc = len(state.validators)
-        for i in range(vc):
-            state.whisk_k_commitments.append(compute_whisk_initial_k_commitment_cached(i))
-            state.whisk_trackers.append(compute_whisk_initial_tracker_cached(i))
-
-        for i in range(spec.CANDIDATE_TRACKERS_COUNT):
-            state.whisk_candidate_trackers[i] = compute_whisk_initial_tracker_cached(i % vc)
-
-        for i in range(spec.PROPOSER_TRACKERS_COUNT):
-            state.whisk_proposer_trackers[i] = compute_whisk_initial_tracker_cached(i % vc)
 
     if is_post_electra(spec):
         state.deposit_balance_to_consume = 0

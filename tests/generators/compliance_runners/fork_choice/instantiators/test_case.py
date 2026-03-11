@@ -6,7 +6,6 @@ from typing import Any
 
 from ruamel.yaml import YAML
 
-from eth_consensus_specs.gen_helpers.gen_base.gen_typing import TestCase
 from eth_consensus_specs.test.context import (
     spec_state_test,
     with_altair_and_later,
@@ -19,6 +18,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     output_store_checks,
 )
 from eth_consensus_specs.utils import bls
+from tests.generators.compliance_runners.gen_base.gen_typing import TestCase
 
 from .block_cover import gen_block_cover_test_data
 from .block_tree import gen_block_tree_test_data
@@ -87,7 +87,6 @@ class PlainFCTestCase(TestCase):
         solution, seed = self.test_dna.solution, self.test_dna.variation_seed
         mut_seed = self.test_dna.mutation_seed
         return yield_mutation_test_case(
-            generator_mode=True,
             phase=phase,
             preset=preset,
             bls_active=bls_active,

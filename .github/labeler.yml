@@ -61,26 +61,12 @@ heze:
       - 'presets/*/heze.yaml'
       - 'pysetup/spec_builders/heze.py'
 
-eip6800:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'specs/_features/eip6800/**'
-      - 'presets/*/eip6800.yaml'
-      - 'pysetup/spec_builders/eip6800.py'
-
 eip6914:
   - changed-files:
     - any-glob-to-any-file:
       - 'specs/_features/eip6914/**'
       - 'presets/*/eip6914.yaml'
       - 'pysetup/spec_builders/eip6914.py'
-
-eip7441:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'specs/_features/eip7441/**'
-      - 'presets/*/eip7441.yaml'
-      - 'pysetup/spec_builders/eip7441.py'
 
 eip7928:
   - changed-files:

@@ -25,7 +25,7 @@ from dataclasses import (
     field,
 )
 from typing import (
-    Any, Callable, Dict, DefaultDict, Set, Sequence, Tuple, Optional, TypeVar, NamedTuple, Final
+    Any, Callable, Dict, DefaultDict, Set, Sequence, Tuple, Optional, TypeAlias, TypeVar, NamedTuple, Final
 )
 
 from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root, copy, uint_to_bytes
