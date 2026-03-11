@@ -121,11 +121,10 @@ jobs:
       - name: Delete intermediate artifacts
         continue-on-error: true
         run: |
-          artifact_ids=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
+          gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
             --paginate --jq '.artifacts[]
               | select(.name | startswith("reftests-${{ matrix.preset }}-"))
-              | .id')
-          for id in $artifact_ids; do
+              | .id' | while read id; do
             gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
           done
         env:
