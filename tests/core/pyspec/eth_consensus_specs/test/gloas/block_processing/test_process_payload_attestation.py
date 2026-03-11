@@ -375,6 +375,8 @@ def test_process_payload_attestation_sampling_not_capped(spec, state):
     low_balance = spec.EFFECTIVE_BALANCE_INCREMENT
     for validator in state.validators:
         validator.effective_balance = low_balance
+    # Direct balance mutations bypass slot processing, so refresh the cached current-slot PTC.
+    state.ptc_lookbehind[1] = spec.compute_ptc(state)
 
     chosen_slot = None
     chosen_index = None
