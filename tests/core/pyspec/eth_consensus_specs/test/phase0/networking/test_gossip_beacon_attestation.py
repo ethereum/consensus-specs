@@ -250,8 +250,8 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     yield get_filename(attestation), attestation
 
     # Set current time to be before the attestation slot (too far in future)
-    attestation_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
-    current_time_ms = attestation_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
+    attestation_slot_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    current_time_ms = attestation_slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
@@ -311,8 +311,8 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     yield get_filename(attestation), attestation
 
     # Set current time to exactly the boundary (should still be valid)
-    attestation_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
-    current_time_ms = attestation_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+    attestation_slot_time_ms = spec.compute_time_at_slot_ms(state, attestation.data.slot)
+    current_time_ms = attestation_slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
 
     yield "current_time_ms", "meta", int(current_time_ms)
 

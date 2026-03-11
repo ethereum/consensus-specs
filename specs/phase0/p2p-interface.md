@@ -289,8 +289,8 @@ def is_valid_attestation_slot_time(
     """
     genesis_time_ms = state.genesis_time * 1000
     current_slot = (current_time_ms - genesis_time_ms) // SLOT_DURATION_MS
-    attestation_time_ms = compute_time_at_slot_ms(state, attestation_slot)
-    if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < attestation_time_ms:
+    attestation_slot_time_ms = compute_time_at_slot_ms(state, attestation_slot)
+    if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < attestation_slot_time_ms:
         # Attestation is from the future
         return False
     if attestation_slot + ATTESTATION_PROPAGATION_SLOT_RANGE < current_slot:
