@@ -540,7 +540,7 @@ def validate_beacon_block_gossip(
 
     # [REJECT] The proposer index is a valid validator index
     if block.proposer_index >= len(state.validators):
-        raise GossipReject("invalid proposer index")
+        raise GossipReject("proposer index out of range")
 
     # [REJECT] The proposer signature is valid with respect to the proposer_index pubkey
     proposer = state.validators[block.proposer_index]

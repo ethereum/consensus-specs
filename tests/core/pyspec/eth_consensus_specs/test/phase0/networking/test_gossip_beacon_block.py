@@ -647,7 +647,7 @@ def test_gossip_beacon_block__reject_invalid_proposer_index(spec, state):
         spec, seen, store, state, signed_block, block_time_ms + 500
     )
     assert result == "reject"
-    assert reason == "invalid proposer index"
+    assert reason == "proposer index out of range"
 
     yield (
         "messages",
