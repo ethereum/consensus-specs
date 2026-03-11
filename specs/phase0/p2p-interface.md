@@ -538,9 +538,11 @@ def validate_beacon_block_gossip(
     if (block.proposer_index, block.slot) in seen.proposer_slots:
         raise GossipIgnore("block is not the first valid block for this proposer and slot")
 
-    # [REJECT] The proposer signature is valid with respect to the proposer_index pubkey
+    # [REJECT] The proposer index is a valid validator index
     if block.proposer_index >= len(state.validators):
-        raise GossipReject("invalid proposer signature")
+        raise GossipReject("invalid proposer index")
+
+    # [REJECT] The proposer signature is valid with respect to the proposer_index pubkey
     proposer = state.validators[block.proposer_index]
     domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
     signing_root = compute_signing_root(block, domain)
