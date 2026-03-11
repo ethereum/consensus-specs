@@ -48,9 +48,9 @@ validator" to implement Gloas.
 ### Payload timeliness committee
 
 A validator may be a member of the new Payload Timeliness Committee (PTC) for a
-given slot. Validators can check if their validator index is in the PTC for the current slot
-by checking if their validator index is in `get_ptc(state)`. 
-PTC committee selection is only stable within the context of the current epoch.
+given slot. Validators can check if their validator index is in the PTC for the
+current slot by checking if their validator index is in `get_ptc(state)`. PTC
+committee selection is only stable within the context of the current epoch.
 
 ### Lookahead
 
