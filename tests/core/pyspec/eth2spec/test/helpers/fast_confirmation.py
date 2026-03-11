@@ -365,32 +365,12 @@ class FCRTest:
         return attester_slashing
 
     def compute_score_and_threshold(self, block_root) -> (int, int):
-        """
-        Computes one confirmed score and threshold.
-        """
-        spec = self.spec
-        store = self.store
-
-        current_slot = spec.get_current_slot(store)
-        block = store.blocks[block_root]
-        parent_block = store.blocks[block.parent_root]
-        balance_source = spec.get_current_balance_source(store)
-
-        score = spec.get_attestation_score(store, block_root, balance_source)
-        proposer_score = spec.compute_proposer_score(balance_source)
-        total_active_balance = spec.get_total_active_balance(balance_source)
-        maximum_support = spec.estimate_committee_weight_between_slots(
-            total_active_balance, spec.Slot(parent_block.slot + 1), spec.Slot(current_slot - 1)
+        balance_source = self.spec.get_current_balance_source(self.store)
+        score = self.spec.get_attestation_score(self.store, block_root, balance_source)
+        safety_threshold = self.spec.compute_safety_threshold(
+            self.store, block_root, balance_source
         )
-        support_discount = spec.get_support_discount(store, balance_source, block_root)
-        adversarial_weight = spec.get_adversarial_weight(store, balance_source, block_root)
-
-        # 0.5 * (maximum_support + proposer_score - support_discount) + adversarial_weight
-        threshold = (int(maximum_support) + int(proposer_score) - int(support_discount)) / 2 + int(
-            adversarial_weight
-        )
-
-        return int(score), int(threshold)
+        return int(score), int(safety_threshold)
 
     def get_slot_root_info(self, block_root):
         if block_root == self.spec.Root():

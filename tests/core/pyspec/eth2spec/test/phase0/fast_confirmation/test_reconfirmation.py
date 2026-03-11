@@ -80,28 +80,16 @@ def test_reconfirmation_passes_wtih_empty_slots_prior_first_block(spec, state):
     # But if there were no slashings, first block in Epoch 3 couldn't be confirmed at this stage
     epoch_3_first_block = spec.get_ancestor(store, fcr.head(), 3 * S + 1)
     balance_source = spec.get_current_balance_source(store)
-
     support = spec.get_attestation_score(store, epoch_3_first_block, balance_source)
-    proposer_score = spec.compute_proposer_score(balance_source)
-    maximum_support = spec.estimate_committee_weight_between_slots(
-        spec.get_total_active_balance(balance_source),
-        spec.Slot(3 * S - 1),
-        spec.Slot(fcr.current_slot() - 1),
-    )
+    safety_threshold = spec.compute_safety_threshold(store, epoch_3_first_block, balance_source)
 
-    # Subtract the slashed balance from the discount
+    # Compute slashed balance
     # 25% of 2 slots * (len(validators) // SLOTS_PER_EPOCH * effective_balance)
     slashed_balance = 2 * (len(state.validators) // S * state.validators[0].effective_balance // 4)
-    support_discount = (
-        spec.get_support_discount(store, balance_source, epoch_3_first_block) - slashed_balance
-    )
 
-    adversarial_weight = spec.get_adversarial_weight(store, balance_source, epoch_3_first_block)
-
-    # Check the support is lower than the support threshold
-    assert (
-        2 * support + support_discount < maximum_support + proposer_score + 2 * adversarial_weight
-    )
+    # Add a half of slashed balance back to the safety threshold
+    # and check the support would be lower than the threshold
+    assert support < safety_threshold + slashed_balance // 2
 
     # Run till last slot of Epoch 3
     SlotSequence(end_slot=(4 * S - 1), attesting=Attesting(participation_rate=100)).execute(fcr)

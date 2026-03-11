@@ -30,6 +30,7 @@
       - [`get_adversarial_weight`](#get_adversarial_weight)
       - [`compute_empty_slot_support_discount`](#compute_empty_slot_support_discount)
       - [`get_support_discount`](#get_support_discount)
+      - [`compute_safety_threshold`](#compute_safety_threshold)
       - [`is_one_confirmed`](#is_one_confirmed)
       - [`is_confirmed_chain_safe`](#is_confirmed_chain_safe)
     - [FFG helpers](#ffg-helpers)
@@ -483,6 +484,29 @@ def get_support_discount(store: Store, balance_source: BeaconState, block_root: 
     return compute_empty_slot_support_discount(store, balance_source, block_root)
 ```
 
+##### `compute_safety_threshold`
+
+```python
+def compute_safety_threshold(store: Store, block_root: Root, balance_source: BeaconState) -> bool:
+    """
+    Compute the LMD_GHOST safety threshold for ``block_root``.
+    """
+    current_slot = get_current_slot(store)
+    block = store.blocks[block_root]
+    parent_block = store.blocks[block.parent_root]
+
+    proposer_score = compute_proposer_score(balance_source)
+    total_active_balance = get_total_active_balance(balance_source)
+    maximum_support = estimate_committee_weight_between_slots(
+        total_active_balance, Slot(parent_block.slot + 1), Slot(current_slot - 1)
+    )
+    support_discount = get_support_discount(store, balance_source, block_root)
+    adversarial_weight = get_adversarial_weight(store, balance_source, block_root)
+
+    # The subtraction is safe as maximum_support is always greater than support_discount
+    return (maximum_support + proposer_score - support_discount) // 2 + adversarial_weight
+```
+
 ##### `is_one_confirmed`
 
 *Notes:*
@@ -506,25 +530,10 @@ def is_one_confirmed(store: Store, balance_source: BeaconState, block_root: Root
     """
     Return ``True`` if and only if the block is LMD-GHOST safe.
     """
-    current_slot = get_current_slot(store)
-    block = store.blocks[block_root]
-    parent_block = store.blocks[block.parent_root]
-
     support = get_attestation_score(store, block_root, balance_source)
-    proposer_score = compute_proposer_score(balance_source)
-    total_active_balance = get_total_active_balance(balance_source)
-    maximum_support = estimate_committee_weight_between_slots(
-        total_active_balance, Slot(parent_block.slot + 1), Slot(current_slot - 1)
-    )
-    support_discount = get_support_discount(store, balance_source, block_root)
-    adversarial_weight = get_adversarial_weight(store, balance_source, block_root)
+    safety_threshold = compute_safety_threshold(store, block_root, balance_source)
 
-    # Returns whether the following condition is true using only integer arithmetic:
-    # support / maximum_support >
-    #   0.5 * (1 + (proposer_score - support_discount) / maximum_support) + adversarial_weight / maximum_support
-    return (
-        2 * support + support_discount > maximum_support + proposer_score + 2 * adversarial_weight
-    )
+    return support > safety_threshold
 ```
 
 ##### `is_confirmed_chain_safe`
