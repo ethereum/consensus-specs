@@ -233,7 +233,7 @@ def test_gossip_attester_slashing__reject_attesting_index_out_of_range_1(spec, s
         spec, seen, store, state, attester_slashing
     )
     assert result == "reject"
-    assert reason == "invalid indexed attestation 1"
+    assert reason == "validator index out of range in indexed attestation 1"
 
     yield (
         "messages",
@@ -272,7 +272,7 @@ def test_gossip_attester_slashing__reject_attesting_index_out_of_range_2(spec, s
         spec, seen, store, state, attester_slashing
     )
     assert result == "reject"
-    assert reason == "invalid indexed attestation 2"
+    assert reason == "validator index out of range in indexed attestation 2"
 
     yield (
         "messages",

@@ -845,42 +845,42 @@ def validate_attester_slashing_gossip(
     attestation_1 = attester_slashing.attestation_1
     attestation_2 = attester_slashing.attestation_2
 
-    # [IGNORE] At least one index in the intersection has not yet been seen
     attesting_indices_1 = set(attestation_1.attesting_indices)
     attesting_indices_2 = set(attestation_2.attesting_indices)
     slashable_indices = attesting_indices_1.intersection(attesting_indices_2)
+
+    # [IGNORE] At least one index in the intersection has not yet been seen
     new_indices = slashable_indices.difference(seen.attester_slashing_indices)
     if len(new_indices) == 0:
         raise GossipIgnore("all attester slashing indices already seen")
 
-    # [REJECT] All of the conditions within process_attester_slashing pass validation
-    # Check if attestation data is slashable (double vote or surround vote)
+    # [REJECT] The attestation data is slashable (double vote or surround vote)
     if not is_slashable_attestation_data(attestation_1.data, attestation_2.data):
         raise GossipReject("attestation data is not slashable")
 
-    # Validate first indexed attestation
+    # [REJECT] All validator indices in the first indexed attestation are valid
     if any(index >= len(state.validators) for index in attestation_1.attesting_indices):
-        raise GossipReject("invalid indexed attestation 1")
+        raise GossipReject("validator index out of range in indexed attestation 1")
+
+    # [REJECT] The first indexed attestation has valid properties
     if not is_valid_indexed_attestation(state, attestation_1):
         raise GossipReject("invalid indexed attestation 1")
 
-    # Validate second indexed attestation
+    # [REJECT] All validator indices in the second indexed attestation are valid
     if any(index >= len(state.validators) for index in attestation_2.attesting_indices):
-        raise GossipReject("invalid indexed attestation 2")
+        raise GossipReject("validator index out of range in indexed attestation 2")
+
+    # [REJECT] The second indexed attestation has valid properties
     if not is_valid_indexed_attestation(state, attestation_2):
         raise GossipReject("invalid indexed attestation 2")
 
-    # Check that at least one validator in the intersection is slashable
-    slashable_indices = set(attestation_1.attesting_indices).intersection(
-        attestation_2.attesting_indices
-    )
+    # [REJECT] At least one validator in the intersection is slashable
     slashed_any = False
     current_epoch = get_current_epoch(state)
     for index in slashable_indices:
         if is_slashable_validator(state.validators[index], current_epoch):
             slashed_any = True
             break
-
     if not slashed_any:
         raise GossipReject("no slashable validators in intersection")
 
