@@ -522,8 +522,9 @@ proposing a block.
 
 Clients SHOULD eagerly push the `PartialDataColumnHeader` to inform peers as to
 which blobs are included in this block, and therefore which cells they are
-missing. Clients SHOULD NOT send a `PartialDataColumnHeader` non-eagerly, as
-this is wasted bandwidth.
+missing. Clients SHOULD NOT send a `PartialDataColumnHeader` to a peer that has
+already sent the client a message, as that peer already has the header (it is a
+prerequisite to sending a message).
 
 Clients MAY choose to not eagerly push the `PartialDataColumnHeader` if it has
 previously sent the header to the peer on another topic.
