@@ -638,15 +638,11 @@ def validate_beacon_aggregate_and_proof_gossip(
     aggregate_bits = tuple(bool(bit) for bit in aggregation_bits)
     seen_aggregation_bits = seen.aggregate_data_roots.get(aggregate_data_root, set())
     for prior_aggregation_bits in seen_aggregation_bits:
-        if len(prior_aggregation_bits) != len(aggregate_bits):
-            continue
-
         is_non_strict_superset = True
         for prior_bit, aggregate_bit in zip(prior_aggregation_bits, aggregate_bits):
             if aggregate_bit and not prior_bit:
                 is_non_strict_superset = False
                 break
-
         if is_non_strict_superset:
             raise GossipIgnore("already seen aggregate for this data")
 
