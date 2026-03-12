@@ -150,7 +150,8 @@ class BeaconState(Container):
     builder_pending_withdrawals: List[BuilderPendingWithdrawal, BUILDER_PENDING_WITHDRAWALS_LIMIT]
     latest_block_hash: Hash32
     payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
-    ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2]
+    previous_ptc: Vector[ValidatorIndex, PTC_SIZE]
+    current_ptc: Vector[ValidatorIndex, PTC_SIZE]
 ```
 
 ## Helpers

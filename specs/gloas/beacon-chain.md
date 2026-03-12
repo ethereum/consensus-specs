@@ -387,7 +387,9 @@ class BeaconState(Container):
     # [New in Gloas:EIP7732]
     payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     # [New in Gloas:EIP7732]
-    ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2]
+    previous_ptc: Vector[ValidatorIndex, PTC_SIZE]
+    # [New in Gloas:EIP7732]
+    current_ptc: Vector[ValidatorIndex, PTC_SIZE]
 ```
 
 ## Dataclasses
@@ -735,7 +737,7 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     Get the payload timeliness committee for the given ``slot``.
     """
     assert slot == state.slot or slot + 1 == state.slot
-    return state.ptc_lookbehind[1] if slot == state.slot else state.ptc_lookbehind[0]
+    return state.current_ptc if slot == state.slot else state.previous_ptc
 ```
 
 #### New `get_indexed_payload_attestation`
@@ -820,7 +822,8 @@ def process_slots(state: BeaconState, slot: Slot) -> None:
             process_epoch(state)
         state.slot = Slot(state.slot + 1)
         # [New in Gloas:EIP7732]
-        state.ptc_lookbehind = [state.ptc_lookbehind[1], compute_ptc(state)]
+        state.previous_ptc = state.current_ptc
+        state.current_ptc = compute_ptc(state)
 ```
 
 ### Modified `process_slot`

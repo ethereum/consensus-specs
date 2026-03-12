@@ -160,13 +160,15 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         # [New in Gloas:EIP7732]
         payload_expected_withdrawals=[],
         # [New in Gloas:EIP7732]
-        ptc_lookbehind=[[ValidatorIndex(0)] * PTC_SIZE for _ in range(2)],
+        previous_ptc=[ValidatorIndex(0)] * PTC_SIZE,
+        # [New in Gloas:EIP7732]
+        current_ptc=[ValidatorIndex(0)] * PTC_SIZE,
     )
 
     # [New in Gloas:EIP7732]
     onboard_builders_from_pending_deposits(post)
     # [New in Gloas:EIP7732]
-    post.ptc_lookbehind[1] = compute_ptc(post)
+    post.current_ptc = compute_ptc(post)
 
     return post
 ```
