@@ -508,7 +508,8 @@ frequency validator messages (`voluntary_exit`, `proposer_slashing`, and
 ###### `beacon_block`
 
 The `beacon_block` topic is used solely for propagating new signed beacon blocks
-to all nodes on the networks. Signed blocks are sent in their entirety.
+to all nodes on the networks. Signed blocks are sent in their entirety. The
+`state` parameter is the head state.
 
 ```python
 def validate_beacon_block_gossip(
@@ -590,7 +591,8 @@ def validate_beacon_block_gossip(
 
 The `beacon_aggregate_and_proof` topic is used to propagate aggregated
 attestations (as `SignedAggregateAndProof`s) to subscribing nodes (typically
-validators) to be included in future blocks.
+validators) to be included in future blocks. The `state` parameter is the head
+state.
 
 ```python
 def validate_beacon_aggregate_and_proof_gossip(
@@ -711,7 +713,7 @@ def validate_beacon_aggregate_and_proof_gossip(
 
 The `voluntary_exit` topic is used solely for propagating signed voluntary
 validator exits to proposers on the network. Signed voluntary exits are sent in
-their entirety.
+their entirety. The `state` parameter is the head state.
 
 ```python
 def validate_voluntary_exit_gossip(
@@ -768,7 +770,8 @@ def validate_voluntary_exit_gossip(
 ###### `proposer_slashing`
 
 The `proposer_slashing` topic is used solely for propagating proposer slashings
-to proposers on the network. Proposer slashings are sent in their entirety.
+to proposers on the network. Proposer slashings are sent in their entirety. The
+`state` parameter is the head state.
 
 ```python
 def validate_proposer_slashing_gossip(
@@ -827,7 +830,8 @@ def validate_proposer_slashing_gossip(
 ###### `attester_slashing`
 
 The `attester_slashing` topic is used solely for propagating attester slashings
-to proposers on the network. Attester slashings are sent in their entirety.
+to proposers on the network. Attester slashings are sent in their entirety. The
+`state` parameter is the head state.
 
 ```python
 def validate_attester_slashing_gossip(
@@ -896,7 +900,7 @@ subsections of the network.
 The `beacon_attestation_{subnet_id}` topics are used to propagate unaggregated
 attestations to the subnet `subnet_id` (typically beacon and persistent
 committees) to be aggregated before being gossiped to
-`beacon_aggregate_and_proof`.
+`beacon_aggregate_and_proof`. The `state` parameter is the head state.
 
 ```python
 def validate_beacon_attestation_gossip(
