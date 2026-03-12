@@ -555,12 +555,11 @@ def validate_beacon_block_gossip(
         raise GossipIgnore("block's parent has not been seen")
 
     # [REJECT] The block's parent passes validation
-    if store.block_states.get(block.parent_root) is None:
+    if block.parent_root not in store.block_states:
         raise GossipReject("block's parent failed validation")
 
     # [REJECT] The block is from a higher slot than its parent
-    parent_block = store.blocks[block.parent_root]
-    if block.slot <= parent_block.slot:
+    if block.slot <= store.blocks[block.parent_root].slot:
         raise GossipReject("block is not from a higher slot than its parent")
 
     # [REJECT] The current finalized_checkpoint is an ancestor of block
@@ -685,7 +684,7 @@ def validate_beacon_aggregate_and_proof_gossip(
         raise GossipIgnore("block being voted for has not been seen")
 
     # [REJECT] The block being voted for passes validation
-    if store.block_states.get(aggregate.data.beacon_block_root) is None:
+    if aggregate.data.beacon_block_root not in store.block_states:
         raise GossipReject("block being voted for failed validation")
 
     # [REJECT] Target block is an ancestor of the block named in LMD vote
