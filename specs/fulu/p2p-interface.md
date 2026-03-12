@@ -439,7 +439,7 @@ For verifying the `PartialDataColumnHeader` in a partial message:
   processing at the appropriate slot).
 - _[IGNORE]_ The header is from a slot greater than the latest finalized slot --
   i.e. validate that
-  `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
+  `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`.j
 - _[REJECT]_ The proposer signature of `signed_block_header` is valid with
   respect to the `block_header.proposer_index` pubkey.
 - _[IGNORE]_ The header's block's parent (defined by `block_header.parent_root`)
@@ -466,9 +466,9 @@ For verifying the cells in a partial message:
 - _[IGNORE]_ If the received partial message contains only cell data, the node
   has seen a valid corresponding `PartialDataColumnHeader`.
 - _[IGNORE]_ The corresponding header is not from a future slot. See related
-  header check above for more details
+  header check above for more details.
 - _[IGNORE]_ The corresponding header is from a slot greater than the latest
-  finalized slot. See related header check above for more details
+  finalized slot. See related header check above for more details.
 - _[REJECT]_ The cells present bitmap length is equal to the number of KZG
   commitments in the `PartialDataColumnHeader`.
 - _[REJECT]_ For cells the receiver already has, The sidecar's cell and proof
