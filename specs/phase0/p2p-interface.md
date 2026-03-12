@@ -877,9 +877,7 @@ def validate_attester_slashing_gossip(
     slashed_any = False
     current_epoch = get_current_epoch(state)
     for index in slashable_indices:
-        if index < len(state.validators) and is_slashable_validator(
-            state.validators[index], current_epoch
-        ):
+        if is_slashable_validator(state.validators[index], current_epoch):
             slashed_any = True
             break
 
