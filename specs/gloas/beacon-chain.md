@@ -823,6 +823,7 @@ def process_slots(state: BeaconState, slot: Slot) -> None:
         state.slot = Slot(state.slot + 1)
         # [New in Gloas:EIP7732]
         state.previous_ptc = state.current_ptc
+        # [New in Gloas:EIP7732]
         state.current_ptc = compute_ptc(state)
 ```
 
