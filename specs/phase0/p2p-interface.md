@@ -832,21 +832,6 @@ The `attester_slashing` topic is used solely for propagating attester slashings
 to proposers on the network. Attester slashings are sent in their entirety.
 
 ```python
-def get_new_attester_slashing_indices(
-    seen: Seen, attester_slashing: AttesterSlashing
-) -> Set[ValidatorIndex]:
-    """
-    Return the set of validator indices in the attester slashing that have not yet been seen.
-    """
-    attestation_1 = attester_slashing.attestation_1
-    attestation_2 = attester_slashing.attestation_2
-    attesting_indices_1 = set(attestation_1.attesting_indices)
-    attesting_indices_2 = set(attestation_2.attesting_indices)
-    slashable_indices = attesting_indices_1.intersection(attesting_indices_2)
-    return slashable_indices.difference(seen.attester_slashing_indices)
-```
-
-```python
 def validate_attester_slashing_gossip(
     seen: Seen,
     store: Store,
@@ -861,7 +846,10 @@ def validate_attester_slashing_gossip(
     attestation_2 = attester_slashing.attestation_2
 
     # [IGNORE] At least one index in the intersection has not yet been seen
-    new_indices = get_new_attester_slashing_indices(seen, attester_slashing)
+    attesting_indices_1 = set(attestation_1.attesting_indices)
+    attesting_indices_2 = set(attestation_2.attesting_indices)
+    slashable_indices = attesting_indices_1.intersection(attesting_indices_2)
+    new_indices = slashable_indices.difference(seen.attester_slashing_indices)
     if len(new_indices) == 0:
         raise GossipIgnore("all attester slashing indices already seen")
 
