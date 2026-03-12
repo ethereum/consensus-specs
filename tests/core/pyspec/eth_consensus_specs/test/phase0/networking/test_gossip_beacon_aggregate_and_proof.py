@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.context import (
+    always_bls,
     default_activation_threshold,
     single_phase,
     spec_state_test,
@@ -478,6 +479,90 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
 
 @with_phases([PHASE0])
 @spec_state_test
+def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec, state):
+    """
+    Test that two valid aggregates with the same data root but from different
+    aggregators both pass validation (covering the case where aggregate_data_root
+    is already in seen.aggregate_data_roots).
+    """
+    yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
+
+    messages = []
+    seen = get_seen(spec)
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    anchor_root = anchor_block.hash_tree_root()
+
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    next_slot(spec, state)
+
+    # Create two attestations with different single-participant aggregation bits
+    # so neither is a superset of the other
+    att_1 = get_valid_attestation(
+        spec,
+        state,
+        signed=True,
+        beacon_block_root=anchor_root,
+        filter_participant_set=lambda participants: {sorted(participants)[0]},
+    )
+    att_2 = get_valid_attestation(
+        spec,
+        state,
+        signed=True,
+        beacon_block_root=anchor_root,
+        filter_participant_set=lambda participants: {sorted(participants)[1]},
+    )
+    committee = spec.get_beacon_committee(state, att_1.data.slot, att_1.data.index)
+
+    # Find two different aggregators in the same committee
+    aggregators = []
+    for index in committee:
+        privkey = privkeys[index]
+        selection_proof = spec.get_slot_signature(state, att_1.data.slot, privkey)
+        if spec.is_aggregator(state, att_1.data.slot, att_1.data.index, selection_proof):
+            aggregators.append(index)
+            if len(aggregators) == 2:
+                break
+    assert len(aggregators) == 2, "Need at least two aggregators in the committee"
+
+    signed_agg_1 = create_signed_aggregate_and_proof(
+        spec, state, att_1, aggregator_index=aggregators[0]
+    )
+    signed_agg_2 = create_signed_aggregate_and_proof(
+        spec, state, att_2, aggregator_index=aggregators[1]
+    )
+
+    yield get_filename(signed_agg_1), signed_agg_1
+    yield get_filename(signed_agg_2), signed_agg_2
+
+    block_time_ms = spec.compute_time_at_slot_ms(state, att_1.data.slot)
+
+    yield "current_time_ms", "meta", int(block_time_ms)
+
+    # First aggregate should pass
+    result, reason = run_validate_beacon_aggregate_and_proof_gossip(
+        spec, seen, store, state, signed_agg_1, block_time_ms + 500
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append({"offset_ms": 500, "message": get_filename(signed_agg_1), "expected": "valid"})
+
+    # Second aggregate (different aggregator, same data root) should also pass
+    result, reason = run_validate_beacon_aggregate_and_proof_gossip(
+        spec, seen, store, state, signed_agg_2, block_time_ms + 600
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append({"offset_ms": 600, "message": get_filename(signed_agg_2), "expected": "valid"})
+
+    yield "messages", "meta", messages
+
+
+@with_phases([PHASE0])
+@spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignore_block_not_seen(spec, state):
     """
     Test that an aggregate for an unseen block is ignored.
@@ -904,6 +989,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_index_out_of_range
 
 @with_phases([PHASE0])
 @spec_state_test
+@always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_invalid_selection_proof(spec, state):
     """
     Test that an aggregate with invalid selection proof signature is rejected.
@@ -955,6 +1041,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_selection_proof(spec,
 
 @with_phases([PHASE0])
 @spec_state_test
+@always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregator_signature(spec, state):
     """
     Test that an aggregate with invalid aggregator signature is rejected.
@@ -1006,6 +1093,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregator_signature(
 
 @with_phases([PHASE0])
 @spec_state_test
+@always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregate_signature(spec, state):
     """
     Test that an aggregate with invalid aggregate attestation signature is rejected.

@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.context import (
+    always_bls,
     spec_state_test,
     with_all_phases,
 )
@@ -139,6 +140,7 @@ def test_gossip_attester_slashing__reject_not_slashable_data(spec, state):
 
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_gossip_attester_slashing__reject_invalid_attestation_1(spec, state):
     """
     Test that an attester slashing with invalid first attestation is rejected.
@@ -175,6 +177,7 @@ def test_gossip_attester_slashing__reject_invalid_attestation_1(spec, state):
 
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_gossip_attester_slashing__reject_invalid_attestation_2(spec, state):
     """
     Test that an attester slashing with invalid second attestation is rejected.

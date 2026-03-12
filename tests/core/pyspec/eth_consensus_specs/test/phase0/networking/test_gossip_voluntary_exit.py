@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.context import (
+    always_bls,
     spec_state_test,
     with_phases,
 )
@@ -295,6 +296,7 @@ def test_gossip_voluntary_exit__reject_not_active_long_enough(spec, state):
 
 @with_phases([PHASE0])
 @spec_state_test
+@always_bls
 def test_gossip_voluntary_exit__reject_invalid_signature(spec, state):
     """
     Test that a voluntary exit with invalid signature is rejected.
