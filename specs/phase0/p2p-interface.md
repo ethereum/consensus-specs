@@ -13,11 +13,11 @@
   - [Constants](#constants)
   - [Configuration](#configuration)
   - [Helpers](#helpers)
+    - [`Seen`](#seen)
     - [`compute_fork_version`](#compute_fork_version)
     - [`compute_fork_digest`](#compute_fork_digest)
     - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
     - [`is_valid_attestation_slot_time`](#is_valid_attestation_slot_time)
-    - [`Seen`](#seen)
     - [`compute_attestation_subnet_prefix_bits`](#compute_attestation_subnet_prefix_bits)
     - [`compute_min_epochs_for_block_requests`](#compute_min_epochs_for_block_requests)
   - [MetaData](#metadata)
@@ -236,6 +236,24 @@ This section outlines configurations that are used in this specification.
 
 ### Helpers
 
+#### `Seen`
+
+The `Seen` class tracks network deduplication state for gossip validation. It
+maintains sets of previously seen messages to prevent redundant processing and
+propagation.
+
+```python
+@dataclass
+class Seen(object):
+    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
+    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    aggregate_data_roots: Dict[Root, Set[Tuple[boolean, ...]]]
+    voluntary_exit_indices: Set[ValidatorIndex]
+    proposer_slashing_indices: Set[ValidatorIndex]
+    attester_slashing_indices: Set[ValidatorIndex]
+    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+```
+
 #### `compute_fork_version`
 
 ```python
@@ -297,24 +315,6 @@ def is_valid_attestation_slot_time(
         # Attestation is too old
         return False
     return True
-```
-
-#### `Seen`
-
-The `Seen` class tracks network deduplication state for gossip validation. It
-maintains sets of previously seen messages to prevent redundant processing and
-propagation.
-
-```python
-@dataclass
-class Seen(object):
-    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
-    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
-    aggregate_data_roots: Dict[Root, Set[Tuple[boolean, ...]]]
-    voluntary_exit_indices: Set[ValidatorIndex]
-    proposer_slashing_indices: Set[ValidatorIndex]
-    attester_slashing_indices: Set[ValidatorIndex]
-    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
 ```
 
 #### `compute_attestation_subnet_prefix_bits`
