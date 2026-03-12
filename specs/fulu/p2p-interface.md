@@ -555,6 +555,10 @@ the standard gossipsub topics for `DataColumnSidecar`s.
 On receiving useful novel data from a peer, the client should report to
 gossipsub a positive first message delivery.
 
+Clients SHOULD limit the rate at which a peer gets the first message delivery
+reward to prevent a peer from scoring better by providing cells and proofs one
+at a time rather than at once.
+
 On receiving invalid data, the client should report to gossipsub an invalid
 message delivery.
 
