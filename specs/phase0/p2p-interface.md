@@ -627,7 +627,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     if index >= committee_count:
         raise GossipReject("committee index out of range")
 
-    # [IGNORE] aggregate.data.slot is within the last ATTESTATION_PROPAGATION_SLOT_RANGE slots
+    # [IGNORE] The attestation slot is within the propagation range
     # (MAY be queued for processing at the appropriate slot)
     if not is_within_slot_range(
         state, aggregate.data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
@@ -943,7 +943,7 @@ def validate_beacon_attestation_gossip(
     if expected_subnet != subnet_id:
         raise GossipReject("attestation is for wrong subnet")
 
-    # [IGNORE] attestation.data.slot is within the last ATTESTATION_PROPAGATION_SLOT_RANGE slots
+    # [IGNORE] The attestation slot is within the propagation range
     # (MAY be queued for processing at the appropriate slot)
     if not is_within_slot_range(
         state, data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
