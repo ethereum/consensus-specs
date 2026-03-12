@@ -17,7 +17,8 @@
     - [`compute_fork_version`](#compute_fork_version)
     - [`compute_fork_digest`](#compute_fork_digest)
     - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
-    - [`is_valid_attestation_slot_time`](#is_valid_attestation_slot_time)
+    - [`is_not_from_future_slot`](#is_not_from_future_slot)
+    - [`is_within_slot_range`](#is_within_slot_range)
     - [`compute_attestation_subnet_prefix_bits`](#compute_attestation_subnet_prefix_bits)
     - [`compute_min_epochs_for_block_requests`](#compute_min_epochs_for_block_requests)
   - [MetaData](#metadata)
@@ -293,30 +294,41 @@ def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> uint64:
     return uint64(state.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
 ```
 
-#### `is_valid_attestation_slot_time`
+#### `is_not_from_future_slot`
 
 ```python
-def is_valid_attestation_slot_time(
+def is_not_from_future_slot(
     state: BeaconState,
-    attestation_slot: Slot,
+    slot: Slot,
     current_time_ms: uint64,
 ) -> bool:
     """
-    Check if an attestation's slot time is valid given the current time.
-    The attestation must be within ATTESTATION_PROPAGATION_SLOT_RANGE and
-    not from the future.
+    Check if the given slot is not from the future
+    (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
-    attestation_earliest_ms = compute_time_at_slot_ms(state, attestation_slot)
-    if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < attestation_earliest_ms:
-        # Attestation is from the future
-        return False
+    slot_time_ms = compute_time_at_slot_ms(state, slot)
+    return current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY >= slot_time_ms
+```
 
-    attestation_last_slot = Slot(attestation_slot + ATTESTATION_PROPAGATION_SLOT_RANGE + 1)
-    attestation_latest_ms = compute_time_at_slot_ms(state, attestation_last_slot)
-    if attestation_latest_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < current_time_ms:
-        # Attestation is too old
-        return False
+#### `is_within_slot_range`
 
+```python
+def is_within_slot_range(
+    state: BeaconState,
+    slot: Slot,
+    slot_range: uint64,
+    current_time_ms: uint64,
+) -> bool:
+    """
+    Check if the current time is within the inclusive slot range ``[slot, slot + slot_range]``
+    (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance on both ends).
+    """
+    start_time_ms = compute_time_at_slot_ms(state, slot)
+    if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < start_time_ms:
+        return False
+    end_time_ms = compute_time_at_slot_ms(state, Slot(slot + slot_range + 1))
+    if end_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < current_time_ms:
+        return False
     return True
 ```
 
@@ -527,8 +539,7 @@ def validate_beacon_block_gossip(
 
     # [IGNORE] The block is not from a future slot (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance)
     # (MAY be queued for processing at the appropriate slot)
-    block_time_ms = compute_time_at_slot_ms(state, block.slot)
-    if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < block_time_ms:
+    if not is_not_from_future_slot(state, block.slot, current_time_ms):
         raise GossipIgnore("block is from a future slot")
 
     # [IGNORE] The block is from a slot greater than the latest finalized slot
@@ -618,7 +629,9 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     # [IGNORE] aggregate.data.slot is within the last ATTESTATION_PROPAGATION_SLOT_RANGE slots
     # (MAY be queued for processing at the appropriate slot)
-    if not is_valid_attestation_slot_time(state, aggregate.data.slot, current_time_ms):
+    if not is_within_slot_range(
+        state, aggregate.data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
+    ):
         raise GossipIgnore("attestation slot not within propagation range")
 
     # [REJECT] The aggregate attestation's epoch matches its target
@@ -934,7 +947,9 @@ def validate_beacon_attestation_gossip(
 
     # [IGNORE] attestation.data.slot is within the last ATTESTATION_PROPAGATION_SLOT_RANGE slots
     # (MAY be queued for processing at the appropriate slot)
-    if not is_valid_attestation_slot_time(state, data.slot, current_time_ms):
+    if not is_within_slot_range(
+        state, data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
+    ):
         raise GossipIgnore("attestation slot not within propagation range")
 
     # [REJECT] The attestation's epoch matches its target
