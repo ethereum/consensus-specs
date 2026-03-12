@@ -472,7 +472,8 @@ For verifying the cells in a partial message:
 - _[REJECT]_ The cells present bitmap length is equal to the number of KZG
   commitments in the `PartialDataColumnHeader`.
 - _[REJECT]_ For cells the receiver already has, The sidecar's cell and proof
-  data are equal to the local copy.
+  data are equal to the local copy. This an optional check for the receiver, but
+  the sender MUST always send valid cell and proof data.
 - _[REJECT]_ The sidecar's cell and proof data is valid as verified by
   `verify_partial_data_column_sidecar_kzg_proofs(sidecar, header.kzg_commitments, column_index)`.
 
