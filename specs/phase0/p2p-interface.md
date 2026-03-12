@@ -949,15 +949,8 @@ def validate_beacon_attestation_gossip(
     if len(aggregation_bits) != len(committee):
         raise GossipReject("aggregation bits length does not match committee size")
 
-    # Get the participating validator index (exactly one bit is set)
-    participant_index = None
-    for i, bit in enumerate(aggregation_bits):
-        if bit:
-            participant_index = committee[i]
-            break
-    assert participant_index is not None
-
     # [IGNORE] No other valid attestation seen for this validator and target epoch
+    participant_index = committee[aggregation_bits.index(True)]
     if (participant_index, target_epoch) in seen.attestation_validator_epochs:
         raise GossipIgnore("already seen attestation from this validator for this epoch")
 
