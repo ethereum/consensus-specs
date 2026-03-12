@@ -31,7 +31,7 @@ def test_on_execution_payload(spec, state):
     yield "anchor_state", state
     yield "anchor_block", anchor_block
 
-    current_time = state.slot * spec.config.SECONDS_PER_SLOT + store.genesis_time
+    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
 
     anchor_root = get_anchor_root(spec, state)
