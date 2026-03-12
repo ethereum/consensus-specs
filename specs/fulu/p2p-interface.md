@@ -116,6 +116,8 @@ Peers communicate the cells available with a bitmap. A set bit (`1`) at index
 cells with a second request bitmap of the same length that is set to `1` if the
 peer would like to receive or provide this cell.
 
+If a cell is available, its corresponding proof MUST be available.
+
 This is encoded as the following SSZ container:
 
 ```python
@@ -425,6 +427,7 @@ For all partial messages:
 
 - _[REJECT]_ A header and/or cells are present in the message (it is not
   semantically empty).
+- _[REJECT]_ There are the same number of cells and proofs in the message.
 
 For verifying the `PartialDataColumnHeader` in a partial message:
 
@@ -463,8 +466,8 @@ For verifying the `PartialDataColumnHeader` in a partial message:
 
 For verifying the cells in a partial message:
 
-- _[IGNORE]_ If the received partial message contains only cell data, the node
-  has seen a valid corresponding `PartialDataColumnHeader`.
+- _[IGNORE]_ If the received partial message contains only cell and proof data,
+  the node has seen a valid corresponding `PartialDataColumnHeader`.
 - _[IGNORE]_ The corresponding header is not from a future slot. See related
   header check above for more details.
 - _[IGNORE]_ The corresponding header is from a slot greater than the latest
@@ -483,7 +486,7 @@ Gossipsub's
 [Partial Message Extension](https://github.com/libp2p/specs/pull/685) enables
 exchanging selective parts of a message rather than the whole. The specification
 here describes how consensus-layer clients use Partial Messages to disseminate
-cells.
+cells along with their proofs.
 
 ##### Partial message group ID
 
@@ -529,7 +532,7 @@ prerequisite to sending a message).
 Clients MAY choose to not eagerly push the `PartialDataColumnHeader` if it has
 previously sent the header to the peer on another topic.
 
-Clients SHOULD request cell data from peers after validating a
+Clients SHOULD request cells from peers after validating a
 `PartialDataColumnHeader`, even if the corresponding block has not been seen
 yet.
 
@@ -556,8 +559,8 @@ On receiving useful novel data from a peer, the client should report to
 gossipsub a positive first message delivery.
 
 Clients SHOULD limit the rate at which a peer gets the first message delivery
-reward to prevent a peer from scoring better by providing cells and proofs one
-at a time rather than at once.
+reward to prevent a peer from scoring better by providing cells one at a time
+rather than many cells at once.
 
 On receiving invalid data, the client should report to gossipsub an invalid
 message delivery.
