@@ -584,12 +584,10 @@ def validate_beacon_block_gossip(
     if checkpoint_block != store.finalized_checkpoint.root:
         raise GossipReject("finalized checkpoint is not an ancestor of block")
 
-    # Get state at parent for proposer verification
-    parent_state = store.block_states[block.parent_root].copy()
-    process_slots(parent_state, block.slot)
-
     # [REJECT] The block is proposed by the expected proposer for the slot
     # (if shuffling is not available, IGNORE instead and MAY be queued for later)
+    parent_state = store.block_states[block.parent_root].copy()
+    process_slots(parent_state, block.slot)
     expected_proposer = get_beacon_proposer_index(parent_state)
     if block.proposer_index != expected_proposer:
         raise GossipReject("block proposer_index does not match expected proposer")
