@@ -515,6 +515,10 @@ the cells it has. Clients SHOULD only do this when they are reasonably confident
 that a peer does not have the provided cells. For example, a proposer including
 private blobs SHOULD eagerly push the cells corresponding to the private blobs.
 
+Clients, by default, SHOULD NOT eagerly push cells when proposing a block.
+Clients SHOULD expose a flag to opt-in to eagerly pushing all cells when
+proposing a block.
+
 Clients SHOULD eagerly push the `PartialDataColumnHeader` to inform peers as to
 which blobs are included in this block, and therefore which cells they are
 missing. Clients SHOULD NOT send a `PartialDataColumnHeader` non-eagerly, as
