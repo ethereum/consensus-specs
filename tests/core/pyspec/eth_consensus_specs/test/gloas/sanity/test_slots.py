@@ -70,10 +70,13 @@ def test_ptc_lookbehind_rotates_on_slot_advance(spec, state):
 
     yield "post", state
 
+    new_ptc = list(state.ptc_lookbehind[1])
+    # Sanity: the two PTCs should differ, so the rotation test is meaningful
+    assert current_ptc != new_ptc
     # After advancing, old current should become previous
     assert list(state.ptc_lookbehind[0]) == current_ptc
     # And new current should be freshly computed for the new slot
-    assert list(state.ptc_lookbehind[1]) == list(spec.compute_ptc(state))
+    assert new_ptc == list(spec.compute_ptc(state))
 
 
 @with_gloas_and_later
@@ -97,7 +100,10 @@ def test_ptc_lookbehind_rotates_across_epoch_boundary(spec, state):
 
     yield "post", state
 
+    new_ptc = list(state.ptc_lookbehind[1])
+    # Sanity: the two PTCs should differ, so the rotation test is meaningful
+    assert current_ptc != new_ptc
     # Old current should become previous
     assert list(state.ptc_lookbehind[0]) == current_ptc
     # New current should be computed for the first slot of the new epoch
-    assert list(state.ptc_lookbehind[1]) == list(spec.compute_ptc(state))
+    assert new_ptc == list(spec.compute_ptc(state))
