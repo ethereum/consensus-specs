@@ -537,7 +537,7 @@ def validate_beacon_block_gossip(
     """
     block = signed_beacon_block.message
 
-    # [IGNORE] The block is not from a future slot (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance)
+    # [IGNORE] The block is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
     if not is_not_from_future_slot(state, block.slot, current_time_ms):
         raise GossipIgnore("block is from a future slot")
@@ -557,7 +557,7 @@ def validate_beacon_block_gossip(
     if block.proposer_index >= len(state.validators):
         raise GossipReject("proposer index out of range")
 
-    # [REJECT] The proposer signature is valid with respect to the proposer_index pubkey
+    # [REJECT] The proposer signature is valid
     proposer = state.validators[block.proposer_index]
     domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
     signing_root = compute_signing_root(block, domain)
@@ -577,7 +577,7 @@ def validate_beacon_block_gossip(
     if block.slot <= store.blocks[block.parent_root].slot:
         raise GossipReject("block is not from a higher slot than its parent")
 
-    # [REJECT] The current finalized_checkpoint is an ancestor of block
+    # [REJECT] The current finalized checkpoint is an ancestor of the block
     checkpoint_block = get_checkpoint_block(
         store, block.parent_root, store.finalized_checkpoint.epoch
     )
@@ -588,7 +588,7 @@ def validate_beacon_block_gossip(
     parent_state = store.block_states[block.parent_root].copy()
     process_slots(parent_state, block.slot)
 
-    # [REJECT] The block is proposed by the expected proposer_index for the block's slot
+    # [REJECT] The block is proposed by the expected proposer for the slot
     # (if shuffling is not available, IGNORE instead and MAY be queued for later)
     expected_proposer = get_beacon_proposer_index(parent_state)
     if block.proposer_index != expected_proposer:
@@ -648,7 +648,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     if len(attesting_indices) < 1:
         raise GossipReject("aggregate has no participants")
 
-    # [IGNORE] A valid aggregate with superset aggregation_bits has not already been seen
+    # [IGNORE] A valid aggregate with a superset of aggregation bits has not already been seen
     aggregate_data_root = hash_tree_root(aggregate.data)
     aggregate_bits = tuple(bool(bit) for bit in aggregation_bits)
     seen_aggregation_bits = seen.aggregate_data_roots.get(aggregate_data_root, set())
@@ -661,13 +661,13 @@ def validate_beacon_aggregate_and_proof_gossip(
         if is_non_strict_superset:
             raise GossipIgnore("already seen aggregate for this data")
 
-    # [IGNORE] First valid aggregate for this aggregator in this epoch
+    # [IGNORE] This is the first valid aggregate for this aggregator in this epoch
     aggregator_index = aggregate_and_proof.aggregator_index
     target_epoch = aggregate.data.target.epoch
     if (aggregator_index, target_epoch) in seen.aggregator_epochs:
         raise GossipIgnore("already seen aggregate from this aggregator for this epoch")
 
-    # [REJECT] selection_proof selects the validator as an aggregator
+    # [REJECT] The selection proof selects the validator as an aggregator
     if not is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof):
         raise GossipReject("validator is not selected as aggregator")
 
@@ -675,7 +675,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     if aggregator_index not in committee:
         raise GossipReject("aggregator index not in committee")
 
-    # [REJECT] The selection_proof is a valid signature
+    # [REJECT] The selection proof signature is valid
     aggregator = state.validators[aggregator_index]
     domain = get_domain(state, DOMAIN_SELECTION_PROOF, target_epoch)
     signing_root = compute_signing_root(aggregate.data.slot, domain)
@@ -688,7 +688,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     if not bls.Verify(aggregator.pubkey, signing_root, signed_aggregate_and_proof.signature):
         raise GossipReject("invalid aggregator signature")
 
-    # [REJECT] The signature of aggregate is valid
+    # [REJECT] The aggregate signature is valid
     if not is_valid_indexed_attestation(state, get_indexed_attestation(state, aggregate)):
         raise GossipReject("invalid aggregate signature")
 
@@ -701,14 +701,14 @@ def validate_beacon_aggregate_and_proof_gossip(
     if aggregate.data.beacon_block_root not in store.block_states:
         raise GossipReject("block being voted for failed validation")
 
-    # [REJECT] Target block is an ancestor of the block named in LMD vote
+    # [REJECT] The target block is an ancestor of the LMD vote block
     checkpoint_block = get_checkpoint_block(
         store, aggregate.data.beacon_block_root, aggregate.data.target.epoch
     )
     if checkpoint_block != aggregate.data.target.root:
         raise GossipReject("target block is not an ancestor of LMD vote block")
 
-    # [IGNORE] Finalized checkpoint is an ancestor of the block
+    # [IGNORE] The finalized checkpoint is an ancestor of the block
     finalized_checkpoint_block = get_checkpoint_block(
         store, aggregate.data.beacon_block_root, store.finalized_checkpoint.epoch
     )
@@ -969,7 +969,7 @@ def validate_beacon_attestation_gossip(
     if (participant_index, target_epoch) in seen.attestation_validator_epochs:
         raise GossipIgnore("already seen attestation from this validator for this epoch")
 
-    # [REJECT] The signature of attestation is valid
+    # [REJECT] The attestation signature is valid
     indexed_attestation = get_indexed_attestation(state, attestation)
     if not is_valid_indexed_attestation(state, indexed_attestation):
         raise GossipReject("invalid attestation signature")

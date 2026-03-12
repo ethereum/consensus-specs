@@ -798,6 +798,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregator(spec,
     threshold_fn=default_activation_threshold,
 )
 @single_phase
+@always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_not_aggregator(spec, state):
     """
     Test that an aggregate from a validator not selected as aggregator is rejected.
