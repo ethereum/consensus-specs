@@ -746,31 +746,30 @@ def validate_voluntary_exit_gossip(
     if validator_index in seen.voluntary_exit_indices:
         raise GossipIgnore("already seen voluntary exit for this validator")
 
-    # [REJECT] All of the conditions within process_voluntary_exit pass validation
-    # Check validator index is valid
+    # [REJECT] The validator index is valid
     if validator_index >= len(state.validators):
         raise GossipReject("validator index out of range")
 
     validator = state.validators[validator_index]
     current_epoch = get_current_epoch(state)
 
-    # Verify the validator is active
+    # [REJECT] The validator is active
     if not is_active_validator(validator, current_epoch):
         raise GossipReject("validator is not active")
 
-    # Verify exit has not been initiated
+    # [REJECT] The validator has not already initiated exit
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         raise GossipReject("validator has already initiated exit")
 
-    # Exits must specify an epoch when they become valid; they are not valid before then
+    # [REJECT] The voluntary exit epoch is not in the future
     if current_epoch < voluntary_exit.epoch:
         raise GossipReject("voluntary exit epoch is in the future")
 
-    # Verify the validator has been active long enough
+    # [REJECT] The validator has been active long enough
     if current_epoch < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
         raise GossipReject("validator has not been active long enough")
 
-    # Verify signature
+    # [REJECT] The signature is valid
     domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch)
     signing_root = compute_signing_root(voluntary_exit, domain)
     if not bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature):
@@ -805,29 +804,28 @@ def validate_proposer_slashing_gossip(
     if proposer_index in seen.proposer_slashing_indices:
         raise GossipIgnore("already seen proposer slashing for this proposer")
 
-    # [REJECT] All of the conditions within process_proposer_slashing pass validation
-    # Verify header slots match
+    # [REJECT] The header slots match
     if header_1.slot != header_2.slot:
         raise GossipReject("header slots do not match")
 
-    # Verify header proposer indices match
+    # [REJECT] The header proposer indices match
     if header_1.proposer_index != header_2.proposer_index:
         raise GossipReject("header proposer indices do not match")
 
-    # Verify the headers are different
+    # [REJECT] The headers are different
     if header_1 == header_2:
         raise GossipReject("headers are not different")
 
-    # Check proposer index is valid
+    # [REJECT] The proposer index is valid
     if proposer_index >= len(state.validators):
         raise GossipReject("proposer index out of range")
 
-    # Verify the proposer is slashable
+    # [REJECT] The proposer is slashable
     proposer = state.validators[proposer_index]
     if not is_slashable_validator(proposer, get_current_epoch(state)):
         raise GossipReject("proposer is not slashable")
 
-    # Verify signatures
+    # [REJECT] The signatures are valid
     for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
         domain = get_domain(
             state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot)
