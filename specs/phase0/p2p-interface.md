@@ -303,17 +303,20 @@ def is_valid_attestation_slot_time(
 ) -> bool:
     """
     Check if an attestation's slot time is valid given the current time.
-    The attestation must be within ATTESTATION_PROPAGATION_SLOT_RANGE and not from the future.
+    The attestation must be within ATTESTATION_PROPAGATION_SLOT_RANGE and
+    not from the future.
     """
-    genesis_time_ms = state.genesis_time * 1000
-    current_slot = (current_time_ms - genesis_time_ms) // SLOT_DURATION_MS
-    attestation_slot_time_ms = compute_time_at_slot_ms(state, attestation_slot)
-    if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < attestation_slot_time_ms:
+    attestation_earliest_ms = compute_time_at_slot_ms(state, attestation_slot)
+    if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < attestation_earliest_ms:
         # Attestation is from the future
         return False
-    if attestation_slot + ATTESTATION_PROPAGATION_SLOT_RANGE < current_slot:
+
+    attestation_last_slot = Slot(attestation_slot + ATTESTATION_PROPAGATION_SLOT_RANGE + 1)
+    attestation_latest_ms = compute_time_at_slot_ms(state, attestation_last_slot)
+    if attestation_latest_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < current_time_ms:
         # Attestation is too old
         return False
+
     return True
 ```
 

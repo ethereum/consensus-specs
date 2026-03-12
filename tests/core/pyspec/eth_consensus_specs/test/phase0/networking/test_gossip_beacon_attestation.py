@@ -339,6 +339,131 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
 
 @with_phases([PHASE0])
 @spec_state_test
+def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state):
+    """
+    Test that an attestation at exactly the old boundary (expiry + clock disparity) is still valid.
+    """
+    yield "topic", "meta", "beacon_attestation"
+    yield "state", state
+
+    seen = get_seen(spec)
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    anchor_root = anchor_block.hash_tree_root()
+
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    next_slot(spec, state)
+
+    # Create an unaggregated attestation referencing anchor block
+    attestation = get_valid_attestation(spec, state, signed=False, beacon_block_root=anchor_root)
+
+    # Make it unaggregated (exactly one bit set)
+    committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+    single_bit = [False] * len(committee)
+    single_bit[0] = True
+    attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+    attestation.signature = spec.get_attestation_signature(
+        state, attestation.data, privkeys[committee[0]]
+    )
+
+    yield get_filename(attestation), attestation
+
+    # Set current time to exactly the boundary (should still be valid)
+    attestation_latest_ms = spec.compute_time_at_slot_ms(
+        state, spec.Slot(attestation.data.slot + spec.config.ATTESTATION_PROPAGATION_SLOT_RANGE + 1)
+    )
+    current_time_ms = attestation_latest_ms + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
+
+    yield "current_time_ms", "meta", int(current_time_ms)
+
+    subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    result, reason = run_validate_beacon_attestation_gossip(
+        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    )
+    assert result == "valid", f"Expected valid but got {result}: {reason}"
+    assert reason is None
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "subnet_id": int(subnet_id),
+                "offset_ms": 0,
+                "message": get_filename(attestation),
+                "expected": "valid",
+            }
+        ],
+    )
+
+
+@with_phases([PHASE0])
+@spec_state_test
+def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
+    """
+    Test that an attestation that is too old (past propagation range + clock disparity) is ignored.
+    """
+    yield "topic", "meta", "beacon_attestation"
+    yield "state", state
+
+    seen = get_seen(spec)
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    anchor_root = anchor_block.hash_tree_root()
+
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    next_slot(spec, state)
+
+    # Create an unaggregated attestation referencing anchor block
+    attestation = get_valid_attestation(spec, state, signed=False, beacon_block_root=anchor_root)
+
+    # Make it unaggregated (exactly one bit set)
+    committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+    single_bit = [False] * len(committee)
+    single_bit[0] = True
+    attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+    attestation.signature = spec.get_attestation_signature(
+        state, attestation.data, privkeys[committee[0]]
+    )
+
+    yield get_filename(attestation), attestation
+
+    # Set current time to just past the expiry boundary
+    attestation_latest_ms = spec.compute_time_at_slot_ms(
+        state, spec.Slot(attestation.data.slot + spec.config.ATTESTATION_PROPAGATION_SLOT_RANGE + 1)
+    )
+    current_time_ms = attestation_latest_ms + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY + 1
+
+    yield "current_time_ms", "meta", int(current_time_ms)
+
+    subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
+    result, reason = run_validate_beacon_attestation_gossip(
+        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    )
+    assert result == "ignore"
+    assert reason == "attestation slot not within propagation range"
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "subnet_id": int(subnet_id),
+                "offset_ms": 0,
+                "message": get_filename(attestation),
+                "expected": "ignore",
+                "reason": reason,
+            }
+        ],
+    )
+
+
+@with_phases([PHASE0])
+@spec_state_test
 def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
     """
     Test that an attestation with mismatched epoch and target is rejected.
