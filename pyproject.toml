@@ -6,6 +6,7 @@ name = "eth-consensus-specs"
 dynamic = ["version"]
 authors = [{ name = "ethereum" }]
 description = "Ethereum consensus layer specifications package"
+license = "CC0-1.0"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11, <3.15"
 urls = { homepage = "https://github.com/ethereum/consensus-specs" }
