@@ -15,7 +15,7 @@
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Validator custody](#validator-custody)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
-    - [Constructing the sidecars](#constructing-the-sidecars)
+    - [Constructing the `DataColumnSidecar`s](#constructing-the-datacolumnsidecars)
       - [`get_data_column_sidecars`](#get_data_column_sidecars)
       - [`get_data_column_sidecars_from_block`](#get_data_column_sidecars_from_block)
       - [`get_data_column_sidecars_from_column_sidecar`](#get_data_column_sidecars_from_column_sidecar)
@@ -167,7 +167,7 @@ progressively lower values as the backfill process advances.
 
 ### Block and sidecar proposal
 
-#### Constructing the sidecars
+#### Constructing the `DataColumnSidecar`s
 
 *[New in Fulu:EIP7594]*
 

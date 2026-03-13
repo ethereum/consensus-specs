@@ -7,6 +7,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.constants import (
     AFTER_ELECTRA_PRE_POST_FORKS,
     GLOAS,
+    HEZE,
     MINIMAL,
 )
 from eth_consensus_specs.test.helpers.fork_transition import (
@@ -24,7 +25,7 @@ from eth_consensus_specs.test.helpers.fork_transition import (
         ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
         for pre, post in AFTER_ELECTRA_PRE_POST_FORKS
         # TODO(jtraglia): make this work with Gloas
-        if post != GLOAS
+        if post not in (GLOAS, HEZE)
     ]
 )
 @always_bls
@@ -56,7 +57,7 @@ def test_transition_with_deposit_request_right_after_fork(
         ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=66)
         for pre, post in AFTER_ELECTRA_PRE_POST_FORKS
         # TODO(jtraglia): make this work with Gloas
-        if post != GLOAS
+        if post not in (GLOAS, HEZE)
     ]
 )
 @with_presets([MINIMAL], reason="too slow")
@@ -89,7 +90,7 @@ def test_transition_with_full_withdrawal_request_right_after_fork(
         ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
         for pre, post in AFTER_ELECTRA_PRE_POST_FORKS
         # TODO(jtraglia): make this work with Gloas
-        if post != GLOAS
+        if post not in (GLOAS, HEZE)
     ]
 )
 @always_bls

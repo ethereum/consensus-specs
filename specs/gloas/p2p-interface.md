@@ -349,8 +349,8 @@ The following validations MUST pass before forwarding the
   `SignedProposerPreferences` associated with `bid.slot`.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
-- _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
-  and the given parent block hash.
+- _[IGNORE]_ this bid is the highest value bid seen for the tuple
+  `(bid.slot, bid.parent_block_hash, bid.parent_block_root)`.
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
   i.e. `can_builder_cover_bid(state, builder_index, amount)` returns `True`.
 - _[IGNORE]_ `bid.parent_block_hash` is the block hash of a known execution
@@ -397,6 +397,10 @@ def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences)
     index = SLOTS_PER_EPOCH + preferences.proposal_slot % SLOTS_PER_EPOCH
     return state.proposer_lookahead[index] == preferences.validator_index
 ```
+
+*Note*: Nodes SHOULD subscribe to this topic at least one epoch before the fork
+activation. Proposers SHOULD broadcast their preferences in the epoch before the
+fork.
 
 ##### Blob subnets
 
@@ -580,8 +584,11 @@ The request MUST be encoded as an SSZ-field.
 The response MUST consist of zero or more `response_chunk`. Each successful
 `response_chunk` MUST contain a single `SignedExecutionPayloadEnvelope` payload.
 
-Clients MUST support requesting payload envelopes since the latest finalized
-epoch.
+Clients MUST support requesting payload envelopes on the epoch range
+`[max(GLOAS_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`.
+If any root in the request content references a block earlier than this range,
+peers MAY respond with error code `3: ResourceUnavailable` or not include the
+payload envelope in the response.
 
 Clients MUST respond with at least one payload envelope, if they have it.
 Clients MAY limit the number of payload envelopes in the response.

@@ -1,4 +1,4 @@
-name: Nightly Mainnet Tests
+name: Nightly Tests
 
 defaults:
   run:
@@ -7,22 +7,30 @@ defaults:
 on:
   workflow_dispatch:
     inputs:
+      repo:
+        description: The repository to use (e.g. user/consensus-specs)
+        default: ethereum/consensus-specs
+        type: string
+        required: true
       ref:
         description: The branch, tag or SHA to checkout and build from
         default: master
         type: string
         required: true
   schedule:
-    # Every day at 00:00 UTC
     - cron: "0 0 * * *"
 
 jobs:
-  tests:
+  generate:
     timeout-minutes: 720 # 12 hours
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     strategy:
       fail-fast: false
       matrix:
+        preset:
+          - general
+          - minimal
+          - mainnet
         fork:
           - phase0
           - altair
@@ -32,29 +40,72 @@ jobs:
           - electra
           - fulu
           - gloas
-          - eip7805
-          - eip7928
-          - eip8025
+          - heze
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Set up Python
+        with:
+          repository: ${{ inputs.repo }}
+          ref: ${{ inputs.ref }}
+
+      - name: Setup python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version-file: "pyproject.toml"
-      - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@eac588ad8def6316056a12d4907a9d4d84ff7a3b # v7.3.0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
-      - name: test-${{ matrix.fork }}
-        run: make test component=pyspec preset=mainnet fork=${{ matrix.fork }}
-      - name: Prepare test results for upload
-        if: always()
-        run: cp -r ./tests/core/pyspec/test-reports ./tests/core/pyspec/test-results-mainnet-${{ matrix.fork }}-${{ github.run_number }}
-      - name: Upload ${{ matrix.fork }} test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        if: always()
+
+      - name: Generate tests
+        run: make test component=pyspec preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true
+
+      - name: Upload reference tests
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: test-results-mainnet-${{ matrix.fork }}-${{ github.run_number }}
-          path: ./tests/core/pyspec/test-results-mainnet-${{ matrix.fork }}-${{ github.run_number }}
+          name: reftests-${{ matrix.preset }}-${{ matrix.fork }}
+          path: reftests/${{ matrix.preset }}
+          if-no-files-found: ignore
+
+  package:
+    needs: generate
+    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    permissions:
+      actions: write
+    strategy:
+      matrix:
+        preset:
+          - general
+          - minimal
+          - mainnet
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          pattern: reftests-${{ matrix.preset }}-*
+          path: tests/${{ matrix.preset }}
+          merge-multiple: true
+
+      - name: Archive reference tests
+        run: tar -czvf ${{ matrix.preset }}.tar.gz tests/${{ matrix.preset }}
+
+      - name: Upload ${{ matrix.preset }}.tar.gz
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          path: ${{ matrix.preset }}.tar.gz
+          archive: false
+
+      - name: Delete intermediate artifacts
+        continue-on-error: true
+        run: |
+          gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
+            --paginate --jq '.artifacts[]
+              | select(.name | startswith("reftests-${{ matrix.preset }}-"))
+              | .id' | while read id; do
+            gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}

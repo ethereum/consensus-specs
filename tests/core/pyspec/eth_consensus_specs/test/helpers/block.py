@@ -1,21 +1,3 @@
-from curdleproofs import (
-    GenerateWhiskShuffleProof,
-    GenerateWhiskTrackerProof,
-    WhiskTracker,
-)
-from py_arkworks_bls12381 import Scalar
-from py_ecc.bls.g2_primitives import (
-    G1_to_pubkey as py_ecc_G1_to_bytes48,
-    pubkey_to_G1 as py_ecc_bytes48_to_G1,
-)
-from py_ecc.optimized_bls12_381.optimized_curve import G1, multiply
-from py_ecc.typing import Optimized_Field, Optimized_Point3D
-
-from eth_consensus_specs.test.helpers.eip7441 import (
-    compute_whisk_tracker_and_commitment,
-    is_first_proposal,
-    resolve_known_tracker,
-)
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
     build_empty_signed_execution_payload_bid,
@@ -23,16 +5,13 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
     is_post_bellatrix,
-    is_post_eip7441,
     is_post_electra,
     is_post_gloas,
 )
-from eth_consensus_specs.test.helpers.keys import privkeys, whisk_ks_final, whisk_ks_initial
+from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.utils import bls
 from eth_consensus_specs.utils.bls import only_with_bls
 from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root
-
-PointProjective = Optimized_Point3D[Optimized_Field]
 
 
 def get_proposer_index_maybe(spec, state, slot, proposer_index=None):
@@ -143,103 +122,11 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         empty_block.body.execution_requests.withdrawals = []
         empty_block.body.execution_requests.consolidations = []
 
-    if is_post_eip7441(spec):
-        # Whisk opening proof
-        #######
-
-        # Create valid whisk opening proof
-        # TODO: Use k_initial or k_final to handle first and subsequent proposals
-        k_initial = whisk_ks_initial(proposer_index)
-
-        # Sanity check proposer is correct
-        proposer_k_commitment = state.whisk_k_commitments[proposer_index]
-        k_commitment = py_ecc_G1_to_bytes48(multiply(G1, int(k_initial)))
-        if proposer_k_commitment != k_commitment:
-            raise Exception(
-                "k proposer_index not eq proposer_k_commitment", proposer_k_commitment, k_commitment
-            )
-
-        proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.PROPOSER_TRACKERS_COUNT]
-        if not is_whisk_proposer(proposer_tracker, k_initial):
-            raise Exception("k proposer_index does not match proposer_tracker")
-
-        empty_block.body.whisk_opening_proof = GenerateWhiskTrackerProof(
-            proposer_tracker, Scalar(k_initial)
-        )
-
-        # Whisk shuffle proof
-        #######
-
-        shuffle_indices = spec.get_shuffle_indices(empty_block.body.randao_reveal)
-        pre_shuffle_trackers = [state.whisk_candidate_trackers[i] for i in shuffle_indices]
-
-        post_trackers, shuffle_proof = GenerateWhiskShuffleProof(
-            spec.CURDLEPROOFS_CRS, pre_shuffle_trackers
-        )
-        empty_block.body.whisk_post_shuffle_trackers = post_trackers
-        empty_block.body.whisk_shuffle_proof = shuffle_proof
-
-        # Whisk registration proof
-        #######
-
-        # Branching logic depending if first proposal or not
-        if is_first_proposal(spec, state, proposer_index):
-            # Register new tracker
-            k_final = whisk_ks_final(proposer_index)
-            # TODO: Actual logic should pick a random r, but may need to do something fancy to locate trackers quickly
-            r = 2
-            tracker, k_commitment = compute_whisk_tracker_and_commitment(k_final, r)
-            empty_block.body.whisk_registration_proof = GenerateWhiskTrackerProof(
-                tracker, Scalar(k_final)
-            )
-            empty_block.body.whisk_tracker = tracker
-            empty_block.body.whisk_k_commitment = k_commitment
-
-        else:
-            # Subsequent proposals, just leave empty
-            empty_block.body.whisk_registration_proof = spec.WhiskTrackerProof()
-            empty_block.body.whisk_tracker = spec.WhiskTracker()
-            empty_block.body.whisk_k_commitment = spec.BLSG1Point()
-
     return empty_block
 
 
-def is_whisk_proposer(tracker: WhiskTracker, k: int) -> bool:
-    return py_ecc_G1_to_bytes48(multiply(py_ecc_bytes48_to_G1(tracker.r_G), k)) == tracker.k_r_G
-
-
 def get_beacon_proposer_to_build(spec, state, proposer_index=None):
-    if is_post_eip7441(spec):
-        if proposer_index is None:
-            return find_whisk_proposer(spec, state)
-        else:
-            return proposer_index
-    else:
-        return spec.get_beacon_proposer_index(state)
-
-
-def find_whisk_proposer(spec, state):
-    proposer_tracker = state.whisk_proposer_trackers[state.slot % spec.PROPOSER_TRACKERS_COUNT]
-
-    # Check record of known trackers
-    # During the first shuffling phase (epoch < EPOCHS_PER_SHUFFLING_PHASE)
-    # proposer trackers are those inserted on the genesis state, and have not gone
-    # through any shuffling. We cache those initial trackers and use `resolve_known_tracker`
-    # to check if the tracker is known, and skip the need to actually find the matching tracker
-    proposer_index = resolve_known_tracker(proposer_tracker)
-    if proposer_index is not None:
-        return proposer_index
-
-    print("proposer_tracker", proposer_tracker)
-    # # First attempt direct equality with trackers
-    # for i, validator in enumerate(state.validators):
-    #     # # This is insanely slow
-    #     # if validator.whisk_tracker == proposer_tracker:
-    #     if True:
-    #         return i
-    # # In Whisk where to get proposer from?
-    # raise Exception("proposer_tracker not matched")
-    raise Exception("proposer not known without heavy math")
+    return spec.get_beacon_proposer_index(state)
 
 
 def build_empty_block_for_next_slot(spec, state, proposer_index=None):
