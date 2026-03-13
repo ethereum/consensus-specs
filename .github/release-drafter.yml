@@ -38,6 +38,10 @@ categories:
   - title: Testing
     label: testing
 
+  # Dependencies
+  - title: Dependencies
+    label: dependencies
+
   # Fallback
   - title: Other
 
