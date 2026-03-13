@@ -323,12 +323,11 @@ this means that at the start of epoch `N`, the proposer lookahead for epoch
 
 ```python
 def process_proposer_lookahead(state: BeaconState) -> None:
-    last_epoch_start = len(state.proposer_lookahead) - SLOTS_PER_EPOCH
     # Shift out proposers in the first epoch
-    state.proposer_lookahead[:last_epoch_start] = state.proposer_lookahead[SLOTS_PER_EPOCH:]
+    state.proposer_lookahead[:SLOTS_PER_EPOCH] = state.proposer_lookahead[SLOTS_PER_EPOCH:]
     # Fill in the last epoch with new proposer indices
-    last_epoch_proposers = get_beacon_proposer_indices(
+    next_epoch_proposers = get_beacon_proposer_indices(
         state, Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1)
     )
-    state.proposer_lookahead[last_epoch_start:] = last_epoch_proposers
+    state.proposer_lookahead[SLOTS_PER_EPOCH:] = next_epoch_proposers
 ```
