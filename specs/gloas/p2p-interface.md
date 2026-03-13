@@ -294,10 +294,8 @@ obtained from the `state.latest_execution_payload_bid`)
 - _[REJECT]_ `block.slot` equals `envelope.slot`.
 - _[REJECT]_ `envelope.builder_index == bid.builder_index`
 - _[REJECT]_ `payload.block_hash == bid.block_hash`
-- _[REJECT]_ `signed_execution_payload_envelope.signature` is valid with respect
-  to the builder's public key, or, in the case of a self-built payload
-  (i.e. `envelope.builder_index == BUILDER_INDEX_SELF_BUILD`), the proposer's public key.
-  See `verify_execution_payload_envelope_signature`.
+- _[REJECT]_ `signed_execution_payload_envelope.signature` is valid as verified by
+  `verify_execution_payload_envelope_signature`.
 
 ###### `payload_attestation_message`
 
