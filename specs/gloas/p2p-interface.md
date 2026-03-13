@@ -222,12 +222,11 @@ The following validations are added:
 - _[REJECT]_ `aggregate.data.index == 0` if `block.slot == aggregate.data.slot`.
 - _[REJECT]_ If `aggregate.data.index == 1` (payload present for a past block)
   the corresponding execution payload for `block` passes validation.
-- _[IGNORE]_ If `aggregate.data.index == 1` (payload present for a past block)
-  and the corresponding execution payload for `block` has been seen. A client
-  that has not seen the payload MAY queue the attestation and SHOULD request the
-  payload envelope by root (e.g. `aggregate.data.beacon_block_root`) using
-  `ExecutionPayloadEnvelopesByRoot` (a client MAY queue attestations for
-  processing once the payload is retrieved).
+- _[IGNORE]_ When `aggregate.data.index == 1` (payload present for a past
+  block), the corresponding execution payload for `block` has been seen (a
+  client MAY queue attestations for processing once the payload is retrieved and
+  SHOULD request the payload envelope via `ExecutionPayloadEnvelopesByRoot`
+  using `aggregate.data.beacon_block_root`).
 
 The following validations are removed:
 
@@ -446,12 +445,11 @@ The following validations are added:
   `block.slot == attestation.data.slot`.
 - _[REJECT]_ If `attestation.data.index == 1` (payload present for a past
   block), the execution payload for `block` passes validation.
-- _[IGNORE]_ If `attestation.data.index == 1` (payload present for a past block)
-  and the execution payload for `block` has been seen. A client that has not
-  seen the payload MAY queue the attestation and SHOULD request the payload
-  envelope by root (e.g. `attestation.data.beacon_block_root`) using
-  `ExecutionPayloadEnvelopesByRoot` (a client MAY queue attestations for
-  processing once the payload is retrieved).
+- _[IGNORE]_ When `attestation.data.index == 1` (payload present for a past
+  block), the execution payload for `block` has been seen (a client MAY queue
+  attestations for processing once the payload is retrieved and SHOULD request
+  the payload envelope via `ExecutionPayloadEnvelopesByRoot` using
+  `attestation.data.beacon_block_root`).
 
 The following validations are removed:
 
