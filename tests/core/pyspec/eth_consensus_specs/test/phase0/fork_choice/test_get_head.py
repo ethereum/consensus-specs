@@ -56,6 +56,28 @@ def test_genesis(spec, state):
     anchor_root = get_anchor_root(spec, state)
     check_head_against_root(spec, store, anchor_root)
 
+    if is_post_gloas(spec):
+        # Verify Gloas store fields
+        assert hasattr(store, "payload_states")
+        assert hasattr(store, "payload_timeliness_vote")
+        assert anchor_root in store.payload_states
+        assert anchor_root in store.payload_timeliness_vote
+
+        # Check PTC vote initialization
+        ptc_vote = store.payload_timeliness_vote[anchor_root]
+        assert len(ptc_vote) == spec.PTC_SIZE
+        assert all(ptc_vote)
+
+        # Check data availability vote initialization
+        assert anchor_root in store.payload_data_availability_vote
+        da_vote = store.payload_data_availability_vote[anchor_root]
+        assert len(da_vote) == spec.PTC_SIZE
+        assert all(da_vote)
+
+        # get_head returns ForkChoiceNode
+        head = spec.get_head(store)
+        assert isinstance(head, spec.ForkChoiceNode)
+
     test_steps.append(
         {
             "checks": {
