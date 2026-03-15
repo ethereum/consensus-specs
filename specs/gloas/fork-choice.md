@@ -364,17 +364,14 @@ def should_extend_payload(store: Store, root: Root) -> bool:
 
 ```python
 def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> uint8:
-    if node.payload_status == PAYLOAD_STATUS_PENDING or store.blocks[
-        node.root
-    ].slot + 1 != get_current_slot(store):
+    if store.blocks[node.root].slot + 1 != get_current_slot(store):
         return node.payload_status
+    # To decide on a payload from the previous slot, choose
+    # between FULL and EMPTY based on `should_extend_payload`
+    if node.payload_status == PAYLOAD_STATUS_EMPTY:
+        return 1
     else:
-        # To decide on a payload from the previous slot, choose
-        # between FULL and EMPTY based on `should_extend_payload`
-        if node.payload_status == PAYLOAD_STATUS_EMPTY:
-            return 1
-        else:
-            return 2 if should_extend_payload(store, node.root) else 0
+        return 2 if should_extend_payload(store, node.root) else 0
 ```
 
 ### New `should_apply_proposer_boost`
@@ -521,7 +518,7 @@ def get_head(store: Store) -> ForkChoiceNode:
         children = get_node_children(store, blocks, head)
         if len(children) == 0:
             return head
-        # Sort by latest attesting balance with ties broken lexicographically
+        # Sort by latest attesting balance with ties broken by root lexicographically, then payload status
         head = max(
             children,
             key=lambda child: (
