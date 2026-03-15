@@ -232,11 +232,12 @@ def test_process_payload_attestation_too_old_slot(spec, state):
     """
     Test payload attestation for slot too far in the past fails
     """
-    # Advance state to slot 3
-    spec.process_slots(state, state.slot + 3)
+    # Advance to slot 1 and create a valid attestation for slot 0
+    spec.process_slots(state, state.slot + 1)
+    payload_attestation = prepare_signed_payload_attestation(spec, state)
 
-    # Try to attest to slot 0 (2 slots ago, should be 1 slot ago)
-    payload_attestation = prepare_signed_payload_attestation(spec, state, slot=state.slot - 2)
+    # Advance again so the attestation becomes too old (slot 0 is now 2 slots behind)
+    spec.process_slots(state, state.slot + 1)
 
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
 
@@ -375,6 +376,8 @@ def test_process_payload_attestation_sampling_not_capped(spec, state):
     low_balance = spec.EFFECTIVE_BALANCE_INCREMENT
     for validator in state.validators:
         validator.effective_balance = low_balance
+    # Direct balance mutations bypass slot processing, so refresh the cached current-slot PTC.
+    state.current_ptc = spec.compute_ptc(state)
 
     chosen_slot = None
     chosen_index = None

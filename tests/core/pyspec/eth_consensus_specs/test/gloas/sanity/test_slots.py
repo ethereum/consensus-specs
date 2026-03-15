@@ -52,3 +52,58 @@ def test_execution_payload_availability_reset_from_unset(spec, state):
     yield "post", state
 
     assert state.execution_payload_availability[next_slot_index] == 0b0
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_ptc_rotates_on_slot_advance(spec, state):
+    """
+    Test that process_slots correctly rotates previous_ptc/current_ptc:
+    old current becomes previous, new current is freshly computed.
+    """
+    old_current_ptc = list(state.current_ptc)
+
+    yield "pre", state
+    yield "slots", 1
+
+    spec.process_slots(state, state.slot + 1)
+
+    yield "post", state
+
+    new_current_ptc = list(state.current_ptc)
+    # Sanity: the two PTCs should differ, so the rotation test is meaningful
+    assert old_current_ptc != new_current_ptc
+    # After advancing, old current should become previous
+    assert list(state.previous_ptc) == old_current_ptc
+    # And new current should be freshly computed for the new slot
+    assert new_current_ptc == list(spec.compute_ptc(state))
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_ptc_rotates_across_epoch_boundary(spec, state):
+    """
+    Test that previous_ptc/current_ptc correctly rotate when crossing an epoch boundary.
+    """
+    # Advance to the last slot of the epoch
+    target_slot = spec.SLOTS_PER_EPOCH - 1
+    if state.slot < target_slot:
+        spec.process_slots(state, target_slot)
+
+    old_current_ptc = list(state.current_ptc)
+
+    yield "pre", state
+    yield "slots", 1
+
+    # Cross the epoch boundary
+    spec.process_slots(state, state.slot + 1)
+
+    yield "post", state
+
+    new_current_ptc = list(state.current_ptc)
+    # Sanity: the two PTCs should differ, so the rotation test is meaningful
+    assert old_current_ptc != new_current_ptc
+    # Old current should become previous
+    assert list(state.previous_ptc) == old_current_ptc
+    # New current should be computed for the first slot of the new epoch
+    assert new_current_ptc == list(spec.compute_ptc(state))

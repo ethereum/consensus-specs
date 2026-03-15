@@ -54,6 +54,7 @@
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
     - [New `compute_balance_weighted_acceptance`](#new-compute_balance_weighted_acceptance)
     - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
+    - [New `compute_ptc`](#new-compute_ptc)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
     - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
@@ -63,6 +64,7 @@
   - [Beacon state mutators](#beacon-state-mutators)
     - [New `initiate_builder_exit`](#new-initiate_builder_exit)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Modified `process_slots`](#modified-process_slots)
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
@@ -384,6 +386,10 @@ class BeaconState(Container):
     latest_block_hash: Hash32
     # [New in Gloas:EIP7732]
     payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
+    # [New in Gloas:EIP7732]
+    previous_ptc: Vector[ValidatorIndex, PTC_SIZE]
+    # [New in Gloas:EIP7732]
+    current_ptc: Vector[ValidatorIndex, PTC_SIZE]
 ```
 
 ## Dataclasses
@@ -630,6 +636,26 @@ def compute_proposer_indices(
     ]
 ```
 
+#### New `compute_ptc`
+
+```python
+def compute_ptc(state: BeaconState) -> Vector[ValidatorIndex, PTC_SIZE]:
+    """
+    Get the payload timeliness committee for the current slot.
+    """
+    epoch = get_current_epoch(state)
+    seed = hash(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(state.slot))
+    indices: List[ValidatorIndex] = []
+    # Concatenate all committees for this slot in order
+    committees_per_slot = get_committee_count_per_slot(state, epoch)
+    for i in range(committees_per_slot):
+        committee = get_beacon_committee(state, state.slot, CommitteeIndex(i))
+        indices.extend(committee)
+    return compute_balance_weighted_selection(
+        state, indices, seed, size=PTC_SIZE, shuffle_indices=False
+    )
+```
+
 ### Beacon state accessors
 
 #### Modified `get_next_sync_committee_indices`
@@ -710,17 +736,8 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     """
     Get the payload timeliness committee for the given ``slot``.
     """
-    epoch = compute_epoch_at_slot(slot)
-    seed = hash(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
-    indices: List[ValidatorIndex] = []
-    # Concatenate all committees for this slot in order
-    committees_per_slot = get_committee_count_per_slot(state, epoch)
-    for i in range(committees_per_slot):
-        committee = get_beacon_committee(state, slot, CommitteeIndex(i))
-        indices.extend(committee)
-    return compute_balance_weighted_selection(
-        state, indices, seed, size=PTC_SIZE, shuffle_indices=False
-    )
+    assert slot == state.slot or slot + 1 == state.slot
+    return state.current_ptc if slot == state.slot else state.previous_ptc
 ```
 
 #### New `get_indexed_payload_attestation`
@@ -792,6 +809,23 @@ payload envelope `signed_envelope` is defined as
 transitions that trigger an unhandled exception (e.g. a failed `assert` or an
 out-of-range list access) are considered invalid. State transitions that cause
 an `uint64` overflow or underflow are also considered invalid.
+
+### Modified `process_slots`
+
+```python
+def process_slots(state: BeaconState, slot: Slot) -> None:
+    assert state.slot < slot
+    while state.slot < slot:
+        process_slot(state)
+        # Process epoch on the start slot of the next epoch
+        if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
+            process_epoch(state)
+        state.slot = Slot(state.slot + 1)
+        # [New in Gloas:EIP7732]
+        state.previous_ptc = state.current_ptc
+        # [New in Gloas:EIP7732]
+        state.current_ptc = compute_ptc(state)
+```
 
 ### Modified `process_slot`
 
