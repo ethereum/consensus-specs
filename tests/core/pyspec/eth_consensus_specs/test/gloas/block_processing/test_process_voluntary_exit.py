@@ -18,7 +18,7 @@ def advance_past_finalization(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_builder_voluntary_exit__success(spec, state):
+def test_success_builder_voluntary_exit(spec, state):
     """Test successful builder voluntary exit with no pending balance."""
     builder_index = 0
     pubkey = state.builders[builder_index].pubkey
@@ -39,6 +39,7 @@ def test_builder_voluntary_exit__success(spec, state):
     signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, privkey)
 
     yield "pre", state
+    yield "voluntary_exit", signed_voluntary_exit
     spec.process_voluntary_exit(state, signed_voluntary_exit)
     yield "post", state
 
