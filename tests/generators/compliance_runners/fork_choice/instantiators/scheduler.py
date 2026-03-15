@@ -73,19 +73,17 @@ class MessageScheduler:
             else:
                 return applied_events
 
-    def process_tick(self, time) -> list:
+    def process_tick(self, time_ms) -> list:
         applied_events = []
-        SLOT_DURATION_MS = self.spec.config.SLOT_DURATION_MS
-        assert time >= self.store.time
-        tick_slot = (time - self.store.genesis_time) * 1000 // SLOT_DURATION_MS
+        assert time_ms >= self.store.time_ms
+        tick_slot = self.spec.compute_store_slot_at_time_ms(self.store, time_ms)
         while self.spec.get_current_slot(self.store) < tick_slot:
-            previous_time = (
-                self.store.genesis_time
-                + (self.spec.get_current_slot(self.store) + 1) * SLOT_DURATION_MS // 1000
+            previous_time_ms = self.spec.compute_store_time_at_slot_ms(
+                self.store, self.spec.Slot(self.spec.get_current_slot(self.store) + 1)
             )
-            self.spec.on_tick(self.store, previous_time)
+            self.spec.on_tick(self.store, previous_time_ms)
             applied_events.append(
-                ("tick", previous_time, self.spec.get_current_slot(self.store) < tick_slot)
+                ("tick", previous_time_ms, self.spec.get_current_slot(self.store) < tick_slot)
             )
             applied_events.extend(self.purge_queue())
         return applied_events

@@ -70,8 +70,8 @@ def run_test(test_info):
     store = spec.get_forkchoice_store(anchor_state, anchor_block)
     for step in steps:
         if "tick" in step:
-            time = step["tick"]
-            spec.on_tick(store, time)
+            time_ms = spec.seconds_to_milliseconds(step["tick"])
+            spec.on_tick(store, time_ms)
         elif "block" in step:
             block_id = step["block"]
             valid = step.get("valid", True)
@@ -111,7 +111,7 @@ def run_test(test_info):
             for check, value in checks.items():
                 if check == "time":
                     expected_time = value
-                    assert store.time == expected_time
+                    assert store.time_ms == spec.seconds_to_milliseconds(expected_time)
                 elif check == "head":
                     assert str(spec.get_head(store)) == value["root"]
                 elif check == "proposer_boost_root":

@@ -112,8 +112,8 @@ inclusion list constraints.
 ```python
 @dataclass
 class Store(object):
-    time: uint64
-    genesis_time: uint64
+    time_ms: uint64
+    genesis_time_ms: uint64
     justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
     unrealized_justified_checkpoint: Checkpoint
@@ -148,8 +148,8 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     proposer_boost_root = Root()
     return Store(
-        time=uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
-        genesis_time=anchor_state.genesis_time,
+        time_ms=compute_time_at_slot_ms(anchor_state, anchor_state.slot),
+        genesis_time_ms=seconds_to_milliseconds(anchor_state.genesis_time),
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
         unrealized_justified_checkpoint=justified_checkpoint,
@@ -276,8 +276,7 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     """
     inclusion_list = signed_inclusion_list.message
 
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
+    time_into_slot_ms = compute_time_into_slot_ms(store)
     epoch = get_current_store_epoch(store)
     view_freeze_cutoff_ms = get_view_freeze_cutoff_ms(epoch)
     is_before_view_freeze_cutoff = time_into_slot_ms < view_freeze_cutoff_ms
