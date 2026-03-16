@@ -270,19 +270,28 @@ def get_block_support_between_slots(
     for slot in range(start_slot, end_slot + 1):
         participants.update(get_slot_committee(store, Slot(slot)))
 
+    # Keep validators that were active at the balance_source epoch to be consistent
+    # with get_total_active_balance() computation, also filter out slashed validators
+    unslashed_and_active_indices = [
+        i
+        for i in participants
+        if (
+            i < len(balance_source.validators)
+            and not balance_source.validators[i].slashed
+            and is_active_validator(balance_source.validators[i], get_current_epoch(balance_source))
+        )
+    ]
+
     return Gwei(
         sum(
             balance_source.validators[i].effective_balance
-            for i in participants
-            # Check that validator is in the balance source set,
-            # has voted in the support of the block
+            for i in unslashed_and_active_indices
+            # Check that validator has voted in the support of the block
             # and hasn't been slashed.
             if (
-                i < len(balance_source.validators)
-                and i in store.latest_messages
+                i in store.latest_messages
                 and store.latest_messages[i].root == block_root
                 and i not in store.equivocating_indices
-                and not balance_source.validators[i].slashed
             )
         )
     )
@@ -388,14 +397,19 @@ def get_equivocation_score(
     for slot in range(start_slot, end_slot + 1):
         committee_indices.update(get_slot_committee(store, Slot(slot)))
 
-    equivocating_participants = committee_indices.intersection(store.equivocating_indices)
-    return Gwei(
-        sum(
-            balance_source.validators[i].effective_balance
-            for i in equivocating_participants
-            # Check that validator is in the balance source set.
-            if i < len(balance_source.validators)
+    # Keep equivocating validators that were active at the balance_source epoch to be consistent
+    # with get_total_active_balance() computation
+    active_equivocating_indices = [
+        i
+        for i in committee_indices.intersection(store.equivocating_indices)
+        if (
+            i < len(balance_source.validators)
+            and is_active_validator(balance_source.validators[i], get_current_epoch(balance_source))
         )
+    ]
+
+    return Gwei(
+        sum(balance_source.validators[i].effective_balance for i in active_equivocating_indices)
     )
 ```
 
