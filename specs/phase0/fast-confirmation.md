@@ -315,8 +315,6 @@ def estimate_committee_weight_between_slots(
     Return estimate of the total weight of committees
     between ``start_slot`` and ``end_slot`` (inclusive of both).
     """
-    start_epoch = compute_epoch_at_slot(start_slot)
-    end_epoch = compute_epoch_at_slot(end_slot)
 
     # Sanity check
     if start_slot > end_slot:
@@ -326,8 +324,11 @@ def estimate_committee_weight_between_slots(
     if is_full_validator_set_covered(start_slot, end_slot):
         return total_active_balance
 
+    start_epoch = compute_epoch_at_slot(start_slot)
+    end_epoch = compute_epoch_at_slot(end_slot)
+    committee_weight = total_active_balance // SLOTS_PER_EPOCH
     if start_epoch == end_epoch:
-        return total_active_balance // SLOTS_PER_EPOCH * (end_slot - start_slot + 1)
+        return committee_weight * (end_slot - start_slot + 1)
     else:
         # First, calculate the number of committees in the end epoch
         num_slots_in_end_epoch = compute_slots_since_epoch_start(end_slot) + 1
@@ -336,8 +337,8 @@ def estimate_committee_weight_between_slots(
         # Then, calculate the number of slots in the start epoch
         num_slots_in_start_epoch = SLOTS_PER_EPOCH - compute_slots_since_epoch_start(start_slot)
 
-        start_epoch_weight = total_active_balance // SLOTS_PER_EPOCH * num_slots_in_start_epoch
-        end_epoch_weight = total_active_balance // SLOTS_PER_EPOCH * num_slots_in_end_epoch
+        start_epoch_weight = committee_weight * num_slots_in_start_epoch
+        end_epoch_weight = committee_weight * num_slots_in_end_epoch
 
         # A range that spans an epoch boundary, but does not span any full epoch
         # needs pro-rata calculation, see https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20
@@ -487,7 +488,7 @@ def get_support_discount(store: Store, balance_source: BeaconState, block_root: 
 ##### `compute_safety_threshold`
 
 ```python
-def compute_safety_threshold(store: Store, block_root: Root, balance_source: BeaconState) -> bool:
+def compute_safety_threshold(store: Store, block_root: Root, balance_source: BeaconState) -> Gwei:
     """
     Compute the LMD_GHOST safety threshold for ``block_root``.
     """
@@ -495,8 +496,8 @@ def compute_safety_threshold(store: Store, block_root: Root, balance_source: Bea
     block = store.blocks[block_root]
     parent_block = store.blocks[block.parent_root]
 
-    proposer_score = compute_proposer_score(balance_source)
     total_active_balance = get_total_active_balance(balance_source)
+    proposer_score = compute_proposer_score(balance_source)
     maximum_support = estimate_committee_weight_between_slots(
         total_active_balance, Slot(parent_block.slot + 1), Slot(current_slot - 1)
     )
