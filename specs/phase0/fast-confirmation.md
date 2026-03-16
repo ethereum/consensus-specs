@@ -236,6 +236,20 @@ def get_current_balance_source(store: Store) -> BeaconState:
 
 *Notes:*
 
+Validator votes from slots before `start_slot` and after `end_slot` might not be
+distinguished from votes submitted by that same validator in
+`[start_slot; end_slot]` interval. Due to committee shuffling near epoch
+boundary the following cases are possible:
+
+1. Validator assigned to `start_slot - 1` and `end_slot` votes for `block_root`
+   in `start_slot - 1` but does not vote in `end_slot`.
+2. Validator assigned to `start_slot` and `end_slot + 1` misses a vote in
+   `start_slot`, but votes for `block_root` in `end_slot + 1`.
+
+In both cases the support would count a vote outside of the
+`[start_slot; end_slot]` range. This inaccuracy is acceptable as it doesn't
+affect safety.
+
 Due to the algorithm logic, maximum distance between `balance_source` and
 shuffling is two epochs which is less than `MAX_SEED_LOOKAHEAD` and thus the
 balances are always consistent with the shuffling.
@@ -249,7 +263,8 @@ def get_block_support_between_slots(
     end_slot: Slot,
 ) -> Gwei:
     """
-    Return support of the block between ``start_slot`` and ``end_slot`` (inclusive of both).
+    Return support of the block by validators assigned to slots
+    between ``start_slot`` and ``end_slot`` (inclusive of both).
     """
     participants: set[ValidatorIndex] = set()
     for slot in range(start_slot, end_slot + 1):
