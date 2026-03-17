@@ -17,6 +17,7 @@
   - [State list lengths](#state-list-lengths)
   - [Withdrawals processing](#withdrawals-processing)
 - [Configuration](#configuration)
+  - [Validator cycle](#validator-cycle)
   - [Time parameters](#time-parameters)
 - [Containers](#containers)
   - [New containers](#new-containers)
@@ -176,6 +177,14 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 | `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` | `2**14` (= 16,384) |
 
 ## Configuration
+
+### Validator cycle
+
+| Name                                        | Value                                    |
+| ------------------------------------------- | ---------------------------------------- |
+| `CONSOLIDATION_CHURN_LIMIT_QUOTIENT` | `uint64(2**16)` (= 65,536) |
+| `CHURN_LIMIT_QUOTIENT_GLOAS`    | `uint64(2**15)` (= 32,768)              |
+| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT`    | `uint64(2**8)` (= 256)        |
 
 ### Time parameters
 
