@@ -427,7 +427,8 @@ For all partial messages:
 
 - _[REJECT]_ A header and/or cells are present in the message (it is not
   semantically empty).
-- _[REJECT]_ There are the same number of cells and proofs in the message.
+- _[REJECT]_ There are the same number of cells and proofs in the message and
+  this number is equal the number of 1s in the cells_present_bitmap.
 
 For verifying the `PartialDataColumnHeader` in a partial message:
 
