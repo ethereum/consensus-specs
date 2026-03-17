@@ -14,18 +14,19 @@ imports proof types from [proof-engine.md](./proof-engine.md).
   - [Execution](#execution)
 - [Containers](#containers)
   - [`ProofByRootIdentifier`](#proofbyrootidentifier)
+  - [`ExecutionProofsByRangeRequest`](#executionproofsbyrangerequest)
 - [Helpers](#helpers)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [New `compute_max_request_execution_proofs`](#new-compute_max_request_execution_proofs)
-- [MetaData](#metadata)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
       - [`execution_proof`](#execution_proof)
 - [The Req/Resp domain](#the-reqresp-domain)
   - [Messages](#messages)
+    - [ExecutionProofsByRange](#executionproofsbyrange)
     - [ExecutionProofsByRoot](#executionproofsbyroot)
-    - [GetMetaData v4](#getmetadata-v4)
+    - [ExecutionProofStatus](#executionproofstatus)
 - [The discovery domain: discv5](#the-discovery-domain-discv5)
   - [ENR structure](#enr-structure)
     - [Execution proof awareness](#execution-proof-awareness)
@@ -50,6 +51,14 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 class ProofByRootIdentifier(Container):
     block_root: Root
     proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+```
+
+### `ExecutionProofsByRangeRequest`
+
+```python
+class ExecutionProofsByRangeRequest(Container):
+    start_slot: Slot
+    count: uint64
 ```
 
 ## Helpers
@@ -87,30 +96,6 @@ def compute_max_request_execution_proofs() -> uint64:
     """
     return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_EXECUTION_PROOFS_PER_PAYLOAD)
 ```
-
-## MetaData
-
-The `MetaData` stored locally by clients is updated with an additional field to
-communicate execution proof awareness.
-
-```
-(
-  seq_number: uint64
-  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
-  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
-  custody_group_count: uint64  # cgc
-  execution_proof_aware: bool  # eproof
-)
-```
-
-Where
-
-- `seq_number`, `attnets`, `syncnets`, and `custody_group_count` have the same
-  meaning defined in the previous documents.
-- `execution_proof_aware` indicates whether the node is aware of optional
-  execution proofs. A value of `True` signals that the node understands
-  execution proof gossip topics and can participate in execution proof
-  propagation.
 
 ## The gossip domain: gossipsub
 
@@ -155,6 +140,47 @@ The following validations MUST pass before forwarding the
 
 ### Messages
 
+#### ExecutionProofsByRange
+
+**Protocol ID:** `/eth2/beacon_chain/req/execution_proofs_by_range/1/`
+
+The `<context-bytes>` field is calculated as
+`context = compute_fork_digest(fork_version, genesis_validators_root)`.
+
+Request Content:
+
+```
+(
+  ExecutionProofsByRangeRequest
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedExecutionProof, compute_max_request_execution_proofs()]
+)
+```
+
+Requests execution proofs for a contiguous range of slots. The request specifies
+a `start_slot` and a `count` of slots. The responding peer iterates through
+beacon blocks in the range `[start_slot, start_slot + count)` and returns all
+known `SignedExecutionProof` entries associated with those blocks.
+
+The response MUST consist of zero or more `response_chunk`. Each _successful_
+`response_chunk` MUST contain a single `SignedExecutionProof` payload.
+
+Clients MUST keep the total number of requested proofs under
+`compute_max_request_execution_proofs()`. Since each slot may contain up to
+`MAX_EXECUTION_PROOFS_PER_PAYLOAD` proofs, the `count` field MUST satisfy
+`count * MAX_EXECUTION_PROOFS_PER_PAYLOAD <= compute_max_request_execution_proofs()`.
+
+Clients MUST respond with at least one proof, if they have it. Clients MAY limit
+the number of proofs in the response.
+
+Clients SHOULD return proofs in slot-ascending order within the requested range.
+
 #### ExecutionProofsByRoot
 
 **Protocol ID:** `/eth2/beacon_chain/req/execution_proofs_by_root/1/`
@@ -193,23 +219,35 @@ The response MUST consist of zero or more `response_chunk`. Each _successful_
 Clients MUST respond with at least one proof, if they have it. Clients MAY limit
 the number of proofs in the response.
 
-#### GetMetaData v4
+#### ExecutionProofStatus
 
-**Protocol ID:** `/eth2/beacon_chain/req/metadata/4/`
+**Protocol ID:** `/eth2/beacon_chain/req/execution_proof_status/1/`
 
-No Request Content.
-
-Response Content:
+Request, Response Content:
 
 ```
 (
-  MetaData
+  block_root: Root
+  slot: Slot
 )
 ```
 
-Requests the MetaData of a peer, using the new `MetaData` definition given above
-that is extended from Altair. Other conditions for the `GetMetaData` protocol
-are unchanged from the Altair p2p networking document.
+This protocol enables peers to exchange their current execution proof
+verification status. The request and response use the same type.
+
+As seen by the client at the time of sending the message:
+
+- `block_root`: The `hash_tree_root` root of the most recent block (`BeaconBlock`)
+  for which the client has verified execution proofs.
+- `slot`: The slot of the block corresponding to the `block_root`.
+
+The request/response MUST be encoded as an SSZ-container.
+
+The response MUST consist of a single `response_chunk`.
+
+Upon receiving an `ExecutionProofStatus` request, the responder MUST reply with
+its own local execution proof status. The requester SHOULD use the peer's
+response to inform peer selection during execution proof synchronization.
 
 ## The discovery domain: discv5
 
