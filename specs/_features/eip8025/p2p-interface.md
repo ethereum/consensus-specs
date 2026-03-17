@@ -237,8 +237,9 @@ verification status. The request and response use the same type.
 
 As seen by the client at the time of sending the message:
 
-- `block_root`: The `hash_tree_root` root of the most recent block (`BeaconBlock`)
-  for which the client has verified execution proofs.
+- `block_root`: The `hash_tree_root` root of the most recent block
+  (`BeaconBlock`) for which the client has verified sufficient execution proofs
+  to consider the block valid.
 - `slot`: The slot of the block corresponding to the `block_root`.
 
 The request/response MUST be encoded as an SSZ-container.
