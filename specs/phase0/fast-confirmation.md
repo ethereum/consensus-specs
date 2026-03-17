@@ -535,10 +535,10 @@ def compute_safety_threshold(store: Store, block_root: Root, balance_source: Bea
 
     # Return (maximum_support + proposer_score - support_discount) // 2 + adversarial_weight
     # with an underflow guard
-    if support_discount > maximum_support + proposer_score + 2 * adversarial_weight:
-        return Gwei(0)
-    else:
+    if support_discount < maximum_support + proposer_score + 2 * adversarial_weight:
         return (maximum_support + proposer_score + 2 * adversarial_weight - support_discount) // 2
+    else:
+        return Gwei(0)
 ```
 
 ##### `is_one_confirmed`
