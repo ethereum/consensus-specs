@@ -519,8 +519,6 @@ The following validations MUST pass before forwarding the
 - _[IGNORE]_ The `aggregate` is the first valid aggregate received for the
   aggregator with index `aggregate_and_proof.aggregator_index` for the epoch
   `aggregate.data.target.epoch`.
-- _[REJECT]_ The attestation has participants -- that is,
-  `len(get_attesting_indices(state, aggregate)) >= 1`.
 - _[REJECT]_ `aggregate_and_proof.selection_proof` selects the validator as an
   aggregator for the slot -- i.e.
   `is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof)`
