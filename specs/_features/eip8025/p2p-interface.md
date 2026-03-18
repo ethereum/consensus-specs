@@ -250,6 +250,10 @@ Upon receiving an `ExecutionProofStatus` request, the responder MUST reply with
 its own local execution proof status. The requester SHOULD use the peer's
 response to inform peer selection during execution proof synchronization.
 
+Upon establishing a connection with a peer that is execution proof–aware (i.e.
+the peer's ENR contains `eproof != 0`), the dialing client MUST send an
+`ExecutionProofStatus` request.
+
 ## The discovery domain: discv5
 
 ### ENR structure
