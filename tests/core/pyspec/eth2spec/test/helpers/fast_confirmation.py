@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field, fields, replace
 from random import Random
 
@@ -62,6 +63,14 @@ def on_fast_confirmation_and_append_step(spec, store, test_steps):
     output_fast_confirmation_checks(spec, store, test_steps)
 
 
+def str_to_graffiti(graffiti: str) -> bytes:
+    return bytes(graffiti, "ascii").ljust(32, b"\x00")
+
+
+def graffiti_to_str(graffiti: bytes) -> str:
+    return graffiti.rstrip(b'\x00').decode('ascii')
+
+
 class FCRTest:
     def __init__(self, spec, seed):
         self.spec = spec
@@ -110,10 +119,12 @@ class FCRTest:
             if self.store.blocks[root].parent_root == block_root
         ]
 
-    def get_block_root_by_slot(self, slot):
-        block_roots_at_slot = [r for (r, b) in self.store.blocks.items() if b.slot == slot]
-        assert len(block_roots_at_slot) > 0
-        return block_roots_at_slot[0]
+    def find_block_root(self, predicate: Callable[[object], bool]) -> object:
+        for root, block in self.store.blocks.items():
+             if predicate(block):
+                return root
+
+        raise KeyError("Block not found")
 
     def resolve_slot_by_offset(self, offset_or_slot):
         if offset_or_slot > 0:
@@ -121,17 +132,21 @@ class FCRTest:
         else:
             return self.spec.Slot(int(self.current_slot()) + offset_or_slot)
 
-    def get_block_root_by_slot_offset(self, offset):
-        slot = self.resolve_slot_by_offset(offset)
-        return self.get_block_root_by_slot(slot)
-
-    def get_block_root_or_head(self, root, slot_offset):
-        if slot_offset != None:
-            return self.get_block_root_by_slot_offset(slot_offset)
-        elif root != None:
-            return root
-        else:
+    def get_block_root_or_head(self, block_root_id):
+        if block_root_id == None:
             return self.head()
+
+        if isinstance(block_root_id, int):
+            # Slot or offset
+            slot = self.resolve_slot_by_offset(block_root_id)
+            return self.find_block_root(lambda b: b.slot == slot)
+        elif isinstance(block_root_id, str):
+            # Graffiti
+            graffiti = str_to_graffiti(block_root_id)
+            return self.find_block_root(lambda b: b.body.graffiti == graffiti)
+        else:
+            # Block root
+            return block_root_id
 
     def tick(self, slot):
         assert slot > self.current_slot() or slot == self.spec.GENESIS_SLOT
@@ -167,6 +182,7 @@ class FCRTest:
         graffiti: str = None,
         include_atts=True,
         attestations=None,
+        include_att_fn: Callable[[object, object], bool] = None,
     ):
         if parent_root is None:
             parent_root = self.head()
@@ -185,19 +201,27 @@ class FCRTest:
         # Build a block for current_slot with attestations from pool
         # build_empty_block will advance the state to current_slot if necessary
         block = build_empty_block(self.spec, parent_state, current_slot)
+
+        if graffiti is not None:
+            block.body.graffiti = str_to_graffiti(graffiti)
+
         if attestations is not None:
             for attestation in attestations[: self.max_attestations()]:
                 block.body.attestations.append(attestation)
         elif include_atts:
-            for attestation in self.attestation_pool[: self.max_attestations()]:
-                block.body.attestations.append(attestation)
+            not_included_atts = []
+            for attestation in self.attestation_pool:
+                if len(block.body.attestations) < self.max_attestations():
+                    if include_att_fn == None or include_att_fn(block, attestation):
+                        block.body.attestations.append(attestation)
+                    else:
+                        not_included_atts.append(attestation)
+                else:
+                    break
 
             # Release included attestations from the pool
             if release_att_pool:
-                self.attestation_pool = self.attestation_pool[self.max_attestations() :]
-
-        if graffiti is not None:
-            block.body.graffiti = bytes(graffiti, "ascii").ljust(32, b"\x00")
+                self.attestation_pool = not_included_atts
 
         # Sign block and add it to the Store
         signed_block = state_transition_and_sign_block(self.spec, parent_state, block)
@@ -375,9 +399,16 @@ class FCRTest:
     def get_slot_root_info(self, block_root):
         if block_root == self.spec.Root():
             slot = self.spec.GENESIS_SLOT
+            graffiti = "genesis"
         else:
-            slot = self.spec.get_block_slot(self.store, block_root)
-        return f"{slot}: {str(block_root)[:6]}"
+            block = self.store.blocks[block_root]
+            slot = block.slot
+            graffiti = graffiti_to_str(block.body.graffiti)
+
+        if len(graffiti) > 0:
+            return f"{slot}: {str(block_root)[:6]}, \'{graffiti}\'"
+        else:
+            return f"{slot}: {str(block_root)[:6]}"
 
     def get_checkpoint_info(self, checkpoint):
         return f"{checkpoint.epoch}: {str(checkpoint.root)[:6]}"
@@ -408,7 +439,7 @@ class FCRTest:
 
             score, threshold = get_relative_score_and_threshold(block_root)
             output = (
-                f"({self.get_slot_root_info(block_root)}, sc={score:.1f}%, th={threshold:.1f}%)"
+                f"({self.get_slot_root_info(block_root)}, uj={store.unrealized_justifications[block_root].epoch}, sc={score:.1f}%, th={threshold:.1f}%)"
             )
 
             if block_root == store.confirmed_root:
@@ -517,22 +548,21 @@ class PhaseRun(SystemRun):
 @dataclass
 class Proposal(PhaseRun):
     enabled: bool = True
-    parent_root: object = None
-    parent_root_slot_or_offset: int = None
+    parent_id: object = None
     release_att_pool: bool = True
     atts_in_block: bool = True
     graffiti: str = None
+    include_att_fn: Callable[[object, object], bool] = None
 
     def execute(self, fcr: FCRTest) -> object:
         if self.enabled:
-            parent_root = fcr.get_block_root_or_head(
-                self.parent_root, self.parent_root_slot_or_offset
-            )
+            parent_root = fcr.get_block_root_or_head(self.parent_id)
             return fcr.add_and_apply_block(
                 parent_root=parent_root,
                 release_att_pool=self.release_att_pool,
                 include_atts=self.atts_in_block,
                 graffiti=self.graffiti,
+                include_att_fn=self.include_att_fn,
             )
         else:
             return None
@@ -540,15 +570,12 @@ class Proposal(PhaseRun):
 
 @dataclass
 class Attesting(PhaseRun):
+    block_id: object = None
     participation_rate: int = 100
-    block_root: object = None
-    block_slot_or_offset: int = None
     committee_slot_or_offset: object = 0
-    apply_atts: bool = False
-    pool_and_disseminate: bool = True
 
     def has_non_default_block(self) -> bool:
-        return self.block_root != None or self.block_slot_or_offset != None
+        return self.block_id != None
 
     def all_committee_slot_or_offsets(self):
         if isinstance(self.committee_slot_or_offset, list):
@@ -560,7 +587,7 @@ class Attesting(PhaseRun):
         if self.participation_rate == 0:
             return []
 
-        block_root = fcr.get_block_root_or_head(self.block_root, self.block_slot_or_offset)
+        block_root = fcr.get_block_root_or_head(self.block_id)
         attestations = []
         for committee_slot_or_offset in self.all_committee_slot_or_offsets():
             attestations.extend(
@@ -568,12 +595,13 @@ class Attesting(PhaseRun):
                     block_root=block_root,
                     slot=fcr.resolve_slot_by_offset(committee_slot_or_offset),
                     participation_rate=self.participation_rate,
-                    pool_and_disseminate=self.pool_and_disseminate,
+                    pool_and_disseminate=True,
                 )
             )
 
-        if self.apply_atts:
-            fcr.apply_attestations(attestations)
+        # Instantly apply past slot attestations
+        past_slot_attestations = [att for att in attestations if att.data.slot < fcr.current_slot()]
+        fcr.apply_attestations(past_slot_attestations)
 
         return attestations
 
@@ -640,7 +668,7 @@ class SlotRun(MultiPhaseRun):
             if attesting.has_non_default_block():
                 attesting.execute(fcr)
             else:
-                attesting.copy(block_root=tip_root).execute(fcr)
+                attesting.copy(block_id=tip_root).execute(fcr)
 
         # Slash
         self.slashing.execute(fcr)
@@ -660,8 +688,7 @@ class EmptySlotRun(SlotRun):
 class SlotSequence(MultiPhaseRun):
     number_of_slots: int = None
     end_slot: int = None
-    branch_root: object = None
-    branch_root_slot_or_offset: int = None
+    branch_root_id: object = None
 
     def get_number_of_slots(self, current_slot):
         assert self.number_of_slots != None or self.end_slot != None
@@ -674,11 +701,11 @@ class SlotSequence(MultiPhaseRun):
     def execute(self, fcr: FCRTest) -> object:
         debug_print(f"slot {fcr.current_slot()}: {self}")
 
-        tip_root = fcr.get_block_root_or_head(self.branch_root, self.branch_root_slot_or_offset)
+        tip_root = fcr.get_block_root_or_head(self.branch_root_id)
         built_chain = []
         for _ in range(self.get_number_of_slots(fcr.current_slot())):
             tip_root = SlotRun(
-                proposal=self.proposal.copy(parent_root=tip_root),
+                proposal=self.proposal.copy(parent_id=tip_root),
                 attesting=self.attesting,
                 slashing=self.slashing,
                 advance_slot=self.advance_slot,

@@ -14,6 +14,7 @@ from eth2spec.test.helpers.fast_confirmation import (
     Proposal,
     SlotRun,
     SlotSequence,
+    graffiti_to_str,
 )
 
 
@@ -23,13 +24,13 @@ class PreviousEpochTestSpecification:
     first_slot_call: bool  # is_start_slot_at_epoch(get_current_slot(store))
     is_one_confirmed: bool  # is_one_confirmed(store, get_current_balance_source(store), block_root)
     no_conflicting_chkp: bool  # will_no_conflicting_checkpoint_be_justified(store)
-    vs_prev_head_fresh: (
+    prev_head_vs_fresh: (
         bool  # get_voting_source(store, store.previous_slot_head).epoch + 2 >= current_epoch
     )
     prev_head_uj_fresh: (
         bool  # store.unrealized_justifications[store.previous_slot_head].epoch + 1 >= current_epoch
     )
-    vs_block_fresh: (
+    block_vs_fresh: (
         bool  # get_voting_source(store, tentative_confirmed_root).epoch + 2 >= current_epoch
     )
     head_uj_fresh: bool  # store.unrealized_justifications[head].epoch + 1 >= current_epoch
@@ -65,14 +66,14 @@ class PreviousEpochTestSpecification:
         assert self.prev_head_uj_fresh == (
             store.unrealized_justifications[will_be_prev_slot_head].epoch + 1 >= current_epoch
         )
-        assert self.vs_prev_head_fresh == (
+        assert self.prev_head_vs_fresh == (
             spec.get_voting_source(store, will_be_prev_slot_head).epoch + 2 >= current_epoch
         )
         assert self.prev_head_ancestor == (
             spec.is_ancestor(store, will_be_prev_slot_head, prev_epoch_canonical_roots[0])
         )
-        assert self.vs_block_fresh == (
-            spec.get_voting_source(store, prev_epoch_canonical_roots[-1]).epoch + 2 >= current_epoch
+        assert self.block_vs_fresh == (
+            spec.get_voting_source(store, prev_epoch_canonical_roots[0]).epoch + 2 >= current_epoch
         )
         assert self.no_conflicting_chkp == spec.will_no_conflicting_checkpoint_be_justified(store)
 
@@ -105,22 +106,23 @@ class PreviousEpochTestSpecification:
         if not (self.no_conflicting_chkp or self.first_slot_call):
             return store.confirmed_root
 
-        if (self.vs_prev_head_fresh and self.prev_head_ancestor) and (
+        if (self.prev_head_vs_fresh and self.prev_head_ancestor) and (
             self.first_slot_call or self.prev_head_uj_fresh or self.head_uj_fresh
         ):
             return self.get_last_one_confirmed_block(spec, store)
-        elif self.vs_block_fresh and (self.first_slot_call or self.head_uj_fresh):
+        elif self.block_vs_fresh and (self.first_slot_call or self.head_uj_fresh):
             return self.get_last_one_confirmed_block(spec, store)
         else:
             return store.confirmed_root
 
+    def is_vs_fresh(self):
+        return self.block_vs_fresh and self.prev_head_vs_fresh
+
+    def is_uj_fresh(self):
+        return self.head_uj_fresh and self.prev_head_uj_fresh
+
     def vs_and_uj_are_fresh(self):
-        return (
-            self.vs_block_fresh
-            and self.vs_prev_head_fresh
-            and self.head_uj_fresh
-            and self.prev_head_uj_fresh
-        )
+        return self.is_vs_fresh() and self.is_uj_fresh()
 
 
 class PreviousEpochTestBuilder:
@@ -166,17 +168,17 @@ class PreviousEpochTestBuilder:
                 SlotRun(attesting=Attesting(participation_rate=0)),
                 # Build previous_slot_head, ensure it becomes a head by giving it a little support
                 SlotRun(
-                    proposal=Proposal(parent_root_slot_or_offset=prev_head_parent_slot),
+                    proposal=Proposal(parent_id=prev_head_parent_slot),
                     attesting=Attesting(participation_rate=13),
                 ),
                 # Build head, attest to head and target
                 SlotRun(
-                    proposal=Proposal(parent_root_slot_or_offset=head_parent_slot),
+                    proposal=Proposal(parent_id=head_parent_slot),
                     attesting=[
                         Attesting(participation_rate=83),
                         Attesting(
                             committee_slot_or_offset=[target_slot, target_slot + 1],
-                            block_slot_or_offset=target_slot,
+                            block_id=target_slot,
                             participation_rate=target_block_rate,
                         ),
                     ],
@@ -222,18 +224,18 @@ class PreviousEpochTestBuilder:
                 # Build a potentially previous_slot_head,
                 # add a bunch of votes to make it a head for a short time
                 SlotRun(
-                    proposal=Proposal(parent_root_slot_or_offset=block_parents[0]),
+                    proposal=Proposal(parent_id=block_parents[0]),
                     attesting=Attesting(participation_rate=85),
                 ),
                 # Build one more block to gain additional weight in the case of empty slot
                 SlotRun(
-                    proposal=Proposal(parent_root_slot_or_offset=block_parents[1]),
+                    proposal=Proposal(parent_id=block_parents[1]),
                     # No attestations as we don't want the head to be changed yet
                     attesting=Attesting(participation_rate=0),
                 ),
                 # Build head
                 SlotRun(
-                    proposal=Proposal(parent_root_slot_or_offset=block_parents[2]),
+                    proposal=Proposal(parent_id=block_parents[2]),
                     attesting=Attesting(participation_rate=0),
                     advance_slot=AdvanceSlot(next_slot=False),
                 ),
@@ -249,13 +251,13 @@ class PreviousEpochTestBuilder:
                     # attest to an interim block
                     Attesting(
                         committee_slot_or_offset=-1,
-                        block_slot_or_offset=-1,
+                        block_id=-1,
                         participation_rate=target_block_rate,
                     ),
                     # attest to the target
                     Attesting(
                         committee_slot_or_offset=[target_slot, target_slot + 1],
-                        block_slot_or_offset=target_slot,
+                        block_id=target_slot,
                         participation_rate=target_block_rate,
                     ),
                     # next slot
@@ -275,7 +277,7 @@ class PreviousEpochTestBuilder:
                     ),
                     # attest to target by several committees
                     Attesting(
-                        block_slot_or_offset=target_slot,
+                        block_id=target_slot,
                         committee_slot_or_offset=[0, -1, -2, -3, -4, -5, -6],
                         participation_rate=target_block_rate,
                     ),
@@ -285,7 +287,132 @@ class PreviousEpochTestBuilder:
 
         return runs
 
-    def create_vs_and_uj_are_fresh_runs(self):
+    def create_stale_vs_and_uj_first_slot_runs(self):
+        test_spec = self.test_spec
+        spec = self.spec
+        target_slot = 3 * self.spec.SLOTS_PER_EPOCH - 3
+
+        if self.test_spec.prev_head_ancestor:
+            #   prev_epoch     | curr_epoch
+            #                  |
+            #     f_H   p_H    |
+            #    /     /       |
+            # B_c --- T --- H  |
+            #                  |
+            prev_head_parent = "target"
+        else:
+            # prev_epoch    | curr_epoch
+            #               |
+            # f_H   - p_H   |
+            #  |  /         |
+            # B_c - T --- H |
+            #               |
+            prev_head_parent = "confirmed"
+
+        prev_head_slot = target_slot + 1
+        head_slot = target_slot + 2
+
+        def include_att_fn(block, attestation) -> bool:
+            epoch = self.spec.compute_epoch_at_slot(block.slot)
+            graffiti = graffiti_to_str(block.body.graffiti)
+            no_justification_boundary = epoch * spec.SLOTS_PER_EPOCH + spec.SLOTS_PER_EPOCH * 2 // 3
+
+            if graffiti == "fake_head":
+                # Fake head justifies prev checkpoint only
+                return attestation.data.target.epoch < epoch
+
+            if graffiti == "target":
+                # If block_vs isn't fresh prevent justification of prev checkpoint
+                return test_spec.block_vs_fresh
+
+            if graffiti == "prev_head":
+                # Prioritise curr epoch justification if prev_head_vs_fresh and prev_head_uj_fresh
+                # as prev_head_uj_fresh implies prev_head_vs_fresh in this case
+                if test_spec.prev_head_uj_fresh:
+                    # If prev_head_uj isn't fresh prevent justification of curr checkpoint
+                    return attestation.data.target.epoch == epoch
+                elif test_spec.prev_head_vs_fresh:
+                    # If prev_head_vs isn't fresh prevent justification of prev checkpoint
+                    return attestation.data.target.epoch < epoch
+            
+            if graffiti == "head":
+                # If head_uj isn't fresh prevent justification of curr checkpoint
+                return (test_spec.head_uj_fresh or attestation.data.target.epoch < epoch)
+
+            if epoch == 0:
+                return True
+
+            if epoch == 1:
+                return (test_spec.is_vs_fresh() or block.slot <= no_justification_boundary)
+
+            if epoch == 2:
+                if attestation.data.target.epoch < epoch:
+                    return test_spec.is_vs_fresh()
+                else:
+                    return (test_spec.is_vs_fresh() and test_spec.head_uj_fresh) or block.slot <= no_justification_boundary
+
+        # Run till the target slot with 100% participation, but prevent GU bump
+        runs = [
+            SlotSequence(end_slot=target_slot - 2, proposal=Proposal(include_att_fn=include_att_fn), attesting=Attesting(participation_rate=100)),
+            SlotRun(proposal=Proposal(graffiti="confirmed", include_att_fn=include_att_fn), attesting=Attesting(participation_rate=100))
+        ]
+
+        if self.test_spec.is_one_confirmed:
+            head_block_rate = 100
+        else:
+            # Low participation rate but still enough to pass reconfirmation
+            head_block_rate = 50
+
+        # Do not vote on the target if it's not ancestor of prev head,
+        # as then prev head wouldn't become a head
+        if self.test_spec.prev_head_ancestor:
+            target_block_rate_at_target_slot = 100
+        else:
+            target_block_rate_at_target_slot = 0
+
+        runs.extend(
+            [
+                # Build fake head block
+                SlotRun(
+                    proposal=Proposal(graffiti="fake_head", parent_id="confirmed", include_att_fn=include_att_fn, release_att_pool=False),
+                    attesting=Attesting(block_id="confirmed", participation_rate=100),
+                ),
+                # Build target block but do not attest yet
+                SlotRun(
+                    proposal=Proposal(graffiti="target", parent_id="confirmed", include_att_fn=include_att_fn),
+                    attesting=Attesting(participation_rate=target_block_rate_at_target_slot),
+                ),
+                # Build previous_slot_head, ensure it becomes a head by giving it a little support
+                SlotRun(
+                    proposal=Proposal(graffiti="prev_head", parent_id=prev_head_parent, include_att_fn=include_att_fn, release_att_pool=False),
+                    attesting=Attesting(participation_rate=13),
+                ),
+                # Attest to target before the head block to be able to justify current epoch
+                Attesting(
+                    committee_slot_or_offset=[target_slot, target_slot + 1],
+                    block_id="target",
+                    participation_rate=100,
+                ),
+                # Build head
+                SlotRun(
+                    proposal=Proposal(graffiti="head", parent_id="target", include_att_fn=include_att_fn),
+                    attesting=Attesting(participation_rate=head_block_rate),
+                    advance_slot=AdvanceSlot(with_fast_confirmation=False),
+                ),
+            ]
+        )
+
+        return runs
+
+    def create_stale_vs_and_uj_runs(self):
+        assert not self.test_spec.vs_and_uj_are_fresh()
+
+        if self.test_spec.first_slot_call:
+            return self.create_stale_vs_and_uj_first_slot_runs()
+        else:
+            assert False, "Unsupported"
+
+    def create_fresh_vs_and_uj_runs(self):
         assert self.test_spec.vs_and_uj_are_fresh()
 
         if self.test_spec.first_slot_call:
@@ -296,11 +423,15 @@ class PreviousEpochTestBuilder:
     def create_system_runs(self):
         if self.test_spec.first_slot_call:
             assert self.test_spec.no_conflicting_chkp, "Impossible in the first slot of an epoch"
+        if self.test_spec.prev_head_uj_fresh:
+            assert self.test_spec.prev_head_vs_fresh, "Impossible as prev_head_uj_fresh implies prev_head_vs_fresh"
+        if self.test_spec.prev_head_ancestor and self.test_spec.block_vs_fresh:
+            assert self.test_spec.prev_head_vs_fresh, "Impossible as block_vs_fresh implies prev_head_vs_fresh if block is ancestor of prev_head"
 
         if self.test_spec.vs_and_uj_are_fresh():
-            return self.create_vs_and_uj_are_fresh_runs()
+            return self.create_fresh_vs_and_uj_runs()
         else:
-            assert False, "Unsupported"
+            return self.create_stale_vs_and_uj_runs()
 
     def build(self):
         fcr_test = FCRTest(self.spec, self.seed)
@@ -343,9 +474,9 @@ def test_fcr_previous_epoch_00(spec, state):
         first_slot_call=True,
         is_one_confirmed=True,
         no_conflicting_chkp=True,
-        vs_prev_head_fresh=True,
+        prev_head_vs_fresh=True,
         prev_head_uj_fresh=True,
-        vs_block_fresh=True,
+        block_vs_fresh=True,
         head_uj_fresh=True,
     )
     yield from build_and_run_previous_epoch_test(spec, state, 0, test_spec)
@@ -360,9 +491,9 @@ def test_fcr_previous_epoch_01(spec, state):
         first_slot_call=True,
         is_one_confirmed=False,
         no_conflicting_chkp=True,
-        vs_prev_head_fresh=True,
+        prev_head_vs_fresh=True,
         prev_head_uj_fresh=True,
-        vs_block_fresh=True,
+        block_vs_fresh=True,
         head_uj_fresh=True,
     )
     yield from build_and_run_previous_epoch_test(spec, state, 1, test_spec)
@@ -377,9 +508,9 @@ def test_fcr_previous_epoch_02(spec, state):
         first_slot_call=False,
         is_one_confirmed=True,
         no_conflicting_chkp=True,
-        vs_prev_head_fresh=True,
+        prev_head_vs_fresh=True,
         prev_head_uj_fresh=True,
-        vs_block_fresh=True,
+        block_vs_fresh=True,
         head_uj_fresh=True,
     )
     yield from build_and_run_previous_epoch_test(spec, state, 2, test_spec)
@@ -394,9 +525,9 @@ def test_fcr_previous_epoch_03(spec, state):
         first_slot_call=False,
         is_one_confirmed=True,
         no_conflicting_chkp=False,
-        vs_prev_head_fresh=True,
+        prev_head_vs_fresh=True,
         prev_head_uj_fresh=True,
-        vs_block_fresh=True,
+        block_vs_fresh=True,
         head_uj_fresh=True,
     )
     yield from build_and_run_previous_epoch_test(spec, state, 3, test_spec)
@@ -411,9 +542,9 @@ def test_fcr_previous_epoch_04(spec, state):
         first_slot_call=False,
         is_one_confirmed=False,
         no_conflicting_chkp=True,
-        vs_prev_head_fresh=True,
+        prev_head_vs_fresh=True,
         prev_head_uj_fresh=True,
-        vs_block_fresh=True,
+        block_vs_fresh=True,
         head_uj_fresh=True,
     )
     yield from build_and_run_previous_epoch_test(spec, state, 4, test_spec)
@@ -428,9 +559,9 @@ def test_fcr_previous_epoch_05(spec, state):
         first_slot_call=False,
         is_one_confirmed=False,
         no_conflicting_chkp=False,
-        vs_prev_head_fresh=True,
+        prev_head_vs_fresh=True,
         prev_head_uj_fresh=True,
-        vs_block_fresh=True,
+        block_vs_fresh=True,
         head_uj_fresh=True,
     )
     yield from build_and_run_previous_epoch_test(spec, state, 5, test_spec)
@@ -445,9 +576,9 @@ def test_fcr_previous_epoch_06(spec, state):
         first_slot_call=True,
         is_one_confirmed=True,
         no_conflicting_chkp=True,
-        vs_prev_head_fresh=True,
+        prev_head_vs_fresh=True,
         prev_head_uj_fresh=True,
-        vs_block_fresh=True,
+        block_vs_fresh=True,
         head_uj_fresh=True,
     )
     yield from build_and_run_previous_epoch_test(spec, state, 6, test_spec)
@@ -462,9 +593,9 @@ def test_fcr_previous_epoch_07(spec, state):
         first_slot_call=True,
         is_one_confirmed=False,
         no_conflicting_chkp=True,
-        vs_prev_head_fresh=True,
+        prev_head_vs_fresh=True,
         prev_head_uj_fresh=True,
-        vs_block_fresh=True,
+        block_vs_fresh=True,
         head_uj_fresh=True,
     )
     yield from build_and_run_previous_epoch_test(spec, state, 7, test_spec)
@@ -479,9 +610,9 @@ def test_fcr_previous_epoch_08(spec, state):
         first_slot_call=False,
         is_one_confirmed=True,
         no_conflicting_chkp=True,
-        vs_prev_head_fresh=True,
+        prev_head_vs_fresh=True,
         prev_head_uj_fresh=True,
-        vs_block_fresh=True,
+        block_vs_fresh=True,
         head_uj_fresh=True,
     )
     yield from build_and_run_previous_epoch_test(spec, state, 8, test_spec)
@@ -496,9 +627,9 @@ def test_fcr_previous_epoch_09(spec, state):
         first_slot_call=False,
         is_one_confirmed=True,
         no_conflicting_chkp=False,
-        vs_prev_head_fresh=True,
+        prev_head_vs_fresh=True,
         prev_head_uj_fresh=True,
-        vs_block_fresh=True,
+        block_vs_fresh=True,
         head_uj_fresh=True,
     )
     yield from build_and_run_previous_epoch_test(spec, state, 9, test_spec)
@@ -513,9 +644,9 @@ def test_fcr_previous_epoch_10(spec, state):
         first_slot_call=False,
         is_one_confirmed=False,
         no_conflicting_chkp=True,
-        vs_prev_head_fresh=True,
+        prev_head_vs_fresh=True,
         prev_head_uj_fresh=True,
-        vs_block_fresh=True,
+        block_vs_fresh=True,
         head_uj_fresh=True,
     )
     yield from build_and_run_previous_epoch_test(spec, state, 10, test_spec)
@@ -530,9 +661,315 @@ def test_fcr_previous_epoch_11(spec, state):
         first_slot_call=False,
         is_one_confirmed=False,
         no_conflicting_chkp=False,
-        vs_prev_head_fresh=True,
+        prev_head_vs_fresh=True,
         prev_head_uj_fresh=True,
-        vs_block_fresh=True,
+        block_vs_fresh=True,
         head_uj_fresh=True,
     )
     yield from build_and_run_previous_epoch_test(spec, state, 11, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_12(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=True,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=False,
+        prev_head_uj_fresh=False,
+        block_vs_fresh=False,
+        head_uj_fresh=False,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 12, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_13(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=True,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=False,
+        prev_head_uj_fresh=False,
+        block_vs_fresh=False,
+        head_uj_fresh=True,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 13, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_14(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=True,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=True,
+        prev_head_uj_fresh=False,
+        block_vs_fresh=False,
+        head_uj_fresh=False,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 14, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_15(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=True,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=True,
+        prev_head_uj_fresh=False,
+        block_vs_fresh=False,
+        head_uj_fresh=True,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 15, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_16(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=True,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=True,
+        prev_head_uj_fresh=False,
+        block_vs_fresh=True,
+        head_uj_fresh=False,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 16, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_17(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=True,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=True,
+        prev_head_uj_fresh=False,
+        block_vs_fresh=True,
+        head_uj_fresh=True,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 17, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_18(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=True,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=True,
+        prev_head_uj_fresh=True,
+        block_vs_fresh=False,
+        head_uj_fresh=False,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 18, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_19(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=True,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=True,
+        prev_head_uj_fresh=True,
+        block_vs_fresh=False,
+        head_uj_fresh=True,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 19, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_20(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=True,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=True,
+        prev_head_uj_fresh=True,
+        block_vs_fresh=True,
+        head_uj_fresh=False,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 20, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_21(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=False,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=False,
+        prev_head_uj_fresh=False,
+        block_vs_fresh=False,
+        head_uj_fresh=False,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 21, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_22(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=False,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=False,
+        prev_head_uj_fresh=False,
+        block_vs_fresh=False,
+        head_uj_fresh=True,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 22, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_23(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=False,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=True,
+        prev_head_uj_fresh=False,
+        block_vs_fresh=False,
+        head_uj_fresh=False,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 23, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_24(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=False,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=True,
+        prev_head_uj_fresh=False,
+        block_vs_fresh=False,
+        head_uj_fresh=True,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 24, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_25(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=False,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=True,
+        prev_head_uj_fresh=False,
+        block_vs_fresh=True,
+        head_uj_fresh=False,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 25, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_26(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=False,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=True,
+        prev_head_uj_fresh=False,
+        block_vs_fresh=True,
+        head_uj_fresh=True,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 26, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_27(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=False,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=True,
+        prev_head_uj_fresh=True,
+        block_vs_fresh=False,
+        head_uj_fresh=False,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 27, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_28(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=False,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=True,
+        prev_head_uj_fresh=True,
+        block_vs_fresh=False,
+        head_uj_fresh=True,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 28, test_spec)
+
+
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+def test_fcr_previous_epoch_29(spec, state):
+    test_spec = PreviousEpochTestSpecification(
+        prev_head_ancestor=True,
+        first_slot_call=True,
+        is_one_confirmed=False,
+        no_conflicting_chkp=True,
+        prev_head_vs_fresh=True,
+        prev_head_uj_fresh=True,
+        block_vs_fresh=True,
+        head_uj_fresh=False,
+    )
+    yield from build_and_run_previous_epoch_test(spec, state, 29, test_spec)

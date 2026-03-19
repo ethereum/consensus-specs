@@ -281,7 +281,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_at_epoch_boundary
     # Now vote 100% for M for remaining slots until epoch boundary
     # Extend M-side to accumulate enough weight to flip head
     SlotSequence(
-        end_slot=epoch2_start, branch_root=m_root, attesting=Attesting(participation_rate=100)
+        end_slot=epoch2_start, branch_root_id=m_root, attesting=Attesting(participation_rate=100)
     ).execute(fcr)
 
     # Now at epoch 2 start — FCR already ran atomically at the boundary

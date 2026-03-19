@@ -205,10 +205,10 @@ class CurrentEpochTestBuilder:
                 # B includes attestations from previous epoch enough to update UJ
                 SlotRun(
                     proposal=Proposal(atts_in_block=True),
-                    attesting=Attesting(block_slot_or_offset=-1),
+                    attesting=Attesting(block_id=-1),
                 ),
                 # Create H and attest to it, so H becomes the head, confirm A
-                SlotRun(proposal=Proposal(parent_root_slot_or_offset=-2)),
+                SlotRun(proposal=Proposal(parent_id=-2)),
                 # Prevent UJ update unless UJ must be fresh
                 Proposal(atts_in_block=False),
             ]
