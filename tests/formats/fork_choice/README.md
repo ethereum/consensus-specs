@@ -274,7 +274,8 @@ Each file is an SSZ-snappy encoded `Attestation`.
 
 ### `block_<32-byte-root>.ssz_snappy`
 
-`<32-byte-root>` is the hash tree root of the given block.
+`<32-byte-root>` is the hash tree root of the `BeaconBlock` (the `message`
+field of the `SignedBeaconBlock`).
 
 Each file is an SSZ-snappy encoded `SignedBeaconBlock`.
 
@@ -287,8 +288,11 @@ Each file is an SSZ-snappy encoded `SignedExecutionPayloadEnvelope`.
 ## Condition
 
 1. Deserialize `anchor_state.ssz_snappy` and `anchor_block.ssz_snappy` to
-   initialize the local store object by with
+   initialize the local store object with
    `get_forkchoice_store(anchor_state, anchor_block)` helper.
+   For Gloas and later forks: the anchor block's payload state is initialized
+   by seeding `payload_states[anchor_root]` from `anchor_state`, as specified
+   in `get_forkchoice_store`.
 2. Iterate sequentially through `steps.yaml`
    - For each execution, look up the corresponding ssz_snappy file. Execute the
      corresponding helper function on the current store.
@@ -296,5 +300,8 @@ Each file is an SSZ-snappy encoded `SignedExecutionPayloadEnvelope`.
        `len(block.message.body.attestations) > 0`, execute each attestation with
        `on_attestation(store, attestation)` after executing
        `on_block(store, block)`.
+     - For the `on_execution_payload` execution step: look up the corresponding
+       `execution_payload_envelope_<root>.ssz_snappy` file and execute
+       `on_execution_payload(store, signed_envelope)`.
    - For each `checks` step, the assertions on the current store must be
      satisfied.

@@ -139,7 +139,7 @@ def yield_mutation_test_case(spec, state, test_kind, solution, debug, seed, mut_
         test_data.meta["mut_seed"] = mut_seed
         test_data.meta["mutations"] = mutations
 
-        mutated_events = test_vector_to_events(mutated_vector)
+        mutated_events = convert_test_vector_to_events(mutated_vector)
 
         return yield_test_parts(spec, store, test_data, mutated_events)
 
@@ -164,7 +164,7 @@ def events_to_test_vector(events) -> list[Any]:
     return test_vector
 
 
-def test_vector_to_events(test_vector):
+def convert_test_vector_to_events(test_vector):
     events = []
     current_time = None
     for time, (event_kind, data) in test_vector:
