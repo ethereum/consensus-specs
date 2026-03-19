@@ -40,9 +40,7 @@ def test_get_ptc_assignment__previous_epoch(spec, state):
     next_epoch(spec, state)
 
     epoch = spec.Epoch(spec.get_current_epoch(state) - 1)
-    expect_assertion_error(
-        lambda: spec.get_ptc_assignment(state, epoch, spec.ValidatorIndex(0))
-    )
+    expect_assertion_error(lambda: spec.get_ptc_assignment(state, epoch, spec.ValidatorIndex(0)))
 
 
 @with_phases([GLOAS])
@@ -61,6 +59,4 @@ def test_get_ptc_assignment__current_epoch(spec, state):
 @single_phase
 def test_get_ptc_assignment__next_epoch(spec, state):
     epoch = spec.Epoch(spec.get_current_epoch(state) + 1)
-    expect_assertion_error(
-        lambda: spec.get_ptc_assignment(state, epoch, spec.ValidatorIndex(0))
-    )
+    expect_assertion_error(lambda: spec.get_ptc_assignment(state, epoch, spec.ValidatorIndex(0)))
