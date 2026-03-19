@@ -54,6 +54,7 @@
     - [New `compute_balance_weighted_selection`](#new-compute_balance_weighted_selection)
     - [New `compute_balance_weighted_acceptance`](#new-compute_balance_weighted_acceptance)
     - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
+    - [New `compute_ptc`](#new-compute_ptc)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
     - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
@@ -66,6 +67,7 @@
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
+    - [New `process_ptc_update`](#new-process_ptc_update)
     - [New `process_builder_pending_payments`](#new-process_builder_pending_payments)
   - [Block processing](#block-processing)
     - [Withdrawals](#withdrawals)
@@ -384,6 +386,8 @@ class BeaconState(Container):
     latest_block_hash: Hash32
     # [New in Gloas:EIP7732]
     payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
+    # [New in Gloas:EIP7732]
+    previous_epoch_last_ptc: Vector[ValidatorIndex, PTC_SIZE]
 ```
 
 ## Dataclasses
@@ -630,6 +634,28 @@ def compute_proposer_indices(
     ]
 ```
 
+#### New `compute_ptc`
+
+```python
+def compute_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
+    """
+    Compute the payload timeliness committee for the given ``slot``
+    using the state's current effective balances.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    assert epoch <= get_current_epoch(state)
+    seed = hash(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
+    indices: List[ValidatorIndex] = []
+    # Concatenate all committees for this slot in order
+    committees_per_slot = get_committee_count_per_slot(state, epoch)
+    for i in range(committees_per_slot):
+        committee = get_beacon_committee(state, slot, CommitteeIndex(i))
+        indices.extend(committee)
+    return compute_balance_weighted_selection(
+        state, indices, seed, size=PTC_SIZE, shuffle_indices=False
+    )
+```
+
 ### Beacon state accessors
 
 #### Modified `get_next_sync_committee_indices`
@@ -705,22 +731,23 @@ def get_attestation_participation_flag_indices(
 
 #### New `get_ptc`
 
+*Note*: `get_ptc` uses the cached `previous_epoch_last_ptc` for the last slot of
+the previous epoch. This is sufficient because `process_payload_attestation`
+requires `data.slot + 1 == state.slot`, and the only case where effective
+balance updates can change the computed PTC occurs at the epoch boundary.
+
 ```python
 def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     """
     Get the payload timeliness committee for the given ``slot``.
     """
     epoch = compute_epoch_at_slot(slot)
-    seed = hash(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
-    indices: List[ValidatorIndex] = []
-    # Concatenate all committees for this slot in order
-    committees_per_slot = get_committee_count_per_slot(state, epoch)
-    for i in range(committees_per_slot):
-        committee = get_beacon_committee(state, slot, CommitteeIndex(i))
-        indices.extend(committee)
-    return compute_balance_weighted_selection(
-        state, indices, seed, size=PTC_SIZE, shuffle_indices=False
-    )
+    state_epoch = get_current_epoch(state)
+    assert epoch + 1 >= state_epoch and epoch <= state_epoch
+    if epoch + 1 == state_epoch:
+        assert slot % SLOTS_PER_EPOCH == SLOTS_PER_EPOCH - 1
+        return state.previous_epoch_last_ptc
+    return compute_ptc(state, slot)
 ```
 
 #### New `get_indexed_payload_attestation`
@@ -817,6 +844,8 @@ def process_slot(state: BeaconState) -> None:
 
 ```python
 def process_epoch(state: BeaconState) -> None:
+    # [New in Gloas:EIP7732]
+    process_ptc_update(state)
     process_justification_and_finalization(state)
     process_inactivity_updates(state)
     process_rewards_and_penalties(state)
@@ -834,6 +863,17 @@ def process_epoch(state: BeaconState) -> None:
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)
     process_proposer_lookahead(state)
+```
+
+#### New `process_ptc_update`
+
+```python
+def process_ptc_update(state: BeaconState) -> None:
+    """
+    Cache the PTC for the current slot (last slot of the ending epoch)
+    before effective balance updates alter the weighted selection.
+    """
+    state.previous_epoch_last_ptc = compute_ptc(state, Slot(state.slot))
 ```
 
 #### New `process_builder_pending_payments`

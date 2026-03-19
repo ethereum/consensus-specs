@@ -235,6 +235,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             spec.BuilderPendingPayment() for _ in range(2 * spec.SLOTS_PER_EPOCH)
         ]
         state.builder_pending_withdrawals = []
+        state.previous_epoch_last_ptc = [spec.ValidatorIndex(0)] * spec.PTC_SIZE
 
     if is_post_fulu(spec):
         # Initialize proposer lookahead list

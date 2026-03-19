@@ -49,9 +49,9 @@ validator" to implement Gloas.
 
 A validator may be a member of the new Payload Timeliness Committee (PTC) for a
 given slot. To check for PTC assignments, use
-`get_ptc_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`,
-as PTC committee selection is only stable within the context of the current and
-next epoch.
+`get_ptc_assignment(state, epoch, validator_index)` where
+`epoch == current_epoch`, as PTC committee selection is only stable within the
+context of the current epoch.
 
 ```python
 def get_ptc_assignment(
@@ -62,12 +62,11 @@ def get_ptc_assignment(
     index ``validator_index`` is a member of the PTC. Returns None if no
     assignment is found.
     """
-    next_epoch = Epoch(get_current_epoch(state) + 1)
-    assert epoch <= next_epoch
+    assert epoch == get_current_epoch(state)
 
     start_slot = compute_start_slot_at_epoch(epoch)
     for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
-        if validator_index in get_ptc(state, Slot(slot)):
+        if validator_index in compute_ptc(state, Slot(slot)):
             return Slot(slot)
     return None
 ```
@@ -75,8 +74,8 @@ def get_ptc_assignment(
 ### Lookahead
 
 `get_ptc_assignment` should be called at the start of each epoch to get the
-assignment for the next epoch (`current_epoch + 1`). A validator should plan for
-future assignments by noting their assigned PTC slot.
+assignment for the current epoch. A validator should note their assigned PTC
+slot for that epoch.
 
 ## Beacon chain responsibilities
 
@@ -242,8 +241,9 @@ def prepare_execution_payload(
 ### Payload timeliness attestation
 
 Some validators are selected to submit payload timeliness attestations.
-Validators should call `get_ptc_assignment` at the beginning of an epoch to be
-prepared to submit their PTC attestations during the next epoch.
+Validators should call `get_ptc_assignment` at the beginning of the epoch to
+determine the slot during the current epoch in which they should submit their
+PTC attestation.
 
 A validator should create and broadcast the `payload_attestation_message` to the
 global execution attestation subnet within the first
