@@ -14,7 +14,6 @@ imports proof types from [proof-engine.md](./proof-engine.md).
   - [Execution](#execution)
 - [Containers](#containers)
   - [`ProofByRootIdentifier`](#proofbyrootidentifier)
-  - [`ExecutionProofsByRangeRequest`](#executionproofsbyrangerequest)
 - [Helpers](#helpers)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [New `compute_max_request_execution_proofs`](#new-compute_max_request_execution_proofs)
@@ -51,14 +50,6 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 class ProofByRootIdentifier(Container):
     block_root: Root
     proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
-```
-
-### `ExecutionProofsByRangeRequest`
-
-```python
-class ExecutionProofsByRangeRequest(Container):
-    start_slot: Slot
-    count: uint64
 ```
 
 ## Helpers
@@ -144,14 +135,12 @@ The following validations MUST pass before forwarding the
 
 **Protocol ID:** `/eth2/beacon_chain/req/execution_proofs_by_range/1/`
 
-The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`.
-
 Request Content:
 
 ```
 (
-  ExecutionProofsByRangeRequest
+  start_slot: Slot
+  count: uint64
 )
 ```
 
@@ -184,9 +173,6 @@ Clients SHOULD return proofs in slot-ascending order within the requested range.
 #### ExecutionProofsByRoot
 
 **Protocol ID:** `/eth2/beacon_chain/req/execution_proofs_by_root/1/`
-
-The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`.
 
 Request Content:
 
