@@ -729,7 +729,6 @@ their entirety. The `state` parameter is the head state.
 ```python
 def validate_voluntary_exit_gossip(
     seen: Seen,
-    store: Store,
     state: BeaconState,
     signed_voluntary_exit: SignedVoluntaryExit,
 ) -> None:
@@ -786,7 +785,6 @@ to proposers on the network. Proposer slashings are sent in their entirety. The
 ```python
 def validate_proposer_slashing_gossip(
     seen: Seen,
-    store: Store,
     state: BeaconState,
     proposer_slashing: ProposerSlashing,
 ) -> None:
@@ -845,7 +843,6 @@ to proposers on the network. Attester slashings are sent in their entirety. The
 ```python
 def validate_attester_slashing_gossip(
     seen: Seen,
-    store: Store,
     state: BeaconState,
     attester_slashing: AttesterSlashing,
 ) -> None:

@@ -3,23 +3,20 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_all_phases,
 )
-from eth_consensus_specs.test.helpers.fork_choice import (
-    get_genesis_forkchoice_store_and_block,
-)
 from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen
 from eth_consensus_specs.test.helpers.proposer_slashings import (
     get_valid_proposer_slashing,
 )
 
 
-def run_validate_proposer_slashing_gossip(spec, seen, store, state, proposer_slashing):
+def run_validate_proposer_slashing_gossip(spec, seen, state, proposer_slashing):
     """
     Run validate_proposer_slashing_gossip and return the result.
     Returns: tuple of (result, reason) where result is "valid", "ignore", or "reject"
              and reason is the exception message (or None for valid).
     """
     try:
-        spec.validate_proposer_slashing_gossip(seen, store, state, proposer_slashing)
+        spec.validate_proposer_slashing_gossip(seen, state, proposer_slashing)
         return "valid", None
     except spec.GossipIgnore as e:
         return "ignore", str(e)
@@ -37,16 +34,13 @@ def test_gossip_proposer_slashing__valid(spec, state):
     yield "state", state
 
     seen = get_seen(spec)
-    store, _ = get_genesis_forkchoice_store_and_block(spec, state)
 
     # Create a valid proposer slashing
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
 
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_proposer_slashing_gossip(
-        spec, seen, store, state, proposer_slashing
-    )
+    result, reason = run_validate_proposer_slashing_gossip(spec, seen, state, proposer_slashing)
     assert result == "valid"
     assert reason is None
 
@@ -68,7 +62,6 @@ def test_gossip_proposer_slashing__ignore_already_seen(spec, state):
 
     messages = []
     seen = get_seen(spec)
-    store, _ = get_genesis_forkchoice_store_and_block(spec, state)
 
     # Create a valid proposer slashing
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
@@ -76,17 +69,13 @@ def test_gossip_proposer_slashing__ignore_already_seen(spec, state):
     yield get_filename(proposer_slashing), proposer_slashing
 
     # First validation should pass
-    result, reason = run_validate_proposer_slashing_gossip(
-        spec, seen, store, state, proposer_slashing
-    )
+    result, reason = run_validate_proposer_slashing_gossip(spec, seen, state, proposer_slashing)
     assert result == "valid"
     assert reason is None
     messages.append({"message": get_filename(proposer_slashing), "expected": "valid"})
 
     # Second validation should be ignored
-    result, reason = run_validate_proposer_slashing_gossip(
-        spec, seen, store, state, proposer_slashing
-    )
+    result, reason = run_validate_proposer_slashing_gossip(spec, seen, state, proposer_slashing)
     assert result == "ignore"
     assert reason == "already seen proposer slashing for this proposer"
     messages.append(
@@ -110,7 +99,6 @@ def test_gossip_proposer_slashing__reject_slots_not_matching(spec, state):
     yield "state", state
 
     seen = get_seen(spec)
-    store, _ = get_genesis_forkchoice_store_and_block(spec, state)
 
     # Create a valid proposer slashing
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
@@ -122,9 +110,7 @@ def test_gossip_proposer_slashing__reject_slots_not_matching(spec, state):
 
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_proposer_slashing_gossip(
-        spec, seen, store, state, proposer_slashing
-    )
+    result, reason = run_validate_proposer_slashing_gossip(spec, seen, state, proposer_slashing)
     assert result == "reject"
     assert reason == "header slots do not match"
 
@@ -151,7 +137,6 @@ def test_gossip_proposer_slashing__reject_proposer_indices_not_matching(spec, st
     yield "state", state
 
     seen = get_seen(spec)
-    store, _ = get_genesis_forkchoice_store_and_block(spec, state)
 
     # Create a valid proposer slashing
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
@@ -163,9 +148,7 @@ def test_gossip_proposer_slashing__reject_proposer_indices_not_matching(spec, st
 
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_proposer_slashing_gossip(
-        spec, seen, store, state, proposer_slashing
-    )
+    result, reason = run_validate_proposer_slashing_gossip(spec, seen, state, proposer_slashing)
     assert result == "reject"
     assert reason == "header proposer indices do not match"
 
@@ -192,7 +175,6 @@ def test_gossip_proposer_slashing__reject_headers_identical(spec, state):
     yield "state", state
 
     seen = get_seen(spec)
-    store, _ = get_genesis_forkchoice_store_and_block(spec, state)
 
     # Create a valid proposer slashing
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
@@ -202,9 +184,7 @@ def test_gossip_proposer_slashing__reject_headers_identical(spec, state):
 
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_proposer_slashing_gossip(
-        spec, seen, store, state, proposer_slashing
-    )
+    result, reason = run_validate_proposer_slashing_gossip(spec, seen, state, proposer_slashing)
     assert result == "reject"
     assert reason == "headers are not different"
 
@@ -231,7 +211,6 @@ def test_gossip_proposer_slashing__reject_proposer_index_out_of_range(spec, stat
     yield "state", state
 
     seen = get_seen(spec)
-    store, _ = get_genesis_forkchoice_store_and_block(spec, state)
 
     # Create a valid proposer slashing
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
@@ -243,9 +222,7 @@ def test_gossip_proposer_slashing__reject_proposer_index_out_of_range(spec, stat
 
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_proposer_slashing_gossip(
-        spec, seen, store, state, proposer_slashing
-    )
+    result, reason = run_validate_proposer_slashing_gossip(spec, seen, state, proposer_slashing)
     assert result == "reject"
     assert reason == "proposer index out of range"
 
@@ -271,7 +248,6 @@ def test_gossip_proposer_slashing__reject_proposer_not_slashable(spec, state):
     yield "topic", "meta", "proposer_slashing"
 
     seen = get_seen(spec)
-    store, _ = get_genesis_forkchoice_store_and_block(spec, state)
 
     # Create a valid proposer slashing
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)
@@ -283,9 +259,7 @@ def test_gossip_proposer_slashing__reject_proposer_not_slashable(spec, state):
     yield "state", state
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_proposer_slashing_gossip(
-        spec, seen, store, state, proposer_slashing
-    )
+    result, reason = run_validate_proposer_slashing_gossip(spec, seen, state, proposer_slashing)
     assert result == "reject"
     assert reason == "proposer is not slashable"
 
@@ -313,16 +287,13 @@ def test_gossip_proposer_slashing__reject_invalid_signature_1(spec, state):
     yield "state", state
 
     seen = get_seen(spec)
-    store, _ = get_genesis_forkchoice_store_and_block(spec, state)
 
     # Create a proposer slashing with only second header signed
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=False, signed_2=True)
 
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_proposer_slashing_gossip(
-        spec, seen, store, state, proposer_slashing
-    )
+    result, reason = run_validate_proposer_slashing_gossip(spec, seen, state, proposer_slashing)
     assert result == "reject"
     assert reason == "invalid proposer slashing signature"
 
@@ -350,16 +321,13 @@ def test_gossip_proposer_slashing__reject_invalid_signature_2(spec, state):
     yield "state", state
 
     seen = get_seen(spec)
-    store, _ = get_genesis_forkchoice_store_and_block(spec, state)
 
     # Create a proposer slashing with only first header signed
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=False)
 
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_proposer_slashing_gossip(
-        spec, seen, store, state, proposer_slashing
-    )
+    result, reason = run_validate_proposer_slashing_gossip(spec, seen, state, proposer_slashing)
     assert result == "reject"
     assert reason == "invalid proposer slashing signature"
 
