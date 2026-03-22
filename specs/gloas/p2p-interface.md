@@ -552,10 +552,10 @@ Response Content:
 ```
 
 Requests execution payload envelopes by
-`signed_execution_payload_envelope.message.beacon_block_root`. The response is a list
-of `SignedExecutionPayloadEnvelope` whose length is less than or equal to the
-number of requested execution payload envelopes. It may be less in the case that
-the responding peer is missing payload envelopes.
+`signed_execution_payload_envelope.message.beacon_block_root`. The response is a
+list of `SignedExecutionPayloadEnvelope` whose length is less than or equal to
+the number of requested execution payload envelopes. It may be less in the case
+that the responding peer is missing payload envelopes.
 
 No more than `MAX_REQUEST_PAYLOADS` may be requested at a time.
 
