@@ -71,7 +71,7 @@ def test_gossip_voluntary_exit__valid(spec, state):
     yield get_filename(signed_exit), signed_exit
 
     result, reason = run_validate_voluntary_exit_gossip(spec, seen, store, state, signed_exit)
-    assert result == "valid", f"Expected valid but got {result}: {reason}"
+    assert result == "valid"
     assert reason is None
 
     yield "messages", "meta", [{"message": get_filename(signed_exit), "expected": "valid"}]
@@ -105,6 +105,7 @@ def test_gossip_voluntary_exit__ignore_already_seen(spec, state):
     # First validation should pass
     result, reason = run_validate_voluntary_exit_gossip(spec, seen, store, state, signed_exit)
     assert result == "valid"
+    assert reason is None
     messages.append({"message": get_filename(signed_exit), "expected": "valid"})
 
     # Second validation should be ignored

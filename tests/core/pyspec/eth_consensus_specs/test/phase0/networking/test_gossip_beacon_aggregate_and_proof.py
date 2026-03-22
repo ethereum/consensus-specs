@@ -122,7 +122,7 @@ def test_gossip_beacon_aggregate_and_proof__valid(spec, state):
     result, reason = run_validate_beacon_aggregate_and_proof_gossip(
         spec, seen, store, state, signed_agg, block_time_ms + 500
     )
-    assert result == "valid", f"Expected valid but got {result}: {reason}"
+    assert result == "valid"
     assert reason is None
 
     yield (
@@ -267,7 +267,7 @@ def test_gossip_beacon_aggregate_and_proof__valid_within_clock_disparity(spec, s
     result, reason = run_validate_beacon_aggregate_and_proof_gossip(
         spec, seen, store, state, signed_agg, current_time_ms
     )
-    assert result == "valid", f"Expected valid but got {result}: {reason}"
+    assert result == "valid"
     assert reason is None
 
     yield (

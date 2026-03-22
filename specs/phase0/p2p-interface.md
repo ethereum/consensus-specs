@@ -625,7 +625,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     if index >= committee_count:
         raise GossipReject("committee index out of range")
 
-    # [IGNORE] The attestation slot is within the propagation range
+    # [IGNORE] The aggregate attestation's slot is within the propagation range
     # (MAY be queued for processing at the appropriate slot)
     if not is_within_slot_range(
         state, aggregate.data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
@@ -886,13 +886,13 @@ def validate_attester_slashing_gossip(
         raise GossipReject("invalid indexed attestation 2")
 
     # [REJECT] At least one validator in the intersection is slashable
-    slashed_any = False
+    slashable_any = False
     current_epoch = get_current_epoch(state)
     for index in slashable_indices:
         if is_slashable_validator(state.validators[index], current_epoch):
-            slashed_any = True
+            slashable_any = True
             break
-    if not slashed_any:
+    if not slashable_any:
         raise GossipReject("no slashable validators in intersection")
 
     # Mark these indices as seen

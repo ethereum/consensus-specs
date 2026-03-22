@@ -47,7 +47,7 @@ def test_gossip_attester_slashing__valid(spec, state):
     result, reason = run_validate_attester_slashing_gossip(
         spec, seen, store, state, attester_slashing
     )
-    assert result == "valid", f"Expected valid but got {result}: {reason}"
+    assert result == "valid"
     assert reason is None
 
     yield (
@@ -80,6 +80,7 @@ def test_gossip_attester_slashing__ignore_already_seen(spec, state):
         spec, seen, store, state, attester_slashing
     )
     assert result == "valid"
+    assert reason is None
     messages.append({"message": get_filename(attester_slashing), "expected": "valid"})
 
     # Second validation should be ignored (all indices already seen)

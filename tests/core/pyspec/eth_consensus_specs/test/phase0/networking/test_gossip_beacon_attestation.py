@@ -96,7 +96,7 @@ def test_gossip_beacon_attestation__valid(spec, state):
     result, reason = run_validate_beacon_attestation_gossip(
         spec, seen, store, state, attestation, subnet_id, block_time_ms + 500
     )
-    assert result == "valid", f"Expected valid but got {result}: {reason}"
+    assert result == "valid"
     assert reason is None
 
     yield (
@@ -321,7 +321,7 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     result, reason = run_validate_beacon_attestation_gossip(
         spec, seen, store, state, attestation, subnet_id, current_time_ms
     )
-    assert result == "valid", f"Expected valid but got {result}: {reason}"
+    assert result == "valid"
     assert reason is None
 
     yield (
@@ -383,7 +383,7 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state
     result, reason = run_validate_beacon_attestation_gossip(
         spec, seen, store, state, attestation, subnet_id, current_time_ms
     )
-    assert result == "valid", f"Expected valid but got {result}: {reason}"
+    assert result == "valid"
     assert reason is None
 
     yield (
@@ -673,6 +673,7 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
         spec, seen, store, state, attestation, subnet_id, block_time_ms + 500
     )
     assert result == "valid"
+    assert reason is None
     messages.append(
         {
             "subnet_id": int(subnet_id),
