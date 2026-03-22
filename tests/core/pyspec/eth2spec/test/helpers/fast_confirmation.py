@@ -68,7 +68,7 @@ def str_to_graffiti(graffiti: str) -> bytes:
 
 
 def graffiti_to_str(graffiti: bytes) -> str:
-    return graffiti.rstrip(b'\x00').decode('ascii')
+    return graffiti.rstrip(b"\x00").decode("ascii")
 
 
 class FCRTest:
@@ -121,7 +121,7 @@ class FCRTest:
 
     def find_block_root(self, predicate: Callable[[object], bool]) -> object:
         for root, block in self.store.blocks.items():
-             if predicate(block):
+            if predicate(block):
                 return root
 
         raise KeyError("Block not found")
@@ -147,6 +147,10 @@ class FCRTest:
         else:
             # Block root
             return block_root_id
+
+    def get_supporters_of(self, block_root_id) -> list[object]:
+        block_root = self.get_block_root_or_head(block_root_id)
+        return [i for i, m in self.store.latest_messages.items() if m.root == block_root]
 
     def tick(self, slot):
         assert slot > self.current_slot() or slot == self.spec.GENESIS_SLOT
@@ -255,13 +259,11 @@ class FCRTest:
         assert slot >= att_state.slot
         assert self.spec.get_current_epoch(att_state) == self.spec.compute_epoch_at_slot(slot)
 
-        # Sample sleepy validators
+        # Sample active validators
         if participation_rate < 100:
-            sleepy_participants = self.sample_sleepy_participants(
-                att_state, slot, participation_rate
-            )
+            active_set = self.sample_fraction_of_participants(att_state, slot, participation_rate)
         else:
-            sleepy_participants = set()
+            active_set = None
 
         # Attest and add attestations to the pool
         attestations = get_valid_attestations_for_block_at_slot(
@@ -269,7 +271,11 @@ class FCRTest:
             att_state,
             slot,
             block_root,
-            participation_fn=(lambda slot, index, committee: committee - sleepy_participants),
+            participation_fn=(
+                lambda slot, index, committee: committee & active_set
+                if active_set != None
+                else committee
+            ),
         )
         if pool_and_disseminate:
             self.attestation_pool.extend(attestations)
@@ -355,11 +361,6 @@ class FCRTest:
         self.rng.shuffle(slot_committee)
         return set(slot_committee[:participants_count])
 
-    def sample_sleepy_participants(self, shuffling_source, slot, participation_rate):
-        return self.sample_fraction_of_participants(
-            shuffling_source, slot, 100 - participation_rate
-        )
-
     def apply_attester_slashing(
         self, slashing_percentage: int = None, slashing_indices: list[int] = None, slot=None
     ) -> list[object]:
@@ -406,7 +407,7 @@ class FCRTest:
             graffiti = graffiti_to_str(block.body.graffiti)
 
         if len(graffiti) > 0:
-            return f"{slot}: {str(block_root)[:6]}, \'{graffiti}\'"
+            return f"{slot}: {str(block_root)[:6]}, '{graffiti}'"
         else:
             return f"{slot}: {str(block_root)[:6]}"
 
@@ -438,9 +439,7 @@ class FCRTest:
                     return f"\033[92m({genesis_info})\033[0m"
 
             score, threshold = get_relative_score_and_threshold(block_root)
-            output = (
-                f"({self.get_slot_root_info(block_root)}, uj={store.unrealized_justifications[block_root].epoch}, sc={score:.1f}%, th={threshold:.1f}%)"
-            )
+            output = f"({self.get_slot_root_info(block_root)}, uj={store.unrealized_justifications[block_root].epoch}, sc={score:.1f}%, th={threshold:.1f}%)"
 
             if block_root == store.confirmed_root:
                 # Confirmed block in Blue if can be re-confirmed, Magenta otherwise
@@ -521,6 +520,7 @@ class FCRTest:
         print(
             f"prev_epoch_gu [{self.get_checkpoint_info(store.previous_epoch_greatest_unrealized_checkpoint)}]"
         )
+        print(f"justified_checkpoint [{self.get_checkpoint_info(store.justified_checkpoint)}]")
 
 
 @dataclass
@@ -610,20 +610,27 @@ class Attesting(PhaseRun):
 class Slashing(PhaseRun):
     percentage: int = None
     committee_slot_or_offset: int = None
+    supporters_of_block: object = None
 
     def execute(self, fcr: FCRTest) -> object:
         if self.percentage == None or self.percentage == 0:
             return []
 
-        if self.committee_slot_or_offset is not None:
+        if self.committee_slot_or_offset == None and self.supporters_of_block == None:
+            return fcr.apply_attester_slashing(slashing_percentage=self.percentage)
+
+        if self.committee_slot_or_offset != None:
             slot = fcr.resolve_slot_by_offset(self.committee_slot_or_offset)
             shuffling_source = fcr.store.block_states[fcr.head()]
             participants = fcr.sample_fraction_of_participants(
                 shuffling_source, slot, self.percentage
             )
-            return fcr.apply_attester_slashing(slashing_indices=participants)
         else:
-            return fcr.apply_attester_slashing(slashing_percentage=self.percentage)
+            supporters = fcr.get_supporters_of(self.supporters_of_block)
+            count = len(supporters) * self.percentage // 100
+            participants = supporters[:count]
+
+        return fcr.apply_attester_slashing(slashing_indices=participants)
 
 
 @dataclass
@@ -699,8 +706,6 @@ class SlotSequence(MultiPhaseRun):
             return self.end_slot - current_slot
 
     def execute(self, fcr: FCRTest) -> object:
-        debug_print(f"slot {fcr.current_slot()}: {self}")
-
         tip_root = fcr.get_block_root_or_head(self.branch_root_id)
         built_chain = []
         for _ in range(self.get_number_of_slots(fcr.current_slot())):

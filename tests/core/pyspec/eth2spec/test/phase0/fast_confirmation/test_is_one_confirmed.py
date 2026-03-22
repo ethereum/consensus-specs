@@ -220,11 +220,11 @@ def test_is_one_confirmed_slashing_non_supporters_helps(spec, state):
     Detecting them reduces the adversarial budget without affecting B's
     observed support, making the safety threshold easier to meet.
 
-    With 64 validators in MINIMAL (8 per committee), at 85% participation
+    With 64 validators in MINIMAL (8 per committee), at 88% participation
     is_one_confirmed fails. Slashing non-supporters reduces the adversarial
     budget enough to flip the predicate to True.
 
-    1. Build block B with 85% participation (is_one_confirmed = False)
+    1. Build block B with 88% participation (is_one_confirmed = False)
     2. Identify validators whose latest message does not point to B
     3. Slash those non-supporters
     4. Verify support unchanged, adversarial budget decreased, is_one_confirmed flips to True
@@ -237,8 +237,8 @@ def test_is_one_confirmed_slashing_non_supporters_helps(spec, state):
     # Build through epoch 1 to establish balance source
     fcr.run_slots_with_blocks_and_fast_confirmation(2 * S, participation_rate=100)
 
-    # Block B with 85% participation — fails is_one_confirmed
-    block_b = fcr.next_slot_with_block_and_fast_confirmation(participation_rate=85)
+    # Block B with 88% participation — fails is_one_confirmed
+    block_b = fcr.next_slot_with_block_and_fast_confirmation(participation_rate=88)
 
     block = store.blocks[block_b]
     parent_block = store.blocks[block.parent_root]
@@ -250,13 +250,14 @@ def test_is_one_confirmed_slashing_non_supporters_helps(spec, state):
     adversarial_weight_before = spec.get_adversarial_weight(store, balance_source, block_b)
 
     assert not spec.is_one_confirmed(store, balance_source, block_b), (
-        "Precondition: is_one_confirmed should fail at 85% participation"
+        "Precondition: is_one_confirmed should fail at 88% participation"
     )
 
     # Identify non-supporters: validators whose latest message does not point to B
+    block_b_committee = spec.get_slot_committee(store, block.slot)
     non_supporters = [
         i
-        for i in range(len(state.validators))
+        for i in block_b_committee
         if (i not in store.latest_messages or store.latest_messages[i].root != block_b)
         and not state.validators[i].slashed
         and i not in store.equivocating_indices
@@ -264,11 +265,7 @@ def test_is_one_confirmed_slashing_non_supporters_helps(spec, state):
     assert len(non_supporters) > 0, "Need non-supporters to slash"
 
     # Slash non-supporters
-    slash_count = min(len(non_supporters), len(state.validators) * 25 // 100)
-    fcr.apply_attester_slashing(
-        slashing_indices=non_supporters[:slash_count],
-        slot=fcr.current_slot(),
-    )
+    fcr.apply_attester_slashing(slashing_indices=non_supporters, slot=fcr.current_slot())
 
     # Support must be unchanged — we only slashed non-voters for B
     support_after = spec.get_attestation_score(store, block_b, balance_source)
@@ -442,14 +439,14 @@ def test_is_one_confirmed_support_accumulates_over_slots(spec, state):
     accumulate, the relative impact of proposer_score shrinks, making
     confirmation easier.
 
-    At 85% participation with one slot of support, is_one_confirmed fails
+    At 88% participation with one slot of support, is_one_confirmed fails
     because the proposer boost is ~40% of one committee's weight. With
     two slots, the boost drops to ~20% of the total budget, and the
     accumulated support is enough to satisfy the inequality.
 
-    1. Build block B with 85% attestations, advance to s+1, run FCR
+    1. Build block B with 88% attestations, advance to s+1, run FCR
     2. At s+1: verify is_one_confirmed fails (one slot, boost too large)
-    3. Attest 85% to B at s+1, advance to s+2, run FCR
+    3. Attest 88% to B at s+1, advance to s+2, run FCR
     4. At s+2: verify is_one_confirmed passes (boost diluted by second committee)
     """
     fcr = FCRTest(spec, seed=1)
@@ -460,18 +457,18 @@ def test_is_one_confirmed_support_accumulates_over_slots(spec, state):
     # Build through epoch 1 to establish balance source
     fcr.run_slots_with_blocks_and_fast_confirmation(2 * S, participation_rate=100)
 
-    # Propose block B with 85% participation
-    block_b = fcr.next_slot_with_block_and_fast_confirmation(participation_rate=85)
+    # Propose block B with 88% participation
+    block_b = fcr.next_slot_with_block_and_fast_confirmation(participation_rate=88)
 
     balance_source = spec.get_current_balance_source(store)
 
     # At s+1: one slot of support — fails due to proposer boost
     assert not spec.is_one_confirmed(store, balance_source, block_b), (
-        "is_one_confirmed should fail with one slot of support at 85%"
+        "is_one_confirmed should fail with one slot of support at 88%"
     )
 
-    # Attest 85% to B at s+1, advance to s+2, apply, run FCR — no new block
-    fcr.attest_and_next_slot_with_fast_confirmation(block_root=block_b, participation_rate=85)
+    # Attest 88% to B at s+1, advance to s+2, apply, run FCR — no new block
+    fcr.attest_and_next_slot_with_fast_confirmation(block_root=block_b, participation_rate=88)
 
     balance_source = spec.get_current_balance_source(store)
 
@@ -782,7 +779,7 @@ def test_is_one_confirmed_epoch_crossing_adversarial_range_matters(spec, state):
     1. Build chain through epoch 1 with 100% participation
     2. Skip first slot of epoch 2 (empty)
     3. Propose block at slot 17 with parent at slot 15 (epoch crossing)
-    4. Accumulate 85% support for 2 slots
+    4. Accumulate 88% support for 2 slots
     5. Verify block is NOT confirmed (correct adversarial range prevents it)
     6. Verify it WOULD be confirmed with the narrower (incorrect) range
     """
@@ -801,7 +798,7 @@ def test_is_one_confirmed_epoch_crossing_adversarial_range_matters(spec, state):
 
     # Propose epoch-crossing block at slot 17 with parent at slot 15
     block_b = fcr.next_slot_with_block_and_fast_confirmation(
-        parent_root=parent_root, participation_rate=85
+        parent_root=parent_root, participation_rate=88
     )
 
     # Verify epoch crossing
@@ -819,9 +816,9 @@ def test_is_one_confirmed_epoch_crossing_adversarial_range_matters(spec, state):
         f"Block must be after epoch start to have a gap: block.slot={block.slot}, epoch_start={epoch_start}"
     )
 
-    # Accumulate support at 85% for 2 more slots
+    # Accumulate support at 88% for 2 more slots
     for _ in range(2):
-        fcr.attest_and_next_slot_with_fast_confirmation(block_root=block_b, participation_rate=85)
+        fcr.attest_and_next_slot_with_fast_confirmation(block_root=block_b, participation_rate=88)
 
     balance_source = spec.get_current_balance_source(store)
     current_slot = spec.get_current_slot(store)
