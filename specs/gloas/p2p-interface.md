@@ -294,8 +294,8 @@ obtained from the `state.latest_execution_payload_bid`)
 - _[REJECT]_ `block.slot` equals `envelope.slot`.
 - _[REJECT]_ `envelope.builder_index == bid.builder_index`
 - _[REJECT]_ `payload.block_hash == bid.block_hash`
-- _[REJECT]_ `signed_execution_payload_envelope.signature` is valid with respect
-  to the builder's public key.
+- _[REJECT]_ `signed_execution_payload_envelope.signature` is valid as verified
+  by `verify_execution_payload_envelope_signature`.
 
 ###### `payload_attestation_message`
 
@@ -341,8 +341,8 @@ The following validations MUST pass before forwarding the
   `SignedProposerPreferences` associated with `bid.slot`.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
-- _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
-  and the given parent block hash.
+- _[IGNORE]_ this bid is the highest value bid seen for the tuple
+  `(bid.slot, bid.parent_block_hash, bid.parent_block_root)`.
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
   i.e. `can_builder_cover_bid(state, builder_index, amount)` returns `True`.
 - _[IGNORE]_ `bid.parent_block_hash` is the block hash of a known execution
