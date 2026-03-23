@@ -18,23 +18,38 @@ def _compute_epoch_ptc(spec, state, epoch):
 @with_phases([GLOAS])
 @spec_state_test
 @single_phase
-def test_process_ptc_window_rotates_to_next_epoch(spec, state):
-    spec.process_slots(state, state.slot + spec.SLOTS_PER_EPOCH - 1)
+def test_process_ptc_window_shifts_all_three_epochs(spec, state):
+    """
+    Verify that process_ptc_window shifts prev/curr/next correctly
+    and that get_ptc returns the right committees afterwards.
+    """
+    spec.process_slots(state, state.slot + 2 * spec.SLOTS_PER_EPOCH - 1)
 
     current_epoch = spec.get_current_epoch(state)
-    current_epoch_ptc = _compute_epoch_ptc(spec, state, current_epoch)
-    state.ptc_window = current_epoch_ptc + current_epoch_ptc
+    prev_epoch_ptc = _compute_epoch_ptc(spec, state, spec.Epoch(current_epoch - 1))
+    curr_epoch_ptc = _compute_epoch_ptc(spec, state, current_epoch)
+    next_epoch_ptc = _compute_epoch_ptc(spec, state, spec.Epoch(current_epoch + 1))
 
-    next_epoch = spec.Epoch(current_epoch + 1)
-    next_epoch_ptc = _compute_epoch_ptc(spec, state, next_epoch)
+    # Set up the 3-epoch window: [prev, curr, next]
+    state.ptc_window = prev_epoch_ptc + curr_epoch_ptc + next_epoch_ptc
+
+    # Compute what the new next epoch should be after the shift
+    new_next_epoch = spec.Epoch(current_epoch + spec.MIN_SEED_LOOKAHEAD + 1)
+    new_next_epoch_ptc = _compute_epoch_ptc(spec, state, new_next_epoch)
 
     yield from run_epoch_processing_with(spec, state, "process_ptc_window")
 
-    assert list(state.ptc_window[: spec.SLOTS_PER_EPOCH]) == current_epoch_ptc
-    assert list(state.ptc_window[spec.SLOTS_PER_EPOCH :]) == next_epoch_ptc
+    # After shift: [curr, next, new_next]
+    SPE = spec.SLOTS_PER_EPOCH
+    assert list(state.ptc_window[:SPE]) == curr_epoch_ptc
+    assert list(state.ptc_window[SPE : 2 * SPE]) == next_epoch_ptc
+    assert list(state.ptc_window[2 * SPE :]) == new_next_epoch_ptc
 
-    # run_epoch_processing_with does not increment the slot
+    # run_epoch_processing_with does not increment the slot, so do it manually
     state.slot += 1
 
-    assert spec.get_ptc(state, spec.Slot(state.slot - 1)) == current_epoch_ptc[-1]
+    # Now state_epoch = current_epoch + 1
+    # Previous epoch lookup (current_epoch) should hit the first section
+    assert spec.get_ptc(state, spec.Slot(state.slot - 1)) == curr_epoch_ptc[-1]
+    # Current epoch lookup should hit the second section
     assert spec.get_ptc(state, state.slot) == next_epoch_ptc[0]
