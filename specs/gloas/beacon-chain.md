@@ -387,7 +387,9 @@ class BeaconState(Container):
     # [New in Gloas:EIP7732]
     payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     # [New in Gloas:EIP7732]
-    ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD)* SLOTS_PER_EPOCH]
+    ptc_lookbehind: Vector[
+        Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH
+    ]
 ```
 
 ## Dataclasses
@@ -729,7 +731,7 @@ def get_attestation_participation_flag_indices(
 
 #### New `get_ptc`
 
-*Note*: `get_ptc` uses the cached `ptc_lookbehind` for lookups. 
+*Note*: `get_ptc` uses the cached `ptc_lookbehind` for lookups.
 
 ```python
 def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
@@ -888,16 +890,20 @@ def process_ptc_lookbehind(state: BeaconState) -> None:
     """
     Update the cached PTC window.
     """
-    # Shift out PTC members in the first epoch
-    last_epoch_start = len(state.ptc_lookbehind) - SLOTS_PER_EPOCH
-    state.ptc_lookbehind[:last_epoch_start] = state.ptc_lookbehind[SLOTS_PER_EPOCH:]
-    # Fill in the last epoch with the PTC for the epoch that starts after this boundary
+    prev = 0
+    curr = SLOTS_PER_EPOCH
+    next = 2 * SLOTS_PER_EPOCH
+
+    # Previous epoch: shift in PTC from the current epoch
+    state.ptc_lookbehind[prev:curr] = state.ptc_lookbehind[curr:next]
+    # Current epoch: shift in PTC from the next epoch
+    state.ptc_lookbehind[curr:next] = state.ptc_lookbehind[next:]
+    # Next epoch: compute PTC for the epoch
     next_epoch = Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1)
     start_slot = compute_start_slot_at_epoch(next_epoch)
-    last_epoch_committees = [
+    state.ptc_lookbehind[next:] = [
         compute_ptc(state, Slot(slot)) for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH)
     ]
-    state.ptc_lookbehind[last_epoch_start:] = last_epoch_committees
 ```
 
 ### Block processing
