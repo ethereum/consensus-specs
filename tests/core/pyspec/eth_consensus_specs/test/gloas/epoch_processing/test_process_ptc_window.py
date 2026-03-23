@@ -10,7 +10,7 @@ from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processi
 @with_phases([GLOAS])
 @spec_state_test
 @single_phase
-def test_process_ptc_window_shifts_all_three_epochs(spec, state):
+def test_process_ptc_window__shifts_all_epochs(spec, state):
     """
     Verify that process_ptc_window shifts prev/curr/next correctly
     and that get_ptc returns the right committees afterwards.
@@ -18,8 +18,9 @@ def test_process_ptc_window_shifts_all_three_epochs(spec, state):
     spec.process_slots(state, state.slot + 2 * spec.SLOTS_PER_EPOCH - 1)
 
     SPE = spec.SLOTS_PER_EPOCH
+    # Save current and next epoch sections before the shift
     curr_epoch_ptc = list(state.ptc_window[SPE : 2 * SPE])
-    next_epoch_ptc = list(state.ptc_window[2 * SPE :])
+    next_epoch_ptc = list(state.ptc_window[2 * SPE : 3 * SPE])
 
     yield from run_epoch_processing_with(spec, state, "process_ptc_window")
 

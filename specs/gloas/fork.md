@@ -35,23 +35,24 @@ Warning: this configuration is not definitive.
 ```python
 def initialize_ptc_window(
     state: BeaconState,
-) -> Vector[Vector[ValidatorIndex, PTC_SIZE], 3 * SLOTS_PER_EPOCH]:
+) -> Vector[Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]:
     """
     Return the cached PTC window starting from the current epoch.
     Used to initialize the ``ptc_window`` field in the beacon state at genesis and after forks.
     """
-    previous_epoch_ptc = [
+    empty_previous_epoch = [
         Vector[ValidatorIndex, PTC_SIZE]([ValidatorIndex(0) for _ in range(PTC_SIZE)])
         for _ in range(SLOTS_PER_EPOCH)
     ]
+
+    ptcs = []
     current_epoch = get_current_epoch(state)
-    current_start = compute_start_slot_at_epoch(current_epoch)
-    current_epoch_ptc = [
-        compute_ptc(state, Slot(current_start + i)) for i in range(SLOTS_PER_EPOCH)
-    ]
-    next_start = compute_start_slot_at_epoch(Epoch(current_epoch + 1))
-    next_epoch_ptc = [compute_ptc(state, Slot(next_start + i)) for i in range(SLOTS_PER_EPOCH)]
-    return previous_epoch_ptc + current_epoch_ptc + next_epoch_ptc
+    for e in range(1 + MIN_SEED_LOOKAHEAD):
+        epoch = Epoch(current_epoch + e)
+        start_slot = compute_start_slot_at_epoch(epoch)
+        ptcs += [compute_ptc(state, Slot(start_slot + i)) for i in range(SLOTS_PER_EPOCH)]
+
+    return empty_previous_epoch + ptcs
 ```
 
 ### New `onboard_builders_from_pending_deposits`

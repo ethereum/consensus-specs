@@ -387,7 +387,7 @@ class BeaconState(Container):
     # [New in Gloas:EIP7732]
     payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     # [New in Gloas:EIP7732]
-    ptc_window: Vector[Vector[ValidatorIndex, PTC_SIZE], 3 * SLOTS_PER_EPOCH]
+    ptc_window: Vector[Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]
 ```
 
 ## Dataclasses
@@ -741,7 +741,7 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     if epoch < state_epoch:
         assert epoch + 1 == state_epoch
         return state.ptc_window[slot % SLOTS_PER_EPOCH]
-    assert epoch <= state_epoch + 1
+    assert epoch <= state_epoch + MIN_SEED_LOOKAHEAD
     offset = (epoch - state_epoch + 1) * SLOTS_PER_EPOCH
     return state.ptc_window[offset + slot % SLOTS_PER_EPOCH]
 ```
@@ -888,18 +888,12 @@ def process_ptc_window(state: BeaconState) -> None:
     """
     Update the cached PTC window.
     """
-    prev = 0
-    curr = 1 * SLOTS_PER_EPOCH
-    next = 2 * SLOTS_PER_EPOCH
-
-    # Previous epoch: shift in PTC from the current epoch
-    state.ptc_window[prev:curr] = state.ptc_window[curr:next]
-    # Current epoch: shift in PTC from the next epoch
-    state.ptc_window[curr:next] = state.ptc_window[next:]
-    # Next epoch: compute PTC for the epoch
-    next_epoch = Epoch(get_current_epoch(state) + 2)
+    # Shift all epochs forward by one
+    state.ptc_window[: len(state.ptc_window) - SLOTS_PER_EPOCH] = state.ptc_window[SLOTS_PER_EPOCH:]
+    # Fill in the last epoch
+    next_epoch = Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1)
     start_slot = compute_start_slot_at_epoch(next_epoch)
-    state.ptc_window[next:] = [
+    state.ptc_window[len(state.ptc_window) - SLOTS_PER_EPOCH :] = [
         compute_ptc(state, Slot(slot)) for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH)
     ]
 ```
