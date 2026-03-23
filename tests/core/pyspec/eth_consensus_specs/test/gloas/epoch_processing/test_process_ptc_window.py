@@ -18,20 +18,20 @@ def _compute_epoch_ptc(spec, state, epoch):
 @with_phases([GLOAS])
 @spec_state_test
 @single_phase
-def test_process_ptc_lookbehind_rotates_to_next_epoch(spec, state):
+def test_process_ptc_window_rotates_to_next_epoch(spec, state):
     spec.process_slots(state, state.slot + spec.SLOTS_PER_EPOCH - 1)
 
     current_epoch = spec.get_current_epoch(state)
     current_epoch_ptc = _compute_epoch_ptc(spec, state, current_epoch)
-    state.ptc_lookbehind = current_epoch_ptc + current_epoch_ptc
+    state.ptc_window = current_epoch_ptc + current_epoch_ptc
 
     next_epoch = spec.Epoch(current_epoch + 1)
     next_epoch_ptc = _compute_epoch_ptc(spec, state, next_epoch)
 
-    yield from run_epoch_processing_with(spec, state, "process_ptc_lookbehind")
+    yield from run_epoch_processing_with(spec, state, "process_ptc_window")
 
-    assert list(state.ptc_lookbehind[: spec.SLOTS_PER_EPOCH]) == current_epoch_ptc
-    assert list(state.ptc_lookbehind[spec.SLOTS_PER_EPOCH :]) == next_epoch_ptc
+    assert list(state.ptc_window[: spec.SLOTS_PER_EPOCH]) == current_epoch_ptc
+    assert list(state.ptc_window[spec.SLOTS_PER_EPOCH :]) == next_epoch_ptc
 
     # run_epoch_processing_with does not increment the slot
     state.slot += 1
