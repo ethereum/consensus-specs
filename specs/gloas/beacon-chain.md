@@ -387,7 +387,7 @@ class BeaconState(Container):
     # [New in Gloas:EIP7732]
     payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     # [New in Gloas:EIP7732]
-    ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], 2 * SLOTS_PER_EPOCH]
+    ptc_lookbehind: Vector[Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD)* SLOTS_PER_EPOCH]
 ```
 
 ## Dataclasses
@@ -729,8 +729,7 @@ def get_attestation_participation_flag_indices(
 
 #### New `get_ptc`
 
-*Note*: `get_ptc` uses the cached `ptc_lookbehind` for previous and current
-epoch lookups, and computes next-epoch PTC assignments on demand.
+*Note*: `get_ptc` uses the cached `ptc_lookbehind` for lookups. 
 
 ```python
 def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
@@ -739,13 +738,12 @@ def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     """
     epoch = compute_epoch_at_slot(slot)
     state_epoch = get_current_epoch(state)
-    assert epoch <= state_epoch + 1
     if epoch < state_epoch:
         assert epoch + 1 == state_epoch
         return state.ptc_lookbehind[slot % SLOTS_PER_EPOCH]
-    if epoch == state_epoch:
-        return state.ptc_lookbehind[SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH]
-    return compute_ptc(state, slot)
+    assert epoch <= state_epoch + MIN_SEED_LOOKAHEAD
+    offset = (epoch - state_epoch + 1) * SLOTS_PER_EPOCH
+    return state.ptc_lookbehind[offset + slot % SLOTS_PER_EPOCH]
 ```
 
 #### New `get_indexed_payload_attestation`
@@ -888,17 +886,18 @@ def process_builder_pending_payments(state: BeaconState) -> None:
 ```python
 def process_ptc_lookbehind(state: BeaconState) -> None:
     """
-    Update the cached PTC window for the previous and current epochs.
+    Update the cached PTC window.
     """
     # Shift out PTC members in the first epoch
-    state.ptc_lookbehind[:SLOTS_PER_EPOCH] = state.ptc_lookbehind[SLOTS_PER_EPOCH:]
+    last_epoch_start = len(state.ptc_lookbehind) - SLOTS_PER_EPOCH
+    state.ptc_lookbehind[:last_epoch_start] = state.ptc_lookbehind[SLOTS_PER_EPOCH:]
     # Fill in the last epoch with the PTC for the epoch that starts after this boundary
-    next_epoch = Epoch(get_current_epoch(state) + 1)
+    next_epoch = Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1)
     start_slot = compute_start_slot_at_epoch(next_epoch)
     last_epoch_committees = [
         compute_ptc(state, Slot(slot)) for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH)
     ]
-    state.ptc_lookbehind[SLOTS_PER_EPOCH:] = last_epoch_committees
+    state.ptc_lookbehind[last_epoch_start:] = last_epoch_committees
 ```
 
 ### Block processing
