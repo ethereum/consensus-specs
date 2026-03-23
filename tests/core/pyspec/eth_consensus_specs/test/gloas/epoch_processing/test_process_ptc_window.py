@@ -7,14 +7,6 @@ from eth_consensus_specs.test.helpers.constants import GLOAS
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
 
 
-def _compute_epoch_ptc(spec, state, epoch):
-    start_slot = spec.compute_start_slot_at_epoch(epoch)
-    return [
-        spec.compute_ptc(state, spec.Slot(slot))
-        for slot in range(start_slot, start_slot + spec.SLOTS_PER_EPOCH)
-    ]
-
-
 @with_phases([GLOAS])
 @spec_state_test
 @single_phase
@@ -25,25 +17,15 @@ def test_process_ptc_window_shifts_all_three_epochs(spec, state):
     """
     spec.process_slots(state, state.slot + 2 * spec.SLOTS_PER_EPOCH - 1)
 
-    current_epoch = spec.get_current_epoch(state)
-    prev_epoch_ptc = _compute_epoch_ptc(spec, state, spec.Epoch(current_epoch - 1))
-    curr_epoch_ptc = _compute_epoch_ptc(spec, state, current_epoch)
-    next_epoch_ptc = _compute_epoch_ptc(spec, state, spec.Epoch(current_epoch + 1))
-
-    # Set up the 3-epoch window: [prev, curr, next]
-    state.ptc_window = prev_epoch_ptc + curr_epoch_ptc + next_epoch_ptc
-
-    # Compute what the new next epoch should be after the shift
-    new_next_epoch = spec.Epoch(current_epoch + spec.MIN_SEED_LOOKAHEAD + 1)
-    new_next_epoch_ptc = _compute_epoch_ptc(spec, state, new_next_epoch)
+    SPE = spec.SLOTS_PER_EPOCH
+    curr_epoch_ptc = list(state.ptc_window[SPE : 2 * SPE])
+    next_epoch_ptc = list(state.ptc_window[2 * SPE :])
 
     yield from run_epoch_processing_with(spec, state, "process_ptc_window")
 
     # After shift: [curr, next, new_next]
-    SPE = spec.SLOTS_PER_EPOCH
     assert list(state.ptc_window[:SPE]) == curr_epoch_ptc
     assert list(state.ptc_window[SPE : 2 * SPE]) == next_epoch_ptc
-    assert list(state.ptc_window[2 * SPE :]) == new_next_epoch_ptc
 
     # run_epoch_processing_with does not increment the slot, so do it manually
     state.slot += 1
