@@ -46,9 +46,23 @@ Note: these options can be used together, like:
 make test preset=minimal k=test_verify_kzg_proof fork=deneb
 ```
 
-### How to view code coverage report
+### How to generate coverage reports
 
-Run `make coverage` to run all tests and open the html code coverage report.
+Run `make test coverage=true` to enable coverage tracking and generate
+reports.
+
+Reports are saved at:
+
+- **HTML report**: `tests/core/pyspec/.htmlcov/index.html`
+- **JSON report**: `tests/core/pyspec/.htmlcov/coverage.json`
+
+To open the HTML report in a browser:
+
+```shell
+xdg-open tests/core/pyspec/.htmlcov/index.html   # Linux
+open tests/core/pyspec/.htmlcov/index.html       # macOS
+```
+
 
 ## Contributing
 
