@@ -259,8 +259,8 @@ def get_genesis_forkchoice_store_and_block(spec, genesis_state):
     return store, genesis_block
 
 
-def get_block_file_name(block):
-    return f"block_{encode_hex(block.hash_tree_root())}"
+def get_block_file_name(signed_block):
+    return f"block_{encode_hex(signed_block.message.hash_tree_root())}"
 
 
 def get_attestation_file_name(attestation):
@@ -492,7 +492,11 @@ def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=Fa
         "proposer_boost_root": encode_hex(store.proposer_boost_root),
     }
 
-    if with_viable_for_head_weights:
+    if is_post_gloas(spec):
+        head = spec.get_head(store)
+        checks["head_payload_status"] = int(head.payload_status)
+
+    if with_viable_for_head_weights and not is_post_gloas(spec):
         filtered_block_roots = spec.get_filtered_block_tree(store).keys()
         leaves_viable_for_head = [
             root
