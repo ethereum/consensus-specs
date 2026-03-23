@@ -28,7 +28,7 @@ Test is_confirmed_chain_safe
 )
 @spec_test
 @single_phase
-def test_reconfirmation_passes_wtih_empty_slots_prior_first_block(spec, state):
+def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
     """
     1. Build until last slot of epoch 2 with 100% participation
     2. Leave last slot of epoch 2 empty
