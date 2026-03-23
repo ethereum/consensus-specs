@@ -26,7 +26,7 @@ dependencies = [
 [project.optional-dependencies]
 test = [
   "ckzg==2.1.7",
-  "deepdiff==8.6.1",
+  "deepdiff==8.6.2",
   "eth-hash[pycryptodome]==0.7.1",
   "psutil==7.2.2",
   "pytest-cov==7.0.0",
