@@ -48,8 +48,7 @@ make test preset=minimal k=test_verify_kzg_proof fork=deneb
 
 ### How to generate coverage reports
 
-Run `make test coverage=true` to enable coverage tracking and generate
-reports.
+Run `make test coverage=true` to enable coverage tracking and generate reports.
 
 Reports are saved at:
 
@@ -62,7 +61,6 @@ To open the HTML report in a browser:
 xdg-open tests/core/pyspec/.htmlcov/index.html   # Linux
 open tests/core/pyspec/.htmlcov/index.html       # macOS
 ```
-
 
 ## Contributing
 

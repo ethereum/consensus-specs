@@ -290,8 +290,6 @@ def single_phase(fn):
     return entry
 
 
-
-
 is_pytest = True
 is_generator = False
 
