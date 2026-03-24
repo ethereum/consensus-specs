@@ -123,9 +123,10 @@ At the beginning of each epoch, a validator MAY broadcast
 `SignedProposerPreferences` messages to the `proposer_preferences` gossip topic
 for each slot returned by `get_upcoming_proposal_slots(state, validator_index)`.
 This allows builders to construct execution payloads with the validator's
-preferred `fee_recipient` and `gas_limit`. If a validator does not broadcast a
-`SignedProposerPreferences` message, this implies that the validator will not
-accept any trustless bids for that slot.
+preferred `fee_recipient` and `gas_limit`. Broadcasting these messages is
+recommended so builders can match these preferences, though trustless bids for a
+slot may still arrive even if no `SignedProposerPreferences` message was
+broadcast for that slot.
 
 ```python
 def get_upcoming_proposal_slots(
