@@ -76,14 +76,28 @@ def has_explicit_fork_version(spec, fork) -> bool:
     return hasattr(spec.config, fork.upper() + "_FORK_VERSION")
 
 
-def get_fork_version(spec, fork):
+def get_versioned_fork(spec, fork):
     while fork != PHASE0 and not has_explicit_fork_version(spec, fork):
         fork = PREVIOUS_FORK_OF[fork]
+
+    return fork
+
+
+def get_fork_version(spec, fork):
+    fork = get_versioned_fork(spec, fork)
 
     if fork == PHASE0:
         return spec.config.GENESIS_FORK_VERSION
 
     return getattr(spec.config, fork.upper() + "_FORK_VERSION")
+
+
+def get_previous_fork_version(spec, fork):
+    versioned_fork = get_versioned_fork(spec, fork)
+    if versioned_fork == PHASE0:
+        return spec.config.GENESIS_FORK_VERSION
+
+    return get_fork_version(spec, PREVIOUS_FORK_OF[versioned_fork])
 
 
 def get_fork_epoch(spec, fork):
@@ -97,8 +111,6 @@ def get_spec_for_fork_version(spec, fork_version, phases):
     if phases is None:
         return spec
     for fork in [fork for fork in phases if is_post_fork(spec.fork, fork)]:
-        if not has_explicit_fork_version(spec, fork):
-            continue
         if fork_version == get_fork_version(spec, fork):
             return phases[fork]
     raise ValueError(f"Unknown fork version {fork_version}")

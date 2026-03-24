@@ -19,7 +19,6 @@ from eth_consensus_specs.test.helpers.consolidations import (
 from eth_consensus_specs.test.helpers.constants import (
     DENEB,
     POST_FORK_OF,
-    PREVIOUS_FORK_OF,
 )
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_deposit_request,
@@ -33,6 +32,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.forks import (
     get_fork_version,
     get_next_fork_transition,
+    get_previous_fork_version,
     is_post_bellatrix,
     is_post_electra,
     is_post_gloas,
@@ -203,8 +203,7 @@ def do_fork(
 
     assert state.fork.epoch == fork_epoch
 
-    previous_fork = PREVIOUS_FORK_OF[post_spec.fork]
-    previous_version = get_fork_version(post_spec, previous_fork)
+    previous_version = get_previous_fork_version(post_spec, post_spec.fork)
     current_version = get_fork_version(post_spec, post_spec.fork)
 
     assert state.fork.previous_version == previous_version
@@ -237,8 +236,7 @@ def do_fork_generate(
 
     assert state.fork.epoch == fork_epoch
 
-    previous_fork = PREVIOUS_FORK_OF[post_spec.fork]
-    previous_version = get_fork_version(post_spec, previous_fork)
+    previous_version = get_previous_fork_version(post_spec, post_spec.fork)
     current_version = get_fork_version(post_spec, post_spec.fork)
 
     assert state.fork.previous_version == previous_version
