@@ -15,7 +15,6 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 - [Containers](#containers)
   - [`ProofByRootIdentifier`](#proofbyrootidentifier)
 - [Helpers](#helpers)
-  - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [New `compute_max_request_execution_proofs`](#new-compute_max_request_execution_proofs)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
@@ -53,30 +52,6 @@ class ProofByRootIdentifier(Container):
 ```
 
 ## Helpers
-
-### Modified `compute_fork_version`
-
-```python
-def compute_fork_version(epoch: Epoch) -> Version:
-    """
-    Return the fork version at the given ``epoch``.
-    """
-    if epoch >= EIP8025_FORK_EPOCH:
-        return EIP8025_FORK_VERSION
-    if epoch >= FULU_FORK_EPOCH:
-        return FULU_FORK_VERSION
-    if epoch >= ELECTRA_FORK_EPOCH:
-        return ELECTRA_FORK_VERSION
-    if epoch >= DENEB_FORK_EPOCH:
-        return DENEB_FORK_VERSION
-    if epoch >= CAPELLA_FORK_EPOCH:
-        return CAPELLA_FORK_VERSION
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
-```
 
 ### New `compute_max_request_execution_proofs`
 

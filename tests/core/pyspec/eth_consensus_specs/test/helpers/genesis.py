@@ -8,6 +8,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
     compute_el_header_block_hash,
 )
 from eth_consensus_specs.test.helpers.forks import (
+    get_fork_version,
     is_post_altair,
     is_post_bellatrix,
     is_post_capella,
@@ -145,11 +146,8 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if spec.fork != PHASE0:
         previous_fork = PREVIOUS_FORK_OF[spec.fork]
-        if previous_fork == PHASE0:
-            previous_version = spec.config.GENESIS_FORK_VERSION
-        else:
-            previous_version = getattr(spec.config, f"{previous_fork.upper()}_FORK_VERSION")
-        current_version = getattr(spec.config, f"{spec.fork.upper()}_FORK_VERSION")
+        previous_version = get_fork_version(spec, previous_fork)
+        current_version = get_fork_version(spec, spec.fork)
 
     genesis_block_body = spec.BeaconBlockBody()
 
