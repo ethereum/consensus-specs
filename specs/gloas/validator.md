@@ -119,10 +119,11 @@ previous forks as follows
 
 #### Broadcasting `SignedProposerPreferences`
 
-At the beginning of each epoch, a validator MAY broadcast
-`SignedProposerPreferences` messages to the `proposer_preferences` gossip topic
-for each slot returned by `get_upcoming_proposal_slots(state, validator_index)`.
-This allows builders to construct execution payloads with the validator's
+A validator MAY broadcast `SignedProposerPreferences` messages to the
+`proposer_preferences` gossip topic for each slot returned by
+`get_upcoming_proposal_slots(state, validator_index)`. These include any
+remaining proposal slots in the current epoch and all proposal slots in the next
+epoch. This allows builders to construct execution payloads with the validator's
 preferred `fee_recipient` and `gas_limit`. If a validator does not broadcast a
 `SignedProposerPreferences` message, this implies that the validator will not
 accept any trustless bids for that slot.
@@ -132,13 +133,18 @@ def get_upcoming_proposal_slots(
     state: BeaconState, validator_index: ValidatorIndex
 ) -> Sequence[Slot]:
     """
-    Get the slots in the next epoch for which ``validator_index`` is proposing.
+    Get the remaining slots in the current epoch and the slots in the next
+    epoch for which ``validator_index`` is proposing.
     """
-    return [
-        Slot(compute_start_slot_at_epoch(get_current_epoch(state) + Epoch(1)) + offset)
-        for offset, proposer_index in enumerate(state.proposer_lookahead[SLOTS_PER_EPOCH:])
-        if validator_index == proposer_index
-    ]
+    current_epoch_start_slot = compute_start_slot_at_epoch(get_current_epoch(state))
+    upcoming_slots = []
+    for offset, proposer_index in enumerate(state.proposer_lookahead):
+        slot = Slot(current_epoch_start_slot + offset)
+        if slot < state.slot:
+            continue
+        if validator_index == proposer_index:
+            upcoming_slots.append(slot)
+    return upcoming_slots
 ```
 
 To construct each `SignedProposerPreferences`:
