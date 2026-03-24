@@ -51,8 +51,8 @@ A validator may be a member of the new Payload Timeliness Committee (PTC) for a
 given slot. To check for PTC assignments, use
 `get_ptc_assignment(state, epoch, validator_index)` where
 `epoch <= get_current_epoch(state) + MIN_SEED_LOOKAHEAD`, as PTC committee
-selection is only stable within the context of the current and next epochs the
-lookahead.
+selection is only stable within the context of the current and next epochs in
+the lookahead.
 
 ```python
 def get_ptc_assignment(
