@@ -137,14 +137,14 @@ def get_upcoming_proposal_slots(
     epoch for which ``validator_index`` is proposing.
     """
     current_epoch_start_slot = compute_start_slot_at_epoch(get_current_epoch(state))
-    upcoming_slots = []
+    upcoming_proposal_slots = []
     for offset, proposer_index in enumerate(state.proposer_lookahead):
         slot = Slot(current_epoch_start_slot + offset)
         if slot < state.slot:
             continue
         if validator_index == proposer_index:
-            upcoming_slots.append(slot)
-    return upcoming_slots
+            upcoming_proposal_slots.append(slot)
+    return upcoming_proposal_slots
 ```
 
 To construct each `SignedProposerPreferences`:
