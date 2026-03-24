@@ -330,14 +330,16 @@ The following validations MUST pass before forwarding the
 `bid = signed_execution_payload_bid.message`:
 
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
-- _[IGNORE]_ the `SignedProposerPreferences` where `preferences.proposal_slot`
-  is equal to `bid.slot` has been seen.
 - _[REJECT]_ `bid.builder_index` is a valid/active builder index -- i.e.
   `is_active_builder(state, bid.builder_index)` returns `True`.
 - _[REJECT]_ `bid.execution_payment` is zero.
-- _[REJECT]_ `bid.fee_recipient` matches the `fee_recipient` from the proposer's
+- _[REJECT]_ if the `SignedProposerPreferences` where
+  `preferences.proposal_slot` is equal to `bid.slot` has been seen,
+  `bid.fee_recipient` matches the `fee_recipient` from the proposer's
   `SignedProposerPreferences` associated with `bid.slot`.
-- _[REJECT]_ `bid.gas_limit` matches the `gas_limit` from the proposer's
+- _[REJECT]_ if the `SignedProposerPreferences` where
+  `preferences.proposal_slot` is equal to `bid.slot` has been seen,
+  `bid.gas_limit` matches the `gas_limit` from the proposer's
   `SignedProposerPreferences` associated with `bid.slot`.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
