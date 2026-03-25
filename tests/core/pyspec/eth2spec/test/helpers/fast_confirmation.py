@@ -630,7 +630,11 @@ class Slashing(PhaseRun):
             count = len(supporters) * self.percentage // 100
             participants = supporters[:count]
 
-        return fcr.apply_attester_slashing(slashing_indices=participants)
+        # Handle the case when there are no validators satisfying the above conditions
+        if len(participants) > 0:
+            return fcr.apply_attester_slashing(slashing_indices=participants)
+        else:
+            return []
 
 
 @dataclass
