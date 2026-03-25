@@ -49,9 +49,10 @@ validator" to implement Gloas.
 
 A validator may be a member of the new Payload Timeliness Committee (PTC) for a
 given slot. To check for PTC assignments, use
-`get_ptc_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`,
-as PTC committee selection is only stable within the context of the current and
-next epoch.
+`get_ptc_assignment(state, epoch, validator_index)` where
+`epoch <= get_current_epoch(state) + MIN_SEED_LOOKAHEAD`, as PTC committee
+selection is only stable within the context of the current and next epochs in
+the lookahead.
 
 ```python
 def get_ptc_assignment(
@@ -62,8 +63,8 @@ def get_ptc_assignment(
     index ``validator_index`` is a member of the PTC. Returns None if no
     assignment is found.
     """
-    next_epoch = Epoch(get_current_epoch(state) + 1)
-    assert epoch <= next_epoch
+    max_epoch = Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD)
+    assert epoch <= max_epoch
 
     start_slot = compute_start_slot_at_epoch(epoch)
     for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
