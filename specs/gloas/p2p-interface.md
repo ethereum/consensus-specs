@@ -377,23 +377,35 @@ The following validations MUST pass before forwarding the
 `signed_proposer_preferences` on the network, assuming the alias
 `preferences = signed_proposer_preferences.message`:
 
-- _[IGNORE]_ `preferences.proposal_slot` is in the next epoch -- i.e.
-  `compute_epoch_at_slot(preferences.proposal_slot) == get_current_epoch(state) + 1`.
+- _[IGNORE]_ `preferences.proposal_slot` is in the current or next epoch -- i.e.
+  `compute_epoch_at_slot(preferences.proposal_slot)` is in
+  `[get_current_epoch(state), get_current_epoch(state) + 1]`.
+- _[IGNORE]_ `preferences.proposal_slot` has not already passed -- i.e.
+  `preferences.proposal_slot > state.slot`.
 - _[REJECT]_ `preferences.validator_index` is present at the correct slot in the
-  next epoch's portion of `state.proposer_lookahead` -- i.e.
+  current or next epoch's portion of `state.proposer_lookahead` -- i.e.
   `is_valid_proposal_slot(state, preferences)` returns `True`.
 - _[IGNORE]_ The `signed_proposer_preferences` is the first valid message
   received from the validator with index `preferences.validator_index` and the
-  given slot `preferences.slot`.
+  given slot `preferences.proposal_slot`.
 - _[REJECT]_ `signed_proposer_preferences.signature` is valid with respect to
   the validator's public key.
 
 ```python
 def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences) -> bool:
     """
-    Check if the validator is the proposer for the given slot in the next epoch.
+    Check if the validator is the proposer for the given slot in the current or
+    next epoch.
     """
-    index = SLOTS_PER_EPOCH + preferences.proposal_slot % SLOTS_PER_EPOCH
+    current_epoch = get_current_epoch(state)
+    proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
+    if proposal_epoch < current_epoch:
+        return False
+    if proposal_epoch > current_epoch + Epoch(1):
+        return False
+
+    index = (proposal_epoch - current_epoch) * SLOTS_PER_EPOCH
+    index += preferences.proposal_slot % SLOTS_PER_EPOCH
     return state.proposer_lookahead[index] == preferences.validator_index
 ```
 
