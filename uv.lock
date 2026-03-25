@@ -499,7 +499,7 @@ requires-dist = [
     { name = "deepdiff", marker = "extra == 'test'", specifier = "==8.6.2" },
     { name = "eth-hash", extras = ["pycryptodome"], marker = "extra == 'test'", specifier = "==0.7.1" },
     { name = "eth-remerkleable", specifier = "==0.1.29" },
-    { name = "eth-utils", specifier = "==6.0.0b1" },
+    { name = "eth-utils", specifier = "==6.0.0" },
     { name = "frozendict", specifier = "==2.4.7" },
     { name = "lru-dict", specifier = "==1.4.1" },
     { name = "marko", specifier = "==2.2.2" },
@@ -572,7 +572,7 @@ wheels = [
 
 [[package]]
 name = "eth-utils"
-version = "6.0.0b1"
+version = "6.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cytoolz", marker = "implementation_name == 'cpython'" },
@@ -581,9 +581,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "toolz", marker = "implementation_name == 'pypy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/eb/3582980414421b07bbe871ba967449b68bc89d42545360b3a9b20ee6e3bf/eth_utils-6.0.0b1.tar.gz", hash = "sha256:c0dab3f6cfb56cfe4b0067bf624f06fa6bcbaf932af3e483641be5ef6f57c70a", size = 123454, upload-time = "2025-12-17T20:04:03.165Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/1b/0b8548da7b31eba87ed58bca1d0de5dcb13a6c113e02c09019ec5a6716ed/eth_utils-6.0.0.tar.gz", hash = "sha256:eb54b2f82dd300d3142c49a89da195e823f5e5284d43203593f87c67bad92a96", size = 123457, upload-time = "2026-03-25T17:11:51.433Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/17/45/67cf6af974645bb9e6672cd3f7679848bf1ae62b15e7e451cc35e3658aaa/eth_utils-6.0.0b1-py3-none-any.whl", hash = "sha256:88cbaddf089340f03416ad2c07a6f2b4159e0e773fc0fd4baeb4c89082d44962", size = 102497, upload-time = "2025-12-17T20:03:44.367Z" },
+    { url = "https://files.pythonhosted.org/packages/53/45/a20b907227b9d1aea2e36f7b12818d055629ca9bc65fc282b45738f28ca3/eth_utils-6.0.0-py3-none-any.whl", hash = "sha256:63cf48ee32c45541cb5748751909a8345c470432fb6f0fed4bd7c53fd6400469", size = 102473, upload-time = "2026-03-25T17:11:49.953Z" },
 ]
 
 [[package]]
