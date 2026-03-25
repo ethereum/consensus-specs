@@ -12,7 +12,7 @@ requires-python = ">=3.11, <3.15"
 urls = { homepage = "https://github.com/ethereum/consensus-specs" }
 dependencies = [
   "eth-remerkleable==0.1.29",
-  "eth-utils==6.0.0b1",
+  "eth-utils==6.0.0",
   "frozendict==2.4.7",
   "lru-dict==1.4.1",
   "marko==2.2.2",
