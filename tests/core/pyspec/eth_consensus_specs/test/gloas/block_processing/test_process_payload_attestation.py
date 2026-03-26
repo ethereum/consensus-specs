@@ -126,7 +126,8 @@ def _compute_selection_with_acceptance_iterations(spec, state, indices, seed, si
     i = 0
     while len(selected) < size:
         candidate_index = indices[i % total]
-        if spec.compute_balance_weighted_acceptance(state, candidate_index, seed, spec.uint64(i)):
+        effective_balance = state.validators[candidate_index].effective_balance
+        if spec.compute_balance_weighted_acceptance(effective_balance, seed, spec.uint64(i)):
             selected.append(candidate_index)
             accepted_at.append(i)
         i += 1

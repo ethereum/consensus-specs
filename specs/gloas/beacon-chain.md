@@ -581,6 +581,7 @@ def compute_balance_weighted_selection(
     """
     total = uint64(len(indices))
     assert total > 0
+    effective_balances = [state.validators[index].effective_balance for index in indices]
     selected: List[ValidatorIndex] = []
     i = uint64(0)
     while len(selected) < size:
@@ -588,7 +589,7 @@ def compute_balance_weighted_selection(
         if shuffle_indices:
             next_index = compute_shuffled_index(next_index, total, seed)
         candidate_index = indices[next_index]
-        if compute_balance_weighted_acceptance(state, candidate_index, seed, i):
+        if compute_balance_weighted_acceptance(effective_balances[next_index], seed, i):
             selected.append(candidate_index)
         i += 1
     return selected
@@ -597,18 +598,15 @@ def compute_balance_weighted_selection(
 #### New `compute_balance_weighted_acceptance`
 
 ```python
-def compute_balance_weighted_acceptance(
-    state: BeaconState, index: ValidatorIndex, seed: Bytes32, i: uint64
-) -> bool:
+def compute_balance_weighted_acceptance(effective_balance: Gwei, seed: Bytes32, i: uint64) -> bool:
     """
-    Return whether to accept the selection of the validator ``index``, with probability
-    proportional to its ``effective_balance``, and randomness given by ``seed`` and ``i``.
+    Return whether to accept the selection of a validator with the given ``effective_balance``,
+    with probability proportional to its balance, and randomness given by ``seed`` and ``i``.
     """
     MAX_RANDOM_VALUE = 2**16 - 1
     random_bytes = hash(seed + uint_to_bytes(i // 16))
     offset = i % 16 * 2
     random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
-    effective_balance = state.validators[index].effective_balance
     return effective_balance * MAX_RANDOM_VALUE >= MAX_EFFECTIVE_BALANCE_ELECTRA * random_value
 ```
 
