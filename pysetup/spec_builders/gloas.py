@@ -36,10 +36,4 @@ def retrieve_column_sidecars_and_kzg_commitments(
 ) -> tuple[Sequence[DataColumnSidecar], Sequence[KZGCommitment]]:
     # pylint: disable=unused-argument
     return [], []
-
-
-_compute_ptc = compute_ptc
-compute_ptc = cache_this(
-    lambda state, slot: (state.validators.hash_tree_root(), state.randao_mixes.hash_tree_root(), slot),
-    _compute_ptc, lru_size=SLOTS_PER_EPOCH * 4)
 """
