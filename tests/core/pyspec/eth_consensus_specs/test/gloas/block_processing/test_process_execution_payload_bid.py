@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     expect_assertion_error,
     spec_state_test,
     with_gloas_and_later,
@@ -176,7 +175,6 @@ def test_process_execution_payload_bid_valid_self_build(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_bid_valid_builder(spec, state):
     """
     Test valid builder scenario with registered builder and non-zero value

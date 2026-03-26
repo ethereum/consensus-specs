@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     spec_state_test,
     with_electra_and_later,
     with_presets,
@@ -39,7 +38,6 @@ def test_invalid_attestation_data_index_not_zero(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-@always_bls
 def test_invalid_committee_index(spec, state):
     """
     EIP-7549 test
@@ -113,7 +111,6 @@ def test_invalid_nonset_multiple_committee_bits(spec, state):
 @with_electra_and_later
 @spec_state_test
 @with_presets([MINIMAL], "need multiple committees per slot")
-@always_bls
 def test_multiple_committees(spec, state):
     """
     EIP-7549 test
@@ -137,7 +134,6 @@ def test_multiple_committees(spec, state):
 @with_electra_and_later
 @spec_state_test
 @with_presets([MINIMAL], "need multiple committees per slot")
-@always_bls
 def test_one_committee_with_gap(spec, state):
     """
     EIP-7549 test

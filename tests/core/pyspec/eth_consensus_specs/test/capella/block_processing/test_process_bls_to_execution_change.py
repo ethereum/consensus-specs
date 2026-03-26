@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     expect_assertion_error,
     spec_state_test,
     with_capella_and_later,
@@ -193,7 +192,6 @@ def test_invalid_incorrect_from_bls_pubkey(spec, state):
 
 @with_capella_and_later
 @spec_state_test
-@always_bls
 def test_invalid_bad_signature(spec, state):
     signed_address_change = get_signed_address_change(spec, state)
     # Mutate signature
@@ -206,7 +204,6 @@ def test_invalid_bad_signature(spec, state):
 
 @with_capella_and_later
 @spec_state_test
-@always_bls
 def test_genesis_fork_version(spec, state):
     signed_address_change = get_signed_address_change(
         spec, state, fork_version=spec.config.GENESIS_FORK_VERSION
@@ -217,7 +214,6 @@ def test_genesis_fork_version(spec, state):
 
 @with_capella_and_later
 @spec_state_test
-@always_bls
 def test_invalid_current_fork_version(spec, state):
     signed_address_change = get_signed_address_change(
         spec, state, fork_version=state.fork.current_version
@@ -230,7 +226,6 @@ def test_invalid_current_fork_version(spec, state):
 
 @with_capella_and_later
 @spec_state_test
-@always_bls
 def test_invalid_previous_fork_version(spec, state):
     signed_address_change = get_signed_address_change(
         spec, state, fork_version=state.fork.previous_version
@@ -243,7 +238,6 @@ def test_invalid_previous_fork_version(spec, state):
 
 @with_capella_and_later
 @spec_state_test
-@always_bls
 def test_invalid_genesis_validators_root(spec, state):
     signed_address_change = get_signed_address_change(
         spec, state, genesis_validators_root=b"\x99" * 32
@@ -257,7 +251,6 @@ def test_invalid_genesis_validators_root(spec, state):
 @with_phases([CAPELLA])
 @with_presets([MAINNET], reason="use mainnet fork version")
 @spec_state_test
-@always_bls
 def test_valid_signature_from_staking_deposit_cli(spec, state):
     validator_index = 1
     from_bls_pubkey = bytes.fromhex(

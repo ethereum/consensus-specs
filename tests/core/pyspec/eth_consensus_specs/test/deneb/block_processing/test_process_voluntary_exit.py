@@ -2,7 +2,6 @@ from eth_consensus_specs.test.bellatrix.block_processing.test_process_voluntary_
     run_voluntary_exit_processing_test,
 )
 from eth_consensus_specs.test.context import (
-    always_bls,
     spec_state_test,
     with_deneb_and_later,
 )
@@ -13,7 +12,6 @@ from eth_consensus_specs.test.helpers.constants import (
 
 @with_deneb_and_later
 @spec_state_test
-@always_bls
 def test_invalid_voluntary_exit_with_current_fork_version_not_is_before_fork_epoch(spec, state):
     """
     Since Deneb, the VoluntaryExit domain is fixed to `CAPELLA_FORK_VERSION`
@@ -30,7 +28,6 @@ def test_invalid_voluntary_exit_with_current_fork_version_not_is_before_fork_epo
 
 @with_deneb_and_later
 @spec_state_test
-@always_bls
 def test_voluntary_exit_with_previous_fork_version_not_is_before_fork_epoch(spec, state):
     """
     Since Deneb, the VoluntaryExit domain is fixed to `CAPELLA_FORK_VERSION`
@@ -60,7 +57,6 @@ def test_voluntary_exit_with_previous_fork_version_not_is_before_fork_epoch(spec
 
 @with_deneb_and_later
 @spec_state_test
-@always_bls
 def test_voluntary_exit_with_previous_fork_version_is_before_fork_epoch(spec, state):
     """
     Since Deneb, the VoluntaryExit domain is fixed to `CAPELLA_FORK_VERSION`

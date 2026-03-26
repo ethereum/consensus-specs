@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     spec_state_test,
     with_all_phases_from_to,
     with_electra_and_later,
@@ -148,7 +147,6 @@ def test_process_deposit_request_top_up_max_effective_balance_compounding(spec, 
 
 @with_electra_and_later
 @spec_state_test
-@always_bls
 def test_process_deposit_request_invalid_sig(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
@@ -163,7 +161,6 @@ def test_process_deposit_request_invalid_sig(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-@always_bls
 def test_process_deposit_request_top_up_invalid_sig(spec, state):
     validator_index = 0
     amount = spec.MIN_ACTIVATION_BALANCE // 4

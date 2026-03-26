@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     low_balances,
     never_bls,
     single_phase,
@@ -55,7 +54,6 @@ def test_previous_epoch(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_attestation_signature(spec, state):
     attestation = get_valid_attestation(spec, state)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
@@ -65,7 +63,6 @@ def test_invalid_attestation_signature(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_empty_participants_zeroes_sig(spec, state):
     attestation = get_valid_attestation(
         spec, state, filter_participant_set=lambda comm: []
@@ -78,7 +75,6 @@ def test_invalid_empty_participants_zeroes_sig(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_empty_participants_seemingly_valid_sig(spec, state):
     attestation = get_valid_attestation(
         spec, state, filter_participant_set=lambda comm: []
@@ -143,7 +139,6 @@ def test_invalid_old_source_epoch(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_wrong_index_for_committee_signature(spec, state):
     attestation = get_valid_attestation(spec, state)
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)

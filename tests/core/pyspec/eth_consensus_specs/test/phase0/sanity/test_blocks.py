@@ -1,7 +1,6 @@
 from random import Random
 
 from eth_consensus_specs.test.context import (
-    always_bls,
     dump_skipping_message,
     expect_assertion_error,
     large_validator_set,
@@ -280,7 +279,6 @@ def test_invalid_incorrect_state_root(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_all_zeroed_sig(spec, state):
     yield "pre", state
 
@@ -294,7 +292,6 @@ def test_invalid_all_zeroed_sig(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_incorrect_block_sig(spec, state):
     yield "pre", state
 
@@ -314,7 +311,6 @@ def test_invalid_incorrect_block_sig(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_incorrect_proposer_index_sig_from_expected_proposer(spec, state):
     yield "pre", state
 
@@ -336,7 +332,6 @@ def test_invalid_incorrect_proposer_index_sig_from_expected_proposer(spec, state
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_incorrect_proposer_index_sig_from_proposer_index(spec, state):
     yield "pre", state
 
@@ -1136,11 +1131,8 @@ def test_balance_driven_status_transitions(spec, state):
     assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-# Requires always_bls because historical root period and sync committee period is same length
-# so this epoch transition also computes new sync committees which requires aggregation
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_historical_batch(spec, state):
     state.slot += spec.SLOTS_PER_HISTORICAL_ROOT - (state.slot % spec.SLOTS_PER_HISTORICAL_ROOT) - 1
     pre_historical_roots = state.historical_roots.copy()

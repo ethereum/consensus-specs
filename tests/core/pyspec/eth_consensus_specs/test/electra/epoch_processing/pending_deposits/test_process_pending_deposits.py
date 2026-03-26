@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     default_activation_threshold,
     scaled_churn_balances_exceed_activation_exit_churn_limit,
     single_phase,
@@ -327,7 +326,6 @@ def test_process_pending_deposits_multiple_pending_deposits_above_churn(spec, st
 
 @with_electra_and_later
 @spec_state_test
-@always_bls
 def test_process_pending_deposits_multiple_for_new_validator(spec, state):
     """
     - There are three pending deposits in the state, all pointing to the same public key.

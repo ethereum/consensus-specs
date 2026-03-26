@@ -312,9 +312,6 @@ def description(case_description: str):
 def spec_test(fn):
     # Bls switch must be wrapped by vector_test,
     # to fully go through the yielded bls switch data, before setting back the BLS setting.
-    # A test may apply BLS overrides such as @always_bls,
-    #  but if it yields data (n.b. @always_bls yields the bls setting), it should be wrapped by this decorator.
-    #  This is why @always_bls has its own bls switch, since the override is beyond the reach of the outer switch.
     return vector_test(bls_switch(fn))
 
 
@@ -398,21 +395,6 @@ def never_bls(fn):
         return bls_switch(fn)(*args, **kw)
 
     return with_meta_tags({"bls_setting": 2})(entry)
-
-
-def always_bls(fn):
-    """
-    Decorator to apply on ``bls_switch`` decorator to force BLS activation. Useful to mark tests as BLS-dependent.
-    This decorator may only be applied to yielding spec test functions, and should be wrapped by vector_test,
-     as the yielding needs to complete before setting back the BLS setting.
-    """
-
-    def entry(*args, **kw):
-        # override bls setting
-        kw["bls_active"] = True
-        return bls_switch(fn)(*args, **kw)
-
-    return with_meta_tags({"bls_setting": 1})(entry)
 
 
 def bls_switch(fn):

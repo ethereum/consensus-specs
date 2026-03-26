@@ -1,7 +1,6 @@
 import random
 
 from eth_consensus_specs.test.context import (
-    always_bls,
     default_activation_threshold,
     single_phase,
     spec_state_test,
@@ -83,7 +82,6 @@ def test_get_inclusion_committee_assignment_out_bound_epoch(spec, state):
 
 @with_heze_and_later
 @spec_state_test
-@always_bls
 def test_get_inclusion_list_signature(spec, state):
     inclusion_list = get_empty_inclusion_list(spec, state)
     domain = spec.get_domain(

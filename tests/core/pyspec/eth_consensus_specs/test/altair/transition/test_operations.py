@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     ForkMeta,
     with_fork_metas,
     with_presets,
@@ -24,7 +23,6 @@ from eth_consensus_specs.test.helpers.fork_transition import (
         for pre, post in ALL_PRE_POST_FORKS
     ]
 )
-@always_bls
 def test_transition_with_proposer_slashing_right_after_fork(
     state, fork_epoch, spec, post_spec, pre_tag, post_tag
 ):
@@ -49,7 +47,6 @@ def test_transition_with_proposer_slashing_right_after_fork(
         for pre, post in ALL_PRE_POST_FORKS
     ]
 )
-@always_bls
 def test_transition_with_proposer_slashing_right_before_fork(
     state, fork_epoch, spec, post_spec, pre_tag, post_tag
 ):
@@ -79,7 +76,6 @@ def test_transition_with_proposer_slashing_right_before_fork(
         for pre, post in ALL_PRE_POST_FORKS
     ]
 )
-@always_bls
 def test_transition_with_attester_slashing_right_after_fork(
     state, fork_epoch, spec, post_spec, pre_tag, post_tag
 ):
@@ -104,7 +100,6 @@ def test_transition_with_attester_slashing_right_after_fork(
         for pre, post in ALL_PRE_POST_FORKS
     ]
 )
-@always_bls
 def test_transition_with_attester_slashing_right_before_fork(
     state, fork_epoch, spec, post_spec, pre_tag, post_tag
 ):

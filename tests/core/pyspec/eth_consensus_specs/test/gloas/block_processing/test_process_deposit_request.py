@@ -1,4 +1,4 @@
-from eth_consensus_specs.test.context import always_bls, spec_state_test, with_gloas_and_later
+from eth_consensus_specs.test.context import spec_state_test, with_gloas_and_later
 from eth_consensus_specs.test.helpers.deposits import (
     make_withdrawal_credentials,
     prepare_builder_deposit_request,
@@ -212,7 +212,6 @@ def test_process_deposit_request__builder_top_up_large(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_deposit_request__new_builder_invalid_sig(spec, state):
     """Test that new builder deposit with invalid signature is rejected."""
     amount = spec.MIN_DEPOSIT_AMOUNT
@@ -226,7 +225,6 @@ def test_process_deposit_request__new_builder_invalid_sig(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_deposit_request__builder_top_up_invalid_sig(spec, state):
     """Test that top-up deposit with invalid signature still succeeds for existing builders."""
     amount = spec.MIN_DEPOSIT_AMOUNT
@@ -851,7 +849,6 @@ def test_process_deposit_request__routing__new_pubkey_compounding_credentials(sp
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_deposit_request__routing__pending_deposit_valid_signature(spec, state):
     """Test that pubkey with pending deposit with valid signature goes to validator queue."""
     # Use a pubkey that doesn't exist as validator or builder yet
@@ -899,7 +896,6 @@ def test_process_deposit_request__routing__pending_deposit_valid_signature(spec,
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_deposit_request__routing__pending_deposit_invalid_signature(spec, state):
     """Test that pubkey with pending deposit with invalid signature becomes builder."""
     # Use a pubkey from builder_pubkeys that doesn't exist as validator or builder yet
@@ -1017,7 +1013,6 @@ def test_process_deposit_request__nonstandard_credential_padding(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_deposit_request__routing__pending_deposits_invalid_then_valid(spec, state):
     """Test that pubkey with invalid pending deposits followed by valid one goes to validator queue."""
     # Use a pubkey that doesn't exist as validator or builder yet
@@ -1079,7 +1074,6 @@ def test_process_deposit_request__routing__pending_deposits_invalid_then_valid(s
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_deposit_request__routing__pending_deposit_builder_credentials(spec, state):
     """Test that pubkey with pending deposit with builder credentials goes to validator queue."""
     # Use a pubkey that doesn't exist as validator or builder yet

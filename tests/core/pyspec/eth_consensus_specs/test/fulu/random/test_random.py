@@ -5,7 +5,6 @@ See the README for that generator for more information.
 """
 
 from eth_consensus_specs.test.context import (
-    always_bls,
     misc_balances_in_default_range_with_many_validators,
     only_generator,
     single_phase,
@@ -28,7 +27,6 @@ from eth_consensus_specs.test.utils.randomized_block_tests import (
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_0(spec, state):
     # scenario as high-level, informal text:
     # epochs:0,slots:0,with-block:no_block
@@ -100,7 +98,6 @@ def test_randomized_0(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_1(spec, state):
     # scenario as high-level, informal text:
     # epochs:0,slots:0,with-block:no_block
@@ -172,7 +169,6 @@ def test_randomized_1(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_2(spec, state):
     # scenario as high-level, informal text:
     # epochs:0,slots:0,with-block:no_block
@@ -244,7 +240,6 @@ def test_randomized_2(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_3(spec, state):
     # scenario as high-level, informal text:
     # epochs:0,slots:0,with-block:no_block
@@ -316,7 +311,6 @@ def test_randomized_3(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_4(spec, state):
     # scenario as high-level, informal text:
     # epochs:0,slots:0,with-block:no_block
@@ -388,7 +382,6 @@ def test_randomized_4(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_5(spec, state):
     # scenario as high-level, informal text:
     # epochs:0,slots:0,with-block:no_block
@@ -460,7 +453,6 @@ def test_randomized_5(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_6(spec, state):
     # scenario as high-level, informal text:
     # epochs:0,slots:0,with-block:no_block
@@ -532,7 +524,6 @@ def test_randomized_6(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_7(spec, state):
     # scenario as high-level, informal text:
     # epochs:0,slots:0,with-block:no_block
@@ -604,7 +595,6 @@ def test_randomized_7(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_8(spec, state):
     # scenario as high-level, informal text:
     # epochs:epochs_until_leak,slots:0,with-block:no_block
@@ -676,7 +666,6 @@ def test_randomized_8(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_9(spec, state):
     # scenario as high-level, informal text:
     # epochs:epochs_until_leak,slots:0,with-block:no_block
@@ -748,7 +737,6 @@ def test_randomized_9(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_10(spec, state):
     # scenario as high-level, informal text:
     # epochs:epochs_until_leak,slots:0,with-block:no_block
@@ -820,7 +808,6 @@ def test_randomized_10(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_11(spec, state):
     # scenario as high-level, informal text:
     # epochs:epochs_until_leak,slots:0,with-block:no_block
@@ -892,7 +879,6 @@ def test_randomized_11(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_12(spec, state):
     # scenario as high-level, informal text:
     # epochs:epochs_until_leak,slots:0,with-block:no_block
@@ -964,7 +950,6 @@ def test_randomized_12(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_13(spec, state):
     # scenario as high-level, informal text:
     # epochs:epochs_until_leak,slots:0,with-block:no_block
@@ -1036,7 +1021,6 @@ def test_randomized_13(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_14(spec, state):
     # scenario as high-level, informal text:
     # epochs:epochs_until_leak,slots:0,with-block:no_block
@@ -1108,7 +1092,6 @@ def test_randomized_14(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_15(spec, state):
     # scenario as high-level, informal text:
     # epochs:epochs_until_leak,slots:0,with-block:no_block

@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     ForkMeta,
     with_fork_metas,
     with_presets,
@@ -28,7 +27,6 @@ from eth_consensus_specs.test.helpers.fork_transition import (
         if post not in (GLOAS, HEZE)
     ]
 )
-@always_bls
 def test_transition_with_deposit_request_right_after_fork(
     state, fork_epoch, spec, post_spec, pre_tag, post_tag
 ):
@@ -61,7 +59,6 @@ def test_transition_with_deposit_request_right_after_fork(
     ]
 )
 @with_presets([MINIMAL], reason="too slow")
-@always_bls
 def test_transition_with_full_withdrawal_request_right_after_fork(
     state, fork_epoch, spec, post_spec, pre_tag, post_tag
 ):
@@ -93,7 +90,6 @@ def test_transition_with_full_withdrawal_request_right_after_fork(
         if post not in (GLOAS, HEZE)
     ]
 )
-@always_bls
 def test_transition_with_consolidation_request_right_after_fork(
     state, fork_epoch, spec, post_spec, pre_tag, post_tag
 ):

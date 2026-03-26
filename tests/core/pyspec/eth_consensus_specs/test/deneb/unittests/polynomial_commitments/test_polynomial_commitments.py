@@ -1,7 +1,6 @@
 import random
 
 from eth_consensus_specs.test.context import (
-    always_bls,
     expect_assertion_error,
     single_phase,
     spec_test,
@@ -249,7 +248,6 @@ def test_validate_kzg_g1_neutral_element(spec):
 @with_deneb_and_later
 @spec_test
 @single_phase
-@always_bls
 def test_validate_kzg_g1_not_in_g1(spec):
     """
     Verify that `validate_kzg_g1` fails on point not in G1
@@ -261,7 +259,6 @@ def test_validate_kzg_g1_not_in_g1(spec):
 @with_deneb_and_later
 @spec_test
 @single_phase
-@always_bls
 def test_validate_kzg_g1_not_on_curve(spec):
     """
     Verify that `validate_kzg_g1` fails on point not in G1

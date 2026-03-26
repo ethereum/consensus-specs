@@ -1,7 +1,6 @@
 import random
 
 from eth_consensus_specs.test.context import (
-    always_bls,
     single_phase,
     spec_state_test,
     spec_state_test_with_matching_config,
@@ -323,7 +322,6 @@ def test_compute_new_state_root(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_get_block_signature(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]
@@ -365,7 +363,6 @@ def test_compute_fork_digest(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_get_attestation_signature_phase0(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]
@@ -409,7 +406,6 @@ def test_compute_subnet_for_attestation(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_get_slot_signature(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]
@@ -428,7 +424,6 @@ def test_get_slot_signature(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_is_aggregator(spec, state):
     # TODO: we can test the probabilistic result against `TARGET_AGGREGATORS_PER_COMMITTEE`
     #  if we have more validators and larger committee size
@@ -447,7 +442,6 @@ def test_is_aggregator(spec, state):
 
 @with_phases([PHASE0])
 @spec_state_test
-@always_bls
 def test_get_aggregate_signature(spec, state):
     attestations = []
     attesting_pubkeys = []
@@ -483,7 +477,6 @@ def test_get_aggregate_signature(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_get_aggregate_and_proof(spec, state):
     privkey = privkeys[0]
     aggregator_index = spec.ValidatorIndex(10)
@@ -498,7 +491,6 @@ def test_get_aggregate_and_proof(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_get_aggregate_and_proof_signature(spec, state):
     privkey = privkeys[0]
     pubkey = pubkeys[0]

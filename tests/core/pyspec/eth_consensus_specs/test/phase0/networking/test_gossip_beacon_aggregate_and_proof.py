@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     default_activation_threshold,
     single_phase,
     spec_state_test,
@@ -798,7 +797,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregator(spec,
     threshold_fn=default_activation_threshold,
 )
 @single_phase
-@always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_not_aggregator(spec, state):
     """
     Test that an aggregate from a validator not selected as aggregator is rejected.
@@ -990,7 +988,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_index_out_of_range
 
 @with_phases([PHASE0])
 @spec_state_test
-@always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_invalid_selection_proof(spec, state):
     """
     Test that an aggregate with invalid selection proof signature is rejected.
@@ -1042,7 +1039,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_selection_proof(spec,
 
 @with_phases([PHASE0])
 @spec_state_test
-@always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregator_signature(spec, state):
     """
     Test that an aggregate with invalid aggregator signature is rejected.
@@ -1094,7 +1090,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregator_signature(
 
 @with_phases([PHASE0])
 @spec_state_test
-@always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregate_signature(spec, state):
     """
     Test that an aggregate with invalid aggregate attestation signature is rejected.

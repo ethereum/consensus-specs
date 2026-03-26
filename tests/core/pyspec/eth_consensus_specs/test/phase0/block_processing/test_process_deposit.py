@@ -1,4 +1,4 @@
-from eth_consensus_specs.test.context import always_bls, spec_state_test, with_all_phases
+from eth_consensus_specs.test.context import spec_state_test, with_all_phases
 from eth_consensus_specs.test.helpers.deposits import (
     build_deposit,
     prepare_state_and_deposit,
@@ -92,7 +92,6 @@ def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_correct_sig_but_forked_state(spec, state):
     validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
@@ -104,7 +103,6 @@ def test_correct_sig_but_forked_state(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_incorrect_sig_new_deposit(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
@@ -172,7 +170,6 @@ def test_top_up__zero_balance(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_incorrect_sig_top_up(spec, state):
     validator_index = 0
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
@@ -288,7 +285,6 @@ def test_key_validate_invalid_decompression(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_ineffective_deposit_with_bad_fork_version(spec, state):
     yield from run_deposit_processing_with_specific_fork_version(
         spec,

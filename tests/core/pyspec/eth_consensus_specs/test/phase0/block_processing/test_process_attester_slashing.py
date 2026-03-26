@@ -1,7 +1,6 @@
 from random import Random
 
 from eth_consensus_specs.test.context import (
-    always_bls,
     expect_assertion_error,
     low_balances,
     misc_balances,
@@ -134,7 +133,6 @@ def test_basic_surround(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_already_exited_recent(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
     slashed_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
@@ -146,7 +144,6 @@ def test_already_exited_recent(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_proposer_index_slashed(spec, state):
     # Transition past genesis slot because generally doesn't have a proposer
     next_epoch_via_block(spec, state)
@@ -223,7 +220,6 @@ def test_with_effective_balance_disparity(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_already_exited_long_ago(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
     slashed_indices = get_indexed_attestation_participants(spec, attester_slashing.attestation_1)
@@ -236,7 +232,6 @@ def test_already_exited_long_ago(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_incorrect_sig_1(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
@@ -244,7 +239,6 @@ def test_invalid_incorrect_sig_1(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_incorrect_sig_2(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
@@ -252,7 +246,6 @@ def test_invalid_incorrect_sig_2(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_incorrect_sig_1_and_2(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=False)
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
@@ -299,7 +292,6 @@ def test_invalid_participants_already_slashed(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_att1_high_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
@@ -312,7 +304,6 @@ def test_invalid_att1_high_index(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_att2_high_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
@@ -325,7 +316,6 @@ def test_invalid_att2_high_index(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_att1_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
@@ -337,7 +327,6 @@ def test_invalid_att1_empty_indices(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_att2_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
 
@@ -349,7 +338,6 @@ def test_invalid_att2_empty_indices(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_all_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=False)
 
@@ -364,7 +352,6 @@ def test_invalid_all_empty_indices(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_att1_bad_extra_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
@@ -380,7 +367,6 @@ def test_invalid_att1_bad_extra_index(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_att1_bad_replaced_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
@@ -398,7 +384,6 @@ def test_invalid_att1_bad_replaced_index(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_att2_bad_extra_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
@@ -414,7 +399,6 @@ def test_invalid_att2_bad_extra_index(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_att2_bad_replaced_index(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=True)
 
@@ -432,7 +416,6 @@ def test_invalid_att2_bad_replaced_index(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_att1_duplicate_index_normal_signed(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
@@ -452,7 +435,6 @@ def test_invalid_att1_duplicate_index_normal_signed(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_att2_duplicate_index_normal_signed(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
 
@@ -472,7 +454,6 @@ def test_invalid_att2_duplicate_index_normal_signed(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_att1_duplicate_index_double_signed(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
@@ -489,7 +470,6 @@ def test_invalid_att1_duplicate_index_double_signed(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_att2_duplicate_index_double_signed(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
 

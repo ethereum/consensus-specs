@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     spec_state_test,
     with_all_phases,
 )
@@ -278,7 +277,6 @@ def test_gossip_proposer_slashing__reject_proposer_not_slashable(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_gossip_proposer_slashing__reject_invalid_signature_1(spec, state):
     """
     Test that a proposer slashing with invalid first signature is rejected.
@@ -312,7 +310,6 @@ def test_gossip_proposer_slashing__reject_invalid_signature_1(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_gossip_proposer_slashing__reject_invalid_signature_2(spec, state):
     """
     Test that a proposer slashing with invalid second signature is rejected.

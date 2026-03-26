@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     misc_balances,
     single_phase,
     spec_state_test,
@@ -16,7 +15,7 @@ from eth_consensus_specs.test.helpers.state import transition_to
 
 #
 # Note:
-# Calculating sync committees requires pubkey aggregation, thus all tests are generated with `always_bls`
+# Calculating sync committees requires pubkey aggregation, bls always enabled, thus decorator no needed.
 #
 
 
@@ -56,7 +55,6 @@ def run_sync_committees_progress_test(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 @with_presets([MINIMAL], reason="too slow")
 def test_sync_committees_progress_genesis(spec, state):
     # Genesis epoch period has an exceptional case
@@ -67,7 +65,6 @@ def test_sync_committees_progress_genesis(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 @with_presets([MINIMAL], reason="too slow")
 def test_sync_committees_progress_not_genesis(spec, state):
     # Transition out of the genesis epoch period to test non-exceptional case
@@ -84,7 +81,6 @@ def test_sync_committees_progress_not_genesis(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 @with_presets([MINIMAL], reason="too slow")
 def test_sync_committees_progress_misc_balances_genesis(spec, state):
     # Genesis epoch period has an exceptional case
@@ -99,7 +95,6 @@ def test_sync_committees_progress_misc_balances_genesis(spec, state):
 )
 @spec_test
 @single_phase
-@always_bls
 @with_presets([MINIMAL], reason="too slow")
 def test_sync_committees_progress_misc_balances_not_genesis(spec, state):
     # Transition out of the genesis epoch period to test non-exceptional case
@@ -112,7 +107,6 @@ def test_sync_committees_progress_misc_balances_not_genesis(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 @with_presets([MINIMAL], reason="too slow")
 def test_sync_committees_no_progress_not_at_period_boundary(spec, state):
     assert spec.get_current_epoch(state) == spec.GENESIS_EPOCH

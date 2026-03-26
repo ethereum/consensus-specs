@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     spec_state_test,
     with_phases,
 )
@@ -570,7 +569,6 @@ def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, sta
 
 @with_phases([PHASE0])
 @spec_state_test
-@always_bls
 def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
     """
     Test that a block with an invalid proposer signature is rejected.

@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     ForkMeta,
     with_fork_metas,
 )
@@ -36,7 +35,6 @@ from eth_consensus_specs.test.helpers.state import (
         for pre, post in AFTER_DENEB_PRE_POST_FORKS
     ]
 )
-@always_bls
 def test_transition_with_btec_right_after_fork(
     state, fork_epoch, spec, post_spec, pre_tag, post_tag
 ):
@@ -61,7 +59,6 @@ def test_transition_with_btec_right_after_fork(
         for pre, post in AFTER_DENEB_PRE_POST_FORKS
     ]
 )
-@always_bls
 def test_transition_with_btec_right_before_fork(
     state, fork_epoch, spec, post_spec, pre_tag, post_tag
 ):

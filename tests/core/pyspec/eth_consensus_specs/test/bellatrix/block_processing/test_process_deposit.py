@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     spec_state_test,
     with_bellatrix_and_later,
 )
@@ -10,7 +9,6 @@ from eth_consensus_specs.test.helpers.deposits import (
 
 @with_bellatrix_and_later
 @spec_state_test
-@always_bls
 def test_ineffective_deposit_with_previous_fork_version(spec, state):
     # Since deposits are valid across forks, the domain is always set with `GENESIS_FORK_VERSION`.
     # It's an ineffective deposit because it fails at BLS sig verification.
@@ -27,7 +25,6 @@ def test_ineffective_deposit_with_previous_fork_version(spec, state):
 
 @with_bellatrix_and_later
 @spec_state_test
-@always_bls
 def test_effective_deposit_with_genesis_fork_version(spec, state):
     assert spec.config.GENESIS_FORK_VERSION not in (
         state.fork.previous_version,

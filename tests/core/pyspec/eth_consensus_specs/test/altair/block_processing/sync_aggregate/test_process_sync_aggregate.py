@@ -1,7 +1,6 @@
 import random
 
 from eth_consensus_specs.test.context import (
-    always_bls,
     default_activation_threshold,
     default_balances_electra,
     single_phase,
@@ -36,7 +35,6 @@ from eth_consensus_specs.test.helpers.voluntary_exits import (
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_invalid_signature_bad_domain(spec, state):
     committee_indices = compute_committee_indices(state)
 
@@ -57,7 +55,6 @@ def test_invalid_signature_bad_domain(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_invalid_signature_missing_participant(spec, state):
     committee_indices = compute_committee_indices(state)
     rng = random.Random(2020)
@@ -80,7 +77,6 @@ def test_invalid_signature_missing_participant(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_invalid_signature_no_participants(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     # No participants is an allowed case, but needs a specific signature, not the full-zeroed signature.
@@ -96,7 +92,6 @@ def test_invalid_signature_no_participants(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_invalid_signature_infinite_signature_with_all_participants(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     # Include all participants, try the special-case signature for no-participants
@@ -109,7 +104,6 @@ def test_invalid_signature_infinite_signature_with_all_participants(spec, state)
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_invalid_signature_infinite_signature_with_single_participant(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     # Try include a single participant with the special-case signature for no-participants.
@@ -123,7 +117,6 @@ def test_invalid_signature_infinite_signature_with_single_participant(spec, stat
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_invalid_signature_extra_participant(spec, state):
     committee_indices = compute_committee_indices(state)
     rng = random.Random(3030)
@@ -330,7 +323,6 @@ def test_sync_committee_rewards_duplicate_committee_max_effective_balance_only_p
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_rewards_not_full_participants(spec, state):
     committee_indices = compute_committee_indices(state)
     rng = random.Random(1010)
@@ -341,7 +333,6 @@ def test_sync_committee_rewards_not_full_participants(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_rewards_empty_participants(spec, state):
     committee_indices = compute_committee_indices(state)
     committee_bits = [False for _ in committee_indices]
@@ -351,7 +342,6 @@ def test_sync_committee_rewards_empty_participants(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_invalid_signature_past_block(spec, state):
     committee_indices = compute_committee_indices(state)
 
@@ -390,7 +380,6 @@ def test_invalid_signature_past_block(spec, state):
 @with_altair_and_later
 @with_presets([MINIMAL], reason="to produce different committee sets")
 @spec_state_test
-@always_bls
 def test_invalid_signature_previous_committee(spec, state):
     # NOTE: the `state` provided is at genesis and the process to select
     # sync committees currently returns the same committee for the first and second
@@ -430,7 +419,6 @@ def test_invalid_signature_previous_committee(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 @with_presets([MINIMAL], reason="too slow")
 def test_valid_signature_future_committee(spec, state):
     # NOTE: the `state` provided is at genesis and the process to select
@@ -476,7 +464,6 @@ def test_valid_signature_future_committee(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 @with_presets([MINIMAL], reason="prefer short search to find matching proposer")
 def test_proposer_in_committee_without_participation(spec, state):
     committee_indices = compute_committee_indices(state, state.current_sync_committee)
@@ -522,7 +509,6 @@ def test_proposer_in_committee_without_participation(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 @with_presets([MINIMAL], reason="prefer short search to find matching proposer")
 def test_proposer_in_committee_with_participation(spec, state):
     committee_indices = compute_committee_indices(state, state.current_sync_committee)
@@ -582,7 +568,6 @@ def _exit_validator_from_committee_and_transition_state(
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_with_participating_exited_member(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -621,7 +606,6 @@ def test_sync_committee_with_participating_exited_member(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_with_nonparticipating_exited_member(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -664,7 +648,6 @@ def test_sync_committee_with_nonparticipating_exited_member(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_with_participating_withdrawable_member(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
@@ -703,7 +686,6 @@ def test_sync_committee_with_participating_withdrawable_member(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_sync_committee_with_nonparticipating_withdrawable_member(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH

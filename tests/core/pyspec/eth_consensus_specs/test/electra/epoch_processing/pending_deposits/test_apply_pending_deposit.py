@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     spec_state_test,
     with_electra_and_later,
 )
@@ -229,7 +228,6 @@ def test_apply_pending_deposit_non_versioned_withdrawal_credentials_over_min_act
 
 @with_electra_and_later
 @spec_state_test
-@always_bls
 def test_apply_pending_deposit_correct_sig_but_forked_state(spec, state):
     validator_index = len(state.validators)
     amount = spec.MIN_ACTIVATION_BALANCE
@@ -241,7 +239,6 @@ def test_apply_pending_deposit_correct_sig_but_forked_state(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-@always_bls
 def test_apply_pending_deposit_incorrect_sig_new_deposit(spec, state):
     # fresh deposit = next validator index = validator appended to registry
     validator_index = len(state.validators)
@@ -333,7 +330,6 @@ def test_apply_pending_deposit_top_up__less_effective_balance(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-@always_bls
 def test_apply_pending_deposit_incorrect_sig_top_up(spec, state):
     validator_index = 0
     amount = spec.MIN_ACTIVATION_BALANCE // 4
@@ -367,7 +363,6 @@ def test_apply_pending_deposit_incorrect_withdrawal_credentials_top_up(spec, sta
 
 @with_electra_and_later
 @spec_state_test
-@always_bls
 def test_apply_pending_deposit_key_validate_invalid_subgroup(spec, state):
     validator_index = len(state.validators)
     amount = spec.MIN_ACTIVATION_BALANCE
@@ -386,7 +381,6 @@ def test_apply_pending_deposit_key_validate_invalid_subgroup(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-@always_bls
 def test_apply_pending_deposit_key_validate_invalid_decompression(spec, state):
     validator_index = len(state.validators)
     amount = spec.MIN_ACTIVATION_BALANCE
@@ -407,7 +401,6 @@ def test_apply_pending_deposit_key_validate_invalid_decompression(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-@always_bls
 def test_apply_pending_deposit_ineffective_deposit_with_bad_fork_version(spec, state):
     validator_index = len(state.validators)
     fork_version = spec.Version("0xAaBbCcDd")
@@ -426,7 +419,6 @@ def test_apply_pending_deposit_ineffective_deposit_with_bad_fork_version(spec, s
 
 @with_electra_and_later
 @spec_state_test
-@always_bls
 def test_apply_pending_deposit_with_previous_fork_version(spec, state):
     # Since deposits are valid across forks, the domain is always set with `GENESIS_FORK_VERSION`
     # It's an ineffective deposit because it fails at BLS sig verification
@@ -450,7 +442,6 @@ def test_apply_pending_deposit_with_previous_fork_version(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-@always_bls
 def test_ineffective_deposit_with_current_fork_version(spec, state):
     validator_index = len(state.validators)
     fork_version = state.fork.current_version
@@ -469,7 +460,6 @@ def test_ineffective_deposit_with_current_fork_version(spec, state):
 
 @with_electra_and_later
 @spec_state_test
-@always_bls
 def test_apply_pending_deposit_effective_deposit_with_genesis_fork_version(spec, state):
     assert spec.config.GENESIS_FORK_VERSION not in (
         state.fork.previous_version,

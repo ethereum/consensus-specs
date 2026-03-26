@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     spec_state_test,
     with_all_phases,
 )
@@ -239,7 +238,6 @@ def test_block_header_from_future(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_incorrect_sig_1(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=False, signed_2=True)
 
@@ -252,7 +250,6 @@ def test_invalid_incorrect_sig_1(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_incorrect_sig_2(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=False)
 
@@ -265,7 +262,6 @@ def test_invalid_incorrect_sig_2(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_incorrect_sig_1_and_2(spec, state):
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=False, signed_2=False)
 
@@ -278,7 +274,6 @@ def test_invalid_incorrect_sig_1_and_2(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_incorrect_sig_1_and_2_swap(spec, state):
     # Get valid signatures for the slashings
     proposer_slashing = get_valid_proposer_slashing(spec, state, signed_1=True, signed_2=True)

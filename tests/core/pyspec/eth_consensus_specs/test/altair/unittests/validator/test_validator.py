@@ -2,7 +2,6 @@ import random
 from collections import defaultdict
 
 from eth_consensus_specs.test.context import (
-    always_bls,
     spec_state_test,
     with_altair_and_later,
     with_presets,
@@ -87,7 +86,6 @@ def _get_sync_committee_signature(
 @with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @spec_state_test
-@always_bls
 def test_process_sync_committee_contributions(spec, state):
     # skip over slots at genesis
     transition_to(spec, state, state.slot + 3)
@@ -129,7 +127,6 @@ def test_process_sync_committee_contributions(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_get_sync_committee_message(spec, state):
     validator_index = 0
     block = spec.BeaconBlock(state_root=state.hash_tree_root())
@@ -224,7 +221,6 @@ def test_compute_subnets_for_sync_committee_slot_period_boundary(state, spec):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_get_sync_committee_selection_proof(spec, state):
     slot = 1
     subcommittee_index = 0
@@ -302,7 +298,6 @@ def test_get_contribution_and_proof(spec, state):
 
 @with_altair_and_later
 @spec_state_test
-@always_bls
 def test_get_contribution_and_proof_signature(spec, state):
     privkey = privkeys[3]
     pubkey = pubkeys[3]

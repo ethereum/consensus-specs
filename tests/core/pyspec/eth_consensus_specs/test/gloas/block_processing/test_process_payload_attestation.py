@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     default_activation_threshold,
     expect_assertion_error,
     large_validator_set,
@@ -140,7 +139,6 @@ def _compute_selection_with_acceptance_iterations(spec, state, indices, seed, si
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_payload_attestation_payload_present(spec, state):
     """
     Test basic valid payload attestation processing
@@ -154,7 +152,6 @@ def test_process_payload_attestation_payload_present(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_payload_attestation_payload_not_present(spec, state):
     """
     Test valid payload attestation indicating payload was not present
@@ -168,7 +165,6 @@ def test_process_payload_attestation_payload_not_present(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_payload_attestation_partial_participation(spec, state):
     """
     Test valid payload attestation with only some PTC members participating
@@ -271,7 +267,6 @@ def test_process_payload_attestation_no_attesting_indices(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_payload_attestation_cross_epoch_wrong_domain(spec, state):
     """
     Test that payload attestation signed with wrong epoch domain fails.
@@ -308,7 +303,6 @@ def test_process_payload_attestation_cross_epoch_wrong_domain(spec, state):
 @with_presets([MINIMAL], reason="mainnet preset requires a much larger validator set")
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=default_activation_threshold)
 @spec_test
-@always_bls
 @single_phase
 def test_process_payload_attestation_uses_multiple_committees(spec, state):
     """
@@ -358,7 +352,6 @@ def test_process_payload_attestation_uses_multiple_committees(spec, state):
 @with_presets([MINIMAL], reason="mainnet preset requires a much larger validator set")
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=default_activation_threshold)
 @spec_test
-@always_bls
 @single_phase
 def test_process_payload_attestation_sampling_not_capped(spec, state):
     """

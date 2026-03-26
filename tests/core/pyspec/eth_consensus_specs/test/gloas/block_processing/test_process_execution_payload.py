@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     expect_assertion_error,
     spec_state_test,
     with_gloas_and_later,
@@ -219,7 +218,6 @@ def setup_state_with_payload_bid(
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_valid(spec, state):
     """
     Test valid execution payload processing with separate builder and non-zero payment
@@ -269,7 +267,6 @@ def test_process_execution_payload_valid(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_self_build_zero_value(spec, state):
     """
     Test valid self-building scenario (zero value)
@@ -313,7 +310,6 @@ def test_process_execution_payload_self_build_zero_value(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_large_payment_churn_impact(spec, state):
     """
     Test execution payload processing with large payment that impacts exit churn state
@@ -363,7 +359,6 @@ def test_process_execution_payload_large_payment_churn_impact(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_with_blob_commitments(spec, state):
     """
     Test execution payload processing with blob KZG commitments and separate builder
@@ -419,7 +414,6 @@ def test_process_execution_payload_with_blob_commitments(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_with_execution_requests(spec, state):
     """
     Test execution payload processing with execution requests and separate builder
@@ -543,7 +537,6 @@ def test_process_execution_payload_invalid_signature(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_wrong_beacon_block_root(spec, state):
     """
     Test wrong beacon block root fails with separate builder
@@ -571,7 +564,6 @@ def test_process_execution_payload_wrong_beacon_block_root(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_wrong_slot(spec, state):
     """
     Test wrong slot fails with separate builder
@@ -598,7 +590,6 @@ def test_process_execution_payload_wrong_slot(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_wrong_builder_index(spec, state):
     """
     Test wrong builder index fails with separate builders
@@ -627,7 +618,6 @@ def test_process_execution_payload_wrong_builder_index(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_missing_expected_withdrawal(spec, state):
     """
     Verify payload rejected when it omits a withdrawal expected by the state.
@@ -661,7 +651,6 @@ def test_process_execution_payload_missing_expected_withdrawal(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_wrong_gas_limit(spec, state):
     """
     Test wrong gas limit fails with separate builder
@@ -686,7 +675,6 @@ def test_process_execution_payload_wrong_gas_limit(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_wrong_block_hash(spec, state):
     """
     Test wrong block hash fails with separate builder
@@ -709,7 +697,6 @@ def test_process_execution_payload_wrong_block_hash(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_wrong_parent_hash(spec, state):
     """
     Test wrong parent hash fails with separate builder
@@ -732,7 +719,6 @@ def test_process_execution_payload_wrong_parent_hash(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_wrong_prev_randao(spec, state):
     """
     Test wrong prev_randao fails with separate builder
@@ -756,7 +742,6 @@ def test_process_execution_payload_wrong_prev_randao(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_bid_prev_randao_mismatch(spec, state):
     """
     Test that committed_bid.prev_randao must equal payload.prev_randao
@@ -785,7 +770,6 @@ def test_process_execution_payload_bid_prev_randao_mismatch(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_wrong_timestamp(spec, state):
     """
     Test wrong timestamp fails with separate builder
@@ -809,7 +793,6 @@ def test_process_execution_payload_wrong_timestamp(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_process_execution_payload_execution_engine_invalid(spec, state):
     """
     Test execution engine returns invalid with separate builder

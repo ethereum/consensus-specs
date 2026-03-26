@@ -217,7 +217,6 @@ from eth_consensus_specs.test.context import (
     only_generator,
 )
 from eth_consensus_specs.test.context import (
-    always_bls,
     spec_test,
     with_custom_state,
     single_phase,
@@ -235,7 +234,6 @@ from eth_consensus_specs.test.utils.randomized_block_tests import (
 )
 @spec_test
 @single_phase
-@always_bls
 def test_randomized_{index}(spec, state):
     # scenario as high-level, informal text:
 {name_as_comment}

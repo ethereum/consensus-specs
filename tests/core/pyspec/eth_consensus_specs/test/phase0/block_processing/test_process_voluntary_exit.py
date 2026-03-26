@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     scaled_churn_balances_min_churn_limit,
     single_phase,
     spec_state_test,
@@ -42,7 +41,6 @@ def test_basic(spec, state):
 
 @with_all_phases
 @spec_state_test
-@always_bls
 def test_invalid_incorrect_signature(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
