@@ -35,6 +35,10 @@ topic: string                -- The gossip topic name (e.g., "beacon_block", "be
 blocks: [{                   -- Optional. Blocks to import before validation (oldest to newest).
     block: string,           -- The block file (without extension).
     failed: bool,            -- Optional. If true, block failed validation (for testing descendant rejection).
+    payload_status: string,  -- Optional. Execution payload status for this block:
+                             -- "VALID" | "NOT_VALIDATED" | "INVALIDATED".
+                             -- Maps to the corresponding `PAYLOAD_STATUS_*` value
+                             -- in the relevant specification.
 }]
 finalized_checkpoint:        -- Optional. Custom finalized checkpoint.
   epoch: int                 -- The epoch of the finalized checkpoint.
@@ -87,6 +91,15 @@ Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
      specified).
    - Import each entry in `blocks` into the store. If `failed: true`, track the
      block as having failed validation (for testing descendant rejection).
+   - If `payload_status` is present, track the execution payload status for that
+     block.
+     - `VALID`: the block's execution payload is known valid.
+     - `NOT_VALIDATED`: the block's execution payload has not yet been
+       validated.
+     - `INVALIDATED`: the block's execution payload is known invalid.
+     - For Bellatrix `beacon_block` gossip validation, `NOT_VALIDATED`
+       represents the optimistic case where no valid/invalid payload result is
+       yet available for the parent block.
 3. Iterate sequentially through `messages`:
    - Set `current_time_ms` to `meta.current_time_ms + message.offset_ms`.
    - Deserialize the message file based on the topic type.
