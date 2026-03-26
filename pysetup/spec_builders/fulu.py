@@ -46,6 +46,12 @@ class CosetEvals(list):
 def retrieve_column_sidecars(beacon_block_root: Root) -> Sequence[DataColumnSidecar]:
     # pylint: disable=unused-argument
     return []
+
+
+_compute_proposer_indices = compute_proposer_indices
+compute_proposer_indices = cache_this(
+    lambda state, epoch, seed, indices: (state.validators.hash_tree_root(), epoch, seed),
+    _compute_proposer_indices, lru_size=SLOTS_PER_EPOCH * 2)
 """
 
     @classmethod
