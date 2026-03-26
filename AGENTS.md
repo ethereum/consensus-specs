@@ -381,7 +381,6 @@ When writing tests, use these decorators:
 - `@with_electra_and_later` - Run on Electra and all subsequent forks
 - `@spec_state_test` - State transition test
 - `@spec_test` - General spec test
-- `@always_bls` - Always enable BLS verification
 
 ### Test pattern
 
