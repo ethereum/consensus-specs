@@ -1,4 +1,4 @@
-name: Nightly Tests
+name: Tests
 
 defaults:
   run:
