@@ -201,11 +201,12 @@ def test_gossip_bls_to_execution_change__reject_not_bls_credentials(spec, state)
     Test that a `bls_to_execution_change` for a validator without BLS credentials is rejected.
     """
     yield "topic", "meta", "bls_to_execution_change"
-    yield "state", state
 
     seen = get_seen(spec)
     validator_index = len(state.validators) // 2
     state.validators[validator_index].withdrawal_credentials = b"\x01" + b"\x00" * 11 + b"\x23" * 20
+    yield "state", state
+
     signed_bls_to_execution_change = get_signed_bls_to_execution_change(
         spec, state, validator_index=validator_index
     )
