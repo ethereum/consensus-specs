@@ -45,7 +45,7 @@ jobs:
 
   generate:
     needs: setup
-    timeout-minutes: 720 # 12 hours
+    timeout-minutes: 1440 # 24 hours
     runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
     strategy:
       fail-fast: true
