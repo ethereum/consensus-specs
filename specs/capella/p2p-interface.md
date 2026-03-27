@@ -5,6 +5,7 @@
 - [Introduction](#introduction)
 - [Modifications in Capella](#modifications-in-capella)
   - [Helpers](#helpers)
+    - [Modified `Seen`](#modified-seen)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -30,6 +31,22 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 ## Modifications in Capella
 
 ### Helpers
+
+#### Modified `Seen`
+
+```python
+@dataclass
+class Seen(object):
+    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
+    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    aggregate_data_roots: Dict[Root, Set[Tuple[boolean, ...]]]
+    voluntary_exit_indices: Set[ValidatorIndex]
+    proposer_slashing_indices: Set[ValidatorIndex]
+    attester_slashing_indices: Set[ValidatorIndex]
+    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    # [New in Capella]
+    bls_to_execution_change_indices: Set[ValidatorIndex]
+```
 
 #### Modified `compute_fork_version`
 
@@ -85,19 +102,65 @@ further details.
 
 ###### `bls_to_execution_change`
 
-This topic is used to propagate signed bls to execution change messages to be
-included in future blocks.
+The `bls_to_execution_change` topic is used solely for propagating signed BLS to
+execution change (BTEC) messages on the network. Signed BTEC messages are sent
+in their entirety. The `state` parameter is the head state.
 
-The following validations MUST pass before forwarding the
-`signed_bls_to_execution_change` on the network:
+```python
+def validate_bls_to_execution_change_gossip(
+    seen: Seen,
+    state: BeaconState,
+    signed_bls_to_execution_change: SignedBLSToExecutionChange,
+    current_time_ms: uint64,
+) -> None:
+    """
+    Validate a SignedBLSToExecutionChange for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    btec = signed_bls_to_execution_change.message
+    validator_index = btec.validator_index
 
-- _[IGNORE]_ `current_epoch >= CAPELLA_FORK_EPOCH`, where `current_epoch` is
-  defined by the current wall-clock time.
-- _[IGNORE]_ The `signed_bls_to_execution_change` is the first valid signed bls
-  to execution change received for the validator with index
-  `signed_bls_to_execution_change.message.validator_index`.
-- _[REJECT]_ All of the conditions within `process_bls_to_execution_change` pass
-  validation.
+    # [IGNORE] The current epoch is at or after the Capella fork epoch
+    # (where current_epoch is defined by the current wall-clock time)
+    time_since_genesis_ms = current_time_ms - state.genesis_time * 1000
+    current_slot = Slot(time_since_genesis_ms // SLOT_DURATION_MS)
+    current_epoch = compute_epoch_at_slot(current_slot)
+    if current_epoch < CAPELLA_FORK_EPOCH:
+        raise GossipIgnore("current epoch is pre-capella")
+
+    # [IGNORE] This is the first valid BTEC received for the validator
+    if validator_index in seen.bls_to_execution_change_indices:
+        raise GossipIgnore("already seen BLS to execution change for this validator")
+
+    # [REJECT] The validator index is valid
+    if validator_index >= len(state.validators):
+        raise GossipReject("validator index out of range")
+
+    validator = state.validators[validator_index]
+
+    # [REJECT] The validator has BLS withdrawal credentials
+    if validator.withdrawal_credentials[:1] != BLS_WITHDRAWAL_PREFIX:
+        raise GossipReject("validator does not have BLS withdrawal credentials")
+
+    # [REJECT] The BTEC is for the validator's withdrawal pubkey
+    if validator.withdrawal_credentials[1:] != hash(btec.from_bls_pubkey)[1:]:
+        raise GossipReject("pubkey does not match validator withdrawal credentials")
+
+    # [REJECT] The signature is valid
+    domain = compute_domain(
+        DOMAIN_BLS_TO_EXECUTION_CHANGE, genesis_validators_root=state.genesis_validators_root
+    )
+    signing_root = compute_signing_root(btec, domain)
+    if not bls.Verify(
+        btec.from_bls_pubkey,
+        signing_root,
+        signed_bls_to_execution_change.signature,
+    ):
+        raise GossipReject("invalid BLS to execution change signature")
+
+    # Mark this BTEC as seen
+    seen.bls_to_execution_change_indices.add(validator_index)
+```
 
 #### Transitioning the gossip
 

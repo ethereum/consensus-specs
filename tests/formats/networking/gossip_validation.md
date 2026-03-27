@@ -25,7 +25,8 @@ tests/gossip/<topic>/<test_name>/
 ├── state.ssz_snappy
 ├── block_<32-byte-root>.ssz_snappy           # block file(s)
 ├── attestation_<32-byte-root>.ssz_snappy     # attestation file(s) (attestation topics)
-└── aggregate_<32-byte-root>.ssz_snappy       # aggregate file(s) (aggregate topic)
+├── aggregate_<32-byte-root>.ssz_snappy       # aggregate file(s) (aggregate topic)
+└── bls_to_execution_change_<32-byte-root>.ssz_snappy  # bls_to_execution_change file(s)
 ```
 
 ### `meta.yaml`
@@ -63,14 +64,15 @@ An SSZ-snappy encoded `BeaconState`. This state provides:
 Message files are named with a prefix indicating their type and the 32-byte hash
 tree root:
 
-| Topic                        | File prefix          | SSZ type                  |
-| ---------------------------- | -------------------- | ------------------------- |
-| `beacon_block`               | `block_`             | `SignedBeaconBlock`       |
-| `beacon_attestation`         | `attestation_`       | `Attestation`             |
-| `beacon_aggregate_and_proof` | `aggregate_`         | `SignedAggregateAndProof` |
-| `proposer_slashing`          | `proposer_slashing_` | `ProposerSlashing`        |
-| `attester_slashing`          | `attester_slashing_` | `AttesterSlashing`        |
-| `voluntary_exit`             | `voluntary_exit_`    | `SignedVoluntaryExit`     |
+| Topic                        | File prefix                | SSZ type                     |
+| ---------------------------- | -------------------------- | ---------------------------- |
+| `beacon_block`               | `block_`                   | `SignedBeaconBlock`          |
+| `beacon_attestation`         | `attestation_`             | `Attestation`                |
+| `beacon_aggregate_and_proof` | `aggregate_`               | `SignedAggregateAndProof`    |
+| `proposer_slashing`          | `proposer_slashing_`       | `ProposerSlashing`           |
+| `attester_slashing`          | `attester_slashing_`       | `AttesterSlashing`           |
+| `voluntary_exit`             | `voluntary_exit_`          | `SignedVoluntaryExit`        |
+| `bls_to_execution_change`    | `bls_to_execution_change_` | `SignedBLSToExecutionChange` |
 
 Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
 
