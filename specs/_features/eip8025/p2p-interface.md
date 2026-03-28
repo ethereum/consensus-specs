@@ -77,6 +77,8 @@ The following validations MUST pass before forwarding the
 `signed_execution_proof` on the network, assuming the alias
 `proof = signed_execution_proof.message`:
 
+- _[IGNORE]_ The proof has not already been processed -- i.e.
+  `hash_tree_root(proof)` has not been seen before.
 - _[IGNORE]_ The proof's corresponding new payload request (identified by
   `proof.public_input.new_payload_request_root`) has been seen (via gossip or
   non-gossip sources) (a client MAY queue proofs for processing once the new
@@ -88,6 +90,9 @@ The following validations MUST pass before forwarding the
   `(proof.public_input.new_payload_request_root, proof.proof_type, signed_execution_proof.validator_index)`
   -- i.e. the first *valid or invalid* proof for `proof.proof_type` from
   `signed_execution_proof.validator_index`.
+- _[IGNORE]_ The validator has not previously sent an invalid proof -- i.e. no
+  *invalid* proof from the public key associated with
+  `signed_execution_proof.validator_index` has been received.
 - _[REJECT]_ The validator with index `signed_execution_proof.validator_index`
   is an active validator -- i.e.
   `is_active_validator(state.validators[signed_execution_proof.validator_index], get_current_epoch(state))`
@@ -116,6 +121,7 @@ Request Content:
 (
   start_slot: Slot
   count: uint64
+  proof_filters: List[ProofByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]
 )
 ```
 
@@ -130,7 +136,10 @@ Response Content:
 Requests execution proofs for a contiguous range of slots. The request specifies
 a `start_slot` and a `count` of slots. The responding peer iterates through
 beacon blocks in the range `[start_slot, start_slot + count)` and returns all
-known `SignedExecutionProof` entries associated with those blocks.
+known `SignedExecutionProof` entries associated with those blocks. If
+`proof_filters` is non-empty, only the proof types specified for each block root
+in `proof_filters` are returned for the matching blocks; blocks not listed in
+`proof_filters` return all known proof types.
 
 The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `SignedExecutionProof` payload.
@@ -190,6 +199,7 @@ Request, Response Content:
 (
   block_root: Root
   slot: Slot
+  proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
 )
 ```
 
@@ -202,6 +212,11 @@ As seen by the client at the time of sending the message:
   (`BeaconBlock`) for which the client has verified sufficient execution proofs
   to consider the block valid.
 - `slot`: The slot of the block corresponding to the `block_root`.
+- `proof_types`: The proof types that this client supports. This is intentionally
+  a dynamic capability advertisement rather than a protocol constant, allowing
+  clients to support new proof types without requiring a hard fork or new client
+  release. Peers SHOULD use this field to inform proof type selection during
+  synchronization.
 
 The request/response MUST be encoded as an SSZ-container.
 

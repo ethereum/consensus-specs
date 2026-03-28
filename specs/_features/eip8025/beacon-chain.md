@@ -20,7 +20,6 @@
   - [Block processing](#block-processing)
     - [Modified `process_block`](#modified-process_block)
     - [Execution payload](#execution-payload)
-      - [New `NewPayloadRequestHeader`](#new-newpayloadrequestheader)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
   - [Execution proof](#execution-proof)
     - [New `process_execution_proof`](#new-process_execution_proof)
@@ -107,17 +106,6 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 #### Execution payload
 
-##### New `NewPayloadRequestHeader`
-
-```python
-@dataclass
-class NewPayloadRequestHeader(object):
-    execution_payload_header: ExecutionPayloadHeader
-    versioned_hashes: Sequence[VersionedHash]
-    parent_beacon_block_root: Root
-    execution_requests: ExecutionRequests
-```
-
 ##### Modified `process_execution_payload`
 
 *Note*: `process_execution_payload` is modified in EIP-8025 to require both
@@ -160,32 +148,15 @@ def process_execution_payload(
     )
 
     # [New in EIP8025]
-    # Verify via ProofEngine
-    new_payload_request_header = NewPayloadRequestHeader(
-        execution_payload_header=ExecutionPayloadHeader(
-            parent_hash=payload.parent_hash,
-            fee_recipient=payload.fee_recipient,
-            state_root=payload.state_root,
-            receipts_root=payload.receipts_root,
-            logs_bloom=payload.logs_bloom,
-            prev_randao=payload.prev_randao,
-            block_number=payload.block_number,
-            gas_limit=payload.gas_limit,
-            gas_used=payload.gas_used,
-            timestamp=payload.timestamp,
-            extra_data=payload.extra_data,
-            base_fee_per_gas=payload.base_fee_per_gas,
-            block_hash=payload.block_hash,
-            transactions_root=hash_tree_root(payload.transactions),
-            withdrawals_root=hash_tree_root(payload.withdrawals),
-            blob_gas_used=payload.blob_gas_used,
-            excess_blob_gas=payload.excess_blob_gas,
-        ),
-        versioned_hashes=versioned_hashes,
-        parent_beacon_block_root=state.latest_block_header.parent_root,
-        execution_requests=body.execution_requests,
+    # Notify ProofEngine of the new execution payload
+    proof_engine.notify_new_payload(
+        NewPayloadRequest(
+            execution_payload=payload,
+            versioned_hashes=versioned_hashes,
+            parent_beacon_block_root=state.latest_block_header.parent_root,
+            execution_requests=body.execution_requests,
+        )
     )
-    assert proof_engine.verify_new_payload_request_header(new_payload_request_header)
 
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(

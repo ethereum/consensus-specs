@@ -56,9 +56,9 @@ class NoopProofEngine(ProofEngine):
                                execution_proof: ExecutionProof) -> bool:
         return True
 
-    def verify_new_payload_request_header(self: ProofEngine,
-                                          new_payload_request_header: NewPayloadRequestHeader) -> bool:
-        return True
+    def notify_new_payload(self: ProofEngine,
+                           new_payload_request: NewPayloadRequest) -> None:
+        return None
 
     def request_proofs(self: ProofEngine,
                        new_payload_request: NewPayloadRequest,

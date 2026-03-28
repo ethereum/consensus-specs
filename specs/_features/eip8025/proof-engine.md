@@ -11,7 +11,7 @@
 - [Types](#types)
 - [Proof engine](#proof-engine)
   - [New `verify_execution_proof`](#new-verify_execution_proof)
-  - [New `verify_new_payload_request_header`](#new-verify_new_payload_request_header)
+  - [New `notify_new_payload`](#new-notify_new_payload)
   - [New `ProofAttributes`](#new-proofattributes)
   - [New `request_proofs`](#new-request_proofs)
 
@@ -37,8 +37,8 @@ sub-system logic via:
   proofs
 - a verification function `self.verify_execution_proof` to verify individual
   proofs
-- a verification function `self.verify_new_payload_request_header` to verify new
-  payload request headers using stored proofs
+- a notification function `self.notify_new_payload` to notify the proof engine
+  of the new payload
 - a generation function `self.request_proofs` to initiate asynchronous proof
   generation
 
@@ -60,16 +60,15 @@ def verify_execution_proof(
     ...
 ```
 
-### New `verify_new_payload_request_header`
+### New `notify_new_payload`
 
 ```python
-def verify_new_payload_request_header(
+def notify_new_payload(
     self: ProofEngine,
-    new_payload_request_header: NewPayloadRequestHeader,
-) -> bool:
+    new_payload_request: NewPayloadRequest,
+) -> None:
     """
-    Verify the corresponding new payload request execution is valid.
-    Return ``True`` if proof requirements are satisfied.
+    Notify the proof engine of the new payload.
     """
     ...
 ```
