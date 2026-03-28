@@ -45,6 +45,8 @@ due to a prior invalid submission.
 reaching this point has already been verified by the local node.
 
 1. Let `validator_index` be the validator index of the re-signing validator.
-2. Let `signature = get_execution_proof_signature(state, proof.message, privkey)`.
-3. Let `resigned_proof = SignedExecutionProof(message=proof.message, validator_index=validator_index, signature=signature)`.
+2. Let
+   `signature = get_execution_proof_signature(state, proof.message, privkey)`.
+3. Let
+   `resigned_proof = SignedExecutionProof(message=proof.message, validator_index=validator_index, signature=signature)`.
 4. Broadcast `resigned_proof` on the `execution_proof` gossip topic.

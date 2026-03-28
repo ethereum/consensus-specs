@@ -212,11 +212,11 @@ As seen by the client at the time of sending the message:
   (`BeaconBlock`) for which the client has verified sufficient execution proofs
   to consider the block valid.
 - `slot`: The slot of the block corresponding to the `block_root`.
-- `proof_types`: The proof types that this client supports. This is intentionally
-  a dynamic capability advertisement rather than a protocol constant, allowing
-  clients to support new proof types without requiring a hard fork or new client
-  release. Peers SHOULD use this field to inform proof type selection during
-  synchronization.
+- `proof_types`: The proof types that this client supports. This is
+  intentionally a dynamic capability advertisement rather than a protocol
+  constant, allowing clients to support new proof types without requiring a hard
+  fork or new client release. Peers SHOULD use this field to inform proof type
+  selection during synchronization.
 
 The request/response MUST be encoded as an SSZ-container.
 
