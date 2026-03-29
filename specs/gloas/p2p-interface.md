@@ -377,6 +377,9 @@ The following validations MUST pass before forwarding the
   block in fork choice.
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
+- _[REJECT]_ The length of KZG commitments is less than or equal to the
+  limitation defined in the consensus layer -- i.e. validate that
+  `len(bid.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
 
 *Note*: Implementations SHOULD include DoS prevention measures to mitigate spam
 from malicious builders submitting numerous bids with minimal value increments.
