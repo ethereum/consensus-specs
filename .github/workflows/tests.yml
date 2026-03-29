@@ -44,29 +44,19 @@ jobs:
     steps:
       - name: Resolve configuration
         id: config
-        env:
-          EVENT: ${{ github.event_name }}
-          REPO: ${{ inputs.repo }}
-          REF: ${{ inputs.ref }}
-          DEFAULT_REPO: ${{ github.repository }}
-          RUNNER: ${{ inputs.runner }}
-          GENERAL: ${{ inputs.general }}
-          MINIMAL: ${{ inputs.minimal }}
-          MAINNET: ${{ inputs.mainnet }}
         run: |
           # Repository
-          repo="${REPO:-$DEFAULT_REPO}"
+          repo="${{ inputs.repo || github.repository }}"
           echo "repo=$repo" >> "$GITHUB_OUTPUT"
 
           # Ref
-          ref=""
-          if [[ -n "$REF" ]]; then
-            ref="$REF"
+          ref="${{ inputs.ref }}"
+          if [[ -n "$ref" ]]; then
             echo "ref=$ref" >> "$GITHUB_OUTPUT"
           fi
 
           # Runner
-          if [[ "$EVENT" == "schedule" || "$RUNNER" == "self-hosted" ]]; then
+          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.runner }}" == "self-hosted" ]]; then
             runner='["self-hosted-ghr-custom", "size-s-x64", "profile-consensusSpecs"]'
           else
             runner='"ubuntu-latest"'
@@ -74,13 +64,13 @@ jobs:
           echo "runner=$runner" >> "$GITHUB_OUTPUT"
 
           # Presets
-          if [[ "$EVENT" == "schedule" ]]; then
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
             presets='["general","minimal","mainnet"]'
           else
             selected=()
-            [[ "$GENERAL" == "true" ]] && selected+=("general")
-            [[ "$MINIMAL" == "true" ]] && selected+=("minimal")
-            [[ "$MAINNET" == "true" ]] && selected+=("mainnet")
+            [[ "${{ inputs.general }}" == "true" ]] && selected+=("general")
+            [[ "${{ inputs.minimal }}" == "true" ]] && selected+=("minimal")
+            [[ "${{ inputs.mainnet }}" == "true" ]] && selected+=("mainnet")
 
             if [[ ${#selected[@]} -eq 0 ]]; then
               echo "No presets selected." >&2
@@ -135,10 +125,7 @@ jobs:
           enable-cache: true
 
       - name: Generate tests
-        run: make test component=pyspec preset="$PRESET" fork="$FORK" reftests=true
-        env:
-          PRESET: ${{ matrix.preset }}
-          FORK: ${{ matrix.fork }}
+        run: make test component=pyspec preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true
 
       - name: Upload reference tests
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -164,9 +151,7 @@ jobs:
           merge-multiple: true
 
       - name: Archive reference tests
-        run: tar -czvf "$PRESET.tar.gz" "tests/$PRESET"
-        env:
-          PRESET: ${{ matrix.preset }}
+        run: tar -czvf ${{ matrix.preset }}.tar.gz tests/${{ matrix.preset }}
 
       - name: Upload ${{ matrix.preset }}.tar.gz
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -177,14 +162,12 @@ jobs:
       - name: Delete intermediate artifacts
         continue-on-error: true
         run: |
-          gh api "repos/$REPO/actions/runs/$RUN_ID/artifacts" \
+          gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
             --paginate --jq '.artifacts[]
-              | select(.name | startswith("reftests-'"$PRESET"'-"))
+              | select(.name | startswith("reftests-${{ matrix.preset }}-"))
               | .id' | while read id; do
-            gh api -X DELETE "repos/$REPO/actions/artifacts/$id"
+            gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
           done
         env:
-          PRESET: ${{ matrix.preset }}
-          REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.run_id }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
