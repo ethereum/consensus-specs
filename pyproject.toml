@@ -26,7 +26,7 @@ dependencies = [
 [project.optional-dependencies]
 test = [
   "ckzg==2.1.7",
-  "deepdiff==8.6.2",
+  "deepdiff==9.0.0",
   "eth-hash[pycryptodome]==0.8.0",
   "psutil==7.2.2",
   "pytest-cov==7.1.0",
@@ -45,7 +45,7 @@ lint = [
   "mdformat-toc==0.5.0",
   "mdformat==1.0.0",
   "mypy==1.19.1",
-  "ruff==0.15.7",
+  "ruff==0.15.8",
 ]
 generator = [
   "minizinc==0.10.0",
