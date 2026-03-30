@@ -853,6 +853,7 @@ def on_payload_attestation_message(
     # The beacon block root must be known
     data = ptc_message.data
     # PTC attestation must be for a known block. If block is unknown, delay consideration until the block is found
+    assert data.beacon_block_root in store.block_states
     state = store.block_states[data.beacon_block_root]
     ptc = get_ptc(state, data.slot)
     # PTC votes can only change the vote for their assigned beacon block, return early otherwise

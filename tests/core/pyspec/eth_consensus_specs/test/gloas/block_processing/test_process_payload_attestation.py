@@ -126,7 +126,8 @@ def _compute_selection_with_acceptance_iterations(spec, state, indices, seed, si
     i = 0
     while len(selected) < size:
         candidate_index = indices[i % total]
-        if spec.compute_balance_weighted_acceptance(state, candidate_index, seed, spec.uint64(i)):
+        effective_balance = state.validators[candidate_index].effective_balance
+        if spec.compute_balance_weighted_acceptance(effective_balance, seed, spec.uint64(i)):
             selected.append(candidate_index)
             accepted_at.append(i)
         i += 1
@@ -375,6 +376,8 @@ def test_process_payload_attestation_sampling_not_capped(spec, state):
     low_balance = spec.EFFECTIVE_BALANCE_INCREMENT
     for validator in state.validators:
         validator.effective_balance = low_balance
+    # Direct balance mutations bypass epoch processing, so refresh the cached current-epoch PTC.
+    state.ptc_window = spec.initialize_ptc_window(state)
 
     chosen_slot = None
     chosen_index = None

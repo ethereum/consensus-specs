@@ -6,6 +6,17 @@ class Phase0SpecBuilder(BaseSpecBuilder):
     fork: str = PHASE0
 
     @classmethod
+    def classes(cls) -> str:
+        return """
+class GossipIgnore(Exception):
+    pass
+
+
+class GossipReject(Exception):
+    pass
+"""
+
+    @classmethod
     def imports(cls, preset_name: str) -> str:
         return """from lru import LRU
 from collections import defaultdict
@@ -59,7 +70,7 @@ def cache_this(key_fn, value_fn, lru_size):  # type: ignore
 _compute_shuffled_index = compute_shuffled_index
 compute_shuffled_index = cache_this(
     lambda index, index_count, seed: (index, index_count, seed),
-    _compute_shuffled_index, lru_size=SLOTS_PER_EPOCH * 3)
+    _compute_shuffled_index, lru_size=2**10)
 
 _get_total_active_balance = get_total_active_balance
 get_total_active_balance = cache_this(
