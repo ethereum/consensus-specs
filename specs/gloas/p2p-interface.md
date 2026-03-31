@@ -611,15 +611,17 @@ Per `fork_version = compute_fork_version(epoch)`:
 | -------------------- | -------------------------------------- |
 | `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
 
-Clients MUST respond with payload envelopes from their view of the current fork choice, that is, payload envelopes as included by blocks from the single chain
+Clients MUST respond with payload envelopes from their view of the current fork
+choice, that is, payload envelopes as included by blocks from the single chain
 defined by the current head. Of note, blocks from slots before the finalization
 MUST lead to the finalized block reported in the `Status` handshake.
 
 Clients MUST respond with payload envelopes that are consistent from a single
 chain within the context of the request.
 
-After the initial payload envelope, clients MAY stop in the process of responding
-if their fork choice changes the view of the chain in the context of the request.
+After the initial payload envelope, clients MAY stop in the process of
+responding if their fork choice changes the view of the chain in the context of
+the request.
 
 ##### ExecutionPayloadEnvelopesByRoot v1
 
