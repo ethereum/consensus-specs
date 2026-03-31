@@ -121,15 +121,21 @@ MIN_PER_EPOCH_CHURN_LIMIT: 2
 # [customized] 2**5 (= 32)
 CHURN_LIMIT_QUOTIENT: 32
 
-# Deneb
-# [customized] 2**2 (= 4) (*deprecated*)
-MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT: 4
+# Deneb / Gloas (EIP-8061: reintroduced as activation-only cap)
+# 2**8 (= 256)
+MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT: 256
 
 # Electra
 # [customized] 2**6 * 10**9 (= 64,000,000,000) Gwei
 MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA: 64000000000
 # [customized] 2**7 * 10**9 (= 128,000,000,000) Gwei
 MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT: 128000000000
+
+# Gloas
+# 2**15 (= 32,768)
+CHURN_LIMIT_QUOTIENT_GLOAS: 32768
+# 2**16 (= 65,536)
+CONSOLIDATION_CHURN_LIMIT_QUOTIENT: 65536
 
 # Fork choice
 # ---------------------------------------------------------------
