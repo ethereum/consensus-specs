@@ -189,7 +189,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 | ------------------------------------ | -------------------------- |
 | `CONSOLIDATION_CHURN_LIMIT_QUOTIENT`  | `uint64(2**16)` (= 65,536) |
 | `CHURN_LIMIT_QUOTIENT_GLOAS`         | `uint64(2**15)` (= 32,768) |
-| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT` | `uint64(2**8)` (= 256)   |
+| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS` | `Gwei(2**8 * 10**9)` (= 256,000,000,000) |
 
 ### Time parameters
 
@@ -805,7 +805,7 @@ def get_activation_churn_limit(state: BeaconState) -> Gwei:
         get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT_GLOAS,
     )
     churn = churn - churn % EFFECTIVE_BALANCE_INCREMENT
-    return min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT, churn)
+    return min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS, churn)
 ```
 
 #### New `get_exit_churn_limit`
