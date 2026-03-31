@@ -210,22 +210,33 @@ class FCRTest:
             block.body.graffiti = str_to_graffiti(graffiti)
 
         if attestations is not None:
-            for attestation in attestations[: self.max_attestations()]:
-                block.body.attestations.append(attestation)
+            for att in attestations[: self.max_attestations()]:
+                block.body.attestations.append(att)
         elif include_atts:
-            not_included_atts = []
-            for attestation in self.attestation_pool:
-                if len(block.body.attestations) < self.max_attestations():
-                    if include_att_fn == None or include_att_fn(block, attestation):
-                        block.body.attestations.append(attestation)
-                    else:
-                        not_included_atts.append(attestation)
-                else:
+            for att in self.attestation_pool:
+                if att.data.slot + self.spec.MIN_ATTESTATION_INCLUSION_DELAY > block.slot:
+                    continue
+
+                if is_post_electra(self.spec):
+                    if self.spec.compute_epoch_at_slot(
+                        att.data.slot
+                    ) + 1 < self.spec.compute_epoch_at_slot(block.slot):
+                        continue
+                elif att.data.slot + self.spec.SLOTS_PER_EPOCH < block.slot:
+                    continue
+
+                if include_att_fn == None or include_att_fn(block, att):
+                    block.body.attestations.append(att)
+
+                if len(block.body.attestations) >= self.max_attestations():
                     break
 
             # Release included attestations from the pool
             if release_att_pool:
-                self.attestation_pool = not_included_atts
+                included_atts = set(block.body.attestations)
+                self.attestation_pool = [
+                    att for att in self.attestation_pool if att not in included_atts
+                ]
 
         # Sign block and add it to the Store
         signed_block = state_transition_and_sign_block(self.spec, parent_state, block)
@@ -521,6 +532,7 @@ class FCRTest:
             f"prev_epoch_gu [{self.get_checkpoint_info(store.previous_epoch_greatest_unrealized_checkpoint)}]"
         )
         print(f"justified_checkpoint [{self.get_checkpoint_info(store.justified_checkpoint)}]")
+        print(f"finalized_checkpoint [{self.get_checkpoint_info(store.finalized_checkpoint)}]")
 
 
 @dataclass
@@ -614,7 +626,7 @@ class Slashing(PhaseRun):
 
     def execute(self, fcr: FCRTest) -> object:
         if self.percentage == None or self.percentage == 0:
-            return []
+            return None
 
         if self.committee_slot_or_offset == None and self.supporters_of_block == None:
             return fcr.apply_attester_slashing(slashing_percentage=self.percentage)
@@ -634,7 +646,7 @@ class Slashing(PhaseRun):
         if len(participants) > 0:
             return fcr.apply_attester_slashing(slashing_indices=participants)
         else:
-            return []
+            return None
 
 
 @dataclass

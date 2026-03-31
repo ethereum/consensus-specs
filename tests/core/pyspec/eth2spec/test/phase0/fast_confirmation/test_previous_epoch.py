@@ -648,7 +648,7 @@ class PreviousEpochTestBuilder:
                 p.release_att_pool = False
 
             if test_spec.no_conflicting_chkp:
-                curr_epoch_attest_to = "head"
+                curr_epoch_attest_to = "middle"
             else:
                 curr_epoch_attest_to = "target"
 
@@ -669,37 +669,39 @@ class PreviousEpochTestBuilder:
                         attesting=Attesting(block_id="confirmed", participation_rate=25),
                     ),
                     # "prev_head" must outweigh "target"
+                    # 100% is needed as "prev_head" committee may overlap with "fake_head" committee
                     SlotRun(
-                        proposal=proposals["prev_head"], attesting=Attesting(participation_rate=50)
+                        proposal=proposals["prev_head"], attesting=Attesting(participation_rate=100)
                     ),
                     SlotRun(proposal=proposals["head"], attesting=Attesting(participation_rate=0)),
                     # Sequence of empty slots to aid confirming "target"
+                    EmptySlotRun(attesting=Attesting(participation_rate=0)),
+                    EmptySlotRun(attesting=Attesting(participation_rate=0)),
                     EmptySlotRun(attesting=Attesting(participation_rate=0)),
                     EmptySlotRun(attesting=Attesting(participation_rate=0)),
                     EmptySlotRun(
                         attesting=Attesting(participation_rate=0),
                         advance_slot=AdvanceSlot(next_slot=False),
                     ),
-                    # Attest to "curr_epoch_attest_to"
+                    # Attest to "curr_epoch_attest_to" by past slots committees and constant participation
                     Attesting(
                         block_id=curr_epoch_attest_to,
                         participation_rate=100,
                         committee_slot_or_offset=[0, -1, -2, -3],
                     ),
-                    # Attest to "middle"
+                    # Attest to "target" by a couple of committees
+                    # we need to one confirm "target" sharply, one confirming "middle" will imply block_vs_fresh
                     Attesting(
-                        committee_slot_or_offset=target_slot + 1,
-                        block_id="middle",
-                        participation_rate=target_block_rate,
-                    ),
-                    # Attest to "target" by the rest of "target" and "prev_head" committees
-                    Attesting(
-                        committee_slot_or_offset=[target_slot, target_slot + 2],
+                        committee_slot_or_offset=[-4, -5],
                         block_id="target",
                         participation_rate=target_block_rate,
                     ),
-                    # Slashing "fake_head" supporters to aid confirming "target"
-                    Slashing(supporters_of_block="fake_head", percentage=50),
+                    # Attest to "target" by the rest of "target" and "middle" committees
+                    Attesting(
+                        committee_slot_or_offset=[target_slot, target_slot + 1],
+                        block_id="target",
+                        participation_rate=target_block_rate,
+                    ),
                     # Next slot
                     AdvanceSlot(with_fast_confirmation=False),
                 ]
