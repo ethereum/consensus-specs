@@ -10,7 +10,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
-from eth_consensus_specs.test.helpers.forks import is_post_electra
+from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_gloas
 from eth_consensus_specs.test.helpers.keys import pubkeys
 
 
@@ -77,7 +77,10 @@ def test_activation_churn_limit__greater_than_activation_limit(spec, state):
         spec.get_validator_activation_churn_limit(state)
         == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
     )
-    assert spec.get_validator_churn_limit(state) > spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    if not is_post_gloas(spec):
+        # Gloas uses Gwei-based churn with a different quotient, so the validator-count
+        # churn limit diverges from the Deneb-era MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT.
+        assert spec.get_validator_churn_limit(state) > spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
     yield from run_test_activation_churn_limit(spec, state)
 
 
@@ -97,7 +100,10 @@ def test_activation_churn_limit__equal_to_activation_limit(spec, state):
         spec.get_validator_activation_churn_limit(state)
         == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
     )
-    assert spec.get_validator_churn_limit(state) == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    if not is_post_gloas(spec):
+        # Gloas uses Gwei-based churn with a different quotient, so the validator-count
+        # churn limit diverges from the Deneb-era MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT.
+        assert spec.get_validator_churn_limit(state) == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
     yield from run_test_activation_churn_limit(spec, state)
 
 
@@ -112,5 +118,8 @@ def test_activation_churn_limit__less_than_activation_limit(spec, state):
         spec.get_validator_activation_churn_limit(state)
         < spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
     )
-    assert spec.get_validator_churn_limit(state) < spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+    if not is_post_gloas(spec):
+        # Gloas uses Gwei-based churn with a different quotient, so the validator-count
+        # churn limit diverges from the Deneb-era MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT.
+        assert spec.get_validator_churn_limit(state) < spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
     yield from run_test_activation_churn_limit(spec, state)
