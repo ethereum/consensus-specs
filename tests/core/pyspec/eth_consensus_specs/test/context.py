@@ -194,8 +194,6 @@ def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
     if is_post_gloas(spec):
-        # Gloas splits activation and exit churn; scale against the new quotient
-        # and the Gloas activation churn cap (Gwei-denominated).
         num_validators = (
             2
             * spec.config.CHURN_LIMIT_QUOTIENT_GLOAS

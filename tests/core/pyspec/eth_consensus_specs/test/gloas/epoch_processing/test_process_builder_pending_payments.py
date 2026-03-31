@@ -297,7 +297,7 @@ def test_process_builder_pending_payments_large_amount_churn_impact(spec, state)
     # Store pre-processing state for churn verification
     pre_exit_balance_to_consume = state.exit_balance_to_consume
     pre_earliest_exit_epoch = state.earliest_exit_epoch
-    per_epoch_churn = spec.get_activation_exit_churn_limit(state)
+    per_epoch_churn = spec.get_exit_churn_limit(state)
     current_epoch = spec.get_current_epoch(state)
 
     # Verify that we will hit the "New epoch for exits" condition in compute_exit_epoch_and_update_churn
