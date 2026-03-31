@@ -31,7 +31,7 @@ from .helpers.constants import (
     PHASE0,
     POST_FORK_OF,
 )
-from .helpers.forks import is_post_electra, is_post_fork
+from .helpers.forks import is_post_electra, is_post_fork, is_post_gloas
 from .helpers.genesis import create_genesis_state
 from .helpers.specs import (
     spec_targets,
@@ -153,6 +153,14 @@ def scaled_churn_balances_equal_activation_churn_limit(spec: Spec):
     Helper method to create enough validators to scale the churn limit.
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_equal_activation_churn_limit, ...)`
     """
+    if is_post_gloas(spec):
+        num_validators = (
+            spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
+            * spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
+            // spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+        )
+        return [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * num_validators
+
     num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (
         spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
     )
@@ -165,6 +173,14 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
     (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
+    if is_post_gloas(spec):
+        num_validators = (
+            spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
+            * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS + 2 * spec.EFFECTIVE_BALANCE_INCREMENT)
+            // spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+        )
+        return [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * num_validators
+
     num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (
         spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2
     )
@@ -177,6 +193,17 @@ def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
     (The number of validators is double the amount need for the max activation/exit churn limit)
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
+    if is_post_gloas(spec):
+        # Gloas splits activation and exit churn; scale against the new quotient
+        # and the Gloas activation churn cap (Gwei-denominated).
+        num_validators = (
+            2
+            * spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
+            * spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
+            // spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+        )
+        return [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * num_validators
+
     num_validators = (
         2
         * spec.config.CHURN_LIMIT_QUOTIENT
