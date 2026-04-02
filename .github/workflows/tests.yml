@@ -57,7 +57,7 @@ jobs:
 
           # Runner
           if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.runner }}" == "self-hosted" ]]; then
-            runner='["self-hosted-ghr-custom", "size-s-x64", "profile-consensusSpecs"]'
+            runner='["self-hosted-ghr-custom", "size-m-arm64", "profile-consensusSpecs"]'
           else
             runner='"ubuntu-latest"'
           fi
