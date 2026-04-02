@@ -1,9 +1,5 @@
 name: Checks
 
-defaults:
-  run:
-    shell: zsh -e {0}
-
 on:
   push:
     branches:
