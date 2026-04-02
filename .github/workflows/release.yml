@@ -9,7 +9,7 @@ on:
 
 jobs:
   setup:
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: read
@@ -46,7 +46,7 @@ jobs:
   generate:
     needs: setup
     timeout-minutes: 1440 # 24 hours
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
@@ -91,7 +91,7 @@ jobs:
 
   package:
     needs: [setup, generate]
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    runs-on: ubuntu-latest
     permissions:
       actions: write
       contents: write
@@ -133,7 +133,7 @@ jobs:
 
   publish:
     needs: [setup, package]
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
