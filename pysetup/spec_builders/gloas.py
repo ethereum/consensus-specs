@@ -1,4 +1,4 @@
-from ..constants import GLOAS
+from ..constants import GLOAS, OPTIMIZED_BALANCE_WEIGHTED_SELECTION
 from .base import BaseSpecBuilder
 
 
@@ -37,3 +37,11 @@ def retrieve_column_sidecars_and_kzg_commitments(
     # pylint: disable=unused-argument
     return [], []
 """
+
+    @classmethod
+    def implement_optimizations(cls, functions: dict[str, str]) -> dict[str, str]:
+        if "compute_balance_weighted_selection" in functions:
+            functions["compute_balance_weighted_selection"] = (
+                OPTIMIZED_BALANCE_WEIGHTED_SELECTION.strip()
+            )
+        return functions
