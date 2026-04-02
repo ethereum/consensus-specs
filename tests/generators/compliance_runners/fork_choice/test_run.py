@@ -220,9 +220,7 @@ def main():
     arg_parser.add_argument(
         "--start", type=int, default=None, help="start index (0-based) into the test list"
     )
-    arg_parser.add_argument(
-        "--limit", type=int, default=None, help="limit number of tests to run"
-    )
+    arg_parser.add_argument("--limit", type=int, default=None, help="limit number of tests to run")
     args = arg_parser.parse_args()
     if args.sequential:
         run_tests(args.test_dir, start=args.start, limit=args.limit)
