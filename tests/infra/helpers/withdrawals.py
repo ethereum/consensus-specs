@@ -385,6 +385,9 @@ def assert_process_withdrawals(
         assert state.next_withdrawal_validator_index == pre_state.next_withdrawal_validator_index
         assert len(state.builder_pending_withdrawals) == len(pre_state.builder_pending_withdrawals)
         assert len(state.pending_partial_withdrawals) == len(pre_state.pending_partial_withdrawals)
+        assert list(state.payload_expected_withdrawals) == list(
+            pre_state.payload_expected_withdrawals
+        )
         return
 
     # Get expected withdrawals for invariant checks
