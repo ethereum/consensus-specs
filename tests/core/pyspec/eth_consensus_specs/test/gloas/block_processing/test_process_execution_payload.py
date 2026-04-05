@@ -4,6 +4,10 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
+from eth_consensus_specs.test.helpers.deposits import (
+    make_withdrawal_credentials,
+    prepare_deposit_request,
+)
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
 )
@@ -508,6 +512,82 @@ def test_process_execution_payload_with_execution_requests(spec, state):
     assert cleared_payment.weight == empty_payment.weight
     assert cleared_payment.withdrawal.amount == empty_payment.withdrawal.amount
     assert cleared_payment.withdrawal.builder_index == empty_payment.withdrawal.builder_index
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
+def test_process_execution_payload_with_same_pubkey_deposit_requests(spec, state):
+    """
+    Test execution payload processing with two deposit requests for the same pubkey
+    """
+    builder_index = 0
+    setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(0))
+
+    new_validator_index = len(state.validators)
+    amount = spec.MIN_DEPOSIT_AMOUNT
+
+    # First deposit: regular credentials with valid signature
+    deposit_request_1 = prepare_deposit_request(
+        spec,
+        new_validator_index,
+        amount,
+        index=0,
+        withdrawal_credentials=make_withdrawal_credentials(
+            spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\xab"
+        ),
+        signed=True,
+    )
+
+    # Second deposit: builder credentials for the same pubkey
+    deposit_request_2 = prepare_deposit_request(
+        spec,
+        new_validator_index,
+        amount,
+        index=1,
+        withdrawal_credentials=make_withdrawal_credentials(
+            spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
+        ),
+        signed=True,
+    )
+
+    execution_requests = spec.ExecutionRequests(
+        deposits=spec.List[spec.DepositRequest, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD](
+            [deposit_request_1, deposit_request_2]
+        ),
+        withdrawals=spec.List[spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD](),
+        consolidations=spec.List[
+            spec.ConsolidationRequest, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
+        ](),
+    )
+
+    execution_payload = build_empty_execution_payload(spec, state)
+    execution_payload.block_hash = state.latest_execution_payload_bid.block_hash
+    execution_payload.gas_limit = state.latest_execution_payload_bid.gas_limit
+    execution_payload.parent_hash = state.latest_block_hash
+
+    signed_envelope = prepare_execution_payload_envelope(
+        spec,
+        state,
+        builder_index=builder_index,
+        execution_payload=execution_payload,
+        execution_requests=execution_requests,
+    )
+
+    pre_pending_deposits_len = len(state.pending_deposits)
+    pre_builder_count = len(state.builders)
+
+    yield from run_execution_payload_processing(spec, state, signed_envelope)
+
+    # Both deposits queued (second deposit sees first as pending validator via is_pending_validator)
+    assert len(state.pending_deposits) == pre_pending_deposits_len + 2
+    assert len(state.builders) == pre_builder_count
+    first = state.pending_deposits[pre_pending_deposits_len]
+    second = state.pending_deposits[pre_pending_deposits_len + 1]
+    assert first.pubkey == deposit_request_1.pubkey
+    assert first.withdrawal_credentials == deposit_request_1.withdrawal_credentials
+    assert second.pubkey == deposit_request_2.pubkey
+    assert second.withdrawal_credentials == deposit_request_2.withdrawal_credentials
 
 
 #
