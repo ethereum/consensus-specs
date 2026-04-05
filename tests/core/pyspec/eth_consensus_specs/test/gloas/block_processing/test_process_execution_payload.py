@@ -517,17 +517,19 @@ def test_process_execution_payload_with_execution_requests(spec, state):
 @with_gloas_and_later
 @spec_state_test
 @always_bls
-def test_process_execution_payload_with_same_pubkey_deposit_requests(spec, state):
+def test_process_execution_payload_with_builder_deposit_after_pending_validator(spec, state):
     """
-    Test execution payload processing with two deposit requests for the same pubkey
+    Test that a builder deposit cannot claim a pubkey that is already a pending validator earlier in the same envelope
     """
     builder_index = 0
     setup_state_with_payload_bid(spec, state, builder_index, spec.Gwei(0))
 
+    # Use a fresh pubkey that is neither a validator nor a builder
     new_validator_index = len(state.validators)
     amount = spec.MIN_DEPOSIT_AMOUNT
 
-    # First deposit: regular credentials with valid signature
+    # First deposit: regular validator credentials with valid signature.
+    # Since no validator/builder/pending deposit exists for this pubkey, it is queued as a pending validator.
     deposit_request_1 = prepare_deposit_request(
         spec,
         new_validator_index,
@@ -539,7 +541,9 @@ def test_process_execution_payload_with_same_pubkey_deposit_requests(spec, state
         signed=True,
     )
 
-    # Second deposit: builder credentials for the same pubkey
+    # Second deposit: builder credentials for the same pubkey.
+    # `is_pending_validator` must see the first deposit (just queued) and route this one to the pending queue
+    # instead of the builder registry, preventing a builder from claiming a pubkey already in the validator queue.
     deposit_request_2 = prepare_deposit_request(
         spec,
         new_validator_index,
@@ -579,15 +583,17 @@ def test_process_execution_payload_with_same_pubkey_deposit_requests(spec, state
 
     yield from run_execution_payload_processing(spec, state, signed_envelope)
 
-    # Both deposits queued (second deposit sees first as pending validator via is_pending_validator)
+    # Both deposits must end up in the pending queue, with no new builder created
     assert len(state.pending_deposits) == pre_pending_deposits_len + 2
     assert len(state.builders) == pre_builder_count
     first = state.pending_deposits[pre_pending_deposits_len]
     second = state.pending_deposits[pre_pending_deposits_len + 1]
     assert first.pubkey == deposit_request_1.pubkey
     assert first.withdrawal_credentials == deposit_request_1.withdrawal_credentials
+    assert first.amount == deposit_request_1.amount
     assert second.pubkey == deposit_request_2.pubkey
     assert second.withdrawal_credentials == deposit_request_2.withdrawal_credentials
+    assert second.amount == deposit_request_2.amount
 
 
 #
