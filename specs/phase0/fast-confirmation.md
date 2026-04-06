@@ -314,8 +314,8 @@ def is_full_validator_set_covered(start_slot: Slot, end_slot: Slot) -> bool:
 
 *Notes*:
 
-This function adjusts the estimate of the weight of a committee for a sequence of
-slots not covering a full epoch to ensure the safety of FCR with high
+This function adjusts the estimate of the weight of a committee for a sequence
+of slots not covering a full epoch to ensure the safety of FCR with high
 probability.
 
 See https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20 for

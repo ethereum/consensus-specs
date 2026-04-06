@@ -50,11 +50,6 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
 
     confimed_at_last_slot_epoch_2 = store.confirmed_root
 
-    fcr.print_fast_confirmation_state()
-    print(
-        f"confimed_at_last_slot_epoch_2 supporters: {fcr.get_supporters_of(confimed_at_last_slot_epoch_2)}"
-    )
-
     # Leave last slot empty
     fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=100)
 
@@ -64,37 +59,21 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
     # Epoch 3, Slot 1, empty slot
     fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=100)
 
-    fcr.print_fast_confirmation_state()
-    print(
-        f"confimed_at_last_slot_epoch_2 supporters: {fcr.get_supporters_of(confimed_at_last_slot_epoch_2)}"
-    )
-
     # Epoch 3, Slot 2, with block
-    root_at_slot2_epoch3 = fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
     # Check that confirmed block was not advanced
     assert store.confirmed_root == confimed_at_last_slot_epoch_2
 
-    fcr.print_fast_confirmation_state()
-    print(
-        f"confimed_at_last_slot_epoch_2 supporters: {fcr.get_supporters_of(confimed_at_last_slot_epoch_2)}"
-    )
-    print(f"root_at_slot2_epoch3 supporters: {fcr.get_supporters_of(root_at_slot2_epoch3)}")
-
     # Epoch 3, Slot 3
 
     # Slash participants of (Epoch 2, last slot) and (Epoch 3, first slot)
-    att_slashing_1 = Slashing(percentage=25, committee_slot_or_offset=3 * S - 1).execute(fcr)
-    att_slashing_2 = Slashing(percentage=25, committee_slot_or_offset=3 * S).execute(fcr)
-
-    fcr.print_fast_confirmation_state()
-    print(f"slashed vals: {att_slashing_1}, {att_slashing_2}")
+    Slashing(percentage=25, committee_slot_or_offset=3 * S - 1).execute(fcr)
+    Slashing(percentage=25, committee_slot_or_offset=3 * S).execute(fcr)
 
     # Advance with block and attest to add a bit more weight to overcome the committee shuffling dispersion
     fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
-    fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=25)
-
-    fcr.print_fast_confirmation_state()
+    fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=75)
 
     # Check the head is confirmed
     assert store.confirmed_root == fcr.head()

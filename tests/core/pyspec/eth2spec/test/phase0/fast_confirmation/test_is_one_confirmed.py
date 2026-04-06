@@ -10,6 +10,7 @@ from eth2spec.test.context import (
 )
 from eth2spec.test.helpers.fast_confirmation import (
     FCRTest,
+    Slashing,
 )
 
 """
@@ -178,21 +179,19 @@ def test_is_one_confirmed_slashing_supporters_does_not_hurt(spec, state):
     fcr.run_slots_with_blocks_and_fast_confirmation(2 * S, participation_rate=100)
 
     # Block B with 100% participation
-    block_b = fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
-
-    balance_source = spec.get_current_balance_source(store)
-    assert spec.is_one_confirmed(store, balance_source, block_b), (
-        "Precondition: is_one_confirmed should be True at 100%"
-    )
+    block_b = fcr.add_and_apply_block(parent_root=fcr.head())
+    fcr.attest(block_root=block_b, participation_rate=100)
 
     # Slash 20% randomly — at 100% participation, these are all supporters of B
-    fcr.apply_attester_slashing(slashing_percentage=20, slot=fcr.current_slot())
+    Slashing(percentage=20, committee_slot_or_offset=fcr.current_slot()).execute(fcr)
     assert len(store.equivocating_indices) > 0, "Slashing had no effect"
 
+    # Advance slot and run fast confirmation
+    fcr.next_slot()
+    fcr.run_fast_confirmation()
+
     # is_one_confirmed must still hold
-    assert spec.is_one_confirmed(store, balance_source, block_b), (
-        "Slashing supporters should not break is_one_confirmed"
-    )
+    assert store.confirmed_root == block_b, "Slashing supporters should not break is_one_confirmed"
 
     yield from fcr.get_test_artefacts()
 
@@ -571,10 +570,9 @@ def test_is_one_confirmed_epoch_crossing_block(spec, state):
 
     # Accumulate more support to get is_one_confirmed to pass
     fcr.attest_and_next_slot_with_fast_confirmation(block_root=block_b, participation_rate=100)
+    fcr.attest_and_next_slot_with_fast_confirmation(block_root=block_b, participation_rate=100)
 
-    balance_source = spec.get_current_balance_source(store)
-
-    assert spec.is_one_confirmed(store, balance_source, block_b), (
+    assert store.confirmed_root == block_b, (
         "Epoch-crossing block should pass is_one_confirmed with accumulated support"
     )
 
