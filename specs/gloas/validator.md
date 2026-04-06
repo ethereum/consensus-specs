@@ -229,7 +229,7 @@ def prepare_execution_payload(
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
-    # [Modified in Gloas:EIP7732]
+    # [New in Gloas:EIP7732]
     if is_parent_block_full(state):
         withdrawals = get_expected_withdrawals(state).withdrawals
     else:
