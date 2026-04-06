@@ -314,7 +314,7 @@ def is_full_validator_set_covered(start_slot: Slot, end_slot: Slot) -> bool:
 
 *Notes*:
 
-This function adjust the estimate of the weight of a committee for a sequence of
+This function adjusts the estimate of the weight of a committee for a sequence of
 slots not covering a full epoch to ensure the safety of FCR with high
 probability.
 
@@ -549,7 +549,7 @@ This function checks if a single block is LMD-GHOST safe by computing LMD-GHOST
 safety indicator and comparing its value to the safety threshold.
 
 At a high level the computation checks whether the actual score of the block
-outweighs potential score of any block conflicting with it cosidering total
+outweighs potential score of any block conflicting with it considering total
 weight of the committees and maximal adversarial weight.
 
 If this check passes the block is deemed LMD-GHOST safe, but it's not enough to

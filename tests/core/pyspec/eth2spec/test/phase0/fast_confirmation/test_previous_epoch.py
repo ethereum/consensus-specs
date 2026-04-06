@@ -758,10 +758,10 @@ class PreviousEpochTestBuilder:
 
 def run_previous_epoch_test(fcr_test: FCRTest, test_spec: PreviousEpochTestSpecification):
     # Keep expected confirmed_root after execution of the test
-    exptected_confirmed_root = test_spec.get_expected_confirmed_root(fcr_test.spec, fcr_test.store)
+    expected_confirmed_root = test_spec.get_expected_confirmed_root(fcr_test.spec, fcr_test.store)
     # Execute FCR and check that confirmed_root is as expected
     fcr_test.run_fast_confirmation()
-    assert fcr_test.store.confirmed_root == exptected_confirmed_root
+    assert fcr_test.store.confirmed_root == expected_confirmed_root
 
     yield from fcr_test.get_test_artefacts()
 
