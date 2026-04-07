@@ -39,6 +39,7 @@
   - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
   - [Modified `get_contribution_due_ms`](#modified-get_contribution_due_ms)
   - [New `get_payload_attestation_due_ms`](#new-get_payload_attestation_due_ms)
+  - [Modified `update_checkpoints`](#modified-update_checkpoints)
 - [Handlers](#handlers)
   - [Modified `on_block`](#modified-on_block)
   - [Modified `is_data_available`](#modified-is_data_available)
@@ -153,6 +154,8 @@ class Store(object):
     payload_data_availability_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
         default_factory=dict
     )
+    # [New in Gloas:EIP7732]
+    finalized_checkpoint_payload_status: PayloadStatus = PAYLOAD_STATUS_EMPTY
 ```
 
 ### Modified `get_forkchoice_store`
@@ -165,6 +168,13 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     justified_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     proposer_boost_root = Root()
+    # [New in Gloas:EIP7732]
+    finalized_slot = compute_start_slot_at_epoch(anchor_epoch)
+    finalized_checkpoint_payload_status = (
+        PAYLOAD_STATUS_FULL
+        if anchor_state.execution_payload_availability[finalized_slot % SLOTS_PER_HISTORICAL_ROOT]
+        else PAYLOAD_STATUS_EMPTY
+    )
     return Store(
         time=uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
         genesis_time=anchor_state.genesis_time,
@@ -190,6 +200,8 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         payload_data_availability_vote={
             anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
         },
+        # [New in Gloas:EIP7732]
+        finalized_checkpoint_payload_status=finalized_checkpoint_payload_status,
     )
 ```
 
@@ -722,6 +734,29 @@ def get_payload_attestation_due_ms(epoch: Epoch) -> uint64:
     return get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)
 ```
 
+### Modified `update_checkpoints`
+
+```python
+def update_checkpoints(
+    store: Store, justified_checkpoint: Checkpoint, finalized_checkpoint: Checkpoint
+) -> None:
+    """
+    Update checkpoints in store if necessary
+    """
+    # Update justified checkpoint
+    if justified_checkpoint.epoch > store.justified_checkpoint.epoch:
+        store.justified_checkpoint = justified_checkpoint
+
+    # Update finalized checkpoint
+    if finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
+        store.finalized_checkpoint = finalized_checkpoint
+        # [New in Gloas:EIP7732]
+        finalized_slot = compute_start_slot_at_epoch(finalized_checkpoint.epoch)
+        store.finalized_checkpoint_payload_status = get_ancestor(
+            store, justified_checkpoint.root, finalized_slot
+        ).payload_status
+```
+
 ## Handlers
 
 ### Modified `on_block`
@@ -760,12 +795,14 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     assert block.slot > finalized_slot
     # Check block is a descendant of the finalized block at the checkpoint finalized slot
-    finalized_checkpoint_block = get_checkpoint_block(
+    # [Modified in Gloas:EIP7732]
+    finalized_checkpoint_node = get_ancestor(
         store,
         block.parent_root,
-        store.finalized_checkpoint.epoch,
+        finalized_slot,
     )
-    assert store.finalized_checkpoint.root == finalized_checkpoint_block
+    assert store.finalized_checkpoint.root == finalized_checkpoint_node.root
+    assert store.finalized_checkpoint_payload_status == finalized_checkpoint_node.payload_status
 
     # Check the block is valid and compute the post-state
     block_root = hash_tree_root(block)
