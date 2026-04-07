@@ -49,9 +49,10 @@ validator" to implement Gloas.
 
 A validator may be a member of the new Payload Timeliness Committee (PTC) for a
 given slot. To check for PTC assignments, use
-`get_ptc_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`,
-as PTC committee selection is only stable within the context of the current and
-next epoch.
+`get_ptc_assignment(state, epoch, validator_index)` where
+`epoch <= get_current_epoch(state) + MIN_SEED_LOOKAHEAD`, as PTC committee
+selection is only stable within the context of the current and next epochs in
+the lookahead.
 
 ```python
 def get_ptc_assignment(
@@ -62,8 +63,8 @@ def get_ptc_assignment(
     index ``validator_index`` is a member of the PTC. Returns None if no
     assignment is found.
     """
-    next_epoch = Epoch(get_current_epoch(state) + 1)
-    assert epoch <= next_epoch
+    max_epoch = Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD)
+    assert epoch <= max_epoch
 
     start_slot = compute_start_slot_at_epoch(epoch)
     for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
@@ -119,9 +120,10 @@ previous forks as follows
 
 #### Broadcasting `SignedProposerPreferences`
 
-At the beginning of each epoch, a validator MAY broadcast
-`SignedProposerPreferences` messages to the `proposer_preferences` gossip topic
-for each slot returned by `get_upcoming_proposal_slots(state, validator_index)`.
+A validator MAY broadcast `SignedProposerPreferences` messages to the
+`proposer_preferences` gossip topic for each slot returned by
+`get_upcoming_proposal_slots(state, validator_index)`. These include any future
+proposal slots in the current epoch and all proposal slots in the next epoch.
 This allows builders to construct execution payloads with the validator's
 preferred `fee_recipient` and `gas_limit`. If a validator does not broadcast a
 `SignedProposerPreferences` message, this implies that the validator will not
@@ -132,13 +134,18 @@ def get_upcoming_proposal_slots(
     state: BeaconState, validator_index: ValidatorIndex
 ) -> Sequence[Slot]:
     """
-    Get the slots in the next epoch for which ``validator_index`` is proposing.
+    Get the future slots in the current epoch and the slots in the next
+    epoch for which ``validator_index`` is proposing.
     """
-    return [
-        Slot(compute_start_slot_at_epoch(get_current_epoch(state) + Epoch(1)) + offset)
-        for offset, proposer_index in enumerate(state.proposer_lookahead[SLOTS_PER_EPOCH:])
-        if validator_index == proposer_index
-    ]
+    current_epoch_start_slot = compute_start_slot_at_epoch(get_current_epoch(state))
+    upcoming_proposal_slots = []
+    for offset, proposer_index in enumerate(state.proposer_lookahead):
+        slot = Slot(current_epoch_start_slot + offset)
+        if slot <= state.slot:
+            continue
+        if validator_index == proposer_index:
+            upcoming_proposal_slots.append(slot)
+    return upcoming_proposal_slots
 ```
 
 To construct each `SignedProposerPreferences`:
@@ -222,12 +229,19 @@ def prepare_execution_payload(
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
+    # [New in Gloas:EIP7732]
+    if is_parent_block_full(state):
+        withdrawals = get_expected_withdrawals(state).withdrawals
+    else:
+        withdrawals = state.payload_expected_withdrawals
+
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
         timestamp=compute_time_at_slot(state, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
-        withdrawals=get_expected_withdrawals(state).withdrawals,
+        # [Modified in Gloas:EIP7732]
+        withdrawals=withdrawals,
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
     )
     return execution_engine.notify_forkchoice_updated(

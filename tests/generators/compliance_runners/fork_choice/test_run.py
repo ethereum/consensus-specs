@@ -182,21 +182,29 @@ def gather_tests(tests_dir) -> Iterable[TestInfo]:
                 yield TestInfo(preset, fork, test_dir)
 
 
-def runt_tests_parallel(tests_dir, num_proc=os.cpu_count()):
+def _select_tests(tests, start=None, limit=None):
+    if start is not None:
+        tests = tests[start:]
+    if limit is not None:
+        tests = tests[:limit]
+    return tests
+
+
+def runt_tests_parallel(tests_dir, num_proc=os.cpu_count(), start=None, limit=None):
     def runner(test_info: TestInfo):
         try:
             run_test(test_info)
         except Exception as e:
             raise e
 
-    tests = list(gather_tests(tests_dir))
+    tests = _select_tests(list(gather_tests(tests_dir)), start, limit)
     with Pool(processes=num_proc) as pool:
         for _ in tqdm(pool.imap(runner, tests), total=len(tests)):
             pass
 
 
-def run_tests(tests_dir):
-    for test_info in gather_tests(tests_dir):
+def run_tests(tests_dir, start=None, limit=None):
+    for test_info in _select_tests(list(gather_tests(tests_dir)), start, limit):
         print(test_info.test_dir)
         run_test(test_info)
 
@@ -206,8 +214,18 @@ def main():
     arg_parser.add_argument(
         "-i", "--test-dir", dest="test_dir", required=True, help="directory with generated tests"
     )
+    arg_parser.add_argument(
+        "--sequential", action="store_true", help="run tests sequentially (useful for profiling)"
+    )
+    arg_parser.add_argument(
+        "--start", type=int, default=None, help="start index (0-based) into the test list"
+    )
+    arg_parser.add_argument("--limit", type=int, default=None, help="limit number of tests to run")
     args = arg_parser.parse_args()
-    runt_tests_parallel(args.test_dir)
+    if args.sequential:
+        run_tests(args.test_dir, start=args.start, limit=args.limit)
+    else:
+        runt_tests_parallel(args.test_dir, start=args.start, limit=args.limit)
 
 
 if __name__ == "__main__":

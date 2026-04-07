@@ -9,6 +9,7 @@
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
+    - [Modified `PartialDataColumnHeader`](#modified-partialdatacolumnheader)
     - [New `ProposerPreferences`](#new-proposerpreferences)
     - [New `SignedProposerPreferences`](#new-signedproposerpreferences)
   - [Helpers](#helpers)
@@ -26,6 +27,7 @@
         - [`proposer_preferences`](#proposer_preferences)
       - [Blob subnets](#blob-subnets)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
+        - [Partial Messages on `data_column_sidecar_{subnet_id}`](#partial-messages-on-data_column_sidecar_subnet_id)
       - [Attestation subnets](#attestation-subnets)
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
@@ -70,6 +72,23 @@ class DataColumnSidecar(Container):
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments`
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    # [Modified in Gloas:EIP7732]
+    # Removed `signed_block_header`
+    # [Modified in Gloas:EIP7732]
+    # Removed `kzg_commitments_inclusion_proof`
+    # [New in Gloas:EIP7732]
+    slot: Slot
+    # [New in Gloas:EIP7732]
+    beacon_block_root: Root
+```
+
+#### Modified `PartialDataColumnHeader`
+
+*Note*: These are the same changes as the changes for `DataColumnSidecar` above.
+
+```python
+class PartialDataColumnHeader(Container):
+    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     # [Modified in Gloas:EIP7732]
     # Removed `signed_block_header`
     # [Modified in Gloas:EIP7732]
@@ -220,6 +239,13 @@ The following validations are added:
 
 - _[REJECT]_ `aggregate.data.index < 2`.
 - _[REJECT]_ `aggregate.data.index == 0` if `block.slot == aggregate.data.slot`.
+- _[REJECT]_ If `aggregate.data.index == 1` (payload present for a past block)
+  the corresponding execution payload for `block` passes validation.
+- _[IGNORE]_ When `aggregate.data.index == 1` (payload present for a past
+  block), the corresponding execution payload for `block` has been seen (a
+  client MAY queue attestations for processing once the payload is retrieved and
+  SHOULD request the payload envelope via `ExecutionPayloadEnvelopesByRoot`
+  using `aggregate.data.beacon_block_root`).
 
 The following validations are removed:
 
@@ -370,23 +396,35 @@ The following validations MUST pass before forwarding the
 `signed_proposer_preferences` on the network, assuming the alias
 `preferences = signed_proposer_preferences.message`:
 
-- _[IGNORE]_ `preferences.proposal_slot` is in the next epoch -- i.e.
-  `compute_epoch_at_slot(preferences.proposal_slot) == get_current_epoch(state) + 1`.
+- _[IGNORE]_ `preferences.proposal_slot` is in the current or next epoch -- i.e.
+  `compute_epoch_at_slot(preferences.proposal_slot)` is in
+  `[get_current_epoch(state), get_current_epoch(state) + 1]`.
+- _[IGNORE]_ `preferences.proposal_slot` has not already passed -- i.e.
+  `preferences.proposal_slot > state.slot`.
 - _[REJECT]_ `preferences.validator_index` is present at the correct slot in the
-  next epoch's portion of `state.proposer_lookahead` -- i.e.
+  current or next epoch's portion of `state.proposer_lookahead` -- i.e.
   `is_valid_proposal_slot(state, preferences)` returns `True`.
 - _[IGNORE]_ The `signed_proposer_preferences` is the first valid message
   received from the validator with index `preferences.validator_index` and the
-  given slot `preferences.slot`.
+  given slot `preferences.proposal_slot`.
 - _[REJECT]_ `signed_proposer_preferences.signature` is valid with respect to
   the validator's public key.
 
 ```python
 def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences) -> bool:
     """
-    Check if the validator is the proposer for the given slot in the next epoch.
+    Check if the validator is the proposer for the given slot in the current or
+    next epoch.
     """
-    index = SLOTS_PER_EPOCH + preferences.proposal_slot % SLOTS_PER_EPOCH
+    current_epoch = get_current_epoch(state)
+    proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
+    if proposal_epoch < current_epoch:
+        return False
+    if proposal_epoch > current_epoch + Epoch(1):
+        return False
+
+    index = (proposal_epoch - current_epoch) * SLOTS_PER_EPOCH
+    index += preferences.proposal_slot % SLOTS_PER_EPOCH
     return state.proposer_lookahead[index] == preferences.validator_index
 ```
 
@@ -424,6 +462,54 @@ The following validations MUST pass before forwarding the
 downscored retroactively. If validation succeeds, the client MUST re-broadcast
 the sidecar.
 
+###### Partial Messages on `data_column_sidecar_{subnet_id}`
+
+*[Modified in Gloas:EIP7732]*
+
+*Note*: These are the same changes as the changes in validation rules for full
+messages on `data_column_sidecar_{subnet_id}` as defined above.
+
+**Added in Gloas:**
+
+- _[IGNORE]_ The header's `beacon_block_root` has been seen via a valid signed
+  execution payload bid. A client MAY queue the sidecar for processing once the
+  block is retrieved.
+- _[REJECT]_ The header's `slot` matches the slot of the block with root
+  `beacon_block_root`.
+- _[REJECT]_ The hash of the header's `kzg_commitments` matches the
+  `blob_kzg_commitments_root` in the corresponding builder's bid for
+  `header.beacon_block_root`.
+
+**Removed from Fulu:**
+
+- _[IGNORE]_ The header is not from a future slot (with a
+  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
+  `block_header.slot <= current_slot` (a client MAY queue future headers for
+  processing at the appropriate slot).
+- _[IGNORE]_ The header is from a slot greater than the latest finalized slot --
+  i.e. validate that
+  `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
+- _[REJECT]_ The proposer signature of `signed_block_header` is valid with
+  respect to the `block_header.proposer_index` pubkey.
+- _[IGNORE]_ The header's block's parent (defined by `block_header.parent_root`)
+  has been seen (via gossip or non-gossip sources) (a client MAY queue header
+  for processing once the parent block is retrieved).
+- _[REJECT]_ The header's block's parent (defined by `block_header.parent_root`)
+  passes validation.
+- _[REJECT]_ The header is from a higher slot than the header's block's parent
+  (defined by `block_header.parent_root`).
+- _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the header's
+  block -- i.e.
+  `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
+- _[REJECT]_ The header's `kzg_commitments` field inclusion proof is valid as
+  verified by `verify_partial_data_column_header_inclusion_proof`.
+- _[REJECT]_ The header is proposed by the expected `proposer_index` for the
+  block's slot in the context of the current shuffling (defined by
+  `block_header.parent_root`/`block_header.slot`). If the `proposer_index`
+  cannot immediately be verified against the expected shuffling, the header MAY
+  be queued for later processing while proposers for the block's branch are
+  calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
+
 ##### Attestation subnets
 
 ###### `beacon_attestation_{subnet_id}`
@@ -436,6 +522,13 @@ The following validations are added:
 - _[REJECT]_ `attestation.data.index < 2`.
 - _[REJECT]_ `attestation.data.index == 0` if
   `block.slot == attestation.data.slot`.
+- _[REJECT]_ If `attestation.data.index == 1` (payload present for a past
+  block), the execution payload for `block` passes validation.
+- _[IGNORE]_ When `attestation.data.index == 1` (payload present for a past
+  block), the execution payload for `block` has been seen (a client MAY queue
+  attestations for processing once the payload is retrieved and SHOULD request
+  the payload envelope via `ExecutionPayloadEnvelopesByRoot` using
+  `attestation.data.beacon_block_root`).
 
 The following validations are removed:
 
@@ -560,8 +653,8 @@ that the responding peer is missing payload envelopes.
 No more than `MAX_REQUEST_PAYLOADS` may be requested at a time.
 
 ExecutionPayloadEnvelopesByRoot is primarily used to recover recent execution
-payload envelopes (e.g. when receiving a payload attestation with revealed
-status as true but never received a payload).
+payload envelopes and attestations (e.g. when receiving a payload attestation or
+attestation with revealed status as true but never received a payload).
 
 The request MUST be encoded as an SSZ-field.
 

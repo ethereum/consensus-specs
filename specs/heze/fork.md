@@ -103,6 +103,7 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         builder_pending_withdrawals=pre.builder_pending_withdrawals,
         latest_block_hash=pre.latest_block_hash,
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
+        ptc_window=pre.ptc_window,
     )
 
     return post
