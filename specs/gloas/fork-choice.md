@@ -139,7 +139,9 @@ class Store(object):
     proposer_boost_root: Root
     equivocating_indices: Set[ValidatorIndex]
     # [New in Gloas:EIP7732]
-    finalized_checkpoint_payload_status: PayloadStatus
+    # A payload status of checkpoint block root is only considered finalized
+    # if it's before the checkpoint's epoch
+    finalized_checkpoint_payload_status: Optional[PayloadStatus]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     block_timeliness: Dict[Root, Vector[boolean, NUM_BLOCK_TIMELINESS_DEADLINES]] = field(
@@ -169,12 +171,17 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     proposer_boost_root = Root()
     # [New in Gloas:EIP7732]
+    # A payload status of checkpoint block root is only considered finalized
+    # if it's before the checkpoint's epoch
     finalized_slot = compute_start_slot_at_epoch(anchor_epoch)
-    finalized_checkpoint_payload_status = (
-        PAYLOAD_STATUS_FULL
-        if anchor_state.execution_payload_availability[finalized_slot % SLOTS_PER_HISTORICAL_ROOT]
-        else PAYLOAD_STATUS_EMPTY
-    )
+    if anchor_block.slot < finalized_slot:
+        finalized_checkpoint_payload_status = (
+            PAYLOAD_STATUS_FULL
+            if anchor_state.execution_payload_availability[finalized_slot % SLOTS_PER_HISTORICAL_ROOT]
+            else PAYLOAD_STATUS_EMPTY
+        )
+    else:
+        finalized_checkpoint_payload_status = None
     return Store(
         time=uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
         genesis_time=anchor_state.genesis_time,
@@ -751,10 +758,16 @@ def update_checkpoints(
     if finalized_checkpoint.epoch > store.finalized_checkpoint.epoch:
         store.finalized_checkpoint = finalized_checkpoint
         # [New in Gloas:EIP7732]
+        # A payload status of checkpoint block root is only considered finalized
+        # if it's before the checkpoint's epoch
         finalized_slot = compute_start_slot_at_epoch(finalized_checkpoint.epoch)
-        store.finalized_checkpoint_payload_status = get_ancestor(
-            store, justified_checkpoint.root, finalized_slot
-        ).payload_status
+        finalized_block = store.blocks[finalized_checkpoint.root]
+        if finalized_block.slot < finalized_slot:
+            store.finalized_checkpoint_payload_status = get_ancestor(
+                store, justified_checkpoint.root, finalized_slot
+            ).payload_status
+        else:
+            store.finalized_checkpoint_payload_status = None
 ```
 
 ## Handlers
@@ -802,7 +815,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
         finalized_slot,
     )
     assert store.finalized_checkpoint.root == finalized_checkpoint_node.root
-    assert store.finalized_checkpoint_payload_status == finalized_checkpoint_node.payload_status
+    if store.finalized_checkpoint_payload_status is not None:
+        assert store.finalized_checkpoint_payload_status == finalized_checkpoint_node.payload_status
 
     # Check the block is valid and compute the post-state
     block_root = hash_tree_root(block)
