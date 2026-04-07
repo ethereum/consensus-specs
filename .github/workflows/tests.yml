@@ -11,13 +11,6 @@ on:
         description: The branch, tag or SHA to checkout and build from
         default: master
         type: string
-      runner:
-        description: Runner environment
-        default: github
-        type: choice
-        options:
-          - github
-          - self-hosted
       general:
         description: Generate general preset
         default: true
@@ -37,7 +30,6 @@ jobs:
   config:
     runs-on: ubuntu-latest
     outputs:
-      runner: ${{ steps.config.outputs.runner }}
       presets: ${{ steps.config.outputs.presets }}
       repo: ${{ steps.config.outputs.repo }}
       ref: ${{ steps.config.outputs.ref }}
@@ -54,14 +46,6 @@ jobs:
           if [[ -n "$ref" ]]; then
             echo "ref=$ref" >> "$GITHUB_OUTPUT"
           fi
-
-          # Runner
-          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.runner }}" == "self-hosted" ]]; then
-            runner='["self-hosted-ghr-custom", "size-s-x64", "profile-consensusSpecs"]'
-          else
-            runner='"ubuntu-latest"'
-          fi
-          echo "runner=$runner" >> "$GITHUB_OUTPUT"
 
           # Presets
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
@@ -86,13 +70,12 @@ jobs:
           echo "Configuration:"
           echo "  repo:    $repo"
           echo "  ref:     ${ref:-<default branch>}"
-          echo "  runner:  $runner"
           echo "  presets: $presets"
 
   generate:
     needs: config
     timeout-minutes: 1440 # 24 hours
-    runs-on: ${{ fromJson(needs.config.outputs.runner) }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -136,7 +119,7 @@ jobs:
 
   package:
     needs: [config, generate]
-    runs-on: ${{ fromJson(needs.config.outputs.runner) }}
+    runs-on: ubuntu-latest
     permissions:
       actions: write
     strategy:
