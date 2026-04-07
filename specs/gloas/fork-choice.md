@@ -138,6 +138,8 @@ class Store(object):
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
     equivocating_indices: Set[ValidatorIndex]
+    # [New in Gloas:EIP7732]
+    finalized_checkpoint_payload_status: PayloadStatus
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
     block_timeliness: Dict[Root, Vector[boolean, NUM_BLOCK_TIMELINESS_DEADLINES]] = field(
@@ -154,8 +156,6 @@ class Store(object):
     payload_data_availability_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
         default_factory=dict
     )
-    # [New in Gloas:EIP7732]
-    finalized_checkpoint_payload_status: PayloadStatus = PAYLOAD_STATUS_EMPTY
 ```
 
 ### Modified `get_forkchoice_store`
