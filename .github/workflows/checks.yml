@@ -1,9 +1,5 @@
 name: Checks
 
-defaults:
-  run:
-    shell: zsh -e {0}
-
 on:
   push:
     branches:
@@ -15,7 +11,7 @@ on:
 
 jobs:
   lint:
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -34,7 +30,7 @@ jobs:
           git diff --exit-code
 
   framework:
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -61,7 +57,7 @@ jobs:
 
   title:
     if: github.event_name == 'pull_request'
-    runs-on: [self-hosted-ghr-custom, size-s-x64, profile-consensusSpecs]
+    runs-on: ubuntu-latest
     steps:
       - name: Check PR title
         env:
@@ -116,7 +112,7 @@ jobs:
 
   tests:
     needs: [lint, framework]
-    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         fork:

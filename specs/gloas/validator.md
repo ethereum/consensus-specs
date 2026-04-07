@@ -229,12 +229,19 @@ def prepare_execution_payload(
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
+    # [New in Gloas:EIP7732]
+    if is_parent_block_full(state):
+        withdrawals = get_expected_withdrawals(state).withdrawals
+    else:
+        withdrawals = state.payload_expected_withdrawals
+
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
         timestamp=compute_time_at_slot(state, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
-        withdrawals=get_expected_withdrawals(state).withdrawals,
+        # [Modified in Gloas:EIP7732]
+        withdrawals=withdrawals,
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
     )
     return execution_engine.notify_forkchoice_updated(
