@@ -340,6 +340,22 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
+Request Content:
+
+```
+(
+  List[Root, MAX_REQUEST_BLOCKS_DENEB]
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+)
+```
+
 <!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
