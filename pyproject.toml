@@ -11,7 +11,7 @@ readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.11, <3.15"
 urls = { homepage = "https://github.com/ethereum/consensus-specs" }
 dependencies = [
-  "eth-remerkleable==0.1.29",
+  "eth-remerkleable==0.1.30",
   "eth-utils==6.0.0",
   "frozendict==2.4.7",
   "lru-dict==1.4.1",
