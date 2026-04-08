@@ -833,7 +833,7 @@ def compute_shuffled_permutation(index_count: uint64, seed: Bytes32) -> Sequence
                 )
             source = source_by_bucket[position_bucket]
             byte_val = source[(position % 256) // 8]
-            bit = (byte_val >> (position % 8)) % 2
+            bit = (byte_val >> int(position % 8)) % 2
             indices[i] = flip if bit else indices[i]
     return indices
 ```
