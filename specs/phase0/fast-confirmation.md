@@ -326,7 +326,8 @@ def adjust_committee_weight_estimate_to_ensure_safety(estimate: Gwei) -> Gwei:
     """
     Return adjusted ``estimate`` of the weight of a committee for a sequence of slots not covering a full epoch.
     """
-    return Gwei(estimate // 1000 * (1000 + COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR))
+    ceil = (estimate + 999) // 1000
+    return Gwei(ceil * (1000 + COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR))
 ```
 
 ##### `estimate_committee_weight_between_slots`
