@@ -243,7 +243,7 @@ class FCRTest:
         for artefact in add_block(self.spec, self.store, signed_block, self.test_steps):
             self.blockchain_artefacts.append(artefact)
 
-        return block.hash_tree_root()
+        return self.spec.Root(block.hash_tree_root())
 
     def attest(self, block_root=None, slot=None, participation_rate=100, pool_and_disseminate=True):
         assert 0 <= participation_rate <= 100

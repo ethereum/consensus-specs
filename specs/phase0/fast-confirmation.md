@@ -724,7 +724,7 @@ def will_no_conflicting_checkpoint_be_justified(store: Store) -> bool:
     state = get_pulled_up_head_state(store)
     total_active_balance = get_total_active_balance(state)
     honest_ffg_support = compute_honest_ffg_support_for_current_target(store)
-    return 3 * honest_ffg_support >= 1 * total_active_balance
+    return 3 * honest_ffg_support > 1 * total_active_balance
 ```
 
 ##### `will_current_target_be_justified`
