@@ -321,6 +321,24 @@ details on how to handle transitioning gossip topics for this upgrade.
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
+Request Content:
+
+```
+(
+  start_slot: Slot
+  count: uint64
+  step: uint64 # Deprecated, must be set to 1
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+)
+```
+
 The Deneb fork-digest is introduced to the `context` enum to specify Deneb
 beacon block type.
 
