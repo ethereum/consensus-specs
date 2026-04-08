@@ -33,7 +33,7 @@ test = [
   "pytest-html==4.2.0",
   "pytest-sugar==1.1.1",
   "pytest-xdist==3.8.0",
-  "pytest==9.0.2",
+  "pytest==9.0.3",
   "python-snappy==0.7.3",
   "trie==3.1.0",
 ]
