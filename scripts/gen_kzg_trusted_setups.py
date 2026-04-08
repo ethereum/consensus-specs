@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from eth2spec.utils.kzg import (
+from eth_consensus_specs.utils.kzg import (
     dump_kzg_trusted_setup_files,
 )
 

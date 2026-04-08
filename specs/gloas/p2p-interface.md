@@ -257,6 +257,9 @@ And instead the following validations are set in place with the alias
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in the consensus layer -- i.e. validate that
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
+- _[IGNORE]_ The block's parent execution payload (defined by
+  `bid.parent_block_hash`) has been seen (via gossip or non-gossip sources) (a
+  client MAY queue blocks for processing once the parent payload is retrieved).
 - If `execution_payload` verification of block's execution payload parent by an
   execution node **is complete**:
   - [REJECT] The block's execution payload parent (defined by
@@ -291,8 +294,8 @@ obtained from the `state.latest_execution_payload_bid`)
 - _[REJECT]_ `block.slot` equals `envelope.slot`.
 - _[REJECT]_ `envelope.builder_index == bid.builder_index`
 - _[REJECT]_ `payload.block_hash == bid.block_hash`
-- _[REJECT]_ `signed_execution_payload_envelope.signature` is valid with respect
-  to the builder's public key.
+- _[REJECT]_ `signed_execution_payload_envelope.signature` is valid as verified
+  by `verify_execution_payload_envelope_signature`.
 
 ###### `payload_attestation_message`
 
@@ -338,8 +341,8 @@ The following validations MUST pass before forwarding the
   `SignedProposerPreferences` associated with `bid.slot`.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
-- _[IGNORE]_ this bid is the highest value bid seen for the corresponding slot
-  and the given parent block hash.
+- _[IGNORE]_ this bid is the highest value bid seen for the tuple
+  `(bid.slot, bid.parent_block_hash, bid.parent_block_root)`.
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
   i.e. `can_builder_cover_bid(state, builder_index, amount)` returns `True`.
 - _[IGNORE]_ `bid.parent_block_hash` is the block hash of a known execution
@@ -386,6 +389,10 @@ def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences)
     index = SLOTS_PER_EPOCH + preferences.proposal_slot % SLOTS_PER_EPOCH
     return state.proposer_lookahead[index] == preferences.validator_index
 ```
+
+*Note*: Nodes SHOULD subscribe to this topic at least one epoch before the fork
+activation. Proposers SHOULD broadcast their preferences in the epoch before the
+fork.
 
 ##### Blob subnets
 
@@ -442,7 +449,7 @@ The following validations are removed:
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 | ------------------------ | ----------------------------- |
@@ -459,7 +466,7 @@ The following validations are removed:
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 | ------------------------ | ----------------------------- |
@@ -505,7 +512,7 @@ determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`       | Chunk SSZ type                         |
 | -------------------- | -------------------------------------- |
@@ -522,7 +529,7 @@ determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`       | Chunk SSZ type                         |
 | -------------------- | -------------------------------------- |
@@ -561,8 +568,11 @@ The request MUST be encoded as an SSZ-field.
 The response MUST consist of zero or more `response_chunk`. Each successful
 `response_chunk` MUST contain a single `SignedExecutionPayloadEnvelope` payload.
 
-Clients MUST support requesting payload envelopes since the latest finalized
-epoch.
+Clients MUST support requesting payload envelopes on the epoch range
+`[max(GLOAS_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`.
+If any root in the request content references a block earlier than this range,
+peers MAY respond with error code `3: ResourceUnavailable` or not include the
+payload envelope in the response.
 
 Clients MUST respond with at least one payload envelope, if they have it.
 Clients MAY limit the number of payload envelopes in the response.

@@ -16,12 +16,13 @@ release.
 
 ## Bump the Version
 
-First, update the `VERSION.txt` file which contains the eth2spec version.
+First, update the `VERSION.txt` file which contains the eth_consensus_specs
+version.
 
 > [!TIP]
 > Click on the following link to open the GitHub editor for this file:
 >
-> - https://github.com/ethereum/consensus-specs/edit/master/tests/core/pyspec/eth2spec/VERSION.txt
+> - https://github.com/ethereum/consensus-specs/edit/master/tests/core/pyspec/eth_consensus_specs/VERSION.txt
 
 Next, change the version to the appropriate value and click the "Commit
 changes..." button.

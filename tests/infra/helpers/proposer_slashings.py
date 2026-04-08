@@ -1,10 +1,10 @@
 import pytest
 
-from eth2spec.test.helpers.block_header import sign_block_header
-from eth2spec.test.helpers.forks import is_post_gloas
-from eth2spec.test.helpers.keys import pubkey_to_privkey
-from eth2spec.test.helpers.proposer_slashings import check_proposer_slashing_effect
-from eth2spec.test.helpers.state import next_epoch
+from eth_consensus_specs.test.helpers.block_header import sign_block_header
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
+from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
+from eth_consensus_specs.test.helpers.proposer_slashings import check_proposer_slashing_effect
+from eth_consensus_specs.test.helpers.state import next_epoch
 
 
 def run_proposer_slashing_processing(spec, state, proposer_slashing, valid=True):

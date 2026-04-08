@@ -5,8 +5,8 @@ from collections.abc import Callable
 
 import pytest
 
-from eth2spec.test.helpers.constants import BELLATRIX, CAPELLA, DENEB, PHASE0
-from eth2spec.test.helpers.typing import SpecForkName
+from eth_consensus_specs.test.helpers.constants import BELLATRIX, CAPELLA, DENEB, PHASE0
+from eth_consensus_specs.test.helpers.typing import SpecForkName
 from tests.infra.template_test import (
     template_test,
     template_test_upgrades_from,
