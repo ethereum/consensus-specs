@@ -2,9 +2,9 @@ from random import randint
 import pytest
 import eth_utils
 
-from eth2spec.phase0.mainnet import DepositData
-from eth2spec.utils.ssz.ssz_typing import List
-from eth2spec.utils.ssz.ssz_impl import hash_tree_root
+from eth_consensus_specs.phase0.mainnet import DepositData
+from eth_consensus_specs.utils.ssz.ssz_typing import List
+from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root
 
 from tests.conftest import (
     FULL_DEPOSIT_AMOUNT,

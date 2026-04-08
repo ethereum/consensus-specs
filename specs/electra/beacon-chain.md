@@ -156,10 +156,10 @@ specification.
 
 ### Gwei values
 
-| Name                            | Value                                      | Description                                           |
-| ------------------------------- | ------------------------------------------ | ----------------------------------------------------- |
-| `MIN_ACTIVATION_BALANCE`        | `Gwei(2**5 * 10**9)` (= 32,000,000,000)    | Minimum balance for a validator to become active      |
-| `MAX_EFFECTIVE_BALANCE_ELECTRA` | `Gwei(2**11 * 10**9)` (= 2048,000,000,000) | Maximum effective balance for a compounding validator |
+| Name                            | Value                                       | Description                                           |
+| ------------------------------- | ------------------------------------------- | ----------------------------------------------------- |
+| `MIN_ACTIVATION_BALANCE`        | `Gwei(2**5 * 10**9)` (= 32,000,000,000)     | Minimum balance for a validator to become active      |
+| `MAX_EFFECTIVE_BALANCE_ELECTRA` | `Gwei(2**11 * 10**9)` (= 2,048,000,000,000) | Maximum effective balance for a compounding validator |
 
 ### Rewards and penalties
 

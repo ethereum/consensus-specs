@@ -7,10 +7,9 @@ DENEB = "deneb"
 ELECTRA = "electra"
 FULU = "fulu"
 GLOAS = "gloas"
-EIP6800 = "eip6800"
-EIP7441 = "eip7441"
-EIP7805 = "eip7805"
+HEZE = "heze"
 EIP7928 = "eip7928"
+EIP8025 = "eip8025"
 
 
 # The helper functions that are used when defining constants

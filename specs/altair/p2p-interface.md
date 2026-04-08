@@ -350,7 +350,7 @@ determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`         | Chunk SSZ type             |
 | ---------------------- | -------------------------- |
@@ -369,7 +369,7 @@ determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`         | Chunk SSZ type             |
 | ---------------------- | -------------------------- |

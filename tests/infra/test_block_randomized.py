@@ -4,7 +4,7 @@ Unit tests for the block_randomized module.
 
 import pytest
 
-from eth2spec.test.utils.randomized_block_tests import random_block
+from eth_consensus_specs.test.utils.randomized_block_tests import random_block
 from tests.infra.block_randomized import (
     DEFAULT_SEED,
     ForkConfig,
@@ -166,7 +166,7 @@ class TestScenarioRenderer:
         ]
         result = renderer.render(scenarios)
 
-        assert "from eth2spec.test.helpers.constants import PHASE0" in result
+        assert "from eth_consensus_specs.test.helpers.constants import PHASE0" in result
         assert "run_generated_randomized_test" in result
 
     def test_render_includes_test_function(self) -> None:
@@ -200,7 +200,8 @@ class TestRandomizedTestGenerator:
         assert "phase0" in forks
         assert "altair" in forks
         assert "fulu" in forks
-        assert len(forks) == 7
+        assert "gloas" in forks
+        assert len(forks) == 8
 
     def test_invalid_fork_raises(self) -> None:
         with pytest.raises(ValueError, match="Unknown fork"):

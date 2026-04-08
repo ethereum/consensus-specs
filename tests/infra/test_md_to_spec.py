@@ -283,7 +283,7 @@ def test_run_skips_predefined_type_rows(tmp_path, dummy_preset, dummy_config):
     assert "CosetEvals" not in spec_obj.constant_vars
 
 
-def test_run_skips_eth2spec_skip_code_block(tmp_path, dummy_preset, dummy_config):
+def test_run_skips_eth_consensus_specs_skip_code_block(tmp_path, dummy_preset, dummy_config):
     md_content = """
 ## Helpers
 
@@ -291,7 +291,7 @@ def test_run_skips_eth2spec_skip_code_block(tmp_path, dummy_preset, dummy_config
 
 Used to signal to initiate the payload build process via `notify_forkchoice_updated`.
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 ```python
 @dataclass
 class PayloadAttributes(object):

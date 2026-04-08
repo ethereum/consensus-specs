@@ -22,7 +22,7 @@ Warning: this configuration is not definitive.
 
 | Name                   | Value                                 |
 | ---------------------- | ------------------------------------- |
-| `EIP7928_FORK_VERSION` | `Version('0x0b000000')`               |
+| `EIP7928_FORK_VERSION` | `Version('0xe7928000')`               |
 | `EIP7928_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Fork to EIP-7928
