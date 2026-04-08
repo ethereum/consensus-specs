@@ -926,16 +926,25 @@ def get_latest_confirmed(store: Store) -> Root:
 
     # Restart the confirmation chain if each of the following conditions are true:
     # 1) it is the start of the current epoch,
-    # 2) epoch of store.current_epoch_observed_justified_checkpoint equals to the previous epoch,
+    # 2) epoch of store.current_epoch_observed_justified_checkpoint.root equals to the previous epoch,
     # 3) store.current_epoch_observed_justified_checkpoint equals to unrealized justification of the head,
     # 4) confirmed block is older than the block of store.current_epoch_observed_justified_checkpoint.
+    is_epoch_start = is_start_slot_at_epoch(get_current_slot(store))
+    observed_justified_block_slot = get_block_slot(
+        store, store.current_epoch_observed_justified_checkpoint.root
+    )
+    is_observed_justified_block_epoch_ok = (
+        compute_epoch_at_slot(observed_justified_block_slot) + 1 == current_epoch
+    )
+    is_head_unrealized_justified_ok = (
+        store.current_epoch_observed_justified_checkpoint == store.unrealized_justifications[head]
+    )
+    is_confirmed_block_stale = get_block_slot(store, confirmed_root) < observed_justified_block_slot
     if (
-        is_start_slot_at_epoch(get_current_slot(store))
-        and store.current_epoch_observed_justified_checkpoint.epoch + 1 == current_epoch
-        and store.current_epoch_observed_justified_checkpoint
-        == store.unrealized_justifications[head]
-        and get_block_slot(store, confirmed_root)
-        < get_block_slot(store, store.current_epoch_observed_justified_checkpoint.root)
+        is_epoch_start
+        and is_observed_justified_block_epoch_ok
+        and is_head_unrealized_justified_ok
+        and is_confirmed_block_stale
     ):
         confirmed_root = store.current_epoch_observed_justified_checkpoint.root
 
