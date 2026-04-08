@@ -498,7 +498,7 @@ requires-dist = [
     { name = "codespell", marker = "extra == 'lint'", specifier = "==2.4.2" },
     { name = "deepdiff", marker = "extra == 'test'", specifier = "==9.0.0" },
     { name = "eth-hash", extras = ["pycryptodome"], marker = "extra == 'test'", specifier = "==0.8.0" },
-    { name = "eth-remerkleable", specifier = "==0.1.29" },
+    { name = "eth-remerkleable", specifier = "==0.1.30" },
     { name = "eth-utils", specifier = "==6.0.0" },
     { name = "frozendict", specifier = "==2.4.7" },
     { name = "lru-dict", specifier = "==1.4.1" },
@@ -520,7 +520,7 @@ requires-dist = [
     { name = "psutil", marker = "extra == 'test'", specifier = "==7.2.2" },
     { name = "py-arkworks-bls12381", specifier = "==0.4.1" },
     { name = "py-ecc", specifier = "==8.0.0" },
-    { name = "pytest", marker = "extra == 'test'", specifier = "==9.0.2" },
+    { name = "pytest", marker = "extra == 'test'", specifier = "==9.0.3" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = "==7.1.0" },
     { name = "pytest-html", marker = "extra == 'test'", specifier = "==4.2.0" },
     { name = "pytest-sugar", marker = "extra == 'test'", specifier = "==1.1.1" },
@@ -551,11 +551,11 @@ pycryptodome = [
 
 [[package]]
 name = "eth-remerkleable"
-version = "0.1.29"
+version = "0.1.30"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/37/16/b91f3fc0c46f8ff597f26fbbbc1d8fbe7ab8d5103e00546417455298b449/eth_remerkleable-0.1.29.tar.gz", hash = "sha256:2418b008cd7471d0f5ab37e5a9784ef4184e503192e6f38c223fe25b7cbbcac3", size = 49252, upload-time = "2026-02-18T00:01:54.205Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/93/c4/5e9ec5e8f76c0b03ad4127c5b35df50cda65a65bf1a552f081b364909104/eth_remerkleable-0.1.30.tar.gz", hash = "sha256:0dba8661d42014ca19e3acac9932877ea5981d33326bf1a0e1719f680c47efb6", size = 49438, upload-time = "2026-04-08T03:35:53.074Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/59/c0/f9d34d93b36563482368a60b09b839fd879dcbb36882ed8bb597d4dd9768/eth_remerkleable-0.1.29-py3-none-any.whl", hash = "sha256:0763da127f49795a3f98e424bfea008f26c75d8970a65ebef73d09c4b7ba4973", size = 56855, upload-time = "2026-02-18T00:01:52.631Z" },
+    { url = "https://files.pythonhosted.org/packages/b9/82/70c148dff9739b49ebb7607506b2b7d5d3f721c5ba372979a333ed692f0b/eth_remerkleable-0.1.30-py3-none-any.whl", hash = "sha256:eaa2acbc43158f8259e0f72eeab14c158669758522b4620d19bae59800c2ae3a", size = 57046, upload-time = "2026-04-08T03:35:51.771Z" },
 ]
 
 [[package]]
@@ -1636,7 +1636,7 @@ wheels = [
 
 [[package]]
 name = "pytest"
-version = "9.0.2"
+version = "9.0.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
@@ -1645,9 +1645,9 @@ dependencies = [
     { name = "pluggy" },
     { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d1/db/7ef3487e0fb0049ddb5ce41d3a49c235bf9ad299b6a25d5780a89f19230f/pytest-9.0.2.tar.gz", hash = "sha256:75186651a92bd89611d1d9fc20f0b4345fd827c41ccd5c299a868a05d70edf11", size = 1568901, upload-time = "2025-12-06T21:30:51.014Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/0d/549bd94f1a0a402dc8cf64563a117c0f3765662e2e668477624baeec44d5/pytest-9.0.3.tar.gz", hash = "sha256:b86ada508af81d19edeb213c681b1d48246c1a91d304c6c81a427674c17eb91c", size = 1572165, upload-time = "2026-04-07T17:16:18.027Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/ab/b3226f0bd7cdcf710fbede2b3548584366da3b19b5021e74f5bde2a8fa3f/pytest-9.0.2-py3-none-any.whl", hash = "sha256:711ffd45bf766d5264d487b917733b453d917afd2b0ad65223959f59089f875b", size = 374801, upload-time = "2025-12-06T21:30:49.154Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/24/a372aaf5c9b7208e7112038812994107bc65a84cd00e0354a88c2c77a617/pytest-9.0.3-py3-none-any.whl", hash = "sha256:2c5efc453d45394fdd706ade797c0a81091eccd1d6e4bccfcd476e2b8e0ab5d9", size = 375249, upload-time = "2026-04-07T17:16:16.13Z" },
 ]
 
 [[package]]
