@@ -246,6 +246,26 @@ should_override_forkchoice_update: {  -- [New in Bellatrix]
 head_payload_status: int              -- The payload_status field from the ForkChoiceNode returned by get_head(store)
 ```
 
+Additionally, these fields for Fast Confirmation tests if implemented:
+
+```yaml
+previous_epoch_observed_justified_checkpoint: {
+    epoch: int,               -- Integer value from fast_confirmation_store.previous_epoch_observed_justified_checkpoint.epoch
+    root: string,             -- Encoded 32-byte value from fast_confirmation_store.previous_epoch_observed_justified_checkpoint.root
+}
+current_epoch_observed_justified_checkpoint: {
+    epoch: int,               -- Integer value from fast_confirmation_store.current_epoch_observed_justified_checkpoint.epoch
+    root: string,             -- Encoded 32-byte value from fast_confirmation_store.current_epoch_observed_justified_checkpoint.root
+}
+previous_epoch_greatest_unrealized_checkpoint: {
+    epoch: int,               -- Integer value from fast_confirmation_store.previous_epoch_greatest_unrealized_checkpoint.epoch
+    root: string,             -- Encoded 32-byte value from fast_confirmation_store.previous_epoch_greatest_unrealized_checkpoint.root
+}
+previous_slot_head: string    -- Encoded 32-byte value of fast_confirmation_store.previous_slot_head
+current_slot_head: string     -- Encoded 32-byte value of fast_confirmation_store.current_slot_head
+confirmed_root: string        -- Encoded 32-byte value of fast_confirmation_store.confirmed_root
+```
+
 For example:
 
 ```yaml
