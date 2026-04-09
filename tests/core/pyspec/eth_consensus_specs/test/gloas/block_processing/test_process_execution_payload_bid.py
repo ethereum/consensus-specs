@@ -391,7 +391,14 @@ def test_process_execution_payload_bid_insufficient_balance(spec, state):
     """
     Test insufficient balance for bid fails
     """
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    assert state.finalized_checkpoint.epoch == 2
+
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+    assert spec.is_active_builder(state, builder_index) is True
 
     value = spec.Gwei(1000000)  # 0.001 ETH
     # Set balance too low
@@ -418,7 +425,14 @@ def test_process_execution_payload_bid_insufficient_balance_with_pending_payment
     """
     Test builder with sufficient balance for bid alone but insufficient when considering pending payments and min activation balance
     """
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    assert state.finalized_checkpoint.epoch == 2
+
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+    assert spec.is_active_builder(state, builder_index) is True
 
     # Set up scenario: balance=1000000000 + 1000, bid=600, existing_pending=500
     # Total needed: 600 + 500 + 1000000000 = 1000001100 > 1000001000 (should fail)
@@ -533,7 +547,14 @@ def test_process_execution_payload_bid_insufficient_balance_with_pending_withdra
     """
     Test builder with sufficient balance for bid alone but insufficient when considering pending withdrawals and min deposit amount
     """
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    assert state.finalized_checkpoint.epoch == 2
+
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+    assert spec.is_active_builder(state, builder_index) is True
 
     # Set up scenario: balance=1000000000 + 1000, bid=600, existing_withdrawal=500
     # Total needed: 600 + 500 + 1000000000 = 1000001100 > 1000001000 (should fail)
