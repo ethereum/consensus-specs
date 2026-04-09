@@ -72,6 +72,7 @@ help-verbose:
 	@echo "    kzg=<type>         KZG library: spec, ckzg (default: ckzg)"
 	@echo ""
 	@echo "  Output:"
+	@echo "    verbose=true       Enable verbose pytest output"
 	@echo "    reftests=true      Generate reference test vectors"
 	@echo "    coverage=true      Enable code coverage tracking"
 	@echo ""
@@ -204,6 +205,7 @@ test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),faste
 test: KZG := $(if $(filter fw,$(component)),,--kzg-type=$(if $(kzg),$(kzg),ckzg))
 #
 # Output
+test: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),-v)
 test: MAYBE_REFTESTS := $(if $(filter true,$(reftests)),--reftests --reftests-output=$(REFTESTS_DIR))
 test: COVERAGE_PRESETS := $(if $(preset),$(preset),$(if $(filter true,$(reftests)),minimal mainnet,minimal))
 test: COV_SCOPE_SINGLE := $(foreach P,$(COVERAGE_PRESETS), --cov=eth_consensus_specs.$(fork).$P)
@@ -215,6 +217,7 @@ test: _pyspec
 	@$(UV_RUN) pytest \
 		$(MAYBE_PARALLEL) \
 		--capture=no \
+		$(MAYBE_VERBOSE) \
 		$(MAYBE_TEST) \
 		$(MAYBE_FORK) \
 		$(PRESET) \

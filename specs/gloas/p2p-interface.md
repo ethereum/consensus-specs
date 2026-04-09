@@ -261,9 +261,6 @@ The *type* of the payload of this topic changes to the (modified)
 There are no new validations for this topic. However, all validations with
 regards to the `ExecutionPayload` are removed:
 
-- _[REJECT]_ The length of KZG commitments is less than or equal to the
-  limitation defined in the consensus layer -- i.e. validate that
-  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
 - _[REJECT]_ The block's execution payload timestamp is correct with respect to
   the slot -- i.e.
   `execution_payload.timestamp == compute_time_at_slot(state, block.slot)`.
@@ -278,7 +275,7 @@ regards to the `ExecutionPayload` are removed:
     `block.body.execution_payload`).
 
 And instead the following validations are set in place with the alias
-`bid = signed_execution_payload_bid.message`:
+`bid = block.body.signed_execution_payload_bid.message`:
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in the consensus layer -- i.e. validate that
@@ -365,6 +362,9 @@ The following validations MUST pass before forwarding the
   `SignedProposerPreferences` associated with `bid.slot`.
 - _[REJECT]_ `bid.gas_limit` matches the `gas_limit` from the proposer's
   `SignedProposerPreferences` associated with `bid.slot`.
+- _[REJECT]_ The length of KZG commitments is less than or equal to the
+  limitation defined in the consensus layer -- i.e. validate that
+  `len(bid.blob_kzg_commitments) <= get_blob_parameters(compute_epoch_at_slot(bid.slot)).max_blobs_per_block`.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the tuple
