@@ -308,6 +308,17 @@ comptests: _pyspec
 		$(MAYBE_PRESETS) \
 		$(MAYBE_SEED)
 
+# Generate config/spec test vectors (eth/v1/config/spec endpoint).
+config_spec_tests: MAYBE_THREADS := $(if $(threads),--threads=$(threads),)
+config_spec_tests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
+config_spec_tests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
+config_spec_tests: _pyspec
+	@$(UV_RUN) python -m tests.generators.compliance_runners.config_spec.test_gen \
+		--output $(COMP_TEST_VECTOR_DIR) \
+		$(MAYBE_THREADS) \
+		$(MAYBE_FORKS) \
+		$(MAYBE_PRESETS)
+
 ###############################################################################
 # Cleaning
 ###############################################################################
