@@ -3,12 +3,8 @@ name: Tests
 on:
   workflow_dispatch:
     inputs:
-      repo:
-        description: The repository to use (e.g. user/consensus-specs)
-        default: ethereum/consensus-specs
-        type: string
       ref:
-        description: The branch, tag or SHA to checkout and build from
+        description: Commit, branch, or tag
         default: master
         type: string
       general:
@@ -31,16 +27,11 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       presets: ${{ steps.config.outputs.presets }}
-      repo: ${{ steps.config.outputs.repo }}
       ref: ${{ steps.config.outputs.ref }}
     steps:
       - name: Resolve configuration
         id: config
         run: |
-          # Repository
-          repo="${{ inputs.repo || github.repository }}"
-          echo "repo=$repo" >> "$GITHUB_OUTPUT"
-
           # Ref
           ref="${{ inputs.ref }}"
           if [[ -n "$ref" ]]; then
@@ -68,8 +59,7 @@ jobs:
 
           # Summary
           echo "Configuration:"
-          echo "  repo:    $repo"
-          echo "  ref:     ${ref:-<default branch>}"
+          echo "  ref:     ${ref:-master}"
           echo "  presets: $presets"
 
   generate:
@@ -94,7 +84,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          repository: ${{ needs.config.outputs.repo }}
           ref: ${{ needs.config.outputs.ref }}
 
       - name: Setup python
