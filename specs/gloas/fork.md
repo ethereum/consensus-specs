@@ -7,6 +7,7 @@
 - [Introduction](#introduction)
 - [Configuration](#configuration)
 - [Helpers](#helpers)
+  - [New `initialize_ptc_window`](#new-initialize_ptc_window)
   - [New `onboard_builders_from_pending_deposits`](#new-onboard_builders_from_pending_deposits)
 - [Fork to Gloas](#fork-to-gloas)
   - [Fork trigger](#fork-trigger)
@@ -28,6 +29,31 @@ Warning: this configuration is not definitive.
 | `GLOAS_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
 ## Helpers
+
+### New `initialize_ptc_window`
+
+```python
+def initialize_ptc_window(
+    state: BeaconState,
+) -> Vector[Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]:
+    """
+    Return the cached PTC window starting from the current epoch.
+    Used to initialize the ``ptc_window`` field in the beacon state at genesis and after forks.
+    """
+    empty_previous_epoch = [
+        Vector[ValidatorIndex, PTC_SIZE]([ValidatorIndex(0) for _ in range(PTC_SIZE)])
+        for _ in range(SLOTS_PER_EPOCH)
+    ]
+
+    ptcs = []
+    current_epoch = get_current_epoch(state)
+    for e in range(1 + MIN_SEED_LOOKAHEAD):
+        epoch = Epoch(current_epoch + e)
+        start_slot = compute_start_slot_at_epoch(epoch)
+        ptcs += [compute_ptc(state, Slot(start_slot + i)) for i in range(SLOTS_PER_EPOCH)]
+
+    return empty_previous_epoch + ptcs
+```
 
 ### New `onboard_builders_from_pending_deposits`
 
@@ -62,6 +88,7 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
                 deposit.withdrawal_credentials,
                 deposit.amount,
                 deposit.signature,
+                deposit.slot,
             )
             continue
 
@@ -69,7 +96,7 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
         # signature, track the pubkey so that subsequent builder deposits for
         # the same pubkey stay in pending (applied to the validator later)
         # rather than creating a builder. Deposits with invalid signatures are
-        # dropped here since they would fail in apply_pending_deposits anyway.
+        # dropped here since they would fail in apply_pending_deposit anyway.
         if is_valid_deposit_signature(
             deposit.pubkey, deposit.withdrawal_credentials, deposit.amount, deposit.signature
         ):
@@ -158,6 +185,8 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         latest_block_hash=pre.latest_execution_payload_header.block_hash,
         # [New in Gloas:EIP7732]
         payload_expected_withdrawals=[],
+        # [New in Gloas:EIP7732]
+        ptc_window=initialize_ptc_window(pre),
     )
 
     # [New in Gloas:EIP7732]

@@ -2,33 +2,66 @@
 
 This document contains the networking specifications for EIP-8025.
 
+*Note*: This specification is built upon [Fulu](../../fulu/p2p-interface.md) and
+imports proof types from [proof-engine.md](./proof-engine.md).
+
 ## Table of contents
 
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Table of contents](#table-of-contents)
 - [Constants](#constants)
+  - [Execution](#execution)
 - [Containers](#containers)
+  - [`ProofByRootIdentifier`](#proofbyrootidentifier)
+- [Helpers](#helpers)
+  - [New `compute_max_request_execution_proofs`](#new-compute_max_request_execution_proofs)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
-      - [`execution_proof_{subnet_id}`](#execution_proof_subnet_id)
+      - [`execution_proof`](#execution_proof)
 - [The Req/Resp domain](#the-reqresp-domain)
   - [Messages](#messages)
-    - [ExecutionProofsByHash](#executionproofsbyhash)
+    - [ExecutionProofsByRange](#executionproofsbyrange)
+    - [ExecutionProofsByRoot](#executionproofsbyroot)
+    - [ExecutionProofStatus](#executionproofstatus)
+- [The discovery domain: discv5](#the-discovery-domain-discv5)
+  - [ENR structure](#enr-structure)
+    - [Execution proof awareness](#execution-proof-awareness)
 
 <!-- mdformat-toc end -->
 
 ## Constants
 
-*Note*: There are `MAX_EXECUTION_PROOFS_PER_PAYLOAD` (from
-[beacon-chain.md](./beacon-chain.md)) execution proof subnets to provide 1-to-1
-mapping with proof systems. Each proof system gets its own dedicated subnet.
+### Execution
+
+*Note*: The execution values are not definitive.
+
+| Name                               | Value       |
+| ---------------------------------- | ----------- |
+| `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)` |
 
 ## Containers
 
-*Note*: Execution proofs are broadcast directly as `SignedExecutionProof`
-containers. No additional message wrapper is needed.
+### `ProofByRootIdentifier`
+
+```python
+class ProofByRootIdentifier(Container):
+    block_root: Root
+    proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+```
+
+## Helpers
+
+### New `compute_max_request_execution_proofs`
+
+```python
+def compute_max_request_execution_proofs() -> uint64:
+    """
+    Return the maximum number of execution proofs in a single request.
+    """
+    return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_EXECUTION_PROOFS_PER_PAYLOAD)
+```
 
 ## The gossip domain: gossipsub
 
@@ -36,52 +69,53 @@ containers. No additional message wrapper is needed.
 
 #### Global topics
 
-##### `execution_proof_{subnet_id}`
+##### `execution_proof`
 
-Execution proof subnets are used to propagate execution proofs for specific
-proof systems.
-
-The execution proof subnet for a given `proof_id` is:
-
-```python
-def compute_subnet_for_execution_proof(proof_id: ProofID) -> SubnetID:
-    assert proof_id < MAX_EXECUTION_PROOFS_PER_PAYLOAD
-    return SubnetID(proof_id)
-```
+This topic is used to propagate `SignedExecutionProof` messages.
 
 The following validations MUST pass before forwarding the
-`signed_execution_proof` on the network:
+`signed_execution_proof` on the network, assuming the alias
+`proof = signed_execution_proof.message`:
 
-- _[IGNORE]_ The proof is the first valid proof received for the tuple
-  `(signed_execution_proof.message.zk_proof.public_inputs.block_hash, subnet_id)`.
-- _[REJECT]_ The `signed_execution_proof.message.validator_index` is within the
-  known validator registry.
-- _[REJECT]_ The `signed_execution_proof.signature` is valid with respect to the
+- _[IGNORE]_ The proof's corresponding new payload request (identified by
+  `proof.public_input.new_payload_request_root`) has been seen (via gossip or
+  non-gossip sources) (a client MAY queue proofs for processing once the new
+  payload request is retrieved).
+- _[IGNORE]_ No *valid* proof has already been received for the tuple
+  `(proof.public_input.new_payload_request_root, proof.proof_type)` -- i.e. no
+  *valid* proof for `proof.proof_type` from any prover has been received.
+- _[IGNORE]_ The proof is the first proof received for the tuple
+  `(proof.public_input.new_payload_request_root, proof.proof_type, signed_execution_proof.validator_index)`
+  -- i.e. the first *valid or invalid* proof for `proof.proof_type` from
+  `signed_execution_proof.validator_index`.
+- _[REJECT]_ The validator with index `signed_execution_proof.validator_index`
+  is an active validator -- i.e.
+  `is_active_validator(state.validators[signed_execution_proof.validator_index], get_current_epoch(state))`
+  returns `True`.
+- _[REJECT]_ `signed_execution_proof.signature` is valid with respect to the
   validator's public key.
-- _[REJECT]_ The `signed_execution_proof.message.zk_proof.proof_data` is
-  non-empty.
-- _[REJECT]_ The proof system ID matches the subnet:
-  `signed_execution_proof.message.zk_proof.proof_type == subnet_id`.
-- _[REJECT]_ The execution proof is valid as verified by
-  `verify_execution_proof()` with the appropriate parent and block hashes from
-  the execution layer.
+- _[REJECT]_ `proof.proof_data` is non-empty.
+- _[REJECT]_ `proof.proof_data` is not larger than `MAX_PROOF_SIZE`.
+- _[REJECT]_ All of the conditions within `process_execution_proof` pass
+  validation.
+- _[IGNORE]_ No *valid* proof has already been received for the tuple
+  `(proof.public_input.new_payload_request_root, proof.proof_type)` -- i.e. no
+  *valid* proof for `proof.proof_type` from any prover has been received.
 
 ## The Req/Resp domain
 
 ### Messages
 
-#### ExecutionProofsByHash
+#### ExecutionProofsByRange
 
-**Protocol ID:** `/eth2/beacon/req/execution_proofs_by_hash/1/`
-
-The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`.
+**Protocol ID:** `/eth2/beacon_chain/req/execution_proofs_by_range/1/`
 
 Request Content:
 
 ```
 (
-  Hash32  # block_hash
+  start_slot: Slot
+  count: uint64
 )
 ```
 
@@ -89,20 +123,110 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionProof, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+  List[SignedExecutionProof, compute_max_request_execution_proofs()]
 )
 ```
 
-Requests execution proofs for the given execution payload `block_hash`. The
-response MUST contain all available proofs for the requested block hash, up to
-`MAX_EXECUTION_PROOFS_PER_PAYLOAD`.
+Requests execution proofs for a contiguous range of slots. The request specifies
+a `start_slot` and a `count` of slots. The responding peer iterates through
+beacon blocks in the range `[start_slot, start_slot + count)` and returns all
+known `SignedExecutionProof` entries associated with those blocks.
 
-The following validations MUST pass:
+The response MUST consist of zero or more `response_chunk`. Each _successful_
+`response_chunk` MUST contain a single `SignedExecutionProof` payload.
 
-- _[REJECT]_ The `block_hash` is a 32-byte value.
+Clients MUST keep the total number of requested proofs under
+`compute_max_request_execution_proofs()`. Since each slot may contain up to
+`MAX_EXECUTION_PROOFS_PER_PAYLOAD` proofs, the `count` field MUST satisfy
+`count * MAX_EXECUTION_PROOFS_PER_PAYLOAD <= compute_max_request_execution_proofs()`.
 
-The response MUST contain:
+Clients MUST respond with at least one proof, if they have it. Clients MAY limit
+the number of proofs in the response.
 
-- All available execution proofs for the requested block hash.
-- The response MUST NOT contain more than `MAX_EXECUTION_PROOFS_PER_PAYLOAD`
-  proofs.
+Clients SHOULD return proofs in slot-ascending order within the requested range.
+
+#### ExecutionProofsByRoot
+
+**Protocol ID:** `/eth2/beacon_chain/req/execution_proofs_by_root/1/`
+
+Request Content:
+
+```
+(
+  List[ProofByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedExecutionProof, compute_max_request_execution_proofs()]
+)
+```
+
+Requests execution proofs by block root and proof types. The response is a list
+of `SignedExecutionProof` whose length is less than or equal to
+`requested_proofs_count`, where
+`requested_proofs_count = sum(len(r.proof_types) for r in request)`. It may be
+less in the case that the responding peer is missing blocks or proofs.
+
+No more than `compute_max_request_execution_proofs()` may be requested at a
+time.
+
+The response MUST consist of zero or more `response_chunk`. Each _successful_
+`response_chunk` MUST contain a single `SignedExecutionProof` payload.
+
+Clients MUST respond with at least one proof, if they have it. Clients MAY limit
+the number of proofs in the response.
+
+#### ExecutionProofStatus
+
+**Protocol ID:** `/eth2/beacon_chain/req/execution_proof_status/1/`
+
+Request, Response Content:
+
+```
+(
+  block_root: Root
+  slot: Slot
+)
+```
+
+This protocol enables peers to exchange their current execution proof
+verification status. The request and response use the same type.
+
+As seen by the client at the time of sending the message:
+
+- `block_root`: The `hash_tree_root` root of the most recent block
+  (`BeaconBlock`) for which the client has verified sufficient execution proofs
+  to consider the block valid.
+- `slot`: The slot of the block corresponding to the `block_root`.
+
+The request/response MUST be encoded as an SSZ-container.
+
+The response MUST consist of a single `response_chunk`.
+
+Upon receiving an `ExecutionProofStatus` request, the responder MUST reply with
+its own local execution proof status. The requester SHOULD use the peer's
+response to inform peer selection during execution proof synchronization.
+
+Upon establishing a connection with a peer that is execution proof–aware (i.e.
+the peer's ENR contains `eproof != 0`), the dialing client MUST send an
+`ExecutionProofStatus` request.
+
+## The discovery domain: discv5
+
+### ENR structure
+
+#### Execution proof awareness
+
+A new field is added to the ENR under the key `eproof` to facilitate discovery
+of nodes that are aware of optional execution proofs.
+
+| Key      | Value                                    |
+| -------- | ---------------------------------------- |
+| `eproof` | Execution layer proof awareness, `uint8` |
+
+A node is considered optional execution proof–aware if the `eproof` key is
+present and its value is not 0.

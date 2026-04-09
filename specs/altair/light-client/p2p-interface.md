@@ -92,7 +92,7 @@ The `ForkDigest` context epoch is determined by
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                  | Message SSZ type                   |
 | ------------------------------- | ---------------------------------- |
@@ -140,7 +140,7 @@ The `ForkDigest` context epoch is determined by
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                  | Message SSZ type                     |
 | ------------------------------- | ------------------------------------ |
@@ -188,7 +188,7 @@ determined by `compute_epoch_at_slot(bootstrap.header.beacon.slot)`.
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                  | Response SSZ type             |
 | ------------------------------- | ----------------------------- |
@@ -238,7 +238,7 @@ that the context epoch may differ from the one used to verify the
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                  | Response chunk SSZ type    |
 | ------------------------------- | -------------------------- |
@@ -276,7 +276,7 @@ the context epoch may differ from the one used to verify the
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                  | Response SSZ type                  |
 | ------------------------------- | ---------------------------------- |
@@ -314,7 +314,7 @@ that the context epoch may differ from the one used to verify the
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                  | Response SSZ type                    |
 | ------------------------------- | ------------------------------------ |
