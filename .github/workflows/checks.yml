@@ -44,7 +44,7 @@ jobs:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
       - name: Run framework tests
-        run: make test component=fw
+        run: make test component=fw verbose=true
       - name: Prepare test results for upload
         if: always()
         run: cp -r ./tests/core/pyspec/test-reports ./tests/core/pyspec/test-results-framework-${{ github.run_number }}
@@ -140,7 +140,7 @@ jobs:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
       - name: Run pyspec tests for ${{ matrix.fork }}
-        run: make test component=pyspec preset=minimal fork=${{ matrix.fork }}
+        run: make test component=pyspec verbose=true preset=minimal fork=${{ matrix.fork }}
       - name: Prepare test results for upload
         if: always()
         run: cp -r ./tests/core/pyspec/test-reports ./tests/core/pyspec/test-results-minimal-${{ matrix.fork }}-${{ github.run_number }}
