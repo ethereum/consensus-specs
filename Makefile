@@ -72,6 +72,7 @@ help-verbose:
 	@echo "    kzg=<type>         KZG library: spec, ckzg (default: ckzg)"
 	@echo ""
 	@echo "  Output:"
+	@echo "    verbose=true       Enable verbose pytest output"
 	@echo "    reftests=true      Generate reference test vectors"
 	@echo "    coverage=true      Enable code coverage tracking"
 	@echo ""
@@ -156,10 +157,7 @@ help-verbose:
 # Virtual Environment
 ###############################################################################
 
-# Use non-editable installs for compliance test generators.
-# More details: ethereum/consensus-specs#4633.
 UV_RUN    = uv run
-UV_RUN_NE = uv run --no-editable --reinstall-package=eth-consensus-specs
 
 # Sync dependencies using uv.
 _sync: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),--verbose)
@@ -207,6 +205,7 @@ test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),faste
 test: KZG := $(if $(filter fw,$(component)),,--kzg-type=$(if $(kzg),$(kzg),ckzg))
 #
 # Output
+test: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),-v)
 test: MAYBE_REFTESTS := $(if $(filter true,$(reftests)),--reftests --reftests-output=$(REFTESTS_DIR))
 test: COVERAGE_PRESETS := $(if $(preset),$(preset),$(if $(filter true,$(reftests)),minimal mainnet,minimal))
 test: COV_SCOPE_SINGLE := $(foreach P,$(COVERAGE_PRESETS), --cov=eth_consensus_specs.$(fork).$P)
@@ -218,6 +217,7 @@ test: _pyspec
 	@$(UV_RUN) pytest \
 		$(MAYBE_PARALLEL) \
 		--capture=no \
+		$(MAYBE_VERBOSE) \
 		$(MAYBE_TEST) \
 		$(MAYBE_FORK) \
 		$(PRESET) \
@@ -300,7 +300,7 @@ comptests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
 comptests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
 comptests: MAYBE_SEED := $(if $(seed),--fc-gen-seed $(seed))
 comptests: _pyspec
-	@$(UV_RUN_NE) python -m tests.generators.compliance_runners.fork_choice.test_gen \
+	@$(UV_RUN) python -m tests.generators.compliance_runners.fork_choice.test_gen \
 		--output $(COMP_TEST_VECTOR_DIR) \
 		--fc-gen-config $(FC_GEN_CONFIG) \
 		$(MAYBE_THREADS) \
