@@ -4,10 +4,11 @@ from eth2spec.test.context import (
     MINIMAL,
     single_phase,
     spec_test,
-    with_altair_and_later,
     with_custom_state,
+    with_phases,
     with_presets,
 )
+from eth2spec.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU
 from eth2spec.test.helpers.fast_confirmation import (
     Attesting,
     FCRTest,
@@ -19,7 +20,7 @@ Test on revert to finality
 """
 
 
-@with_altair_and_later
+@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -80,7 +81,7 @@ def test_fcr_no_reset_when_confirmed_exactly_one_epoch_old(spec, state):
     yield from fcr.get_test_artefacts()
 
 
-@with_altair_and_later
+@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -143,7 +144,7 @@ def test_fcr_no_reset_at_epoch_boundary_with_full_participation(spec, state):
     yield from fcr.get_test_artefacts()
 
 
-@with_altair_and_later
+@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -213,7 +214,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_too_old_lower_participation(spe
     yield from fcr.get_test_artefacts()
 
 
-@with_altair_and_later
+@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -306,7 +307,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_at_epoch_boundary
     yield from fcr.get_test_artefacts()
 
 
-@with_altair_and_later
+@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -399,7 +400,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
     yield from fcr.get_test_artefacts()
 
 
-@with_altair_and_later
+@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -497,7 +498,7 @@ def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivo
     yield from fcr.get_test_artefacts()
 
 
-@with_altair_and_later
+@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -591,7 +592,7 @@ def test_reset_to_finality_but_no_restart_to_gu_because_gu_too_old_epoch(spec, s
     yield from fcr.get_test_artefacts()
 
 
-@with_altair_and_later
+@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),

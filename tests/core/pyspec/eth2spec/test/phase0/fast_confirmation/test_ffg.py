@@ -4,10 +4,11 @@ from eth2spec.test.context import (
     MINIMAL,
     single_phase,
     spec_test,
-    with_altair_and_later,
     with_custom_state,
+    with_phases,
     with_presets,
 )
+from eth2spec.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU
 from eth2spec.test.helpers.fast_confirmation import (
     Attesting,
     FCRTest,
@@ -18,7 +19,7 @@ Test will_no_conflicting_checkpoint_be_justified
 """
 
 
-@with_altair_and_later
+@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=96)),
@@ -112,7 +113,7 @@ Test will_current_target_be_justified
 """
 
 
-@with_altair_and_later
+@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=96)),
