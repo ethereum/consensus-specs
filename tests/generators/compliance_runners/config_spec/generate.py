@@ -28,6 +28,35 @@ SKIP_NAMES = frozenset(
         "KZG_SETUP_G1_LAGRANGE",
         "KZG_SETUP_G1_MONOMIAL",
         "KZG_SETUP_G2_MONOMIAL",
+        # Pure mathematical / implementation constants that are not
+        # network-configurable and no client is expected to expose.
+        "BLS_MODULUS",
+        "PRIMITIVE_ROOT_OF_UNITY",
+        "ETH_TO_GWEI",
+        "UINT64_MAX",
+        "UINT64_MAX_SQRT",
+        "UINT256_MAX",
+        "SAFETY_DECAY",
+        "BASIS_POINTS",
+        # KZG internals
+        "KZG_ENDIANNESS",
+        "KZG_SETUP_G2_LENGTH",
+        "FIAT_SHAMIR_PROTOCOL_DOMAIN",
+        "RANDOM_CHALLENGE_KZG_BATCH_DOMAIN",
+        "RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN",
+        # Payload status enum values (implementation detail)
+        "PAYLOAD_STATUS_EMPTY",
+        "PAYLOAD_STATUS_FULL",
+        "PAYLOAD_STATUS_PENDING",
+        # Builder index sentinel values (implementation detail)
+        "BUILDER_INDEX_FLAG",
+        "BUILDER_INDEX_SELF_BUILD",
+        # Gossip message domains (p2p layer, not beacon API)
+        "MESSAGE_DOMAIN_INVALID_SNAPPY",
+        "MESSAGE_DOMAIN_VALID_SNAPPY",
+        # G1 point at infinity (implementation constant)
+        "G1_POINT_AT_INFINITY",
+        "G2_POINT_AT_INFINITY",
     }
 )
 
