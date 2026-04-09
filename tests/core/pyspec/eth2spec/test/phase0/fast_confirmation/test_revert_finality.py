@@ -40,7 +40,7 @@ def test_fcr_no_reset_when_confirmed_exactly_one_epoch_old(spec, state):
        because epoch(bcand=1) + 1 = 2 == current_epoch (not < current_epoch)
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
     epoch2_start = 2 * S
@@ -53,7 +53,7 @@ def test_fcr_no_reset_when_confirmed_exactly_one_epoch_old(spec, state):
     assert fcr.current_slot() == epoch2_start
 
     # Confirm we have confirmations in epoch 1
-    confirmed_at_epoch2_start = store.confirmed_root
+    confirmed_at_epoch2_start = fcr_store.confirmed_root
     assert confirmed_at_epoch2_start != store.finalized_checkpoint.root
     assert spec.get_block_epoch(store, confirmed_at_epoch2_start) == spec.Epoch(1)
 
@@ -64,7 +64,7 @@ def test_fcr_no_reset_when_confirmed_exactly_one_epoch_old(spec, state):
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=low_participation)
 
         current_epoch = spec.get_current_store_epoch(store)
-        confirmed_epoch = spec.get_block_epoch(store, store.confirmed_root)
+        confirmed_epoch = spec.get_block_epoch(store, fcr_store.confirmed_root)
 
         # Key invariant: throughout epoch 2, confirmed is in epoch 1
         # epoch(bcand=1) + 1 = 2 == current_epoch=2, so NOT "too old"
@@ -72,7 +72,7 @@ def test_fcr_no_reset_when_confirmed_exactly_one_epoch_old(spec, state):
         assert confirmed_epoch == spec.Epoch(1)
 
         # Should NOT have reset to finalized
-        assert store.confirmed_root != store.finalized_checkpoint.root, (
+        assert fcr_store.confirmed_root != store.finalized_checkpoint.root, (
             f"Unexpected reset at slot {fcr.current_slot()}: "
             f"confirmed_epoch={confirmed_epoch}, current_epoch={current_epoch}"
         )
@@ -101,7 +101,7 @@ def test_fcr_no_reset_at_epoch_boundary_with_full_participation(spec, state):
        - Reconfirmation passes (is_confirmed_chain_safe returns True)
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
@@ -117,7 +117,7 @@ def test_fcr_no_reset_at_epoch_boundary_with_full_participation(spec, state):
 
         # At epoch boundary
         if epoch > 0:  # Skip genesis epoch
-            current_confirmed = store.confirmed_root
+            current_confirmed = fcr_store.confirmed_root
             confirmed_epoch = spec.get_block_epoch(store, current_confirmed)
 
             confirmed_at_boundaries.append(
@@ -160,7 +160,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_too_old_lower_participation(spe
       - At epoch 3 start: reset confirmed_root to finalized.
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
     epoch2_start = 2 * S
@@ -175,8 +175,8 @@ def test_fcr_reverts_to_finalized_when_confirmed_too_old_lower_participation(spe
     assert spec.is_start_slot_at_epoch(fcr.current_slot())
 
     # Confirm we are indeed in the regime "confirmed is in epoch 1".
-    assert store.confirmed_root != store.finalized_checkpoint.root
-    assert spec.get_block_epoch(store, store.confirmed_root) == spec.Epoch(1)
+    assert fcr_store.confirmed_root != store.finalized_checkpoint.root
+    assert spec.get_block_epoch(store, fcr_store.confirmed_root) == spec.Epoch(1)
 
     # 2) Epoch 2 with low participation: confirmed should not reset yet.
     low_participation = 60  # or 20/5; pick something clearly low for *confirmation* in your model
@@ -185,14 +185,14 @@ def test_fcr_reverts_to_finalized_when_confirmed_too_old_lower_participation(spe
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=low_participation)
 
         # Must not reset before epoch 3 start.
-        assert store.confirmed_root != store.finalized_checkpoint.root
+        assert fcr_store.confirmed_root != store.finalized_checkpoint.root
 
         # It should still be from epoch 1.
-        assert spec.get_block_epoch(store, store.confirmed_root) == spec.Epoch(1)
+        assert spec.get_block_epoch(store, fcr_store.confirmed_root) == spec.Epoch(1)
 
     # We are now at slot epoch3_start - 1, i.e., last slot before the boundary.
     assert fcr.current_slot() == epoch3_start - 1
-    pre_boundary_confirmed = store.confirmed_root
+    pre_boundary_confirmed = fcr_store.confirmed_root
     assert spec.get_block_epoch(store, pre_boundary_confirmed) == spec.Epoch(1)
 
     # 3) Cross into epoch 3 start: now it becomes "too old" and should reset.
@@ -208,7 +208,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_too_old_lower_participation(spe
     assert spec.get_block_epoch(store, pre_boundary_confirmed) + 1 < current_epoch
 
     # Must have reset to finalized at epoch 3 start.
-    assert store.confirmed_root == store.finalized_checkpoint.root
+    assert fcr_store.confirmed_root == store.finalized_checkpoint.root
 
     yield from fcr.get_test_artefacts()
 
@@ -238,7 +238,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_at_epoch_boundary
     7. FCR should reset confirmed_root to finalized
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
     epoch2_start = 2 * S
@@ -270,7 +270,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_at_epoch_boundary
 
     # Verify confirmed is on A-side
     head = fcr.head()
-    confirmed = store.confirmed_root
+    confirmed = fcr_store.confirmed_root
 
     assert spec.is_ancestor(store, head, confirmed), "Confirmed should be canonical"
     assert confirmed != store.finalized_checkpoint.root, "Confirmed should have advanced"
@@ -299,7 +299,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_at_epoch_boundary
     )
 
     # Verify reset to finalized
-    assert store.confirmed_root == store.finalized_checkpoint.root, (
+    assert fcr_store.confirmed_root == store.finalized_checkpoint.root, (
         "confirmed_root should reset to finalized when it becomes non-canonical"
     )
 
@@ -333,7 +333,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
     finalized_checkpoint.root rather than moving confirmations backward.
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
     epoch2_start = 2 * S
@@ -369,10 +369,10 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
     )
 
     # By now we should have confirmed onto the A side
-    assert spec.is_ancestor(store, store.confirmed_root, a_root), "Confirmed did not reach A"
+    assert spec.is_ancestor(store, fcr_store.confirmed_root, a_root), "Confirmed did not reach A"
 
     # snapshot what confirmed_root is *before* we start pushing 100%-to-M
-    confirmed_before_flip = store.confirmed_root
+    confirmed_before_flip = fcr_store.confirmed_root
     assert confirmed_before_flip != store.finalized_checkpoint.root
     assert spec.is_ancestor(store, confirmed_before_flip, a_root)
 
@@ -381,7 +381,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
     fcr.attest_and_next_slot_with_fast_confirmation(block_root=m_root, participation_rate=100)
 
     # Confirmed still on A side
-    assert spec.is_ancestor(store, store.confirmed_root, a_root)
+    assert spec.is_ancestor(store, fcr_store.confirmed_root, a_root)
 
     # Next slot: build D on C; attest 100% to M again; advance + apply + FCR
     _d_root = fcr.add_and_apply_block(parent_root=c_root)
@@ -391,10 +391,10 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
     # (FCR does not move confirmations backwards; it resets to finalized when confirmed becomes non-canonical.)
     head = fcr.head()
     assert spec.is_ancestor(store, head, m_root), "Head did not flip to M"
-    assert store.confirmed_root == store.finalized_checkpoint.root, (
+    assert fcr_store.confirmed_root == store.finalized_checkpoint.root, (
         "Expected reset to finalized mid-epoch"
     )
-    assert store.confirmed_root != confirmed_before_flip  # we actually reset
+    assert fcr_store.confirmed_root != confirmed_before_flip  # we actually reset
 
     yield from fcr.get_test_artefacts()
 
@@ -421,7 +421,7 @@ def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivo
     4. Reset fires, restart-to-GU rescues confirmed to GU root.
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
     epoch3_start = 3 * S
@@ -432,14 +432,14 @@ def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivo
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
     assert fcr.current_slot() == last_slot_epoch2
-    assert spec.get_block_epoch(store, store.confirmed_root) == spec.Epoch(2)
-    assert store.confirmed_root != store.finalized_checkpoint.root
+    assert spec.get_block_epoch(store, fcr_store.confirmed_root) == spec.Epoch(2)
+    assert fcr_store.confirmed_root != store.finalized_checkpoint.root
 
     # Last slot of epoch 2: build block, attest, run FCR (samples GU)
     block_root = fcr.add_and_apply_block(parent_root=fcr.head())
     fcr.attest(block_root=block_root, slot=fcr.current_slot(), participation_rate=100)
 
-    confirmed_before = store.confirmed_root
+    confirmed_before = fcr_store.confirmed_root
     current_epoch = spec.Epoch(3)
 
     # Pre-slashing: all reset disjuncts are false
@@ -453,14 +453,14 @@ def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivo
     assert spec.is_ancestor(store, fcr.head(), confirmed_before), "Confirmed not on head chain"
 
     # Confirmed above reconfirmation anchor
-    gu_prev = store.previous_epoch_observed_justified_checkpoint
+    gu_prev = fcr_store.previous_epoch_observed_justified_checkpoint
     assert spec.is_ancestor(store, confirmed_before, gu_prev.root), (
         "Confirmed not descendant of GU_prev"
     )
     assert confirmed_before != gu_prev.root, "No segment to reconfirm"
 
     # Reconfirmation passes
-    assert spec.is_confirmed_chain_safe(store, confirmed_before), (
+    assert spec.is_confirmed_chain_safe(fcr_store, confirmed_before), (
         "Reconfirmation should pass before slashing"
     )
 
@@ -476,7 +476,7 @@ def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivo
     assert spec.is_ancestor(store, confirmed_before, gu_prev.root), "Ancestry broke"
 
     # Reconfirmation fails
-    assert not spec.is_confirmed_chain_safe(store, confirmed_before), (
+    assert not spec.is_confirmed_chain_safe(fcr_store, confirmed_before), (
         "Reconfirmation should fail after 75% slashing"
     )
 
@@ -486,12 +486,12 @@ def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivo
     fcr.run_fast_confirmation()
 
     # Outcome: reset fired, restart-to-GU worked
-    gu_at_epoch3 = store.current_epoch_observed_justified_checkpoint
-    assert store.confirmed_root != confirmed_before, (
+    gu_at_epoch3 = fcr_store.current_epoch_observed_justified_checkpoint
+    assert fcr_store.confirmed_root != confirmed_before, (
         "Confirmed should have moved — reconfirmation failure not triggered"
     )
-    assert store.confirmed_root == gu_at_epoch3.root, (
-        f"Expected restart to GU root, got {store.confirmed_root}"
+    assert fcr_store.confirmed_root == gu_at_epoch3.root, (
+        f"Expected restart to GU root, got {fcr_store.confirmed_root}"
     )
 
     yield from fcr.get_test_artefacts()
@@ -532,7 +532,7 @@ def test_reset_to_finality_but_no_restart_to_gu_because_gu_too_old_epoch(spec, s
     Result: confirmed_root = finalized_checkpoint.root (NOT GU)
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
     epoch2_start = 2 * S
@@ -543,7 +543,7 @@ def test_reset_to_finality_but_no_restart_to_gu_because_gu_too_old_epoch(spec, s
     while fcr.current_slot() < epoch2_start:
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
-        if store.confirmed_root != store.finalized_checkpoint.root:
+        if fcr_store.confirmed_root != store.finalized_checkpoint.root:
             saw_nonfinal_confirmed = True
 
     assert fcr.current_slot() == epoch2_start
@@ -560,7 +560,7 @@ def test_reset_to_finality_but_no_restart_to_gu_because_gu_too_old_epoch(spec, s
 
         # Must not reset early (only care that reset happens at epoch 3 start).
         if fcr.current_slot() < epoch3_start:
-            assert store.confirmed_root != store.finalized_checkpoint.root, (
+            assert fcr_store.confirmed_root != store.finalized_checkpoint.root, (
                 "confirmed_root reset before epoch 3 start (unexpected for this scenario)"
             )
 
@@ -573,7 +573,7 @@ def test_reset_to_finality_but_no_restart_to_gu_because_gu_too_old_epoch(spec, s
 
     # current_epoch_observed_justified_checkpoint is set from unrealized_justified_checkpoint
     # at the start of the last slot of the previous epoch.
-    gu = store.current_epoch_observed_justified_checkpoint
+    gu = fcr_store.current_epoch_observed_justified_checkpoint
 
     # Finalized strictly older than GU at the block/slot level
     finalized_slot = store.blocks[store.finalized_checkpoint.root].slot
@@ -586,7 +586,7 @@ def test_reset_to_finality_but_no_restart_to_gu_because_gu_too_old_epoch(spec, s
     )
 
     # Reset-to-finalized must happen at epoch 3 start due to confirmed being "too old".
-    assert store.confirmed_root == store.finalized_checkpoint.root
+    assert fcr_store.confirmed_root == store.finalized_checkpoint.root
 
     yield from fcr.get_test_artefacts()
 
@@ -628,7 +628,7 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
     NOT due to bcand being too old or non-canonical.
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
     epoch2_start = 2 * S
@@ -720,7 +720,7 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
 
     # Check GU snapshot = (C, 2) — use the snapshot field, not current_observed
     # (rotation hasn't happened yet, it happens at epoch 4 start inside FCR)
-    gu_snapshot = store.previous_epoch_greatest_unrealized_checkpoint
+    gu_snapshot = fcr_store.previous_epoch_greatest_unrealized_checkpoint
     assert gu_snapshot.root == c_red, "GU snapshot should point to c_red"
     assert gu_snapshot.epoch == spec.Epoch(2)
 
@@ -737,8 +737,8 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
     assert spec.is_ancestor(store, uj_of_b_prime.root, c_double_prime)
 
     # GU snapshot should STILL be (C, 2) — releasing b' doesn't change it
-    assert store.previous_epoch_greatest_unrealized_checkpoint.root == c_red
-    assert store.previous_epoch_greatest_unrealized_checkpoint.epoch == spec.Epoch(2)
+    assert fcr_store.previous_epoch_greatest_unrealized_checkpoint.root == c_red
+    assert fcr_store.previous_epoch_greatest_unrealized_checkpoint.epoch == spec.Epoch(2)
 
     fcr.attest(block_root=b_prime, slot=fcr.current_slot(), participation_rate=100)
 
@@ -749,7 +749,7 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
     assert spec.is_start_slot_at_epoch(spec.Slot(fcr.current_slot()))
 
     # Verify preconditions BEFORE FCR
-    confirmed_before_fcr = store.confirmed_root
+    confirmed_before_fcr = fcr_store.confirmed_root
     current_epoch = spec.get_current_store_epoch(store)
     confirmed_epoch = spec.get_block_epoch(store, confirmed_before_fcr)
 
@@ -766,7 +766,7 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
     fcr.run_fast_confirmation()
 
     # Verify GU after rotation
-    gu = store.current_epoch_observed_justified_checkpoint
+    gu = fcr_store.current_epoch_observed_justified_checkpoint
     assert gu.root == c_red, "GU should be c_red after rotation"
     assert gu.epoch == spec.Epoch(2)
 
@@ -776,7 +776,7 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
     )
 
     # Verify reset to finalized
-    confirmed_after_fcr = store.confirmed_root
+    confirmed_after_fcr = fcr_store.confirmed_root
     finalized = store.finalized_checkpoint.root
     assert confirmed_after_fcr == finalized, (
         "confirmed_root should reset to finalized due to bcand ⊁ GU"

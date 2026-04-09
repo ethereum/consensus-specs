@@ -164,21 +164,6 @@ algorithm. The important fields being tracked are described below:
 - `unrealized_justifications`: stores a map of block root to the unrealized
   justified checkpoint observed in that block.
 
-The following fields are used by the Fast Confirmation Rule:
-
-- `confirmed_root`: root of the most recent confirmed block.
-- `previous_epoch_observed_justified_checkpoint`: a justified checkpoint that
-  has been observed by all honest nodes at the beginning of the previous epoch
-  assuming synchrony.
-- `current_epoch_observed_justified_checkpoint`: a justified checkpoint that has
-  been observed by all honest nodes at the beginning of the current epoch
-  assuming synchrony.
-- `previous_epoch_greatest_unrealized_checkpoint`: a greatest unrealized
-  justified checkpoint at the start of the last slot of the previous epoch
-  according to a local view.
-- `previous_slot_head`: the head at the start of the previous slot.
-- `current_slot_head`: the head at the start of the current slot.
-
 ```python
 @dataclass
 class Store(object):
@@ -189,12 +174,6 @@ class Store(object):
     unrealized_justified_checkpoint: Checkpoint
     unrealized_finalized_checkpoint: Checkpoint
     proposer_boost_root: Root
-    confirmed_root: Root
-    previous_epoch_observed_justified_checkpoint: Checkpoint
-    current_epoch_observed_justified_checkpoint: Checkpoint
-    previous_epoch_greatest_unrealized_checkpoint: Checkpoint
-    previous_slot_head: Root
-    current_slot_head: Root
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
@@ -231,12 +210,6 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         unrealized_justified_checkpoint=justified_checkpoint,
         unrealized_finalized_checkpoint=finalized_checkpoint,
         proposer_boost_root=proposer_boost_root,
-        confirmed_root=anchor_root,
-        previous_epoch_observed_justified_checkpoint=justified_checkpoint,
-        current_epoch_observed_justified_checkpoint=justified_checkpoint,
-        previous_epoch_greatest_unrealized_checkpoint=justified_checkpoint,
-        previous_slot_head=anchor_root,
-        current_slot_head=anchor_root,
         equivocating_indices=set(),
         blocks={anchor_root: copy(anchor_block)},
         block_states={anchor_root: copy(anchor_state)},

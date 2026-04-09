@@ -30,12 +30,13 @@ class CurrentEpochTestSpecification:
         bool  # <-> is_one_confirmed(store, get_current_balance_source(store), block_root)
     ) = False
 
-    def verify_preconditions(self, spec, store):
+    def verify_preconditions(self, spec, fcr_store):
+        store = fcr_store.store
         head = spec.get_head(store)
         current_epoch = spec.get_current_store_epoch(store)
         current_slot = spec.get_current_slot(store)
-        confirmed_epoch = spec.get_block_epoch(store, store.confirmed_root)
-        canonical_roots = spec.get_ancestor_roots(store, head, store.confirmed_root)
+        confirmed_epoch = spec.get_block_epoch(store, fcr_store.confirmed_root)
+        canonical_roots = spec.get_ancestor_roots(store, head, fcr_store.confirmed_root)
 
         assert confirmed_epoch + 1 >= current_epoch
         assert current_slot % spec.SLOTS_PER_EPOCH > 0
@@ -49,28 +50,29 @@ class CurrentEpochTestSpecification:
         assert self.target_will_be_justified == spec.will_current_target_be_justified(store)
         if self.is_one_confirmed:
             is_one_confirmed_list = [
-                spec.is_one_confirmed(store, spec.get_current_balance_source(store), root)
+                spec.is_one_confirmed(store, spec.get_current_balance_source(fcr_store), root)
                 for root in canonical_roots
             ]
             assert all(is_one_confirmed_list)
         else:
             assert not spec.is_one_confirmed(
-                store, spec.get_current_balance_source(store), spec.get_head(store)
+                store, spec.get_current_balance_source(fcr_store), spec.get_head(store)
             )
 
-    def get_expected_confirmed_root(self, spec, store):
-        confirmed_epoch = spec.get_block_epoch(store, store.confirmed_root)
+    def get_expected_confirmed_root(self, spec, fcr_store):
+        store = fcr_store.store
+        confirmed_epoch = spec.get_block_epoch(store, fcr_store.confirmed_root)
         current_epoch = spec.get_current_store_epoch(store)
 
         if confirmed_epoch < current_epoch and not self.target_will_be_justified:
-            return store.confirmed_root
+            return fcr_store.confirmed_root
 
         if self.head_uj_fresh and self.is_one_confirmed:
             # If any block is supposed to be confirmed
             # the head is always expected to be the most recent confirmed one
             return spec.get_head(store)
         else:
-            return store.confirmed_root
+            return fcr_store.confirmed_root
 
     def first_block_at_mid_epoch(self):
         return self.first_block_in_epoch and not self.second_slot_call
@@ -243,17 +245,19 @@ class CurrentEpochTestBuilder:
             fcr_test.print_fast_confirmation_state()
 
         # Check preconditions are correct
-        self.test_spec.verify_preconditions(fcr_test.spec, fcr_test.store)
+        self.test_spec.verify_preconditions(fcr_test.spec, fcr_test.fcr_store)
 
         return fcr_test
 
 
 def run_current_epoch_test(fcr_test: FCRTest, test_spec: CurrentEpochTestSpecification):
     # Keep expected confirmed_root after execution of the test
-    exptected_confirmed_root = test_spec.get_expected_confirmed_root(fcr_test.spec, fcr_test.store)
+    exptected_confirmed_root = test_spec.get_expected_confirmed_root(
+        fcr_test.spec, fcr_test.fcr_store
+    )
     # Execute FCR and check that confirmed_root is as expected
     fcr_test.run_fast_confirmation()
-    assert fcr_test.store.confirmed_root == exptected_confirmed_root
+    assert fcr_test.fcr_store.confirmed_root == exptected_confirmed_root
 
     yield from fcr_test.get_test_artefacts()
 

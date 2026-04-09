@@ -36,7 +36,7 @@ def test_will_no_conflicting_checkpoint_be_justified_fails_at_strictly_one_third
     4. Check the one_confirmed passes for a block but will_no_conflicting_checkpoint_be_justified fails
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
@@ -44,7 +44,7 @@ def test_will_no_conflicting_checkpoint_be_justified_fails_at_strictly_one_third
     target_slot = 2 * S - 1
     fcr.run_slots_with_blocks_and_fast_confirmation(target_slot, participation_rate=100)
 
-    confirmed_epoch_2_last_slot = store.confirmed_root
+    confirmed_epoch_2_last_slot = fcr_store.confirmed_root
 
     # Epoch 2, Last Slot with participation enough pass reconfirmation, but still not enoug to confirm
     target_root = fcr.next_slot_with_block_and_fast_confirmation(
@@ -87,14 +87,14 @@ def test_will_no_conflicting_checkpoint_be_justified_fails_at_strictly_one_third
     )
 
     # Check all other conditions passes, so a block would be confirmed
-    assert spec.is_one_confirmed(store, spec.get_current_balance_source(store), target_root)
+    assert spec.is_one_confirmed(store, spec.get_current_balance_source(fcr_store), target_root)
     assert spec.get_voting_source(
-        store, store.previous_slot_head
+        store, fcr_store.previous_slot_head
     ).epoch + 2 >= spec.get_current_store_epoch(store)
     assert store.unrealized_justifications[
         spec.get_head(store)
     ].epoch + 1 >= spec.get_current_store_epoch(store)
-    assert spec.is_ancestor(store, store.previous_slot_head, target_root)
+    assert spec.is_ancestor(store, fcr_store.previous_slot_head, target_root)
 
     # Check will_no_conflicting_checkpoint_be_justified fails
     assert not spec.will_no_conflicting_checkpoint_be_justified(store)
@@ -102,7 +102,7 @@ def test_will_no_conflicting_checkpoint_be_justified_fails_at_strictly_one_third
     # Run Fast confirmation
     fcr.run_fast_confirmation()
 
-    assert store.confirmed_root == confirmed_epoch_2_last_slot
+    assert fcr_store.confirmed_root == confirmed_epoch_2_last_slot
 
     yield from fcr.get_test_artefacts()
 
@@ -129,7 +129,7 @@ def test_will_current_target_be_justified_passes_at_strictly_two_third(spec, sta
        3 * honest_ffg_support_for_current_target == 2 * total_active_balance
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
@@ -162,11 +162,11 @@ def test_will_current_target_be_justified_passes_at_strictly_two_third(spec, sta
     # Check will_current_target_be_justified passes
     assert spec.will_current_target_be_justified(store)
 
-    assert store.confirmed_root == confirmed_epoch_1_last_slot
+    assert fcr_store.confirmed_root == confirmed_epoch_1_last_slot
 
     # Run Fast confirmation
     fcr.run_fast_confirmation()
 
-    assert store.confirmed_root == chkp_root
+    assert fcr_store.confirmed_root == chkp_root
 
     yield from fcr.get_test_artefacts()

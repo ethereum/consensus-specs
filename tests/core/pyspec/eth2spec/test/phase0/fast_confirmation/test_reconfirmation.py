@@ -41,20 +41,20 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
        from current_epoch - 2.
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
     # Run until last slot of epoch 2
     fcr.run_slots_with_blocks_and_fast_confirmation(3 * S - 1, participation_rate=100)
 
-    confimed_at_last_slot_epoch_2 = store.confirmed_root
+    confimed_at_last_slot_epoch_2 = fcr_store.confirmed_root
 
     # Leave last slot empty
     fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=100)
 
     # Check that reconfirmation passed
-    assert store.confirmed_root == confimed_at_last_slot_epoch_2
+    assert fcr_store.confirmed_root == confimed_at_last_slot_epoch_2
 
     # Epoch 3, Slot 1, empty slot
     fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=100)
@@ -63,7 +63,7 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
     fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
     # Check that confirmed block was not advanced
-    assert store.confirmed_root == confimed_at_last_slot_epoch_2
+    assert fcr_store.confirmed_root == confimed_at_last_slot_epoch_2
 
     # Epoch 3, Slot 3
 
@@ -76,11 +76,11 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
     fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=75)
 
     # Check the head is confirmed
-    assert store.confirmed_root == fcr.head()
+    assert fcr_store.confirmed_root == fcr.head()
 
     # But if there were no slashings, first block in Epoch 3 couldn't be confirmed at this stage
     epoch_3_first_block = spec.get_ancestor(store, fcr.head(), 3 * S + 1)
-    balance_source = spec.get_current_balance_source(store)
+    balance_source = spec.get_current_balance_source(fcr_store)
     support = spec.get_attestation_score(store, epoch_3_first_block, balance_source)
     safety_threshold = spec.compute_safety_threshold(store, epoch_3_first_block, balance_source)
 
@@ -96,12 +96,12 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
     SlotSequence(end_slot=(4 * S - 1), attesting=Attesting(participation_rate=100)).execute(fcr)
 
     # Check the head was confirmed
-    assert store.confirmed_root == fcr.head()
+    assert fcr_store.confirmed_root == fcr.head()
 
     # Run to the start of Epoch 4 with no block
     fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=100)
 
     # Check reconfirmation passed
-    assert store.confirmed_root == fcr.head()
+    assert fcr_store.confirmed_root == fcr.head()
 
     yield from fcr.get_test_artefacts()

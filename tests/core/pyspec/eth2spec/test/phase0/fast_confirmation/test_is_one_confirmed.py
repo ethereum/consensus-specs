@@ -36,7 +36,7 @@ def test_is_one_confirmed_passes_with_full_participation(spec, state):
     4. Inspect the individual terms of the inequality
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
@@ -52,7 +52,7 @@ def test_is_one_confirmed_passes_with_full_participation(spec, state):
     assert parent_block.slot + 1 == block.slot, "Test requires consecutive slots"
 
     # Get balance source
-    balance_source = spec.get_current_balance_source(store)
+    balance_source = spec.get_current_balance_source(fcr_store)
 
     # Call is_one_confirmed directly
     assert spec.is_one_confirmed(store, balance_source, block_b), (
@@ -103,7 +103,7 @@ def test_is_one_confirmed_fails_with_low_participation(spec, state):
     4. Inspect the terms to verify support is insufficient
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
@@ -119,7 +119,7 @@ def test_is_one_confirmed_fails_with_low_participation(spec, state):
     assert parent_block.slot + 1 == block.slot, "Test requires consecutive slots"
 
     # Get balance source
-    balance_source = spec.get_current_balance_source(store)
+    balance_source = spec.get_current_balance_source(fcr_store)
 
     # Call is_one_confirmed directly
     assert not spec.is_one_confirmed(store, balance_source, block_b), (
@@ -171,7 +171,7 @@ def test_is_one_confirmed_slashing_supporters_does_not_hurt(spec, state):
     3. Verify is_one_confirmed remains True
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
@@ -191,7 +191,9 @@ def test_is_one_confirmed_slashing_supporters_does_not_hurt(spec, state):
     fcr.run_fast_confirmation()
 
     # is_one_confirmed must still hold
-    assert store.confirmed_root == block_b, "Slashing supporters should not break is_one_confirmed"
+    assert fcr_store.confirmed_root == block_b, (
+        "Slashing supporters should not break is_one_confirmed"
+    )
 
     yield from fcr.get_test_artefacts()
 
@@ -229,7 +231,7 @@ def test_is_one_confirmed_slashing_non_supporters_helps(spec, state):
     4. Verify support unchanged, adversarial budget decreased, is_one_confirmed flips to True
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
@@ -243,7 +245,7 @@ def test_is_one_confirmed_slashing_non_supporters_helps(spec, state):
     parent_block = store.blocks[block.parent_root]
     assert parent_block.slot + 1 == block.slot, "Test requires consecutive slots"
 
-    balance_source = spec.get_current_balance_source(store)
+    balance_source = spec.get_current_balance_source(fcr_store)
 
     support_before = spec.get_attestation_score(store, block_b, balance_source)
     adversarial_weight_before = spec.get_adversarial_weight(store, balance_source, block_b)
@@ -313,7 +315,7 @@ def test_is_one_confirmed_empty_slot_discount(spec, state):
        passing for the gapped block
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
@@ -327,7 +329,7 @@ def test_is_one_confirmed_empty_slot_discount(spec, state):
     parent_a = store.blocks[block_a_data.parent_root]
     assert parent_a.slot + 1 == block_a_data.slot, "Block A must be consecutive"
 
-    balance_source = spec.get_current_balance_source(store)
+    balance_source = spec.get_current_balance_source(fcr_store)
 
     discount_a = spec.get_support_discount(store, balance_source, block_a)
     assert discount_a == 0, f"Block A discount should be 0, got {discount_a}"
@@ -353,7 +355,7 @@ def test_is_one_confirmed_empty_slot_discount(spec, state):
     parent_b = store.blocks[block_b_data.parent_root]
     assert parent_b.slot + 1 < block_b_data.slot, "Block B must have an empty slot gap"
 
-    balance_source = spec.get_current_balance_source(store)
+    balance_source = spec.get_current_balance_source(fcr_store)
 
     # Discount must be positive
     discount_b = int(spec.get_support_discount(store, balance_source, block_b))
@@ -388,7 +390,7 @@ def test_is_one_confirmed_empty_slot_discount(spec, state):
     # Accumulate one more slot of attestations to dilute proposer boost.
     fcr.attest_and_next_slot_with_fast_confirmation(block_root=block_b, participation_rate=100)
 
-    balance_source = spec.get_current_balance_source(store)
+    balance_source = spec.get_current_balance_source(fcr_store)
 
     # With accumulation, block_b should now pass
     assert spec.is_one_confirmed(store, balance_source, block_b), (
@@ -449,7 +451,7 @@ def test_is_one_confirmed_support_accumulates_over_slots(spec, state):
     4. At s+2: verify is_one_confirmed passes (boost diluted by second committee)
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
@@ -459,7 +461,7 @@ def test_is_one_confirmed_support_accumulates_over_slots(spec, state):
     # Propose block B with 88% participation
     block_b = fcr.next_slot_with_block_and_fast_confirmation(participation_rate=88)
 
-    balance_source = spec.get_current_balance_source(store)
+    balance_source = spec.get_current_balance_source(fcr_store)
 
     # At s+1: one slot of support — fails due to proposer boost
     assert not spec.is_one_confirmed(store, balance_source, block_b), (
@@ -469,7 +471,7 @@ def test_is_one_confirmed_support_accumulates_over_slots(spec, state):
     # Attest 88% to B at s+1, advance to s+2, apply, run FCR — no new block
     fcr.attest_and_next_slot_with_fast_confirmation(block_root=block_b, participation_rate=88)
 
-    balance_source = spec.get_current_balance_source(store)
+    balance_source = spec.get_current_balance_source(fcr_store)
 
     # At s+2: two slots of support — boost diluted, passes
     assert spec.is_one_confirmed(store, balance_source, block_b), (
@@ -505,7 +507,7 @@ def test_is_one_confirmed_epoch_crossing_block(spec, state):
     5. Check is_one_confirmed with accumulated support
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
@@ -533,7 +535,7 @@ def test_is_one_confirmed_epoch_crossing_block(spec, state):
         f"Block must cross epoch boundary: block_epoch={block_epoch}, parent_epoch={parent_block_epoch}"
     )
 
-    balance_source = spec.get_current_balance_source(store)
+    balance_source = spec.get_current_balance_source(fcr_store)
 
     # Verify adversarial weight uses epoch start as start_slot
     current_slot = spec.get_current_slot(store)
@@ -572,7 +574,7 @@ def test_is_one_confirmed_epoch_crossing_block(spec, state):
     fcr.attest_and_next_slot_with_fast_confirmation(block_root=block_b, participation_rate=100)
     fcr.attest_and_next_slot_with_fast_confirmation(block_root=block_b, participation_rate=100)
 
-    assert store.confirmed_root == block_b, (
+    assert fcr_store.confirmed_root == block_b, (
         "Epoch-crossing block should pass is_one_confirmed with accumulated support"
     )
 
@@ -609,7 +611,7 @@ def test_is_one_confirmed_fails_with_competing_branch(spec, state):
     6. Verify B2 still fails throughout
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
@@ -633,7 +635,7 @@ def test_is_one_confirmed_fails_with_competing_branch(spec, state):
     fcr.next_slot()
     fcr.run_fast_confirmation()
 
-    balance_source = spec.get_current_balance_source(store)
+    balance_source = spec.get_current_balance_source(fcr_store)
 
     # Both must have some support
     support_b1 = int(spec.get_attestation_score(store, block_b1, balance_source))
@@ -652,7 +654,7 @@ def test_is_one_confirmed_fails_with_competing_branch(spec, state):
     # Accumulate support for B1 only — first additional slot
     fcr.attest_and_next_slot_with_fast_confirmation(block_root=block_b1, participation_rate=100)
 
-    balance_source = spec.get_current_balance_source(store)
+    balance_source = spec.get_current_balance_source(fcr_store)
 
     # B1 still fails after one additional slot (initial split deficit too large)
     assert not spec.is_one_confirmed(store, balance_source, block_b1), (
@@ -665,7 +667,7 @@ def test_is_one_confirmed_fails_with_competing_branch(spec, state):
     # Accumulate support for B1 only — second additional slot
     fcr.attest_and_next_slot_with_fast_confirmation(block_root=block_b1, participation_rate=100)
 
-    balance_source = spec.get_current_balance_source(store)
+    balance_source = spec.get_current_balance_source(fcr_store)
 
     # B1 now passes — enough accumulated support overcomes the split deficit
     assert spec.is_one_confirmed(store, balance_source, block_b1), (
@@ -705,14 +707,14 @@ def test_is_confirmed_chain_safe_passes_full_chain(spec, state):
     4. Every individual block in the chain passes is_one_confirmed
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
     # Build through epoch 2 with 100% participation
     fcr.run_slots_with_blocks_and_fast_confirmation(3 * S, participation_rate=100)
 
-    confirmed_root = store.confirmed_root
+    confirmed_root = fcr_store.confirmed_root
 
     # Confirmed root must have advanced beyond genesis
     assert confirmed_root != state.latest_block_header.parent_root, (
@@ -720,15 +722,15 @@ def test_is_confirmed_chain_safe_passes_full_chain(spec, state):
     )
 
     # Verify is_confirmed_chain_safe passes
-    assert spec.is_confirmed_chain_safe(store, confirmed_root), (
+    assert spec.is_confirmed_chain_safe(fcr_store, confirmed_root), (
         "is_confirmed_chain_safe should pass with 100% participation"
     )
 
     # Walk the chain from confirmed_root back toward the anchor and verify
     # each block individually passes is_one_confirmed
-    balance_source = spec.get_previous_balance_source(store)
+    balance_source = spec.get_previous_balance_source(fcr_store)
     block_root = confirmed_root
-    anchor_root = store.previous_epoch_observed_justified_checkpoint.root
+    anchor_root = fcr_store.previous_epoch_observed_justified_checkpoint.root
     blocks_checked = 0
 
     while block_root != anchor_root:
@@ -782,7 +784,7 @@ def test_is_one_confirmed_epoch_crossing_adversarial_range_matters(spec, state):
     6. Verify it WOULD be confirmed with the narrower (incorrect) range
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
@@ -818,7 +820,7 @@ def test_is_one_confirmed_epoch_crossing_adversarial_range_matters(spec, state):
     for _ in range(2):
         fcr.attest_and_next_slot_with_fast_confirmation(block_root=block_b, participation_rate=88)
 
-    balance_source = spec.get_current_balance_source(store)
+    balance_source = spec.get_current_balance_source(fcr_store)
     current_slot = spec.get_current_slot(store)
     total_active_balance = spec.get_total_active_balance(balance_source)
 
@@ -866,7 +868,7 @@ def test_is_one_confirmed_epoch_crossing_adversarial_range_matters(spec, state):
     )
 
     # confirmed_root should NOT include block_b
-    assert store.confirmed_root != block_b, (
+    assert fcr_store.confirmed_root != block_b, (
         "confirmed_root should not advance to the epoch-crossing block"
     )
 

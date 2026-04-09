@@ -7,6 +7,8 @@
   - [Constants](#constants)
   - [Configuration](#configuration)
   - [Helpers](#helpers)
+    - [`FastConfirmationStore`](#fastconfirmationstore)
+    - [`get_fast_confirmation_store`](#get_fast_confirmation_store)
     - [Misc helper functions](#misc-helper-functions)
       - [`get_block_slot`](#get_block_slot)
       - [`get_block_epoch`](#get_block_epoch)
@@ -78,6 +80,60 @@ blocks can be reorged without any adversarial behavior and without slashing.
 | `CONFIRMATION_BYZANTINE_THRESHOLD` | `uint64(25)` | `uint64(25)` | Assumed maximum percentage of Byzantine validators among the validator set. |
 
 ### Helpers
+
+#### `FastConfirmationStore`
+
+The `FastConfirmationStore` is responsible for tracking information required for
+the fast confirmation rule . The fields being tracked are described below:
+
+- `store`: read-only instance of the fork choice `Store`, added for convenience.
+- `confirmed_root`: root of the most recent confirmed block.
+- `previous_epoch_observed_justified_checkpoint`: a justified checkpoint that
+  has been observed by all honest nodes at the beginning of the previous epoch
+  assuming synchrony.
+- `current_epoch_observed_justified_checkpoint`: a justified checkpoint that has
+  been observed by all honest nodes at the beginning of the current epoch
+  assuming synchrony.
+- `previous_epoch_greatest_unrealized_checkpoint`: a greatest unrealized
+  justified checkpoint at the start of the last slot of the previous epoch
+  according to a local view.
+- `previous_slot_head`: the head at the start of the previous slot.
+- `current_slot_head`: the head at the start of the current slot.
+
+```python
+@dataclass
+class FastConfirmationStore(object):
+    store: Store
+    confirmed_root: Root
+    previous_epoch_observed_justified_checkpoint: Checkpoint
+    current_epoch_observed_justified_checkpoint: Checkpoint
+    previous_epoch_greatest_unrealized_checkpoint: Checkpoint
+    previous_slot_head: Root
+    current_slot_head: Root
+```
+
+#### `get_fast_confirmation_store`
+
+Initialization of the fast confirmation store should happen at the same time as
+initialization of the fork choice store and use the same trusted checkpoint.
+
+*Note*: This function conservatively uses `store.finalized_checkpoint` for all
+fast confirmation variables. Confirmed block will be advanced at any future
+epoch boundary when the starting conditions are met, before that the finalized
+block will be returned as the confirmed one.
+
+```python
+def get_fast_confirmation_store(store: Store) -> FastConfirmationStore:
+    return FastConfirmationStore(
+        store=store,
+        confirmed_root=store.finalized_checkpoint.root,
+        previous_epoch_observed_justified_checkpoint=store.finalized_checkpoint,
+        current_epoch_observed_justified_checkpoint=store.finalized_checkpoint,
+        previous_epoch_greatest_unrealized_checkpoint=store.finalized_checkpoint,
+        previous_slot_head=store.finalized_checkpoint.root,
+        current_slot_head=store.finalized_checkpoint.root,
+    )
+```
 
 #### Misc helper functions
 
@@ -219,15 +275,17 @@ reconfirmation and before the logic to confirm new blocks is called. In this
 case implementations will need to keep only a single balance source around.
 
 ```python
-def get_previous_balance_source(store: Store) -> BeaconState:
-    return store.checkpoint_states[store.previous_epoch_observed_justified_checkpoint]
+def get_previous_balance_source(fcr_store: FastConfirmationStore) -> BeaconState:
+    store = fcr_store.store
+    return store.checkpoint_states[fcr_store.previous_epoch_observed_justified_checkpoint]
 ```
 
 ##### `get_current_balance_source`
 
 ```python
-def get_current_balance_source(store: Store) -> BeaconState:
-    return store.checkpoint_states[store.current_epoch_observed_justified_checkpoint]
+def get_current_balance_source(fcr_store: FastConfirmationStore) -> BeaconState:
+    store = fcr_store.store
+    return store.checkpoint_states[fcr_store.current_epoch_observed_justified_checkpoint]
 ```
 
 #### LMD-GHOST helpers
@@ -585,23 +643,23 @@ to be assumed from the time of the first run of the algorithm which could happen
 big number of epochs ago.
 
 ```python
-def is_confirmed_chain_safe(store: Store, confirmed_root: Root) -> bool:
+def is_confirmed_chain_safe(fcr_store: FastConfirmationStore, confirmed_root: Root) -> bool:
     """
     Return ``True`` if and only if all blocks of the confirmed chain
     starting from current_epoch_observed_justified_checkpoint are LMD-GHOST safe.
     """
-
+    store = fcr_store.store
     # Check if the confirmed_root is descendant of current_epoch_observed_justified_checkpoint.
     if not is_ancestor(
-        store, confirmed_root, store.current_epoch_observed_justified_checkpoint.root
+        store, confirmed_root, fcr_store.current_epoch_observed_justified_checkpoint.root
     ):
         return False
 
     current_epoch = get_current_store_epoch(store)
-    if store.current_epoch_observed_justified_checkpoint.epoch + 1 >= current_epoch:
+    if fcr_store.current_epoch_observed_justified_checkpoint.epoch + 1 >= current_epoch:
         # Exclude the justified checkpoint block if it is from the previous epoch
         # as then this block will always be canonical in this case.
-        start_root_exclusive = store.current_epoch_observed_justified_checkpoint.root
+        start_root_exclusive = fcr_store.current_epoch_observed_justified_checkpoint.root
     else:
         # Limit reconfirmation to the first block of the previous epoch
         # as if it's successful, reconfirmation of the ancestors is implied.
@@ -618,7 +676,8 @@ def is_confirmed_chain_safe(store: Store, confirmed_root: Root) -> bool:
     # Run is_one_confirmed for each block in the confirmed chain with the previous epoch balance source.
     chain_roots = get_ancestor_roots(store, confirmed_root, start_root_exclusive)
     return all(
-        is_one_confirmed(store, get_previous_balance_source(store), root) for root in chain_roots
+        is_one_confirmed(store, get_previous_balance_source(fcr_store), root)
+        for root in chain_roots
     )
 ```
 
@@ -749,22 +808,25 @@ def will_current_target_be_justified(store: Store) -> bool:
 *Note:* This function updates variables used by the fast confirmation rule.
 
 ```python
-def update_fast_confirmation_variables(store: Store) -> None:
+def update_fast_confirmation_variables(fcr_store: FastConfirmationStore) -> None:
     # Update prev and curr slot head.
-    store.previous_slot_head = store.current_slot_head
-    store.current_slot_head = get_head(store)
+    store = fcr_store.store
+    fcr_store.previous_slot_head = fcr_store.current_slot_head
+    fcr_store.current_slot_head = get_head(store)
 
     # Update greatest unrealized justified checkpoint at the last slot of an epoch.
     if is_start_slot_at_epoch(Slot(get_current_slot(store) + 1)):
-        store.previous_epoch_greatest_unrealized_checkpoint = store.unrealized_justified_checkpoint
+        fcr_store.previous_epoch_greatest_unrealized_checkpoint = (
+            store.unrealized_justified_checkpoint
+        )
 
     # Update observed justified checkpoints at the start of an epoch.
     if is_start_slot_at_epoch(get_current_slot(store)):
-        store.previous_epoch_observed_justified_checkpoint = (
-            store.current_epoch_observed_justified_checkpoint
+        fcr_store.previous_epoch_observed_justified_checkpoint = (
+            fcr_store.current_epoch_observed_justified_checkpoint
         )
-        store.current_epoch_observed_justified_checkpoint = (
-            store.previous_epoch_greatest_unrealized_checkpoint
+        fcr_store.current_epoch_observed_justified_checkpoint = (
+            fcr_store.previous_epoch_greatest_unrealized_checkpoint
         )
 ```
 
@@ -788,24 +850,27 @@ This function works correctly only if the `latest_confirmed_root` belongs to the
 canonical chain and is either from the previous or from the current epoch.
 
 ```python
-def find_latest_confirmed_descendant(store: Store, latest_confirmed_root: Root) -> Root:
+def find_latest_confirmed_descendant(
+    fcr_store: FastConfirmationStore, latest_confirmed_root: Root
+) -> Root:
     """
     Return the most recent confirmed block in the suffix of the canonical chain
     starting from ``latest_confirmed_root``.
     """
+    store = fcr_store.store
     head = get_head(store)
     current_epoch = get_current_store_epoch(store)
     confirmed_root = latest_confirmed_root
 
     if (
         get_block_epoch(store, confirmed_root) + 1 == current_epoch
-        and get_voting_source(store, store.previous_slot_head).epoch + 2 >= current_epoch
+        and get_voting_source(store, fcr_store.previous_slot_head).epoch + 2 >= current_epoch
         and (
             is_start_slot_at_epoch(get_current_slot(store))
             or (
                 will_no_conflicting_checkpoint_be_justified(store)
                 and (
-                    store.unrealized_justifications[store.previous_slot_head].epoch + 1
+                    store.unrealized_justifications[fcr_store.previous_slot_head].epoch + 1
                     >= current_epoch
                     or store.unrealized_justifications[head].epoch + 1 >= current_epoch
                 )
@@ -828,10 +893,10 @@ def find_latest_confirmed_descendant(store: Store, latest_confirmed_root: Root) 
 
             # The algorithm can only rely on the previous head
             # if it is a descendant of the block that is attempted to be confirmed
-            if not is_ancestor(store, store.previous_slot_head, block_root):
+            if not is_ancestor(store, fcr_store.previous_slot_head, block_root):
                 break
 
-            if not is_one_confirmed(store, get_current_balance_source(store), block_root):
+            if not is_one_confirmed(store, get_current_balance_source(fcr_store), block_root):
                 break
 
             confirmed_root = block_root
@@ -857,7 +922,7 @@ def find_latest_confirmed_descendant(store: Store, latest_confirmed_root: Root) 
                 if not will_current_target_be_justified(store):
                     break
 
-            if not is_one_confirmed(store, get_current_balance_source(store), block_root):
+            if not is_one_confirmed(store, get_current_balance_source(fcr_store), block_root):
                 break
 
             tentative_confirmed_root = block_root
@@ -902,11 +967,12 @@ actions:
    `find_latest_confirmed_descendant`.
 
 ```python
-def get_latest_confirmed(store: Store) -> Root:
+def get_latest_confirmed(fcr_store: FastConfirmationStore) -> Root:
     """
     Return the most recent confirmed block by executing the FCR algorithm.
     """
-    confirmed_root = store.confirmed_root
+    store = fcr_store.store
+    confirmed_root = fcr_store.confirmed_root
     current_epoch = get_current_store_epoch(store)
 
     # Revert to finalized block if either of the following is true:
@@ -920,7 +986,7 @@ def get_latest_confirmed(store: Store) -> Root:
         or not is_ancestor(store, head, confirmed_root)
         or (
             is_start_slot_at_epoch(get_current_slot(store))
-            and not is_confirmed_chain_safe(store, confirmed_root)
+            and not is_confirmed_chain_safe(fcr_store, confirmed_root)
         )
     ):
         confirmed_root = store.finalized_checkpoint.root
@@ -932,13 +998,14 @@ def get_latest_confirmed(store: Store) -> Root:
     # 4) confirmed block is older than the block of store.current_epoch_observed_justified_checkpoint.
     is_epoch_start = is_start_slot_at_epoch(get_current_slot(store))
     observed_justified_block_slot = get_block_slot(
-        store, store.current_epoch_observed_justified_checkpoint.root
+        store, fcr_store.current_epoch_observed_justified_checkpoint.root
     )
     is_observed_justified_block_epoch_ok = (
         compute_epoch_at_slot(observed_justified_block_slot) + 1 == current_epoch
     )
     is_head_unrealized_justified_ok = (
-        store.current_epoch_observed_justified_checkpoint == store.unrealized_justifications[head]
+        fcr_store.current_epoch_observed_justified_checkpoint
+        == store.unrealized_justifications[head]
     )
     is_confirmed_block_stale = get_block_slot(store, confirmed_root) < observed_justified_block_slot
     if (
@@ -947,11 +1014,11 @@ def get_latest_confirmed(store: Store) -> Root:
         and is_head_unrealized_justified_ok
         and is_confirmed_block_stale
     ):
-        confirmed_root = store.current_epoch_observed_justified_checkpoint.root
+        confirmed_root = fcr_store.current_epoch_observed_justified_checkpoint.root
 
     # Attempt to further advance the latest confirmed block.
     if get_block_epoch(store, confirmed_root) + 1 >= current_epoch:
-        return find_latest_confirmed_descendant(store, confirmed_root)
+        return find_latest_confirmed_descendant(fcr_store, confirmed_root)
     else:
         return confirmed_root
 ```
@@ -987,7 +1054,7 @@ Implementations MAY call `get_latest_confirmed` at any point in time throughout
 a slot.
 
 ```python
-def on_fast_confirmation(store: Store) -> None:
-    update_fast_confirmation_variables(store)
-    store.confirmed_root = get_latest_confirmed(store)
+def on_fast_confirmation(fcr_store: FastConfirmationStore) -> None:
+    update_fast_confirmation_variables(fcr_store)
+    fcr_store.confirmed_root = get_latest_confirmed(fcr_store)
 ```

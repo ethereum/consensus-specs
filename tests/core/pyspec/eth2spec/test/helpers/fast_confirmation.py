@@ -36,31 +36,31 @@ def debug_print(*args, **kwargs):
         print(*args, **kwargs)
 
 
-def output_fast_confirmation_checks(spec, store, test_steps):
-    basic_checks = get_basic_store_checks(spec, store)
+def output_fast_confirmation_checks(spec, fcr_store, test_steps):
+    basic_checks = get_basic_store_checks(spec, fcr_store.store)
     fcr_checks = {
         "previous_epoch_observed_justified_checkpoint": {
-            "epoch": int(store.previous_epoch_observed_justified_checkpoint.epoch),
-            "root": encode_hex(store.previous_epoch_observed_justified_checkpoint.root),
+            "epoch": int(fcr_store.previous_epoch_observed_justified_checkpoint.epoch),
+            "root": encode_hex(fcr_store.previous_epoch_observed_justified_checkpoint.root),
         },
         "current_epoch_observed_justified_checkpoint": {
-            "epoch": int(store.current_epoch_observed_justified_checkpoint.epoch),
-            "root": encode_hex(store.current_epoch_observed_justified_checkpoint.root),
+            "epoch": int(fcr_store.current_epoch_observed_justified_checkpoint.epoch),
+            "root": encode_hex(fcr_store.current_epoch_observed_justified_checkpoint.root),
         },
         "previous_epoch_greatest_unrealized_checkpoint": {
-            "epoch": int(store.previous_epoch_greatest_unrealized_checkpoint.epoch),
-            "root": encode_hex(store.previous_epoch_greatest_unrealized_checkpoint.root),
+            "epoch": int(fcr_store.previous_epoch_greatest_unrealized_checkpoint.epoch),
+            "root": encode_hex(fcr_store.previous_epoch_greatest_unrealized_checkpoint.root),
         },
-        "previous_slot_head": encode_hex(store.previous_slot_head),
-        "current_slot_head": encode_hex(store.current_slot_head),
-        "confirmed_root": encode_hex(store.confirmed_root),
+        "previous_slot_head": encode_hex(fcr_store.previous_slot_head),
+        "current_slot_head": encode_hex(fcr_store.current_slot_head),
+        "confirmed_root": encode_hex(fcr_store.confirmed_root),
     }
     test_steps.append({"checks": basic_checks | fcr_checks})
 
 
-def on_fast_confirmation_and_append_step(spec, store, test_steps):
-    spec.on_fast_confirmation(store)
-    output_fast_confirmation_checks(spec, store, test_steps)
+def on_fast_confirmation_and_append_step(spec, fcr_store, test_steps):
+    spec.on_fast_confirmation(fcr_store)
+    output_fast_confirmation_checks(spec, fcr_store, test_steps)
 
 
 def str_to_graffiti(graffiti: str) -> bytes:
@@ -80,9 +80,11 @@ class FCRTest:
         # Initialization
         test_steps = []
         store, anchor_block = get_genesis_forkchoice_store_and_block(self.spec, anchor_state)
+        fcr_store = self.spec.get_fast_confirmation_store(store)
 
         self.rng = Random(self.seed)
         self.store = store
+        self.fcr_store = fcr_store
         self.test_steps = test_steps
         self.attestation_pool = []
         self.recent_attestations = []
@@ -94,7 +96,7 @@ class FCRTest:
         self.blockchain_artefacts.append(("anchor_state", anchor_state))
         self.blockchain_artefacts.append(("anchor_block", anchor_block))
 
-        return store
+        return store, fcr_store
 
     def get_test_artefacts(self):
         return self.blockchain_artefacts + [("steps", self.test_steps)]
@@ -306,7 +308,7 @@ class FCRTest:
             self.spec.on_attestation(self.store, attestation, is_from_block=False)
 
     def run_fast_confirmation(self):
-        on_fast_confirmation_and_append_step(self.spec, self.store, self.test_steps)
+        on_fast_confirmation_and_append_step(self.spec, self.fcr_store, self.test_steps)
 
     def next_slot_with_block(
         self,
@@ -401,7 +403,7 @@ class FCRTest:
         return attester_slashing
 
     def compute_score_and_threshold(self, block_root) -> (int, int):
-        balance_source = self.spec.get_current_balance_source(self.store)
+        balance_source = self.spec.get_current_balance_source(self.fcr_store)
         score = self.spec.get_attestation_score(self.store, block_root, balance_source)
         safety_threshold = self.spec.compute_safety_threshold(
             self.store, block_root, balance_source
@@ -431,8 +433,9 @@ class FCRTest:
 
         spec = self.spec
         store = self.store
+        fcr_store = self.fcr_store
 
-        balance_source = spec.get_current_balance_source(store)
+        balance_source = spec.get_current_balance_source(fcr_store)
         total_active_balance = spec.get_total_active_balance(balance_source)
         one_committee_weight = int(total_active_balance // spec.SLOTS_PER_EPOCH)
 
@@ -444,7 +447,7 @@ class FCRTest:
             # Genesis block
             if spec.get_block_slot(store, block_root) == spec.GENESIS_SLOT:
                 genesis_info = self.get_slot_root_info(block_root)
-                if block_root == store.confirmed_root:
+                if block_root == fcr_store.confirmed_root:
                     return f"\033[94m({genesis_info})\033[0m"
                 else:
                     return f"\033[92m({genesis_info})\033[0m"
@@ -452,7 +455,7 @@ class FCRTest:
             score, threshold = get_relative_score_and_threshold(block_root)
             output = f"({self.get_slot_root_info(block_root)}, uj={store.unrealized_justifications[block_root].epoch}, sc={score:.1f}%, th={threshold:.1f}%)"
 
-            if block_root == store.confirmed_root:
+            if block_root == fcr_store.confirmed_root:
                 # Confirmed block in Blue if can be re-confirmed, Magenta otherwise
                 if score > threshold:
                     return f"\033[94m{output}\033[0m"
@@ -494,6 +497,7 @@ class FCRTest:
 
         spec = self.spec
         store = self.store
+        fcr_store = self.fcr_store
 
         # Print epoch and slot
         print(
@@ -514,8 +518,8 @@ class FCRTest:
             uj = store.unrealized_justifications[head_root]
             return f"{self.get_slot_root_info(head_root)}, vs=({self.get_checkpoint_info(vs)}), uj=({self.get_checkpoint_info(uj)})"
 
-        print(f"\nprev_head [{get_head_info(store.previous_slot_head)}]")
-        print(f"curr_head [{get_head_info(store.current_slot_head)}]")
+        print(f"\nprev_head [{get_head_info(fcr_store.previous_slot_head)}]")
+        print(f"curr_head [{get_head_info(fcr_store.current_slot_head)}]")
         print(f"head      [{get_head_info(self.head())}]")
 
         # Print prev epoch GU and current target
@@ -529,7 +533,7 @@ class FCRTest:
             f"\ncurr_target [{self.get_checkpoint_info(curr_target)}, ffg_support={relative_support:.1f}%]"
         )
         print(
-            f"prev_epoch_gu [{self.get_checkpoint_info(store.previous_epoch_greatest_unrealized_checkpoint)}]"
+            f"prev_epoch_gu [{self.get_checkpoint_info(fcr_store.previous_epoch_greatest_unrealized_checkpoint)}]"
         )
         print(f"justified_checkpoint [{self.get_checkpoint_info(store.justified_checkpoint)}]")
         print(f"finalized_checkpoint [{self.get_checkpoint_info(store.finalized_checkpoint)}]")

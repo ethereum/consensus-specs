@@ -38,12 +38,12 @@ def test_fcr_handles_single_empty_slot(spec, state):
        - Chain continues normally and confirmations advance after empty slot
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     # Build normally for first few slots
     fcr.run_slots_with_blocks_and_fast_confirmation(number_of_slots=4, participation_rate=100)
 
-    confirmed_before_empty = store.confirmed_root
+    confirmed_before_empty = fcr_store.confirmed_root
     head_before_empty = fcr.head()
 
     # With 100% participation, head should be confirmed
@@ -58,10 +58,10 @@ def test_fcr_handles_single_empty_slot(spec, state):
     assert fcr.head() == head_before_empty, "Head should not change during empty slot"
 
     # Verify slot head variables still updated
-    assert store.current_slot_head == head_before_empty
+    assert fcr_store.current_slot_head == head_before_empty
 
     # Confirmed should stay at head_before_empty (no reset)
-    assert store.confirmed_root == head_before_empty, (
+    assert fcr_store.confirmed_root == head_before_empty, (
         "confirmed_root should stay at head_before_empty during empty slot"
     )
 
@@ -83,7 +83,7 @@ def test_fcr_handles_single_empty_slot(spec, state):
 
     # Verify expected final state
     assert fcr.head() == next_block
-    assert store.confirmed_root == next_block, "confirmed_root should be next_block"
+    assert fcr_store.confirmed_root == next_block, "confirmed_root should be next_block"
 
     yield from fcr.get_test_artefacts()
 
@@ -110,13 +110,13 @@ def test_fcr_handles_multiple_consecutive_empty_slots(spec, state):
     4. Verify confirmations still work correctly
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     # Build normally for first few slots
     fcr.run_slots_with_blocks_and_fast_confirmation(number_of_slots=4, participation_rate=100)
 
     head_before_empty = fcr.head()
-    confirmed_before_empty = store.confirmed_root
+    confirmed_before_empty = fcr_store.confirmed_root
 
     # With 100% participation, head should be confirmed
     assert confirmed_before_empty == head_before_empty
@@ -130,7 +130,7 @@ def test_fcr_handles_multiple_consecutive_empty_slots(spec, state):
 
         # Head unchanged, confirmed stays at head_before_empty
         assert fcr.head() == head_before_empty
-        assert store.confirmed_root == head_before_empty
+        assert fcr_store.confirmed_root == head_before_empty
 
     # Resume: propose block that skips multiple slots
     block_after_empty = fcr.next_slot_with_block_and_fast_confirmation(
@@ -151,7 +151,7 @@ def test_fcr_handles_multiple_consecutive_empty_slots(spec, state):
 
     # Verify expected final state
     assert fcr.head() == second_block
-    assert store.confirmed_root == second_block
+    assert fcr_store.confirmed_root == second_block
 
     yield from fcr.get_test_artefacts()
 
@@ -182,7 +182,7 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
        - No spurious resets
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
     last_slot_epoch0 = S - 1
@@ -195,9 +195,9 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
     assert fcr.current_slot() == last_slot_epoch0 - 1  # slot 6
 
     head_before_empty = fcr.head()
-    confirmed_before_empty = store.confirmed_root
-    current_observed_before = store.current_epoch_observed_justified_checkpoint
-    previous_observed_before = store.previous_epoch_observed_justified_checkpoint
+    confirmed_before_empty = fcr_store.confirmed_root
+    current_observed_before = fcr_store.current_epoch_observed_justified_checkpoint
+    previous_observed_before = fcr_store.previous_epoch_observed_justified_checkpoint
 
     # With 100% participation, head should be confirmed
     assert confirmed_before_empty == head_before_empty
@@ -216,24 +216,25 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
 
     # GU snapshot should have been taken
     assert (
-        store.previous_epoch_greatest_unrealized_checkpoint == store.unrealized_justified_checkpoint
+        fcr_store.previous_epoch_greatest_unrealized_checkpoint
+        == store.unrealized_justified_checkpoint
     ), "GU snapshot should be taken at last slot of epoch even during empty slot"
 
     # Observed checkpoints should NOT have rotated (PR #25 fix)
-    assert store.current_epoch_observed_justified_checkpoint == current_observed_before, (
+    assert fcr_store.current_epoch_observed_justified_checkpoint == current_observed_before, (
         "current_epoch_observed should NOT change at last slot of epoch"
     )
-    assert store.previous_epoch_observed_justified_checkpoint == previous_observed_before, (
+    assert fcr_store.previous_epoch_observed_justified_checkpoint == previous_observed_before, (
         "previous_epoch_observed should NOT change at last slot of epoch"
     )
 
     # Head unchanged (empty slot), confirmed stays the same
     assert fcr.head() == head_before_empty
-    assert store.confirmed_root == head_before_empty
+    assert fcr_store.confirmed_root == head_before_empty
 
     # Record values before crossing into epoch 1
-    gu_snapshot = store.previous_epoch_greatest_unrealized_checkpoint
-    curr_observed_before_rotation = store.current_epoch_observed_justified_checkpoint
+    gu_snapshot = fcr_store.previous_epoch_greatest_unrealized_checkpoint
+    curr_observed_before_rotation = fcr_store.current_epoch_observed_justified_checkpoint
 
     # Attest at slot 7, then cross into epoch 1 (slot 8) WITH A BLOCK
     fcr.attest_and_next_slot_with_fast_confirmation(
@@ -244,10 +245,10 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
     assert spec.is_start_slot_at_epoch(fcr.current_slot())
 
     # Rotation should have happened at epoch start
-    assert store.previous_epoch_observed_justified_checkpoint == curr_observed_before_rotation, (
-        "previous_observed should now equal old current_observed after rotation at epoch start"
-    )
-    assert store.current_epoch_observed_justified_checkpoint == gu_snapshot, (
+    assert (
+        fcr_store.previous_epoch_observed_justified_checkpoint == curr_observed_before_rotation
+    ), "previous_observed should now equal old current_observed after rotation at epoch start"
+    assert fcr_store.current_epoch_observed_justified_checkpoint == gu_snapshot, (
         "current_observed should now equal GU snapshot after rotation at epoch start"
     )
 
@@ -259,7 +260,7 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
 
     assert fcr.head() == first_block_epoch1
     # Confirmed hasn't caught up yet
-    assert store.confirmed_root == head_before_empty
+    assert fcr_store.confirmed_root == head_before_empty
 
     # Continue to next slot
     fcr.next_slot()
@@ -271,7 +272,7 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
 
     assert fcr.head() == second_block
     # Confirmed still hasn't caught up
-    assert store.confirmed_root == head_before_empty
+    assert fcr_store.confirmed_root == head_before_empty
 
     # Apply attestations for second block
     fcr.next_slot()
@@ -282,7 +283,7 @@ def test_fcr_empty_slot_at_epoch_boundary(spec, state):
     # the epoch boundary, confirmation catches up after the second block's
     # attestations are applied.
     assert fcr.head() == second_block
-    assert store.confirmed_root == second_block
+    assert fcr_store.confirmed_root == second_block
 
     yield from fcr.get_test_artefacts()
 
@@ -317,7 +318,7 @@ def test_fcr_empty_slots_at_epoch_boundary_both_sides(spec, state):
        - Confirmations continue after resuming blocks
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
     last_slot_epoch0 = S - 1  # slot 7 in MINIMAL
@@ -332,8 +333,8 @@ def test_fcr_empty_slots_at_epoch_boundary_both_sides(spec, state):
     head_slot = store.blocks[head_before_empty].slot
     assert head_slot == 5, f"Last block should be at slot 5, got {head_slot}"
 
-    current_observed_before = store.current_epoch_observed_justified_checkpoint
-    previous_observed_before = store.previous_epoch_observed_justified_checkpoint
+    current_observed_before = fcr_store.current_epoch_observed_justified_checkpoint
+    previous_observed_before = fcr_store.previous_epoch_observed_justified_checkpoint
 
     # Slot 6: EMPTY
     fcr.attest_and_next_slot_with_fast_confirmation(
@@ -348,22 +349,23 @@ def test_fcr_empty_slots_at_epoch_boundary_both_sides(spec, state):
 
     # GU snapshot should have been taken
     assert (
-        store.previous_epoch_greatest_unrealized_checkpoint == store.unrealized_justified_checkpoint
+        fcr_store.previous_epoch_greatest_unrealized_checkpoint
+        == store.unrealized_justified_checkpoint
     ), "GU snapshot should be taken at last slot of epoch"
 
     # Observed checkpoints should NOT have rotated (PR #25)
-    assert store.current_epoch_observed_justified_checkpoint == current_observed_before, (
+    assert fcr_store.current_epoch_observed_justified_checkpoint == current_observed_before, (
         "current_epoch_observed should NOT change at last slot of epoch"
     )
-    assert store.previous_epoch_observed_justified_checkpoint == previous_observed_before, (
+    assert fcr_store.previous_epoch_observed_justified_checkpoint == previous_observed_before, (
         "previous_epoch_observed should NOT change at last slot of epoch"
     )
 
     assert fcr.head() == head_before_empty
 
     # Record values before crossing into epoch 1
-    gu_snapshot = store.previous_epoch_greatest_unrealized_checkpoint
-    curr_observed_before_rotation = store.current_epoch_observed_justified_checkpoint
+    gu_snapshot = fcr_store.previous_epoch_greatest_unrealized_checkpoint
+    curr_observed_before_rotation = fcr_store.current_epoch_observed_justified_checkpoint
 
     fcr.attest(block_root=head_before_empty, slot=fcr.current_slot(), participation_rate=100)
 
@@ -378,10 +380,10 @@ def test_fcr_empty_slots_at_epoch_boundary_both_sides(spec, state):
     assert fcr.head() == head_before_empty
 
     # Rotation should have happened at epoch start
-    assert store.previous_epoch_observed_justified_checkpoint == curr_observed_before_rotation, (
-        "previous_observed should now equal old current_observed after rotation at epoch start"
-    )
-    assert store.current_epoch_observed_justified_checkpoint == gu_snapshot, (
+    assert (
+        fcr_store.previous_epoch_observed_justified_checkpoint == curr_observed_before_rotation
+    ), "previous_observed should now equal old current_observed after rotation at epoch start"
+    assert fcr_store.current_epoch_observed_justified_checkpoint == gu_snapshot, (
         "current_observed should now equal GU snapshot after rotation at epoch start"
     )
 
@@ -441,7 +443,7 @@ def test_fcr_slot_head_tracking_during_empty_slots(spec, state):
     3. Verify slot head variables update correctly each slot
     """
     fcr = FCRTest(spec, seed=1)
-    store = fcr.initialize(state)
+    store, fcr_store = fcr.initialize(state)
 
     # Build a few blocks
     fcr.run_slots_with_blocks_and_fast_confirmation(number_of_slots=3, participation_rate=100)
@@ -452,7 +454,7 @@ def test_fcr_slot_head_tracking_during_empty_slots(spec, state):
     slot_head_history = []
 
     for _ in range(4):  # 4 empty slots
-        curr_head_before = store.current_slot_head
+        curr_head_before = fcr_store.current_slot_head
         fcr.attest_and_next_slot_with_fast_confirmation(
             block_root=last_block_head, participation_rate=100
         )
@@ -460,8 +462,8 @@ def test_fcr_slot_head_tracking_during_empty_slots(spec, state):
         slot_head_history.append(
             {
                 "slot": int(fcr.current_slot()),
-                "previous_slot_head": store.previous_slot_head,
-                "current_slot_head": store.current_slot_head,
+                "previous_slot_head": fcr_store.previous_slot_head,
+                "current_slot_head": fcr_store.current_slot_head,
                 "head": fcr.head(),
             }
         )
@@ -470,10 +472,10 @@ def test_fcr_slot_head_tracking_during_empty_slots(spec, state):
         assert fcr.head() == last_block_head
 
         # current_slot_head should equal head (which is unchanged)
-        assert store.current_slot_head == last_block_head
+        assert fcr_store.current_slot_head == last_block_head
 
         # previous_slot_head should equal what current_slot_head was before update
-        assert store.previous_slot_head == curr_head_before
+        assert fcr_store.previous_slot_head == curr_head_before
 
     # All slot heads should point to the same block during empty slots
     for record in slot_head_history:

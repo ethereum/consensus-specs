@@ -22,41 +22,41 @@ from eth2spec.test.helpers.fast_confirmation import (
 
 @dataclass
 class PreviousEpochTestSpecification:
-    prev_head_ancestor: bool  # is_ancestor(store, store.previous_slot_head, block_root)
+    prev_head_ancestor: bool  # is_ancestor(store, fcr_store.previous_slot_head, block_root)
     first_slot_call: bool  # is_start_slot_at_epoch(get_current_slot(store))
     is_one_confirmed: bool  # is_one_confirmed(store, get_current_balance_source(store), block_root)
     no_conflicting_chkp: bool  # will_no_conflicting_checkpoint_be_justified(store)
     prev_head_vs_fresh: (
-        bool  # get_voting_source(store, store.previous_slot_head).epoch + 2 >= current_epoch
+        bool  # get_voting_source(store, fcr_store.previous_slot_head).epoch + 2 >= current_epoch
     )
-    prev_head_uj_fresh: (
-        bool  # store.unrealized_justifications[store.previous_slot_head].epoch + 1 >= current_epoch
-    )
+    prev_head_uj_fresh: bool  # store.unrealized_justifications[fcr_store.previous_slot_head].epoch + 1 >= current_epoch
     block_vs_fresh: (
         bool  # get_voting_source(store, tentative_confirmed_root).epoch + 2 >= current_epoch
     )
     head_uj_fresh: bool  # store.unrealized_justifications[head].epoch + 1 >= current_epoch
 
-    def get_prev_epoch_canonical_roots(self, spec, store):
+    def get_prev_epoch_canonical_roots(self, spec, fcr_store):
+        store = fcr_store.store
         head = spec.get_head(store)
         current_epoch = spec.get_current_store_epoch(store)
-        canonical_roots = spec.get_ancestor_roots(store, head, store.confirmed_root)
+        canonical_roots = spec.get_ancestor_roots(store, head, fcr_store.confirmed_root)
         return [
             root
             for root in canonical_roots
             if spec.get_block_epoch(store, root) + 1 == current_epoch
         ]
 
-    def verify_preconditions(self, spec, store):
+    def verify_preconditions(self, spec, fcr_store):
+        store = fcr_store.store
         head = spec.get_head(store)
         current_epoch = spec.get_current_store_epoch(store)
         current_slot = spec.get_current_slot(store)
-        confirmed_epoch = spec.get_block_epoch(store, store.confirmed_root)
-        prev_epoch_canonical_roots = self.get_prev_epoch_canonical_roots(spec, store)
-        # store.prev_slot_head = store.current_slot_head will become True
+        confirmed_epoch = spec.get_block_epoch(store, fcr_store.confirmed_root)
+        prev_epoch_canonical_roots = self.get_prev_epoch_canonical_roots(spec, fcr_store)
+        # fcr_store.prev_slot_head = fcr_store.current_slot_head will become True
         # after the update_fast_confirmation_variables call
-        # use store.current_slot_head as the future value of 'previous_slot_head' to check preconditions
-        will_be_prev_slot_head = store.current_slot_head
+        # use fcr_store.current_slot_head as the future value of 'previous_slot_head' to check preconditions
+        will_be_prev_slot_head = fcr_store.current_slot_head
 
         assert confirmed_epoch + 1 == current_epoch
         assert len(prev_epoch_canonical_roots) > 0
@@ -81,18 +81,19 @@ class PreviousEpochTestSpecification:
 
         if self.is_one_confirmed:
             assert spec.is_one_confirmed(
-                store, spec.get_current_balance_source(store), prev_epoch_canonical_roots[0]
+                store, spec.get_current_balance_source(fcr_store), prev_epoch_canonical_roots[0]
             )
         else:
             assert not spec.is_one_confirmed(
-                store, spec.get_current_balance_source(store), prev_epoch_canonical_roots[0]
+                store, spec.get_current_balance_source(fcr_store), prev_epoch_canonical_roots[0]
             )
 
-    def get_last_one_confirmed_block(self, spec, store):
+    def get_last_one_confirmed_block(self, spec, fcr_store):
+        store = fcr_store.store
         head = spec.get_head(store)
-        canonical_roots = spec.get_ancestor_roots(store, head, store.confirmed_root)
-        balance_source = spec.get_current_balance_source(store)
-        confirmed_root = store.confirmed_root
+        canonical_roots = spec.get_ancestor_roots(store, head, fcr_store.confirmed_root)
+        balance_source = spec.get_current_balance_source(fcr_store)
+        confirmed_root = fcr_store.confirmed_root
         for root in canonical_roots:
             if spec.is_one_confirmed(store, balance_source, root):
                 confirmed_root = root
@@ -101,21 +102,21 @@ class PreviousEpochTestSpecification:
 
         return confirmed_root
 
-    def get_expected_confirmed_root(self, spec, store):
+    def get_expected_confirmed_root(self, spec, fcr_store):
         if not self.is_one_confirmed:
-            return store.confirmed_root
+            return fcr_store.confirmed_root
 
         if not (self.no_conflicting_chkp or self.first_slot_call):
-            return store.confirmed_root
+            return fcr_store.confirmed_root
 
         if (self.prev_head_vs_fresh and self.prev_head_ancestor) and (
             self.first_slot_call or self.prev_head_uj_fresh or self.head_uj_fresh
         ):
-            return self.get_last_one_confirmed_block(spec, store)
+            return self.get_last_one_confirmed_block(spec, fcr_store)
         elif self.block_vs_fresh and (self.first_slot_call or self.head_uj_fresh):
-            return self.get_last_one_confirmed_block(spec, store)
+            return self.get_last_one_confirmed_block(spec, fcr_store)
         else:
-            return store.confirmed_root
+            return fcr_store.confirmed_root
 
     def is_vs_fresh(self):
         return self.block_vs_fresh and self.prev_head_vs_fresh
@@ -751,17 +752,19 @@ class PreviousEpochTestBuilder:
             debug_print("\n")
 
         # Check preconditions are correct
-        self.test_spec.verify_preconditions(fcr_test.spec, fcr_test.store)
+        self.test_spec.verify_preconditions(fcr_test.spec, fcr_test.fcr_store)
 
         return fcr_test
 
 
 def run_previous_epoch_test(fcr_test: FCRTest, test_spec: PreviousEpochTestSpecification):
     # Keep expected confirmed_root after execution of the test
-    expected_confirmed_root = test_spec.get_expected_confirmed_root(fcr_test.spec, fcr_test.store)
+    expected_confirmed_root = test_spec.get_expected_confirmed_root(
+        fcr_test.spec, fcr_test.fcr_store
+    )
     # Execute FCR and check that confirmed_root is as expected
     fcr_test.run_fast_confirmation()
-    assert fcr_test.store.confirmed_root == expected_confirmed_root
+    assert fcr_test.fcr_store.confirmed_root == expected_confirmed_root
 
     yield from fcr_test.get_test_artefacts()
 
