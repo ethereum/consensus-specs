@@ -776,12 +776,8 @@ def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> No
     """
     Initiate the exit of the builder with index ``index``.
     """
-    # Return if builder already initiated exit
-    builder = state.builders[builder_index]
-    if builder.withdrawable_epoch != FAR_FUTURE_EPOCH:
-        return
-
     # Set builder exit epoch
+    builder = state.builders[builder_index]
     builder.withdrawable_epoch = get_current_epoch(state) + MIN_BUILDER_WITHDRAWABILITY_DELAY
 ```
 
