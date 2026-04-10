@@ -59,9 +59,9 @@ def test_on_block_peerdas__ok(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
     _, _, _, signed_block, sidecars, kzg_commitments = get_block_with_blob_and_sidecars(
@@ -98,9 +98,9 @@ def run_on_block_peerdas_invalid_test(spec, state, fn):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
     yield "anchor_block", anchor_block
-    current_time = state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-    assert store.time == current_time
+    current_time_ms = state.slot * spec.config.SLOT_DURATION_MS + store.genesis_time_ms
+    on_tick_and_append_step(spec, store, current_time_ms, test_steps)
+    assert store.time_ms == current_time_ms
 
     _, _, _, signed_block, sidecars, kzg_commitments = get_block_with_blob_and_sidecars(
         spec, state, rng=rng, blob_count=2

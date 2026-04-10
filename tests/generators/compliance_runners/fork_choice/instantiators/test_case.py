@@ -133,7 +133,7 @@ def yield_mutation_test_case(spec, state, test_kind, solution, debug, seed, mut_
         return yield_fork_choice_test_events(spec, store, test_data, events, debug)
     else:
         test_vector = events_to_test_vector(events)
-        mops = MutationOps(store.time, spec.config.SLOT_DURATION_MS // 1000)
+        mops = MutationOps(store.time_ms, spec.config.SLOT_DURATION_MS)
         mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
 
         test_data.meta["mut_seed"] = mut_seed
@@ -201,17 +201,19 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
     scheduler = MessageScheduler(spec, store)
 
     # record first tick
-    on_tick_and_append_step(spec, store, store.time, test_steps)
+    on_tick_and_append_step(spec, store, store.time_ms, test_steps)
 
     for kind, data, _ in events:
         if kind == "tick":
-            time = data
-            if time > store.time:
-                applied_events = scheduler.process_tick(time)
+            time_ms = data
+            if time_ms > store.time_ms:
+                applied_events = scheduler.process_tick(time_ms)
                 if record_recovery_messages:
                     for event_kind, event_data, recovery in applied_events:
                         if event_kind == "tick":
-                            test_steps.append({"tick": int(event_data)})
+                            test_steps.append(
+                                {"tick": int(spec.milliseconds_to_seconds(event_data))}
+                            )
                         elif event_kind == "block":
                             assert recovery
                             _block_id = get_block_file_name(event_data)
@@ -226,11 +228,11 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                             assert False
                 else:
                     assert False
-                if time > store.time:
+                if time_ms > store.time_ms:
                     # inside a slot
-                    on_tick_and_append_step(spec, store, time, test_steps)
+                    on_tick_and_append_step(spec, store, time_ms, test_steps)
                 else:
-                    assert time == store.time
+                    assert time_ms == store.time_ms
                     output_store_checks(spec, store, test_steps)
         elif kind == "block":
             block = data
@@ -280,11 +282,9 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
             output_store_checks(spec, store, test_steps)
         else:
             raise ValueError(f"not implemented {kind}")
-    next_slot_time = (
-        store.genesis_time
-        + (spec.get_current_slot(store) + 1) * spec.config.SLOT_DURATION_MS // 1000
-    )
-    on_tick_and_append_step(spec, store, next_slot_time, test_steps)
+    next_slot = spec.get_current_slot(store) + 1
+    next_slot_time_ms = spec.compute_time_at_slot_ms(test_data.anchor_state, next_slot)
+    on_tick_and_append_step(spec, store, next_slot_time_ms, test_steps)
     output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
 
     yield "steps", test_steps

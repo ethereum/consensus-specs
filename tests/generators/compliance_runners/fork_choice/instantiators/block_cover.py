@@ -267,12 +267,13 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
     blocks = [ProtocolMessage(block) for block in signed_blocks]
 
     current_epoch_slot = spec.compute_start_slot_at_epoch(model_params["current_epoch"])
-    current_epoch_time = (
-        state.genesis_time + current_epoch_slot * spec.config.SLOT_DURATION_MS // 1000
+    current_epoch_time_ms = (
+        spec.seconds_to_milliseconds(state.genesis_time)
+        + current_epoch_slot * spec.config.SLOT_DURATION_MS
     )
 
     test_data = FCTestData(
-        meta, anchor_block, anchor_state, blocks, store_final_time=current_epoch_time
+        meta, anchor_block, anchor_state, blocks, store_final_time=current_epoch_time_ms
     )
     target_block_root = spec.hash_tree_root(
         post_block_tips[target_block].beacon_state.latest_block_header

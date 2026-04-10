@@ -73,6 +73,9 @@
     - [`compute_shuffled_index`](#compute_shuffled_index)
     - [`compute_proposer_index`](#compute_proposer_index)
     - [`compute_committee`](#compute_committee)
+    - [`seconds_to_milliseconds`](#seconds_to_milliseconds)
+    - [`milliseconds_to_seconds`](#milliseconds_to_seconds)
+    - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
     - [`compute_time_at_slot`](#compute_time_at_slot)
     - [`compute_epoch_at_slot`](#compute_epoch_at_slot)
     - [`compute_start_slot_at_epoch`](#compute_start_slot_at_epoch)
@@ -877,14 +880,51 @@ def compute_committee(
     ]
 ```
 
+#### `seconds_to_milliseconds`
+
+```python
+def seconds_to_milliseconds(seconds: uint64) -> uint64:
+    """
+    Convert seconds to milliseconds with overflow protection.
+    Returns ``UINT64_MAX`` if the result would overflow.
+    """
+    if seconds > UINT64_MAX // 1000:
+        return UINT64_MAX
+    return seconds * 1000
+```
+
+#### `milliseconds_to_seconds`
+
+```python
+def milliseconds_to_seconds(milliseconds: uint64) -> uint64:
+    """
+    Convert milliseconds to seconds.
+    """
+    return milliseconds // 1000
+```
+
+#### `compute_time_at_slot_ms`
+
+*Note*: This function is unsafe with respect to overflows and underflows.
+
+```python
+def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> uint64:
+    """
+    Compute the time in milliseconds at ``slot`` from the genesis time in ``state``.
+    """
+    return seconds_to_milliseconds(state.genesis_time) + SLOT_DURATION_MS * (slot - GENESIS_SLOT)
+```
+
 #### `compute_time_at_slot`
 
 *Note*: This function is unsafe with respect to overflows and underflows.
 
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
-    slots_since_genesis = slot - GENESIS_SLOT
-    return uint64(state.genesis_time + slots_since_genesis * SLOT_DURATION_MS // 1000)
+    """
+    Compute the time in seconds at ``slot`` from the genesis time in ``state``.
+    """
+    return milliseconds_to_seconds(compute_time_at_slot_ms(state, slot))
 ```
 
 #### `compute_epoch_at_slot`

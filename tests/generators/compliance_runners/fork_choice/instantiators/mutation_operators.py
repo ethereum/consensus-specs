@@ -76,9 +76,9 @@ def mutate_test_vector(rnd, initial_tv, cnt, debug=False):
 
 
 class MutationOps:
-    def __init__(self, start_time, seconds_per_slot, shift_bounds=(-2, 4)):
+    def __init__(self, start_time, slot_duration_ms, shift_bounds=(-2, 4)):
         self.start_time = int(start_time)
-        self.seconds_per_slot = int(seconds_per_slot)
+        self.slot_duration_ms = int(slot_duration_ms)
         self.shift_bounds = shift_bounds
 
     def apply_shift(self, tv, idx, delta):
@@ -103,8 +103,8 @@ class MutationOps:
     def rand_shift(self, time: int, rnd: random.Random) -> int:
         assert time >= self.start_time
         neg_shift, pos_shift = self.shift_bounds
-        min_shift = max(self.start_time - time, neg_shift * self.seconds_per_slot)
-        max_shift = pos_shift * self.seconds_per_slot
+        min_shift = max(self.start_time - time, neg_shift * self.slot_duration_ms)
+        max_shift = pos_shift * self.slot_duration_ms
         if rnd.randint(0, 1) == 0:
             return rnd.randint(min_shift, 0)
         else:
