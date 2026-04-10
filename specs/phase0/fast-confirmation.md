@@ -342,7 +342,7 @@ def get_block_support_between_slots(
             balance_source.validators[i].effective_balance
             for i in unslashed_and_active_indices
             # Check that validator has voted in the support of the block
-            # and hasn't been slashed
+            # and has not been slashed
             if (
                 i in store.latest_messages
                 and store.latest_messages[i].root == block_root
@@ -602,7 +602,7 @@ At a high level the computation checks whether the actual score of the block
 outweighs potential score of any block conflicting with it considering total
 weight of the committees and maximal adversarial weight.
 
-If this check passes the block is deemed LMD-GHOST safe, but it's not enough to
+If this check passes the block is deemed LMD-GHOST safe, but it is not enough to
 say that the block will remain canonical. To ensure the latter, each ancestor of
 the block would also have to pass this check.
 
@@ -656,7 +656,7 @@ def is_confirmed_chain_safe(fcr_store: FastConfirmationStore, confirmed_root: Ro
         start_root_exclusive = fcr_store.current_epoch_observed_justified_checkpoint.root
     else:
         # Limit reconfirmation to the first block of the previous epoch
-        # as if it's successful, reconfirmation of the ancestors is implied.
+        # as if it is successful, reconfirmation of the ancestors is implied.
         ancestor_at_previous_epoch_start = get_ancestor(
             store, confirmed_root, compute_start_slot_at_epoch(Epoch(current_epoch - 1))
         )
@@ -967,7 +967,7 @@ def get_latest_confirmed(fcr_store: FastConfirmationStore) -> Root:
 
     # Revert to finalized block if either of the following is true:
     # 1) the latest confirmed block's epoch is older than the previous epoch,
-    # 2) the latest confirmed block doesn't belong to the canonical chain,
+    # 2) the latest confirmed block does not belong to the canonical chain,
     # 3) the confirmed chain starting from the current epoch observed justified checkpoint
     #    cannot be re-confirmed at the start of the current epoch.
     head = get_head(store)
