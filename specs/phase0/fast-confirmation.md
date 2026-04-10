@@ -77,14 +77,14 @@ blocks can be reorged without any adversarial behavior and without slashing.
 
 | Name                               | Value        | Max. Value   | Description                                                                 |
 | ---------------------------------- | ------------ | ------------ | --------------------------------------------------------------------------- |
-| `CONFIRMATION_BYZANTINE_THRESHOLD` | `uint64(25)` | `uint64(25)` | Assumed maximum percentage of Byzantine validators among the validator set. |
+| `CONFIRMATION_BYZANTINE_THRESHOLD` | `uint64(25)` | `uint64(25)` | Assumed maximum percentage of Byzantine validators among the validator set |
 
 ### Helpers
 
 #### `FastConfirmationStore`
 
 The `FastConfirmationStore` is responsible for tracking information required for
-the fast confirmation rule . The fields being tracked are described below:
+the fast confirmation rule. The fields being tracked are described below:
 
 - `store`: read-only instance of the fork choice `Store`, added for convenience.
 - `confirmed_root`: root of the most recent confirmed block.
@@ -202,7 +202,7 @@ def is_ancestor(store: Store, block_root: Root, ancestor_root: Root) -> bool:
 ##### `get_ancestor_roots`
 
 ```python
-def get_ancestor_roots(store: Store, block_root: Root, terminal_root: Root) -> list[Root]:
+def get_ancestor_roots(store: Store, block_root: Root, terminal_root: Root) -> Sequence[Root]:
     """
     Return a list of ancestors of ``block_root`` inclusive until ``terminal_root`` exclusive.
     """
@@ -234,7 +234,7 @@ semantics MUST be preserved.
 committees of epochs starting from `current_epoch - 2`.
 
 ```python
-def get_slot_committee(store: Store, slot: Slot) -> set[ValidatorIndex]:
+def get_slot_committee(store: Store, slot: Slot) -> Set[ValidatorIndex]:
     """
     Return participants of all committees in ``slot``.
     """
@@ -296,7 +296,7 @@ def get_current_balance_source(fcr_store: FastConfirmationStore) -> BeaconState:
 
 Validator votes from slots before `start_slot` and after `end_slot` might not be
 distinguished from votes submitted by that same validator in
-`[start_slot; end_slot]` interval. Due to committee shuffling near epoch
+`[start_slot, end_slot]` interval. Due to committee shuffling near epoch
 boundary the following cases are possible:
 
 1. Validator assigned to `start_slot - 1` and `end_slot` votes for `block_root`
@@ -305,11 +305,11 @@ boundary the following cases are possible:
    `start_slot`, but votes for `block_root` in `end_slot + 1`.
 
 In both cases the support would count a vote outside of the
-`[start_slot; end_slot]` range. This inaccuracy is acceptable as it doesn't
+`[start_slot, end_slot]` range. This inaccuracy is acceptable as it does not
 affect safety.
 
 Due to the algorithm logic, maximum distance between `balance_source` and
-shuffling is two epochs which is less than `MAX_SEED_LOOKAHEAD` and thus the
+shuffling is two epochs, which is less than `MAX_SEED_LOOKAHEAD` and thus the
 balances are always consistent with the shuffling.
 
 ```python
@@ -324,7 +324,7 @@ def get_block_support_between_slots(
     Return support of the block by validators assigned to slots
     between ``start_slot`` and ``end_slot`` (inclusive of both).
     """
-    participants: set[ValidatorIndex] = set()
+    participants: Set[ValidatorIndex] = set()
     for slot in range(start_slot, end_slot + 1):
         participants.update(get_slot_committee(store, Slot(slot)))
 
@@ -437,8 +437,8 @@ def estimate_committee_weight_between_slots(
 
 ##### `get_equivocation_score`
 
-*Note:* For simplicity, this function doesn't seek `balance_source` for slashed
-validators as it is very unlikely that those validators aren't already in
+*Note:* For simplicity, this function does not seek `balance_source` for slashed
+validators as it is very unlikely that those validators are not already in
 `store.equivocating_indices`.
 
 ```python
@@ -568,8 +568,6 @@ def get_support_discount(store: Store, balance_source: BeaconState, block_root: 
     """
     Return weight that can be discounted during the safety threshold computation for the block.
     """
-
-    # Empty slot support discount
     return compute_empty_slot_support_discount(store, balance_source, block_root)
 ```
 
@@ -642,8 +640,8 @@ confirmed chain starting from
 
 This check relaxes synchrony assumption by allowing GST to start from the
 beginning of the previous slot. If such check was not run, GST start would have
-to be assumed from the time of the first run of the algorithm which could happen
-big number of epochs ago.
+to be assumed from the time of the first run of the algorithm which could have
+been many epochs ago.
 
 ```python
 def is_confirmed_chain_safe(fcr_store: FastConfirmationStore, confirmed_root: Root) -> bool:
@@ -730,7 +728,7 @@ def get_current_target_score(store: Store) -> Gwei:
 
 This function computes honest FFG support of the current epoch target by
 assuming `CONFIRMATION_BYZANTINE_THRESHOLD` and network synchrony, and taking
-into account votes supporting the target that have been received till now.
+into account votes supporting the target that have been received thus far.
 
 ```python
 def compute_honest_ffg_support_for_current_target(store: Store) -> Gwei:
@@ -745,7 +743,7 @@ def compute_honest_ffg_support_for_current_target(store: Store) -> Gwei:
     # Compute FFG support for the target
     ffg_support_for_checkpoint = get_current_target_score(store)
 
-    # Compute total FFG weight till current slot exclusive
+    # Compute the total FFG weight up to, but excluding, the current slot
     ffg_weight_till_now = estimate_committee_weight_between_slots(
         total_active_balance, compute_start_slot_at_epoch(current_epoch), Slot(current_slot - 1)
     )
