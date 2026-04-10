@@ -928,9 +928,9 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
     bid = block.body.signed_execution_payload_bid.message
     parent_bid = state.latest_execution_payload_bid
 
-    # Determine parent payload status from block data
-    # Note: cannot use is_parent_block_full(state) here because latest_block_hash
-    # has not been updated yet -- this function is responsible for updating it.
+    # Determine parent payload status from block data. We cannot use
+    # is_parent_block_full(state) here because latest_block_hash has not
+    # been updated yet -- this function is responsible for updating it.
     is_parent_full = bid.parent_block_hash == parent_bid.block_hash
 
     if not is_parent_full:
@@ -941,18 +941,16 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
     parent_slot = state.latest_block_header.slot
     parent_epoch = compute_epoch_at_slot(parent_slot)
 
-    # Mark the parent payload as available before any later state transition logic observes it.
+    # Mark the parent payload as available before any later state
+    # transition logic observes it.
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
 
     # Verify execution requests match the bid commitment
-    assert (
-        hash_tree_root(block.body.parent_execution_requests) == parent_bid.execution_requests_root
-    )
-
-    # Process deferred execution requests from parent's payload
-    # Note: execution requests observe state.slot (child's slot), not the parent's.
     requests = block.body.parent_execution_requests
+    assert hash_tree_root(requests) == parent_bid.execution_requests_root
 
+    # Process deferred execution requests from parent's payload. The execution
+    # requests observe state.slot (child's slot), not the parent's slot.
     def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
         for operation in operations:
             fn(state, operation)
