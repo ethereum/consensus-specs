@@ -845,10 +845,6 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
     # Process the execution payload
     process_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
 
-    # Verify that the execution requests match the bid commitment
-    bid = state.latest_execution_payload_bid
-    assert hash_tree_root(envelope.execution_requests) == bid.execution_requests_root
-
     # Mark this block's execution payload as verified
     store.payloads.add(envelope.beacon_block_root)
 ```

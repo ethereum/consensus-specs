@@ -1659,6 +1659,7 @@ def process_execution_payload(
     committed_bid = state.latest_execution_payload_bid
     assert envelope.builder_index == committed_bid.builder_index
     assert committed_bid.prev_randao == payload.prev_randao
+    assert hash_tree_root(envelope.execution_requests) == committed_bid.execution_requests_root
 
     # Verify consistency with expected withdrawals
     assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
