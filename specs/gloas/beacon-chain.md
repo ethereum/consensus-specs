@@ -933,57 +933,53 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
     # has not been updated yet -- this function is responsible for updating it.
     is_parent_full = bid.parent_block_hash == parent_bid.block_hash
 
-    if is_parent_full:
-        parent_slot = state.latest_block_header.slot
-        parent_epoch = compute_epoch_at_slot(parent_slot)
-        current_epoch = get_current_epoch(state)
-        previous_epoch = get_previous_epoch(state)
-
-        # Mark the parent payload as available before any later state transition logic observes it.
-        state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
-
-        # Verify execution requests match the bid commitment
-        assert (
-            hash_tree_root(block.body.parent_execution_requests)
-            == parent_bid.execution_requests_root
-        )
-
-        # Process deferred execution requests from parent's payload
-        # Note: execution requests observe state.slot (child's slot), not the parent's.
-        requests = block.body.parent_execution_requests
-
-        def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
-            for operation in operations:
-                fn(state, operation)
-
-        for_ops(requests.deposits, process_deposit_request)
-        for_ops(requests.withdrawals, process_withdrawal_request)
-        for_ops(requests.consolidations, process_consolidation_request)
-
-        # Queue the builder payment
-        if parent_epoch == current_epoch:
-            payment_index = SLOTS_PER_EPOCH + parent_slot % SLOTS_PER_EPOCH
-            payment = state.builder_pending_payments[payment_index]
-            amount = payment.withdrawal.amount
-            if amount > 0:
-                state.builder_pending_withdrawals.append(payment.withdrawal)
-            state.builder_pending_payments[payment_index] = BuilderPendingPayment()
-        elif parent_epoch == previous_epoch:
-            payment_index = parent_slot % SLOTS_PER_EPOCH
-            payment = state.builder_pending_payments[payment_index]
-            amount = payment.withdrawal.amount
-            if amount > 0:
-                state.builder_pending_withdrawals.append(payment.withdrawal)
-            state.builder_pending_payments[payment_index] = BuilderPendingPayment()
-        # Note: if parent is older than previous_epoch, the payment entry
-        # has already been settled or evicted by process_builder_pending_payments
-        # at epoch boundaries. No action needed.
-
-        # Update latest block hash
-        state.latest_block_hash = bid.parent_block_hash
-    else:
+    if not is_parent_full:
         # Parent was EMPTY -- no execution requests expected
         assert block.body.parent_execution_requests == ExecutionRequests()
+        return
+
+    parent_slot = state.latest_block_header.slot
+    parent_epoch = compute_epoch_at_slot(parent_slot)
+
+    # Mark the parent payload as available before any later state transition logic observes it.
+    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
+
+    # Verify execution requests match the bid commitment
+    assert (
+        hash_tree_root(block.body.parent_execution_requests) == parent_bid.execution_requests_root
+    )
+
+    # Process deferred execution requests from parent's payload
+    # Note: execution requests observe state.slot (child's slot), not the parent's.
+    requests = block.body.parent_execution_requests
+
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(requests.deposits, process_deposit_request)
+    for_ops(requests.withdrawals, process_withdrawal_request)
+    for_ops(requests.consolidations, process_consolidation_request)
+
+    # Queue the builder payment
+    if parent_epoch == get_current_epoch(state):
+        payment_index = SLOTS_PER_EPOCH + parent_slot % SLOTS_PER_EPOCH
+    elif parent_epoch == get_previous_epoch(state):
+        payment_index = parent_slot % SLOTS_PER_EPOCH
+    else:
+        # If parent is older than previous_epoch, the payment entry has
+        # already been settled or evicted by process_builder_pending_payments
+        # at epoch boundaries. No action needed.
+        payment_index = None
+
+    if payment_index is not None:
+        payment = state.builder_pending_payments[payment_index]
+        if payment.withdrawal.amount > 0:
+            state.builder_pending_withdrawals.append(payment.withdrawal)
+        state.builder_pending_payments[payment_index] = BuilderPendingPayment()
+
+    # Update latest block hash
+    state.latest_block_hash = bid.parent_block_hash
 ```
 
 #### Withdrawals
