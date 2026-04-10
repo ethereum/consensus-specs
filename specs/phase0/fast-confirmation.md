@@ -361,7 +361,6 @@ def is_full_validator_set_covered(start_slot: Slot, end_slot: Slot) -> bool:
     """
     start_full_epoch = compute_epoch_at_slot(start_slot + (SLOTS_PER_EPOCH - 1))
     end_full_epoch = compute_epoch_at_slot(Slot(end_slot + 1))
-
     return start_full_epoch < end_full_epoch
 ```
 
@@ -619,7 +618,6 @@ def is_one_confirmed(store: Store, balance_source: BeaconState, block_root: Root
     """
     support = get_attestation_score(store, block_root, balance_source)
     safety_threshold = compute_safety_threshold(store, block_root, balance_source)
-
     return support > safety_threshold
 ```
 
