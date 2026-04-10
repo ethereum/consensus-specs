@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [`get_fast_confirmation_store`](#get_fast_confirmation_store)
+- [`retrieve_fast_confirmation_store`](#retrieve_fast_confirmation_store)
 - [`get_safe_beacon_block_root`](#get_safe_beacon_block_root)
 - [`get_safe_execution_block_hash`](#get_safe_execution_block_hash)
 
@@ -17,13 +17,13 @@ head of canonical chain which makes it valuable to expose a safe block to users.
 
 This section describes an algorithm to find a safe block.
 
-## `get_fast_confirmation_store`
+## `retrieve_fast_confirmation_store`
 
-*Note*: Abstract function that returns an instance of `FastConfirmationStore`
+*Note*: Abstract function that retrieves an instance of `FastConfirmationStore`
 defined in [Fast Confirmation](../specs/phase0/fast-confirmation.md).
 
 ```python
-def get_fast_confirmation_store() -> FastConfirmationStore:
+def retrieve_fast_confirmation_store() -> FastConfirmationStore:
     pass
 ```
 
@@ -32,7 +32,7 @@ def get_fast_confirmation_store() -> FastConfirmationStore:
 ```python
 def get_safe_beacon_block_root(store: Store) -> Root:
     # Use the most recent confirmed_root determined by the FCR algorithm
-    return get_fast_confirmation_store().confirmed_root
+    return retrieve_fast_confirmation_store().confirmed_root
 ```
 
 ## `get_safe_execution_block_hash`
