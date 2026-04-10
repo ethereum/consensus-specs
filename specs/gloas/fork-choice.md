@@ -836,11 +836,7 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
     # If not, this payload MAY be queued and subsequently considered when blob data becomes available
     assert is_data_available(envelope.beacon_block_root)
 
-    # Make a copy of the state to avoid mutability issues
-    state = copy(store.block_states[envelope.beacon_block_root])
-    # Cache latest block header state root
-    if state.latest_block_header.state_root == Root():
-        state.latest_block_header.state_root = hash_tree_root(state)
+    state = store.block_states[envelope.beacon_block_root]
 
     # Process the execution payload
     process_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
