@@ -300,9 +300,9 @@ The following validations MUST pass before forwarding the
 `envelope = signed_execution_payload_envelope.message`,
 `payload = envelope.payload`:
 
-- _[IGNORE]_ The envelope's block root `envelope.block_root` has been seen (via
-  gossip or non-gossip sources) (a client MAY queue payload for processing once
-  the block is retrieved).
+- _[IGNORE]_ The envelope's block root `envelope.beacon_block_root` has been
+  seen (via gossip or non-gossip sources) (a client MAY queue payload for
+  processing once the block is retrieved).
 - _[IGNORE]_ The node has not seen another valid
   `SignedExecutionPayloadEnvelope` for this block root from this builder.
 - _[IGNORE]_ The envelope is from a slot greater than or equal to the latest
