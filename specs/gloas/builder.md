@@ -244,9 +244,7 @@ After setting these parameters, the builder assembles
 `signed_execution_payload_envelope = SignedExecutionPayloadEnvelope(message=envelope, signature=BLSSignature())`,
 then verify that the envelope is valid with
 `process_execution_payload(state, signed_execution_payload_envelope, execution_engine, verify=False)`.
-This function should not trigger an exception.
-
-7. Set `envelope.state_root` to `hash_tree_root(state)`.
+This function should not trigger an exception and does not mutate `state`.
 
 After preparing the `envelope` the builder should sign the envelope using:
 

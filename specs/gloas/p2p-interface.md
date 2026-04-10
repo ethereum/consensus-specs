@@ -289,6 +289,12 @@ And instead the following validations are set in place with the alias
     `bid.parent_block_hash`) passes all validation.
 - [REJECT] The bid's parent (defined by `bid.parent_block_root`) equals the
   block's parent (defined by `block.parent_root`).
+- _[REJECT]_ If the parent block was FULL (i.e.
+  `bid.parent_block_hash == parent_bid.block_hash` where `parent_bid` is the
+  parent block's `signed_execution_payload_bid.message`), verify that
+  `hash_tree_root(block.body.parent_execution_requests) == parent_bid.execution_requests_root`.
+- _[REJECT]_ If the parent block was EMPTY, verify that
+  `block.body.parent_execution_requests == ExecutionRequests()`.
 
 ###### `execution_payload`
 
@@ -317,6 +323,8 @@ obtained from the `state.latest_execution_payload_bid`)
 - _[REJECT]_ `block.slot` equals `envelope.slot`.
 - _[REJECT]_ `envelope.builder_index == bid.builder_index`
 - _[REJECT]_ `payload.block_hash == bid.block_hash`
+- _[REJECT]_
+  `hash_tree_root(envelope.execution_requests) == bid.execution_requests_root`.
 - _[REJECT]_ `signed_execution_payload_envelope.signature` is valid as verified
   by `verify_execution_payload_envelope_signature`.
 

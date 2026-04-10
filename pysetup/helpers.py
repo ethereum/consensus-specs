@@ -295,6 +295,7 @@ ignored_dependencies = [
     "ProgressiveBitlist",
     "ProgressiveList",
     "Sequence",
+    "set",
     "Set",
     "Tuple",
     "uint128",

@@ -69,6 +69,8 @@
     - [New `process_builder_pending_payments`](#new-process_builder_pending_payments)
     - [New `process_ptc_window`](#new-process_ptc_window)
   - [Block processing](#block-processing)
+    - [Parent execution payload](#parent-execution-payload)
+      - [New `process_parent_execution_payload`](#new-process_parent_execution_payload)
     - [Withdrawals](#withdrawals)
       - [New `get_builder_withdrawals`](#new-get_builder_withdrawals)
       - [New `get_builders_sweep_withdrawals`](#new-get_builders_sweep_withdrawals)
@@ -265,6 +267,7 @@ class ExecutionPayloadBid(Container):
     value: Gwei
     execution_payment: Gwei
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    execution_requests_root: Root
 ```
 
 #### `SignedExecutionPayloadBid`
@@ -284,7 +287,6 @@ class ExecutionPayloadEnvelope(Container):
     builder_index: BuilderIndex
     beacon_block_root: Root
     slot: Slot
-    state_root: Root
 ```
 
 #### `SignedExecutionPayloadEnvelope`
@@ -324,6 +326,8 @@ class BeaconBlockBody(Container):
     signed_execution_payload_bid: SignedExecutionPayloadBid
     # [New in Gloas:EIP7732]
     payload_attestations: List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]
+    # [New in Gloas:EIP7732]
+    parent_execution_requests: ExecutionRequests
 ```
 
 #### `BeaconState`
@@ -797,12 +801,15 @@ transitions that trigger an unhandled exception (e.g. a failed `assert` or an
 out-of-range list access) are considered invalid. State transitions that cause a
 `uint64` overflow or underflow are also considered invalid.
 
-The post-state corresponding to a pre-state `state` and a signed execution
-payload envelope `signed_envelope` is defined as
-`process_execution_payload(state, signed_envelope, execution_engine)`. State
-transitions that trigger an unhandled exception (e.g. a failed `assert` or an
-out-of-range list access) are considered invalid. State transitions that cause
-an `uint64` overflow or underflow are also considered invalid.
+The validity of a signed execution payload envelope `signed_envelope` against a
+pre-state `state` is checked by
+`process_execution_payload(state, signed_envelope, execution_engine)`. Deferred
+effects from the parent payload from execution requests, builder payment,
+payload availability, and latest block hash are applied in the next beacon block
+via `process_parent_execution_payload`. Verification failures that trigger an
+unhandled exception (e.g. a failed `assert` or an out-of-range list access) are
+considered invalid. Verification failures that cause a `uint64` overflow or
+underflow are also considered invalid.
 
 ### Modified `process_slot`
 
@@ -890,6 +897,8 @@ def process_ptc_window(state: BeaconState) -> None:
 
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
+    # [New in Gloas:EIP7732]
+    process_parent_execution_payload(state, block)
     process_block_header(state, block)
     # [Modified in Gloas:EIP7732]
     process_withdrawals(state)
@@ -902,6 +911,79 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     # [Modified in Gloas:EIP7732]
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
+```
+
+#### Parent execution payload
+
+##### New `process_parent_execution_payload`
+
+```python
+def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> None:
+    """
+    Process deferred effects from the parent's execution payload.
+    Must run first in ``process_block``, before ``process_block_header``, because it reads
+    ``state.latest_block_header.slot`` and ``state.latest_execution_payload_bid``
+    which are overwritten by ``process_block_header`` and ``process_execution_payload_bid``.
+    """
+    bid = block.body.signed_execution_payload_bid.message
+    parent_bid = state.latest_execution_payload_bid
+
+    # Determine parent payload status from block data
+    # Note: cannot use is_parent_block_full(state) here because latest_block_hash
+    # has not been updated yet -- this function is responsible for updating it.
+    is_parent_full = bid.parent_block_hash == parent_bid.block_hash
+
+    if is_parent_full:
+        parent_slot = state.latest_block_header.slot
+        parent_epoch = compute_epoch_at_slot(parent_slot)
+        current_epoch = get_current_epoch(state)
+        previous_epoch = get_previous_epoch(state)
+
+        # Mark the parent payload as available before any later state transition logic observes it.
+        state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
+
+        # Verify execution requests match the bid commitment
+        assert (
+            hash_tree_root(block.body.parent_execution_requests)
+            == parent_bid.execution_requests_root
+        )
+
+        # Process deferred execution requests from parent's payload
+        # Note: execution requests observe state.slot (child's slot), not the parent's.
+        requests = block.body.parent_execution_requests
+
+        def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+            for operation in operations:
+                fn(state, operation)
+
+        for_ops(requests.deposits, process_deposit_request)
+        for_ops(requests.withdrawals, process_withdrawal_request)
+        for_ops(requests.consolidations, process_consolidation_request)
+
+        # Queue the builder payment
+        if parent_epoch == current_epoch:
+            payment_index = SLOTS_PER_EPOCH + parent_slot % SLOTS_PER_EPOCH
+            payment = state.builder_pending_payments[payment_index]
+            amount = payment.withdrawal.amount
+            if amount > 0:
+                state.builder_pending_withdrawals.append(payment.withdrawal)
+            state.builder_pending_payments[payment_index] = BuilderPendingPayment()
+        elif parent_epoch == previous_epoch:
+            payment_index = parent_slot % SLOTS_PER_EPOCH
+            payment = state.builder_pending_payments[payment_index]
+            amount = payment.withdrawal.amount
+            if amount > 0:
+                state.builder_pending_withdrawals.append(payment.withdrawal)
+            state.builder_pending_payments[payment_index] = BuilderPendingPayment()
+        # Note: if parent is older than previous_epoch, the payment entry
+        # has already been settled or evicted by process_builder_pending_payments
+        # at epoch boundaries. No action needed.
+
+        # Update latest block hash
+        state.latest_block_hash = bid.parent_block_hash
+    else:
+        # Parent was EMPTY -- no execution requests expected
+        assert block.body.parent_execution_requests == ExecutionRequests()
 ```
 
 #### Withdrawals
@@ -1545,9 +1627,11 @@ def verify_execution_payload_envelope_signature(
 
 #### New `process_execution_payload`
 
-*Note*: `process_execution_payload` is now an independent check in state
-transition. It is called when importing a signed execution payload proposed by
-the builder of the current slot.
+*Note*: `process_execution_payload` is a verification function called by
+fork-choice when importing a signed execution payload. It verifies the payload
+against the execution engine without processing execution requests or updating
+state. Actual state mutations are deferred to `process_parent_execution_payload`
+in the next block.
 
 ```python
 def process_execution_payload(
@@ -1566,11 +1650,6 @@ def process_execution_payload(
     # Verify signature
     if verify:
         assert verify_execution_payload_envelope_signature(state, signed_envelope)
-
-    # Cache latest block header state root
-    previous_state_root = hash_tree_root(state)
-    if state.latest_block_header.state_root == Root():
-        state.latest_block_header.state_root = previous_state_root
 
     # Verify consistency with the beacon block
     assert envelope.beacon_block_root == hash_tree_root(state.latest_block_header)
@@ -1607,29 +1686,4 @@ def process_execution_payload(
             execution_requests=requests,
         )
     )
-
-    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
-        for operation in operations:
-            fn(state, operation)
-
-    for_ops(requests.deposits, process_deposit_request)
-    for_ops(requests.withdrawals, process_withdrawal_request)
-    for_ops(requests.consolidations, process_consolidation_request)
-
-    # Queue the builder payment
-    payment = state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH]
-    amount = payment.withdrawal.amount
-    if amount > 0:
-        state.builder_pending_withdrawals.append(payment.withdrawal)
-    state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH] = (
-        BuilderPendingPayment()
-    )
-
-    # Cache the execution payload hash
-    state.execution_payload_availability[state.slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
-    state.latest_block_hash = payload.block_hash
-
-    # Verify the state root
-    if verify:
-        assert envelope.state_root == hash_tree_root(state)
 ```

@@ -18,6 +18,7 @@
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
       - [Signed execution payload bid](#signed-execution-payload-bid)
       - [Payload attestations](#payload-attestations)
+      - [Parent execution requests](#parent-execution-requests)
       - [ExecutionPayload](#executionpayload)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing the `PayloadAttestationMessage`](#constructing-the-payloadattestationmessage)
@@ -218,6 +219,19 @@ construct the `payload_attestations` field in `BeaconBlockBody`:
   `aggregation_bits` field by using the relative position of the validator
   indices with respect to the PTC that is obtained from
   `get_ptc(state, Slot(block_slot - 1))`.
+
+##### Parent execution requests
+
+The `parent_execution_requests` field contains the execution requests from the
+parent's execution payload. The proposer constructs this field as follows:
+
+- If the parent block is pre-Gloas (first Gloas block), set
+  `parent_execution_requests` to an empty `ExecutionRequests()`.
+- If the parent block was FULL (i.e., the execution payload was delivered and
+  verified), set `parent_execution_requests` to the `ExecutionRequests` from the
+  parent's `ExecutionPayloadEnvelope`.
+- If the parent block was EMPTY (i.e., no execution payload was delivered), set
+  `parent_execution_requests` to an empty `ExecutionRequests()`.
 
 ##### ExecutionPayload
 
