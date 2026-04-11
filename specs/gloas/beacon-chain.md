@@ -941,10 +941,6 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
     parent_slot = state.latest_block_header.slot
     parent_epoch = compute_epoch_at_slot(parent_slot)
 
-    # Mark the parent payload as available before any later state
-    # transition logic observes it.
-    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
-
     # Verify execution requests match the bid commitment
     requests = block.body.parent_execution_requests
     assert hash_tree_root(requests) == parent_bid.execution_requests_root
@@ -976,7 +972,8 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
             state.builder_pending_withdrawals.append(payment.withdrawal)
         state.builder_pending_payments[payment_index] = BuilderPendingPayment()
 
-    # Update latest block hash
+    # Update parent payload availability and latest block hash
+    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
     state.latest_block_hash = bid.parent_block_hash
 ```
 
