@@ -744,15 +744,16 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     parent_block = store.blocks[block.parent_root]
     bid = block.body.signed_execution_payload_bid.message
     parent_bid = parent_block.body.signed_execution_payload_bid.message
-    # Verify parent execution requests against the parent bid commitment
     if is_parent_node_full(store, block):
         assert block.parent_root in store.payloads
+        # Verify parent execution requests against the parent bid commitment
         assert (
             hash_tree_root(block.body.parent_execution_requests)
             == parent_bid.execution_requests_root
         )
     else:
         assert bid.parent_block_hash == parent_bid.parent_block_hash
+        # Parent payload was not delivered -- no deferred execution requests
         assert block.body.parent_execution_requests == ExecutionRequests()
 
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
