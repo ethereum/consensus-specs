@@ -129,7 +129,6 @@ class Store(object):
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     payloads: Set[Root] = field(default_factory=set)
-    payload_states: Dict[Root, BeaconState] = field(default_factory=dict)
     payload_timeliness_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
     payload_data_availability_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
         default_factory=dict
@@ -162,7 +161,6 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         block_timeliness={anchor_root: [True, True]},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
-        payload_states={anchor_root: copy(anchor_state)},
         payload_timeliness_vote={
             anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
         },
@@ -214,7 +212,7 @@ def is_payload_inclusion_list_satisfied(store: Store, root: Root) -> bool:
 
     # If the payload is not locally available, the payload
     # is not considered to satisfy the inclusion list constraints
-    if root not in store.payload_states:
+    if root not in store.payloads:
         return False
 
     return store.payload_inclusion_list_satisfaction[root]
@@ -301,8 +299,7 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
     # If not, this payload MAY be queued and subsequently considered when blob data becomes available
     assert is_data_available(envelope.beacon_block_root)
 
-    # Make a copy of the state to avoid mutability issues
-    state = copy(store.block_states[envelope.beacon_block_root])
+    state = store.block_states[envelope.beacon_block_root]
 
     # Process the execution payload
     process_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
@@ -314,6 +311,6 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
         store, state, envelope.beacon_block_root, envelope.payload, EXECUTION_ENGINE
     )
 
-    # Add new state for this payload to the store
-    store.payload_states[envelope.beacon_block_root] = state
+    # Mark this block's execution payload as verified
+    store.payloads.add(envelope.beacon_block_root)
 ```
