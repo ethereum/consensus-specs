@@ -950,7 +950,7 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
     assert hash_tree_root(requests) == parent_bid.execution_requests_root
 
     # Process deferred execution requests from parent's payload. The execution
-    # requests observe state.slot (child's slot), not the parent's slot.
+    # requests are processed at state.slot (child's slot), not the parent's slot.
     def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
         for operation in operations:
             fn(state, operation)
