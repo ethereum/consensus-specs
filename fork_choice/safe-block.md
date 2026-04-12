@@ -3,8 +3,6 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [`retrieve_fast_confirmation_store`](#retrieve_fast_confirmation_store)
-- [`get_safe_beacon_block_root`](#get_safe_beacon_block_root)
 - [`get_safe_execution_block_hash`](#get_safe_execution_block_hash)
 
 <!-- mdformat-toc end -->
@@ -17,29 +15,15 @@ head of canonical chain which makes it valuable to expose a safe block to users.
 
 This section describes an algorithm to find a safe block.
 
-## `retrieve_fast_confirmation_store`
-
-*Note*: Abstract function that retrieves an instance of `FastConfirmationStore`
-defined in [Fast Confirmation](../specs/phase0/fast-confirmation.md).
-
-```python
-def retrieve_fast_confirmation_store() -> FastConfirmationStore:
-    pass
-```
-
-## `get_safe_beacon_block_root`
-
-```python
-def get_safe_beacon_block_root(store: Store) -> Root:
-    # Use the most recent confirmed_root determined by the FCR algorithm
-    return retrieve_fast_confirmation_store().confirmed_root
-```
-
 ## `get_safe_execution_block_hash`
+
+*Note*: `retrieve_fast_confirmed_root()` is an implementation dependent function
+that retrieves the most recent `confirmed_root` determined by the
+[Fast Confirmation](../specs/phase0/fast-confirmation.md) algorithm.
 
 ```python
 def get_safe_execution_block_hash(store: Store) -> Hash32:
-    safe_block_root = get_safe_beacon_block_root(store)
+    safe_block_root = retrieve_fast_confirmed_root()
     safe_block = store.blocks[safe_block_root]
 
     # Return Hash32() if no payload is yet justified
