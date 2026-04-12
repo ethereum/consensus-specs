@@ -806,10 +806,10 @@ pre-state `state` is checked by
 `process_execution_payload(state, signed_envelope, execution_engine)`. Deferred
 effects from the parent payload from execution requests, builder payment,
 payload availability, and latest block hash are applied in the next beacon block
-via `process_parent_execution_payload`. Verification failures that trigger an
-unhandled exception (e.g. a failed `assert` or an out-of-range list access) are
-considered invalid. Verification failures that cause a `uint64` overflow or
-underflow are also considered invalid.
+via `process_parent_execution_payload`. Payloads that trigger an unhandled
+exception (e.g. a failed `assert` or an out-of-range list access) are considered
+invalid. Payloads that cause a `uint64` overflow or underflow are also
+considered invalid.
 
 ### Modified `process_slot`
 
