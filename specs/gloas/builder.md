@@ -136,6 +136,9 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
     be broadcast to the `execution_payload_bid` gossip topic.
 12. Set `bid.blob_kzg_commitments` to be the `blobsbundle.commitments` field
     returned by `engine_getPayloadV5`.
+13. Set `bid.execution_requests_root` to `hash_tree_root(execution_requests)`,
+    where `execution_requests` is the `ExecutionRequests` field returned by
+    `engine_getPayloadV5`.
 
 After building the `bid`, the builder obtains a `signature` of the bid by using:
 
@@ -242,13 +245,7 @@ alias `bid` to be the committed `ExecutionPayloadBid` in
 4. Set `envelope.beacon_block_root` to be `hash_tree_root(block)`.
 5. Set `envelope.slot` to be `block.slot`.
 
-After setting these parameters, the builder assembles
-`signed_execution_payload_envelope = SignedExecutionPayloadEnvelope(message=envelope, signature=BLSSignature())`,
-then verify that the envelope is valid with
-`process_execution_payload(state, signed_execution_payload_envelope, execution_engine, verify=False)`.
-This function should not trigger an exception and does not mutate `state`.
-
-After preparing the `envelope` the builder should sign the envelope using:
+After preparing the `envelope` the builder signs it using:
 
 ```python
 def get_execution_payload_envelope_signature(
