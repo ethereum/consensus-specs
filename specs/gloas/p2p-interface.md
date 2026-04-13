@@ -289,12 +289,6 @@ And instead the following validations are set in place with the alias
     `bid.parent_block_hash`) passes all validation.
 - [REJECT] The bid's parent (defined by `bid.parent_block_root`) equals the
   block's parent (defined by `block.parent_root`).
-- _[REJECT]_ If the parent block was FULL (i.e.
-  `bid.parent_block_hash == parent_bid.block_hash` where `parent_bid` is the
-  parent block's `signed_execution_payload_bid.message`), verify that
-  `hash_tree_root(block.body.parent_execution_requests) == parent_bid.execution_requests_root`.
-- _[REJECT]_ If the parent block was EMPTY, verify that
-  `block.body.parent_execution_requests == ExecutionRequests()`.
 
 ###### `execution_payload`
 

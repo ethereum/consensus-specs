@@ -725,11 +725,10 @@ def get_payload_attestation_due_ms(epoch: Epoch) -> uint64:
 
 ### Modified `on_block`
 
-*Note*: The handler `on_block` is modified to verify the parent's deferred
-execution requests against the parent bid's `execution_requests_root`
-commitment, and to assert that the parent payload has been verified
-(`store.payloads`). In addition we delay the checking of blob data availability
-until the processing of the execution payload.
+*Note*: The handler `on_block` is modified to assert that the parent payload has
+been verified (`store.payloads`) when the block builds on a full parent. In
+addition we delay the checking of blob data availability until the processing of
+the execution payload.
 
 ```python
 def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
@@ -740,21 +739,10 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Parent block must be known
     assert block.parent_root in store.block_states
 
-    # Check if this block builds on empty or full parent block
-    parent_block = store.blocks[block.parent_root]
-    bid = block.body.signed_execution_payload_bid.message
-    parent_bid = parent_block.body.signed_execution_payload_bid.message
+    # If this block builds on the parent's full payload, that payload must
+    # have been verified by on_execution_payload
     if is_parent_node_full(store, block):
         assert block.parent_root in store.payloads
-        # Verify parent execution requests against the parent bid commitment
-        assert (
-            hash_tree_root(block.body.parent_execution_requests)
-            == parent_bid.execution_requests_root
-        )
-    else:
-        assert bid.parent_block_hash == parent_bid.parent_block_hash
-        # Parent payload was not delivered -- no deferred execution requests
-        assert block.body.parent_execution_requests == ExecutionRequests()
 
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
     current_slot = get_current_slot(store)
