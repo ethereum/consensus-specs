@@ -49,25 +49,6 @@ def retrieve_column_sidecars(beacon_block_root: Root) -> Sequence[DataColumnSide
 """
 
     @classmethod
-    def deprecate_functions(cls) -> set[str]:
-        return set(
-            [
-                "blob_to_kzg_commitment",
-                "compute_blob_kzg_proof",
-                "compute_challenge",
-                "compute_kzg_proof",
-                "compute_kzg_proof_impl",
-                "compute_quotient_eval_within_domain",
-                "evaluate_polynomial_in_evaluation_form",
-                "verify_blob_kzg_proof",
-                "verify_blob_kzg_proof_batch",
-                "verify_kzg_proof",
-                "verify_kzg_proof_batch",
-                "verify_kzg_proof_impl",
-            ]
-        )
-
-    @classmethod
     def hardcoded_func_dep_presets(cls, spec_object) -> dict[str, str]:
         return {
             "KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH": spec_object.preset_vars[
