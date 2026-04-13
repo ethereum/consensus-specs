@@ -306,8 +306,9 @@ In both cases the support would count a vote outside of the
 affect safety.
 
 Due to the algorithm logic, maximum distance between `balance_source` and
-shuffling is two epochs, which is less than `MAX_SEED_LOOKAHEAD` and thus the
-balances are always consistent with the shuffling.
+`start_slot` or `end_slot` is two epochs, which is less than
+`MAX_SEED_LOOKAHEAD`. Therefore, participants of the committees from that span
+of slots are consistent with the `balance_source` validator set.
 
 ```python
 def get_block_support_between_slots(
@@ -331,8 +332,7 @@ def get_block_support_between_slots(
         i
         for i in participants
         if (
-            i < len(balance_source.validators)
-            and not balance_source.validators[i].slashed
+            not balance_source.validators[i].slashed
             and is_active_validator(balance_source.validators[i], get_current_epoch(balance_source))
         )
     ]
@@ -432,9 +432,16 @@ def estimate_committee_weight_between_slots(
 
 ##### `get_equivocation_score`
 
-*Note:* For simplicity, this function does not seek `balance_source` for slashed
+*Notes:*
+
+For simplicity, this function does not seek `balance_source` for slashed
 validators as it is very unlikely that those validators are not already in
 `store.equivocating_indices`.
+
+Due to the algorithm logic, maximum distance between `balance_source` and
+`start_slot` or `end_slot` is two epochs, which is less than
+`MAX_SEED_LOOKAHEAD`. Therefore, participants of the committees from that span
+of slots are consistent with the `balance_source` validator set.
 
 ```python
 def get_equivocation_score(
@@ -456,10 +463,7 @@ def get_equivocation_score(
     active_equivocating_indices = [
         i
         for i in committee_indices.intersection(store.equivocating_indices)
-        if (
-            i < len(balance_source.validators)
-            and is_active_validator(balance_source.validators[i], get_current_epoch(balance_source))
-        )
+        if is_active_validator(balance_source.validators[i], get_current_epoch(balance_source))
     ]
 
     return Gwei(
