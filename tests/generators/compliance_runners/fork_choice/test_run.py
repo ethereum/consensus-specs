@@ -33,14 +33,6 @@ def get_test_case(spec, td):
     def get_prefix(p):
         return p[p.rindex("/") + 1 : p.rindex(".")]
 
-    envelope_files = glob(f"{td}/execution_payload_envelope_*.ssz_snappy")
-    envelopes = {}
-    if envelope_files:
-        envelopes = {
-            get_prefix(e): spec.SignedExecutionPayloadEnvelope.decode_bytes(read_ssz_snappy(e))
-            for e in envelope_files
-        }
-
     return (
         read_yaml(f"{td}/meta.yaml"),
         spec.BeaconBlock.decode_bytes(read_ssz_snappy(f"{td}/anchor_block.ssz_snappy")),
@@ -57,7 +49,10 @@ def get_test_case(spec, td):
             get_prefix(b): spec.AttesterSlashing.decode_bytes(read_ssz_snappy(b))
             for b in glob(f"{td}/attester_slashing_*.ssz_snappy")
         },
-        envelopes,
+        {
+            get_prefix(e): spec.SignedExecutionPayloadEnvelope.decode_bytes(read_ssz_snappy(e))
+            for e in glob(f"{td}/execution_payload_envelope_*.ssz_snappy")
+        },
         read_yaml(f"{td}/steps.yaml"),
     )
 
