@@ -367,15 +367,17 @@ def is_full_validator_set_covered(start_slot: Slot, end_slot: Slot) -> bool:
 ##### `adjust_committee_weight_estimate_to_ensure_safety`
 
 *Note*: This function adjusts the estimate of the weight of a committee for a
-sequence of slots not covering a full epoch to ensure the safety of FCR with
-high probability. See
+sequence of slots spanning an epoch boundary that does not cover any full epoch
+to ensure the safety of FCR with high probability. The sequence may be longer
+than SLOTS_PER_EPOCH. See
 https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20 for an
 explanation of why this is required.
 
 ```python
 def adjust_committee_weight_estimate_to_ensure_safety(estimate: Gwei) -> Gwei:
     """
-    Return adjusted ``estimate`` of the weight of a committee for a sequence of slots not covering a full epoch.
+    Return adjusted ``estimate`` of the weight of a committee for a sequence of slots
+    spanning an epoch boundary that does not cover any full epoch.
     """
     ceil = (estimate + 999) // 1000
     return Gwei(ceil * (1000 + COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR))
