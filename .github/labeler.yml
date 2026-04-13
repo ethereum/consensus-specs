@@ -84,8 +84,9 @@ eip8025:
 
 testing:
   - changed-files:
-    - any-glob-to-any-file:
+    - all-globs-to-any-file:
       - 'tests/**'
+      - '!tests/core/pyspec/eth_consensus_specs/VERSION.txt'
 
 ssz:
   - changed-files:

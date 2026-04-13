@@ -67,10 +67,10 @@ def cache_this(key_fn, value_fn, lru_size):  # type: ignore
     return wrapper
 
 
-_compute_shuffled_index = compute_shuffled_index
-compute_shuffled_index = cache_this(
-    lambda index, index_count, seed: (index, index_count, seed),
-    _compute_shuffled_index, lru_size=2**16)
+_compute_shuffled_permutation = compute_shuffled_permutation
+compute_shuffled_permutation = cache_this(
+    lambda index_count, seed: (index_count, seed),
+    _compute_shuffled_permutation, lru_size=256)
 
 _get_total_active_balance = get_total_active_balance
 get_total_active_balance = cache_this(

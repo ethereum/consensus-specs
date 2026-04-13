@@ -1,6 +1,6 @@
 # Ethereum Proof-of-Stake Consensus Specifications
 
-[![nightly-tests](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml/badge.svg?branch=master&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml)
+[![tests](https://github.com/ethereum/consensus-specs/actions/workflows/tests.yml/badge.svg?branch=master&event=schedule)](https://github.com/ethereum/consensus-specs/actions/workflows/tests.yml)
 [![image](https://img.shields.io/pypi/v/eth-consensus-specs.svg)](https://pypi.python.org/pypi/eth-consensus-specs)
 [![image](https://img.shields.io/pypi/l/eth-consensus-specs.svg)](https://pypi.python.org/pypi/eth-consensus-specs)
 [![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?logo=discord&logoColor=white)](https://discord.gg/qGpsxSA)
@@ -55,7 +55,7 @@ ready.
 - Stable reference tests are available as
   [release assets](https://github.com/ethereum/consensus-specs/releases).
 - Unstable reference tests are available as
-  [nightly builds](https://github.com/ethereum/consensus-specs/actions/workflows/nightly-tests.yml).
+  [nightly builds](https://github.com/ethereum/consensus-specs/actions/workflows/tests.yml).
 
 ## Contributors
 
