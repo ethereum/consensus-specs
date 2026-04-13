@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
 
-from eth2spec.test.helpers.attestations import (
+from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
 )
-from eth2spec.test.helpers.block import (
+from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
     sign_block,
 )
-from eth2spec.test.helpers.fork_choice import (
+from eth_consensus_specs.test.helpers.fork_choice import (
     add_attestation,
     add_attester_slashing,
     add_block,
@@ -20,10 +20,10 @@ from eth2spec.test.helpers.fork_choice import (
     run_on_attester_slashing,
     run_on_block,
 )
-from eth2spec.test.helpers.state import (
+from eth_consensus_specs.test.helpers.state import (
     next_slot,
 )
-from eth2spec.utils.ssz.ssz_typing import View
+from eth_consensus_specs.utils.ssz.ssz_typing import View
 
 from .debug_helpers import print_epoch, print_head
 
@@ -295,7 +295,7 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
     test_events = []
 
     def slot_to_time(slot):
-        return slot * spec.config.SECONDS_PER_SLOT + genesis_time
+        return slot * spec.config.SLOT_DURATION_MS // 1000 + genesis_time
 
     def add_tick_step(time):
         test_events.append(("tick", time, None))

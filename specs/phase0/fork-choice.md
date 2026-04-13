@@ -90,11 +90,12 @@ handlers must not modify `store`.
 
 *Notes*:
 
-1. **Leap seconds**: Slots will last `SECONDS_PER_SLOT + 1` or
-   `SECONDS_PER_SLOT - 1` seconds around leap seconds. This is automatically
-   handled by [UNIX time](https://en.wikipedia.org/wiki/Unix_time).
+1. **Leap seconds**: Slots will last `SLOT_DURATION_MS + 1000` or
+   `SLOT_DURATION_MS - 1000` milliseconds around leap seconds. This is
+   automatically handled by
+   [UNIX time](https://en.wikipedia.org/wiki/Unix_time).
 2. **Honest clocks**: Honest nodes are assumed to have clocks synchronized
-   within `SECONDS_PER_SLOT` seconds of each other.
+   within `SLOT_DURATION_MS` milliseconds of each other.
 3. **Eth1 data**: The large `ETH1_FOLLOW_DISTANCE` specified in the
    [honest validator document](./validator.md) should ensure that
    `state.latest_eth1_data` of the canonical beacon chain remains consistent
@@ -202,7 +203,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
     finalized_checkpoint = Checkpoint(epoch=anchor_epoch, root=anchor_root)
     proposer_boost_root = Root()
     return Store(
-        time=uint64(anchor_state.genesis_time + SECONDS_PER_SLOT * anchor_state.slot),
+        time=uint64(anchor_state.genesis_time + SLOT_DURATION_MS * anchor_state.slot // 1000),
         genesis_time=anchor_state.genesis_time,
         justified_checkpoint=justified_checkpoint,
         finalized_checkpoint=finalized_checkpoint,
@@ -221,7 +222,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 
 ```python
 def get_slots_since_genesis(store: Store) -> int:
-    return (store.time - store.genesis_time) // SECONDS_PER_SLOT
+    return (store.time - store.genesis_time) * 1000 // SLOT_DURATION_MS
 ```
 
 #### `get_current_slot`
@@ -826,9 +827,11 @@ def update_proposer_boost_root(store: Store, root: Root) -> None:
 def on_tick(store: Store, time: uint64) -> None:
     # If the ``store.time`` falls behind, while loop catches up slot by slot
     # to ensure that every previous slot is processed with ``on_tick_per_slot``
-    tick_slot = (time - store.genesis_time) // SECONDS_PER_SLOT
+    tick_slot = (time - store.genesis_time) * 1000 // SLOT_DURATION_MS
     while get_current_slot(store) < tick_slot:
-        previous_time = store.genesis_time + (get_current_slot(store) + 1) * SECONDS_PER_SLOT
+        previous_time = (
+            store.genesis_time + (get_current_slot(store) + 1) * SLOT_DURATION_MS // 1000
+        )
         on_tick_per_slot(store, previous_time)
     on_tick_per_slot(store, time)
 ```

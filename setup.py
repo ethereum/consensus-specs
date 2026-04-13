@@ -11,18 +11,18 @@ setup(
     include_package_data=False,
     package_data={
         "configs": ["*.yaml"],
-        "eth2spec": ["VERSION.txt"],
+        "eth_consensus_specs": ["VERSION.txt"],
         "presets": ["**/*.yaml", "**/*.json"],
         "specs": ["**/*.md"],
         "sync": ["optimistic.md"],
     },
     package_dir={
         "configs": "configs",
-        "eth2spec": "tests/core/pyspec/eth2spec",
+        "eth_consensus_specs": "tests/core/pyspec/eth_consensus_specs",
         "presets": "presets",
         "specs": "specs",
         "sync": "sync",
     },
     packages=find_packages(where="tests/core/pyspec") + ["configs", "presets", "specs", "sync"],
-    py_modules=["eth2spec"],
+    py_modules=["eth_consensus_specs"],
 )

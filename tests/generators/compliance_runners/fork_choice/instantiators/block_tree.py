@@ -1,13 +1,13 @@
 import random
 
-from eth2spec.test.helpers.attester_slashings import (
+from eth_consensus_specs.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
 )
-from eth2spec.test.helpers.state import (
+from eth_consensus_specs.test.helpers.state import (
     next_slot,
     transition_to,
 )
-from eth2spec.utils import bls
+from eth_consensus_specs.utils import bls
 
 from .debug_helpers import (
     attesters_in_block,
