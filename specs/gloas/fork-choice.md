@@ -827,8 +827,8 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
 
     state = store.block_states[envelope.beacon_block_root]
 
-    # Verify the execution payload
-    verify_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
+    # Verify the execution payload envelope
+    verify_execution_payload_envelope(state, signed_envelope, EXECUTION_ENGINE)
 
     # Mark this block's execution payload as verified
     store.payloads.add(envelope.beacon_block_root)

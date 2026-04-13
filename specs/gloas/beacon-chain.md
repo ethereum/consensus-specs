@@ -99,7 +99,7 @@
         - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
   - [Execution payload processing](#execution-payload-processing)
     - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
-    - [New `verify_execution_payload`](#new-verify_execution_payload)
+    - [New `verify_execution_payload_envelope`](#new-verify_execution_payload_envelope)
     - [Removed `process_execution_payload`](#removed-process_execution_payload)
 
 <!-- mdformat-toc end -->
@@ -791,13 +791,13 @@ out-of-range list access) are considered invalid. State transitions that cause a
 
 The validity of a signed execution payload envelope `signed_envelope` against a
 pre-state `state` is checked by
-`verify_execution_payload(state, signed_envelope, execution_engine)`. Deferred
-effects from the parent payload from execution requests, builder payment,
-payload availability, and latest block hash are applied in the next beacon block
-via `process_parent_execution_payload`. Payloads that trigger an unhandled
-exception (e.g. a failed `assert` or an out-of-range list access) are considered
-invalid. Payloads that cause a `uint64` overflow or underflow are also
-considered invalid.
+`verify_execution_payload_envelope(state, signed_envelope, execution_engine)`.
+Deferred effects from the parent payload from execution requests, builder
+payment, payload availability, and latest block hash are applied in the next
+beacon block via `process_parent_execution_payload`. Payloads that trigger an
+unhandled exception (e.g. a failed `assert` or an out-of-range list access) are
+considered invalid. Payloads that cause a `uint64` overflow or underflow are
+also considered invalid.
 
 ### Modified `process_slot`
 
@@ -1603,15 +1603,15 @@ def verify_execution_payload_envelope_signature(
     return bls.Verify(pubkey, signing_root, signed_envelope.signature)
 ```
 
-#### New `verify_execution_payload`
+#### New `verify_execution_payload_envelope`
 
-*Note*: `verify_execution_payload` is a verification helper called by
+*Note*: `verify_execution_payload_envelope` is a verification helper called by
 fork-choice when importing a signed execution payload. It verifies the payload
 against the execution engine without processing it. Payload processing is
 deferred to the next beacon block via `process_parent_execution_payload`.
 
 ```python
-def verify_execution_payload(
+def verify_execution_payload_envelope(
     state: BeaconState,
     signed_envelope: SignedExecutionPayloadEnvelope,
     execution_engine: ExecutionEngine,
@@ -1666,6 +1666,7 @@ def verify_execution_payload(
 
 #### Removed `process_execution_payload`
 
-`process_execution_payload` has been replaced by `verify_execution_payload`, a
-pure verification helper called from `on_execution_payload`. Payload processing
-is deferred to the next beacon block via `process_parent_execution_payload`.
+`process_execution_payload` has been replaced by
+`verify_execution_payload_envelope`, a pure verification helper called from
+`on_execution_payload`. Payload processing is deferred to the next beacon block
+via `process_parent_execution_payload`.
