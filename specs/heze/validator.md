@@ -150,7 +150,7 @@ def prepare_execution_payload(
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
     parent_bid = state.latest_execution_payload_bid
-    if hash_tree_root(state.latest_block_header) in store.payloads:
+    if should_extend_payload(store, hash_tree_root(state.latest_block_header)):
         withdrawals = get_expected_withdrawals(state).withdrawals
         head_block_hash = parent_bid.block_hash
     else:
