@@ -302,8 +302,8 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
 
     state = store.block_states[envelope.beacon_block_root]
 
-    # Process the execution payload
-    process_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
+    # Verify the execution payload
+    verify_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
 
     # [New in Heze:EIP7805]
     # Check if this payload satisfies the inclusion list constraints

@@ -99,7 +99,8 @@
         - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
   - [Execution payload processing](#execution-payload-processing)
     - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
-    - [New `process_execution_payload`](#new-process_execution_payload)
+    - [New `verify_execution_payload`](#new-verify_execution_payload)
+    - [Removed `process_execution_payload`](#removed-process_execution_payload)
 
 <!-- mdformat-toc end -->
 
@@ -790,7 +791,7 @@ out-of-range list access) are considered invalid. State transitions that cause a
 
 The validity of a signed execution payload envelope `signed_envelope` against a
 pre-state `state` is checked by
-`process_execution_payload(state, signed_envelope, execution_engine)`. Deferred
+`verify_execution_payload(state, signed_envelope, execution_engine)`. Deferred
 effects from the parent payload from execution requests, builder payment,
 payload availability, and latest block hash are applied in the next beacon block
 via `process_parent_execution_payload`. Payloads that trigger an unhandled
@@ -1602,31 +1603,24 @@ def verify_execution_payload_envelope_signature(
     return bls.Verify(pubkey, signing_root, signed_envelope.signature)
 ```
 
-#### New `process_execution_payload`
+#### New `verify_execution_payload`
 
-*Note*: `process_execution_payload` is a verification function called by
+*Note*: `verify_execution_payload` is a verification helper called by
 fork-choice when importing a signed execution payload. It verifies the payload
-against the execution engine without processing execution requests or updating
-state. Actual state mutations are deferred to `process_parent_execution_payload`
-in the next block.
+against the execution engine without processing it. Payload processing is
+deferred to the next beacon block via `process_parent_execution_payload`.
 
 ```python
-def process_execution_payload(
+def verify_execution_payload(
     state: BeaconState,
-    # [Modified in Gloas:EIP7732]
-    # Removed `body`
-    # [New in Gloas:EIP7732]
     signed_envelope: SignedExecutionPayloadEnvelope,
     execution_engine: ExecutionEngine,
-    # [New in Gloas:EIP7732]
-    verify: bool = True,
 ) -> None:
     envelope = signed_envelope.message
     payload = envelope.payload
 
     # Verify signature
-    if verify:
-        assert verify_execution_payload_envelope_signature(state, signed_envelope)
+    assert verify_execution_payload_envelope_signature(state, signed_envelope)
 
     # Cache latest block header state root
     header = copy(state.latest_block_header)
@@ -1669,3 +1663,9 @@ def process_execution_payload(
         )
     )
 ```
+
+#### Removed `process_execution_payload`
+
+`process_execution_payload` has been replaced by `verify_execution_payload`, a
+pure verification helper called from `on_execution_payload`. Payload processing
+is deferred to the next beacon block via `process_parent_execution_payload`.
