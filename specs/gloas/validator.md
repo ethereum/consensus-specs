@@ -194,7 +194,10 @@ top of a `state` MUST take the following actions in order to construct the
     `bid.value` MUST be zero.
   - The builder balance can cover the `bid.value`.
   - The `bid.slot` is for the proposal block slot.
-  - The `bid.parent_block_hash` equals the state's `latest_block_hash`.
+  - The `bid.parent_block_hash` equals
+    `state.latest_execution_payload_bid.block_hash` if the parent block has been
+    verified (`block.parent_root in store.payloads`), otherwise
+    `state.latest_execution_payload_bid.parent_block_hash`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
 - Select one bid and set
   `block.body.signed_execution_payload_bid = signed_execution_payload_bid`.
@@ -235,8 +238,15 @@ parent's execution payload. The proposer constructs this field as follows:
 
 ##### ExecutionPayload
 
+*Note*: `prepare_execution_payload` is modified in Gloas to take `store` as an
+additional parameter. It consults `store.payloads` to determine whether the
+parent block's execution payload has been verified, selecting both the
+withdrawals source and the execution head for the new payload.
+
 ```python
 def prepare_execution_payload(
+    # [New in Gloas:EIP7732]
+    store: Store,
     state: BeaconState,
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
@@ -244,10 +254,13 @@ def prepare_execution_payload(
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
     # [New in Gloas:EIP7732]
-    if is_parent_block_full(state):
+    parent_bid = state.latest_execution_payload_bid
+    if hash_tree_root(state.latest_block_header) in store.payloads:
         withdrawals = get_expected_withdrawals(state).withdrawals
+        head_block_hash = parent_bid.block_hash
     else:
         withdrawals = state.payload_expected_withdrawals
+        head_block_hash = parent_bid.parent_block_hash
 
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
@@ -260,7 +273,7 @@ def prepare_execution_payload(
     )
     return execution_engine.notify_forkchoice_updated(
         # [Modified in Gloas:EIP7732]
-        head_block_hash=state.latest_block_hash,
+        head_block_hash=head_block_hash,
         safe_block_hash=safe_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,

@@ -44,7 +44,6 @@
     - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
     - [New `is_attestation_same_slot`](#new-is_attestation_same_slot)
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
-    - [New `is_parent_block_full`](#new-is_parent_block_full)
     - [New `is_pending_validator`](#new-is_pending_validator)
   - [Misc](#misc-2)
     - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
@@ -484,18 +483,6 @@ def is_valid_indexed_payload_attestation(
     return bls.FastAggregateVerify(pubkeys, signing_root, attestation.signature)
 ```
 
-#### New `is_parent_block_full`
-
-*Note*: This function returns true if the last committed payload bid was
-fulfilled with a payload, which can only happen when both beacon block and
-payload were present. This function must be called on a beacon state before
-processing the execution payload bid in the block.
-
-```python
-def is_parent_block_full(state: BeaconState) -> bool:
-    return state.latest_execution_payload_bid.block_hash == state.latest_block_hash
-```
-
 #### New `is_pending_validator`
 
 *Note*: This function naively revalidates deposit signatures on every call.
@@ -928,12 +915,10 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
     bid = block.body.signed_execution_payload_bid.message
     parent_bid = state.latest_execution_payload_bid
 
-    # Determine parent payload status from block data. We cannot use
-    # is_parent_block_full(state) here because latest_block_hash has not
-    # been updated yet -- this function is responsible for updating it.
-    is_parent_full = bid.parent_block_hash == parent_bid.block_hash
+    # True if this block built on the parent's full payload
+    is_parent_block_full = bid.parent_block_hash == parent_bid.block_hash
 
-    if not is_parent_full:
+    if not is_parent_block_full:
         # Parent was EMPTY -- no execution requests expected
         assert block.body.parent_execution_requests == ExecutionRequests()
         return
@@ -1149,8 +1134,9 @@ def update_next_withdrawal_builder_index(
 *Note*: This is modified to only take the `state` as parameter. Withdrawals are
 deterministic given the beacon state, any execution payload that has the
 corresponding block as parent beacon block is required to honor these
-withdrawals in the execution layer. `process_withdrawals` must be called before
-`process_execution_payload_bid` as the latter function affects validator
+withdrawals in the execution layer. `process_withdrawals` must be called after
+`process_parent_execution_payload` (which updates `state.latest_block_hash`) and
+before `process_execution_payload_bid` as the latter function affects validator
 balances.
 
 ```python
@@ -1161,7 +1147,7 @@ def process_withdrawals(
 ) -> None:
     # [New in Gloas:EIP7732]
     # Return early if the parent block is empty
-    if not is_parent_block_full(state):
+    if state.latest_block_hash != state.latest_execution_payload_bid.block_hash:
         return
 
     # Get expected withdrawals

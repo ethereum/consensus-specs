@@ -102,14 +102,17 @@ proposer what it promised whether it submits the payload or not.
 Builders can broadcast a payload bid for the current or the next slot's proposer
 to include. They produce a `SignedExecutionPayloadBid` as follows.
 
-01. Set `bid.parent_block_hash` to the current head of the execution chain (this
-    can be obtained from the beacon state as `state.latest_block_hash`).
-02. Set `bid.parent_block_root` to be the head of the consensus chain; this can
+01. Set `bid.parent_block_hash` to the current head of the execution chain. This
+    is `state.latest_execution_payload_bid.block_hash` if the parent block has
+    been verified
+    (`hash_tree_root(state.latest_block_header) in store.payloads`), otherwise
+    `state.latest_execution_payload_bid.parent_block_hash`.
+02. Set `bid.parent_block_root` to be the head of the consensus chain. This can
     be obtained from the beacon state as
     `hash_tree_root(state.latest_block_header)`. The `parent_block_root` and
     `parent_block_hash` must be compatible, in the sense that they both should
-    come from the same `state` by the method described in this and the previous
-    point.
+    come from the same `state` and `store` by the method described in this and
+    the previous point.
 03. Construct an execution payload. This can be performed with an external
     execution engine via a call to `engine_getPayloadV5`.
 04. Set `bid.block_hash` to be the block hash of the constructed payload, that
