@@ -1,0 +1,131 @@
+name: PR Vectors
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number to generate vectors for (e.g. 5094)
+        required: true
+        type: string
+      presets:
+        description: Comma-separated presets (subset of general,minimal,mainnet)
+        default: mainnet,minimal
+        type: string
+      forks:
+        description: Comma-separated fork list, or "auto" to detect from changed paths
+        default: auto
+        type: string
+      k:
+        description: Optional pytest -k expression to narrow the generated set further
+        default: ""
+        type: string
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      repo: ${{ steps.resolve.outputs.repo }}
+      ref: ${{ steps.resolve.outputs.ref }}
+      sha: ${{ steps.resolve.outputs.sha }}
+      presets: ${{ steps.resolve.outputs.presets }}
+      forks: ${{ steps.resolve.outputs.forks }}
+    steps:
+      - name: Checkout base repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Resolve PR head and matrix
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ inputs.pr }}
+          PRESETS_INPUT: ${{ inputs.presets }}
+          FORKS_INPUT: ${{ inputs.forks }}
+        run: |
+          set -euo pipefail
+
+          pr_json=$(gh pr view "$PR" --repo ${{ github.repository }} \
+            --json headRefName,headRepositoryOwner,headRepository,headRefOid)
+          head_owner=$(echo "$pr_json" | jq -r '.headRepositoryOwner.login')
+          head_repo_name=$(echo "$pr_json" | jq -r '.headRepository.name')
+          head_ref=$(echo "$pr_json" | jq -r '.headRefName')
+          head_sha=$(echo "$pr_json" | jq -r '.headRefOid')
+          head_repo="${head_owner}/${head_repo_name}"
+
+          presets_json=$(python3 -c "import json,sys,os; \
+            allowed={'general','minimal','mainnet'}; \
+            items=[s.strip() for s in os.environ['PRESETS_INPUT'].split(',') if s.strip()]; \
+            bad=[s for s in items if s not in allowed]; \
+            sys.exit(f'invalid preset(s): {bad}') if bad else print(json.dumps(items))")
+
+          if [[ "$FORKS_INPUT" == "auto" ]]; then
+            forks_json=$(gh pr diff "$PR" --repo ${{ github.repository }} --name-only \
+              | python3 .github/scripts/detect_affected_forks.py)
+          else
+            forks_json=$(python3 -c "import json,os; \
+              print(json.dumps(sorted(s.strip() for s in os.environ['FORKS_INPUT'].split(',') if s.strip())))")
+          fi
+
+          {
+            echo "repo=$head_repo"
+            echo "ref=$head_ref"
+            echo "sha=$head_sha"
+            echo "presets=$presets_json"
+            echo "forks=$forks_json"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## PR Vectors — resolution"
+            echo ""
+            echo "| Field   | Value |"
+            echo "| ------- | ----- |"
+            echo "| PR      | #$PR |"
+            echo "| Repo    | \`$head_repo\` |"
+            echo "| Ref     | \`$head_ref\` |"
+            echo "| SHA     | \`$head_sha\` |"
+            echo "| Presets | \`$presets_json\` |"
+            echo "| Forks   | \`$forks_json\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  generate:
+    needs: resolve
+    timeout-minutes: 720
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: ${{ fromJson(needs.resolve.outputs.presets) }}
+        fork: ${{ fromJson(needs.resolve.outputs.forks) }}
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: ${{ needs.resolve.outputs.repo }}
+          ref: ${{ needs.resolve.outputs.sha }}
+
+      - name: Setup python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        with:
+          enable-cache: true
+
+      - name: Generate tests
+        env:
+          K: ${{ inputs.k }}
+        run: |
+          extra=""
+          if [[ -n "$K" ]]; then
+            extra="k=$K"
+          fi
+          make test component=pyspec verbose=true \
+            preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true $extra
+
+      - name: Upload reference tests
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: pr${{ inputs.pr }}-reftests-${{ matrix.preset }}-${{ matrix.fork }}
+          path: reftests/${{ matrix.preset }}
+          if-no-files-found: ignore
