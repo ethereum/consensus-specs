@@ -23,12 +23,12 @@ def test_process_parent_execution_payload__empty_parent(spec, state):
     After processing, the state should be unchanged with respect to
     latest_block_hash and execution_payload_availability.
     """
-    # Default genesis state: latest_block_hash == latest_execution_payload_bid.block_hash
-    # (parent is full). Process a block so the new bid's block_hash differs.
+    # Genesis parent is already empty (latest_block_hash != bid.block_hash).
+    # Process Block 1 so we test the empty-parent path on a non-genesis block.
     block_1 = build_empty_block_for_next_slot(spec, state)
     state_transition_and_sign_block(spec, state, block_1)
 
-    # After Block 1, parent is empty because no payload was delivered
+    # After Block 1, parent is still empty because no payload was delivered
     is_parent_block_full = state.latest_block_hash == state.latest_execution_payload_bid.block_hash
     assert not is_parent_block_full
 
@@ -59,9 +59,6 @@ def test_process_parent_execution_payload__full_parent(spec, state):
     """
     Test that process_parent_execution_payload processes the parent's execution
     requests and updates state when the parent block was full.
-
-    At genesis, latest_block_hash == latest_execution_payload_bid.block_hash,
-    so the first block always sees a full parent.
     """
     set_parent_block_full(spec, state)
 
