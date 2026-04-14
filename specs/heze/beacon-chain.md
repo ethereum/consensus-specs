@@ -103,7 +103,7 @@ class SignedExecutionPayloadBid(Container):
 #### `BeaconState`
 
 ```python
-class BeaconState(ProgressiveContainer(active_fields=[1] * 45)):
+class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     genesis_time: uint64
     genesis_validators_root: Root
     slot: Slot
@@ -150,6 +150,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 45)):
     builder_pending_withdrawals: ProgressiveList[BuilderPendingWithdrawal]
     latest_block_hash: Hash32
     payload_expected_withdrawals: ProgressiveList[Withdrawal]
+    ptc_window: Vector[Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]
 ```
 
 ## Helpers

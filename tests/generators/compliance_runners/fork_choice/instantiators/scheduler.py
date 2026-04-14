@@ -32,7 +32,7 @@ class MessageScheduler:
 
     def is_early_message(self, item: QueueItem) -> bool:
         current_slot = self.spec.get_current_slot(self.store)
-        return item.effective_slot < current_slot or any(
+        return item.effective_slot > current_slot or any(
             root not in self.store.blocks for root in item.dependencies
         )
 
