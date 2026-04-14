@@ -503,8 +503,8 @@ def get_node_children(
 
 ### Modified `get_head`
 
-*Note*: `get_head` is a modified to use the new `get_weight` function. It
-returns the `ForkChoiceNode` object corresponding to the head block.
+*Note*: `get_head` is modified to use the new `get_weight` function. It returns
+the `ForkChoiceNode` object corresponding to the head block.
 
 ```python
 def get_head(store: Store) -> ForkChoiceNode:
