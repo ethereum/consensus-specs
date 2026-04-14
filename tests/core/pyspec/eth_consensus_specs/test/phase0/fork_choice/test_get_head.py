@@ -454,6 +454,9 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
         anchor_block.body.signed_execution_payload_bid.message.block_hash = (
             anchor_state.latest_execution_payload_bid.block_hash
         )
+        anchor_block.body.signed_execution_payload_bid.message.execution_requests_root = (
+            anchor_state.latest_execution_payload_bid.execution_requests_root
+        )
     yield "anchor_state", anchor_state
     yield "anchor_block", anchor_block
 

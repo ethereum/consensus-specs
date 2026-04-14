@@ -258,6 +258,9 @@ def get_genesis_forkchoice_store_and_block(spec, genesis_state):
         genesis_block.body.signed_execution_payload_bid.message.block_hash = (
             genesis_state.latest_execution_payload_bid.block_hash
         )
+        genesis_block.body.signed_execution_payload_bid.message.execution_requests_root = (
+            genesis_state.latest_execution_payload_bid.execution_requests_root
+        )
     store = spec.get_forkchoice_store(genesis_state, genesis_block)
     return store, genesis_block
 
