@@ -5,6 +5,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
+from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -58,16 +59,17 @@ def _setup_missed_payload_with_withdrawals(spec, state, num_withdrawal_validator
     assert len(block_1_withdrawals) > 0
 
     # Payload for Block 1 was not delivered, so parent is empty for Block 2
-    assert not spec.is_parent_block_full(state)
+    is_parent_block_full = state.latest_block_hash == state.latest_execution_payload_bid.block_hash
+    assert not is_parent_block_full
 
     return pre_state, signed_block_1, block_1_withdrawals
 
 
 def _attempt_payload_with_withdrawals(spec, state, withdrawals):
     """
-    Attempt to process a payload for the current slot with the given withdrawals.
-    Uses verify=False to skip signature checks (we only care about withdrawal matching).
+    Attempt to verify a payload for the current slot with the given withdrawals.
     Operates on a copy to avoid mutating the test state.
+    BLS is disabled in tests by default, so signature verification passes.
 
     Returns True if accepted, False if rejected.
     """
@@ -85,28 +87,32 @@ def _attempt_payload_with_withdrawals(spec, state, withdrawals):
     )
 
     # Cache state root for beacon_block_root computation
-    # (matches what process_execution_payload does internally)
-    if test_state.latest_block_header.state_root == spec.Root():
-        test_state.latest_block_header.state_root = test_state.hash_tree_root()
+    header = test_state.latest_block_header.copy()
+    header.state_root = test_state.hash_tree_root()
 
     envelope = spec.ExecutionPayloadEnvelope(
         payload=payload,
         execution_requests=spec.ExecutionRequests(),
         builder_index=committed_bid.builder_index,
-        beacon_block_root=test_state.latest_block_header.hash_tree_root(),
+        beacon_block_root=header.hash_tree_root(),
         slot=test_state.slot,
-        state_root=spec.Root(),
     )
+
+    if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
+        privkey = privkeys[test_state.latest_block_header.proposer_index]
+    else:
+        privkey = builder_privkeys[envelope.builder_index]
+    signature = spec.get_execution_payload_envelope_signature(test_state, envelope, privkey)
 
     signed_envelope = spec.SignedExecutionPayloadEnvelope(
         message=envelope,
-        signature=spec.BLSSignature(),
+        signature=signature,
     )
 
     engine = spec.NoopExecutionEngine()
 
     try:
-        spec.process_execution_payload(test_state, signed_envelope, engine, verify=False)
+        spec.verify_execution_payload_envelope(test_state, signed_envelope, engine)
         return True
     except AssertionError:
         return False
