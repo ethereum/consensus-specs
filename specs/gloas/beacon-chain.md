@@ -792,12 +792,11 @@ out-of-range list access) are considered invalid. State transitions that cause a
 The validity of a signed execution payload envelope `signed_envelope` against a
 pre-state `state` is checked by
 `verify_execution_payload_envelope(state, signed_envelope, execution_engine)`.
-Deferred effects from the parent payload from execution requests, builder
-payment, payload availability, and latest block hash are applied in the next
-beacon block via `process_parent_execution_payload`. Payloads that trigger an
-unhandled exception (e.g. a failed `assert` or an out-of-range list access) are
-considered invalid. Payloads that cause a `uint64` overflow or underflow are
-also considered invalid.
+Payload processing is deferred to the next beacon block via
+`process_parent_execution_payload`. Payloads that trigger an unhandled exception
+(e.g. a failed `assert` or an out-of-range list access) are considered invalid.
+Payloads that cause a `uint64` overflow or underflow are also considered
+invalid.
 
 ### Modified `process_slot`
 
@@ -908,7 +907,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ```python
 def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> None:
     """
-    Process deferred effects from the parent's execution payload.
+    Process the parent block's execution payload.
     Must run first in ``process_block``, before ``process_block_header``, because it reads
     ``state.latest_block_header.slot`` and ``state.latest_execution_payload_bid``
     which are overwritten by ``process_block_header`` and ``process_execution_payload_bid``.
