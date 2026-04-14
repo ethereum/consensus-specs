@@ -294,8 +294,12 @@ def test_process_execution_payload_bid_invalid_signature_regular_builder(spec, s
     block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
     assert spec.is_active_builder(state, builder_index) is True
     signed_bid = prepare_signed_execution_payload_bid(
-        spec, state, builder_index=builder_index,
-        slot=block.slot, parent_block_root=block.parent_root, valid_signature=False,
+        spec,
+        state,
+        builder_index=builder_index,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
+        valid_signature=False,
     )
     assert spec.can_builder_cover_bid(state, builder_index, signed_bid.message.value) is True
     block.body.signed_execution_payload_bid = signed_bid
