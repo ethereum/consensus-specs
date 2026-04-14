@@ -242,21 +242,21 @@ def should_extend_payload(store: Store, root: Root) -> bool:
 ### New `get_view_freeze_cutoff_ms`
 
 ```python
-def get_view_freeze_cutoff_ms(epoch: Epoch) -> uint64:
+def get_view_freeze_cutoff_ms() -> uint64:
     return get_slot_component_duration_ms(VIEW_FREEZE_CUTOFF_BPS)
 ```
 
 ### New `get_inclusion_list_submission_due_ms`
 
 ```python
-def get_inclusion_list_submission_due_ms(epoch: Epoch) -> uint64:
+def get_inclusion_list_submission_due_ms() -> uint64:
     return get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS)
 ```
 
 ### New `get_proposer_inclusion_list_cutoff_ms`
 
 ```python
-def get_proposer_inclusion_list_cutoff_ms(epoch: Epoch) -> uint64:
+def get_proposer_inclusion_list_cutoff_ms() -> uint64:
     return get_slot_component_duration_ms(PROPOSER_INCLUSION_LIST_CUTOFF_BPS)
 ```
 
@@ -278,8 +278,7 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    epoch = get_current_store_epoch(store)
-    view_freeze_cutoff_ms = get_view_freeze_cutoff_ms(epoch)
+    view_freeze_cutoff_ms = get_view_freeze_cutoff_ms()
     is_before_view_freeze_cutoff = time_into_slot_ms < view_freeze_cutoff_ms
 
     process_inclusion_list(get_inclusion_list_store(), inclusion_list, is_before_view_freeze_cutoff)
