@@ -958,22 +958,19 @@ def apply_parent_execution_payload(
 def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> None:
     bid = block.body.signed_execution_payload_bid.message
     parent_bid = state.latest_execution_payload_bid
+    requests = block.body.parent_execution_requests
 
     # True if this block built on the parent's full payload
     is_parent_block_full = bid.parent_block_hash == parent_bid.block_hash
 
     if not is_parent_block_full:
         # Parent was EMPTY -- no execution requests expected
-        assert block.body.parent_execution_requests == ExecutionRequests()
+        assert requests == ExecutionRequests()
         return
 
-    # Verify execution requests match the bid commitment
-    assert (
-        hash_tree_root(block.body.parent_execution_requests) == parent_bid.execution_requests_root
-    )
-
-    # Apply parent payload processing
-    apply_parent_execution_payload(state, parent_bid, block.body.parent_execution_requests)
+    # Parent was FULL -- verify the bid commitment and apply the payload
+    assert hash_tree_root(requests) == parent_bid.execution_requests_root
+    apply_parent_execution_payload(state, parent_bid, requests)
 ```
 
 #### Withdrawals

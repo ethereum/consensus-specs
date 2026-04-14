@@ -312,6 +312,6 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
         store, state, envelope.beacon_block_root, envelope.payload, EXECUTION_ENGINE
     )
 
-    # Mark this block's execution payload as verified
+    # Add execution payload envelope to the store
     store.payloads[envelope.beacon_block_root] = envelope
 ```

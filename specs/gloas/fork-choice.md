@@ -125,7 +125,7 @@ def update_latest_messages(
 ### Modified `Store`
 
 *Note*: `Store` is modified to track blocks whose execution payloads have been
-verified along with the corresponding signed envelope.
+verified along with the corresponding envelope.
 
 ```python
 @dataclass
@@ -912,7 +912,7 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
     # Verify the execution payload envelope
     verify_execution_payload_envelope(state, signed_envelope, EXECUTION_ENGINE)
 
-    # Store the verified execution payload envelope
+    # Add execution payload envelope to the store
     store.payloads[envelope.beacon_block_root] = envelope
 ```
 
