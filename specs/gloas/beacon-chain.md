@@ -98,10 +98,10 @@
         - [New `process_payload_attestation`](#new-process_payload_attestation)
       - [Proposer slashing](#proposer-slashing)
         - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
-  - [Execution payload processing](#execution-payload-processing)
-    - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
-    - [New `verify_execution_payload_envelope`](#new-verify_execution_payload_envelope)
-    - [Removed `process_execution_payload`](#removed-process_execution_payload)
+    - [Execution payload](#execution-payload)
+      - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
+      - [New `verify_execution_payload_envelope`](#new-verify_execution_payload_envelope)
+      - [Removed `process_execution_payload`](#removed-process_execution_payload)
 
 <!-- mdformat-toc end -->
 
@@ -1595,9 +1595,9 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     slash_validator(state, header_1.proposer_index)
 ```
 
-### Execution payload processing
+#### Execution payload
 
-#### New `verify_execution_payload_envelope_signature`
+##### New `verify_execution_payload_envelope_signature`
 
 ```python
 def verify_execution_payload_envelope_signature(
@@ -1616,7 +1616,7 @@ def verify_execution_payload_envelope_signature(
     return bls.Verify(pubkey, signing_root, signed_envelope.signature)
 ```
 
-#### New `verify_execution_payload_envelope`
+##### New `verify_execution_payload_envelope`
 
 *Note*: `verify_execution_payload_envelope` is a verification helper called by
 fork-choice when importing a signed execution payload. It verifies the payload
@@ -1677,7 +1677,7 @@ def verify_execution_payload_envelope(
     )
 ```
 
-#### Removed `process_execution_payload`
+##### Removed `process_execution_payload`
 
 `process_execution_payload` has been replaced by
 `verify_execution_payload_envelope`, a pure verification helper called from
