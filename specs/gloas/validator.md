@@ -195,9 +195,10 @@ top of a `state` MUST take the following actions in order to construct the
   - The builder balance can cover the `bid.value`.
   - The `bid.slot` is for the proposal block slot.
   - The `bid.parent_block_hash` equals
-    `state.latest_execution_payload_bid.block_hash` if `block.parent_root in
-    store.payloads` and `should_extend_payload(store, block.parent_root)` is
-    true, otherwise `state.latest_execution_payload_bid.parent_block_hash`.
+    `state.latest_execution_payload_bid.block_hash` if
+    `block.parent_root in store.payloads` and
+    `should_extend_payload(store, block.parent_root)` is true, otherwise
+    `state.latest_execution_payload_bid.parent_block_hash`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
 - Select one bid and set
   `block.body.signed_execution_payload_bid = signed_execution_payload_bid`.
@@ -232,8 +233,8 @@ parent's execution payload. The proposer constructs this field as follows:
   `parent_execution_requests` to an empty `ExecutionRequests()`.
 - If `block.parent_root in store.payloads` and
   `should_extend_payload(store, block.parent_root)` is true (the proposer is
-  building on the parent's full payload), set `parent_execution_requests` to
-  the `ExecutionRequests` from `store.payloads[block.parent_root]`.
+  building on the parent's full payload), set `parent_execution_requests` to the
+  `ExecutionRequests` from `store.payloads[block.parent_root]`.
 - Otherwise (the proposer is building on the parent's empty variant), set
   `parent_execution_requests` to an empty `ExecutionRequests()`.
 
@@ -241,11 +242,11 @@ parent's execution payload. The proposer constructs this field as follows:
 
 *Note*: `prepare_execution_payload` is modified in Gloas to take `store` as an
 additional parameter. It checks that the parent's envelope is present in
-`store.payloads` and consults `should_extend_payload` to decide whether to
-build on the parent's full payload or its empty variant, selecting both the
-withdrawals source and the execution head for the new payload. When building
-on a full parent, `apply_parent_execution_payload` is called so that
-withdrawals are computed against the post-processing state.
+`store.payloads` and consults `should_extend_payload` to decide whether to build
+on the parent's full payload or its empty variant, selecting both the
+withdrawals source and the execution head for the new payload. When building on
+a full parent, `apply_parent_execution_payload` is called so that withdrawals
+are computed against the post-processing state.
 
 ```python
 def prepare_execution_payload(
