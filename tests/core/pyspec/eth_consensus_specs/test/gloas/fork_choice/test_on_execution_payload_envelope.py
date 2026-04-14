@@ -81,7 +81,7 @@ def _build_invalid_envelope(spec, state, block_root, signed_block, **overrides):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload__valid(spec, state):
+def test_on_execution_payload_envelope__valid(spec, state):
     test_steps = []
 
     # Initialization
@@ -139,7 +139,7 @@ def test_on_execution_payload__valid(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload__wrong_signature(spec, state):
+def test_on_execution_payload_envelope__wrong_signature(spec, state):
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
@@ -166,7 +166,7 @@ def test_on_execution_payload__wrong_signature(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload__wrong_beacon_block_root(spec, state):
+def test_on_execution_payload_envelope__wrong_beacon_block_root(spec, state):
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
@@ -193,7 +193,7 @@ def test_on_execution_payload__wrong_beacon_block_root(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload__wrong_slot(spec, state):
+def test_on_execution_payload_envelope__wrong_slot(spec, state):
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
@@ -220,7 +220,7 @@ def test_on_execution_payload__wrong_slot(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload__wrong_builder_index(spec, state):
+def test_on_execution_payload_envelope__wrong_builder_index(spec, state):
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
@@ -247,7 +247,7 @@ def test_on_execution_payload__wrong_builder_index(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload__wrong_prev_randao(spec, state):
+def test_on_execution_payload_envelope__wrong_prev_randao(spec, state):
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
@@ -274,7 +274,7 @@ def test_on_execution_payload__wrong_prev_randao(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload__wrong_execution_requests_root(spec, state):
+def test_on_execution_payload_envelope__wrong_execution_requests_root(spec, state):
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
@@ -320,7 +320,7 @@ def test_on_execution_payload__wrong_execution_requests_root(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload__wrong_withdrawals(spec, state):
+def test_on_execution_payload_envelope__wrong_withdrawals(spec, state):
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
@@ -357,7 +357,7 @@ def test_on_execution_payload__wrong_withdrawals(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload__wrong_gas_limit(spec, state):
+def test_on_execution_payload_envelope__wrong_gas_limit(spec, state):
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
@@ -384,7 +384,7 @@ def test_on_execution_payload__wrong_gas_limit(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload__wrong_block_hash(spec, state):
+def test_on_execution_payload_envelope__wrong_block_hash(spec, state):
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
@@ -411,7 +411,7 @@ def test_on_execution_payload__wrong_block_hash(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload__wrong_parent_hash(spec, state):
+def test_on_execution_payload_envelope__wrong_parent_hash(spec, state):
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state
@@ -438,7 +438,7 @@ def test_on_execution_payload__wrong_parent_hash(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload__wrong_timestamp(spec, state):
+def test_on_execution_payload_envelope__wrong_timestamp(spec, state):
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     yield "anchor_state", state

@@ -42,7 +42,7 @@
 - [Handlers](#handlers)
   - [Modified `on_block`](#modified-on_block)
   - [Modified `is_data_available`](#modified-is_data_available)
-  - [New `on_execution_payload`](#new-on_execution_payload)
+  - [New `on_execution_payload_envelope`](#new-on_execution_payload_envelope)
   - [New `on_payload_attestation_message`](#new-on_payload_attestation_message)
 
 <!-- mdformat-toc end -->
@@ -807,15 +807,17 @@ def is_data_available(beacon_block_root: Root) -> bool:
     )
 ```
 
-### New `on_execution_payload`
+### New `on_execution_payload_envelope`
 
-The handler `on_execution_payload` is called when the node receives a
+The handler `on_execution_payload_envelope` is called when the node receives a
 `SignedExecutionPayloadEnvelope` to sync.
 
 ```python
-def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEnvelope) -> None:
+def on_execution_payload_envelope(
+    store: Store, signed_envelope: SignedExecutionPayloadEnvelope
+) -> None:
     """
-    Run ``on_execution_payload`` upon receiving a new execution payload.
+    Run ``on_execution_payload_envelope`` upon receiving a new execution payload envelope.
     """
     envelope = signed_envelope.message
     # The corresponding beacon block root needs to be known

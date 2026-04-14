@@ -308,14 +308,14 @@ def run_non_empty_transactions_test(spec, state):
 @spec_state_test
 def test_non_empty_transactions_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)
-    yield from run_non_empty_extra_data_test(spec, state)
+    yield from run_non_empty_transactions_test(spec, state)
 
 
 @with_all_phases_from_to(BELLATRIX, GLOAS)
 @spec_state_test
 def test_non_empty_transactions_regular_payload(spec, state):
     state = build_state_with_complete_transition(spec, state)
-    yield from run_non_empty_extra_data_test(spec, state)
+    yield from run_non_empty_transactions_test(spec, state)
 
 
 def run_zero_length_transaction_test(spec, state):
