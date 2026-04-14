@@ -116,11 +116,13 @@ def messages_to_payload_attestations(spec, state, messages):
         for i, validator_index in enumerate(ptc):
             if validator_index in index_set:
                 aggregation_bits[i] = True
-        result.append(spec.PayloadAttestation(
-            aggregation_bits=aggregation_bits,
-            data=data,
-            signature=spec.BLSSignature(),
-        ))
+        result.append(
+            spec.PayloadAttestation(
+                aggregation_bits=aggregation_bits,
+                data=data,
+                signature=spec.BLSSignature(),
+            )
+        )
 
     return result
 
@@ -147,7 +149,9 @@ def _compute_pseudo_randao_reveal(spec, proposer_index, epoch):
     return spec.BLSSignature(randao_reveal_bytes)
 
 
-def produce_block(spec, state, attestations, attester_slashings=[], payload_attestation_messages=[]):
+def produce_block(
+    spec, state, attestations, attester_slashings=[], payload_attestation_messages=[]
+):
     """
     Produces a block including as many attestations as it is possible.
     Accepts PayloadAttestationMessage objects and aggregates them into PayloadAttestation for on-chain inclusion.
@@ -178,7 +182,8 @@ def produce_block(spec, state, attestations, attester_slashings=[], payload_atte
     if is_post_gloas(spec):
         # Aggregate eligible payload attestation messages into PayloadAttestations for on-chain inclusion
         eligible_pa_messages = [
-            m for m in payload_attestation_messages
+            m
+            for m in payload_attestation_messages
             if m.data.beacon_block_root == block.parent_root and m.data.slot + 1 == block.slot
         ]
         for pa in messages_to_payload_attestations(spec, state, eligible_pa_messages):
@@ -208,7 +213,9 @@ def produce_block(spec, state, attestations, attester_slashings=[], payload_atte
         if is_post_gloas(spec):
             included_pa_indices = set(m.validator_index for m in eligible_pa_messages)
             not_included_pa_messages = [
-                m for m in payload_attestation_messages if m.validator_index not in included_pa_indices
+                m
+                for m in payload_attestation_messages
+                if m.validator_index not in included_pa_indices
             ]
 
     # Return a pre state if the block is invalid
@@ -478,7 +485,7 @@ def _add_block(spec, store, signed_block, test_steps):
             except AssertionError:
                 # ignore possible faults, if the block is valid
                 pass
-        
+
         if is_post_gloas(spec):
             # An on_block step implies receiving block's payload attestations (post GLOAS)
             st = store.block_states[signed_block.message.hash_tree_root()]
@@ -570,7 +577,7 @@ def yield_fork_choice_test_events(spec, test_data: FCTestData, test_events: list
             output_store_checks(spec, store, test_steps)
         elif event_kind == "execution_payload":
             _, signed_envelope, valid = event
-            assert valid # invalid not supported yet
+            assert valid  # invalid not supported yet
             yield from add_execution_payload(spec, store, signed_envelope, test_steps, valid=valid)
             output_store_checks(spec, store, test_steps)
         elif event_kind == "payload_attestation":

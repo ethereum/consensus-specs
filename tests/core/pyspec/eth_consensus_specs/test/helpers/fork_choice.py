@@ -397,7 +397,7 @@ def add_block(
     # An on_block step implies receiving block's attester slashings
     for attester_slashing in signed_block.message.body.attester_slashings:
         run_on_attester_slashing(spec, store, attester_slashing, valid=True)
-    
+
     if is_post_gloas(spec):
         # An on_block step implies receiving block's payload attestations (post GLOAS)
         state = store.block_states[signed_block.message.hash_tree_root()]
@@ -410,7 +410,7 @@ def add_block(
                 ptc_message = spec.PayloadAttestationMessage(
                     validator_index=validator_index,
                     data=payload_attestation.data,
-                    signature=spec.BLSSignature()
+                    signature=spec.BLSSignature(),
                 )
                 run_on_payload_attestation_message(
                     spec, store, ptc_message, is_from_block=True, valid=True
@@ -484,16 +484,20 @@ def add_attester_slashing(spec, store, attester_slashing, test_steps, valid=True
 
 def run_on_payload_attestation_message(spec, store, ptc_message, is_from_block=False, valid=True):
     if not valid:
-        expect_assertion_error(lambda: spec.on_payload_attestation_message(store, ptc_message, is_from_block=is_from_block))
+        expect_assertion_error(
+            lambda: spec.on_payload_attestation_message(
+                store, ptc_message, is_from_block=is_from_block
+            )
+        )
         return
-    
+
     spec.on_payload_attestation_message(store, ptc_message, is_from_block=is_from_block)
 
 
 def add_payload_attestation_message(spec, store, ptc_message, test_steps, valid=True):
     ptc_file_name = get_payload_attestation_message_file_name(ptc_message)
     yield ptc_file_name, ptc_message
-    
+
     if not valid:
         expect_assertion_error(lambda: spec.on_payload_attestation_message(store, ptc_message))
         test_steps.append({"payload_attestation": ptc_file_name, "valid": False})

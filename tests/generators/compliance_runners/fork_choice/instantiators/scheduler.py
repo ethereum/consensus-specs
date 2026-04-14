@@ -176,7 +176,7 @@ class MessageScheduler:
             applied_events.extend(self.purge_queue())
             self.process_block_messages(signed_block)
         return valid, applied_events
-    
+
     def process_payload(self, signed_payload) -> bool:
         try:
             self.spec.on_execution_payload_envelope(self.store, signed_payload)

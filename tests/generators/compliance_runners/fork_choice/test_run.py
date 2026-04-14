@@ -77,8 +77,8 @@ TestInfo = namedtuple(
 def run_test(test_info):
     preset, fork, test_dir = test_info
     spec = spec_targets[preset][fork]
-    _, anchor_block, anchor_state, blocks, atts, slashings, envelopes, payload_atts, steps = get_test_case(
-        spec, test_dir
+    _, anchor_block, anchor_state, blocks, atts, slashings, envelopes, payload_atts, steps = (
+        get_test_case(spec, test_dir)
     )
     store = spec.get_forkchoice_store(anchor_state, anchor_block)
     for step in steps:
