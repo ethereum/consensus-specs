@@ -1065,6 +1065,10 @@ def test_full_builder_payload_reserves_sweep_slot(spec, state):
         if validator.withdrawal_credentials[0:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX:
             state.balances[i] = min(state.balances[i], spec.MAX_EFFECTIVE_BALANCE)
 
+    # Setup: Simulate parent being FULL so process_withdrawals runs (deferred
+    # processing otherwise returns early when parent was EMPTY).
+    state.latest_block_hash = state.latest_execution_payload_bid.block_hash
+
     # Verify setup: One slot reserved for sweep, so only MAX - 1 builder withdrawals
     expected_result = spec.get_expected_withdrawals(state)
     expected_builder_withdrawals = spec.MAX_WITHDRAWALS_PER_PAYLOAD - 1

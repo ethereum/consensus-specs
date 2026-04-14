@@ -95,9 +95,9 @@ def test_on_execution_payload_envelope__valid(spec, state):
     anchor_root = get_anchor_root(spec, state)
     check_head_against_root(spec, store, anchor_root)
 
-    # Genesis head has FULL payload status
+    # Genesis head has EMPTY payload status (no envelope in store.payloads)
     head = spec.get_head(store)
-    assert head.payload_status == spec.PAYLOAD_STATUS_FULL
+    assert head.payload_status == spec.PAYLOAD_STATUS_EMPTY
 
     # On receiving a block of `GENESIS_SLOT + 1` slot
     signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
