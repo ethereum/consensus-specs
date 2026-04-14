@@ -19,6 +19,42 @@ on:
         description: Generate mainnet preset
         default: false
         type: boolean
+      phase0:
+        description: Generate phase0 tests
+        default: true
+        type: boolean
+      altair:
+        description: Generate altair tests
+        default: true
+        type: boolean
+      bellatrix:
+        description: Generate bellatrix tests
+        default: true
+        type: boolean
+      capella:
+        description: Generate capella tests
+        default: true
+        type: boolean
+      deneb:
+        description: Generate deneb tests
+        default: true
+        type: boolean
+      electra:
+        description: Generate electra tests
+        default: true
+        type: boolean
+      fulu:
+        description: Generate fulu tests
+        default: true
+        type: boolean
+      gloas:
+        description: Generate gloas tests
+        default: true
+        type: boolean
+      heze:
+        description: Generate heze tests
+        default: true
+        type: boolean
   schedule:
     - cron: "0 0 * * *"
 
@@ -26,8 +62,9 @@ jobs:
   config:
     runs-on: ubuntu-latest
     outputs:
-      presets: ${{ steps.config.outputs.presets }}
       ref: ${{ steps.config.outputs.ref }}
+      presets: ${{ steps.config.outputs.presets }}
+      forks: ${{ steps.config.outputs.forks }}
     steps:
       - name: Resolve configuration
         id: config
@@ -57,10 +94,36 @@ jobs:
           fi
           echo "presets=$presets" >> "$GITHUB_OUTPUT"
 
+          # Forks
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            forks='["phase0","altair","bellatrix","capella","deneb","electra","fulu","gloas","heze"]'
+          else
+            selected=()
+            [[ "${{ inputs.phase0 }}" == "true" ]] && selected+=("phase0")
+            [[ "${{ inputs.altair }}" == "true" ]] && selected+=("altair")
+            [[ "${{ inputs.bellatrix }}" == "true" ]] && selected+=("bellatrix")
+            [[ "${{ inputs.capella }}" == "true" ]] && selected+=("capella")
+            [[ "${{ inputs.deneb }}" == "true" ]] && selected+=("deneb")
+            [[ "${{ inputs.electra }}" == "true" ]] && selected+=("electra")
+            [[ "${{ inputs.fulu }}" == "true" ]] && selected+=("fulu")
+            [[ "${{ inputs.gloas }}" == "true" ]] && selected+=("gloas")
+            [[ "${{ inputs.heze }}" == "true" ]] && selected+=("heze")
+
+            if [[ ${#selected[@]} -eq 0 ]]; then
+              echo "No forks selected." >&2
+              exit 1
+            fi
+
+            json=$(printf '"%s",' "${selected[@]}")
+            forks="[${json%,}]"
+          fi
+          echo "forks=$forks" >> "$GITHUB_OUTPUT"
+
           # Summary
           echo "Configuration:"
           echo "  ref:     ${ref:-master}"
           echo "  presets: $presets"
+          echo "  forks:   $forks"
 
   generate:
     needs: config
@@ -70,16 +133,7 @@ jobs:
       fail-fast: false
       matrix:
         preset: ${{ fromJson(needs.config.outputs.presets) }}
-        fork:
-          - phase0
-          - altair
-          - bellatrix
-          - capella
-          - deneb
-          - electra
-          - fulu
-          - gloas
-          - heze
+        fork: ${{ fromJson(needs.config.outputs.forks) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
