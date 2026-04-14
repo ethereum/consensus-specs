@@ -83,6 +83,8 @@
       - [New `update_builder_pending_withdrawals`](#new-update_builder_pending_withdrawals)
       - [New `update_next_withdrawal_builder_index`](#new-update_next_withdrawal_builder_index)
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
+    - [Execution payload](#execution-payload)
+      - [Removed `process_execution_payload`](#removed-process_execution_payload)
     - [Execution payload bid](#execution-payload-bid)
       - [New `verify_execution_payload_bid_signature`](#new-verify_execution_payload_bid_signature)
       - [New `process_execution_payload_bid`](#new-process_execution_payload_bid)
@@ -101,8 +103,6 @@
         - [New `process_payload_attestation`](#new-process_payload_attestation)
       - [Proposer slashing](#proposer-slashing)
         - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
-    - [Execution payload](#execution-payload)
-      - [Removed `process_execution_payload`](#removed-process_execution_payload)
 
 <!-- mdformat-toc end -->
 
@@ -1266,6 +1266,15 @@ def process_withdrawals(
     update_next_withdrawal_validator_index(state, expected.withdrawals)
 ```
 
+#### Execution payload
+
+##### Removed `process_execution_payload`
+
+`process_execution_payload` has been replaced by
+`verify_execution_payload_envelope`, a pure verification helper called from
+`on_execution_payload_envelope`. Payload processing is deferred to the next
+beacon block via `process_parent_execution_payload`.
+
 #### Execution payload bid
 
 ##### New `verify_execution_payload_bid_signature`
@@ -1678,12 +1687,3 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
 
     slash_validator(state, header_1.proposer_index)
 ```
-
-#### Execution payload
-
-##### Removed `process_execution_payload`
-
-`process_execution_payload` has been replaced by
-`verify_execution_payload_envelope`, a pure verification helper called from
-`on_execution_payload_envelope`. Payload processing is deferred to the next
-beacon block via `process_parent_execution_payload`.
