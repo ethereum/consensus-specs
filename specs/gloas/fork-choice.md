@@ -740,7 +740,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     assert block.parent_root in store.block_states
 
     # If this block builds on the parent's full payload, that payload must
-    # have been verified by on_execution_payload
+    # have been verified by on_execution_payload_envelope
     if is_parent_node_full(store, block):
         assert block.parent_root in store.payloads
 

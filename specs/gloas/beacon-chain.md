@@ -1682,5 +1682,5 @@ def verify_execution_payload_envelope(
 
 `process_execution_payload` has been replaced by
 `verify_execution_payload_envelope`, a pure verification helper called from
-`on_execution_payload`. Payload processing is deferred to the next beacon block
-via `process_parent_execution_payload`.
+`on_execution_payload_envelope`. Payload processing is deferred to the next
+beacon block via `process_parent_execution_payload`.
