@@ -61,6 +61,9 @@
     - [New `get_builder_payment_quorum_threshold`](#new-get_builder_payment_quorum_threshold)
   - [Beacon state mutators](#beacon-state-mutators)
     - [New `initiate_builder_exit`](#new-initiate_builder_exit)
+  - [Execution payload verification](#execution-payload-verification)
+    - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
+    - [New `verify_execution_payload_envelope`](#new-verify_execution_payload_envelope)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
@@ -99,8 +102,6 @@
       - [Proposer slashing](#proposer-slashing)
         - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
     - [Execution payload](#execution-payload)
-      - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
-      - [New `verify_execution_payload_envelope`](#new-verify_execution_payload_envelope)
       - [Removed `process_execution_payload`](#removed-process_execution_payload)
 
 <!-- mdformat-toc end -->
@@ -776,6 +777,88 @@ def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> No
 
     # Set builder exit epoch
     builder.withdrawable_epoch = get_current_epoch(state) + MIN_BUILDER_WITHDRAWABILITY_DELAY
+```
+
+### Execution payload verification
+
+#### New `verify_execution_payload_envelope_signature`
+
+```python
+def verify_execution_payload_envelope_signature(
+    state: BeaconState, signed_envelope: SignedExecutionPayloadEnvelope
+) -> bool:
+    builder_index = signed_envelope.message.builder_index
+    if builder_index == BUILDER_INDEX_SELF_BUILD:
+        validator_index = state.latest_block_header.proposer_index
+        pubkey = state.validators[validator_index].pubkey
+    else:
+        pubkey = state.builders[builder_index].pubkey
+
+    signing_root = compute_signing_root(
+        signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER)
+    )
+    return bls.Verify(pubkey, signing_root, signed_envelope.signature)
+```
+
+#### New `verify_execution_payload_envelope`
+
+*Note*: `verify_execution_payload_envelope` is a verification helper called by
+fork-choice when importing a signed execution payload. It verifies the payload
+against the execution engine without processing it. Payload processing is
+deferred to the next beacon block via `process_parent_execution_payload`.
+
+```python
+def verify_execution_payload_envelope(
+    state: BeaconState,
+    signed_envelope: SignedExecutionPayloadEnvelope,
+    execution_engine: ExecutionEngine,
+) -> None:
+    envelope = signed_envelope.message
+    payload = envelope.payload
+
+    # Verify signature
+    assert verify_execution_payload_envelope_signature(state, signed_envelope)
+
+    # Cache latest block header state root
+    header = copy(state.latest_block_header)
+    header.state_root = hash_tree_root(state)
+
+    # Verify consistency with the beacon block
+    assert envelope.beacon_block_root == hash_tree_root(header)
+    assert envelope.slot == state.slot
+
+    # Verify consistency with the committed bid
+    committed_bid = state.latest_execution_payload_bid
+    assert envelope.builder_index == committed_bid.builder_index
+    assert committed_bid.prev_randao == payload.prev_randao
+    assert hash_tree_root(envelope.execution_requests) == committed_bid.execution_requests_root
+
+    # Verify consistency with expected withdrawals
+    assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
+
+    # Verify the gas_limit
+    assert committed_bid.gas_limit == payload.gas_limit
+    # Verify the block hash
+    assert committed_bid.block_hash == payload.block_hash
+    # Verify consistency of the parent hash with respect to the previous execution payload
+    assert payload.parent_hash == state.latest_block_hash
+    # Verify timestamp
+    assert payload.timestamp == compute_time_at_slot(state, state.slot)
+    # Verify the execution payload is valid
+    versioned_hashes = [
+        kzg_commitment_to_versioned_hash(commitment)
+        # [Modified in Gloas:EIP7732]
+        for commitment in committed_bid.blob_kzg_commitments
+    ]
+    requests = envelope.execution_requests
+    assert execution_engine.verify_and_notify_new_payload(
+        NewPayloadRequest(
+            execution_payload=payload,
+            versioned_hashes=versioned_hashes,
+            parent_beacon_block_root=state.latest_block_header.parent_root,
+            execution_requests=requests,
+        )
+    )
 ```
 
 ## Beacon chain state transition function
@@ -1597,86 +1680,6 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
 ```
 
 #### Execution payload
-
-##### New `verify_execution_payload_envelope_signature`
-
-```python
-def verify_execution_payload_envelope_signature(
-    state: BeaconState, signed_envelope: SignedExecutionPayloadEnvelope
-) -> bool:
-    builder_index = signed_envelope.message.builder_index
-    if builder_index == BUILDER_INDEX_SELF_BUILD:
-        validator_index = state.latest_block_header.proposer_index
-        pubkey = state.validators[validator_index].pubkey
-    else:
-        pubkey = state.builders[builder_index].pubkey
-
-    signing_root = compute_signing_root(
-        signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER)
-    )
-    return bls.Verify(pubkey, signing_root, signed_envelope.signature)
-```
-
-##### New `verify_execution_payload_envelope`
-
-*Note*: `verify_execution_payload_envelope` is a verification helper called by
-fork-choice when importing a signed execution payload. It verifies the payload
-against the execution engine without processing it. Payload processing is
-deferred to the next beacon block via `process_parent_execution_payload`.
-
-```python
-def verify_execution_payload_envelope(
-    state: BeaconState,
-    signed_envelope: SignedExecutionPayloadEnvelope,
-    execution_engine: ExecutionEngine,
-) -> None:
-    envelope = signed_envelope.message
-    payload = envelope.payload
-
-    # Verify signature
-    assert verify_execution_payload_envelope_signature(state, signed_envelope)
-
-    # Cache latest block header state root
-    header = copy(state.latest_block_header)
-    header.state_root = hash_tree_root(state)
-
-    # Verify consistency with the beacon block
-    assert envelope.beacon_block_root == hash_tree_root(header)
-    assert envelope.slot == state.slot
-
-    # Verify consistency with the committed bid
-    committed_bid = state.latest_execution_payload_bid
-    assert envelope.builder_index == committed_bid.builder_index
-    assert committed_bid.prev_randao == payload.prev_randao
-    assert hash_tree_root(envelope.execution_requests) == committed_bid.execution_requests_root
-
-    # Verify consistency with expected withdrawals
-    assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
-
-    # Verify the gas_limit
-    assert committed_bid.gas_limit == payload.gas_limit
-    # Verify the block hash
-    assert committed_bid.block_hash == payload.block_hash
-    # Verify consistency of the parent hash with respect to the previous execution payload
-    assert payload.parent_hash == state.latest_block_hash
-    # Verify timestamp
-    assert payload.timestamp == compute_time_at_slot(state, state.slot)
-    # Verify the execution payload is valid
-    versioned_hashes = [
-        kzg_commitment_to_versioned_hash(commitment)
-        # [Modified in Gloas:EIP7732]
-        for commitment in committed_bid.blob_kzg_commitments
-    ]
-    requests = envelope.execution_requests
-    assert execution_engine.verify_and_notify_new_payload(
-        NewPayloadRequest(
-            execution_payload=payload,
-            versioned_hashes=versioned_hashes,
-            parent_beacon_block_root=state.latest_block_header.parent_root,
-            execution_requests=requests,
-        )
-    )
-```
 
 ##### Removed `process_execution_payload`
 
