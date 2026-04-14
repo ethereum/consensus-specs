@@ -23,7 +23,7 @@ from eth_consensus_specs.test.helpers.state import (
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload(spec, state):
+def test_on_execution_payload_envelope(spec, state):
     test_steps = []
 
     # Initialization

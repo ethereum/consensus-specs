@@ -23,7 +23,7 @@
   - [New `get_proposer_inclusion_list_cutoff_ms`](#new-get_proposer_inclusion_list_cutoff_ms)
 - [Handlers](#handlers)
   - [New `on_inclusion_list`](#new-on_inclusion_list)
-  - [Modified `on_execution_payload`](#modified-on_execution_payload)
+  - [Modified `on_execution_payload_envelope`](#modified-on_execution_payload_envelope)
 
 <!-- mdformat-toc end -->
 
@@ -284,12 +284,14 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     process_inclusion_list(get_inclusion_list_store(), inclusion_list, is_before_view_freeze_cutoff)
 ```
 
-### Modified `on_execution_payload`
+### Modified `on_execution_payload_envelope`
 
 ```python
-def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEnvelope) -> None:
+def on_execution_payload_envelope(
+    store: Store, signed_envelope: SignedExecutionPayloadEnvelope
+) -> None:
     """
-    Run ``on_execution_payload`` upon receiving a new execution payload.
+    Run ``on_execution_payload_envelope`` upon receiving a new execution payload envelope.
     """
     envelope = signed_envelope.message
     # The corresponding beacon block root needs to be known
