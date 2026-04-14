@@ -122,9 +122,11 @@ def run_test(test_info):
             valid = step.get("valid", True)
             signed_envelope = envelopes[envelope_id]
             if valid:
-                spec.on_execution_payload(store, signed_envelope)
+                spec.on_execution_payload_envelope(store, signed_envelope)
             else:
-                expect_assertion_error(lambda: spec.on_execution_payload(store, signed_envelope))
+                expect_assertion_error(
+                    lambda: spec.on_execution_payload_envelope(store, signed_envelope)
+                )
         elif "checks" in step:
             checks = step["checks"]
             for check, value in checks.items():
