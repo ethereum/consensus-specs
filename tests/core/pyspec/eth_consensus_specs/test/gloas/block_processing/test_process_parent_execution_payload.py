@@ -1,10 +1,9 @@
-from eth_consensus_specs.test.context import (
-    expect_assertion_error,
-    spec_state_test,
-    with_gloas_and_later,
-)
+from eth_consensus_specs.test.context import spec_state_test, with_gloas_and_later
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
+)
+from eth_consensus_specs.test.helpers.execution_requests import (
+    get_non_empty_execution_requests,
 )
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
@@ -39,9 +38,9 @@ def test_process_parent_execution_payload__empty_parent(spec, state):
 
     # Process Block 2 -- process_parent_execution_payload should return early
     block_2 = build_empty_block_for_next_slot(spec, state)
+    yield "pre", state
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
 
-    yield "pre", state
     yield "blocks", [signed_block_2]
     yield "post", state
 
@@ -70,9 +69,9 @@ def test_process_parent_execution_payload__full_parent(spec, state):
 
     # Process Block 1 -- parent is full, so process_parent_execution_payload runs
     block_1 = build_empty_block_for_next_slot(spec, state)
+    yield "pre", state
     signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
 
-    yield "pre", state
     yield "blocks", [signed_block_1]
     yield "post", state
 
@@ -95,54 +94,11 @@ def test_process_parent_execution_payload__empty_parent_requires_empty_requests(
     is_parent_block_full = state.latest_block_hash == state.latest_execution_payload_bid.block_hash
     assert not is_parent_block_full
 
-    # The block helper builds blocks with default (empty) parent_execution_requests,
-    # which is what process_parent_execution_payload expects for empty parents.
-    # This test just confirms the empty parent path works.
+    # A non-empty parent_execution_requests must be rejected when the parent is empty.
     block_2 = build_empty_block_for_next_slot(spec, state)
-    signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
-
+    block_2.body.parent_execution_requests = get_non_empty_execution_requests(spec)
     yield "pre", state
+    signed_block_2 = state_transition_and_sign_block(spec, state, block_2, expect_fail=True)
+
     yield "blocks", [signed_block_2]
-    yield "post", state
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_process_parent_execution_payload__wrong_execution_requests_root(spec, state):
-    """
-    Test that process_parent_execution_payload rejects a block whose
-    parent_execution_requests do not match parent_bid.execution_requests_root
-    when the parent block was full.
-    """
-    set_parent_block_full(spec, state)
-
-    # Build a valid block, then tamper with parent_execution_requests
-    block = build_empty_block_for_next_slot(spec, state)
-
-    # Inject a non-empty deposit so the hash diverges from the committed root
-    block.body.parent_execution_requests = spec.ExecutionRequests(
-        deposits=spec.List[spec.DepositRequest, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD](
-            [
-                spec.DepositRequest(
-                    pubkey=spec.BLSPubkey(b"\x01" * 48),
-                    withdrawal_credentials=spec.Bytes32(b"\x02" * 32),
-                    amount=spec.Gwei(32000000000),
-                    signature=spec.BLSSignature(b"\x03" * 96),
-                    index=spec.uint64(0),
-                )
-            ]
-        ),
-        withdrawals=spec.List[spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD](),
-        consolidations=spec.List[
-            spec.ConsolidationRequest, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
-        ](),
-    )
-
-    # Advance to the block's slot so process_block can run
-    spec.process_slots(state, block.slot)
-
-    yield "pre", state
-
-    expect_assertion_error(lambda: spec.process_parent_execution_payload(state, block))
-
     yield "post", None

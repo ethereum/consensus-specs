@@ -5,6 +5,9 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
+from eth_consensus_specs.test.helpers.execution_requests import (
+    get_non_empty_execution_requests,
+)
 from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
@@ -236,3 +239,26 @@ def test_missed_payload_next_block_without_withdrawals_unsatisfying_payload(spec
     # An empty payload is rejected — it must include W_1
     empty_withdrawals = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD]()
     assert not _attempt_payload_with_withdrawals(spec, state, empty_withdrawals)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_parent_execution_payload__wrong_execution_requests_root(spec, state):
+    """
+    Test that process_parent_execution_payload rejects a block whose
+    parent_execution_requests do not match parent_bid.execution_requests_root
+    when the parent block was full.
+    """
+    set_parent_block_full(spec, state)
+
+    # Build a valid block, then tamper with parent_execution_requests
+    block = build_empty_block_for_next_slot(spec, state)
+
+    # Inject a non-empty deposit so the hash diverges from the committed root
+    block.body.parent_execution_requests = get_non_empty_execution_requests(spec)
+
+    yield "pre", state
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield "blocks", [signed_block]
+    yield "post", None
