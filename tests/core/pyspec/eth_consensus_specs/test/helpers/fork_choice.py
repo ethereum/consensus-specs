@@ -400,10 +400,10 @@ def add_block(
 def run_on_execution_payload(spec, store, signed_envelope, valid=True):
     """Process execution payload envelope through the fork choice store."""
     if not valid:
-        expect_assertion_error(lambda: spec.on_execution_payload(store, signed_envelope))
+        expect_assertion_error(lambda: spec.on_execution_payload_envelope(store, signed_envelope))
         return
 
-    spec.on_execution_payload(store, signed_envelope)
+    spec.on_execution_payload_envelope(store, signed_envelope)
 
     # Verify the envelope was processed, block should now have FULL state
     envelope_root = signed_envelope.message.beacon_block_root
