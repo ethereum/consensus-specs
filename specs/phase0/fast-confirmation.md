@@ -942,22 +942,22 @@ def find_latest_confirmed_descendant(
 This function executes the FCR algorithm which takes the following sequence of
 actions:
 
-1. Check if the `store.confirmed_root` belongs to the canonical chain and is not
-   older than the previous epoch.
+1. Check if the `fcr_store.confirmed_root` belongs to the canonical chain and is
+   not older than the previous epoch.
 2. Check if the confirmed chain starting from the
-   `store.current_epoch_observed_justified_checkpoint` can be re-confirmed at
-   the start of the current epoch which resets GST to the start of the current
-   epoch.
-3. If any of the above checks fail, set `store.confirmed_root` to the
+   `fcr_store.current_epoch_observed_justified_checkpoint` can be re-confirmed
+   at the start of the current epoch which resets GST to the start of the
+   current epoch.
+3. If any of the above checks fail, set `fcr_store.confirmed_root` to the
    `store.finalized_checkpoint.root`. Either of the above conditions signify
    that FCR assumptions (at least synchrony) are broken and the confirmed block
    might not be safe.
-4. Restart the confirmation chain by setting `store.confirmed_root` to
-   `store.current_epoch_observed_justified_checkpoint.root` if the restart
+4. Restart the confirmation chain by setting `fcr_store.confirmed_root` to
+   `fcr_store.current_epoch_observed_justified_checkpoint.root` if the restart
    conditions are met. Under synchrony, such a checkpoint is for sure now the
    greatest justified checkpoint in the view of any honest validator and,
    therefore, any honest validator will keep voting for it for the entire epoch.
-5. Attempt to advance the `store.confirmed_root` by calling
+5. Attempt to advance the `fcr_store.confirmed_root` by calling
    `find_latest_confirmed_descendant`.
 
 ```python
@@ -987,9 +987,9 @@ def get_latest_confirmed(fcr_store: FastConfirmationStore) -> Root:
 
     # Restart the confirmation chain if each of the following conditions are true:
     # 1) it is the start of the current epoch,
-    # 2) epoch of store.current_epoch_observed_justified_checkpoint.root equals to the previous epoch,
-    # 3) store.current_epoch_observed_justified_checkpoint equals to unrealized justification of the head,
-    # 4) confirmed block is older than the block of store.current_epoch_observed_justified_checkpoint.
+    # 2) epoch of fcr_store.current_epoch_observed_justified_checkpoint.root equals to the previous epoch,
+    # 3) fcr_store.current_epoch_observed_justified_checkpoint equals to unrealized justification of the head,
+    # 4) confirmed block is older than the block of fcr_store.current_epoch_observed_justified_checkpoint.
     is_epoch_start = is_start_slot_at_epoch(get_current_slot(store))
     observed_justified_block_slot = get_block_slot(
         store, fcr_store.current_epoch_observed_justified_checkpoint.root
@@ -1024,7 +1024,7 @@ def get_latest_confirmed(fcr_store: FastConfirmationStore) -> Root:
 *Notes:*
 
 This handler calls `update_fast_confirmation_variables` and then
-`get_latest_confirmed` to update `store.confirmed_root` with the response of
+`get_latest_confirmed` to update `fcr_store.confirmed_root` with the response of
 that call.
 
 Implementations MUST strictly follow the call sequence:
