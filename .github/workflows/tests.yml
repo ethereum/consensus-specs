@@ -3,6 +3,9 @@ name: Tests
 on:
   workflow_dispatch:
     inputs:
+      repo:
+        description: Repository (e.g., ethereum/consensus-specs)
+        type: string
       ref:
         description: Commit, branch, or tag
         default: master
@@ -62,6 +65,7 @@ jobs:
   config:
     runs-on: ubuntu-latest
     outputs:
+      repo: ${{ steps.config.outputs.repo }}
       ref: ${{ steps.config.outputs.ref }}
       presets: ${{ steps.config.outputs.presets }}
       forks: ${{ steps.config.outputs.forks }}
@@ -69,6 +73,10 @@ jobs:
       - name: Resolve configuration
         id: config
         run: |
+          # Repo
+          repo="${{ inputs.repo || github.repository }}"
+          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+
           # Ref
           ref="${{ inputs.ref }}"
           if [[ -n "$ref" ]]; then
@@ -121,6 +129,7 @@ jobs:
 
           # Summary
           echo "Configuration:"
+          echo "  repo:    $repo"
           echo "  ref:     ${ref:-master}"
           echo "  presets: $presets"
           echo "  forks:   $forks"
@@ -138,6 +147,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          repository: ${{ needs.config.outputs.repo }}
           ref: ${{ needs.config.outputs.ref }}
 
       - name: Setup python
