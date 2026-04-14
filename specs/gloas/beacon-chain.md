@@ -69,6 +69,7 @@
     - [New `process_ptc_window`](#new-process_ptc_window)
   - [Block processing](#block-processing)
     - [Parent execution payload](#parent-execution-payload)
+      - [New `apply_parent_execution_payload`](#new-apply_parent_execution_payload)
       - [New `process_parent_execution_payload`](#new-process_parent_execution_payload)
     - [Withdrawals](#withdrawals)
       - [New `get_builder_withdrawals`](#new-get_builder_withdrawals)
@@ -899,33 +900,20 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 #### Parent execution payload
 
-##### New `process_parent_execution_payload`
+##### New `apply_parent_execution_payload`
+
+*Note*: This function applies the parent's execution payload to state. It is
+called by `process_parent_execution_payload` during block processing and by the
+validator during block production before computing withdrawals.
 
 ```python
-def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> None:
-    """
-    Process the parent block's execution payload.
-    Must run first in ``process_block``, before ``process_block_header``, because it reads
-    ``state.latest_block_header.slot`` and ``state.latest_execution_payload_bid``
-    which are overwritten by ``process_block_header`` and ``process_execution_payload_bid``.
-    """
-    bid = block.body.signed_execution_payload_bid.message
-    parent_bid = state.latest_execution_payload_bid
-
-    # True if this block built on the parent's full payload
-    is_parent_block_full = bid.parent_block_hash == parent_bid.block_hash
-
-    if not is_parent_block_full:
-        # Parent was EMPTY -- no execution requests expected
-        assert block.body.parent_execution_requests == ExecutionRequests()
-        return
-
-    parent_slot = state.latest_block_header.slot
+def apply_parent_execution_payload(
+    state: BeaconState,
+    parent_bid: ExecutionPayloadBid,
+    requests: ExecutionRequests,
+) -> None:
+    parent_slot = parent_bid.slot
     parent_epoch = compute_epoch_at_slot(parent_slot)
-
-    # Verify execution requests match the bid commitment
-    requests = block.body.parent_execution_requests
-    assert hash_tree_root(requests) == parent_bid.execution_requests_root
 
     # Process execution requests from parent's payload. The execution
     # requests are processed at state.slot (child's slot), not the parent's slot.
@@ -956,7 +944,36 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
 
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
-    state.latest_block_hash = bid.parent_block_hash
+    state.latest_block_hash = parent_bid.block_hash
+```
+
+##### New `process_parent_execution_payload`
+
+*Note*: This function validates and processes the parent's execution payload.
+`process_parent_execution_payload` must be called before
+`process_execution_payload_bid` (which overwrites
+`state.latest_execution_payload_bid`).
+
+```python
+def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> None:
+    bid = block.body.signed_execution_payload_bid.message
+    parent_bid = state.latest_execution_payload_bid
+
+    # True if this block built on the parent's full payload
+    is_parent_block_full = bid.parent_block_hash == parent_bid.block_hash
+
+    if not is_parent_block_full:
+        # Parent was EMPTY -- no execution requests expected
+        assert block.body.parent_execution_requests == ExecutionRequests()
+        return
+
+    # Verify execution requests match the bid commitment
+    assert (
+        hash_tree_root(block.body.parent_execution_requests) == parent_bid.execution_requests_root
+    )
+
+    # Apply parent payload processing
+    apply_parent_execution_payload(state, parent_bid, block.body.parent_execution_requests)
 ```
 
 #### Withdrawals

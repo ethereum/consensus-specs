@@ -196,7 +196,7 @@ top of a `state` MUST take the following actions in order to construct the
   - The `bid.slot` is for the proposal block slot.
   - The `bid.parent_block_hash` equals
     `state.latest_execution_payload_bid.block_hash` if
-    `should_extend_payload(store, block.parent_root)` is true, otherwise
+    `get_head(store).payload_status == PAYLOAD_STATUS_FULL`, otherwise
     `state.latest_execution_payload_bid.parent_block_hash`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
 - Select one bid and set
@@ -230,7 +230,7 @@ parent's execution payload. The proposer constructs this field as follows:
 
 - If the parent block is pre-Gloas (first Gloas block), set
   `parent_execution_requests` to an empty `ExecutionRequests()`.
-- If `should_extend_payload(store, block.parent_root)` is true (the proposer is
+- If `get_head(store).payload_status == PAYLOAD_STATUS_FULL` (the proposer is
   building on the parent's full payload), set `parent_execution_requests` to the
   `ExecutionRequests` from the parent's `ExecutionPayloadEnvelope`.
 - Otherwise (the proposer is building on the parent's empty variant), set
@@ -239,9 +239,11 @@ parent's execution payload. The proposer constructs this field as follows:
 ##### ExecutionPayload
 
 *Note*: `prepare_execution_payload` is modified in Gloas to take `store` as an
-additional parameter. It consults `should_extend_payload` to decide whether to
-build on the parent's full payload or its empty variant, selecting both the
-withdrawals source and the execution head for the new payload.
+additional parameter. It consults `get_head` to decide whether to build on the
+parent's full payload or its empty variant, selecting both the withdrawals
+source and the execution head for the new payload. When building on a full
+parent, `apply_parent_execution_payload` is called on a state copy so that
+withdrawals are computed against the post-processing state.
 
 ```python
 def prepare_execution_payload(
@@ -255,7 +257,12 @@ def prepare_execution_payload(
 ) -> Optional[PayloadId]:
     # [New in Gloas:EIP7732]
     parent_bid = state.latest_execution_payload_bid
-    if should_extend_payload(store, hash_tree_root(state.latest_block_header)):
+    head = get_head(store)
+    if head.payload_status == PAYLOAD_STATUS_FULL:
+        # Apply parent payload before computing withdrawals
+        state = copy(state)
+        envelope = store.payloads[head.root]
+        apply_parent_execution_payload(state, parent_bid, envelope.execution_requests)
         withdrawals = get_expected_withdrawals(state).withdrawals
         head_block_hash = parent_bid.block_hash
     else:

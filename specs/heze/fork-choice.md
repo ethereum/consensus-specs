@@ -128,7 +128,7 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    payloads: Set[Root] = field(default_factory=set)
+    payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
     payload_timeliness_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
     payload_data_availability_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
         default_factory=dict
@@ -161,7 +161,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         block_timeliness={anchor_root: [True, True]},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
-        payloads={anchor_root},
+        payloads={anchor_root: ExecutionPayloadEnvelope()},
         payload_timeliness_vote={
             anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
         },
@@ -313,5 +313,5 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
     )
 
     # Mark this block's execution payload as verified
-    store.payloads.add(envelope.beacon_block_root)
+    store.payloads[envelope.beacon_block_root] = envelope
 ```

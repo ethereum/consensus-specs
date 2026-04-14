@@ -125,7 +125,7 @@ def update_latest_messages(
 ### Modified `Store`
 
 *Note*: `Store` is modified to track blocks whose execution payloads have been
-verified.
+verified along with the corresponding signed envelope.
 
 ```python
 @dataclass
@@ -147,7 +147,7 @@ class Store(object):
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
-    payloads: Set[Root] = field(default_factory=set)
+    payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
     payload_timeliness_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
@@ -182,7 +182,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
         # [New in Gloas:EIP7732]
-        payloads={anchor_root},
+        payloads={anchor_root: ExecutionPayloadEnvelope()},
         # [New in Gloas:EIP7732]
         payload_timeliness_vote={
             anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
@@ -912,8 +912,8 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
     # Verify the execution payload envelope
     verify_execution_payload_envelope(state, signed_envelope, EXECUTION_ENGINE)
 
-    # Mark this block's execution payload as verified
-    store.payloads.add(envelope.beacon_block_root)
+    # Store the verified execution payload envelope
+    store.payloads[envelope.beacon_block_root] = envelope
 ```
 
 ### New `on_payload_attestation_message`
