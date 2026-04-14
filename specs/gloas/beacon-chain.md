@@ -905,9 +905,10 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ##### New `apply_parent_execution_payload`
 
-*Note*: This function applies the parent's execution payload to state. It is
-called by `process_parent_execution_payload` during block processing and by the
-validator during block production before computing withdrawals.
+*Note*: This function processes the parent's execution requests, queues the
+builder payment, and updates payload availability and the latest block hash. It
+is called by `process_parent_execution_payload` during block processing and by
+the validator during block production before computing withdrawals.
 
 ```python
 def apply_parent_execution_payload(
