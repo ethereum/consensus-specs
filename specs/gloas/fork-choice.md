@@ -40,6 +40,8 @@
   - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
   - [Modified `get_contribution_due_ms`](#modified-get_contribution_due_ms)
   - [New `get_payload_attestation_due_ms`](#new-get_payload_attestation_due_ms)
+  - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
+  - [New `verify_execution_payload_envelope`](#new-verify_execution_payload_envelope)
 - [Handlers](#handlers)
   - [Modified `on_block`](#modified-on_block)
   - [Modified `is_data_available`](#modified-is_data_available)
@@ -723,6 +725,75 @@ def get_contribution_due_ms() -> uint64:
 ```python
 def get_payload_attestation_due_ms() -> uint64:
     return get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)
+```
+
+### New `verify_execution_payload_envelope_signature`
+
+```python
+def verify_execution_payload_envelope_signature(
+    state: BeaconState, signed_envelope: SignedExecutionPayloadEnvelope
+) -> bool:
+    builder_index = signed_envelope.message.builder_index
+    if builder_index == BUILDER_INDEX_SELF_BUILD:
+        validator_index = state.latest_block_header.proposer_index
+        pubkey = state.validators[validator_index].pubkey
+    else:
+        pubkey = state.builders[builder_index].pubkey
+
+    signing_root = compute_signing_root(
+        signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER)
+    )
+    return bls.Verify(pubkey, signing_root, signed_envelope.signature)
+```
+
+### New `verify_execution_payload_envelope`
+
+*Note*: `verify_execution_payload_envelope` is a verification helper called by
+fork-choice when importing a signed execution payload. It verifies the payload
+against the execution engine without processing it. Payload processing is
+deferred to the next beacon block via `process_parent_execution_payload`.
+
+```python
+def verify_execution_payload_envelope(
+    state: BeaconState,
+    signed_envelope: SignedExecutionPayloadEnvelope,
+    execution_engine: ExecutionEngine,
+) -> None:
+    envelope = signed_envelope.message
+    payload = envelope.payload
+
+    # Verify signature
+    assert verify_execution_payload_envelope_signature(state, signed_envelope)
+
+    # Verify consistency with the beacon block
+    header = copy(state.latest_block_header)
+    header.state_root = hash_tree_root(state)
+    assert envelope.beacon_block_root == hash_tree_root(header)
+    assert envelope.slot == state.slot
+
+    # Verify consistency with the committed bid
+    bid = state.latest_execution_payload_bid
+    assert envelope.builder_index == bid.builder_index
+    assert payload.prev_randao == bid.prev_randao
+    assert payload.gas_limit == bid.gas_limit
+    assert payload.block_hash == bid.block_hash
+    assert hash_tree_root(envelope.execution_requests) == bid.execution_requests_root
+
+    # Verify the execution payload is valid
+    assert payload.parent_hash == state.latest_block_hash
+    assert payload.timestamp == compute_time_at_slot(state, state.slot)
+    assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
+    assert execution_engine.verify_and_notify_new_payload(
+        NewPayloadRequest(
+            execution_payload=payload,
+            versioned_hashes=[
+                kzg_commitment_to_versioned_hash(commitment)
+                for commitment in bid.blob_kzg_commitments
+            ],
+            parent_beacon_block_root=state.latest_block_header.parent_root,
+            execution_requests=envelope.execution_requests,
+        )
+    )
 ```
 
 ## Handlers
