@@ -178,4 +178,5 @@ jobs:
         with:
           name: comptests-fc-${{ matrix.fork }}-${{ matrix.preset }}-${{ matrix.config }}
           path: comptests_fc_${{ matrix.fork }}_${{ matrix.preset }}_${{ matrix.config }}.tar.gz
+          archive: false
           if-no-files-found: ignore
