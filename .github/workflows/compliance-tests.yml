@@ -25,7 +25,7 @@ on:
         type: boolean
       small:
         description: Generate small config
-        default: true
+        default: false
         type: boolean
       standard:
         description: Generate standard config
