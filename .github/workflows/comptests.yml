@@ -140,7 +140,7 @@ jobs:
 
   generate:
     needs: config
-    timeout-minutes: 1440 # 24 hours
+    timeout-minutes: 330 # 5.5 hours
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
