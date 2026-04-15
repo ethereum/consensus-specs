@@ -140,16 +140,16 @@ jobs:
           enable-cache: true
 
       - name: Clean compliance test output directory
-        run: rm -rf ../compliance-spec-tests/tests/${{ matrix.preset }}/${{ matrix.fork }}
+        run: rm -rf compliance-spec-tests/${{ matrix.config }}/${{ matrix.preset }}/${{ matrix.fork }}
 
       - name: Generate compliance tests
-        run: make comptests fc_gen_config=${{ matrix.config }} preset=${{ matrix.preset }} fork=${{ matrix.fork }}
+        run: make comptests fc_gen_config=${{ matrix.config }} preset=${{ matrix.preset }} fork=${{ matrix.fork }} comptests_dir=./compliance-spec-tests/${{ matrix.config }}
 
       - name: Upload compliance tests
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: comptests-${{ matrix.preset }}-${{ matrix.config }}-${{ matrix.fork }}
-          path: ../compliance-spec-tests/tests/${{ matrix.preset }}/${{ matrix.fork }}
+          path: compliance-spec-tests/${{ matrix.config }}/${{ matrix.preset }}/${{ matrix.fork }}
           if-no-files-found: ignore
 
   package:
