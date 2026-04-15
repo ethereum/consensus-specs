@@ -3,14 +3,12 @@ name: Compliance Tests
 on:
   workflow_dispatch:
     inputs:
+      repo:
+        description: Repository
+        type: string
       ref:
         description: Commit, branch, or tag
-        default: master
         type: string
-      minimal:
-        description: Generate minimal preset
-        default: true
-        type: boolean
       altair:
         description: Generate altair fork
         default: false
@@ -52,26 +50,30 @@ on:
         default: false
         type: boolean
       seed:
-        description: Seed for compliance test generation (empty, number or random)
+        description: Seed (random if empty)
         default: ""
         type: string
-  # schedule:
-  #   - cron: "0 0 * * *"
+  schedule:
+    - cron: "0 0 * * *"
 
 jobs:
   config:
     runs-on: ubuntu-latest
     outputs:
+      repo: ${{ steps.config.outputs.repo }}
+      ref: ${{ steps.config.outputs.ref }}
       presets: ${{ steps.config.outputs.presets }}
       forks: ${{ steps.config.outputs.forks }}
       configs: ${{ steps.config.outputs.configs }}
-      maybe_seed: ${{ steps.config.outputs.maybe_seed }}
       seed: ${{ steps.config.outputs.seed }}
-      ref: ${{ steps.config.outputs.ref }}
     steps:
       - name: Resolve configuration
         id: config
         run: |
+          # Repo
+          repo="${{ inputs.repo || github.repository }}"
+          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+
           # Ref
           ref="${{ inputs.ref }}"
           if [[ -n "$ref" ]]; then
@@ -79,25 +81,12 @@ jobs:
           fi
 
           # Presets
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            presets='["minimal"]'
-          else
-            selected=()
-            [[ "${{ inputs.minimal }}" == "true" ]] && selected+=("minimal")
-
-            if [[ ${#selected[@]} -eq 0 ]]; then
-              echo "No presets selected." >&2
-              exit 1
-            fi
-
-            json=$(printf '"%s",' "${selected[@]}")
-            presets="[${json%,}]"
-          fi
+          presets='["minimal"]'
           echo "presets=$presets" >> "$GITHUB_OUTPUT"
 
           # Forks
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            forks='["electra"]'
+            forks='["altair","bellatrix","capella","deneb","electra","fulu","gloas"]'
           else
             selected=()
             [[ "${{ inputs.altair }}" == "true" ]] && selected+=("altair")
@@ -138,39 +127,28 @@ jobs:
           echo "configs=$configs" >> "$GITHUB_OUTPUT"
 
           # Seed
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            seed=""
-            maybe_seed=""
+          seed_input="${{ inputs.seed }}"
+          if [[ -z "$seed_input" ]]; then
+            seed=$(shuf -i 1-2147483647 -n 1)
+          elif [[ "$seed_input" =~ ^[0-9]+$ ]]; then
+            seed="$seed_input"
           else
-            seed_input="${{ inputs.seed }}"
-            if [[ -z "$seed_input" ]]; then
-              seed=""
-              maybe_seed=""
-            elif [[ "$seed_input" == "random" ]]; then
-              seed=$(shuf -i 1-2147483647 -n 1)
-              maybe_seed="seed=$seed"
-            elif [[ "$seed_input" =~ ^[0-9]+$ ]]; then
-              seed="$seed_input"
-              maybe_seed="seed=$seed"
-            else
-              echo "Invalid seed value: '$seed_input'. Use empty, a number, or 'random'." >&2
-              exit 1
-            fi
+            echo "Invalid seed value: '$seed_input'. Must be empty or a number." >&2
+            exit 1
           fi
           echo "seed=$seed" >> "$GITHUB_OUTPUT"
-          echo "maybe_seed=$maybe_seed" >> "$GITHUB_OUTPUT"
 
           # Summary
           echo "Configuration:"
-          echo "  ref:     ${ref:-master}"
+          echo "  repo:    $repo"
+          echo "  ref:     ${ref:-<default>}"
           echo "  presets: $presets"
           echo "  forks:   $forks"
           echo "  configs: $configs"
-          echo "  seed:    ${seed:-<none>}"
+          echo "  seed:    $seed"
 
   generate:
     needs: config
-    timeout-minutes: 330 # 5.5 hours
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -182,6 +160,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          repository: ${{ needs.config.outputs.repo }}
           ref: ${{ needs.config.outputs.ref }}
 
       - name: Setup python
@@ -194,11 +173,14 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Clean compliance test output directory
-        run: rm -rf compliance-spec-tests/${{ matrix.config }}/${{ matrix.preset }}/${{ matrix.fork }}
-
       - name: Generate compliance tests
-        run: make comptests fc_gen_config=${{ matrix.config }} preset=${{ matrix.preset }} fork=${{ matrix.fork }} comptests_dir=./compliance-spec-tests/${{ matrix.config }} ${{ needs.config.outputs.maybe_seed }}
+        run: >
+          make comptests
+          fc_gen_config=${{ matrix.config }}
+          preset=${{ matrix.preset }}
+          fork=${{ matrix.fork }}
+          comptests_dir=./compliance-spec-tests/${{ matrix.config }}
+          seed=${{ needs.config.outputs.seed }}
 
       - name: Upload compliance tests
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -223,7 +205,7 @@ jobs:
           path: tests
           merge-multiple: true
 
-      - name: Archive merged compliance tests
+      - name: Archive compliance tests
         run: tar -czvf ${{ matrix.config }}.tar.gz tests
 
       - name: Upload ${{ matrix.config }}.tar.gz

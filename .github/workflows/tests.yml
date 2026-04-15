@@ -4,11 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       repo:
-        description: Repository (e.g., ethereum/consensus-specs)
+        description: Repository
         type: string
       ref:
         description: Commit, branch, or tag
-        default: master
         type: string
       general:
         description: Generate general preset
@@ -130,13 +129,12 @@ jobs:
           # Summary
           echo "Configuration:"
           echo "  repo:    $repo"
-          echo "  ref:     ${ref:-master}"
+          echo "  ref:     ${ref:-<default>}"
           echo "  presets: $presets"
           echo "  forks:   $forks"
 
   generate:
     needs: config
-    timeout-minutes: 1440 # 24 hours
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
