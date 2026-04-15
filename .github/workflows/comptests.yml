@@ -51,6 +51,10 @@ on:
         description: Generate standard config
         default: false
         type: boolean
+      seed:
+        description: Seed for compliance test generation (empty, number or random)
+        default: ""
+        type: string
   # schedule:
   #   - cron: "0 0 * * *"
 
@@ -61,6 +65,8 @@ jobs:
       presets: ${{ steps.config.outputs.presets }}
       forks: ${{ steps.config.outputs.forks }}
       configs: ${{ steps.config.outputs.configs }}
+      maybe_seed: ${{ steps.config.outputs.maybe_seed }}
+      seed: ${{ steps.config.outputs.seed }}
       ref: ${{ steps.config.outputs.ref }}
     steps:
       - name: Resolve configuration
@@ -131,12 +137,36 @@ jobs:
           fi
           echo "configs=$configs" >> "$GITHUB_OUTPUT"
 
+          # Seed
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            seed=""
+            maybe_seed=""
+          else
+            seed_input="${{ inputs.seed }}"
+            if [[ -z "$seed_input" ]]; then
+              seed=""
+              maybe_seed=""
+            elif [[ "$seed_input" == "random" ]]; then
+              seed=$(shuf -i 1-2147483647 -n 1)
+              maybe_seed="seed=$seed"
+            elif [[ "$seed_input" =~ ^[0-9]+$ ]]; then
+              seed="$seed_input"
+              maybe_seed="seed=$seed"
+            else
+              echo "Invalid seed value: '$seed_input'. Use empty, a number, or 'random'." >&2
+              exit 1
+            fi
+          fi
+          echo "seed=$seed" >> "$GITHUB_OUTPUT"
+          echo "maybe_seed=$maybe_seed" >> "$GITHUB_OUTPUT"
+
           # Summary
           echo "Configuration:"
           echo "  ref:     ${ref:-master}"
           echo "  presets: $presets"
           echo "  forks:   $forks"
           echo "  configs: $configs"
+          echo "  seed:    ${seed:-<none>}"
 
   generate:
     needs: config
@@ -168,7 +198,7 @@ jobs:
         run: rm -rf compliance-spec-tests/${{ matrix.config }}/${{ matrix.preset }}/${{ matrix.fork }}
 
       - name: Generate compliance tests
-        run: make comptests fc_gen_config=${{ matrix.config }} preset=${{ matrix.preset }} fork=${{ matrix.fork }} comptests_dir=./compliance-spec-tests/${{ matrix.config }}
+        run: make comptests fc_gen_config=${{ matrix.config }} preset=${{ matrix.preset }} fork=${{ matrix.fork }} comptests_dir=./compliance-spec-tests/${{ matrix.config }} ${{ needs.config.outputs.maybe_seed }}
 
       - name: Upload compliance tests
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
