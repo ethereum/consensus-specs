@@ -1,7 +1,7 @@
 # Fast confirmation tests
 
 The aim of the fast confirmation tests is to provide test coverage for Fast
-Confirmation Rule. This test format extennds the
+Confirmation Rule. This test format extends the
 [Fork choice](../fork_choice/README.md) test format by introducing additional
 checks verifying the state of the fast confirmation store.
 
@@ -22,12 +22,12 @@ checks verifying the state of the fast confirmation store.
 
 There is no explicit `on_fast_confirmation` execution step. The test generator
 implicitly runs `on_fast_confirmation` at the start of each slot after all past
-slot attestations are applied to the fork choice `store`. Each time this happens
-Fast confirmation checks are yielded.
+slot attestations are applied to the fork choice `store`. Fast confirmation
+checks are yielded after each `on_fast_confirmation` call.
 
 #### Checks step
 
-Checks to verify the current status of `fcr_store: FastConfirmationStore`:
+Checks to verify the current status of `fcr_store`:
 
 ```yaml
 previous_epoch_observed_justified_checkpoint: {
