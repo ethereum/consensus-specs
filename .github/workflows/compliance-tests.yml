@@ -169,10 +169,10 @@ jobs:
 
       - name: Generate compliance tests
         run: make comptests fc_gen_config=${{ matrix.config }} preset=${{ matrix.preset }} fork=${{ matrix.fork }} comptests_dir=./compliance-spec-tests/${{ matrix.config }}
-      
+
       - name: Archive compliance tests
         run: tar -cJvf comptests_fc_${{ matrix.fork }}_${{ matrix.preset }}_${{ matrix.config }}.tar.xz -C compliance-spec-tests/${{ matrix.config }} .
-      
+
       - name: Upload compliance tests
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
