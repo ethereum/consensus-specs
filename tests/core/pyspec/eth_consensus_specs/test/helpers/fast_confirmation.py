@@ -135,7 +135,7 @@ class FCRTest:
             return self.spec.Slot(int(self.current_slot()) + offset_or_slot)
 
     def get_block_root_or_head(self, block_root_id):
-        if block_root_id == None:
+        if block_root_id is None:
             return self.head()
 
         if isinstance(block_root_id, int):
@@ -227,7 +227,7 @@ class FCRTest:
                 elif att.data.slot + self.spec.SLOTS_PER_EPOCH < block.slot:
                     continue
 
-                if include_att_fn == None or include_att_fn(block, att):
+                if include_att_fn is None or include_att_fn(block, att):
                     block.body.attestations.append(att)
 
                 if len(block.body.attestations) >= self.max_attestations():
@@ -286,7 +286,7 @@ class FCRTest:
             block_root,
             participation_fn=(
                 lambda slot, index, committee: (
-                    committee & active_set if active_set != None else committee
+                    committee & active_set if active_set is not None else committee
                 )
             ),
         )
@@ -591,7 +591,7 @@ class Attesting(PhaseRun):
     committee_slot_or_offset: object = 0
 
     def has_non_default_block(self) -> bool:
-        return self.block_id != None
+        return self.block_id is not None
 
     def all_committee_slot_or_offsets(self):
         if isinstance(self.committee_slot_or_offset, list):
@@ -629,13 +629,13 @@ class Slashing(PhaseRun):
     supporters_of_block: object = None
 
     def execute(self, fcr: FCRTest) -> object:
-        if self.percentage == None or self.percentage == 0:
+        if self.percentage is None or self.percentage == 0:
             return None
 
-        if self.committee_slot_or_offset == None and self.supporters_of_block == None:
+        if self.committee_slot_or_offset is None and self.supporters_of_block is None:
             return fcr.apply_attester_slashing(slashing_percentage=self.percentage)
 
-        if self.committee_slot_or_offset != None:
+        if self.committee_slot_or_offset is not None:
             slot = fcr.resolve_slot_by_offset(self.committee_slot_or_offset)
             shuffling_source = fcr.store.block_states[fcr.head()]
             participants = fcr.sample_fraction_of_participants(
@@ -718,7 +718,7 @@ class SlotSequence(MultiPhaseRun):
     branch_root_id: object = None
 
     def get_number_of_slots(self, current_slot):
-        assert self.number_of_slots != None or self.end_slot != None
+        assert self.number_of_slots is not None or self.end_slot is not None
         if self.number_of_slots is not None:
             return self.number_of_slots
         else:

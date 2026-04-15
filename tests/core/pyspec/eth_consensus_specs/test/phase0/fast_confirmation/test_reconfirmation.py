@@ -56,13 +56,13 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
     # Run until last slot of epoch 2
     fcr.run_slots_with_blocks_and_fast_confirmation(3 * S - 1, participation_rate=100)
 
-    confimed_at_last_slot_epoch_2 = fcr_store.confirmed_root
+    confirmed_at_last_slot_epoch_2 = fcr_store.confirmed_root
 
     # Leave last slot empty
     fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=100)
 
     # Check that reconfirmation passed
-    assert fcr_store.confirmed_root == confimed_at_last_slot_epoch_2
+    assert fcr_store.confirmed_root == confirmed_at_last_slot_epoch_2
 
     # Epoch 3, Slot 1, empty slot
     fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=100)
@@ -71,7 +71,7 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
     fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
     # Check that confirmed block was not advanced
-    assert fcr_store.confirmed_root == confimed_at_last_slot_epoch_2
+    assert fcr_store.confirmed_root == confirmed_at_last_slot_epoch_2
 
     # Epoch 3, Slot 3
 

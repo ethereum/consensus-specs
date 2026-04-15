@@ -241,7 +241,7 @@ def get_slot_committee(store: Store, slot: Slot) -> Set[ValidatorIndex]:
     head = get_head(store)
     shuffling_source = store.block_states[head]
     committees_count = get_committee_count_per_slot(shuffling_source, compute_epoch_at_slot(slot))
-    participants: set[ValidatorIndex] = set()
+    participants: Set[ValidatorIndex] = set()
     for i in range(committees_count):
         participants.update(get_beacon_committee(shuffling_source, slot, CommitteeIndex(i)))
     return participants
@@ -435,7 +435,7 @@ def estimate_committee_weight_between_slots(
 *Notes:*
 
 For simplicity, this function does not seek `balance_source` for slashed
-validators as it is very unlikely that those validators are not already in
+validators as those validators are very likely already in
 `store.equivocating_indices`.
 
 Due to the algorithm logic, maximum distance between `balance_source` and
@@ -454,7 +454,7 @@ def get_equivocation_score(
     Return total weight of equivocating participants of all committees
     in the slots between ``start_slot`` and ``end_slot`` (inclusive of both).
     """
-    committee_indices: set[ValidatorIndex] = set()
+    committee_indices: Set[ValidatorIndex] = set()
     for slot in range(start_slot, end_slot + 1):
         committee_indices.update(get_slot_committee(store, Slot(slot)))
 
@@ -574,7 +574,7 @@ def get_support_discount(store: Store, balance_source: BeaconState, block_root: 
 ```python
 def compute_safety_threshold(store: Store, block_root: Root, balance_source: BeaconState) -> Gwei:
     """
-    Compute the LMD_GHOST safety threshold for ``block_root``.
+    Compute the LMD-GHOST safety threshold for ``block_root``.
     """
     current_slot = get_current_slot(store)
     block = store.blocks[block_root]
@@ -875,7 +875,7 @@ def find_latest_confirmed_descendant(
         canonical_roots = get_ancestor_roots(store, head, confirmed_root)
 
         # Starting with the child of the latest_confirmed_root
-        # move towards the head in attempt to advance confirmed block
+        # move towards the head in attempt to advance the confirmed block
         # and stop when the first unconfirmed descendant is encountered
         for block_root in canonical_roots:
             block_epoch = get_block_epoch(store, block_root)
