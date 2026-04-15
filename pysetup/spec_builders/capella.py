@@ -21,6 +21,7 @@ from eth_consensus_specs.bellatrix import {preset_name} as bellatrix
     def deprecate_functions(cls) -> set[str]:
         return set(
             [
+                "get_terminal_pow_block",
                 "is_execution_enabled",
                 "is_merge_transition_block",
                 "is_merge_transition_complete",
