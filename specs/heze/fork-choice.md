@@ -213,7 +213,7 @@ def is_payload_inclusion_list_satisfied(store: Store, root: Root) -> bool:
 
     # If the payload is not locally available, the payload
     # is not considered to satisfy the inclusion list constraints
-    if root not in store.payloads:
+    if not is_payload_verified(store, root):
         return False
 
     return store.payload_inclusion_list_satisfaction[root]

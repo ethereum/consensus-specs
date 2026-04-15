@@ -14,6 +14,7 @@
   - [Modified `Store`](#modified-store)
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [New `notify_ptc_messages`](#new-notify_ptc_messages)
+  - [New `is_payload_verified`](#new-is_payload_verified)
   - [New `is_payload_timely`](#new-is_payload_timely)
   - [New `is_payload_data_available`](#new-is_payload_data_available)
   - [New `get_parent_payload_status`](#new-get_parent_payload_status)
@@ -218,6 +219,18 @@ def notify_ptc_messages(
             )
 ```
 
+### New `is_payload_verified`
+
+```python
+def is_payload_verified(store: Store, root: Root) -> bool:
+    """
+    Return whether the execution payload envelope for the beacon block with
+    root ``root`` has been locally delivered and verified via
+    ``on_execution_payload_envelope``.
+    """
+    return root in store.payloads
+```
+
 ### New `is_payload_timely`
 
 ```python
@@ -231,7 +244,7 @@ def is_payload_timely(store: Store, root: Root) -> bool:
 
     # If the payload is not locally available, the payload
     # is not considered available regardless of the PTC vote
-    if root not in store.payloads:
+    if not is_payload_verified(store, root):
         return False
 
     return sum(store.payload_timeliness_vote[root]) > PAYLOAD_TIMELY_THRESHOLD
@@ -250,7 +263,7 @@ def is_payload_data_available(store: Store, root: Root) -> bool:
 
     # If the payload is not locally available, the blob data
     # is not considered available regardless of the PTC vote
-    if root not in store.payloads:
+    if not is_payload_verified(store, root):
         return False
 
     return sum(store.payload_data_availability_vote[root]) > DATA_AVAILABILITY_TIMELY_THRESHOLD
@@ -487,7 +500,7 @@ def get_node_children(
 ) -> Sequence[ForkChoiceNode]:
     if node.payload_status == PAYLOAD_STATUS_PENDING:
         children = [ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_EMPTY)]
-        if node.root in store.payloads:
+        if is_payload_verified(store, node.root):
             children.append(ForkChoiceNode(root=node.root, payload_status=PAYLOAD_STATUS_FULL))
         return children
     else:
@@ -604,7 +617,7 @@ def validate_on_attestation(store: Store, attestation: Attestation, is_from_bloc
     # [New in Gloas:EIP7732]
     # If attesting for a full node, the payload must be known
     if attestation.data.index == 1:
-        assert attestation.data.beacon_block_root in store.payloads
+        assert is_payload_verified(store, attestation.data.beacon_block_root)
 
     # LMD vote must be consistent with FFG vote target
     assert target.root == get_checkpoint_block(
@@ -742,7 +755,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # If this block builds on the parent's full payload, that payload must
     # have been verified by on_execution_payload_envelope
     if is_parent_node_full(store, block):
-        assert block.parent_root in store.payloads
+        assert is_payload_verified(store, block.parent_root)
 
     # Blocks cannot be in the future. If they are, their consideration must be delayed until they are in the past.
     current_slot = get_current_slot(store)

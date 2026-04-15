@@ -105,8 +105,8 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
 01. Set `bid.parent_block_hash` to the current head of the execution chain. Let
     `parent_root = hash_tree_root(state.latest_block_header)`. This is
     `state.latest_execution_payload_bid.block_hash` if
-    `parent_root in store.payloads` and
-    `should_extend_payload(store, parent_root)` is true, otherwise
+    `is_payload_verified(store, parent_root)` and
+    `should_extend_payload(store, parent_root)` are true, otherwise
     `state.latest_execution_payload_bid.parent_block_hash`.
 02. Set `bid.parent_block_root` to be the head of the consensus chain. This can
     be obtained from the beacon state as
