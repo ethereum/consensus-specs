@@ -11,9 +11,29 @@ on:
         description: Generate minimal preset
         default: true
         type: boolean
+      altair:
+        description: Generate altair fork
+        default: false
+        type: boolean
+      bellatrix:
+        description: Generate bellatrix fork
+        default: false
+        type: boolean
+      capella:
+        description: Generate capella fork
+        default: false
+        type: boolean
+      deneb:
+        description: Generate deneb fork
+        default: false
+        type: boolean
       electra:
         description: Generate electra fork
         default: true
+        type: boolean
+      fulu:
+        description: Generate fulu fork
+        default: false
         type: boolean
       gloas:
         description: Generate gloas fork
@@ -74,7 +94,12 @@ jobs:
             forks='["electra"]'
           else
             selected=()
+            [[ "${{ inputs.altair }}" == "true" ]] && selected+=("altair")
+            [[ "${{ inputs.bellatrix }}" == "true" ]] && selected+=("bellatrix")
+            [[ "${{ inputs.capella }}" == "true" ]] && selected+=("capella")
+            [[ "${{ inputs.deneb }}" == "true" ]] && selected+=("deneb")
             [[ "${{ inputs.electra }}" == "true" ]] && selected+=("electra")
+            [[ "${{ inputs.fulu }}" == "true" ]] && selected+=("fulu")
             [[ "${{ inputs.gloas }}" == "true" ]] && selected+=("gloas")
 
             if [[ ${#selected[@]} -eq 0 ]]; then
