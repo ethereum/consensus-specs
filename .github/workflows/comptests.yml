@@ -170,15 +170,11 @@ jobs:
       - name: Generate compliance tests
         run: make comptests fc_gen_config=${{ matrix.config }} preset=${{ matrix.preset }} fork=${{ matrix.fork }} comptests_dir=./compliance-spec-tests/${{ matrix.config }}
 
-      - name: Archive compliance tests
-        run: tar -czvf comptests_fc_${{ matrix.fork }}_${{ matrix.preset }}_${{ matrix.config }}.tar.gz -C compliance-spec-tests/${{ matrix.config }} .
-
       - name: Upload compliance tests
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: comptests-fc-${{ matrix.fork }}-${{ matrix.preset }}-${{ matrix.config }}
-          path: comptests_fc_${{ matrix.fork }}_${{ matrix.preset }}_${{ matrix.config }}.tar.gz
-          archive: false
+          name: comptests-${{ matrix.config }}-${{ matrix.preset }}-${{ matrix.fork }}
+          path: compliance-spec-tests/${{ matrix.config }}
           if-no-files-found: ignore
 
   package:
@@ -191,16 +187,9 @@ jobs:
       - name: Download intermediate artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: comptests-fc-*-${{ matrix.config }}
-          path: intermediate/${{ matrix.config }}
+          pattern: comptests-${{ matrix.config }}-*
+          path: tests
           merge-multiple: true
-
-      - name: Unpack compliance tests
-        run: |
-          mkdir -p tests
-          for archive in intermediate/${{ matrix.config }}/*.tar.gz; do
-            tar -xzvf "$archive" -C tests
-          done
 
       - name: Archive merged compliance tests
         run: tar -czvf ${{ matrix.config }}.tar.gz tests
