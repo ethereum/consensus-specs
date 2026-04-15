@@ -10,7 +10,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.constants import (
     ALTAIR,
-    FULU,
+    GLOAS,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     FCRTest,
@@ -22,7 +22,7 @@ Test is_one_confirmed
 """
 
 
-@with_all_phases_from_to(ALTAIR, FULU)
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -85,7 +85,7 @@ def test_is_one_confirmed_passes_with_full_participation(spec, state):
     yield from fcr.get_test_artefacts()
 
 
-@with_all_phases_from_to(ALTAIR, FULU)
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -149,7 +149,7 @@ def test_is_one_confirmed_fails_with_low_participation(spec, state):
     yield from fcr.get_test_artefacts()
 
 
-@with_all_phases_from_to(ALTAIR, FULU)
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -202,7 +202,7 @@ def test_is_one_confirmed_slashing_supporters_does_not_hurt(spec, state):
     yield from fcr.get_test_artefacts()
 
 
-@with_all_phases_from_to(ALTAIR, FULU)
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -292,7 +292,7 @@ def test_is_one_confirmed_slashing_non_supporters_helps(spec, state):
     yield from fcr.get_test_artefacts()
 
 
-@with_all_phases_from_to(ALTAIR, FULU)
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -425,7 +425,7 @@ def test_is_one_confirmed_empty_slot_discount(spec, state):
     yield from fcr.get_test_artefacts()
 
 
-@with_all_phases_from_to(ALTAIR, FULU)
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -485,7 +485,7 @@ def test_is_one_confirmed_support_accumulates_over_slots(spec, state):
     yield from fcr.get_test_artefacts()
 
 
-@with_all_phases_from_to(ALTAIR, FULU)
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -585,7 +585,7 @@ def test_is_one_confirmed_epoch_crossing_block(spec, state):
     yield from fcr.get_test_artefacts()
 
 
-@with_all_phases_from_to(ALTAIR, FULU)
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -686,7 +686,7 @@ def test_is_one_confirmed_fails_with_competing_branch(spec, state):
     yield from fcr.get_test_artefacts()
 
 
-@with_all_phases_from_to(ALTAIR, FULU)
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -751,7 +751,7 @@ def test_is_confirmed_chain_safe_passes_full_chain(spec, state):
     yield from fcr.get_test_artefacts()
 
 
-@with_all_phases_from_to(ALTAIR, FULU)
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),

@@ -10,14 +10,14 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.constants import (
     ALTAIR,
-    FULU,
+    GLOAS,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     FCRTest,
 )
 
 
-@with_all_phases_from_to(ALTAIR, FULU)
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=128)),

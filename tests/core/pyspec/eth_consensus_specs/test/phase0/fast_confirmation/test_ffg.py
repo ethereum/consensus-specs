@@ -10,7 +10,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.constants import (
     ALTAIR,
-    FULU,
+    GLOAS,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     Attesting,
@@ -22,7 +22,7 @@ Test will_no_conflicting_checkpoint_be_justified
 """
 
 
-@with_all_phases_from_to(ALTAIR, FULU)
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=96)),
@@ -116,7 +116,7 @@ Test will_current_target_be_justified
 """
 
 
-@with_all_phases_from_to(ALTAIR, FULU)
+@with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=96)),
