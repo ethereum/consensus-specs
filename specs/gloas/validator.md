@@ -88,8 +88,8 @@ All validator responsibilities remain unchanged other than the following:
   this becomes a builder's duty.
 - Some attesters are selected per slot to become PTC members, these validators
   must broadcast `PayloadAttestationMessage` objects during the assigned slot
-  before the deadline of `get_payload_attestation_due_ms(epoch)` milliseconds
-  into the slot.
+  before the deadline of `get_payload_attestation_due_ms()` milliseconds into
+  the slot.
 
 ### Attestation
 
@@ -299,7 +299,7 @@ prepared to submit their PTC attestations during the next epoch.
 
 A validator should create and broadcast the `payload_attestation_message` to the
 global execution attestation subnet within the first
-`get_payload_attestation_due_ms(epoch)` milliseconds of the slot.
+`get_payload_attestation_due_ms()` milliseconds of the slot.
 
 #### Constructing the `PayloadAttestationMessage`
 
@@ -308,7 +308,7 @@ obtained from `get_ptc_assignment` above) then the validator should prepare a
 `PayloadAttestationMessage` for the current slot. Follow the logic below to
 create the `payload_attestation_message` and broadcast to the global
 `payload_attestation_message` pubsub topic within the first
-`get_payload_attestation_due_ms(epoch)` milliseconds of the slot.
+`get_payload_attestation_due_ms()` milliseconds of the slot.
 
 The validator creates `payload_attestation_message` as follows:
 

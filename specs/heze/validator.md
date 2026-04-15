@@ -138,7 +138,7 @@ processed through any empty slots up to the assigned slot using
 
 *Note*: A proposer should produce an execution payload that satisfies the
 inclusion list constraints with respect to the inclusion lists gathered up to
-`get_proposer_inclusion_list_cutoff_ms(epoch)` milliseconds into the slot.
+`get_proposer_inclusion_list_cutoff_ms()` milliseconds into the slot.
 
 ```python
 def prepare_execution_payload(
@@ -193,13 +193,12 @@ returns.
 
 If a validator is in the current inclusion list committee, the validator should
 create and broadcast the `signed_inclusion_list` to the global `inclusion_list`
-subnet by `get_inclusion_list_submission_due_ms(epoch)` milliseconds into the
-slot after processing the block for the current slot and confirming it as the
-head. If no block is received by
-`get_inclusion_list_submission_due_ms(epoch) - 1000` milliseconds into the slot,
-the validator should run `get_head` to determine the local head and construct
-and broadcast the inclusion list based on this local head by
-`get_inclusion_list_submission_due_ms(epoch)` milliseconds into the slot.
+subnet by `get_inclusion_list_submission_due_ms()` milliseconds into the slot
+after processing the block for the current slot and confirming it as the head.
+If no block is received by `get_inclusion_list_submission_due_ms() - 1000`
+milliseconds into the slot, the validator should run `get_head` to determine the
+local head and construct and broadcast the inclusion list based on this local
+head by `get_inclusion_list_submission_due_ms()` milliseconds into the slot.
 
 #### Constructing the `SignedInclusionList`
 
