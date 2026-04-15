@@ -633,7 +633,8 @@ def is_one_confirmed(store: Store, balance_source: BeaconState, block_root: Root
 
 This function should be called at the start of each epoch to ensure that the
 confirmed chain starting from
-`store.current_epoch_observed_justified_checkpoint.root` remains LMD-GHOST safe.
+`fcr_store.current_epoch_observed_justified_checkpoint.root` remains LMD-GHOST
+safe.
 
 This check relaxes synchrony assumption by allowing GST to start from the
 beginning of the previous slot. If such check was not run, GST start would have

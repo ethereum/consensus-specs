@@ -3,15 +3,11 @@ from dataclasses import dataclass
 from eth_consensus_specs.test.context import (
     MINIMAL,
     spec_state_test,
-    with_phases,
+    with_all_phases_from_to,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import (
     ALTAIR,
-    BELLATRIX,
-    CAPELLA,
-    DENEB,
-    ELECTRA,
     FULU,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
@@ -276,7 +272,7 @@ def build_and_run_current_epoch_test(spec, state, seed, test_spec: CurrentEpochT
     yield from run_current_epoch_test(fcr_test, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_00(spec, state):
@@ -290,7 +286,7 @@ def test_fcr_current_epoch_00(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 0, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_01(spec, state):
@@ -304,7 +300,7 @@ def test_fcr_current_epoch_01(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 1, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_02(spec, state):
@@ -318,7 +314,7 @@ def test_fcr_current_epoch_02(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 2, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_03(spec, state):
@@ -332,7 +328,7 @@ def test_fcr_current_epoch_03(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 3, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_04(spec, state):
@@ -346,7 +342,7 @@ def test_fcr_current_epoch_04(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 4, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_05(spec, state):
@@ -360,7 +356,7 @@ def test_fcr_current_epoch_05(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 5, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_06(spec, state):
@@ -374,7 +370,7 @@ def test_fcr_current_epoch_06(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 6, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_07(spec, state):
@@ -388,7 +384,7 @@ def test_fcr_current_epoch_07(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 7, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_08(spec, state):
@@ -402,7 +398,7 @@ def test_fcr_current_epoch_08(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 8, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_09(spec, state):
@@ -416,7 +412,7 @@ def test_fcr_current_epoch_09(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 9, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_10(spec, state):
@@ -430,7 +426,7 @@ def test_fcr_current_epoch_10(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 10, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_11(spec, state):
@@ -444,7 +440,7 @@ def test_fcr_current_epoch_11(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 11, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_12(spec, state):
@@ -458,7 +454,7 @@ def test_fcr_current_epoch_12(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 12, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_13(spec, state):
@@ -472,7 +468,7 @@ def test_fcr_current_epoch_13(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 13, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_14(spec, state):
@@ -486,7 +482,7 @@ def test_fcr_current_epoch_14(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 14, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_15(spec, state):
@@ -500,7 +496,7 @@ def test_fcr_current_epoch_15(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 15, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_16(spec, state):
@@ -514,7 +510,7 @@ def test_fcr_current_epoch_16(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 16, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_17(spec, state):
@@ -528,7 +524,7 @@ def test_fcr_current_epoch_17(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 17, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_18(spec, state):
@@ -542,7 +538,7 @@ def test_fcr_current_epoch_18(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 18, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_19(spec, state):
@@ -556,7 +552,7 @@ def test_fcr_current_epoch_19(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 19, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_20(spec, state):
@@ -570,7 +566,7 @@ def test_fcr_current_epoch_20(spec, state):
     yield from build_and_run_current_epoch_test(spec, state, 20, test_spec)
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_fcr_current_epoch_21(spec, state):

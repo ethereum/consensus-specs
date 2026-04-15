@@ -4,16 +4,12 @@ from eth_consensus_specs.test.context import (
     MINIMAL,
     single_phase,
     spec_test,
+    with_all_phases_from_to,
     with_custom_state,
-    with_phases,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import (
     ALTAIR,
-    BELLATRIX,
-    CAPELLA,
-    DENEB,
-    ELECTRA,
     FULU,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
@@ -26,7 +22,7 @@ Test will_no_conflicting_checkpoint_be_justified
 """
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=96)),
@@ -120,7 +116,7 @@ Test will_current_target_be_justified
 """
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=96)),

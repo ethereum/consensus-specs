@@ -4,16 +4,12 @@ from eth_consensus_specs.test.context import (
     MINIMAL,
     single_phase,
     spec_test,
+    with_all_phases_from_to,
     with_custom_state,
-    with_phases,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import (
     ALTAIR,
-    BELLATRIX,
-    CAPELLA,
-    DENEB,
-    ELECTRA,
     FULU,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
@@ -27,7 +23,7 @@ Test on restart to GU
 """
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -115,7 +111,7 @@ def test_fcr_restarts_to_gu_when_all_conditions_met(spec, state):
 # also for this test case scenario. See test_revert_finality.py
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -194,7 +190,7 @@ def test_fcr_restarts_to_gu_and_confirms_beyond_gu(spec, state):
     yield from fcr.get_test_artefacts()
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -254,7 +250,7 @@ def test_fcr_no_restart_to_gu_mid_epoch(spec, state):
     yield from fcr.get_test_artefacts()
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -344,7 +340,7 @@ def test_fcr_no_restart_to_gu_because_gu_too_old(spec, state):
     yield from fcr.get_test_artefacts()
 
 
-@with_phases([ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(ALTAIR, FULU)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),

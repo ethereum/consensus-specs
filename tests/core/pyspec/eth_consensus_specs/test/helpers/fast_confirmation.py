@@ -480,7 +480,7 @@ class FCRTest:
                 continue
 
             # Print accumulated output if not
-            print(
+            debug_print(
                 f"parent({self.get_slot_root_info(store.blocks[start_root].parent_root)}): {', '.join(block_infos)}"
             )
 
@@ -500,7 +500,7 @@ class FCRTest:
         fcr_store = self.fcr_store
 
         # Print epoch and slot
-        print(
+        debug_print(
             f"\nEpoch {self.current_epoch()}, Slot {self.current_slot() % self.spec.SLOTS_PER_EPOCH}:"
         )
 
@@ -518,9 +518,9 @@ class FCRTest:
             uj = store.unrealized_justifications[head_root]
             return f"{self.get_slot_root_info(head_root)}, vs=({self.get_checkpoint_info(vs)}), uj=({self.get_checkpoint_info(uj)})"
 
-        print(f"\nprev_head [{get_head_info(fcr_store.previous_slot_head)}]")
-        print(f"curr_head [{get_head_info(fcr_store.current_slot_head)}]")
-        print(f"head      [{get_head_info(self.head())}]")
+        debug_print(f"\nprev_head [{get_head_info(fcr_store.previous_slot_head)}]")
+        debug_print(f"curr_head [{get_head_info(fcr_store.current_slot_head)}]")
+        debug_print(f"head      [{get_head_info(self.head())}]")
 
         # Print prev epoch GU and current target
         curr_target = spec.get_current_target(store)
@@ -529,14 +529,18 @@ class FCRTest:
         ffg_support = spec.compute_honest_ffg_support_for_current_target(store)
         relative_support = int(ffg_support) * 100 / int(total_active_balance)
 
-        print(
+        debug_print(
             f"\ncurr_target [{self.get_checkpoint_info(curr_target)}, ffg_support={relative_support:.1f}%]"
         )
-        print(
+        debug_print(
             f"prev_epoch_gu [{self.get_checkpoint_info(fcr_store.previous_epoch_greatest_unrealized_checkpoint)}]"
         )
-        print(f"justified_checkpoint [{self.get_checkpoint_info(store.justified_checkpoint)}]")
-        print(f"finalized_checkpoint [{self.get_checkpoint_info(store.finalized_checkpoint)}]")
+        debug_print(
+            f"justified_checkpoint [{self.get_checkpoint_info(store.justified_checkpoint)}]"
+        )
+        debug_print(
+            f"finalized_checkpoint [{self.get_checkpoint_info(store.finalized_checkpoint)}]"
+        )
 
 
 @dataclass
