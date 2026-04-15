@@ -180,6 +180,8 @@ jobs:
   package:
     needs: [config, generate]
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
     strategy:
       matrix:
         config: ${{ fromJson(needs.config.outputs.configs) }}
@@ -199,3 +201,16 @@ jobs:
         with:
           path: ${{ matrix.config }}.tar.gz
           archive: false
+
+      - name: Delete intermediate artifacts
+        continue-on-error: true
+        run: |
+          gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
+            --paginate --jq '.artifacts[]
+              | select(.name | startswith("comptests-${{ matrix.config }}-"))
+              | .id' | while read id; do
+            gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
