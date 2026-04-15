@@ -118,12 +118,14 @@ help-verbose:
 	@echo "    fc_gen_config=<config> Configuration size (tiny, small, standard; default: tiny)"
 	@echo "    fork=<fork>            Generate for specific fork (comma-separated)"
 	@echo "    preset=<preset>        Generate for specific preset (comma-separated)"
+	@echo "    comptests_dir=<dir>    Output directory for generated compliance tests"
 	@echo "    threads=N              Number of threads to use"
 	@echo "    seed=N                 Override test seeds (fuzzing mode)"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make comptests"
 	@echo "    make comptests fc_gen_config=standard"
+	@echo "    make comptests comptests_dir=./compliance-spec-tests/tests"
 	@echo "    make comptests fc_gen_config=standard fork=deneb preset=mainnet threads=8"
 	@echo ""
 	@echo "$(BOLD)DOCUMENTATION$(NORM)"
@@ -291,7 +293,8 @@ lint: _pyspec
 ###############################################################################
 
 COMMA:= ,
-COMP_TEST_VECTOR_DIR = $(CURDIR)/../compliance-spec-tests/tests
+DEFAULT_COMPTESTS_DIR = $(CURDIR)/../compliance-spec-tests/tests
+COMPTESTS_DIR = $(if $(comptests_dir),$(comptests_dir),$(DEFAULT_COMPTESTS_DIR))
 
 # Generate compliance tests (fork choice).
 comptests: FC_GEN_CONFIG := $(if $(fc_gen_config),$(fc_gen_config),tiny)
@@ -301,7 +304,7 @@ comptests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset
 comptests: MAYBE_SEED := $(if $(seed),--fc-gen-seed $(seed))
 comptests: _pyspec
 	@$(UV_RUN) python -m tests.generators.compliance_runners.fork_choice.test_gen \
-		--output $(COMP_TEST_VECTOR_DIR) \
+		--output-dir=$(COMPTESTS_DIR) \
 		--fc-gen-config $(FC_GEN_CONFIG) \
 		$(MAYBE_THREADS) \
 		$(MAYBE_FORKS) \

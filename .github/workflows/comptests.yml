@@ -1,4 +1,4 @@
-name: Tests
+name: Compliance Tests
 
 on:
   workflow_dispatch:
@@ -9,54 +9,50 @@ on:
       ref:
         description: Commit, branch, or tag
         type: string
-      general:
-        description: Generate general preset
-        default: true
-        type: boolean
-      minimal:
-        description: Generate minimal preset
-        default: true
-        type: boolean
-      mainnet:
-        description: Generate mainnet preset
+      altair:
+        description: Generate altair fork
         default: false
         type: boolean
-      phase0:
-        description: Generate phase0 tests
-        default: true
-        type: boolean
-      altair:
-        description: Generate altair tests
-        default: true
-        type: boolean
       bellatrix:
-        description: Generate bellatrix tests
-        default: true
+        description: Generate bellatrix fork
+        default: false
         type: boolean
       capella:
-        description: Generate capella tests
-        default: true
+        description: Generate capella fork
+        default: false
         type: boolean
       deneb:
-        description: Generate deneb tests
-        default: true
+        description: Generate deneb fork
+        default: false
         type: boolean
       electra:
-        description: Generate electra tests
+        description: Generate electra fork
         default: true
         type: boolean
       fulu:
-        description: Generate fulu tests
-        default: true
+        description: Generate fulu fork
+        default: false
         type: boolean
       gloas:
-        description: Generate gloas tests
+        description: Generate gloas fork
+        default: false
+        type: boolean
+      tiny:
+        description: Generate tiny config
         default: true
         type: boolean
-      heze:
-        description: Generate heze tests
-        default: true
+      small:
+        description: Generate small config
+        default: false
         type: boolean
+      standard:
+        description: Generate standard config
+        default: false
+        type: boolean
+      seed:
+        description: Seed (random if empty)
+        default: ""
+        type: string
   schedule:
     - cron: "0 0 * * *"
 
@@ -68,6 +64,8 @@ jobs:
       ref: ${{ steps.config.outputs.ref }}
       presets: ${{ steps.config.outputs.presets }}
       forks: ${{ steps.config.outputs.forks }}
+      configs: ${{ steps.config.outputs.configs }}
+      seed: ${{ steps.config.outputs.seed }}
     steps:
       - name: Resolve configuration
         id: config
@@ -83,30 +81,14 @@ jobs:
           fi
 
           # Presets
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            presets='["general","minimal","mainnet"]'
-          else
-            selected=()
-            [[ "${{ inputs.general }}" == "true" ]] && selected+=("general")
-            [[ "${{ inputs.minimal }}" == "true" ]] && selected+=("minimal")
-            [[ "${{ inputs.mainnet }}" == "true" ]] && selected+=("mainnet")
-
-            if [[ ${#selected[@]} -eq 0 ]]; then
-              echo "No presets selected." >&2
-              exit 1
-            fi
-
-            json=$(printf '"%s",' "${selected[@]}")
-            presets="[${json%,}]"
-          fi
+          presets='["minimal"]'
           echo "presets=$presets" >> "$GITHUB_OUTPUT"
 
           # Forks
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            forks='["phase0","altair","bellatrix","capella","deneb","electra","fulu","gloas","heze"]'
+            forks='["altair","bellatrix","capella","deneb","electra","fulu","gloas"]'
           else
             selected=()
-            [[ "${{ inputs.phase0 }}" == "true" ]] && selected+=("phase0")
             [[ "${{ inputs.altair }}" == "true" ]] && selected+=("altair")
             [[ "${{ inputs.bellatrix }}" == "true" ]] && selected+=("bellatrix")
             [[ "${{ inputs.capella }}" == "true" ]] && selected+=("capella")
@@ -114,7 +96,6 @@ jobs:
             [[ "${{ inputs.electra }}" == "true" ]] && selected+=("electra")
             [[ "${{ inputs.fulu }}" == "true" ]] && selected+=("fulu")
             [[ "${{ inputs.gloas }}" == "true" ]] && selected+=("gloas")
-            [[ "${{ inputs.heze }}" == "true" ]] && selected+=("heze")
 
             if [[ ${#selected[@]} -eq 0 ]]; then
               echo "No forks selected." >&2
@@ -126,12 +107,45 @@ jobs:
           fi
           echo "forks=$forks" >> "$GITHUB_OUTPUT"
 
+          # Generator configs
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            configs='["tiny"]'
+          else
+            selected=()
+            [[ "${{ inputs.tiny }}" == "true" ]] && selected+=("tiny")
+            [[ "${{ inputs.small }}" == "true" ]] && selected+=("small")
+            [[ "${{ inputs.standard }}" == "true" ]] && selected+=("standard")
+
+            if [[ ${#selected[@]} -eq 0 ]]; then
+              echo "No generator configs selected." >&2
+              exit 1
+            fi
+
+            json=$(printf '"%s",' "${selected[@]}")
+            configs="[${json%,}]"
+          fi
+          echo "configs=$configs" >> "$GITHUB_OUTPUT"
+
+          # Seed
+          seed_input="${{ inputs.seed }}"
+          if [[ -z "$seed_input" ]]; then
+            seed=$(shuf -i 1-2147483647 -n 1)
+          elif [[ "$seed_input" =~ ^[0-9]+$ ]]; then
+            seed="$seed_input"
+          else
+            echo "Invalid seed value: '$seed_input'. Must be empty or a number." >&2
+            exit 1
+          fi
+          echo "seed=$seed" >> "$GITHUB_OUTPUT"
+
           # Summary
           echo "Configuration:"
           echo "  repo:    $repo"
           echo "  ref:     ${ref:-<default>}"
           echo "  presets: $presets"
           echo "  forks:   $forks"
+          echo "  configs: $configs"
+          echo "  seed:    $seed"
 
   generate:
     needs: config
@@ -141,6 +155,7 @@ jobs:
       matrix:
         preset: ${{ fromJson(needs.config.outputs.presets) }}
         fork: ${{ fromJson(needs.config.outputs.forks) }}
+        config: ${{ fromJson(needs.config.outputs.configs) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -158,14 +173,20 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Generate tests
-        run: make test component=pyspec verbose=true preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true
+      - name: Generate compliance tests
+        run: >
+          make comptests
+          fc_gen_config=${{ matrix.config }}
+          preset=${{ matrix.preset }}
+          fork=${{ matrix.fork }}
+          comptests_dir=./compliance-spec-tests/${{ matrix.config }}
+          seed=${{ needs.config.outputs.seed }}
 
-      - name: Upload reference tests
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Upload compliance tests
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: reftests-${{ matrix.preset }}-${{ matrix.fork }}
-          path: reftests/${{ matrix.preset }}
+          name: comptests-${{ matrix.config }}-${{ matrix.preset }}-${{ matrix.fork }}
+          path: compliance-spec-tests/${{ matrix.config }}
           if-no-files-found: ignore
 
   package:
@@ -175,22 +196,22 @@ jobs:
       actions: write
     strategy:
       matrix:
-        preset: ${{ fromJson(needs.config.outputs.presets) }}
+        config: ${{ fromJson(needs.config.outputs.configs) }}
     steps:
-      - name: Download all artifacts
+      - name: Download intermediate artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: reftests-${{ matrix.preset }}-*
-          path: tests/${{ matrix.preset }}
+          pattern: comptests-${{ matrix.config }}-*
+          path: tests
           merge-multiple: true
 
-      - name: Archive reference tests
-        run: tar -czvf ${{ matrix.preset }}.tar.gz tests/${{ matrix.preset }}
+      - name: Archive compliance tests
+        run: tar -czvf ${{ matrix.config }}.tar.gz tests
 
-      - name: Upload ${{ matrix.preset }}.tar.gz
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Upload ${{ matrix.config }}.tar.gz
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          path: ${{ matrix.preset }}.tar.gz
+          path: ${{ matrix.config }}.tar.gz
           archive: false
 
       - name: Delete intermediate artifacts
@@ -198,7 +219,7 @@ jobs:
         run: |
           gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
             --paginate --jq '.artifacts[]
-              | select(.name | startswith("reftests-${{ matrix.preset }}-"))
+              | select(.name | startswith("comptests-${{ matrix.config }}-"))
               | .id' | while read id; do
             gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
           done
