@@ -114,7 +114,7 @@ jobs:
 
           # Generator configs
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            configs='["tiny","small","standard"]'
+            configs='["tiny"]'
           else
             selected=()
             [[ "${{ inputs.tiny }}" == "true" ]] && selected+=("tiny")
