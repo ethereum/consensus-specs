@@ -2334,8 +2334,8 @@ quality since peers should validate blocks before gossiping them.
 
 When connecting, the `Status` message gives an idea about the sync status of a
 particular peer, but this changes over time. By the time a subsequent
-`BeaconBlockByRange` request is processed, the information may be stale, and the
-responder might have moved on to a new finalization point and pruned blocks
+`BeaconBlocksByRange` request is processed, the information may be stale, and
+the responder might have moved on to a new finalization point and pruned blocks
 around the previous head and finalized blocks.
 
 To avoid this race condition, we allow the responder to choose which branch to

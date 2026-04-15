@@ -21,13 +21,13 @@ Unless stated explicitly, all prior functionality from
 ### New `get_sync_message_due_ms`
 
 ```python
-def get_sync_message_due_ms(epoch: Epoch) -> uint64:
+def get_sync_message_due_ms() -> uint64:
     return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)
 ```
 
 ### New `get_contribution_due_ms`
 
 ```python
-def get_contribution_due_ms(epoch: Epoch) -> uint64:
+def get_contribution_due_ms() -> uint64:
     return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS)
 ```

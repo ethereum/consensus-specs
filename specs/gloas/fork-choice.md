@@ -42,7 +42,7 @@
 - [Handlers](#handlers)
   - [Modified `on_block`](#modified-on_block)
   - [Modified `is_data_available`](#modified-is_data_available)
-  - [New `on_execution_payload`](#new-on_execution_payload)
+  - [New `on_execution_payload_envelope`](#new-on_execution_payload_envelope)
   - [New `on_payload_attestation_message`](#new-on_payload_attestation_message)
 
 <!-- mdformat-toc end -->
@@ -539,11 +539,10 @@ def record_block_timeliness(store: Store, root: Root) -> None:
     block = store.blocks[root]
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    epoch = get_current_store_epoch(store)
-    attestation_threshold_ms = get_attestation_due_ms(epoch)
+    attestation_threshold_ms = get_attestation_due_ms()
     # [New in Gloas:EIP7732]
     is_current_slot = get_current_slot(store) == block.slot
-    ptc_threshold_ms = get_payload_attestation_due_ms(epoch)
+    ptc_threshold_ms = get_payload_attestation_due_ms()
     # [Modified in Gloas:EIP7732]
     store.block_timeliness[root] = [
         is_current_slot and time_into_slot_ms < threshold
@@ -678,47 +677,39 @@ def is_parent_strong(store: Store, root: Root) -> bool:
 ### Modified `get_attestation_due_ms`
 
 ```python
-def get_attestation_due_ms(epoch: Epoch) -> uint64:
-    # [New in Gloas]
-    if epoch >= GLOAS_FORK_EPOCH:
-        return get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
-    return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
+def get_attestation_due_ms() -> uint64:
+    # [Modified in Gloas]
+    return get_slot_component_duration_ms(ATTESTATION_DUE_BPS_GLOAS)
 ```
 
 ### Modified `get_aggregate_due_ms`
 
 ```python
-def get_aggregate_due_ms(epoch: Epoch) -> uint64:
-    # [New in Gloas]
-    if epoch >= GLOAS_FORK_EPOCH:
-        return get_slot_component_duration_ms(AGGREGATE_DUE_BPS_GLOAS)
-    return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
+def get_aggregate_due_ms() -> uint64:
+    # [Modified in Gloas]
+    return get_slot_component_duration_ms(AGGREGATE_DUE_BPS_GLOAS)
 ```
 
 ### Modified `get_sync_message_due_ms`
 
 ```python
-def get_sync_message_due_ms(epoch: Epoch) -> uint64:
-    # [New in Gloas]
-    if epoch >= GLOAS_FORK_EPOCH:
-        return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS_GLOAS)
-    return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS)
+def get_sync_message_due_ms() -> uint64:
+    # [Modified in Gloas]
+    return get_slot_component_duration_ms(SYNC_MESSAGE_DUE_BPS_GLOAS)
 ```
 
 ### Modified `get_contribution_due_ms`
 
 ```python
-def get_contribution_due_ms(epoch: Epoch) -> uint64:
-    # [New in Gloas]
-    if epoch >= GLOAS_FORK_EPOCH:
-        return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS_GLOAS)
-    return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS)
+def get_contribution_due_ms() -> uint64:
+    # [Modified in Gloas]
+    return get_slot_component_duration_ms(CONTRIBUTION_DUE_BPS_GLOAS)
 ```
 
 ### New `get_payload_attestation_due_ms`
 
 ```python
-def get_payload_attestation_due_ms(epoch: Epoch) -> uint64:
+def get_payload_attestation_due_ms() -> uint64:
     return get_slot_component_duration_ms(PAYLOAD_ATTESTATION_DUE_BPS)
 ```
 
@@ -812,15 +803,17 @@ def is_data_available(beacon_block_root: Root) -> bool:
     )
 ```
 
-### New `on_execution_payload`
+### New `on_execution_payload_envelope`
 
-The handler `on_execution_payload` is called when the node receives a
+The handler `on_execution_payload_envelope` is called when the node receives a
 `SignedExecutionPayloadEnvelope` to sync.
 
 ```python
-def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEnvelope) -> None:
+def on_execution_payload_envelope(
+    store: Store, signed_envelope: SignedExecutionPayloadEnvelope
+) -> None:
     """
-    Run ``on_execution_payload`` upon receiving a new execution payload.
+    Run ``on_execution_payload_envelope`` upon receiving a new execution payload envelope.
     """
     envelope = signed_envelope.message
     # The corresponding beacon block root needs to be known
