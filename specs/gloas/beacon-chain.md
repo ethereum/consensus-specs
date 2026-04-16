@@ -61,7 +61,7 @@
     - [New `get_builder_payment_quorum_threshold`](#new-get_builder_payment_quorum_threshold)
   - [Beacon state mutators](#beacon-state-mutators)
     - [New `initiate_builder_exit`](#new-initiate_builder_exit)
-    - [New `queue_builder_pending_payment`](#new-queue_builder_pending_payment)
+    - [New `settle_builder_payment`](#new-settle_builder_payment)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
@@ -777,10 +777,10 @@ def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> No
     builder.withdrawable_epoch = get_current_epoch(state) + MIN_BUILDER_WITHDRAWABILITY_DELAY
 ```
 
-#### New `queue_builder_pending_payment`
+#### New `settle_builder_payment`
 
 ```python
-def queue_builder_pending_payment(state: BeaconState, payment_index: uint64) -> None:
+def settle_builder_payment(state: BeaconState, payment_index: uint64) -> None:
     assert payment_index < len(state.builder_pending_payments)
     payment = state.builder_pending_payments[payment_index]
     if payment.withdrawal.amount > 0:
@@ -939,13 +939,13 @@ def apply_parent_execution_payload(
     for_ops(requests.withdrawals, process_withdrawal_request)
     for_ops(requests.consolidations, process_consolidation_request)
 
-    # Queue the builder payment
+    # Settle the builder payment
     if parent_epoch == get_current_epoch(state):
         payment_index = SLOTS_PER_EPOCH + parent_slot % SLOTS_PER_EPOCH
-        queue_builder_pending_payment(state, payment_index)
+        settle_builder_payment(state, payment_index)
     elif parent_epoch == get_previous_epoch(state):
         payment_index = parent_slot % SLOTS_PER_EPOCH
-        queue_builder_pending_payment(state, payment_index)
+        settle_builder_payment(state, payment_index)
     elif parent_bid.value > 0:
         state.builder_pending_withdrawals.append(
             BuilderPendingWithdrawal(
