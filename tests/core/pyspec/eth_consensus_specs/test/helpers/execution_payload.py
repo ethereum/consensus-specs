@@ -9,7 +9,6 @@ from eth_consensus_specs.debug.random_value import get_random_bytes_list
 from eth_consensus_specs.test.helpers.forks import (
     is_post_capella,
     is_post_deneb,
-    is_post_eip7928,
     is_post_electra,
     is_post_gloas,
 )
@@ -67,7 +66,7 @@ def get_execution_payload_header(spec, state, execution_payload):
     if is_post_deneb(spec):
         payload_header.blob_gas_used = execution_payload.blob_gas_used
         payload_header.excess_blob_gas = execution_payload.excess_blob_gas
-    if is_post_eip7928(spec):
+    if is_post_gloas(spec):
         payload_header.block_access_list_root = spec.hash_tree_root(
             execution_payload.block_access_list
         )
@@ -399,7 +398,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
     if is_post_deneb(spec):
         payload.blob_gas_used = 0
         payload.excess_blob_gas = 0
-    if is_post_eip7928(spec):
+    if is_post_gloas(spec):
         # Add empty block access list for EIP7928
         payload.block_access_list = spec.ByteList[spec.MAX_BYTES_PER_TRANSACTION]()
 
