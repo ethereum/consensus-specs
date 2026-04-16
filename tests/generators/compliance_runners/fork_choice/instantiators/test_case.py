@@ -60,6 +60,14 @@ class FCTestDNA:
     mutation_seed: int | None
 
 
+@dataclass(eq=True, frozen=True)
+class MutationGroup:
+    test_name: str
+    solution_index: int
+    test_dna_base: FCTestDNA
+    nr_mutations: int
+
+
 @dataclass(init=False)
 class PlainFCTestCase(TestCase):
     test_dna: FCTestDNA
@@ -309,7 +317,7 @@ def _load_yaml(path: str):
         return yaml.load(f)
 
 
-def enumerate_test_dnas(config_dir, test_name, params) -> Iterable[tuple[str, FCTestData]]:
+def enumerate_mutation_groups(config_dir, test_name, params) -> Iterable[MutationGroup]:
     test_type = params["test_type"]
     instances_path = params["instances"]
     initial_seed = params["seed"]
@@ -329,10 +337,29 @@ def enumerate_test_dnas(config_dir, test_name, params) -> Iterable[tuple[str, FC
 
     for i, solution in enumerate(solutions):
         for seed in seeds:
-            for j in range(1 + nr_mutations):
-                test_dna = FCTestDNA(test_kind, solution, seed, None if j == 0 else seed + j - 1)
-                case_name = test_name + "_" + str(i) + "_" + str(seed) + "_" + str(j)
-                yield case_name, test_dna
+            yield MutationGroup(
+                test_name=test_name,
+                solution_index=i,
+                test_dna_base=FCTestDNA(test_kind, solution, seed, None),
+                nr_mutations=nr_mutations,
+            )
+
+
+def enumerate_test_dnas(mutation_group: MutationGroup) -> Iterable[tuple[str, FCTestDNA]]:
+    test_name = mutation_group.test_name
+    solution_index = mutation_group.solution_index
+    test_dna_base = mutation_group.test_dna_base
+    seed = test_dna_base.variation_seed
+
+    for j in range(1 + mutation_group.nr_mutations):
+        test_dna = FCTestDNA(
+            test_dna_base.kind,
+            test_dna_base.solution,
+            seed,
+            None if j == 0 else seed + j - 1,
+        )
+        case_name = test_name + "_" + str(solution_index) + "_" + str(seed) + "_" + str(j)
+        yield case_name, test_dna
 
 
 def enumerate_test_cases(config_path, forks, presets, debug, initial_seed: int = None):
@@ -347,15 +374,16 @@ def enumerate_test_cases(config_path, forks, presets, debug, initial_seed: int =
             print(test_name)
         for fork_name in forks:
             for preset_name in presets:
-                for case_name, test_dna in enumerate_test_dnas(config_dir, test_name, params):
-                    yield PlainFCTestCase(
-                        test_dna=test_dna,
-                        bls_active=BLS_ACTIVE,
-                        debug=debug,
-                        fork_name=fork_name,
-                        preset_name=preset_name,
-                        runner_name=GENERATOR_NAME,
-                        handler_name=test_name,
-                        suite_name=SUITE_NAME,
-                        case_name=case_name,
-                    )
+                for mutation_group in enumerate_mutation_groups(config_dir, test_name, params):
+                    for case_name, test_dna in enumerate_test_dnas(mutation_group):
+                        yield PlainFCTestCase(
+                            test_dna=test_dna,
+                            bls_active=BLS_ACTIVE,
+                            debug=debug,
+                            fork_name=fork_name,
+                            preset_name=preset_name,
+                            runner_name=GENERATOR_NAME,
+                            handler_name=test_name,
+                            suite_name=SUITE_NAME,
+                            case_name=case_name,
+                        )
