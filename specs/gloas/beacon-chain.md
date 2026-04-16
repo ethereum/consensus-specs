@@ -55,6 +55,7 @@
     - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
     - [New `compute_ptc`](#new-compute_ptc)
   - [Beacon state accessors](#beacon-state-accessors)
+    - [Modified `get_beacon_proposer_indices`](#modified-get_beacon_proposer_indices)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
     - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
     - [New `get_ptc`](#new-get_ptc)
@@ -108,6 +109,8 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 - [EIP-7732](https://eips.ethereum.org/EIPS/eip-7732): Enshrined
   Proposer-Builder Separation
+- [EIP-8045](https://eips.ethereum.org/EIPS/eip-8045): Exclude slashed
+  validators from all duties
 
 ## Types
 
@@ -591,11 +594,17 @@ def compute_balance_weighted_selection(
         next_index = i % total
         if shuffle_indices:
             next_index = compute_shuffled_index(next_index, total, seed)
+        candidate_index = indices[next_index]
+        # Exclude slashed validators
+        # [New in Gloas:EIP8045]
+        if state.validators[candidate_index].slashed:
+            i += 1
+            continue
         weight = effective_balances[next_index] * MAX_RANDOM_VALUE
         random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
         threshold = MAX_EFFECTIVE_BALANCE_ELECTRA * random_value
         if weight >= threshold:
-            selected.append(indices[next_index])
+            selected.append(candidate_index)
         i += 1
     return selected
 ```
@@ -643,6 +652,29 @@ def compute_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SI
 ```
 
 ### Beacon state accessors
+
+#### Modified `get_beacon_proposer_indices`
+
+*Note*: `get_beacon_proposer_indices` is modified to exclude slashed validators
+from the candidate pool before invoking `compute_proposer_indices`, so the
+pre-computed `proposer_lookahead` (EIP-7917) only contains active and unslashed
+validators.
+
+```python
+def get_beacon_proposer_indices(
+    state: BeaconState, epoch: Epoch
+) -> Vector[ValidatorIndex, SLOTS_PER_EPOCH]:
+    """
+    Return the proposer indices for the given ``epoch``.
+    """
+    # Exclude slashed validators upfront
+    # [Modified in Gloas:EIP8045]
+    indices = [
+        i for i in get_active_validator_indices(state, epoch) if not state.validators[i].slashed
+    ]
+    seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER)
+    return compute_proposer_indices(state, epoch, seed, indices)
+```
 
 #### Modified `get_next_sync_committee_indices`
 
