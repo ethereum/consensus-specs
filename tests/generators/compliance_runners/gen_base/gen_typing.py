@@ -53,3 +53,21 @@ class TestCase:
             / self.suite_name
             / self.case_name
         )
+
+
+@dataclass
+class TestCaseResult:
+    test_case: TestCase
+    meta: dict[str, Any]
+    case_parts: list[TestCasePart]
+
+
+@dataclass
+class TestGroup:
+    group_name: str
+    test_cases: list[TestCase]
+    group_fn: Callable[[list[TestCase]], Iterable[TestCaseResult]]
+
+    def get_identifier(self) -> str:
+        """Return the human readable identifier for the group."""
+        return self.group_name
