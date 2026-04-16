@@ -5,9 +5,7 @@ def _set_queue_epochs(spec, state, exit_offset, consolidation_offset):
     """Helper: set both queue epochs relative to the activation-exit epoch."""
     activation_exit_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
     state.earliest_exit_epoch = spec.Epoch(activation_exit_epoch + exit_offset)
-    state.earliest_consolidation_epoch = spec.Epoch(
-        activation_exit_epoch + consolidation_offset
-    )
+    state.earliest_consolidation_epoch = spec.Epoch(activation_exit_epoch + consolidation_offset)
     return activation_exit_epoch
 
 
