@@ -1,4 +1,14 @@
-from eth_consensus_specs.test.context import spec_state_test, with_gloas_and_later
+from eth_consensus_specs.test.context import (
+    default_activation_threshold,
+    scaled_churn_balances_exceed_activation_exit_churn_limit,
+    single_phase,
+    spec_state_test,
+    spec_test,
+    with_custom_state,
+    with_gloas_and_later,
+    with_presets,
+)
+from eth_consensus_specs.test.helpers.constants import MINIMAL
 
 
 def _set_queue_epochs(spec, state, exit_offset, consolidation_offset):
@@ -52,36 +62,68 @@ def test_exit_uses_exit_queue_when_consolidation_queue_longer(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_exit_routes_through_consolidation_when_exit_queue_longer(spec, state):
+def test_exit_uses_exit_queue_when_consolidation_churn_zero(spec, state):
     """
-    [EIP-8080] When the exit queue is longer than the consolidation queue,
-    exits are routed through `compute_consolidation_epoch_and_update_churn`.
+    [EIP-8080] On small test states ``get_consolidation_churn_limit`` rounds to
+    zero; routing must be suppressed so the degenerate consolidation queue is
+    not touched.
     """
     _set_queue_epochs(spec, state, exit_offset=5, consolidation_offset=0)
-    # Park a large consolidation-churn reservoir so the converted exit fits in-epoch.
-    state.consolidation_balance_to_consume = spec.Gwei(10**18)
+    assert spec.get_consolidation_churn_limit(state) == 0
+
+    pre_consolidation_epoch = state.earliest_consolidation_epoch
+    pre_consolidation_balance = state.consolidation_balance_to_consume
+
+    returned_epoch = spec.compute_exit_epoch_and_update_churn(state, spec.Gwei(1 * 10**9))
+
+    assert returned_epoch == state.earliest_exit_epoch
+    assert state.earliest_consolidation_epoch == pre_consolidation_epoch
+    assert state.consolidation_balance_to_consume == pre_consolidation_balance
+    yield "post", state
+
+
+@with_gloas_and_later
+@with_presets([MINIMAL], reason="mainnet config requires more pre-generated validator keys")
+@spec_test
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@single_phase
+def test_exit_routes_through_consolidation_when_exit_queue_longer(spec, state):
+    """
+    [EIP-8080] When the exit queue is longer than the consolidation queue and
+    consolidation churn is non-zero, exits are routed through
+    ``compute_consolidation_epoch_and_update_churn``.
+    """
+    assert spec.get_consolidation_churn_limit(state) > 0
+    _set_queue_epochs(spec, state, exit_offset=5, consolidation_offset=0)
     pre_exit_epoch = state.earliest_exit_epoch
     pre_exit_balance_to_consume = state.exit_balance_to_consume
 
-    exit_balance = spec.Gwei(300 * 10**9)
+    exit_balance = spec.Gwei(1 * 10**9)
     returned_epoch = spec.compute_exit_epoch_and_update_churn(state, exit_balance)
 
     assert returned_epoch == state.earliest_consolidation_epoch
-    # Exit queue untouched.
     assert state.earliest_exit_epoch == pre_exit_epoch
     assert state.exit_balance_to_consume == pre_exit_balance_to_consume
     yield "post", state
 
 
 @with_gloas_and_later
-@spec_state_test
+@with_presets([MINIMAL], reason="mainnet config requires more pre-generated validator keys")
+@spec_test
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@single_phase
 def test_exit_routed_through_consolidation_applies_two_thirds_factor(spec, state):
     """
-    [EIP-8080] The `2/3` conversion factor is applied to `exit_balance` when
+    [EIP-8080] The ``2/3`` conversion factor is applied to ``exit_balance`` when
     routing through the consolidation queue.
     """
     _set_queue_epochs(spec, state, exit_offset=5, consolidation_offset=0)
-    # Large reservoir so the converted amount fits in the current epoch.
     state.consolidation_balance_to_consume = spec.Gwei(10**18)
     pre_consolidation_balance = state.consolidation_balance_to_consume
 
@@ -94,14 +136,19 @@ def test_exit_routed_through_consolidation_applies_two_thirds_factor(spec, state
 
 
 @with_gloas_and_later
-@spec_state_test
+@with_presets([MINIMAL], reason="mainnet config requires more pre-generated validator keys")
+@spec_test
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@single_phase
 def test_exit_routes_through_consolidation_when_longer_by_one_epoch(spec, state):
     """
     [EIP-8080] Edge case: a one-epoch difference between the exit and
     consolidation queues is still enough to trigger routing.
     """
     _set_queue_epochs(spec, state, exit_offset=1, consolidation_offset=0)
-    state.consolidation_balance_to_consume = spec.Gwei(10**18)
 
     exit_balance = spec.Gwei(1 * 10**9)
     returned_epoch = spec.compute_exit_epoch_and_update_churn(state, exit_balance)
@@ -111,14 +158,19 @@ def test_exit_routes_through_consolidation_when_longer_by_one_epoch(spec, state)
 
 
 @with_gloas_and_later
-@spec_state_test
+@with_presets([MINIMAL], reason="mainnet config requires more pre-generated validator keys")
+@spec_test
+@with_custom_state(
+    balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
+    threshold_fn=default_activation_threshold,
+)
+@single_phase
 def test_exit_routing_preserves_exit_queue_state(spec, state):
     """
     [EIP-8080] When an exit is routed through the consolidation queue, the
     exit queue's state fields must not be mutated.
     """
     _set_queue_epochs(spec, state, exit_offset=5, consolidation_offset=0)
-    state.consolidation_balance_to_consume = spec.Gwei(10**18)
     state.exit_balance_to_consume = spec.Gwei(123 * 10**9)
 
     pre_exit_epoch = state.earliest_exit_epoch
