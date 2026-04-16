@@ -61,6 +61,7 @@
     - [New `get_builder_payment_quorum_threshold`](#new-get_builder_payment_quorum_threshold)
   - [Beacon state mutators](#beacon-state-mutators)
     - [New `initiate_builder_exit`](#new-initiate_builder_exit)
+    - [New `queue_builder_pending_payment`](#new-queue_builder_pending_payment)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
@@ -776,6 +777,17 @@ def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> No
     builder.withdrawable_epoch = get_current_epoch(state) + MIN_BUILDER_WITHDRAWABILITY_DELAY
 ```
 
+#### New `queue_builder_pending_payment`
+
+```python
+def queue_builder_pending_payment(state: BeaconState, payment_index: uint64) -> None:
+    assert payment_index < len(state.builder_pending_payments)
+    payment = state.builder_pending_payments[payment_index]
+    if payment.withdrawal.amount > 0:
+        state.builder_pending_withdrawals.append(payment.withdrawal)
+    state.builder_pending_payments[payment_index] = BuilderPendingPayment()
+```
+
 ## Beacon chain state transition function
 
 State transition is fundamentally modified in Gloas. The full state transition
@@ -930,19 +942,18 @@ def apply_parent_execution_payload(
     # Queue the builder payment
     if parent_epoch == get_current_epoch(state):
         payment_index = SLOTS_PER_EPOCH + parent_slot % SLOTS_PER_EPOCH
+        queue_builder_pending_payment(state, payment_index)
     elif parent_epoch == get_previous_epoch(state):
         payment_index = parent_slot % SLOTS_PER_EPOCH
-    else:
-        # If parent is older than previous_epoch, the payment entry has
-        # already been settled or evicted by process_builder_pending_payments
-        # at epoch boundaries. No action needed.
-        payment_index = None
-
-    if payment_index is not None:
-        payment = state.builder_pending_payments[payment_index]
-        if payment.withdrawal.amount > 0:
-            state.builder_pending_withdrawals.append(payment.withdrawal)
-        state.builder_pending_payments[payment_index] = BuilderPendingPayment()
+        queue_builder_pending_payment(state, payment_index)
+    elif parent_bid.value > 0:
+        state.builder_pending_withdrawals.append(
+            BuilderPendingWithdrawal(
+                fee_recipient=parent_bid.fee_recipient,
+                amount=parent_bid.value,
+                builder_index=parent_bid.builder_index,
+            )
+        )
 
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1

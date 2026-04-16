@@ -3,6 +3,7 @@ from eth_consensus_specs.test.context import (
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.block import (
+    build_empty_block,
     build_empty_block_for_next_slot,
 )
 from eth_consensus_specs.test.helpers.execution_requests import (
@@ -10,6 +11,7 @@ from eth_consensus_specs.test.helpers.execution_requests import (
 )
 from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
 from eth_consensus_specs.test.helpers.state import (
+    next_epoch_with_full_participation,
     state_transition_and_sign_block,
 )
 from eth_consensus_specs.test.helpers.withdrawals import (
@@ -262,3 +264,78 @@ def test_process_parent_execution_payload__wrong_execution_requests_root(spec, s
 
     yield "blocks", [signed_block]
     yield "post", None
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_payment_after_missed_epochs(spec, state):
+    """
+    Test that a builder is correctly charged when their canonical payload
+    is processed after 2+ epochs of missed blocks.
+    """
+    # Advance to get finalization
+    for _ in range(4):
+        next_epoch_with_full_participation(spec, state)
+    assert state.finalized_checkpoint.epoch == 2
+
+    # Build Block 1 with a non-zero value bid from a builder
+    block_1 = build_empty_block_for_next_slot(spec, state)
+    builder_index = 0
+    value = spec.Gwei(1000000)  # 0.001 ETH
+    fee_recipient = b"\xab" * 20
+
+    bid = block_1.body.signed_execution_payload_bid.message
+    bid.builder_index = builder_index
+    bid.value = value
+    bid.fee_recipient = fee_recipient
+    bid.execution_requests_root = spec.hash_tree_root(spec.ExecutionRequests())
+
+    # Sign the bid with the builder's private key
+    signature = spec.get_execution_payload_bid_signature(
+        state, bid, builder_privkeys[builder_index]
+    )
+    block_1.body.signed_execution_payload_bid = spec.SignedExecutionPayloadBid(
+        message=bid,
+        signature=signature,
+    )
+
+    # Ensure builder can cover the bid
+    state.builders[builder_index].balance = spec.MIN_DEPOSIT_AMOUNT + value
+
+    yield "pre", state
+
+    # Process Block 1 — creates a pending payment for the builder
+    signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
+
+    # Verify pending payment was created
+    payment_idx = spec.SLOTS_PER_EPOCH + block_1.slot % spec.SLOTS_PER_EPOCH
+    payment = state.builder_pending_payments[payment_idx]
+    assert payment.withdrawal.amount == value
+    assert payment.withdrawal.builder_index == builder_index
+    assert payment.weight == 0
+
+    # Builder delivers their payload — parent block becomes FULL
+    set_parent_block_full(spec, state)
+    pre_builder_balance = state.builders[builder_index].balance
+
+    # Build Block 2 with 2+ epochs of missed slots. During the slot advancement,
+    # process_builder_pending_payments runs at each epoch boundary:
+    #   1st boundary: shifts payment from second half to first half
+    #   2nd boundary: checks quorum on first half — weight 0 < quorum → evicted
+    # When Block 2 is processed, parent is FULL so apply_parent_execution_payload
+    # runs. Since parent_epoch is older than previous_epoch, payment_index is None.
+    # The fix creates the withdrawal directly from the bid in this case.
+    block_1_epoch = spec.compute_epoch_at_slot(block_1.slot)
+    block_2_slot = (block_1_epoch + 2) * spec.SLOTS_PER_EPOCH + 1
+    block_2 = build_empty_block(spec, state, slot=block_2_slot)
+    signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
+
+    yield "blocks", [signed_block_1, signed_block_2]
+    yield "post", state
+
+    # Verify apply_parent_execution_payload actually ran (parent was FULL)
+    parent_slot_index = bid.slot % spec.SLOTS_PER_HISTORICAL_ROOT
+    assert state.execution_payload_availability[parent_slot_index] == 0b1
+
+    # Verify the builder was charged — balance decreased by the bid value
+    assert state.builders[builder_index].balance == pre_builder_balance - value
