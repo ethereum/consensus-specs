@@ -631,6 +631,7 @@ def with_phases(phases, other_phases=None):
                             accumulated.update(ret)
                     ret = accumulated if accumulated else None
                 else:
+                    ret = None
                     for fork_meta in fork_metas:
                         if fork_meta.post_fork_name not in DEFAULT_PYTEST_FORKS:
                             continue
