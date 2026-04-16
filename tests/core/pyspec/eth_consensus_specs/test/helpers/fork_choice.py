@@ -252,8 +252,14 @@ def get_genesis_forkchoice_store_and_block(spec, genesis_state):
     assert genesis_state.slot == spec.GENESIS_SLOT
     genesis_block = spec.BeaconBlock(state_root=genesis_state.hash_tree_root())
     if is_post_gloas(spec):
+        # Match the genesis block body bid to what ``genesis.py`` set on the
+        # state's committed bid; this keeps ``genesis_block`` consistent with
+        # ``genesis_state.latest_block_header`` (body_root).
         genesis_block.body.signed_execution_payload_bid.message.block_hash = (
-            genesis_state.latest_block_hash
+            genesis_state.latest_execution_payload_bid.block_hash
+        )
+        genesis_block.body.signed_execution_payload_bid.message.execution_requests_root = (
+            genesis_state.latest_execution_payload_bid.execution_requests_root
         )
     store = spec.get_forkchoice_store(genesis_state, genesis_block)
     return store, genesis_block
@@ -407,7 +413,7 @@ def run_on_execution_payload_envelope(spec, store, signed_envelope, valid=True):
 
     # Verify the envelope was processed, block should now have FULL state
     envelope_root = signed_envelope.message.beacon_block_root
-    assert envelope_root in store.payload_states
+    assert envelope_root in store.payloads
 
 
 def get_execution_payload_envelope_file_name(signed_envelope):

@@ -330,6 +330,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
         slot=state.slot,
         value=spec.Gwei(0),
         blob_kzg_commitments=kzg_list,
+        execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
     )
 
 
@@ -483,36 +484,6 @@ def build_signed_execution_payload_envelope(spec, state, block_root, signed_bloc
     payload.gas_limit = state.latest_execution_payload_bid.gas_limit
     payload.parent_hash = state.latest_block_hash
 
-    # Simulate process_execution_payload state changes to compute correct state_root
-    temp_state = state.copy()
-
-    # Cache latest block header state root
-    previous_state_root = temp_state.hash_tree_root()
-    if temp_state.latest_block_header.state_root == spec.Root():
-        temp_state.latest_block_header.state_root = previous_state_root
-
-    # Process builder payment: move pending payment to withdrawals if amount > 0
-    payment = temp_state.builder_pending_payments[
-        spec.SLOTS_PER_EPOCH + temp_state.slot % spec.SLOTS_PER_EPOCH
-    ]
-    if payment.withdrawal.amount > 0:
-        temp_state.builder_pending_withdrawals.append(payment.withdrawal)
-
-    # Clear pending payment slot
-    temp_state.builder_pending_payments[
-        spec.SLOTS_PER_EPOCH + temp_state.slot % spec.SLOTS_PER_EPOCH
-    ] = spec.BuilderPendingPayment()
-
-    # Update execution payload availability for this slot
-    temp_state.execution_payload_availability[temp_state.slot % spec.SLOTS_PER_HISTORICAL_ROOT] = (
-        0b1
-    )
-
-    # Advance EL chain head
-    temp_state.latest_block_hash = payload.block_hash
-
-    post_processing_state_root = temp_state.hash_tree_root()
-
     # Create the execution payload envelope message
     envelope_message = spec.ExecutionPayloadEnvelope(
         beacon_block_root=block_root,
@@ -520,7 +491,6 @@ def build_signed_execution_payload_envelope(spec, state, block_root, signed_bloc
         execution_requests=spec.ExecutionRequests(),
         builder_index=builder_index,
         slot=signed_block.message.slot,
-        state_root=post_processing_state_root,
     )
 
     # Sign the envelope: self-builds use proposer key, external builds use builder key
