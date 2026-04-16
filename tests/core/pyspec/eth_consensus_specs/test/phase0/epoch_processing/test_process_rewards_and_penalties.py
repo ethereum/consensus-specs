@@ -34,8 +34,16 @@ def run_process_rewards_and_penalties(spec, state):
     yield from run_epoch_processing_with(spec, state, "process_rewards_and_penalties")
 
 
+def _get_unslashed_attesting_indices(spec, state, attestations):
+    if is_post_altair(spec):
+        return spec.get_unslashed_participating_indices(
+            state, spec.TIMELY_TARGET_FLAG_INDEX, spec.get_previous_epoch(state)
+        )
+    return spec.get_unslashed_attesting_indices(state, attestations)
+
+
 def validate_resulting_balances(spec, pre_state, post_state, attestations):
-    attesting_indices = spec.get_unslashed_attesting_indices(post_state, attestations)
+    attesting_indices = _get_unslashed_attesting_indices(spec, post_state, attestations)
     current_epoch = spec.get_current_epoch(post_state)
 
     for index in range(len(pre_state.validators)):
@@ -146,7 +154,7 @@ def test_full_attestations_misc_balances(spec, state):
     validate_resulting_balances(spec, pre_state, state, attestations)
     # Check if base rewards are consistent with effective balance.
     brs = {}
-    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    attesting_indices = _get_unslashed_attesting_indices(spec, state, attestations)
     for index in attesting_indices:
         br = spec.get_base_reward(state, index)
         if br in brs:
@@ -167,7 +175,7 @@ def test_full_attestations_default_balances_except_a_validator_with_one_gwei(spe
     yield from run_process_rewards_and_penalties(spec, state)
 
     # Few assertions. Mainly to check that this extreme case can run without exception
-    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    attesting_indices = _get_unslashed_attesting_indices(spec, state, attestations)
     assert len(attesting_indices) == len(state.validators)
 
 
@@ -200,7 +208,7 @@ def run_with_participation(spec, state, participation_fn):
 
     yield from run_process_rewards_and_penalties(spec, state)
 
-    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    attesting_indices = _get_unslashed_attesting_indices(spec, state, attestations)
     assert len(attesting_indices) == len(participated)
 
     validate_resulting_balances(spec, pre_state, state, attestations)
@@ -459,7 +467,7 @@ def test_duplicate_participants_different_attestation_3(spec, state):
 def test_attestations_some_slashed(spec, state):
     attestations = prepare_state_with_attestations(spec, state)
     attesting_indices_before_slashings = list(
-        spec.get_unslashed_attesting_indices(state, attestations)
+        _get_unslashed_attesting_indices(spec, state, attestations)
     )
 
     # Slash maximum amount of validators allowed per epoch.
@@ -473,7 +481,7 @@ def test_attestations_some_slashed(spec, state):
 
     yield from run_process_rewards_and_penalties(spec, state)
 
-    attesting_indices = spec.get_unslashed_attesting_indices(state, attestations)
+    attesting_indices = _get_unslashed_attesting_indices(spec, state, attestations)
     assert len(attesting_indices) > 0
     assert (
         len(attesting_indices_before_slashings) - len(attesting_indices)

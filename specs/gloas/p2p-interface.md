@@ -317,6 +317,8 @@ obtained from the `state.latest_execution_payload_bid`)
 - _[REJECT]_ `block.slot` equals `envelope.slot`.
 - _[REJECT]_ `envelope.builder_index == bid.builder_index`
 - _[REJECT]_ `payload.block_hash == bid.block_hash`
+- _[REJECT]_
+  `hash_tree_root(envelope.execution_requests) == bid.execution_requests_root`
 - _[REJECT]_ `signed_execution_payload_envelope.signature` is valid as verified
   by `verify_execution_payload_envelope_signature`.
 

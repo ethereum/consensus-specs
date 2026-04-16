@@ -510,21 +510,21 @@ def get_slot_component_duration_ms(basis_points: uint64) -> uint64:
 #### `get_attestation_due_ms`
 
 ```python
-def get_attestation_due_ms(epoch: Epoch) -> uint64:
+def get_attestation_due_ms() -> uint64:
     return get_slot_component_duration_ms(ATTESTATION_DUE_BPS)
 ```
 
 #### `get_proposer_reorg_cutoff_ms`
 
 ```python
-def get_proposer_reorg_cutoff_ms(epoch: Epoch) -> uint64:
+def get_proposer_reorg_cutoff_ms() -> uint64:
     return get_slot_component_duration_ms(PROPOSER_REORG_CUTOFF_BPS)
 ```
 
 #### `get_aggregate_due_ms`
 
 ```python
-def get_aggregate_due_ms(epoch: Epoch) -> uint64:
+def get_aggregate_due_ms() -> uint64:
     return get_slot_component_duration_ms(AGGREGATE_DUE_BPS)
 ```
 
@@ -569,8 +569,7 @@ def is_finalization_ok(store: Store, slot: Slot) -> bool:
 def is_proposing_on_time(store: Store) -> bool:
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    epoch = get_current_store_epoch(store)
-    proposer_reorg_cutoff_ms = get_proposer_reorg_cutoff_ms(epoch)
+    proposer_reorg_cutoff_ms = get_proposer_reorg_cutoff_ms()
     return time_into_slot_ms <= proposer_reorg_cutoff_ms
 ```
 
@@ -803,8 +802,7 @@ def record_block_timeliness(store: Store, root: Root) -> None:
     block = store.blocks[root]
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    epoch = get_current_store_epoch(store)
-    attestation_threshold_ms = get_attestation_due_ms(epoch)
+    attestation_threshold_ms = get_attestation_due_ms()
     is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
     is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
     store.block_timeliness[root] = is_timely

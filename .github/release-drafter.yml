@@ -29,8 +29,6 @@ categories:
   # Features
   - title: EIP-6914
     label: eip6914
-  - title: EIP-7928
-    label: eip7928
   - title: EIP-8025
     label: eip8025
 

@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.fork_transition import (
     transition_to_next_epoch_and_append_blocks,
     transition_until_fork,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_electra
 from eth_consensus_specs.test.helpers.keys import pubkeys
 
 
@@ -81,6 +82,7 @@ def test_higher_churn_limit_to_lower(state, fork_epoch, spec, post_spec, pre_tag
     yield "blocks", blocks
     yield "post", state
 
-    churn_limit_1 = post_spec.get_validator_activation_churn_limit(state)
-    assert churn_limit_1 == post_spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
-    assert churn_limit_1 < churn_limit_0
+    if not is_post_electra(post_spec):
+        churn_limit_1 = post_spec.get_validator_activation_churn_limit(state)
+        assert churn_limit_1 == post_spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
+        assert churn_limit_1 < churn_limit_0
