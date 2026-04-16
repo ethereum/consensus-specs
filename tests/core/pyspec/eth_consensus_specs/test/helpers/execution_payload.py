@@ -66,10 +66,6 @@ def get_execution_payload_header(spec, state, execution_payload):
     if is_post_deneb(spec):
         payload_header.blob_gas_used = execution_payload.blob_gas_used
         payload_header.excess_blob_gas = execution_payload.excess_blob_gas
-    if is_post_gloas(spec):
-        payload_header.block_access_list_root = spec.hash_tree_root(
-            execution_payload.block_access_list
-        )
     return payload_header
 
 
@@ -399,8 +395,8 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         payload.blob_gas_used = 0
         payload.excess_blob_gas = 0
     if is_post_gloas(spec):
-        # Add empty block access list for EIP7928
         payload.block_access_list = spec.ByteList[spec.MAX_BYTES_PER_TRANSACTION]()
+        payload.slot_number = state.slot
 
     payload.block_hash = compute_el_block_hash(spec, payload, state)
 

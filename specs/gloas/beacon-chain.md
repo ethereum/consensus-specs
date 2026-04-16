@@ -415,6 +415,8 @@ class ExecutionPayload(Container):
     excess_blob_gas: uint64
     # [New in Gloas:EIP7928]
     block_access_list: BlockAccessList
+    # [New in Gloas:EIP7843]
+    slot_number: uint64
 ```
 
 ## Dataclasses
