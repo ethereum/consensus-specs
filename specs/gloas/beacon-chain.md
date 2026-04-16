@@ -582,6 +582,13 @@ def compute_balance_weighted_selection(
     ``indices`` is traversed in order.
     """
     MAX_RANDOM_VALUE = 2**16 - 1
+    # Exclude slashed validators from the candidate pool upfront; when every
+    # candidate is slashed (degenerate case), fall back to the original pool
+    # so the function remains live
+    # [New in Gloas:EIP8045]
+    unslashed = [index for index in indices if not state.validators[index].slashed]
+    if len(unslashed) > 0:
+        indices = unslashed
     total = uint64(len(indices))
     assert total > 0
     effective_balances = [state.validators[index].effective_balance for index in indices]
@@ -594,17 +601,11 @@ def compute_balance_weighted_selection(
         next_index = i % total
         if shuffle_indices:
             next_index = compute_shuffled_index(next_index, total, seed)
-        candidate_index = indices[next_index]
-        # Exclude slashed validators
-        # [New in Gloas:EIP8045]
-        if state.validators[candidate_index].slashed:
-            i += 1
-            continue
         weight = effective_balances[next_index] * MAX_RANDOM_VALUE
         random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
         threshold = MAX_EFFECTIVE_BALANCE_ELECTRA * random_value
         if weight >= threshold:
-            selected.append(candidate_index)
+            selected.append(indices[next_index])
         i += 1
     return selected
 ```
