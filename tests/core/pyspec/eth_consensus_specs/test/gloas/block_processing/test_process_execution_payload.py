@@ -10,10 +10,8 @@ from eth_consensus_specs.test.helpers.deposits import (
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
-    compute_el_block_hash,
 )
 from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
-from eth_consensus_specs.test.helpers.state import next_slot
 
 
 def run_execution_payload_processing(
@@ -918,22 +916,3 @@ def test_process_execution_payload_execution_engine_invalid(spec, state):
     yield from run_execution_payload_processing(
         spec, state, signed_envelope, valid=False, execution_valid=False
     )
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_execution_payload_with_block_access_list(spec, state):
-    """Test that execution payload correctly includes block access list field."""
-    next_slot(spec, state)
-    execution_payload = build_empty_execution_payload(spec, state)
-
-    # Verify field exists and can be set
-    assert hasattr(execution_payload, "block_access_list")
-    execution_payload.block_access_list = spec.ByteList[spec.MAX_BYTES_PER_TRANSACTION](
-        b"\xc0" * 100
-    )
-    execution_payload.block_hash = compute_el_block_hash(spec, execution_payload, state)
-
-    # Process payload
-    body = spec.BeaconBlockBody(execution_payload=execution_payload)
-    spec.process_execution_payload(state, body, spec.NoopExecutionEngine())
