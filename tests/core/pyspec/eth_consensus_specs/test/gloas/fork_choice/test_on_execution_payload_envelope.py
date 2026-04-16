@@ -48,6 +48,7 @@ def _build_invalid_envelope(spec, state, block_root, signed_block, **overrides):
         "gas_limit",
         "parent_hash",
         "prev_randao",
+        "slot_number",
         "timestamp",
         "withdrawals",
     ):
@@ -59,7 +60,6 @@ def _build_invalid_envelope(spec, state, block_root, signed_block, **overrides):
         payload=payload,
         execution_requests=overrides.pop("execution_requests", spec.ExecutionRequests()),
         builder_index=overrides.pop("builder_index", builder_index),
-        slot=overrides.pop("slot", signed_block.message.slot),
     )
 
     if overrides.pop("valid_signature", True):
@@ -209,7 +209,7 @@ def test_on_execution_payload_envelope__wrong_slot(spec, state):
         state,
         block_root,
         signed_block,
-        slot=state.slot + 1,
+        slot_number=state.slot + 1,
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 

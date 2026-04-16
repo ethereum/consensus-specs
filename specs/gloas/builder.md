@@ -244,7 +244,6 @@ alias `bid` to be the committed `ExecutionPayloadBid` in
 3. Set `envelope.builder_index` to be the index of the builder performing these
    steps. This field **MUST** be `bid.builder_index`.
 4. Set `envelope.beacon_block_root` to be `hash_tree_root(block)`.
-5. Set `envelope.slot` to be `block.slot`.
 
 After preparing the `envelope` the builder signs it using:
 
