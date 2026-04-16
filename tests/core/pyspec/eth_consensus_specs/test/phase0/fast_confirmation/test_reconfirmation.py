@@ -2,6 +2,7 @@ from eth_consensus_specs.test.context import (
     default_activation_threshold,
     default_balances,
     MINIMAL,
+    only_generator,
     single_phase,
     spec_test,
     with_all_phases_from_to,
@@ -24,6 +25,7 @@ Test is_confirmed_chain_safe
 """
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(

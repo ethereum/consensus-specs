@@ -2,6 +2,7 @@ from eth_consensus_specs.test.context import (
     default_activation_threshold,
     default_balances,
     MINIMAL,
+    only_generator,
     single_phase,
     spec_test,
     with_all_phases_from_to,
@@ -21,6 +22,7 @@ Test on update FCR variables
 """
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -65,6 +67,7 @@ def test_fcr_invariants_monotone_and_canonical(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -189,6 +192,7 @@ def test_observed_justified_checkpoints_update_timing(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -313,6 +317,7 @@ def test_observed_justified_checkpoints_properties_across_epochs(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -352,6 +357,7 @@ def test_observed_justified_stalls_under_low_participation(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -400,6 +406,7 @@ def test_slot_head_variables_updated_every_slot(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -470,6 +477,7 @@ def test_gu_snapshot_initialization_and_stability(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(

@@ -2,6 +2,7 @@ from eth_consensus_specs.test.context import (
     default_activation_threshold,
     default_balances,
     MINIMAL,
+    only_generator,
     single_phase,
     spec_test,
     with_all_phases_from_to,
@@ -22,6 +23,7 @@ Test is_one_confirmed
 """
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -85,6 +87,7 @@ def test_is_one_confirmed_passes_with_full_participation(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -149,6 +152,7 @@ def test_is_one_confirmed_fails_with_low_participation(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -202,6 +206,7 @@ def test_is_one_confirmed_slashing_supporters_does_not_hurt(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -292,6 +297,7 @@ def test_is_one_confirmed_slashing_non_supporters_helps(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -425,6 +431,7 @@ def test_is_one_confirmed_empty_slot_discount(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -485,6 +492,7 @@ def test_is_one_confirmed_support_accumulates_over_slots(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -585,6 +593,7 @@ def test_is_one_confirmed_epoch_crossing_block(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -686,6 +695,7 @@ def test_is_one_confirmed_fails_with_competing_branch(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -751,6 +761,7 @@ def test_is_confirmed_chain_safe_passes_full_chain(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(

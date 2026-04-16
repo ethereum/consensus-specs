@@ -2,6 +2,7 @@ from eth_consensus_specs.test.context import (
     default_activation_threshold,
     default_balances,
     MINIMAL,
+    only_generator,
     single_phase,
     spec_test,
     with_all_phases_from_to,
@@ -23,6 +24,7 @@ Test on revert to finality
 """
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -84,6 +86,7 @@ def test_fcr_no_reset_when_confirmed_exactly_one_epoch_old(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -147,6 +150,7 @@ def test_fcr_no_reset_at_epoch_boundary_with_full_participation(spec, state):
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -217,6 +221,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_too_old_lower_participation(spe
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -310,6 +315,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_at_epoch_boundary
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -403,6 +409,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -501,6 +508,7 @@ def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivo
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
@@ -595,6 +603,7 @@ def test_reset_to_finality_but_no_restart_to_gu_because_gu_too_old_epoch(spec, s
     yield from fcr.get_test_artefacts()
 
 
+@only_generator("too slow")
 @with_all_phases_from_to(ALTAIR, GLOAS)
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
