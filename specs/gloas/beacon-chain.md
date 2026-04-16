@@ -32,6 +32,7 @@
     - [`ExecutionPayloadEnvelope`](#executionpayloadenvelope)
     - [`SignedExecutionPayloadEnvelope`](#signedexecutionpayloadenvelope)
   - [Modified containers](#modified-containers)
+    - [`ExecutionPayload`](#executionpayload)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
 - [Dataclasses](#dataclasses)
@@ -111,9 +112,10 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 ## Types
 
-| Name           | SSZ equivalent | Description            |
-| -------------- | -------------- | ---------------------- |
-| `BuilderIndex` | `uint64`       | Builder registry index |
+| Name              | SSZ equivalent                        | Description                   |
+| ----------------- | ------------------------------------- | ----------------------------- |
+| `BuilderIndex`    | `uint64`                              | Builder registry index        |
+| `BlockAccessList` | `ByteList[MAX_BYTES_PER_TRANSACTION]` | RLP encoded block access list |
 
 ## Constants
 
@@ -296,6 +298,31 @@ class SignedExecutionPayloadEnvelope(Container):
 ```
 
 ### Modified containers
+
+#### `ExecutionPayload`
+
+```python
+class ExecutionPayload(Container):
+    parent_hash: Hash32
+    fee_recipient: ExecutionAddress
+    state_root: Bytes32
+    receipts_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    prev_randao: Bytes32
+    block_number: uint64
+    gas_limit: uint64
+    gas_used: uint64
+    timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    base_fee_per_gas: uint256
+    block_hash: Hash32
+    transactions: List[Transaction, MAX_TRANSACTIONS_PER_PAYLOAD]
+    withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
+    blob_gas_used: uint64
+    excess_blob_gas: uint64
+    # [New in Gloas:EIP7928]
+    block_access_list: BlockAccessList
+```
 
 #### `BeaconBlockBody`
 
