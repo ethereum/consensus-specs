@@ -182,6 +182,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         # [New in Gloas:EIP7732]
         latest_execution_payload_bid=ExecutionPayloadBid(
             block_hash=pre.latest_execution_payload_header.block_hash,
+            execution_requests_root=hash_tree_root(ExecutionRequests()),
         ),
         # [New in Gloas:EIP7732]
         payload_expected_withdrawals=[],

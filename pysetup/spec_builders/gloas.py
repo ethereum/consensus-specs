@@ -33,6 +33,7 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
         return set(
             [
                 "compute_proposer_index",
+                "process_execution_payload",
                 "retrieve_column_sidecars",
             ]
         )

@@ -45,7 +45,6 @@
     - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
     - [New `is_attestation_same_slot`](#new-is_attestation_same_slot)
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
-    - [New `is_parent_block_full`](#new-is_parent_block_full)
     - [New `is_pending_validator`](#new-is_pending_validator)
   - [Misc](#misc-2)
     - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
@@ -63,6 +62,7 @@
     - [New `get_builder_payment_quorum_threshold`](#new-get_builder_payment_quorum_threshold)
   - [Beacon state mutators](#beacon-state-mutators)
     - [New `initiate_builder_exit`](#new-initiate_builder_exit)
+    - [New `settle_builder_payment`](#new-settle_builder_payment)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
@@ -70,6 +70,9 @@
     - [New `process_builder_pending_payments`](#new-process_builder_pending_payments)
     - [New `process_ptc_window`](#new-process_ptc_window)
   - [Block processing](#block-processing)
+    - [Parent execution payload](#parent-execution-payload)
+      - [New `apply_parent_execution_payload`](#new-apply_parent_execution_payload)
+      - [New `process_parent_execution_payload`](#new-process_parent_execution_payload)
     - [Withdrawals](#withdrawals)
       - [New `get_builder_withdrawals`](#new-get_builder_withdrawals)
       - [New `get_builders_sweep_withdrawals`](#new-get_builders_sweep_withdrawals)
@@ -79,6 +82,8 @@
       - [New `update_builder_pending_withdrawals`](#new-update_builder_pending_withdrawals)
       - [New `update_next_withdrawal_builder_index`](#new-update_next_withdrawal_builder_index)
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
+    - [Execution payload](#execution-payload)
+      - [Removed `process_execution_payload`](#removed-process_execution_payload)
     - [Execution payload bid](#execution-payload-bid)
       - [New `verify_execution_payload_bid_signature`](#new-verify_execution_payload_bid_signature)
       - [New `process_execution_payload_bid`](#new-process_execution_payload_bid)
@@ -97,9 +102,6 @@
         - [New `process_payload_attestation`](#new-process_payload_attestation)
       - [Proposer slashing](#proposer-slashing)
         - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
-  - [Execution payload processing](#execution-payload-processing)
-    - [New `verify_execution_payload_envelope_signature`](#new-verify_execution_payload_envelope_signature)
-    - [New `process_execution_payload`](#new-process_execution_payload)
 
 <!-- mdformat-toc end -->
 
@@ -267,6 +269,7 @@ class ExecutionPayloadBid(Container):
     value: Gwei
     execution_payment: Gwei
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    execution_requests_root: Root
 ```
 
 #### `SignedExecutionPayloadBid`
@@ -286,7 +289,6 @@ class ExecutionPayloadEnvelope(Container):
     builder_index: BuilderIndex
     beacon_block_root: Root
     slot: Slot
-    state_root: Root
 ```
 
 #### `SignedExecutionPayloadEnvelope`
@@ -326,6 +328,8 @@ class BeaconBlockBody(Container):
     signed_execution_payload_bid: SignedExecutionPayloadBid
     # [New in Gloas:EIP7732]
     payload_attestations: List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]
+    # [New in Gloas:EIP7732]
+    parent_execution_requests: ExecutionRequests
 ```
 
 #### `BeaconState`
@@ -505,18 +509,6 @@ def is_valid_indexed_payload_attestation(
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(attestation.data.slot))
     signing_root = compute_signing_root(attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, attestation.signature)
-```
-
-#### New `is_parent_block_full`
-
-*Note*: This function returns true if the last committed payload bid was
-fulfilled with a payload, which can only happen when both beacon block and
-payload were present. This function must be called on a beacon state before
-processing the execution payload bid in the block.
-
-```python
-def is_parent_block_full(state: BeaconState) -> bool:
-    return state.latest_execution_payload_bid.block_hash == state.latest_block_hash
 ```
 
 #### New `is_pending_validator`
@@ -812,6 +804,17 @@ def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> No
     builder.withdrawable_epoch = get_current_epoch(state) + MIN_BUILDER_WITHDRAWABILITY_DELAY
 ```
 
+#### New `settle_builder_payment`
+
+```python
+def settle_builder_payment(state: BeaconState, payment_index: uint64) -> None:
+    assert payment_index < len(state.builder_pending_payments)
+    payment = state.builder_pending_payments[payment_index]
+    if payment.withdrawal.amount > 0:
+        state.builder_pending_withdrawals.append(payment.withdrawal)
+    state.builder_pending_payments[payment_index] = BuilderPendingPayment()
+```
+
 ## Beacon chain state transition function
 
 State transition is fundamentally modified in Gloas. The full state transition
@@ -824,12 +827,14 @@ transitions that trigger an unhandled exception (e.g. a failed `assert` or an
 out-of-range list access) are considered invalid. State transitions that cause a
 `uint64` overflow or underflow are also considered invalid.
 
-The post-state corresponding to a pre-state `state` and a signed execution
-payload envelope `signed_envelope` is defined as
-`process_execution_payload(state, signed_envelope, execution_engine)`. State
-transitions that trigger an unhandled exception (e.g. a failed `assert` or an
-out-of-range list access) are considered invalid. State transitions that cause
-an `uint64` overflow or underflow are also considered invalid.
+The validity of a signed execution payload envelope `signed_envelope` against a
+pre-state `state` is checked by
+`verify_execution_payload_envelope(state, signed_envelope, execution_engine)`.
+Payload processing is deferred to the next beacon block via
+`process_parent_execution_payload`. Payloads that trigger an unhandled exception
+(e.g. a failed `assert` or an out-of-range list access) are considered invalid.
+Payloads that cause a `uint64` overflow or underflow are also considered
+invalid.
 
 ### Modified `process_slot`
 
@@ -917,6 +922,8 @@ def process_ptc_window(state: BeaconState) -> None:
 
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
+    # [New in Gloas:EIP7732]
+    process_parent_execution_payload(state, block)
     process_block_header(state, block)
     # [Modified in Gloas:EIP7732]
     process_withdrawals(state)
@@ -929,6 +936,81 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     # [Modified in Gloas:EIP7732]
     process_operations(state, block.body)
     process_sync_aggregate(state, block.body.sync_aggregate)
+```
+
+#### Parent execution payload
+
+##### New `apply_parent_execution_payload`
+
+*Note*: This function processes the parent's execution requests, queues the
+builder payment, updates payload availability, and updates the latest block
+hash. It is called by `process_parent_execution_payload` during block processing
+and by the validator during block production before computing withdrawals.
+
+```python
+def apply_parent_execution_payload(
+    state: BeaconState,
+    parent_bid: ExecutionPayloadBid,
+    requests: ExecutionRequests,
+) -> None:
+    parent_slot = parent_bid.slot
+    parent_epoch = compute_epoch_at_slot(parent_slot)
+
+    # Process execution requests from parent's payload. The execution
+    # requests are processed at state.slot (child's slot), not the parent's slot.
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(requests.deposits, process_deposit_request)
+    for_ops(requests.withdrawals, process_withdrawal_request)
+    for_ops(requests.consolidations, process_consolidation_request)
+
+    # Settle the builder payment
+    if parent_epoch == get_current_epoch(state):
+        payment_index = SLOTS_PER_EPOCH + parent_slot % SLOTS_PER_EPOCH
+        settle_builder_payment(state, payment_index)
+    elif parent_epoch == get_previous_epoch(state):
+        payment_index = parent_slot % SLOTS_PER_EPOCH
+        settle_builder_payment(state, payment_index)
+    elif parent_bid.value > 0:
+        state.builder_pending_withdrawals.append(
+            BuilderPendingWithdrawal(
+                fee_recipient=parent_bid.fee_recipient,
+                amount=parent_bid.value,
+                builder_index=parent_bid.builder_index,
+            )
+        )
+
+    # Update parent payload availability and latest block hash
+    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
+    state.latest_block_hash = parent_bid.block_hash
+```
+
+##### New `process_parent_execution_payload`
+
+*Note*: This function validates and processes the parent's execution payload.
+`process_parent_execution_payload` must be called before
+`process_execution_payload_bid` (which overwrites
+`state.latest_execution_payload_bid`).
+
+```python
+def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> None:
+    bid = block.body.signed_execution_payload_bid.message
+    parent_bid = state.latest_execution_payload_bid
+    requests = block.body.parent_execution_requests
+
+    # True if this block built on the parent's full payload
+    is_parent_block_full = bid.parent_block_hash == parent_bid.block_hash
+
+    if not is_parent_block_full:
+        # Parent was EMPTY -- no execution requests expected
+        assert requests == ExecutionRequests()
+        return
+
+    # Parent was FULL -- verify the bid commitment and apply the payload
+    assert hash_tree_root(requests) == parent_bid.execution_requests_root
+    apply_parent_execution_payload(state, parent_bid, requests)
 ```
 
 #### Withdrawals
@@ -1103,8 +1185,9 @@ def update_next_withdrawal_builder_index(
 *Note*: This is modified to only take the `state` as parameter. Withdrawals are
 deterministic given the beacon state, any execution payload that has the
 corresponding block as parent beacon block is required to honor these
-withdrawals in the execution layer. `process_withdrawals` must be called before
-`process_execution_payload_bid` as the latter function affects validator
+withdrawals in the execution layer. `process_withdrawals` must be called after
+`process_parent_execution_payload` (which updates `state.latest_block_hash`) and
+before `process_execution_payload_bid` as the latter function affects validator
 balances.
 
 ```python
@@ -1115,7 +1198,7 @@ def process_withdrawals(
 ) -> None:
     # [New in Gloas:EIP7732]
     # Return early if the parent block is empty
-    if not is_parent_block_full(state):
+    if state.latest_block_hash != state.latest_execution_payload_bid.block_hash:
         return
 
     # Get expected withdrawals
@@ -1135,6 +1218,15 @@ def process_withdrawals(
     update_next_withdrawal_builder_index(state, expected.processed_builders_sweep_count)
     update_next_withdrawal_validator_index(state, expected.withdrawals)
 ```
+
+#### Execution payload
+
+##### Removed `process_execution_payload`
+
+`process_execution_payload` has been replaced by
+`verify_execution_payload_envelope`, a pure verification helper called from
+`on_execution_payload_envelope`. Payload processing is deferred to the next
+beacon block via `process_parent_execution_payload`.
 
 #### Execution payload bid
 
@@ -1547,116 +1639,4 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         state.builder_pending_payments[payment_index] = BuilderPendingPayment()
 
     slash_validator(state, header_1.proposer_index)
-```
-
-### Execution payload processing
-
-#### New `verify_execution_payload_envelope_signature`
-
-```python
-def verify_execution_payload_envelope_signature(
-    state: BeaconState, signed_envelope: SignedExecutionPayloadEnvelope
-) -> bool:
-    builder_index = signed_envelope.message.builder_index
-    if builder_index == BUILDER_INDEX_SELF_BUILD:
-        validator_index = state.latest_block_header.proposer_index
-        pubkey = state.validators[validator_index].pubkey
-    else:
-        pubkey = state.builders[builder_index].pubkey
-
-    signing_root = compute_signing_root(
-        signed_envelope.message, get_domain(state, DOMAIN_BEACON_BUILDER)
-    )
-    return bls.Verify(pubkey, signing_root, signed_envelope.signature)
-```
-
-#### New `process_execution_payload`
-
-*Note*: `process_execution_payload` is now an independent check in state
-transition. It is called when importing a signed execution payload proposed by
-the builder of the current slot.
-
-```python
-def process_execution_payload(
-    state: BeaconState,
-    # [Modified in Gloas:EIP7732]
-    # Removed `body`
-    # [New in Gloas:EIP7732]
-    signed_envelope: SignedExecutionPayloadEnvelope,
-    execution_engine: ExecutionEngine,
-    # [New in Gloas:EIP7732]
-    verify: bool = True,
-) -> None:
-    envelope = signed_envelope.message
-    payload = envelope.payload
-
-    # Verify signature
-    if verify:
-        assert verify_execution_payload_envelope_signature(state, signed_envelope)
-
-    # Cache latest block header state root
-    previous_state_root = hash_tree_root(state)
-    if state.latest_block_header.state_root == Root():
-        state.latest_block_header.state_root = previous_state_root
-
-    # Verify consistency with the beacon block
-    assert envelope.beacon_block_root == hash_tree_root(state.latest_block_header)
-    assert envelope.slot == state.slot
-
-    # Verify consistency with the committed bid
-    committed_bid = state.latest_execution_payload_bid
-    assert envelope.builder_index == committed_bid.builder_index
-    assert committed_bid.prev_randao == payload.prev_randao
-
-    # Verify consistency with expected withdrawals
-    assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
-
-    # Verify the gas_limit
-    assert committed_bid.gas_limit == payload.gas_limit
-    # Verify the block hash
-    assert committed_bid.block_hash == payload.block_hash
-    # Verify consistency of the parent hash with respect to the previous execution payload
-    assert payload.parent_hash == state.latest_block_hash
-    # Verify timestamp
-    assert payload.timestamp == compute_time_at_slot(state, state.slot)
-    # Verify the execution payload is valid
-    versioned_hashes = [
-        kzg_commitment_to_versioned_hash(commitment)
-        # [Modified in Gloas:EIP7732]
-        for commitment in committed_bid.blob_kzg_commitments
-    ]
-    requests = envelope.execution_requests
-    assert execution_engine.verify_and_notify_new_payload(
-        NewPayloadRequest(
-            execution_payload=payload,
-            versioned_hashes=versioned_hashes,
-            parent_beacon_block_root=state.latest_block_header.parent_root,
-            execution_requests=requests,
-        )
-    )
-
-    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
-        for operation in operations:
-            fn(state, operation)
-
-    for_ops(requests.deposits, process_deposit_request)
-    for_ops(requests.withdrawals, process_withdrawal_request)
-    for_ops(requests.consolidations, process_consolidation_request)
-
-    # Queue the builder payment
-    payment = state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH]
-    amount = payment.withdrawal.amount
-    if amount > 0:
-        state.builder_pending_withdrawals.append(payment.withdrawal)
-    state.builder_pending_payments[SLOTS_PER_EPOCH + state.slot % SLOTS_PER_EPOCH] = (
-        BuilderPendingPayment()
-    )
-
-    # Cache the execution payload hash
-    state.execution_payload_availability[state.slot % SLOTS_PER_HISTORICAL_ROOT] = 0b1
-    state.latest_block_hash = payload.block_hash
-
-    # Verify the state root
-    if verify:
-        assert envelope.state_root == hash_tree_root(state)
 ```

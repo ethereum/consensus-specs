@@ -142,18 +142,33 @@ inclusion list constraints with respect to the inclusion lists gathered up to
 
 ```python
 def prepare_execution_payload(
+    store: Store,
     state: BeaconState,
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
+    parent_bid = state.latest_execution_payload_bid
+    parent_root = hash_tree_root(state.latest_block_header)
+    if should_extend_payload(store, parent_root):
+        envelope = store.payloads[parent_root]
+        # Make a copy of the state to avoid mutability issues
+        state = copy(state)
+        # Apply parent payload before computing withdrawals
+        apply_parent_execution_payload(state, parent_bid, envelope.execution_requests)
+        withdrawals = get_expected_withdrawals(state).withdrawals
+        head_block_hash = parent_bid.block_hash
+    else:
+        withdrawals = state.payload_expected_withdrawals
+        head_block_hash = parent_bid.parent_block_hash
+
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
         timestamp=compute_time_at_slot(state, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
-        withdrawals=get_expected_withdrawals(state).withdrawals,
+        withdrawals=withdrawals,
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
         # [New in Heze:EIP7805]
         inclusion_list_transactions=get_inclusion_list_transactions(
@@ -161,7 +176,7 @@ def prepare_execution_payload(
         ),
     )
     return execution_engine.notify_forkchoice_updated(
-        head_block_hash=state.latest_block_hash,
+        head_block_hash=head_block_hash,
         safe_block_hash=safe_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,

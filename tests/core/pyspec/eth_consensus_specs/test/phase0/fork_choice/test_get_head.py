@@ -58,9 +58,9 @@ def test_genesis(spec, state):
 
     if is_post_gloas(spec):
         # Verify Gloas store fields
-        assert hasattr(store, "payload_states")
+        assert hasattr(store, "payloads")
         assert hasattr(store, "payload_timeliness_vote")
-        assert anchor_root in store.payload_states
+        assert anchor_root not in store.payloads  # genesis payload is EMPTY
         assert anchor_root in store.payload_timeliness_vote
 
         # Check PTC vote initialization
@@ -452,7 +452,10 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
     anchor_block = spec.BeaconBlock(state_root=anchor_state.hash_tree_root())
     if is_post_gloas(spec):
         anchor_block.body.signed_execution_payload_bid.message.block_hash = (
-            anchor_state.latest_block_hash
+            anchor_state.latest_execution_payload_bid.block_hash
+        )
+        anchor_block.body.signed_execution_payload_bid.message.execution_requests_root = (
+            anchor_state.latest_execution_payload_bid.execution_requests_root
         )
     yield "anchor_state", anchor_state
     yield "anchor_block", anchor_block
