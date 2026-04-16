@@ -745,11 +745,6 @@ def verify_execution_payload_envelope_signature(
 
 ### New `verify_execution_payload_envelope`
 
-*Note*: `verify_execution_payload_envelope` is a verification helper called by
-fork-choice when importing a signed execution payload. It verifies the payload
-against the execution engine without processing it. Payload processing is
-deferred to the next beacon block via `process_parent_execution_payload`.
-
 ```python
 def verify_execution_payload_envelope(
     state: BeaconState,
