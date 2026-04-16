@@ -11,6 +11,7 @@
     - [`BlobIdentifier`](#blobidentifier)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
+    - [New `compute_max_request_blob_sidecars`](#new-compute_max_request_blob_sidecars)
     - [`verify_blob_sidecar_inclusion_proof`](#verify_blob_sidecar_inclusion_proof)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
@@ -19,7 +20,7 @@
         - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
       - [Blob subnets](#blob-subnets)
         - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
-        - [Blob retrieval via local execution layer client](#blob-retrieval-via-local-execution-layer-client)
+        - [Blob retrieval via local execution-layer client](#blob-retrieval-via-local-execution-layer-client)
       - [Attestation subnets](#attestation-subnets)
         - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
     - [Transitioning the gossip](#transitioning-the-gossip)
@@ -36,7 +37,7 @@
 
 ## Introduction
 
-This document contains the consensus-layer networking specification for Deneb.
+This document contains the consensus-layer networking specifications for Deneb.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
@@ -55,12 +56,11 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 *[New in Deneb:EIP4844]*
 
-| Name                                    | Value                                            | Description                                                        |
-| --------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------ |
-| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)                                   | Maximum number of blocks in a single request                       |
-| `MAX_REQUEST_BLOB_SIDECARS`             | `MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK` | Maximum number of blob sidecars in a single request                |
-| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4096 epochs, ~18 days)                | The minimum epoch range over which a node must serve blob sidecars |
-| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                                              | The number of blob sidecar subnets used in the gossipsub protocol. |
+| Name                                    | Value                    | Description                                                        |
+| --------------------------------------- | ------------------------ | ------------------------------------------------------------------ |
+| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)           | Maximum number of blocks in a single request                       |
+| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4,096 epochs) | The minimum epoch range over which a node must serve blob sidecars |
+| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                      | The number of blob sidecar subnets used in the gossipsub protocol  |
 
 ### Containers
 
@@ -110,6 +110,16 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
+#### New `compute_max_request_blob_sidecars`
+
+```python
+def compute_max_request_blob_sidecars() -> uint64:
+    """
+    Return the maximum number of blob sidecars in a single request.
+    """
+    return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK)
+```
+
 #### `verify_blob_sidecar_inclusion_proof`
 
 ```python
@@ -128,7 +138,7 @@ def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in the fork of Deneb to support upgraded types.
+Some gossip meshes are upgraded in Deneb to support upgraded types.
 
 #### Topics and messages
 
@@ -169,7 +179,7 @@ The *type* of the payload of this topic changes to the (modified)
 New validation:
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
-  limitation defined in Consensus Layer -- i.e. validate that
+  limitation defined in the consensus layer -- i.e. validate that
   `len(signed_beacon_block.message.body.blob_kzg_commitments) <= MAX_BLOBS_PER_BLOCK`
 
 ###### `beacon_aggregate_and_proof`
@@ -250,16 +260,16 @@ The `ForkDigest` context epoch is determined by
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                 | Chunk SSZ type      |
 | ------------------------------ | ------------------- |
 | `DENEB_FORK_VERSION` and later | `deneb.BlobSidecar` |
 
-###### Blob retrieval via local execution layer client
+###### Blob retrieval via local execution-layer client
 
 In addition to `BlobSidecarsByRoot` requests, recent blobs MAY be retrieved by
-querying the Execution Layer (i.e. via `engine_getBlobsV1`). Honest nodes SHOULD
+querying the execution layer (i.e. via `engine_getBlobsV1`). Honest nodes SHOULD
 query `engine_getBlobsV1` as soon as they receive a valid gossip block that
 contains data, and import the returned blobs.
 
@@ -311,10 +321,28 @@ details on how to handle transitioning gossip topics for this upgrade.
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
+Request Content:
+
+```
+(
+  start_slot: Slot
+  count: uint64
+  step: uint64 # Deprecated, must be set to 1
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+)
+```
+
 The Deneb fork-digest is introduced to the `context` enum to specify Deneb
 beacon block type.
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 | ------------------------ | ----------------------------- |
@@ -330,7 +358,23 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
-<!-- eth2spec: skip -->
+Request Content:
+
+```
+(
+  List[Root, MAX_REQUEST_BLOCKS_DENEB]
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+)
+```
+
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
 | ------------------------ | ----------------------------- |
@@ -344,7 +388,7 @@ No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
 
 *[Modified in Deneb:EIP4844]* Clients SHOULD include a block in the response as
 soon as it passes the gossip validation rules. Clients SHOULD NOT respond with
-blocks that fail the beacon chain state transition.
+blocks that fail the beacon-chain state transition.
 
 ##### BlobSidecarsByRange v1
 
@@ -365,7 +409,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS]
+  List[BlobSidecar, compute_max_request_blob_sidecars()]
 )
 ```
 
@@ -406,7 +450,7 @@ and/or temporarily ban such an un-synced or semi-synced client.
 
 Clients MUST respond with at least the blob sidecars of the first blob-carrying
 block that exists in the range, if they have it, and no more than
-`MAX_REQUEST_BLOB_SIDECARS` sidecars.
+`compute_max_request_blob_sidecars()` sidecars.
 
 Clients MUST include all blob sidecars of each block from which they include
 blob sidecars.
@@ -440,7 +484,7 @@ determined by
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                 | Chunk SSZ type      |
 | ------------------------------ | ------------------- |
@@ -456,7 +500,7 @@ Request Content:
 
 ```
 (
-  List[BlobIdentifier, MAX_REQUEST_BLOB_SIDECARS]
+  List[BlobIdentifier, compute_max_request_blob_sidecars()]
 )
 ```
 
@@ -464,7 +508,7 @@ Response Content:
 
 ```
 (
-  List[BlobSidecar, MAX_REQUEST_BLOB_SIDECARS]
+  List[BlobSidecar, compute_max_request_blob_sidecars()]
 )
 ```
 
@@ -476,7 +520,7 @@ Before consuming the next response chunk, the response reader SHOULD verify the
 blob sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t.
 the expected KZG commitments through `verify_blob_kzg_proof`.
 
-No more than `MAX_REQUEST_BLOB_SIDECARS` may be requested at a time.
+No more than `compute_max_request_blob_sidecars()` may be requested at a time.
 
 `BlobSidecarsByRoot` is primarily used to recover recent blobs (e.g. when
 receiving a block with a transaction whose corresponding blob is missing).
@@ -485,7 +529,7 @@ The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `BlobSidecar` payload.
 
 Clients MUST support requesting sidecars since `minimum_request_epoch`, where
-`minimum_request_epoch = max(finalized_epoch, current_epoch - MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS, DENEB_FORK_EPOCH)`.
+`minimum_request_epoch = max(current_epoch - MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS, DENEB_FORK_EPOCH)`.
 If any root in the request content references a block earlier than
 `minimum_request_epoch`, peers MAY respond with error code
 `3: ResourceUnavailable` or not include the blob sidecar in the response.
@@ -496,7 +540,7 @@ limit the number of blocks and sidecars in the response.
 Clients SHOULD include a sidecar in the response as soon as it passes the gossip
 validation rules. Clients SHOULD NOT respond with sidecars related to blocks
 that fail gossip validation rules. Clients SHOULD NOT respond with sidecars
-related to blocks that fail the beacon chain state transition
+related to blocks that fail the beacon-chain state transition
 
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by
@@ -504,7 +548,7 @@ determined by
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                 | Chunk SSZ type      |
 | ------------------------------ | ------------------- |

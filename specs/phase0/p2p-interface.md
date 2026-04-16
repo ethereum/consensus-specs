@@ -6,15 +6,21 @@
 - [Network fundamentals](#network-fundamentals)
   - [Transport](#transport)
   - [Encryption and identification](#encryption-and-identification)
-  - [Protocol Negotiation](#protocol-negotiation)
+  - [Protocol negotiation](#protocol-negotiation)
   - [Multiplexing](#multiplexing)
 - [Consensus-layer network interaction domains](#consensus-layer-network-interaction-domains)
-  - [Custom types](#custom-types)
+  - [Types](#types)
   - [Constants](#constants)
   - [Configuration](#configuration)
   - [Helpers](#helpers)
+    - [`Seen`](#seen)
     - [`compute_fork_version`](#compute_fork_version)
     - [`compute_fork_digest`](#compute_fork_digest)
+    - [`compute_time_at_slot_ms`](#compute_time_at_slot_ms)
+    - [`is_not_from_future_slot`](#is_not_from_future_slot)
+    - [`is_within_slot_range`](#is_within_slot_range)
+    - [`compute_attestation_subnet_prefix_bits`](#compute_attestation_subnet_prefix_bits)
+    - [`compute_min_epochs_for_block_requests`](#compute_min_epochs_for_block_requests)
   - [MetaData](#metadata)
   - [Maximum message sizes](#maximum-message-sizes)
     - [`max_compressed_len`](#max_compressed_len)
@@ -55,13 +61,13 @@
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
     - [Why are we defining specific transports?](#why-are-we-defining-specific-transports)
-    - [Can clients support other transports/handshakes than the ones mandated by the spec?](#can-clients-support-other-transportshandshakes-than-the-ones-mandated-by-the-spec)
+    - [Can clients support other transports/handshakes than the ones mandated by the specification?](#can-clients-support-other-transportshandshakes-than-the-ones-mandated-by-the-specification)
     - [What are the advantages of using TCP/QUIC/Websockets?](#what-are-the-advantages-of-using-tcpquicwebsockets)
     - [Why do we not just support a single transport?](#why-do-we-not-just-support-a-single-transport)
     - [Why are we not using QUIC from the start?](#why-are-we-not-using-quic-from-the-start)
   - [Multiplexing](#multiplexing-1)
     - [Why are we using mplex/yamux?](#why-are-we-using-mplexyamux)
-  - [Protocol Negotiation](#protocol-negotiation-1)
+  - [Protocol negotiation](#protocol-negotiation-1)
     - [When is multiselect 2.0 due and why do we plan to migrate to it?](#when-is-multiselect-20-due-and-why-do-we-plan-to-migrate-to-it)
     - [What is the difference between connection-level and stream-level protocol negotiation?](#what-is-the-difference-between-connection-level-and-stream-level-protocol-negotiation)
   - [Encryption](#encryption)
@@ -93,7 +99,7 @@
     - [What is a typical rate limiting strategy?](#what-is-a-typical-rate-limiting-strategy)
     - [Why do we allow empty responses in block requests?](#why-do-we-allow-empty-responses-in-block-requests)
     - [Why does `BeaconBlocksByRange` let the server choose which branch to send blocks from?](#why-does-beaconblocksbyrange-let-the-server-choose-which-branch-to-send-blocks-from)
-    - [Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?](#why-are-blocksbyrange-requests-only-required-to-be-served-for-the-latest-min_epochs_for_block_requests-epochs)
+    - [Why are `BlocksByRange` requests only required to be served for the latest `compute_min_epochs_for_block_requests()` epochs?](#why-are-blocksbyrange-requests-only-required-to-be-served-for-the-latest-compute_min_epochs_for_block_requests-epochs)
     - [Why must the proposer signature be checked when backfilling blocks in the database?](#why-must-the-proposer-signature-be-checked-when-backfilling-blocks-in-the-database)
     - [What's the effect of empty slots on the sync algorithm?](#whats-the-effect-of-empty-slots-on-the-sync-algorithm)
   - [Discovery](#discovery)
@@ -114,7 +120,7 @@
 
 ## Introduction
 
-This document contains the networking specification for Phase 0.
+This document contains the networking specifications for Phase 0.
 
 It consists of four main sections:
 
@@ -125,7 +131,7 @@ It consists of four main sections:
 3. The rationale and further explanation for the design choices made in the
    previous two sections.
 4. An analysis of the maturity/state of the libp2p features required by this
-   spec across the languages in which clients are being developed.
+   specification across the languages in which clients are being developed.
 
 ## Network fundamentals
 
@@ -165,7 +171,7 @@ channel handshake with `secp256k1` identities will be used for encryption.
 As specified in the libp2p specification, clients MUST support the `XX`
 handshake pattern.
 
-### Protocol Negotiation
+### Protocol negotiation
 
 Clients MUST use exact equality when negotiating protocol versions to use and
 MAY use the version to give priority to higher version numbers.
@@ -173,8 +179,8 @@ MAY use the version to give priority to higher version numbers.
 Clients MUST support
 [multistream-select 1.0](https://github.com/multiformats/multistream-select/)
 and MAY support [multiselect 2.0](https://github.com/libp2p/specs/pull/95) when
-the spec solidifies. Once all clients have implementations for multiselect 2.0,
-multistream-select 1.0 MAY be phased out.
+the specification solidifies. Once all clients have implementations for
+multiselect 2.0, multistream-select 1.0 MAY be phased out.
 
 ### Multiplexing
 
@@ -196,14 +202,14 @@ the [Rationale](#design-decision-rationale) section below for tradeoffs.
 
 ## Consensus-layer network interaction domains
 
-### Custom types
+### Types
 
 We define the following Python custom types for type hinting and readability:
 
 | Name       | SSZ equivalent | Description       |
 | ---------- | -------------- | ----------------- |
-| `NodeID`   | `uint256`      | node identifier   |
-| `SubnetID` | `uint64`       | subnet identifier |
+| `NodeID`   | `uint256`      | Node identifier   |
+| `SubnetID` | `uint64`       | Subnet identifier |
 
 ### Constants
 
@@ -213,25 +219,41 @@ We define the following Python custom types for type hinting and readability:
 
 ### Configuration
 
-This section outlines configurations that are used in this spec.
+This section outlines configurations that are used in this specification.
 
-| Name                                 | Value                                                                                  | Description                                                                           |
-| ------------------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `MAX_PAYLOAD_SIZE`                   | `10 * 2**20` (= 10485760, 10 MiB)                                                      | The maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
-| `MAX_REQUEST_BLOCKS`                 | `2**10` (= 1024)                                                                       | Maximum number of blocks in a single request                                          |
-| `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `2**8` (= 256)                                                                         | Number of epochs on a subnet subscription (~27 hours)                                 |
-| `MIN_EPOCHS_FOR_BLOCK_REQUESTS`      | `MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2` (= 33024, ~5 months) | The minimum epoch range over which a node must serve blocks                           |
-| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32`                                                                                   | The maximum number of slots during which an attestation can be propagated             |
-| `MAXIMUM_GOSSIP_CLOCK_DISPARITY`     | `500`                                                                                  | The maximum **milliseconds** of clock disparity assumed between honest nodes          |
-| `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType('0x00000000')`                                                             | 4-byte domain for gossip message-id isolation of *invalid* snappy messages            |
-| `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType('0x01000000')`                                                             | 4-byte domain for gossip message-id isolation of *valid* snappy messages              |
-| `SUBNETS_PER_NODE`                   | `2`                                                                                    | The number of long-lived subnets a beacon node should be subscribed to                |
-| `ATTESTATION_SUBNET_COUNT`           | `2**6` (= 64)                                                                          | The number of attestation subnets used in the gossipsub protocol.                     |
-| `ATTESTATION_SUBNET_EXTRA_BITS`      | `0`                                                                                    | The number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
-| `ATTESTATION_SUBNET_PREFIX_BITS`     | `int(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)`              |                                                                                       |
-| `MAX_CONCURRENT_REQUESTS`            | `2`                                                                                    | Maximum number of concurrent requests per protocol ID that a client may issue         |
+| Name                                 | Value                               | Description                                                                           |
+| ------------------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------- |
+| `MAX_PAYLOAD_SIZE`                   | `10 * 2**20` (= 10,485,760, 10 MiB) | The maximum allowed size of uncompressed payload in gossipsub messages and RPC chunks |
+| `MAX_REQUEST_BLOCKS`                 | `2**10` (= 1,024)                   | Maximum number of blocks in a single request                                          |
+| `EPOCHS_PER_SUBNET_SUBSCRIPTION`     | `2**8` (= 256)                      | Number of epochs on a subnet subscription                                             |
+| `ATTESTATION_PROPAGATION_SLOT_RANGE` | `32`                                | The maximum number of slots during which an attestation can be propagated             |
+| `MAXIMUM_GOSSIP_CLOCK_DISPARITY`     | `500`                               | The maximum **milliseconds** of clock disparity assumed between honest nodes          |
+| `MESSAGE_DOMAIN_INVALID_SNAPPY`      | `DomainType('0x00000000')`          | 4-byte domain for gossip message-id isolation of *invalid* snappy messages            |
+| `MESSAGE_DOMAIN_VALID_SNAPPY`        | `DomainType('0x01000000')`          | 4-byte domain for gossip message-id isolation of *valid* snappy messages              |
+| `SUBNETS_PER_NODE`                   | `2`                                 | The number of long-lived subnets a beacon node should be subscribed to                |
+| `ATTESTATION_SUBNET_COUNT`           | `2**6` (= 64)                       | The number of attestation subnets used in the gossipsub protocol                      |
+| `ATTESTATION_SUBNET_EXTRA_BITS`      | `0`                                 | The number of extra bits of a NodeId to use when mapping to a subscribed subnet       |
+| `MAX_CONCURRENT_REQUESTS`            | `2`                                 | Maximum number of concurrent requests per protocol ID that a client may issue         |
 
 ### Helpers
+
+#### `Seen`
+
+The `Seen` class tracks network deduplication state for gossip validation. It
+maintains sets of previously seen messages to prevent redundant processing and
+propagation.
+
+```python
+@dataclass
+class Seen(object):
+    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
+    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    aggregate_data_roots: Dict[Root, Set[Tuple[boolean, ...]]]
+    voluntary_exit_indices: Set[ValidatorIndex]
+    proposer_slashing_indices: Set[ValidatorIndex]
+    attester_slashing_indices: Set[ValidatorIndex]
+    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+```
 
 #### `compute_fork_version`
 
@@ -259,6 +281,75 @@ def compute_fork_digest(
     fork_version = compute_fork_version(epoch)
     base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
     return ForkDigest(base_digest[:4])
+```
+
+#### `compute_time_at_slot_ms`
+
+```python
+def compute_time_at_slot_ms(state: BeaconState, slot: Slot) -> uint64:
+    """
+    Return the time in milliseconds at the start of the given slot.
+    """
+    slots_since_genesis = slot - GENESIS_SLOT
+    return uint64(state.genesis_time * 1000 + slots_since_genesis * SLOT_DURATION_MS)
+```
+
+#### `is_not_from_future_slot`
+
+```python
+def is_not_from_future_slot(
+    state: BeaconState,
+    slot: Slot,
+    current_time_ms: uint64,
+) -> bool:
+    """
+    Check if the given slot is not from the future
+    (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
+    """
+    slot_time_ms = compute_time_at_slot_ms(state, slot)
+    return current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY >= slot_time_ms
+```
+
+#### `is_within_slot_range`
+
+```python
+def is_within_slot_range(
+    state: BeaconState,
+    slot: Slot,
+    slot_range: uint64,
+    current_time_ms: uint64,
+) -> bool:
+    """
+    Check if the current time is within the inclusive slot range ``[slot, slot + slot_range]``
+    (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance on both ends).
+    """
+    start_time_ms = compute_time_at_slot_ms(state, slot)
+    if current_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < start_time_ms:
+        return False
+    end_time_ms = compute_time_at_slot_ms(state, Slot(slot + slot_range + 1))
+    if end_time_ms + MAXIMUM_GOSSIP_CLOCK_DISPARITY < current_time_ms:
+        return False
+    return True
+```
+
+#### `compute_attestation_subnet_prefix_bits`
+
+```python
+def compute_attestation_subnet_prefix_bits() -> uint64:
+    """
+    Return the number of NodeId bits to use when mapping to a subscribed subnet.
+    """
+    return uint64(ceillog2(ATTESTATION_SUBNET_COUNT) + ATTESTATION_SUBNET_EXTRA_BITS)
+```
+
+#### `compute_min_epochs_for_block_requests`
+
+```python
+def compute_min_epochs_for_block_requests() -> uint64:
+    """
+    Return the minimum epoch range over which a node must serve blocks.
+    """
+    return uint64(MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2)
 ```
 
 ### MetaData
@@ -333,12 +424,12 @@ will be used:
   responses): 6
 - `mcache_gossip` (number of windows to gossip about): 3
 - `seen_ttl` (expiry time for cache of seen message ids, seconds):
-  SECONDS_PER_SLOT * SLOTS_PER_EPOCH * 2
+  SLOT_DURATION_MS * SLOTS_PER_EPOCH * 2 // 1000
 
 *Note*: Gossipsub v1.1 introduces a number of
 [additional parameters](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/gossipsub-v1.1.md#overview-of-new-parameters)
 for peer scoring and other attack mitigations. These are currently under
-investigation and will be spec'd and released to mainnet when they are ready.
+investigation and will be specified and released to mainnet when they are ready.
 
 #### Topics and messages
 
@@ -429,146 +520,381 @@ frequency validator messages (`voluntary_exit`, `proposer_slashing`, and
 ###### `beacon_block`
 
 The `beacon_block` topic is used solely for propagating new signed beacon blocks
-to all nodes on the networks. Signed blocks are sent in their entirety.
+to all nodes on the networks. Signed blocks are sent in their entirety. The
+`state` parameter is the head state.
 
-The following validations MUST pass before forwarding the `signed_beacon_block`
-on the network.
+```python
+def validate_beacon_block_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    signed_beacon_block: SignedBeaconBlock,
+    current_time_ms: uint64,
+) -> None:
+    """
+    Validate a SignedBeaconBlock for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    block = signed_beacon_block.message
 
-- _[IGNORE]_ The block is not from a future slot (with a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
-  `signed_beacon_block.message.slot <= current_slot` (a client MAY queue future
-  blocks for processing at the appropriate slot).
-- _[IGNORE]_ The block is from a slot greater than the latest finalized slot --
-  i.e. validate that
-  `signed_beacon_block.message.slot > compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
-  (a client MAY choose to validate and store such blocks for additional purposes
-  -- e.g. slashing detection, archive nodes, etc).
-- _[IGNORE]_ The block is the first block with valid signature received for the
-  proposer for the slot, `signed_beacon_block.message.slot`.
-- _[REJECT]_ The proposer signature, `signed_beacon_block.signature`, is valid
-  with respect to the `proposer_index` pubkey.
-- _[IGNORE]_ The block's parent (defined by `block.parent_root`) has been seen
-  (via gossip or non-gossip sources) (a client MAY queue blocks for processing
-  once the parent block is retrieved).
-- _[REJECT]_ The block's parent (defined by `block.parent_root`) passes
-  validation.
-- _[REJECT]_ The block is from a higher slot than its parent.
-- _[REJECT]_ The current `finalized_checkpoint` is an ancestor of `block` --
-  i.e.
-  `get_checkpoint_block(store, block.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`
-- _[REJECT]_ The block is proposed by the expected `proposer_index` for the
-  block's slot in the context of the current shuffling (defined by
-  `parent_root`/`slot`). If the `proposer_index` cannot immediately be verified
-  against the expected shuffling, the block MAY be queued for later processing
-  while proposers for the block's branch are calculated -- in such a case _do
-  not_ `REJECT`, instead `IGNORE` this message.
+    # [IGNORE] The block is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if not is_not_from_future_slot(state, block.slot, current_time_ms):
+        raise GossipIgnore("block is from a future slot")
+
+    # [IGNORE] The block is from a slot greater than the latest finalized slot
+    # (MAY choose to validate and store such blocks for additional purposes
+    # -- e.g. slashing detection, archive nodes, etc).
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    if block.slot <= finalized_slot:
+        raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
+
+    # [IGNORE] The block is the first block with valid signature received for the proposer for the slot
+    if (block.proposer_index, block.slot) in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this proposer and slot")
+
+    # [REJECT] The proposer index is a valid validator index
+    if block.proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer signature is valid
+    proposer = state.validators[block.proposer_index]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
+    signing_root = compute_signing_root(block, domain)
+    if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
+        raise GossipReject("invalid proposer signature")
+
+    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until parent is retrieved)
+    if block.parent_root not in store.blocks:
+        raise GossipIgnore("block's parent has not been seen")
+
+    # [REJECT] The block's parent passes validation
+    if block.parent_root not in store.block_states:
+        raise GossipReject("block's parent failed validation")
+
+    # [REJECT] The block is from a higher slot than its parent
+    if block.slot <= store.blocks[block.parent_root].slot:
+        raise GossipReject("block is not from a higher slot than its parent")
+
+    # [REJECT] The current finalized checkpoint is an ancestor of the block
+    checkpoint_block = get_checkpoint_block(
+        store, block.parent_root, store.finalized_checkpoint.epoch
+    )
+    if checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipReject("finalized checkpoint is not an ancestor of block")
+
+    # [REJECT] The block is proposed by the expected proposer for the slot
+    # (if shuffling is not available, IGNORE instead and MAY be queued for later)
+    parent_state = store.block_states[block.parent_root].copy()
+    process_slots(parent_state, block.slot)
+    expected_proposer = get_beacon_proposer_index(parent_state)
+    if block.proposer_index != expected_proposer:
+        raise GossipReject("block proposer_index does not match expected proposer")
+
+    # Mark this block as seen for this proposer/slot combination
+    seen.proposer_slots.add((block.proposer_index, block.slot))
+```
 
 ###### `beacon_aggregate_and_proof`
 
 The `beacon_aggregate_and_proof` topic is used to propagate aggregated
 attestations (as `SignedAggregateAndProof`s) to subscribing nodes (typically
-validators) to be included in future blocks.
+validators) to be included in future blocks. The `state` parameter is the head
+state.
 
-We define the following variables for convenience:
+```python
+def validate_beacon_aggregate_and_proof_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    signed_aggregate_and_proof: SignedAggregateAndProof,
+    current_time_ms: uint64,
+) -> None:
+    """
+    Validate a SignedAggregateAndProof for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    aggregate_and_proof = signed_aggregate_and_proof.message
+    aggregate = aggregate_and_proof.aggregate
+    index = aggregate.data.index
+    aggregation_bits = aggregate.aggregation_bits
 
-- `aggregate_and_proof = signed_aggregate_and_proof.message`
-- `aggregate = aggregate_and_proof.aggregate`
-- `index = aggregate.data.index`
-- `aggregation_bits = aggregate.aggregation_bits`
+    # [REJECT] The committee index is within the expected range
+    committee_count = get_committee_count_per_slot(state, aggregate.data.target.epoch)
+    if index >= committee_count:
+        raise GossipReject("committee index out of range")
 
-The following validations MUST pass before forwarding the
-`signed_aggregate_and_proof` on the network.
+    # [IGNORE] The aggregate attestation's slot is within the propagation range
+    # (MAY be queued for processing at the appropriate slot)
+    if not is_within_slot_range(
+        state, aggregate.data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
+    ):
+        raise GossipIgnore("attestation slot not within propagation range")
 
-- _[REJECT]_ The committee index is within the expected range -- i.e.
-  `index < get_committee_count_per_slot(state, aggregate.data.target.epoch)`.
-- _[IGNORE]_ `aggregate.data.slot` is within the last
-  `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (with a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e.
-  `aggregate.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= aggregate.data.slot`
-  (a client MAY queue future aggregates for processing at the appropriate slot).
-- _[REJECT]_ The aggregate attestation's epoch matches its target -- i.e.
-  `aggregate.data.target.epoch == compute_epoch_at_slot(aggregate.data.slot)`
-- _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
-  `len(aggregation_bits) == len(get_beacon_committee(state, aggregate.data.slot, index))`.
-- _[REJECT]_ The aggregate attestation has participants -- that is,
-  `len(get_attesting_indices(state, aggregate)) >= 1`.
-- _[IGNORE]_ A valid aggregate attestation defined by
-  `hash_tree_root(aggregate.data)` whose `aggregation_bits` is a non-strict
-  superset has _not_ already been seen. (via aggregate gossip, within a verified
-  block, or through the creation of an equivalent aggregate locally).
-- _[IGNORE]_ The `aggregate` is the first valid aggregate received for the
-  aggregator with index `aggregate_and_proof.aggregator_index` for the epoch
-  `aggregate.data.target.epoch`.
-- _[REJECT]_ The attestation has participants -- that is,
-  `len(get_attesting_indices(state, aggregate)) >= 1`.
-- _[REJECT]_ `aggregate_and_proof.selection_proof` selects the validator as an
-  aggregator for the slot -- i.e.
-  `is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof)`
-  returns `True`.
-- _[REJECT]_ The aggregator's validator index is within the committee -- i.e.
-  `aggregate_and_proof.aggregator_index in get_beacon_committee(state, aggregate.data.slot, index)`.
-- _[REJECT]_ The `aggregate_and_proof.selection_proof` is a valid signature of
-  the `aggregate.data.slot` by the validator with index
-  `aggregate_and_proof.aggregator_index`.
-- _[REJECT]_ The aggregator signature, `signed_aggregate_and_proof.signature`,
-  is valid.
-- _[REJECT]_ The signature of `aggregate` is valid.
-- _[IGNORE]_ The block being voted for (`aggregate.data.beacon_block_root`) has
-  been seen (via gossip or non-gossip sources) (a client MAY queue aggregates
-  for processing once block is retrieved).
-- _[REJECT]_ The block being voted for (`aggregate.data.beacon_block_root`)
-  passes validation.
-- _[REJECT]_ The aggregate attestation's target block is an ancestor of the
-  block named in the LMD vote -- i.e.
-  `get_checkpoint_block(store, aggregate.data.beacon_block_root, aggregate.data.target.epoch) == aggregate.data.target.root`
-- _[IGNORE]_ The current `finalized_checkpoint` is an ancestor of the `block`
-  defined by `aggregate.data.beacon_block_root` -- i.e.
-  `get_checkpoint_block(store, aggregate.data.beacon_block_root, finalized_checkpoint.epoch) == store.finalized_checkpoint.root`
+    # [REJECT] The aggregate attestation's epoch matches its target
+    if aggregate.data.target.epoch != compute_epoch_at_slot(aggregate.data.slot):
+        raise GossipReject("attestation epoch does not match target epoch")
+
+    # [REJECT] The number of aggregation bits matches the committee size
+    committee = get_beacon_committee(state, aggregate.data.slot, index)
+    if len(aggregation_bits) != len(committee):
+        raise GossipReject("aggregation bits length does not match committee size")
+
+    # [REJECT] The aggregate attestation has participants
+    attesting_indices = get_attesting_indices(state, aggregate)
+    if len(attesting_indices) < 1:
+        raise GossipReject("aggregate has no participants")
+
+    # [IGNORE] A valid aggregate with a superset of aggregation bits has not already been seen
+    aggregate_data_root = hash_tree_root(aggregate.data)
+    aggregate_bits = tuple(bool(bit) for bit in aggregation_bits)
+    seen_aggregation_bits = seen.aggregate_data_roots.get(aggregate_data_root, set())
+    for prior_aggregation_bits in seen_aggregation_bits:
+        is_non_strict_superset = True
+        for prior_bit, aggregate_bit in zip(prior_aggregation_bits, aggregate_bits):
+            if aggregate_bit and not prior_bit:
+                is_non_strict_superset = False
+                break
+        if is_non_strict_superset:
+            raise GossipIgnore("already seen aggregate for this data")
+
+    # [IGNORE] This is the first valid aggregate for this aggregator in this epoch
+    aggregator_index = aggregate_and_proof.aggregator_index
+    target_epoch = aggregate.data.target.epoch
+    if (aggregator_index, target_epoch) in seen.aggregator_epochs:
+        raise GossipIgnore("already seen aggregate from this aggregator for this epoch")
+
+    # [REJECT] The selection proof selects the validator as an aggregator
+    if not is_aggregator(state, aggregate.data.slot, index, aggregate_and_proof.selection_proof):
+        raise GossipReject("validator is not selected as aggregator")
+
+    # [REJECT] The aggregator's validator index is within the committee
+    if aggregator_index not in committee:
+        raise GossipReject("aggregator index not in committee")
+
+    # [REJECT] The selection proof signature is valid
+    aggregator = state.validators[aggregator_index]
+    domain = get_domain(state, DOMAIN_SELECTION_PROOF, target_epoch)
+    signing_root = compute_signing_root(aggregate.data.slot, domain)
+    if not bls.Verify(aggregator.pubkey, signing_root, aggregate_and_proof.selection_proof):
+        raise GossipReject("invalid selection proof signature")
+
+    # [REJECT] The aggregator signature is valid
+    domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, target_epoch)
+    signing_root = compute_signing_root(aggregate_and_proof, domain)
+    if not bls.Verify(aggregator.pubkey, signing_root, signed_aggregate_and_proof.signature):
+        raise GossipReject("invalid aggregator signature")
+
+    # [REJECT] The aggregate signature is valid
+    if not is_valid_indexed_attestation(state, get_indexed_attestation(state, aggregate)):
+        raise GossipReject("invalid aggregate signature")
+
+    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    if aggregate.data.beacon_block_root not in store.blocks:
+        raise GossipIgnore("block being voted for has not been seen")
+
+    # [REJECT] The block being voted for passes validation
+    if aggregate.data.beacon_block_root not in store.block_states:
+        raise GossipReject("block being voted for failed validation")
+
+    # [REJECT] The target block is an ancestor of the LMD vote block
+    checkpoint_block = get_checkpoint_block(
+        store, aggregate.data.beacon_block_root, aggregate.data.target.epoch
+    )
+    if checkpoint_block != aggregate.data.target.root:
+        raise GossipReject("target block is not an ancestor of LMD vote block")
+
+    # [IGNORE] The finalized checkpoint is an ancestor of the block
+    finalized_checkpoint_block = get_checkpoint_block(
+        store, aggregate.data.beacon_block_root, store.finalized_checkpoint.epoch
+    )
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipIgnore("finalized checkpoint is not an ancestor of block")
+
+    # Mark this aggregate as seen
+    seen.aggregator_epochs.add((aggregator_index, target_epoch))
+    if aggregate_data_root not in seen.aggregate_data_roots:
+        seen.aggregate_data_roots[aggregate_data_root] = set()
+    seen.aggregate_data_roots[aggregate_data_root].add(aggregate_bits)
+```
 
 ###### `voluntary_exit`
 
 The `voluntary_exit` topic is used solely for propagating signed voluntary
 validator exits to proposers on the network. Signed voluntary exits are sent in
-their entirety.
+their entirety. The `state` parameter is the head state.
 
-The following validations MUST pass before forwarding the
-`signed_voluntary_exit` on to the network.
+```python
+def validate_voluntary_exit_gossip(
+    seen: Seen,
+    state: BeaconState,
+    signed_voluntary_exit: SignedVoluntaryExit,
+) -> None:
+    """
+    Validate a SignedVoluntaryExit for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    voluntary_exit = signed_voluntary_exit.message
+    validator_index = voluntary_exit.validator_index
 
-- _[IGNORE]_ The voluntary exit is the first valid voluntary exit received for
-  the validator with index `signed_voluntary_exit.message.validator_index`.
-- _[REJECT]_ All of the conditions within `process_voluntary_exit` pass
-  validation.
+    # [IGNORE] The voluntary exit is the first valid voluntary exit received for the validator
+    if validator_index in seen.voluntary_exit_indices:
+        raise GossipIgnore("already seen voluntary exit for this validator")
+
+    # [REJECT] The validator index is valid
+    if validator_index >= len(state.validators):
+        raise GossipReject("validator index out of range")
+
+    validator = state.validators[validator_index]
+    current_epoch = get_current_epoch(state)
+
+    # [REJECT] The validator is active
+    if not is_active_validator(validator, current_epoch):
+        raise GossipReject("validator is not active")
+
+    # [REJECT] The validator has not already initiated exit
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        raise GossipReject("validator has already initiated exit")
+
+    # [REJECT] The voluntary exit epoch is not in the future
+    if current_epoch < voluntary_exit.epoch:
+        raise GossipReject("voluntary exit epoch is in the future")
+
+    # [REJECT] The validator has been active long enough
+    if current_epoch < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
+        raise GossipReject("validator has not been active long enough")
+
+    # [REJECT] The signature is valid
+    domain = get_domain(state, DOMAIN_VOLUNTARY_EXIT, voluntary_exit.epoch)
+    signing_root = compute_signing_root(voluntary_exit, domain)
+    if not bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature):
+        raise GossipReject("invalid voluntary exit signature")
+
+    # Mark this voluntary exit as seen
+    seen.voluntary_exit_indices.add(validator_index)
+```
 
 ###### `proposer_slashing`
 
 The `proposer_slashing` topic is used solely for propagating proposer slashings
-to proposers on the network. Proposer slashings are sent in their entirety.
+to proposers on the network. Proposer slashings are sent in their entirety. The
+`state` parameter is the head state.
 
-The following validations MUST pass before forwarding the `proposer_slashing` on
-to the network.
+```python
+def validate_proposer_slashing_gossip(
+    seen: Seen,
+    state: BeaconState,
+    proposer_slashing: ProposerSlashing,
+) -> None:
+    """
+    Validate a ProposerSlashing for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    header_1 = proposer_slashing.signed_header_1.message
+    header_2 = proposer_slashing.signed_header_2.message
+    proposer_index = header_1.proposer_index
 
-- _[IGNORE]_ The proposer slashing is the first valid proposer slashing received
-  for the proposer with index
-  `proposer_slashing.signed_header_1.message.proposer_index`.
-- _[REJECT]_ All of the conditions within `process_proposer_slashing` pass
-  validation.
+    # [IGNORE] The proposer slashing is the first valid proposer slashing received for this proposer
+    if proposer_index in seen.proposer_slashing_indices:
+        raise GossipIgnore("already seen proposer slashing for this proposer")
+
+    # [REJECT] The header slots match
+    if header_1.slot != header_2.slot:
+        raise GossipReject("header slots do not match")
+
+    # [REJECT] The header proposer indices match
+    if header_1.proposer_index != header_2.proposer_index:
+        raise GossipReject("header proposer indices do not match")
+
+    # [REJECT] The headers are different
+    if header_1 == header_2:
+        raise GossipReject("headers are not different")
+
+    # [REJECT] The proposer index is valid
+    if proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer is slashable
+    proposer = state.validators[proposer_index]
+    if not is_slashable_validator(proposer, get_current_epoch(state)):
+        raise GossipReject("proposer is not slashable")
+
+    # [REJECT] The signatures are valid
+    for signed_header in (proposer_slashing.signed_header_1, proposer_slashing.signed_header_2):
+        domain = get_domain(
+            state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(signed_header.message.slot)
+        )
+        signing_root = compute_signing_root(signed_header.message, domain)
+        if not bls.Verify(proposer.pubkey, signing_root, signed_header.signature):
+            raise GossipReject("invalid proposer slashing signature")
+
+    # Mark this proposer slashing as seen
+    seen.proposer_slashing_indices.add(proposer_index)
+```
 
 ###### `attester_slashing`
 
 The `attester_slashing` topic is used solely for propagating attester slashings
-to proposers on the network. Attester slashings are sent in their entirety.
+to proposers on the network. Attester slashings are sent in their entirety. The
+`state` parameter is the head state.
 
-Clients who receive an attester slashing on this topic MUST validate the
-conditions within `process_attester_slashing` before forwarding it across the
-network.
+```python
+def validate_attester_slashing_gossip(
+    seen: Seen,
+    state: BeaconState,
+    attester_slashing: AttesterSlashing,
+) -> None:
+    """
+    Validate an AttesterSlashing for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    attestation_1 = attester_slashing.attestation_1
+    attestation_2 = attester_slashing.attestation_2
 
-- _[IGNORE]_ At least one index in the intersection of the attesting indices of
-  each attestation has not yet been seen in any prior `attester_slashing` (i.e.
-  `attester_slashed_indices = set(attestation_1.attesting_indices).intersection(attestation_2.attesting_indices)`,
-  verify if
-  `any(attester_slashed_indices.difference(prior_seen_attester_slashed_indices))`).
-- _[REJECT]_ All of the conditions within `process_attester_slashing` pass
-  validation.
+    attesting_indices_1 = set(attestation_1.attesting_indices)
+    attesting_indices_2 = set(attestation_2.attesting_indices)
+    slashable_indices = attesting_indices_1.intersection(attesting_indices_2)
+
+    # [IGNORE] At least one index in the intersection has not yet been seen
+    new_indices = slashable_indices.difference(seen.attester_slashing_indices)
+    if len(new_indices) == 0:
+        raise GossipIgnore("all attester slashing indices already seen")
+
+    # [REJECT] The attestation data is slashable (double vote or surround vote)
+    if not is_slashable_attestation_data(attestation_1.data, attestation_2.data):
+        raise GossipReject("attestation data is not slashable")
+
+    # [REJECT] All validator indices in the first indexed attestation are valid
+    if any(index >= len(state.validators) for index in attestation_1.attesting_indices):
+        raise GossipReject("validator index out of range in indexed attestation 1")
+
+    # [REJECT] The first indexed attestation has valid properties
+    if not is_valid_indexed_attestation(state, attestation_1):
+        raise GossipReject("invalid indexed attestation 1")
+
+    # [REJECT] All validator indices in the second indexed attestation are valid
+    if any(index >= len(state.validators) for index in attestation_2.attesting_indices):
+        raise GossipReject("validator index out of range in indexed attestation 2")
+
+    # [REJECT] The second indexed attestation has valid properties
+    if not is_valid_indexed_attestation(state, attestation_2):
+        raise GossipReject("invalid indexed attestation 2")
+
+    # [REJECT] At least one validator in the intersection is slashable
+    slashable_any = False
+    current_epoch = get_current_epoch(state)
+    for index in slashable_indices:
+        if is_slashable_validator(state.validators[index], current_epoch):
+            slashable_any = True
+            break
+    if not slashable_any:
+        raise GossipReject("no slashable validators in intersection")
+
+    # Mark these indices as seen
+    seen.attester_slashing_indices.update(slashable_indices)
+```
 
 ##### Attestation subnets
 
@@ -580,52 +906,94 @@ subsections of the network.
 The `beacon_attestation_{subnet_id}` topics are used to propagate unaggregated
 attestations to the subnet `subnet_id` (typically beacon and persistent
 committees) to be aggregated before being gossiped to
-`beacon_aggregate_and_proof`.
+`beacon_aggregate_and_proof`. The `state` parameter is the head state.
 
-We define the following variables for convenience:
+```python
+def validate_beacon_attestation_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    attestation: Attestation,
+    subnet_id: uint64,
+    current_time_ms: uint64,
+) -> None:
+    """
+    Validate an Attestation for gossip propagation on a subnet.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    data = attestation.data
+    committee_index = data.index
+    target_epoch = data.target.epoch
+    aggregation_bits = attestation.aggregation_bits
 
-- `index = attestation.data.index`
-- `aggregation_bits = attestation.aggregation_bits`
+    # [REJECT] The committee index is within the expected range
+    committees_per_slot = get_committee_count_per_slot(state, target_epoch)
+    if committee_index >= committees_per_slot:
+        raise GossipReject("committee index out of range")
 
-The following validations MUST pass before forwarding the `attestation` on the
-subnet.
+    # [REJECT] The attestation is for the correct subnet
+    expected_subnet = compute_subnet_for_attestation(
+        committees_per_slot, data.slot, committee_index
+    )
+    if expected_subnet != subnet_id:
+        raise GossipReject("attestation is for wrong subnet")
 
-- _[REJECT]_ The committee index is within the expected range -- i.e.
-  `index < get_committee_count_per_slot(state, attestation.data.target.epoch)`.
-- _[REJECT]_ The attestation is for the correct subnet -- i.e.
-  `compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, index) == subnet_id`,
-  where
-  `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`,
-  which may be pre-computed along with the committee information for the
-  signature check.
-- _[IGNORE]_ `attestation.data.slot` is within the last
-  `ATTESTATION_PROPAGATION_SLOT_RANGE` slots (within a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e.
-  `attestation.data.slot + ATTESTATION_PROPAGATION_SLOT_RANGE >= current_slot >= attestation.data.slot`
-  (a client MAY queue future attestations for processing at the appropriate
-  slot).
-- _[REJECT]_ The attestation's epoch matches its target -- i.e.
-  `attestation.data.target.epoch == compute_epoch_at_slot(attestation.data.slot)`
-- _[REJECT]_ The attestation is unaggregated -- that is, it has exactly one
-  participating validator (`len([bit for bit in aggregation_bits if bit]) == 1`,
-  i.e. exactly 1 bit is set).
-- _[REJECT]_ The number of aggregation bits matches the committee size -- i.e.
-  `len(aggregation_bits) == len(get_beacon_committee(state, attestation.data.slot, index))`.
-- _[IGNORE]_ There has been no other valid attestation seen on an attestation
-  subnet that has an identical `attestation.data.target.epoch` and participating
-  validator index.
-- _[REJECT]_ The signature of `attestation` is valid.
-- _[IGNORE]_ The block being voted for (`attestation.data.beacon_block_root`)
-  has been seen (via gossip or non-gossip sources) (a client MAY queue
-  attestations for processing once block is retrieved).
-- _[REJECT]_ The block being voted for (`attestation.data.beacon_block_root`)
-  passes validation.
-- _[REJECT]_ The attestation's target block is an ancestor of the block named in
-  the LMD vote -- i.e.
-  `get_checkpoint_block(store, attestation.data.beacon_block_root, attestation.data.target.epoch) == attestation.data.target.root`
-- _[IGNORE]_ The current `finalized_checkpoint` is an ancestor of the `block`
-  defined by `attestation.data.beacon_block_root` -- i.e.
-  `get_checkpoint_block(store, attestation.data.beacon_block_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`
+    # [IGNORE] The attestation slot is within the propagation range
+    # (MAY be queued for processing at the appropriate slot)
+    if not is_within_slot_range(
+        state, data.slot, ATTESTATION_PROPAGATION_SLOT_RANGE, current_time_ms
+    ):
+        raise GossipIgnore("attestation slot not within propagation range")
+
+    # [REJECT] The attestation's epoch matches its target
+    if target_epoch != compute_epoch_at_slot(data.slot):
+        raise GossipReject("attestation epoch does not match target epoch")
+
+    # [REJECT] The attestation is unaggregated (exactly one bit set)
+    num_bits_set = sum(1 for bit in aggregation_bits if bit)
+    if num_bits_set != 1:
+        raise GossipReject("attestation is not unaggregated")
+
+    # [REJECT] The number of aggregation bits matches the committee size
+    committee = get_beacon_committee(state, data.slot, committee_index)
+    if len(aggregation_bits) != len(committee):
+        raise GossipReject("aggregation bits length does not match committee size")
+
+    # [IGNORE] No other valid attestation seen for this validator and target epoch
+    participant_index = committee[aggregation_bits.index(True)]
+    if (participant_index, target_epoch) in seen.attestation_validator_epochs:
+        raise GossipIgnore("already seen attestation from this validator for this epoch")
+
+    # [REJECT] The attestation signature is valid
+    indexed_attestation = get_indexed_attestation(state, attestation)
+    if not is_valid_indexed_attestation(state, indexed_attestation):
+        raise GossipReject("invalid attestation signature")
+
+    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    beacon_block_root = data.beacon_block_root
+    if beacon_block_root not in store.blocks:
+        raise GossipIgnore("block being voted for has not been seen")
+
+    # [REJECT] The block being voted for passes validation
+    if beacon_block_root not in store.block_states:
+        raise GossipReject("block being voted for failed validation")
+
+    # [REJECT] The attestation's target block is an ancestor of the LMD vote block
+    target_checkpoint_block = get_checkpoint_block(store, beacon_block_root, target_epoch)
+    if target_checkpoint_block != data.target.root:
+        raise GossipReject("target block is not an ancestor of LMD vote block")
+
+    # [IGNORE] The current finalized_checkpoint is an ancestor of the block
+    finalized_checkpoint_block = get_checkpoint_block(
+        store, beacon_block_root, store.finalized_checkpoint.epoch
+    )
+    if finalized_checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipIgnore("finalized checkpoint is not an ancestor of block")
+
+    # Mark this attestation as seen
+    seen.attestation_validator_epochs.add((participant_index, target_epoch))
+```
 
 ##### Attestations and Aggregation
 
@@ -634,7 +1002,7 @@ of subnets is defined via `ATTESTATION_SUBNET_COUNT`. The correct subnet for an
 attestation can be calculated with `compute_subnet_for_attestation`.
 `beacon_attestation_{subnet_id}` topics, are rotated through throughout the
 epoch in a similar fashion to rotating through shards in committees (future
-beacon chain upgrade). The subnets are rotated through with
+beacon-chain upgrade). The subnets are rotated through with
 `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`
 subnets per slot.
 
@@ -722,7 +1090,7 @@ name and follow this structure (relaxed BNF grammar):
 request   ::= <encoding-dependent-header> | <encoded-payload>
 response  ::= <response_chunk>*
 response_chunk  ::= <result> | <encoding-dependent-header> | <encoded-payload>
-result    ::= “0” | “1” | “2” | [“128” ... ”255”]
+result    ::= “0” | “1” | “2” | "3" | [“128” ... ”255”]
 ```
 
 The encoding-dependent header may carry metadata or assertions such as the
@@ -1061,22 +1429,22 @@ The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
 Clients MUST keep a record of signed blocks seen on the epoch range
-`[max(GENESIS_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`
+`[max(GENESIS_EPOCH, current_epoch - compute_min_epochs_for_block_requests()), current_epoch]`
 where `current_epoch` is defined by the current wall-clock time, and clients
 MUST support serving requests of blocks on this range.
 
 Peers that are unable to reply to block requests within the
-`MIN_EPOCHS_FOR_BLOCK_REQUESTS` epoch range SHOULD respond with error code
-`3: ResourceUnavailable`. Such peers that are unable to successfully reply to
-this range of requests MAY get descored or disconnected at any time.
+`compute_min_epochs_for_block_requests()` epoch range SHOULD respond with error
+code `3: ResourceUnavailable`. Such peers that are unable to successfully reply
+to this range of requests MAY get descored or disconnected at any time.
 
 *Note*: The above requirement implies that nodes that start from a recent weak
 subjectivity checkpoint MUST backfill the local block database to at least epoch
-`current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS` to be fully compliant with
-`BlocksByRange` requests. To safely perform such a backfill of blocks to the
-recent state, the node MUST validate both (1) the proposer signatures and (2)
-that the blocks form a valid chain up to the most recent block referenced in the
-weak subjectivity state.
+`current_epoch - compute_min_epochs_for_block_requests()` to be fully compliant
+with `BlocksByRange` requests. To safely perform such a backfill of blocks to
+the recent state, the node MUST validate both (1) the proposer signatures and
+(2) that the blocks form a valid chain up to the most recent block referenced in
+the weak subjectivity state.
 
 *Note*: Although clients that bootstrap from a weak subjectivity checkpoint can
 begin participating in the networking immediately, other peers MAY disconnect
@@ -1139,7 +1507,11 @@ The request MUST be encoded as an SSZ-field.
 The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
-Clients MUST support requesting blocks since the latest finalized epoch.
+Clients MUST support requesting blocks on the epoch range
+`[max(GENESIS_EPOCH, current_epoch - compute_min_epochs_for_block_requests()), current_epoch]`.
+If any root in the request content references a block earlier than this range,
+peers MAY respond with error code `3: ResourceUnavailable` or not include the
+block in the response.
 
 Clients MUST respond with at least one block, if they have it. Clients MAY limit
 the number of blocks in the response.
@@ -1342,14 +1714,15 @@ should:
 
 ```python
 def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> SubnetID:
-    node_id_prefix = node_id >> (NODE_ID_BITS - ATTESTATION_SUBNET_PREFIX_BITS)
+    prefix_bits = int(compute_attestation_subnet_prefix_bits())
+    node_id_prefix = node_id >> (NODE_ID_BITS - prefix_bits)
     node_offset = node_id % EPOCHS_PER_SUBNET_SUBSCRIPTION
     permutation_seed = hash(
         uint_to_bytes(uint64((epoch + node_offset) // EPOCHS_PER_SUBNET_SUBSCRIPTION))
     )
     permutated_prefix = compute_shuffled_index(
         node_id_prefix,
-        1 << ATTESTATION_SUBNET_PREFIX_BITS,
+        1 << prefix_bits,
         permutation_seed,
     )
     return SubnetID((permutated_prefix + index) % ATTESTATION_SUBNET_COUNT)
@@ -1360,10 +1733,10 @@ def compute_subscribed_subnets(node_id: NodeID, epoch: Epoch) -> Sequence[Subnet
     return [compute_subscribed_subnet(node_id, epoch, index) for index in range(SUBNETS_PER_NODE)]
 ```
 
-*Note*: When preparing for a hard fork, a node must select and subscribe to
+*Note*: When preparing for an upgrade, a node must select and subscribe to
 subnets of the future fork versioning at least `EPOCHS_PER_SUBNET_SUBSCRIPTION`
-epochs in advance of the fork. These new subnets for the fork are maintained in
-addition to those for the current fork until the fork occurs. After the fork
+epochs in advance of the upgrade. These new subnets for the fork are maintained
+in addition to those for the current fork until the fork occurs. After the fork
 occurs, let the subnets from the previous fork reach the end of life with no
 replacements.
 
@@ -1383,7 +1756,7 @@ WebSockets on paper becomes irrelevant.
 However, it is useful to define a minimum baseline for interoperability
 purposes.
 
-#### Can clients support other transports/handshakes than the ones mandated by the spec?
+#### Can clients support other transports/handshakes than the ones mandated by the specification?
 
 Clients may support other transports such as libp2p QUIC, WebSockets, and WebRTC
 transports, if available in the language of choice. While interoperability shall
@@ -1481,7 +1854,7 @@ Overlay multiplexers are not necessary with QUIC since the protocol provides
 native multiplexing, but they need to be layered atop TCP, WebSockets, and other
 transports that lack such support.
 
-### Protocol Negotiation
+### Protocol negotiation
 
 #### When is multiselect 2.0 due and why do we plan to migrate to it?
 
@@ -1539,7 +1912,7 @@ because, amongst other things, it requires several round trips to be sound, and
 doesn’t support early data (0-RTT data), a mechanism that multiselect 2.0 will
 leverage to reduce round trips during connection bootstrapping.
 
-SecIO is not considered secure for the purposes of this spec.
+SecIO is not considered secure for the purposes of this specification.
 
 #### Why are we using Noise?
 
@@ -1605,7 +1978,7 @@ in the topic name).
 #### How do we upgrade gossip channels (e.g. changes in encoding, compression)?
 
 Changing gossipsub/broadcasts requires a coordinated upgrade where all clients
-start publishing to the new topic together, during a hard fork.
+start publishing to the new topic together, during an upgrade.
 
 When a node is preparing for upcoming tasks (e.g. validator duty lookahead) on a
 gossipsub topic, the node should join the topic of the future epoch in which the
@@ -1686,8 +2059,7 @@ Some examples of where messages could be duplicated:
 - `mcache_gossip`: 3, recommended default. This can be increased to 5 or 6 (~4
   seconds) if gossip times are longer than expected and the current window does
   not provide enough responsiveness during adverse conditions.
-- `seen_ttl`:
-  `SLOTS_PER_EPOCH * SECONDS_PER_SLOT / heartbeat_interval = approx. 550`.
+- `seen_ttl`: `SLOTS_PER_EPOCH * SLOT_DURATION_MS / 1000 / heartbeat_interval`.
   Attestation gossip validity is bounded by an epoch, so this is the safe max
   bound.
 
@@ -1771,9 +2143,9 @@ than more volatile advertisements.
 
 #### How should fork version be used in practice?
 
-Fork versions are to be manually updated (likely via incrementing) at each hard
-fork. This is to provide native domain separation for signatures as well as to
-aid in usefulness for identifying peers (via ENRs) and versioning network
+Fork versions are to be manually updated (likely via incrementing) at each
+upgrade. This is to provide native domain separation for signatures as well as
+to aid in usefulness for identifying peers (via ENRs) and versioning network
 protocols (e.g. using fork version to naturally version gossipsub topics).
 
 `BeaconState.genesis_validators_root` is mixed into signature and ENR fork
@@ -1803,9 +2175,9 @@ Requests are segregated by protocol ID to:
 3. Enable clients to select the individual requests/versions they support. It
    would no longer be a strict requirement to support all requests, and clients,
    in principle, could support a subset of requests and variety of versions.
-4. Enable flexibility and agility for clients adopting spec changes that impact
-   the request, by signalling to peers exactly which subset of new/old requests
-   they support.
+4. Enable flexibility and agility for clients adopting specification changes
+   that impact the request, by signalling to peers exactly which subset of
+   new/old requests they support.
 5. Enable clients to explicitly choose backwards compatibility at the request
    granularity. Without this, clients would be forced to support entire versions
    of the coarser request protocol.
@@ -1962,8 +2334,8 @@ quality since peers should validate blocks before gossiping them.
 
 When connecting, the `Status` message gives an idea about the sync status of a
 particular peer, but this changes over time. By the time a subsequent
-`BeaconBlockByRange` request is processed, the information may be stale, and the
-responder might have moved on to a new finalization point and pruned blocks
+`BeaconBlocksByRange` request is processed, the information may be stale, and
+the responder might have moved on to a new finalization point and pruned blocks
 around the previous head and finalized blocks.
 
 To avoid this race condition, we allow the responder to choose which branch to
@@ -1971,7 +2343,7 @@ send to the requester. The requester then goes on to validate the blocks and
 incorporate them in their own database -- because they follow the same rules,
 they should at this point arrive at the same canonical chain.
 
-#### Why are `BlocksByRange` requests only required to be served for the latest `MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs?
+#### Why are `BlocksByRange` requests only required to be served for the latest `compute_min_epochs_for_block_requests()` epochs?
 
 Due to economic finality and weak subjectivity requirements of a proof-of-stake
 blockchain, for a new node to safely join the network the node must provide a
@@ -1982,27 +2354,16 @@ strategy.
 
 These checkpoints *in the worst case* (i.e. very large validator set and maximal
 allowed safety decay) must be from the most recent
-`MIN_EPOCHS_FOR_BLOCK_REQUESTS` epochs, and thus a user must be able to block
-sync to the head from this starting point. Thus, this defines the epoch range
-outside which nodes may prune blocks, and the epoch range that a new node
+`compute_min_epochs_for_block_requests()` epochs, and thus a user must be able
+to block sync to the head from this starting point. Thus, this defines the epoch
+range outside which nodes may prune blocks, and the epoch range that a new node
 syncing from a checkpoint must backfill.
 
-`MIN_EPOCHS_FOR_BLOCK_REQUESTS` is calculated using the arithmetic from
-`compute_weak_subjectivity_period` found in the
+`compute_min_epochs_for_block_requests()` is calculated using the arithmetic
+from `compute_weak_subjectivity_period` found in the
 [weak subjectivity guide](./weak-subjectivity.md). Specifically to find this max
 epoch range, we use the worst case event of a very large validator size
 (`>= MIN_PER_EPOCH_CHURN_LIMIT * CHURN_LIMIT_QUOTIENT`).
-
-<!-- eth2spec: skip -->
-
-```python
-MIN_EPOCHS_FOR_BLOCK_REQUESTS = (
-    MIN_VALIDATOR_WITHDRAWABILITY_DELAY + MAX_SAFETY_DECAY * CHURN_LIMIT_QUOTIENT // (2 * 100)
-)
-```
-
-Where `MAX_SAFETY_DECAY = 100` and thus `MIN_EPOCHS_FOR_BLOCK_REQUESTS = 33024`
-(~5 months).
 
 #### Why must the proposer signature be checked when backfilling blocks in the database?
 
@@ -2083,7 +2444,7 @@ discv5 uses ENRs and we will presumably need to:
 #### Why do we not form ENRs and find peers until genesis block/state is known?
 
 Although client software might very well be running locally prior to the
-solidification of the beacon chain genesis state and block, clients cannot form
+solidification of the beacon-chain genesis state and block, clients cannot form
 valid ENRs prior to this point. ENRs contain `fork_digest` which utilizes the
 `genesis_validators_root` for a cleaner separation between chains so prior to
 knowing genesis, we cannot use `fork_digest` to cleanly find peers on our
@@ -2221,5 +2582,5 @@ messages signed by a validator may be amplified by the network.
 ## libp2p implementations matrix
 
 This section will soon contain a matrix showing the maturity/state of the libp2p
-features required by this spec across the languages in which clients are being
-developed.
+features required by this specification across the languages in which clients
+are being developed.

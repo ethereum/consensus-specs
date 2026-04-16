@@ -5,8 +5,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
-- [Extended Containers](#extended-containers)
+- [Types](#types)
+- [Extended containers](#extended-containers)
   - [`ExecutionPayload`](#executionpayload)
   - [`ExecutionPayloadHeader`](#executionpayloadheader)
   - [`BeaconState`](#beaconstate)
@@ -22,13 +22,13 @@
 
 *Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md).
 
-## Custom types
+## Types
 
 | Name              | SSZ equivalent                        | Description                   |
 | ----------------- | ------------------------------------- | ----------------------------- |
 | `BlockAccessList` | `ByteList[MAX_BYTES_PER_TRANSACTION]` | RLP encoded block access list |
 
-## Extended Containers
+## Extended containers
 
 ### `ExecutionPayload`
 

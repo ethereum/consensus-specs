@@ -8,7 +8,7 @@ class GloasSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth2spec.fulu import {preset_name} as fulu
+from eth_consensus_specs.fulu import {preset_name} as fulu
 """
 
     @classmethod
@@ -27,3 +27,22 @@ from eth2spec.fulu import {preset_name} as fulu
                 "KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH",
             ]
         )
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return set(
+            [
+                "compute_proposer_index",
+                "retrieve_column_sidecars",
+            ]
+        )
+
+    @classmethod
+    def sundry_functions(cls) -> str:
+        return """
+def retrieve_column_sidecars_and_kzg_commitments(
+    beacon_block_root: Root
+) -> tuple[Sequence[DataColumnSidecar], Sequence[KZGCommitment]]:
+    # pylint: disable=unused-argument
+    return [], []
+"""

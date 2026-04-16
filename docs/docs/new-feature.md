@@ -25,7 +25,7 @@
 
 ### 1. Create a folder under `./specs/_features`
 
-For example, if it's an `EIP-9999` CL spec, you can create a
+For example, if it's an `EIP-9999` CL specification, you can create a
 `./specs/_features/eip9999` folder.
 
 ### 2. Choose the "previous fork" to extend: usually, use the scheduled or the latest mainnet fork version.
@@ -52,11 +52,11 @@ You can refer to the previous fork's `fork.md` file.
 ### 5. Make it executable
 
 - Update Pyspec
-  [`constants.py`](https://github.com/ethereum/consensus-specs/blob/master/tests/core/pyspec/eth2spec/test/helpers/constants.py)
+  [`constants.py`](https://github.com/ethereum/consensus-specs/blob/master/tests/core/pyspec/eth_consensus_specs/test/helpers/constants.py)
   with the new feature name.
 - Update helpers for
   [`setup.py`](https://github.com/ethereum/consensus-specs/blob/master/setup.py)
-  for building the spec:
+  for building the specification:
   - Update
     [`pysetup/constants.py`](https://github.com/ethereum/consensus-specs/blob/master/pysetup/constants.py)
     with the new feature name as Pyspec `constants.py` defined.
@@ -70,7 +70,7 @@ You can refer to the previous fork's `fork.md` file.
     add the path of the new markdown files in `get_md_doc_paths` function if
     needed.
 - Update `PREVIOUS_FORK_OF` setting in both
-  [`test/helpers/constants.py`](https://github.com/ethereum/consensus-specs/blob/master/tests/core/pyspec/eth2spec/test/helpers/constants.py)
+  [`test/helpers/constants.py`](https://github.com/ethereum/consensus-specs/blob/master/tests/core/pyspec/eth_consensus_specs/test/helpers/constants.py)
   and
   [`pysetup/md_doc_paths.py`](https://github.com/ethereum/consensus-specs/blob/master/pysetup/md_doc_paths.py).
   - NOTE: since these two modules (the pyspec itself and the spec builder tool)
@@ -91,16 +91,16 @@ You can refer to the previous fork's `fork.md` file.
   `presets/minimal/<new-feature-name>.yaml`
 - Update configs: `configs/mainnet.yaml` and `configs/minimal.yaml`
 
-### 3. Update [`context.py`](https://github.com/ethereum/consensus-specs/blob/master/tests/core/pyspec/eth2spec/test/context.py)
+### 3. Update [`context.py`](https://github.com/ethereum/consensus-specs/blob/master/tests/core/pyspec/eth_consensus_specs/test/context.py)
 
 - [Optional] Add `with_<new-feature-name>_and_later` decorator for writing
   pytest cases. e.g., `with_capella_and_later`.
 
-### 4. Update [`constants.py`](https://github.com/ethereum/consensus-specs/blob/master/tests/core/pyspec/eth2spec/test/helpers/constants.py)
+### 4. Update [`constants.py`](https://github.com/ethereum/consensus-specs/blob/master/tests/core/pyspec/eth_consensus_specs/test/helpers/constants.py)
 
 - Add `<NEW_FEATURE>` to `ALL_PHASES` and `TESTGEN_FORKS`
 
-### 5. Update [`genesis.py`](https://github.com/ethereum/consensus-specs/blob/master/tests/core/pyspec/eth2spec/test/helpers/genesis.py):
+### 5. Update [`genesis.py`](https://github.com/ethereum/consensus-specs/blob/master/tests/core/pyspec/eth_consensus_specs/test/helpers/genesis.py):
 
 We use `create_genesis_state` to create the default `state` in tests.
 

@@ -3,8 +3,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Public Methods](#public-methods)
-- [Custom types](#custom-types)
+- [Public methods](#public-methods)
+- [Types](#types)
 - [Cryptographic types](#cryptographic-types)
 - [Preset](#preset)
   - [Blob](#blob)
@@ -50,10 +50,10 @@
 This document extends
 [polynomial-commitments.md](../deneb/polynomial-commitments.md) with the
 functions required for data availability sampling (DAS). It is not part of the
-core Deneb spec but an extension that can be optionally implemented to allow
-nodes to reduce their load using DAS.
+core Deneb specification but an extension that can be optionally implemented to
+allow nodes to reduce their load using DAS.
 
-## Public Methods
+## Public methods
 
 For any KZG library extended to support DAS, functions flagged as "Public
 method" MUST be provided by the underlying KZG library as public functions. All
@@ -68,7 +68,7 @@ The following is a list of the public methods:
 - [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
 - [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
-## Custom types
+## Types
 
 | Name              | SSZ equivalent                                                  | Description                                                                  |
 | ----------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -361,8 +361,6 @@ def evaluate_polynomialcoeff(
 ```
 
 ### KZG multiproofs
-
-Extended KZG functions for multiproofs
 
 #### `compute_kzg_proof_multi_impl`
 

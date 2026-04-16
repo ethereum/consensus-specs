@@ -32,9 +32,9 @@ and definitions defined in this document, and documents it extends, carry over
 unless explicitly noted or overridden.
 
 All terminology, constants, functions, and protocol mechanics defined in the
-updated Beacon Chain doc of [Capella](./beacon-chain.md) are requisite for this
-document and used throughout. Please see related Beacon Chain doc before
-continuing and use them as a reference throughout.
+updated beacon-chain specifications of [Capella](./beacon-chain.md) are
+requisite for this document and used throughout. Please see related beacon-chain
+specifications before continuing and use them as a reference throughout.
 
 ## Helpers
 
@@ -86,6 +86,8 @@ def prepare_execution_payload(
     finalized_block_hash: Hash32,
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
+    # [Modified in Capella]
+    # Removed `pow_chain`
 ) -> Optional[PayloadId]:
     # [Modified in Capella]
     # Removed `is_merge_transition_complete` check
@@ -122,7 +124,7 @@ exited validators, the full balance is withdrawn. For active validators, the
 balance in excess of `MAX_EFFECTIVE_BALANCE` is withdrawn.
 
 There is one prerequisite for this automated process: the validator's withdrawal
-credentials pointing to an execution layer address, i.e. having an
+credentials pointing to an execution-layer address, i.e. having an
 `ETH1_ADDRESS_WITHDRAWAL_PREFIX`.
 
 If a validator has a `BLS_WITHDRAWAL_PREFIX` withdrawal credential prefix, to
@@ -164,7 +166,7 @@ the validations in
 [`process_bls_to_execution_change`](./beacon-chain.md#new-process_bls_to_execution_change).
 
 The `SignedBLSToExecutionChange` message should then be submitted to the
-consensus layer network. Once included on-chain, the withdrawal credential
+consensus-layer network. Once included on-chain, the withdrawal credential
 change takes effect. No further action is required for a validator to enter into
 the automated withdrawal process.
 

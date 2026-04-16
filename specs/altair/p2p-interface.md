@@ -32,8 +32,8 @@
 
 ## Introduction
 
-This document contains the networking specification for Altair. This document
-should be viewed as additive to the
+This document contains the consensus-layer networking specifications for Altair.
+This document should be viewed as additive to the
 [document from Phase 0](../phase0/p2p-interface.md) and will be referred to as
 the "Phase 0 document" hereafter. Readers should understand the Phase 0 document
 and use it as a basis to understand the changes outlined in this document.
@@ -336,7 +336,7 @@ determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`         | Chunk SSZ type             |
 | ---------------------- | -------------------------- |
@@ -355,7 +355,7 @@ determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
 
 Per `fork_version = compute_fork_version(epoch)`:
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`         | Chunk SSZ type             |
 | ---------------------- | -------------------------- |
