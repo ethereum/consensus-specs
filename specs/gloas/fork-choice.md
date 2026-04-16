@@ -35,6 +35,7 @@
   - [Modified `is_head_late`](#modified-is_head_late)
   - [Modified `is_head_weak`](#modified-is_head_weak)
   - [Modified `is_parent_strong`](#modified-is_parent_strong)
+  - [Modified `get_latest_message_epoch`](#modified-get_latest_message_epoch)
   - [Modified `get_attestation_due_ms`](#modified-get_attestation_due_ms)
   - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
   - [Modified `get_sync_message_due_ms`](#modified-get_sync_message_due_ms)
@@ -685,6 +686,13 @@ def is_parent_strong(store: Store, root: Root) -> bool:
     parent_node = ForkChoiceNode(root=block.parent_root, payload_status=parent_payload_status)
     parent_weight = get_attestation_score(store, parent_node, justified_state)
     return parent_weight > parent_threshold
+```
+
+### Modified `get_latest_message_epoch`
+
+```python
+def get_latest_message_epoch(latest_message: LatestMessage) -> Epoch:
+    return compute_epoch_at_slot(latest_message.slot)
 ```
 
 ### Modified `get_attestation_due_ms`

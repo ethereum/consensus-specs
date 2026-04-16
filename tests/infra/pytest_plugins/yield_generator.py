@@ -29,6 +29,7 @@ RUNNERS: dict[str, RunnerConfig] = {
     "bls": {},
     "finality": {},
     "fork_choice": {},
+    "fast_confirmation": {},
     "genesis": {},
     "kzg": {},
     "merkle_proof": {},
