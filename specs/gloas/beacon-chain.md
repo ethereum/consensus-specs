@@ -357,7 +357,7 @@ class BeaconState(Container):
     # [Modified in Gloas:EIP7732]
     # Removed `latest_execution_payload_header`
     # [New in Gloas:EIP7732]
-    latest_execution_payload_bid: ExecutionPayloadBid
+    latest_block_hash: Hash32
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
@@ -382,7 +382,7 @@ class BeaconState(Container):
     # [New in Gloas:EIP7732]
     builder_pending_withdrawals: List[BuilderPendingWithdrawal, BUILDER_PENDING_WITHDRAWALS_LIMIT]
     # [New in Gloas:EIP7732]
-    latest_block_hash: Hash32
+    latest_execution_payload_bid: ExecutionPayloadBid
     # [New in Gloas:EIP7732]
     payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     # [New in Gloas:EIP7732]

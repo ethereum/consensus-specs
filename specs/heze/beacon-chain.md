@@ -128,8 +128,7 @@ class BeaconState(Container):
     inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
-    # [Modified in Heze:EIP7805]
-    latest_execution_payload_bid: ExecutionPayloadBid
+    latest_block_hash: Hash32
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
@@ -148,7 +147,8 @@ class BeaconState(Container):
     execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
     builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
     builder_pending_withdrawals: List[BuilderPendingWithdrawal, BUILDER_PENDING_WITHDRAWALS_LIMIT]
-    latest_block_hash: Hash32
+    # [Modified in Heze:EIP7805]
+    latest_execution_payload_bid: ExecutionPayloadBid
     payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     ptc_window: Vector[Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]
 ```
