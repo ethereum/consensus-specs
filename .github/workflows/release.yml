@@ -41,7 +41,6 @@ jobs:
 
   generate:
     needs: setup
-    timeout-minutes: 1440 # 24 hours
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
