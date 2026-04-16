@@ -362,6 +362,8 @@ extending the payload.
 
 ```python
 def should_extend_payload(store: Store, root: Root) -> bool:
+    if not is_payload_verified(store, root):
+        return False
     proposer_root = store.proposer_boost_root
     return (
         (is_payload_timely(store, root) and is_payload_data_available(store, root))

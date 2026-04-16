@@ -151,7 +151,7 @@ def prepare_execution_payload(
 ) -> Optional[PayloadId]:
     parent_bid = state.latest_execution_payload_bid
     parent_root = hash_tree_root(state.latest_block_header)
-    if is_payload_verified(store, parent_root) and should_extend_payload(store, parent_root):
+    if should_extend_payload(store, parent_root):
         envelope = store.payloads[parent_root]
         # Make a copy of the state to avoid mutability issues
         state = copy(state)
