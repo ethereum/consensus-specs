@@ -262,9 +262,9 @@ def prepare_execution_payload(
     parent_bid = state.latest_execution_payload_bid
     parent_root = hash_tree_root(state.latest_block_header)
     if is_payload_verified(store, parent_root) and should_extend_payload(store, parent_root):
+        envelope = store.payloads[parent_root]
         # Make a copy of the state to avoid mutability issues
         state = copy(state)
-        envelope = store.payloads[parent_root]
         # Apply parent payload before computing withdrawals
         apply_parent_execution_payload(state, parent_bid, envelope.execution_requests)
         withdrawals = get_expected_withdrawals(state).withdrawals

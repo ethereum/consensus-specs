@@ -798,7 +798,7 @@ def verify_execution_payload_envelope(
 ### Modified `on_block`
 
 *Note*: The handler `on_block` is modified to assert that the parent payload has
-been verified (`store.payloads`) when the block builds on a full parent. In
+been verified (`is_payload_verified`) when the block builds on a full parent. In
 addition we delay the checking of blob data availability until the processing of
 the execution payload.
 
