@@ -62,6 +62,7 @@
     - [New `get_builder_payment_quorum_threshold`](#new-get_builder_payment_quorum_threshold)
   - [Beacon state mutators](#beacon-state-mutators)
     - [New `initiate_builder_exit`](#new-initiate_builder_exit)
+    - [Modified `compute_exit_epoch_and_update_churn`](#modified-compute_exit_epoch_and_update_churn)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
@@ -108,6 +109,8 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 - [EIP-7732](https://eips.ethereum.org/EIPS/eip-7732): Enshrined
   Proposer-Builder Separation
+- [EIP-8080](https://eips.ethereum.org/EIPS/eip-8080): Let exits use the
+  consolidation queue
 
 ## Types
 
@@ -783,6 +786,45 @@ def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> No
 
     # Set builder exit epoch
     builder.withdrawable_epoch = get_current_epoch(state) + MIN_BUILDER_WITHDRAWABILITY_DELAY
+```
+
+#### Modified `compute_exit_epoch_and_update_churn`
+
+*Note*: `compute_exit_epoch_and_update_churn` is modified to route exits through
+the consolidation queue whenever the exit queue is longer than the consolidation
+queue, converting the requested `exit_balance` by the `2/3` factor that reflects
+the relative weak-subjectivity weight of exit vs. consolidation churn.
+
+```python
+def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) -> Epoch:
+    activation_exit_epoch = compute_activation_exit_epoch(get_current_epoch(state))
+    earliest_exit_epoch = max(state.earliest_exit_epoch, activation_exit_epoch)
+
+    # Route exits through the consolidation queue when it is shorter
+    # [New in Gloas:EIP8080]
+    earliest_consolidation_epoch = max(state.earliest_consolidation_epoch, activation_exit_epoch)
+    if earliest_exit_epoch > earliest_consolidation_epoch:
+        return compute_consolidation_epoch_and_update_churn(state, Gwei(2 * exit_balance // 3))
+
+    per_epoch_churn = get_activation_exit_churn_limit(state)
+    # New epoch for exits.
+    if state.earliest_exit_epoch < earliest_exit_epoch:
+        exit_balance_to_consume = per_epoch_churn
+    else:
+        exit_balance_to_consume = state.exit_balance_to_consume
+
+    # Exit doesn't fit in the current earliest epoch.
+    if exit_balance > exit_balance_to_consume:
+        balance_to_process = exit_balance - exit_balance_to_consume
+        additional_epochs = (balance_to_process - 1) // per_epoch_churn + 1
+        earliest_exit_epoch += additional_epochs
+        exit_balance_to_consume += additional_epochs * per_epoch_churn
+
+    # Consume the balance and update state variables.
+    state.exit_balance_to_consume = exit_balance_to_consume - exit_balance
+    state.earliest_exit_epoch = earliest_exit_epoch
+
+    return state.earliest_exit_epoch
 ```
 
 ## Beacon chain state transition function
