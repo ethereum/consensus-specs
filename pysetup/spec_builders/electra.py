@@ -21,6 +21,14 @@ from eth_consensus_specs.utils.ssz.ssz_impl import ssz_serialize, ssz_deserializ
         }
 
     @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return set(
+            [
+                "get_validator_activation_churn_limit",
+            ]
+        )
+
+    @classmethod
     def execution_engine_cls(cls) -> str:
         return """
 class NoopExecutionEngine(ExecutionEngine):

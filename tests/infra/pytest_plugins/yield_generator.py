@@ -29,6 +29,7 @@ RUNNERS: dict[str, RunnerConfig] = {
     "bls": {},
     "finality": {},
     "fork_choice": {},
+    "fast_confirmation": {},
     "genesis": {},
     "kzg": {},
     "merkle_proof": {},
@@ -303,7 +304,7 @@ class YieldGeneratorPlugin:
         if self.reftests_enabled:
             context.is_pytest = True
             context.is_generator = True
-            # Limit to TESTGEN_FORKS so experimental forks (eip7928, eip8025)
+            # Limit to TESTGEN_FORKS so experimental forks (eip8025)
             # don't produce output that the old generator wouldn't produce.
             context.DEFAULT_PYTEST_FORKS = set(TESTGEN_FORKS)
 

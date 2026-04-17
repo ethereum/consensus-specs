@@ -3,8 +3,9 @@ from eth_consensus_specs.test.bellatrix.block_processing.test_process_execution_
 )
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_capella_and_later,
+    with_all_phases_from_to,
 )
+from eth_consensus_specs.test.helpers.constants import CAPELLA, GLOAS
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
     build_state_with_incomplete_transition,
@@ -13,7 +14,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.state import next_slot
 
 
-@with_capella_and_later
+@with_all_phases_from_to(CAPELLA, GLOAS)
 @spec_state_test
 def test_invalid_bad_parent_hash_first_payload(spec, state):
     state = build_state_with_incomplete_transition(spec, state)

@@ -44,12 +44,12 @@ jobs:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
       - name: Run framework tests
-        run: make test component=fw
+        run: make test component=fw verbose=true
       - name: Prepare test results for upload
         if: always()
         run: cp -r ./tests/core/pyspec/test-reports ./tests/core/pyspec/test-results-framework-${{ github.run_number }}
       - name: Upload framework test results
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: test-results-framework-${{ github.run_number }}
@@ -125,7 +125,6 @@ jobs:
           - fulu
           - gloas
           - heze
-          - eip7928
           - eip8025
     steps:
       - name: Checkout repository
@@ -140,12 +139,12 @@ jobs:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
       - name: Run pyspec tests for ${{ matrix.fork }}
-        run: make test component=pyspec preset=minimal fork=${{ matrix.fork }}
+        run: make test component=pyspec verbose=true preset=minimal fork=${{ matrix.fork }}
       - name: Prepare test results for upload
         if: always()
         run: cp -r ./tests/core/pyspec/test-reports ./tests/core/pyspec/test-results-minimal-${{ matrix.fork }}-${{ github.run_number }}
       - name: Upload ${{ matrix.fork }} test results
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: test-results-minimal-${{ matrix.fork }}-${{ github.run_number }}

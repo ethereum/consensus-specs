@@ -4,12 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       repo:
-        description: The repository to use (e.g. user/consensus-specs)
-        default: ethereum/consensus-specs
+        description: Repository
         type: string
       ref:
-        description: The branch, tag or SHA to checkout and build from
-        default: master
+        description: Commit, branch, or tag
         type: string
       general:
         description: Generate general preset
@@ -23,6 +21,42 @@ on:
         description: Generate mainnet preset
         default: false
         type: boolean
+      phase0:
+        description: Generate phase0 tests
+        default: true
+        type: boolean
+      altair:
+        description: Generate altair tests
+        default: true
+        type: boolean
+      bellatrix:
+        description: Generate bellatrix tests
+        default: true
+        type: boolean
+      capella:
+        description: Generate capella tests
+        default: true
+        type: boolean
+      deneb:
+        description: Generate deneb tests
+        default: true
+        type: boolean
+      electra:
+        description: Generate electra tests
+        default: true
+        type: boolean
+      fulu:
+        description: Generate fulu tests
+        default: true
+        type: boolean
+      gloas:
+        description: Generate gloas tests
+        default: true
+        type: boolean
+      heze:
+        description: Generate heze tests
+        default: true
+        type: boolean
   schedule:
     - cron: "0 0 * * *"
 
@@ -30,14 +64,15 @@ jobs:
   config:
     runs-on: ubuntu-latest
     outputs:
-      presets: ${{ steps.config.outputs.presets }}
       repo: ${{ steps.config.outputs.repo }}
       ref: ${{ steps.config.outputs.ref }}
+      presets: ${{ steps.config.outputs.presets }}
+      forks: ${{ steps.config.outputs.forks }}
     steps:
       - name: Resolve configuration
         id: config
         run: |
-          # Repository
+          # Repo
           repo="${{ inputs.repo || github.repository }}"
           echo "repo=$repo" >> "$GITHUB_OUTPUT"
 
@@ -66,30 +101,46 @@ jobs:
           fi
           echo "presets=$presets" >> "$GITHUB_OUTPUT"
 
+          # Forks
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            forks='["phase0","altair","bellatrix","capella","deneb","electra","fulu","gloas","heze"]'
+          else
+            selected=()
+            [[ "${{ inputs.phase0 }}" == "true" ]] && selected+=("phase0")
+            [[ "${{ inputs.altair }}" == "true" ]] && selected+=("altair")
+            [[ "${{ inputs.bellatrix }}" == "true" ]] && selected+=("bellatrix")
+            [[ "${{ inputs.capella }}" == "true" ]] && selected+=("capella")
+            [[ "${{ inputs.deneb }}" == "true" ]] && selected+=("deneb")
+            [[ "${{ inputs.electra }}" == "true" ]] && selected+=("electra")
+            [[ "${{ inputs.fulu }}" == "true" ]] && selected+=("fulu")
+            [[ "${{ inputs.gloas }}" == "true" ]] && selected+=("gloas")
+            [[ "${{ inputs.heze }}" == "true" ]] && selected+=("heze")
+
+            if [[ ${#selected[@]} -eq 0 ]]; then
+              echo "No forks selected." >&2
+              exit 1
+            fi
+
+            json=$(printf '"%s",' "${selected[@]}")
+            forks="[${json%,}]"
+          fi
+          echo "forks=$forks" >> "$GITHUB_OUTPUT"
+
           # Summary
           echo "Configuration:"
           echo "  repo:    $repo"
-          echo "  ref:     ${ref:-<default branch>}"
+          echo "  ref:     ${ref:-<default>}"
           echo "  presets: $presets"
+          echo "  forks:   $forks"
 
   generate:
     needs: config
-    timeout-minutes: 1440 # 24 hours
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         preset: ${{ fromJson(needs.config.outputs.presets) }}
-        fork:
-          - phase0
-          - altair
-          - bellatrix
-          - capella
-          - deneb
-          - electra
-          - fulu
-          - gloas
-          - heze
+        fork: ${{ fromJson(needs.config.outputs.forks) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -108,10 +159,10 @@ jobs:
           enable-cache: true
 
       - name: Generate tests
-        run: make test component=pyspec preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true
+        run: make test component=pyspec verbose=true preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true
 
       - name: Upload reference tests
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: reftests-${{ matrix.preset }}-${{ matrix.fork }}
           path: reftests/${{ matrix.preset }}
@@ -134,10 +185,20 @@ jobs:
           merge-multiple: true
 
       - name: Archive reference tests
-        run: tar -czvf ${{ matrix.preset }}.tar.gz tests/${{ matrix.preset }}
+        run: |
+          tar --sort=name \
+              --owner=0 \
+              --group=0 \
+              --numeric-owner \
+              --mtime='@0' \
+              --format=gnu \
+              --use-compress-program='gzip --no-name' \
+              --create \
+              --file=${{ matrix.preset }}.tar.gz \
+              tests/${{ matrix.preset }}
 
       - name: Upload ${{ matrix.preset }}.tar.gz
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: ${{ matrix.preset }}.tar.gz
           archive: false

@@ -2,7 +2,6 @@ from .altair import AltairSpecBuilder
 from .bellatrix import BellatrixSpecBuilder
 from .capella import CapellaSpecBuilder
 from .deneb import DenebSpecBuilder
-from .eip7928 import EIP7928SpecBuilder
 from .eip8025 import EIP8025SpecBuilder
 from .electra import ElectraSpecBuilder
 from .fulu import FuluSpecBuilder
@@ -22,7 +21,6 @@ spec_builders = {
         FuluSpecBuilder,
         GloasSpecBuilder,
         HezeSpecBuilder,
-        EIP7928SpecBuilder,
         EIP8025SpecBuilder,
     )
 }

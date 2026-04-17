@@ -20,7 +20,6 @@ from .helpers.constants import (
     BELLATRIX,
     CAPELLA,
     DENEB,
-    EIP7928,
     EIP8025,
     ELECTRA,
     FULU,
@@ -116,12 +115,13 @@ def zero_activation_threshold(spec: Spec):
     return 0
 
 
-def default_balances(spec: Spec):
+def default_balances(spec: Spec, num_validators=None):
     """
     Helper method to create a series of default balances.
     Usage: `@with_custom_state(balances_fn=default_balances, ...)`
     """
-    num_validators = spec.SLOTS_PER_EPOCH * 8
+    if num_validators is None:
+        num_validators = spec.SLOTS_PER_EPOCH * 8
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
@@ -668,7 +668,6 @@ with_electra_and_later = with_all_phases_from(ELECTRA)
 with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_gloas_and_later = with_all_phases_from(GLOAS, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_heze_and_later = with_all_phases_from(HEZE, all_phases=ALLOWED_TEST_RUNNER_FORKS)
-with_eip7928_and_later = with_all_phases_from(EIP7928, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8025_and_later = with_all_phases_from(EIP8025, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 with_bellatrix_only = with_phases([BELLATRIX])

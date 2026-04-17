@@ -56,7 +56,6 @@
     - [`xor`](#xor)
     - [`uint_to_bytes`](#uint_to_bytes)
     - [`bytes_to_uint64`](#bytes_to_uint64)
-    - [`saturating_sub`](#saturating_sub)
   - [Crypto](#crypto)
     - [`hash`](#hash)
     - [`hash_tree_root`](#hash_tree_root)
@@ -661,16 +660,6 @@ def bytes_to_uint64(data: bytes) -> uint64:
     Return the integer deserialization of ``data`` interpreted as ``ENDIANNESS``-endian.
     """
     return uint64(int.from_bytes(data, ENDIANNESS))
-```
-
-#### `saturating_sub`
-
-```python
-def saturating_sub(a: int, b: int) -> int:
-    """
-    Computes a - b, saturating at numeric bounds.
-    """
-    return a - b if a > b else 0
 ```
 
 ### Crypto

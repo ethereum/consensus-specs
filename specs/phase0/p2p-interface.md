@@ -1508,7 +1508,7 @@ The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
 Clients MUST support requesting blocks on the epoch range
-`[max(GENESIS_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`.
+`[max(GENESIS_EPOCH, current_epoch - compute_min_epochs_for_block_requests()), current_epoch]`.
 If any root in the request content references a block earlier than this range,
 peers MAY respond with error code `3: ResourceUnavailable` or not include the
 block in the response.
@@ -2334,8 +2334,8 @@ quality since peers should validate blocks before gossiping them.
 
 When connecting, the `Status` message gives an idea about the sync status of a
 particular peer, but this changes over time. By the time a subsequent
-`BeaconBlockByRange` request is processed, the information may be stale, and the
-responder might have moved on to a new finalization point and pruned blocks
+`BeaconBlocksByRange` request is processed, the information may be stale, and
+the responder might have moved on to a new finalization point and pruned blocks
 around the previous head and finalized blocks.
 
 To avoid this race condition, we allow the responder to choose which branch to
@@ -2364,22 +2364,6 @@ from `compute_weak_subjectivity_period` found in the
 [weak subjectivity guide](./weak-subjectivity.md). Specifically to find this max
 epoch range, we use the worst case event of a very large validator size
 (`>= MIN_PER_EPOCH_CHURN_LIMIT * CHURN_LIMIT_QUOTIENT`).
-
-\<<\<<\<<< HEAD
-
-<!-- eth_consensus_specs: skip -->
-
-```python
-MIN_EPOCHS_FOR_BLOCK_REQUESTS = (
-    MIN_VALIDATOR_WITHDRAWABILITY_DELAY + MAX_SAFETY_DECAY * CHURN_LIMIT_QUOTIENT // (2 * 100)
-)
-```
-
-Where `MAX_SAFETY_DECAY = 100` and thus `MIN_EPOCHS_FOR_BLOCK_REQUESTS = 33024`.
-
-\=======
-
-> > > > > > > d4d19294d (Add compute_min_epochs_for_block_requests() helper)
 
 #### Why must the proposer signature be checked when backfilling blocks in the database?
 
