@@ -110,9 +110,14 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 *Note*: `process_execution_payload` is modified in EIP-8025 to treat both
 `ExecutionEngine` and `ProofEngine` as fire-and-forget notifications rather
-than gating consensus. Running an execution engine is **highly recommended**
-for defense-in-depth, but is no longer mandatory — consensus correctness is
-established via the proof engine path.
+than gating consensus. The consensus state transition no longer verifies
+execution validity; it becomes an out-of-band concern handled asynchronously
+by (a) a locally-run execution engine and/or (b) gossiped execution proofs
+validated via `process_execution_proof` (see
+[p2p-interface.md](./p2p-interface.md)). Running an execution engine is
+**highly recommended** for defense-in-depth, but is no longer mandatory. A
+node doing neither accepts execution payloads without execution-validity
+verification.
 
 ```python
 def process_execution_payload(
@@ -143,9 +148,10 @@ def process_execution_payload(
     # [Modified in EIP8025]
     # Notify ExecutionEngine of the new execution payload. Running an execution
     # engine is highly recommended for defense-in-depth but is no longer
-    # mandatory -- consensus correctness is not gated on the execution
-    # engine's response. Clients that run an execution engine SHOULD still
-    # verify payloads locally.
+    # mandatory -- consensus is not gated on the execution engine's response.
+    # Execution validity becomes an out-of-band concern: it is verified by
+    # the locally-run execution engine (if present) and/or by asynchronously
+    # gossiped execution proofs processed via `process_execution_proof`.
     execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
