@@ -4,7 +4,6 @@ import threading
 import time
 import uuid
 from collections.abc import Iterable
-from typing import Any
 
 import psutil
 from pathos.multiprocessing import ProcessingPool as Pool
@@ -19,7 +18,7 @@ from eth_consensus_specs.test.exceptions import SkippedTest
 from tests.infra.dumper import Dumper
 
 from .args import parse_arguments
-from .gen_typing import TestCase, TestCasePart, TestCaseResult, TestGroup
+from .gen_typing import TestCaseResult, TestGroup
 from .utils import install_sigint_handler, time_since
 
 
@@ -81,24 +80,6 @@ def display_test_summary(
     console.print()
 
 
-def collect_test_case_result(test_case: TestCase) -> TestCaseResult:
-    """Execute a test case and collect its outputs in memory."""
-    meta: dict[str, Any] = {}
-    outputs: list[TestCasePart] = []
-
-    try:
-        for name, kind, data in test_case.case_fn():
-            if kind == "meta":
-                meta[name] = data
-            else:
-                outputs.append(TestCasePart((name, kind, data)))
-    except SkippedTest:
-        # Bail without writing any files
-        raise
-
-    return TestCaseResult(test_case=test_case, meta=meta, case_parts=outputs)
-
-
 def dump_test_case_result(test_case_result: TestCaseResult, dumper: Dumper) -> None:
     """Write a collected test case result to storage."""
     test_case = test_case_result.test_case
@@ -126,27 +107,11 @@ def dump_test_case_result(test_case_result: TestCaseResult, dumper: Dumper) -> N
 
 def execute_test_group(
     test_group: TestGroup,
-    selected_test_cases: list[TestCase],
     dumper: Dumper,
 ) -> None:
     """Execute a test group and write all of its selected test cases to storage."""
-    for test_case_result in test_group.group_fn(selected_test_cases):
+    for test_case_result in test_group.group_fn():
         dump_test_case_result(test_case_result, dumper)
-
-
-def execute_single_test_group(test_cases: list[TestCase]) -> Iterable[TestCaseResult]:
-    """Execute a trivial test group containing exactly one test case."""
-    assert len(test_cases) == 1
-    yield collect_test_case_result(test_cases[0])
-
-
-def wrap_test_case_in_group(test_case: TestCase) -> TestGroup:
-    """Wrap a test case in a single-case test group for compatibility."""
-    return TestGroup(
-        group_name=test_case.get_identifier(),
-        test_cases=[test_case],
-        group_fn=execute_single_test_group,
-    )
 
 
 def run_generator_groups(input_test_groups: Iterable[TestGroup], args=None):
@@ -166,7 +131,6 @@ def run_generator_groups(input_test_groups: Iterable[TestGroup], args=None):
     install_sigint_handler(console)
 
     total_found = 0
-    selected_test_cases = []
     selected_test_groups = []
     for test_group in input_test_groups:
         selected_group_cases = []
@@ -182,15 +146,19 @@ def run_generator_groups(input_test_groups: Iterable[TestGroup], args=None):
             if len(args.cases) != 0 and not any(s in test_case.case_name for s in args.cases):
                 continue
 
+            selected_group_cases.append(test_case)
+
+        if selected_group_cases:
+            selected_test_groups.append(test_group)
+
+    selected_test_cases = []
+    for test_group in selected_test_groups:
+        for test_case in test_group.test_cases:
             # Set the output dir and add this to out list
             test_case.set_output_dir(args.output_dir)
             if test_case.dir.exists():
                 shutil.rmtree(test_case.dir)
-            selected_group_cases.append(test_case)
             selected_test_cases.append(test_case)
-
-        if selected_group_cases:
-            selected_test_groups.append((test_group, selected_group_cases))
 
     if len(selected_test_cases) == 0:
         # Show summary even when all tests are filtered out
@@ -203,7 +171,7 @@ def run_generator_groups(input_test_groups: Iterable[TestGroup], args=None):
 
     def worker_function(data):
         """Execute a test group and update active tests."""
-        test_group, selected_group_cases, active_tests = data
+        test_group, active_tests = data
         key = (uuid.uuid4(), test_group.get_identifier())
         test_start = time.time()
         active_tests[key] = test_start
@@ -211,14 +179,14 @@ def run_generator_groups(input_test_groups: Iterable[TestGroup], args=None):
         debug_print(f"Starting: {test_group.get_identifier()}")
 
         try:
-            execute_test_group(test_group, selected_group_cases, dumper)
+            execute_test_group(test_group, dumper)
             elapsed = time.time() - test_start
             debug_print(f"Generated: {test_group.get_identifier()} (took {elapsed:.2f}s)")
-            return ("generated", len(selected_group_cases))
+            return ("generated", len(test_group.test_cases))
         except SkippedTest:
             elapsed = time.time() - test_start
             debug_print(f"Skipped: {test_group.get_identifier()} (took {elapsed:.2f}s)")
-            return ("skipped", len(selected_group_cases))
+            return ("skipped", len(test_group.test_cases))
         finally:
             del active_tests[key]
 
@@ -298,7 +266,7 @@ def run_generator_groups(input_test_groups: Iterable[TestGroup], args=None):
             active_tests = manager.dict()
             completed = manager.Value("i", 0)
             skipped = manager.Value("i", 0)
-            width = max([len(group.get_identifier()) for group, _ in selected_test_groups])
+            width = max([len(group.get_identifier()) for group in selected_test_groups])
 
             if not args.verbose:
                 display_thread = threading.Thread(
@@ -317,7 +285,7 @@ def run_generator_groups(input_test_groups: Iterable[TestGroup], args=None):
                 status_thread.start()
 
             # Map each selected group to a worker
-            inputs = [(group, group_cases, active_tests) for group, group_cases in selected_test_groups]
+            inputs = [(group, active_tests) for group in selected_test_groups]
 
             if args.threads == 1:
                 for input in inputs:
@@ -360,7 +328,3 @@ def run_generator_groups(input_test_groups: Iterable[TestGroup], args=None):
         debug_print(f"Completed generation of {tests_prefix} in {elapsed} seconds")
     except KeyboardInterrupt:
         return
-
-
-def run_generator(input_test_cases: Iterable[TestCase], args=None):
-    run_generator_groups((wrap_test_case_in_group(test_case) for test_case in input_test_cases), args)

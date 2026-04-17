@@ -9,6 +9,7 @@ from ruamel.yaml import YAML
 from eth_consensus_specs.test.context import (
     spec_state_test,
     with_altair_and_later,
+
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_attestation_file_name,
@@ -18,7 +19,12 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     output_store_checks,
 )
 from eth_consensus_specs.utils import bls
-from tests.generators.compliance_runners.gen_base.gen_typing import TestCase
+from tests.generators.compliance_runners.gen_base.gen_typing import (
+    TestCase,
+    TestCasePart,
+    TestCaseResult,
+    TestGroup,
+)
 
 from .block_cover import gen_block_cover_test_data
 from .block_tree import gen_block_tree_test_data
@@ -82,18 +88,56 @@ class PlainFCTestCase(TestCase):
             handler_name=kwds["handler_name"],
             suite_name=kwds["suite_name"],
             case_name=kwds["case_name"],
-            case_fn=self.mutation_case_fn,
         )
         self.test_dna = test_dna
         self.bls_active = bls_active
         self.debug = debug
 
-    def mutation_case_fn(self):
-        test_kind = self.test_dna.kind
-        phase, preset = self.fork_name, self.preset_name
-        bls_active, debug = self.bls_active, self.debug
-        solution, seed = self.test_dna.solution, self.test_dna.variation_seed
-        mut_seed = self.test_dna.mutation_seed
+
+@dataclass(init=False)
+class MutationGroupTestGroup(TestGroup):
+    mutation_group: MutationGroup
+    fork_name: str
+    preset_name: str
+    bls_active: bool
+    debug: bool
+
+    def __init__(self, mutation_group, fork_name, preset_name, bls_active=False, debug=False):
+        test_cases = [
+            PlainFCTestCase(
+                test_dna=test_dna,
+                bls_active=bls_active,
+                debug=debug,
+                fork_name=fork_name,
+                preset_name=preset_name,
+                runner_name=GENERATOR_NAME,
+                handler_name=mutation_group.test_name,
+                suite_name=SUITE_NAME,
+                case_name=case_name,
+            )
+            for case_name, test_dna in enumerate_test_dnas(mutation_group)
+        ]
+        super().__init__(
+            group_name=(
+                f"{preset_name}::{fork_name}::{GENERATOR_NAME}::"
+                f"{mutation_group.test_name}::{mutation_group.solution_index}::"
+                f"{mutation_group.test_dna_base.variation_seed}"
+            ),
+            test_cases=test_cases,
+            group_fn=self.execute_group,
+        )
+        self.mutation_group = mutation_group
+        self.fork_name = fork_name
+        self.preset_name = preset_name
+        self.bls_active = bls_active
+        self.debug = debug
+
+    def run_case_fn(self, test_case: PlainFCTestCase):
+        test_kind = test_case.test_dna.kind
+        phase, preset = test_case.fork_name, test_case.preset_name
+        bls_active, debug = test_case.bls_active, test_case.debug
+        solution, seed = test_case.test_dna.solution, test_case.test_dna.variation_seed
+        mut_seed = test_case.test_dna.mutation_seed
         return yield_mutation_test_case(
             phase=phase,
             preset=preset,
@@ -104,6 +148,26 @@ class PlainFCTestCase(TestCase):
             test_kind=test_kind,
             solution=solution,
         )
+
+    def execute_group(self) -> Iterable[TestCaseResult]:
+        for test_case in self.test_cases:
+            yield collect_test_case_result_from_iterator(test_case, self.run_case_fn(test_case))
+
+
+def collect_test_case_result_from_iterator(
+    test_case: TestCase,
+    parts_iter: Iterable[TestCasePart],
+) -> TestCaseResult:
+    meta: dict[str, Any] = {}
+    outputs: list[TestCasePart] = []
+
+    for name, kind, data in parts_iter:
+        if kind == "meta":
+            meta[name] = data
+        else:
+            outputs.append(TestCasePart((name, kind, data)))
+
+    return TestCaseResult(test_case=test_case, meta=meta, case_parts=outputs)
 
 
 def get_test_data(spec, state, test_kind, solution, debug, seed):
@@ -362,7 +426,7 @@ def enumerate_test_dnas(mutation_group: MutationGroup) -> Iterable[tuple[str, FC
         yield case_name, test_dna
 
 
-def enumerate_test_cases(config_path, forks, presets, debug, initial_seed: int = None):
+def enumerate_test_groups(config_path, forks, presets, debug, initial_seed: int = None):
     config_dir = path.dirname(config_path)
     test_gen_config = _load_yaml(config_path)
 
@@ -375,15 +439,10 @@ def enumerate_test_cases(config_path, forks, presets, debug, initial_seed: int =
         for fork_name in forks:
             for preset_name in presets:
                 for mutation_group in enumerate_mutation_groups(config_dir, test_name, params):
-                    for case_name, test_dna in enumerate_test_dnas(mutation_group):
-                        yield PlainFCTestCase(
-                            test_dna=test_dna,
-                            bls_active=BLS_ACTIVE,
-                            debug=debug,
-                            fork_name=fork_name,
-                            preset_name=preset_name,
-                            runner_name=GENERATOR_NAME,
-                            handler_name=test_name,
-                            suite_name=SUITE_NAME,
-                            case_name=case_name,
-                        )
+                    yield MutationGroupTestGroup(
+                        mutation_group=mutation_group,
+                        fork_name=fork_name,
+                        preset_name=preset_name,
+                        bls_active=BLS_ACTIVE,
+                        debug=debug,
+                    )

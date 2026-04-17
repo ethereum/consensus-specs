@@ -26,7 +26,6 @@ class TestCase:
     handler_name: str
     suite_name: str
     case_name: str
-    case_fn: Callable[[], Iterable[TestCasePart]]
     dir: Path | None = None
 
     def get_identifier(self):
@@ -66,7 +65,7 @@ class TestCaseResult:
 class TestGroup:
     group_name: str
     test_cases: list[TestCase]
-    group_fn: Callable[[list[TestCase]], Iterable[TestCaseResult]]
+    group_fn: Callable[[], Iterable[TestCaseResult]]
 
     def get_identifier(self) -> str:
         """Return the human readable identifier for the group."""
