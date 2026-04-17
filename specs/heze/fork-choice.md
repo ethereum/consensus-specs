@@ -100,6 +100,7 @@ class PayloadAttributes(object):
     suggested_fee_recipient: ExecutionAddress
     withdrawals: Sequence[Withdrawal]
     parent_beacon_block_root: Root
+    slot_number: uint64
     # [New in Heze:EIP7805]
     inclusion_list_transactions: Sequence[Transaction]
 ```
