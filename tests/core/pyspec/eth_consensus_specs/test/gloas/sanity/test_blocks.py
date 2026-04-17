@@ -89,6 +89,7 @@ def _attempt_payload_with_withdrawals(spec, state, withdrawals):
         block_hash=committed_bid.block_hash,
         timestamp=spec.compute_time_at_slot(test_state, test_state.slot),
         withdrawals=withdrawals,
+        slot_number=test_state.slot,
     )
 
     # Cache state root for beacon_block_root computation
@@ -100,7 +101,6 @@ def _attempt_payload_with_withdrawals(spec, state, withdrawals):
         execution_requests=spec.ExecutionRequests(),
         builder_index=committed_bid.builder_index,
         beacon_block_root=header.hash_tree_root(),
-        slot=test_state.slot,
     )
 
     if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:

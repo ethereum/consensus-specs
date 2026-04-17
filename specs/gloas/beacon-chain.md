@@ -111,6 +111,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 - [EIP-7732](https://eips.ethereum.org/EIPS/eip-7732): Enshrined
   Proposer-Builder Separation
+- [EIP-7843](https://eips.ethereum.org/EIPS/eip-7843): SLOTNUM opcode
 
 ## Types
 
@@ -288,7 +289,6 @@ class ExecutionPayloadEnvelope(Container):
     execution_requests: ExecutionRequests
     builder_index: BuilderIndex
     beacon_block_root: Root
-    slot: Slot
 ```
 
 #### `SignedExecutionPayloadEnvelope`
@@ -418,6 +418,8 @@ class ExecutionPayload(Container):
     excess_blob_gas: uint64
     # [New in Gloas:EIP7928]
     block_access_list: BlockAccessList
+    # [New in Gloas:EIP7843]
+    slot_number: uint64
 ```
 
 ## Dataclasses
