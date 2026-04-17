@@ -278,6 +278,12 @@ def test_builder_payment_after_missed_epochs(spec, state):
         next_epoch_with_full_participation(spec, state)
     assert state.finalized_checkpoint.epoch == 2
 
+    # Make the parent block full before capturing pre-state so clients replay
+    # the same state transition. This makes block_1 build on a full parent; by
+    # also aligning bid_1.block_hash with latest_execution_payload_bid.block_hash
+    # below, block_2 will also see its parent (block_1) as full.
+    set_parent_block_full(spec, state)
+
     # Build Block 1 with a non-zero value bid from a builder
     block_1 = build_empty_block_for_next_slot(spec, state)
     builder_index = 0
@@ -288,6 +294,10 @@ def test_builder_payment_after_missed_epochs(spec, state):
     bid.builder_index = builder_index
     bid.value = value
     bid.fee_recipient = fee_recipient
+    # Match the previous bid's block_hash so that block_2 sees parent as FULL
+    # after block_1 is processed (apply_parent_execution_payload sets
+    # state.latest_block_hash = parent_bid.block_hash).
+    bid.block_hash = state.latest_execution_payload_bid.block_hash
     bid.execution_requests_root = spec.hash_tree_root(spec.ExecutionRequests())
 
     # Sign the bid with the builder's private key
@@ -314,8 +324,6 @@ def test_builder_payment_after_missed_epochs(spec, state):
     assert payment.withdrawal.builder_index == builder_index
     assert payment.weight == 0
 
-    # Builder delivers their payload — parent block becomes FULL
-    set_parent_block_full(spec, state)
     pre_builder_balance = state.builders[builder_index].balance
 
     # Build Block 2 with 2+ epochs of missed slots. During the slot advancement,
