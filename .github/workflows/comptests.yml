@@ -206,7 +206,17 @@ jobs:
           merge-multiple: true
 
       - name: Archive compliance tests
-        run: tar -czvf ${{ matrix.config }}.tar.gz tests
+        run: |
+          tar --sort=name \
+              --owner=0 \
+              --group=0 \
+              --numeric-owner \
+              --mtime='@0' \
+              --format=gnu \
+              --use-compress-program='gzip --no-name' \
+              --create \
+              --file=${{ matrix.config }}.tar.gz \
+              tests
 
       - name: Upload ${{ matrix.config }}.tar.gz
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
