@@ -1,0 +1,233 @@
+# Heze -- Honest Validator
+
+*Note*: This document is a work-in-progress for researchers and implementers.
+
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
+
+- [Introduction](#introduction)
+- [Configuration](#configuration)
+  - [Time parameters](#time-parameters)
+- [Helpers](#helpers)
+  - [New `GetInclusionListResponse`](#new-getinclusionlistresponse)
+- [Protocols](#protocols)
+  - [`ExecutionEngine`](#executionengine)
+    - [New `get_inclusion_list`](#new-get_inclusion_list)
+- [Beacon chain responsibilities](#beacon-chain-responsibilities)
+  - [Validator assignments](#validator-assignments)
+    - [Inclusion list committee](#inclusion-list-committee)
+    - [Lookahead](#lookahead)
+  - [Block and sidecar proposal](#block-and-sidecar-proposal)
+    - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [Signed execution payload bid](#signed-execution-payload-bid)
+      - [ExecutionPayload](#executionpayload)
+  - [Inclusion list proposal](#inclusion-list-proposal)
+    - [Constructing the `SignedInclusionList`](#constructing-the-signedinclusionlist)
+
+<!-- mdformat-toc end -->
+
+## Introduction
+
+This document represents the changes to be made in the code of an "honest
+validator" to implement Heze.
+
+## Configuration
+
+### Time parameters
+
+| Name                                 | Value          |     Unit     |          Duration          |
+| ------------------------------------ | -------------- | :----------: | :------------------------: |
+| `INCLUSION_LIST_SUBMISSION_DUE_BPS`  | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
+| `PROPOSER_INCLUSION_LIST_CUTOFF_BPS` | `uint64(9167)` | basis points | ~92% of `SLOT_DURATION_MS` |
+
+## Helpers
+
+### New `GetInclusionListResponse`
+
+```python
+@dataclass
+class GetInclusionListResponse(object):
+    inclusion_list_transactions: Sequence[Transaction]
+```
+
+## Protocols
+
+### `ExecutionEngine`
+
+*Note*: `get_inclusion_list` function is added to the `ExecutionEngine` protocol
+for use as an inclusion list committee member.
+
+The body of this function is implementation dependent. The Engine API may be
+used to implement it with an external execution engine.
+
+#### New `get_inclusion_list`
+
+`get_inclusion_list` returns `GetInclusionListResponse` with the most recent
+inclusion list transactions that has been built based on the latest view of the
+public mempool.
+
+```python
+def get_inclusion_list(self: ExecutionEngine) -> GetInclusionListResponse:
+    """
+    Return ``GetInclusionListResponse`` object.
+    """
+    ...
+```
+
+## Beacon chain responsibilities
+
+All validator responsibilities remain unchanged other than those noted below.
+
+### Validator assignments
+
+#### Inclusion list committee
+
+A validator may be a member of the new inclusion list committee for a given
+slot. To check for inclusion list committee assignments, use
+`get_inclusion_list_committee_assignment(state, epoch, validator_index)` where
+`epoch <= next_epoch`, as inclusion list committee selection is only stable
+within the context of the current and next epoch.
+
+```python
+def get_inclusion_list_committee_assignment(
+    state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
+) -> Optional[Slot]:
+    """
+    Returns the slot during the requested epoch in which the validator with
+    index ``validator_index`` is a member of the inclusion list committee.
+    Returns None if no assignment is found.
+    """
+    next_epoch = Epoch(get_current_epoch(state) + 1)
+    assert epoch <= next_epoch
+
+    start_slot = compute_start_slot_at_epoch(epoch)
+    for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
+        if validator_index in get_inclusion_list_committee(state, Slot(slot)):
+            return Slot(slot)
+    return None
+```
+
+#### Lookahead
+
+`get_inclusion_list_committee_assignment` should be called at the start of each
+epoch to get the assignment for the next epoch (`current_epoch + 1`). A
+validator should plan for future assignments by noting their assigned inclusion
+list committee slot.
+
+### Block and sidecar proposal
+
+#### Constructing the `BeaconBlockBody`
+
+##### Signed execution payload bid
+
+*Note*: The only change made to `signed_execution_payload_bid` is to require
+that `bid.inclusion_list_bits` must satisfy `is_inclusion_list_bits_inclusive()`
+with respect to the proposer's local view of inclusion lists.
+
+- The `bid.inclusion_list_bits` must satisfy
+  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), state, slot - 1, bid.inclusion_list_bits)`.
+
+##### ExecutionPayload
+
+`prepare_execution_payload` is updated from the Gloas specification to provide
+the inclusion list transactions.
+
+*Note*: In this section, `state` is the state of the slot for the block proposal
+_without_ the block yet applied. That is, `state` is the `previous_state`
+processed through any empty slots up to the assigned slot using
+`process_slots(previous_state, slot)`.
+
+*Note*: A proposer should produce an execution payload that satisfies the
+inclusion list constraints with respect to the inclusion lists gathered up to
+`get_proposer_inclusion_list_cutoff_ms()` milliseconds into the slot.
+
+```python
+def prepare_execution_payload(
+    store: Store,
+    state: BeaconState,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+    suggested_fee_recipient: ExecutionAddress,
+    execution_engine: ExecutionEngine,
+) -> Optional[PayloadId]:
+    parent_bid = state.latest_execution_payload_bid
+    parent_root = hash_tree_root(state.latest_block_header)
+    if should_extend_payload(store, parent_root):
+        envelope = store.payloads[parent_root]
+        # Make a copy of the state to avoid mutability issues
+        state = copy(state)
+        # Apply parent payload before computing withdrawals
+        apply_parent_execution_payload(state, parent_bid, envelope.execution_requests)
+        withdrawals = get_expected_withdrawals(state).withdrawals
+        head_block_hash = parent_bid.block_hash
+    else:
+        withdrawals = state.payload_expected_withdrawals
+        head_block_hash = parent_bid.parent_block_hash
+
+    # Set the forkchoice head and initiate the payload build process
+    payload_attributes = PayloadAttributes(
+        timestamp=compute_time_at_slot(state, state.slot),
+        prev_randao=get_randao_mix(state, get_current_epoch(state)),
+        suggested_fee_recipient=suggested_fee_recipient,
+        withdrawals=withdrawals,
+        parent_beacon_block_root=hash_tree_root(state.latest_block_header),
+        slot_number=state.slot,
+        # [New in Heze:EIP7805]
+        inclusion_list_transactions=get_inclusion_list_transactions(
+            get_inclusion_list_store(), state, Slot(state.slot - 1)
+        ),
+    )
+    return execution_engine.notify_forkchoice_updated(
+        head_block_hash=head_block_hash,
+        safe_block_hash=safe_block_hash,
+        finalized_block_hash=finalized_block_hash,
+        payload_attributes=payload_attributes,
+    )
+```
+
+### Inclusion list proposal
+
+A validator is expected to propose a
+[`SignedInclusionList`](./beacon-chain.md#signedinclusionlist) at the beginning
+of any `slot` for which
+`get_inclusion_list_committee_assignment(state, epoch, validator_index)`
+returns.
+
+If a validator is in the current inclusion list committee, the validator should
+create and broadcast the `signed_inclusion_list` to the global `inclusion_list`
+subnet by `get_inclusion_list_submission_due_ms()` milliseconds into the slot
+after processing the block for the current slot and confirming it as the head.
+If no block is received by `get_inclusion_list_submission_due_ms() - 1000`
+milliseconds into the slot, the validator should run `get_head` to determine the
+local head and construct and broadcast the inclusion list based on this local
+head by `get_inclusion_list_submission_due_ms()` milliseconds into the slot.
+
+#### Constructing the `SignedInclusionList`
+
+The validator creates the `signed_inclusion_list` as follows:
+
+- First, the validator creates the `inclusion_list`.
+- Set `inclusion_list.slot` to the assigned slot returned by
+  `get_inclusion_list_committee_assignment`.
+- Set `inclusion_list.validator_index` to the validator's index.
+- Set `inclusion_list.inclusion_list_committee_root` to the hash tree root of
+  the committee that the validator is a member of.
+- Set `inclusion_list.transactions` using the response from `ExecutionEngine`
+  via `get_inclusion_list`.
+
+After building the `inclusion_list`, the validator obtains a `signature` of the
+inclusion list by using:
+
+```python
+def get_inclusion_list_signature(
+    state: BeaconState, inclusion_list: InclusionList, privkey: int
+) -> BLSSignature:
+    domain = get_domain(
+        state, DOMAIN_INCLUSION_LIST_COMMITTEE, compute_epoch_at_slot(inclusion_list.slot)
+    )
+    signing_root = compute_signing_root(inclusion_list, domain)
+    return bls.Sign(privkey, signing_root)
+```
+
+Then the validator assembles
+`signed_inclusion_list = SignedInclusionList(message=inclusion_list, signature=signature)`
+and broadcasts it on the `inclusion_list` global gossip topic.

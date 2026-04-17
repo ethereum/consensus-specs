@@ -13,13 +13,15 @@
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Attestation](#attestation)
   - [Sync Committee participations](#sync-committee-participations)
-  - [Block proposal](#block-proposal)
+  - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Broadcasting `SignedProposerPreferences`](#broadcasting-signedproposerpreferences)
-    - [Constructing `signed_execution_payload_bid`](#constructing-signed_execution_payload_bid)
-    - [Constructing `payload_attestations`](#constructing-payload_attestations)
-    - [Preparing `ExecutionPayload`](#preparing-executionpayload)
+    - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [Signed execution payload bid](#signed-execution-payload-bid)
+      - [Payload attestations](#payload-attestations)
+      - [Parent execution requests](#parent-execution-requests)
+      - [ExecutionPayload](#executionpayload)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
-    - [Constructing a payload attestation](#constructing-a-payload-attestation)
+    - [Constructing the `PayloadAttestationMessage`](#constructing-the-payloadattestationmessage)
 - [Modified functions](#modified-functions)
   - [Modified `get_data_column_sidecars_from_column_sidecar`](#modified-get_data_column_sidecars_from_column_sidecar)
 
@@ -48,9 +50,10 @@ validator" to implement Gloas.
 
 A validator may be a member of the new Payload Timeliness Committee (PTC) for a
 given slot. To check for PTC assignments, use
-`get_ptc_assignment(state, epoch, validator_index)` where `epoch <= next_epoch`,
-as PTC committee selection is only stable within the context of the current and
-next epoch.
+`get_ptc_assignment(state, epoch, validator_index)` where
+`epoch <= get_current_epoch(state) + MIN_SEED_LOOKAHEAD`, as PTC committee
+selection is only stable within the context of the current and next epochs in
+the lookahead.
 
 ```python
 def get_ptc_assignment(
@@ -61,8 +64,8 @@ def get_ptc_assignment(
     index ``validator_index`` is a member of the PTC. Returns None if no
     assignment is found.
     """
-    next_epoch = Epoch(get_current_epoch(state) + 1)
-    assert epoch <= next_epoch
+    max_epoch = Epoch(get_current_epoch(state) + MIN_SEED_LOOKAHEAD)
+    assert epoch <= max_epoch
 
     start_slot = compute_start_slot_at_epoch(epoch)
     for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
@@ -85,8 +88,8 @@ All validator responsibilities remain unchanged other than the following:
   this becomes a builder's duty.
 - Some attesters are selected per slot to become PTC members, these validators
   must broadcast `PayloadAttestationMessage` objects during the assigned slot
-  before the deadline of `get_payload_attestation_due_ms(epoch)` milliseconds
-  into the slot.
+  before the deadline of `get_payload_attestation_due_ms()` milliseconds into
+  the slot.
 
 ### Attestation
 
@@ -109,7 +112,7 @@ alias `data = attestation.data`, the validator should set this field as follows:
 Sync committee duties are not changed for validators, however the submission
 deadline is changed with `SYNC_MESSAGE_DUE_BPS_GLOAS`.
 
-### Block proposal
+### Block and sidecar proposal
 
 Validators are still expected to propose `SignedBeaconBlock` at the beginning of
 any slot during which `is_proposer(state, validator_index)` returns `True`. The
@@ -118,9 +121,10 @@ previous forks as follows
 
 #### Broadcasting `SignedProposerPreferences`
 
-At the beginning of each epoch, a validator MAY broadcast
-`SignedProposerPreferences` messages to the `proposer_preferences` gossip topic
-for each slot returned by `get_upcoming_proposal_slots(state, validator_index)`.
+A validator MAY broadcast `SignedProposerPreferences` messages to the
+`proposer_preferences` gossip topic for each slot returned by
+`get_upcoming_proposal_slots(state, validator_index)`. These include any future
+proposal slots in the current epoch and all proposal slots in the next epoch.
 This allows builders to construct execution payloads with the validator's
 preferred `fee_recipient` and `gas_limit`. If a validator does not broadcast a
 `SignedProposerPreferences` message, this implies that the validator will not
@@ -131,13 +135,18 @@ def get_upcoming_proposal_slots(
     state: BeaconState, validator_index: ValidatorIndex
 ) -> Sequence[Slot]:
     """
-    Get the slots in the next epoch for which ``validator_index`` is proposing.
+    Get the future slots in the current epoch and the slots in the next
+    epoch for which ``validator_index`` is proposing.
     """
-    return [
-        Slot(compute_start_slot_at_epoch(get_current_epoch(state) + Epoch(1)) + offset)
-        for offset, proposer_index in enumerate(state.proposer_lookahead[SLOTS_PER_EPOCH:])
-        if validator_index == proposer_index
-    ]
+    current_epoch_start_slot = compute_start_slot_at_epoch(get_current_epoch(state))
+    upcoming_proposal_slots = []
+    for offset, proposer_index in enumerate(state.proposer_lookahead):
+        slot = Slot(current_epoch_start_slot + offset)
+        if slot <= state.slot:
+            continue
+        if validator_index == proposer_index:
+            upcoming_proposal_slots.append(slot)
+    return upcoming_proposal_slots
 ```
 
 To construct each `SignedProposerPreferences`:
@@ -165,7 +174,9 @@ def get_proposer_preferences_signature(
     return bls.Sign(privkey, signing_root)
 ```
 
-#### Constructing `signed_execution_payload_bid`
+#### Constructing the `BeaconBlockBody`
+
+##### Signed execution payload bid
 
 To obtain `signed_execution_payload_bid`, a block proposer building a block on
 top of a `state` MUST take the following actions in order to construct the
@@ -183,15 +194,18 @@ top of a `state` MUST take the following actions in order to construct the
     `bid.value` MUST be zero.
   - The builder balance can cover the `bid.value`.
   - The `bid.slot` is for the proposal block slot.
-  - The `bid.parent_block_hash` equals the state's `latest_block_hash`.
+  - The `bid.parent_block_hash` equals
+    `state.latest_execution_payload_bid.block_hash` if
+    `should_extend_payload(store, block.parent_root)` is true, otherwise
+    `state.latest_execution_payload_bid.parent_block_hash`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
 - Select one bid and set
-  `body.signed_execution_payload_bid = signed_execution_payload_bid`.
+  `block.body.signed_execution_payload_bid = signed_execution_payload_bid`.
 
 *Note:* The execution address encoded in the `fee_recipient` field in the
 `signed_execution_payload_bid.message` will receive the builder payment.
 
-#### Constructing `payload_attestations`
+##### Payload attestations
 
 Up to `MAX_PAYLOAD_ATTESTATIONS` aggregate payload attestations can be included
 in the block. The block proposer MUST take the following actions in order to
@@ -207,29 +221,69 @@ construct the `payload_attestations` field in `BeaconBlockBody`:
   given `PayloadAttestation` object. For this the proposer needs to fill the
   `aggregation_bits` field by using the relative position of the validator
   indices with respect to the PTC that is obtained from
-  `get_ptc(state, block_slot - 1)`.
+  `get_ptc(state, Slot(block_slot - 1))`.
 
-#### Preparing `ExecutionPayload`
+##### Parent execution requests
+
+The `parent_execution_requests` field contains the execution requests from the
+parent's execution payload. The proposer constructs this field as follows:
+
+- If the parent block is pre-Gloas (first Gloas block), set
+  `parent_execution_requests` to an empty `ExecutionRequests()`.
+- If `should_extend_payload(store, block.parent_root)` is true (the proposer is
+  building on the parent's full payload), set `parent_execution_requests` to
+  `store.payloads[block.parent_root].execution_requests`.
+- Otherwise (the proposer is building on the parent's empty variant), set
+  `parent_execution_requests` to an empty `ExecutionRequests()`.
+
+##### ExecutionPayload
+
+*Note*: `prepare_execution_payload` is modified in Gloas to take `store` as an
+additional parameter. It consults `should_extend_payload` to decide whether to
+build on the parent's full payload or its empty variant, selecting both the
+withdrawals source and the execution head for the new payload. When building on
+a full parent, `apply_parent_execution_payload` is called so that withdrawals
+are computed against the post-processing state.
 
 ```python
 def prepare_execution_payload(
+    # [New in Gloas:EIP7732]
+    store: Store,
     state: BeaconState,
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
+    # [New in Gloas:EIP7732]
+    parent_bid = state.latest_execution_payload_bid
+    parent_root = hash_tree_root(state.latest_block_header)
+    if should_extend_payload(store, parent_root):
+        envelope = store.payloads[parent_root]
+        # Make a copy of the state to avoid mutability issues
+        state = copy(state)
+        # Apply parent payload before computing withdrawals
+        apply_parent_execution_payload(state, parent_bid, envelope.execution_requests)
+        withdrawals = get_expected_withdrawals(state).withdrawals
+        head_block_hash = parent_bid.block_hash
+    else:
+        withdrawals = state.payload_expected_withdrawals
+        head_block_hash = parent_bid.parent_block_hash
+
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
         timestamp=compute_time_at_slot(state, state.slot),
         prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
-        withdrawals=get_expected_withdrawals(state).withdrawals,
+        # [Modified in Gloas:EIP7732]
+        withdrawals=withdrawals,
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
+        # [New in Gloas:EIP7843]
+        slot_number=state.slot,
     )
     return execution_engine.notify_forkchoice_updated(
         # [Modified in Gloas:EIP7732]
-        head_block_hash=state.latest_block_hash,
+        head_block_hash=head_block_hash,
         safe_block_hash=safe_block_hash,
         finalized_block_hash=finalized_block_hash,
         payload_attributes=payload_attributes,
@@ -244,16 +298,16 @@ prepared to submit their PTC attestations during the next epoch.
 
 A validator should create and broadcast the `payload_attestation_message` to the
 global execution attestation subnet within the first
-`get_payload_attestation_due_ms(epoch)` milliseconds of the slot.
+`get_payload_attestation_due_ms()` milliseconds of the slot.
 
-#### Constructing a payload attestation
+#### Constructing the `PayloadAttestationMessage`
 
 If a validator is in the payload attestation committee for the current slot (as
 obtained from `get_ptc_assignment` above) then the validator should prepare a
 `PayloadAttestationMessage` for the current slot. Follow the logic below to
 create the `payload_attestation_message` and broadcast to the global
 `payload_attestation_message` pubsub topic within the first
-`get_payload_attestation_due_ms(epoch)` milliseconds of the slot.
+`get_payload_attestation_due_ms()` milliseconds of the slot.
 
 The validator creates `payload_attestation_message` as follows:
 

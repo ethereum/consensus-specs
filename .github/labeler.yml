@@ -54,12 +54,12 @@ gloas:
       - 'presets/*/gloas.yaml'
       - 'pysetup/spec_builders/gloas.py'
 
-eip6800:
+heze:
   - changed-files:
     - any-glob-to-any-file:
-      - 'specs/_features/eip6800/**'
-      - 'presets/*/eip6800.yaml'
-      - 'pysetup/spec_builders/eip6800.py'
+      - 'specs/heze/**'
+      - 'presets/*/heze.yaml'
+      - 'pysetup/spec_builders/heze.py'
 
 eip6914:
   - changed-files:
@@ -67,27 +67,6 @@ eip6914:
       - 'specs/_features/eip6914/**'
       - 'presets/*/eip6914.yaml'
       - 'pysetup/spec_builders/eip6914.py'
-
-eip7441:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'specs/_features/eip7441/**'
-      - 'presets/*/eip7441.yaml'
-      - 'pysetup/spec_builders/eip7441.py'
-
-eip7805:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'specs/_features/eip7805/**'
-      - 'presets/*/eip7805.yaml'
-      - 'pysetup/spec_builders/eip7805.py'
-
-eip7928:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'specs/_features/eip7928/**'
-      - 'presets/*/eip7928.yaml'
-      - 'pysetup/spec_builders/eip7928.py'
 
 eip8025:
   - changed-files:
@@ -98,8 +77,9 @@ eip8025:
 
 testing:
   - changed-files:
-    - any-glob-to-any-file:
+    - all-globs-to-any-file:
       - 'tests/**'
+      - '!tests/core/pyspec/eth_consensus_specs/VERSION.txt'
 
 ssz:
   - changed-files:

@@ -119,10 +119,10 @@ to their final, maximum security values.
 
 ### Sync committee
 
-| Name                               | Value                  | Unit       | Duration  |
-| ---------------------------------- | ---------------------- | ---------- | --------- |
-| `SYNC_COMMITTEE_SIZE`              | `uint64(2**9)` (= 512) | validators |           |
-| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs     | ~27 hours |
+| Name                               | Value                  | Unit       |
+| ---------------------------------- | ---------------------- | ---------- |
+| `SYNC_COMMITTEE_SIZE`              | `uint64(2**9)` (= 512) | validators |
+| `EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | `uint64(2**8)` (= 256) | epochs     |
 
 ## Configuration
 
@@ -652,6 +652,8 @@ def process_epoch(state: BeaconState) -> None:
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
     process_historical_roots_update(state)
+    # [Modified in Altair]
+    # Removed `process_participation_record_updates`
     # [New in Altair]
     process_participation_flag_updates(state)
     # [New in Altair]

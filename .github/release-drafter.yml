@@ -20,25 +20,26 @@ categories:
     labels:
       - gloas
       - eip7732
+      - eip7843
       - eip7928
+  - title: Heze
+    labels:
+      - heze
+      - eip7805
 
   # Features
-  - title: EIP-6800
-    label: eip6800
   - title: EIP-6914
     label: eip6914
-  - title: EIP-7441
-    label: eip7441
-  - title: EIP-7805
-    label: eip7805
-  - title: EIP-7928
-    label: eip7928
   - title: EIP-8025
     label: eip8025
 
   # Testing
   - title: Testing
     label: testing
+
+  # Dependencies
+  - title: Dependencies
+    label: dependencies
 
   # Fallback
   - title: Other

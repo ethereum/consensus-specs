@@ -8,7 +8,7 @@ class GloasSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth2spec.fulu import {preset_name} as fulu
+from eth_consensus_specs.fulu import {preset_name} as fulu
 """
 
     @classmethod
@@ -25,6 +25,16 @@ from eth2spec.fulu import {preset_name} as fulu
             [
                 "KZG_COMMITMENT_INCLUSION_PROOF_DEPTH",
                 "KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH",
+            ]
+        )
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return set(
+            [
+                "compute_proposer_index",
+                "process_execution_payload",
+                "retrieve_column_sidecars",
             ]
         )
 

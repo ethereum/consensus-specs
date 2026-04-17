@@ -4,26 +4,21 @@ on:
   workflow_dispatch:
 
 jobs:
-  release:
-    timeout-minutes: 1440 # 24 hours
-    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
+  setup:
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: read
-
+    outputs:
+      tag: ${{ steps.tag.outputs.name }}
     steps:
-      # Clone specs
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          path: "consensus-specs"
 
-      # Tag the current commit
       - name: Create tag
         id: tag
         run: |
-          version="v$(cat consensus-specs/tests/core/pyspec/eth2spec/VERSION.txt)"
-          cd consensus-specs
+          version="v$(cat tests/core/pyspec/eth_consensus_specs/VERSION.txt)"
           if git rev-parse "refs/tags/$version" >/dev/null 2>&1; then
             echo "Error: Tag $version already exists"
             exit 1
@@ -33,10 +28,8 @@ jobs:
           echo "Created and pushed tag $version"
           echo "name=$version" >> "$GITHUB_OUTPUT"
 
-      # Create draft release. We use release-drafter to
-      # organize PRs into the appropriate section based on PR labels
       - name: Create draft release
-        uses: release-drafter/release-drafter@6db134d15f3909ccc9eefd369f02bd1e9cffdf97 # v6.2.0
+        uses: release-drafter/release-drafter@5de93583980a40bd78603b6dfdcda5b4df377b32 # v7.2.0
         with:
           name: ${{ steps.tag.outputs.name }}
           tag: ${{ steps.tag.outputs.name }}
@@ -46,60 +39,135 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Setup python
-      - name: Set up Python
+  generate:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        preset:
+          - general
+          - minimal
+          - mainnet
+        fork:
+          - phase0
+          - altair
+          - bellatrix
+          - capella
+          - deneb
+          - electra
+          - fulu
+          - gloas
+          - heze
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version-file: "consensus-specs/pyproject.toml"
+          python-version-file: "pyproject.toml"
 
-      # Install dependencies
-      - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
+      - name: Install uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
 
-      # Ensure framework tests pass
-      - name: Run tests for framework
-        run: |
-          cd consensus-specs
-          make test component=fw
+      - name: Generate tests
+        run: make test component=pyspec verbose=true preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true
 
-      # Ensure minimal tests pass
-      - name: Run tests for minimal
-        run: |
-          cd consensus-specs
-          make test component=pyspec preset=minimal
+      - name: Upload reference tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reftests-${{ matrix.preset }}-${{ matrix.fork }}
+          path: reftests/${{ matrix.preset }}
+          if-no-files-found: ignore
 
-      # Ensure mainnet tests pass
-      - name: Run tests for mainnet
-        run: |
-          cd consensus-specs
-          make test component=pyspec preset=mainnet
+  package:
+    needs: [setup, generate]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+    strategy:
+      matrix:
+        preset:
+          - general
+          - minimal
+          - mainnet
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: reftests-${{ matrix.preset }}-*
+          path: tests/${{ matrix.preset }}
+          merge-multiple: true
 
-      # Write reference tests to the spec tests repo
-      - name: Generate reference tests
+      - name: Archive reference tests
         run: |
-          cd consensus-specs
-          make reftests verbose=true
+          tar --sort=name \
+              --owner=0 \
+              --group=0 \
+              --numeric-owner \
+              --mtime='@0' \
+              --format=gnu \
+              --use-compress-program='gzip --no-name' \
+              --create \
+              --file=${{ matrix.preset }}.tar.gz \
+              tests/${{ matrix.preset }}
 
-      # Make tarballs
-      - name: Create reference test tarballs
-        run: |
-          cd consensus-spec-tests
-          tar -czvf general.tar.gz tests/general
-          tar -czvf minimal.tar.gz tests/minimal
-          tar -czvf mainnet.tar.gz tests/mainnet
-
-      # Upload tarballs and publish the release
-      - name: Upload reference test tarballs and publish
-        run: |
-          tag="${{ steps.tag.outputs.name }}"
-          gh release upload "$tag" \
-            consensus-spec-tests/general.tar.gz \
-            consensus-spec-tests/minimal.tar.gz \
-            consensus-spec-tests/mainnet.tar.gz
-          gh release edit "$tag" --draft=false
+      - name: Upload to release
+        run: gh release upload "${{ needs.setup.outputs.tag }}" ${{ matrix.preset }}.tar.gz
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+
+      - name: Delete intermediate artifacts
+        continue-on-error: true
+        run: |
+          gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
+            --paginate --jq '.artifacts[]
+              | select(.name | startswith("reftests-${{ matrix.preset }}-"))
+              | .id' | while read id; do
+            gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+
+  publish:
+    needs: [setup, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Publish release
+        run: gh release edit "${{ needs.setup.outputs.tag }}" --draft=false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install uv ${{ vars.UV_VERSION }}
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        with:
+          enable-cache: true
+          version: ${{ vars.UV_VERSION }}
+
+      - name: Generate specs
+        run: uv run python -m pysetup.generate_specs --all-forks
+
+      - name: Build package
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0

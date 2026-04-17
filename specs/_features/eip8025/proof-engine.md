@@ -79,7 +79,7 @@ def verify_new_payload_request_header(
 ```python
 @dataclass
 class ProofAttributes(object):
-    proof_types: List[ProofType]
+    proof_types: Sequence[ProofType]
 ```
 
 ### New `request_proofs`

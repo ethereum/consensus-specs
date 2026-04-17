@@ -1,10 +1,14 @@
 from os import path
 
-from eth2spec.gen_helpers.gen_base import gen_runner
-from eth2spec.gen_helpers.gen_base.args import create_arg_parser
-from eth2spec.test.helpers.constants import ELECTRA, MINIMAL
+from eth_consensus_specs.test import context
+from eth_consensus_specs.test.helpers.constants import ELECTRA, MINIMAL
+from tests.generators.compliance_runners.gen_base import gen_runner
+from tests.generators.compliance_runners.gen_base.args import create_arg_parser
 
-from .instantiators.test_case import enumerate_test_cases, prepare_bls
+context.is_pytest = False
+context.is_generator = True
+
+from .instantiators.test_case import enumerate_test_groups, prepare_bls  # noqa: E402
 
 default_forks = [ELECTRA]
 default_presets = [MINIMAL]
@@ -78,10 +82,10 @@ def main():
         raise ValueError("Neither neither fc-gen-config not fc-gen-config-path specified")
 
     prepare_bls()
-    test_cases = enumerate_test_cases(
+    test_groups = enumerate_test_groups(
         config_path, forks, presets, args.fc_gen_debug, args.fc_gen_seed
     )
-    gen_runner.run_generator(test_cases, args)
+    gen_runner.run_generator_groups(test_groups, args)
 
 
 if __name__ == "__main__":
