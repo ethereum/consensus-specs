@@ -96,3 +96,24 @@ def test_process_parent_execution_payload__empty_parent_requires_empty_requests(
 
     spec.process_slots(state, block.slot)
     yield from run_parent_execution_payload_processing(spec, state, block, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_parent_execution_payload_genesis(spec, state):
+    """
+    Verify that process_parent_execution_payload does not update
+    latest_block_hash when both hashes are EMPTY_BLOCK_HASH.
+    """
+    state.latest_block_hash = spec.EMPTY_BLOCK_HASH
+    state.latest_execution_payload_bid.block_hash = spec.EMPTY_BLOCK_HASH
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.signed_execution_payload_bid.message.parent_block_hash = spec.EMPTY_BLOCK_HASH
+
+    pre_latest_block_hash = state.latest_block_hash
+
+    spec.process_slots(state, block.slot)
+    yield from run_parent_execution_payload_processing(spec, state, block)
+
+    assert state.latest_block_hash == pre_latest_block_hash

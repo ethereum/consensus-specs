@@ -143,6 +143,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 | `BUILDER_INDEX_SELF_BUILD`              | `BuilderIndex(UINT64_MAX)` | Value which indicates the proposer built the payload |
 | `BUILDER_PAYMENT_THRESHOLD_NUMERATOR`   | `uint64(6)`                |                                                      |
 | `BUILDER_PAYMENT_THRESHOLD_DENOMINATOR` | `uint64(10)`               |                                                      |
+| `EMPTY_BLOCK_HASH`                      | `Hash32()`                 |                                                      |
 
 ### Withdrawal prefixes
 
@@ -999,7 +1000,9 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
     requests = block.body.parent_execution_requests
 
     # True if this block built on the parent's full payload
-    is_parent_block_full = bid.parent_block_hash == parent_bid.block_hash
+    is_parent_block_full = (
+        parent_bid.block_hash != EMPTY_BLOCK_HASH and bid.parent_block_hash == parent_bid.block_hash
+    )
 
     if not is_parent_block_full:
         # Parent was EMPTY -- no execution requests expected
@@ -1196,7 +1199,10 @@ def process_withdrawals(
 ) -> None:
     # [New in Gloas:EIP7732]
     # Return early if the parent block is empty
-    if state.latest_block_hash != state.latest_execution_payload_bid.block_hash:
+    if (
+        state.latest_block_hash == EMPTY_BLOCK_HASH
+        or state.latest_block_hash != state.latest_execution_payload_bid.block_hash
+    ):
         return
 
     # Get expected withdrawals
