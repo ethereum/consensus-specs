@@ -8,8 +8,8 @@ from ruamel.yaml import YAML
 
 from eth_consensus_specs.test.context import (
     spec_state_test,
+    spec_test,
     with_altair_and_later,
-
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_attestation_file_name,
@@ -132,26 +132,30 @@ class MutationGroupTestGroup(TestGroup):
         self.bls_active = bls_active
         self.debug = debug
 
-    def run_case_fn(self, test_case: PlainFCTestCase):
-        test_kind = test_case.test_dna.kind
-        phase, preset = test_case.fork_name, test_case.preset_name
-        bls_active, debug = test_case.bls_active, test_case.debug
-        solution, seed = test_case.test_dna.solution, test_case.test_dna.variation_seed
-        mut_seed = test_case.test_dna.mutation_seed
-        return yield_mutation_test_case(
-            phase=phase,
-            preset=preset,
+    def execute_group(self) -> Iterable[TestCaseResult]:
+        bls_active = self.bls_active
+        debug = self.debug
+
+        spec, test_data, events = make_test_context(
+            self.mutation_group.test_dna_base,
+            self.fork_name,
+            self.preset_name,
             bls_active=bls_active,
             debug=debug,
-            seed=seed,
-            mut_seed=mut_seed,
-            test_kind=test_kind,
-            solution=solution,
         )
 
-    def execute_group(self) -> Iterable[TestCaseResult]:
         for test_case in self.test_cases:
-            yield collect_test_case_result_from_iterator(test_case, self.run_case_fn(test_case))
+            mut_seed = test_case.test_dna.mutation_seed
+            if mut_seed is None:
+                parts_iter = yield_fork_choice_test_events(
+                    spec, test_data, events, debug, bls_active=bls_active
+                )
+            else:
+                parts_iter = yield_mutated_test_case_parts(
+                    spec, test_data, events, mut_seed, bls_active=bls_active
+                )
+
+            yield collect_test_case_result_from_iterator(test_case, parts_iter)
 
 
 def collect_test_case_result_from_iterator(
@@ -194,26 +198,45 @@ def get_test_data(spec, state, test_kind, solution, debug, seed):
     return test_data
 
 
-@with_altair_and_later
-@spec_state_test
-def yield_mutation_test_case(spec, state, test_kind, solution, debug, seed, mut_seed):
-    test_data = get_test_data(spec, state, test_kind, solution, debug, seed)
-    events = make_events(spec, test_data)
+def make_test_context(
+    test_dna_base: FCTestDNA,
+    fork_name: str,
+    preset_name: str,
+    bls_active: bool = False,
+    debug: bool = False,
+):
+    @with_altair_and_later
+    @spec_state_test
+    def get_spec_test_data_and_events(spec, state):
+        test_kind = test_dna_base.kind
+        solution = test_dna_base.solution
+        seed = test_dna_base.variation_seed
+        test_data = get_test_data(spec, state, test_kind, solution, debug, seed)
+        events = make_events(spec, test_data)
+        yield (spec, test_data, events)
+
+    ((spec, test_data, events),) = get_spec_test_data_and_events(
+        phase=fork_name,
+        preset=preset_name,
+        bls_active=bls_active,
+    )
+
+    return spec, test_data, events
+
+
+@spec_test
+def yield_mutated_test_case_parts(spec, test_data, events, mut_seed):
     store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
 
-    if mut_seed is None:
-        return yield_fork_choice_test_events(spec, store, test_data, events, debug)
-    else:
-        test_vector = events_to_test_vector(events)
-        mops = MutationOps(store.time, spec.config.SLOT_DURATION_MS // 1000)
-        mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
+    test_vector = events_to_test_vector(events)
+    mops = MutationOps(store.time, spec.config.SLOT_DURATION_MS // 1000)
+    mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
 
-        test_data.meta["mut_seed"] = mut_seed
-        test_data.meta["mutations"] = mutations
+    test_data.meta["mut_seed"] = mut_seed
+    test_data.meta["mutations"] = mutations
 
-        mutated_events = convert_test_vector_to_events(mutated_vector)
-
-        return yield_test_parts(spec, store, test_data, mutated_events)
+    mutated_events = convert_test_vector_to_events(mutated_vector)
+    return yield_test_parts(spec, store, test_data, mutated_events)
 
 
 def events_to_test_vector(events) -> list[Any]:
