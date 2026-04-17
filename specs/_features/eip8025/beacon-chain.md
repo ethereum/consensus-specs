@@ -108,8 +108,11 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 ##### Modified `process_execution_payload`
 
-*Note*: `process_execution_payload` is modified in EIP-8025 to require both
-`ExecutionEngine` and `ProofEngine` for validation.
+*Note*: `process_execution_payload` is modified in EIP-8025 to treat both
+`ExecutionEngine` and `ProofEngine` as fire-and-forget notifications rather
+than gating consensus. Running an execution engine is **highly recommended**
+for defense-in-depth, but is no longer mandatory — consensus correctness is
+established via the proof engine path.
 
 ```python
 def process_execution_payload(
@@ -137,8 +140,13 @@ def process_execution_payload(
         kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
     ]
 
-    # Verify the execution payload is valid via ExecutionEngine
-    assert execution_engine.verify_and_notify_new_payload(
+    # [Modified in EIP8025]
+    # Notify ExecutionEngine of the new execution payload. Running an execution
+    # engine is highly recommended for defense-in-depth but is no longer
+    # mandatory -- consensus correctness is not gated on the execution
+    # engine's response. Clients that run an execution engine SHOULD still
+    # verify payloads locally.
+    execution_engine.verify_and_notify_new_payload(
         NewPayloadRequest(
             execution_payload=payload,
             versioned_hashes=versioned_hashes,
