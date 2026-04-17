@@ -290,6 +290,10 @@ def test_builder_payment_after_missed_epochs(spec, state):
     bid.fee_recipient = fee_recipient
     bid.execution_requests_root = spec.hash_tree_root(spec.ExecutionRequests())
 
+    # Chain onto the previous bid so both block_1 and block_2 see a FULL parent
+    bid.parent_block_hash = state.latest_execution_payload_bid.block_hash
+    bid.block_hash = state.latest_execution_payload_bid.block_hash
+
     # Sign the bid with the builder's private key
     signature = spec.get_execution_payload_bid_signature(
         state, bid, builder_privkeys[builder_index]
@@ -314,8 +318,6 @@ def test_builder_payment_after_missed_epochs(spec, state):
     assert payment.withdrawal.builder_index == builder_index
     assert payment.weight == 0
 
-    # Builder delivers their payload — parent block becomes FULL
-    set_parent_block_full(spec, state)
     pre_builder_balance = state.builders[builder_index].balance
 
     # Build Block 2 with 2+ epochs of missed slots. During the slot advancement,
