@@ -9,6 +9,7 @@
 - [Constants](#constants)
 - [Helpers](#helpers)
   - [New `ForkChoiceNode`](#new-forkchoicenode)
+  - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [Modified `LatestMessage`](#modified-latestmessage)
   - [Modified `update_latest_messages`](#modified-update_latest_messages)
   - [Modified `Store`](#modified-store)
@@ -82,6 +83,20 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 class ForkChoiceNode(Container):
     root: Root
     payload_status: PayloadStatus  # One of PAYLOAD_STATUS_* values
+```
+
+### Modified `PayloadAttributes`
+
+```python
+@dataclass
+class PayloadAttributes(object):
+    timestamp: uint64
+    prev_randao: Bytes32
+    suggested_fee_recipient: ExecutionAddress
+    withdrawals: Sequence[Withdrawal]
+    parent_beacon_block_root: Root
+    # [New in Gloas:EIP7843]
+    slot_number: uint64
 ```
 
 ### Modified `LatestMessage`
@@ -771,7 +786,6 @@ def verify_execution_payload_envelope(
     header = copy(state.latest_block_header)
     header.state_root = hash_tree_root(state)
     assert envelope.beacon_block_root == hash_tree_root(header)
-    assert envelope.slot == state.slot
 
     # Verify consistency with the committed bid
     bid = state.latest_execution_payload_bid
@@ -782,6 +796,7 @@ def verify_execution_payload_envelope(
     assert hash_tree_root(envelope.execution_requests) == bid.execution_requests_root
 
     # Verify the execution payload is valid
+    assert payload.slot_number == state.slot
     assert payload.parent_hash == state.latest_block_hash
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
     assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)

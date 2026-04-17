@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 
+from eth_consensus_specs.test.context import spec_test
 from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
 )
@@ -387,10 +388,11 @@ def _add_block(spec, store, signed_block, test_steps):
                 pass
 
 
+@spec_test
 @filter_out_duplicate_messages
-def yield_fork_choice_test_events(
-    spec, store, test_data: FCTestData, test_events: list, debug: bool
-):
+def yield_fork_choice_test_events(spec, test_data: FCTestData, test_events: list, debug: bool):
+    store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
+
     # Yield meta
     for k, v in test_data.meta.items():
         yield k, "meta", v

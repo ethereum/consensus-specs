@@ -397,6 +397,7 @@ def build_empty_execution_payload(spec, state, randao_mix=None):
         payload.excess_blob_gas = 0
     if is_post_gloas(spec):
         payload.block_access_list = spec.ByteList[spec.MAX_BYTES_PER_TRANSACTION]()
+        payload.slot_number = state.slot
 
     payload.block_hash = compute_el_block_hash(spec, payload, state)
 
@@ -489,7 +490,6 @@ def build_signed_execution_payload_envelope(spec, state, block_root, signed_bloc
         payload=payload,
         execution_requests=spec.ExecutionRequests(),
         builder_index=builder_index,
-        slot=signed_block.message.slot,
     )
 
     # Sign the envelope: self-builds use proposer key, external builds use builder key

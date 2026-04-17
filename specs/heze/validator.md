@@ -170,6 +170,7 @@ def prepare_execution_payload(
         suggested_fee_recipient=suggested_fee_recipient,
         withdrawals=withdrawals,
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
+        slot_number=state.slot,
         # [New in Heze:EIP7805]
         inclusion_list_transactions=get_inclusion_list_transactions(
             get_inclusion_list_store(), state, Slot(state.slot - 1)

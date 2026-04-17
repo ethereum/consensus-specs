@@ -185,7 +185,17 @@ jobs:
           merge-multiple: true
 
       - name: Archive reference tests
-        run: tar -czvf ${{ matrix.preset }}.tar.gz tests/${{ matrix.preset }}
+        run: |
+          tar --sort=name \
+              --owner=0 \
+              --group=0 \
+              --numeric-owner \
+              --mtime='@0' \
+              --format=gnu \
+              --use-compress-program='gzip --no-name' \
+              --create \
+              --file=${{ matrix.preset }}.tar.gz \
+              tests/${{ matrix.preset }}
 
       - name: Upload ${{ matrix.preset }}.tar.gz
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
