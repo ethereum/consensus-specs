@@ -201,6 +201,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         # Genesis payload is EMPTY: ``latest_block_hash`` stays at default zero while
         # ``bid.block_hash`` is set to the eth1 block hash, so the parent of any
         # first post-genesis block is (correctly) treated as empty.
+        state.latest_block_hash = spec.Hash32()
         empty_requests_root = spec.hash_tree_root(spec.ExecutionRequests())
         state.latest_execution_payload_bid = spec.ExecutionPayloadBid(
             block_hash=spec.Hash32(eth1_block_hash),

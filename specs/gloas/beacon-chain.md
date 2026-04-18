@@ -998,10 +998,9 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
     parent_bid = state.latest_execution_payload_bid
     requests = block.body.parent_execution_requests
 
-    # True if this block built on the parent's full payload
-    is_parent_block_full = bid.parent_block_hash == parent_bid.block_hash
-
-    if not is_parent_block_full:
+    is_genesis_block = parent_bid.block_hash == Hash32()
+    is_parent_block_empty = bid.parent_block_hash != parent_bid.block_hash
+    if is_genesis_block or is_parent_block_empty:
         # Parent was EMPTY -- no execution requests expected
         assert requests == ExecutionRequests()
         return
@@ -1196,7 +1195,9 @@ def process_withdrawals(
 ) -> None:
     # [New in Gloas:EIP7732]
     # Return early if the parent block is empty
-    if state.latest_block_hash != state.latest_execution_payload_bid.block_hash:
+    is_genesis_block = state.latest_block_hash == Hash32()
+    is_parent_block_empty = state.latest_block_hash != state.latest_execution_payload_bid.block_hash
+    if is_genesis_block or is_parent_block_empty:
         return
 
     # Get expected withdrawals
