@@ -1,5 +1,8 @@
 name: Compliance Tests
 
+env:
+  COMPTEST_SLICING_CONFIG: '{"tiny":1,"small":4,"standard":4}'
+
 on:
   workflow_dispatch:
     inputs:
@@ -65,6 +68,7 @@ jobs:
       presets: ${{ steps.config.outputs.presets }}
       forks: ${{ steps.config.outputs.forks }}
       configs: ${{ steps.config.outputs.configs }}
+      generate_matrix: ${{ steps.config.outputs.generate_matrix }}
       seed: ${{ steps.config.outputs.seed }}
     steps:
       - name: Resolve configuration
@@ -138,6 +142,36 @@ jobs:
           fi
           echo "seed=$seed" >> "$GITHUB_OUTPUT"
 
+          # Generation matrix
+          generate_matrix=$(
+            jq -cn \
+              --argjson presets "$presets" \
+              --argjson forks "$forks" \
+              --argjson configs "$configs" \
+              --argjson slices '${{ env.COMPTEST_SLICING_CONFIG }}' \
+              '
+              [
+                $presets[] as $preset
+                | $forks[] as $fork
+                | $configs[] as $config
+                | (($slices[$config] // 1) | tonumber) as $slice_count
+                | if $slice_count < 1 then
+                    error("Invalid slice count for config \($config): \($slice_count)")
+                  else
+                    range(0; $slice_count) as $slice_index
+                    | {
+                        preset: $preset,
+                        fork: $fork,
+                        config: $config,
+                        slice_index: $slice_index,
+                        slice_count: $slice_count
+                      }
+                  end
+              ]
+              '
+          )
+          echo "generate_matrix=$generate_matrix" >> "$GITHUB_OUTPUT"
+
           # Summary
           echo "Configuration:"
           echo "  repo:    $repo"
@@ -146,6 +180,8 @@ jobs:
           echo "  forks:   $forks"
           echo "  configs: $configs"
           echo "  seed:    $seed"
+          echo "  slicing_config: ${{ env.COMPTEST_SLICING_CONFIG }}"
+          echo "  generate_matrix: $generate_matrix"
 
   generate:
     needs: config
@@ -153,9 +189,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: ${{ fromJson(needs.config.outputs.presets) }}
-        fork: ${{ fromJson(needs.config.outputs.forks) }}
-        config: ${{ fromJson(needs.config.outputs.configs) }}
+        include: ${{ fromJson(needs.config.outputs.generate_matrix) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -174,18 +208,27 @@ jobs:
           enable-cache: true
 
       - name: Generate compliance tests
-        run: >
-          make comptests
-          fc_gen_config=${{ matrix.config }}
-          preset=${{ matrix.preset }}
-          fork=${{ matrix.fork }}
-          comptests_dir=./compliance-spec-tests/${{ matrix.config }}
-          seed=${{ needs.config.outputs.seed }}
+        run: |
+          extra_args=()
+          if [[ "${{ matrix.slice_count }}" -gt 1 ]]; then
+            extra_args+=(
+              "group_slice_index=${{ matrix.slice_index }}"
+              "group_slice_count=${{ matrix.slice_count }}"
+            )
+          fi
+
+          make comptests \
+            fc_gen_config=${{ matrix.config }} \
+            preset=${{ matrix.preset }} \
+            fork=${{ matrix.fork }} \
+            comptests_dir=./compliance-spec-tests/${{ matrix.config }} \
+            seed=${{ needs.config.outputs.seed }} \
+            "${extra_args[@]}"
 
       - name: Upload compliance tests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: comptests-${{ matrix.config }}-${{ matrix.preset }}-${{ matrix.fork }}
+          name: comptests-${{ matrix.config }}-${{ matrix.preset }}-${{ matrix.fork }}-slice${{ matrix.slice_index }}of${{ matrix.slice_count }}
           path: compliance-spec-tests/${{ matrix.config }}
           if-no-files-found: ignore
 
