@@ -21,7 +21,7 @@ from eth_consensus_specs.test.helpers.state import (
 def test_get_parent_payload_status__genesis_empty_block_hash(spec, state):
     """
     Verify that get_parent_payload_status returns EMPTY when the parent
-    block's bid has EMPTY_BLOCK_HASH.
+    block's bid has Hash32().
     """
     test_steps = []
 
@@ -30,7 +30,7 @@ def test_get_parent_payload_status__genesis_empty_block_hash(spec, state):
 
     store.blocks[
         anchor_root
-    ].body.signed_execution_payload_bid.message.block_hash = spec.EMPTY_BLOCK_HASH
+    ].body.signed_execution_payload_bid.message.block_hash = spec.Hash32()
 
     yield "anchor_state", state
     yield "anchor_block", anchor_block
@@ -40,7 +40,7 @@ def test_get_parent_payload_status__genesis_empty_block_hash(spec, state):
 
     # Add a block on top of genesis
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.signed_execution_payload_bid.message.parent_block_hash = spec.EMPTY_BLOCK_HASH
+    block.body.signed_execution_payload_bid.message.parent_block_hash = spec.Hash32()
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
 

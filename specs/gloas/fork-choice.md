@@ -293,7 +293,7 @@ def get_parent_payload_status(store: Store, block: BeaconBlock) -> PayloadStatus
     message_block_hash = parent.body.signed_execution_payload_bid.message.block_hash
 
     # Check for uninitialized genesis block hash
-    if message_block_hash == EMPTY_BLOCK_HASH:
+    if message_block_hash == Hash32():
         return PAYLOAD_STATUS_EMPTY
 
     return PAYLOAD_STATUS_FULL if parent_block_hash == message_block_hash else PAYLOAD_STATUS_EMPTY
