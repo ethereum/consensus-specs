@@ -186,9 +186,7 @@ def run_generator_groups(input_test_groups: Iterable[TestGroup], args=None):
     install_sigint_handler(console)
     validate_group_slice_args(args)
 
-    total_found, selected_test_groups = select_generator_groups(
-        input_test_groups, args
-    )
+    total_found, selected_test_groups = select_generator_groups(input_test_groups, args)
     if args.group_slice_count is not None:
         selected_test_groups = slice_generator_groups(selected_test_groups, args)
 
