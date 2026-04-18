@@ -28,9 +28,7 @@ def test_get_parent_payload_status__genesis_empty_block_hash(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     anchor_root = get_anchor_root(spec, state)
 
-    store.blocks[
-        anchor_root
-    ].body.signed_execution_payload_bid.message.block_hash = spec.Hash32()
+    store.blocks[anchor_root].body.signed_execution_payload_bid.message.block_hash = spec.Hash32()
 
     yield "anchor_state", state
     yield "anchor_block", anchor_block
