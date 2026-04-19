@@ -232,8 +232,8 @@ def _run_epoch_boundary_full_parent(spec, state, gap_epochs):
     assert spec.has_eth1_withdrawal_credential(state.validators[consolidation_validator_index])
     assert len(state.pending_deposits) == pre_pending_deposits
 
-    # Block 2: skip ``gap_epochs`` — including slot 0 of the epoch right after
-    # block_1 — then process the parent's execution requests.
+    # Block 2: after gap_epochs of missed slots (including slot 0 of the
+    # epoch right after block_1), process the parent's execution requests.
     block_1_epoch = spec.compute_epoch_at_slot(block_1.slot)
     block_2_slot = (block_1_epoch + gap_epochs) * spec.SLOTS_PER_EPOCH + 1
     block_2 = _build_child_block_with_parent_requests(
@@ -255,18 +255,16 @@ def _run_epoch_boundary_full_parent(spec, state, gap_epochs):
     assert state.validators[consolidation_validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
     assert state.balances[consolidation_validator_index] <= spec.MIN_ACTIVATION_BALANCE
 
-    # Deposit request appended to pending_deposits by block_2's block-level
-    # processing. The consolidation's excess was already drained by block_1's
-    # partial-withdrawal sweep (0x01 creds + max effective balance + excess
-    # balance makes validator partially withdrawable), so
-    # queue_excess_active_balance is a no-op when the switch runs in block_2.
+    # Deposit request was appended to pending_deposits. The consolidation's
+    # excess was drained by block_1's partial-withdrawal sweep, so
+    # queue_excess_active_balance is a no-op and no consolidation entry is
+    # appended.
     pending_pubkeys = [pd.pubkey for pd in state.pending_deposits]
     assert deposit_target_pubkey in pending_pubkeys
     assert consolidation_pubkey not in pending_pubkeys
     assert len(state.pending_deposits) >= pre_pending_deposits + 1
 
-    # Block_1's withdrawal sweep advanced the global withdrawal index by at
-    # least one (the consolidation validator's partial withdrawal).
+    # Block_1's withdrawal sweep advanced the global withdrawal index.
     assert state.next_withdrawal_index >= pre_withdrawal_index + 1
 
     assert state.slot == block_2_slot
@@ -493,17 +491,16 @@ def test_switch_to_compounding_across_epoch_boundary(spec, state):
     assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
     assert state.balances[validator_index] <= spec.MIN_ACTIVATION_BALANCE
 
-    # Critical property: effective_balance does not jump to the compounding
-    # cap. process_effective_balance_updates ran against 0x01 credentials
-    # before block_2 applied the switch, so it stays at MIN_ACTIVATION_BALANCE.
+    # effective_balance does not jump to the compounding cap.
+    # process_effective_balance_updates ran against 0x01 credentials before
+    # block_2 applied the switch, so it stays at MIN_ACTIVATION_BALANCE.
     assert state.validators[validator_index].effective_balance == spec.MIN_ACTIVATION_BALANCE
 
-    # Note: block_1 already swept the 0x01 excess via process_withdrawals
-    # (0x01 max_effective_balance == MIN_ACTIVATION_BALANCE + excess balance
-    # makes the validator partially withdrawable), so block_2's
-    # queue_excess_active_balance is a no-op. The deferral property still
-    # holds: the credential flip and any dependent state change only happen
-    # in block_2.
+    # No pending-deposit assertion here: with 0x01 credentials,
+    # max_effective_balance == MIN_ACTIVATION_BALANCE, so the excess balance
+    # makes the validator partially withdrawable and block_1's sweep drains
+    # it. queue_excess_active_balance is a no-op when the switch runs in
+    # block_2. The credential flip still only happens in block_2.
 
     # proposer_lookahead has fixed shape (MIN_SEED_LOOKAHEAD + 1) *
     # SLOTS_PER_EPOCH and each entry must reference a real validator.
@@ -543,10 +540,10 @@ def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):
     execution request types: three full-exit withdrawals on distinct
     validators, a top-up deposit, and a switch-to-compounding consolidation.
     Payload is delivered. The next block lands after 5 epochs of missed
-    slots — including slot 0 of the epoch immediately following block_1 —
+    slots (including slot 0 of the epoch immediately following block_1)
     and processes the parent's execution requests. Each request type must
-    be honored; the three exits must make progress through the exit-churn
-    state within a single request-processing loop.
+    be honored. The three exits must also make progress through the
+    exit-churn state within a single request-processing loop.
     """
     # Advance past SHARD_COMMITTEE_PERIOD so process_withdrawal_request
     # accepts the full-exit requests (each requires
@@ -605,8 +602,8 @@ def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):
         assert state.validators[exit_index].exit_epoch == spec.FAR_FUTURE_EPOCH
     assert len(state.pending_deposits) == pre_pending_deposits
 
-    # Block 2: skip 5 full epochs — including slot 0 of the epoch right after
-    # block_1 — then process the parent's execution requests.
+    # Block 2: after 5 full epochs of missed slots (including slot 0 of the
+    # epoch right after block_1), process the parent's execution requests.
     block_1_epoch = spec.compute_epoch_at_slot(block_1.slot)
     gap_epochs = 5
     block_2_slot = (block_1_epoch + gap_epochs) * spec.SLOTS_PER_EPOCH + 1
@@ -621,17 +618,15 @@ def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):
     yield "blocks", [signed_block_1, signed_block_2]
     yield "post", state
 
-    # 1) Consolidation (switch-to-compounding) applied in block_2. The
-    # switch is not an exit.
+    # Switch-to-compounding applied in block_2. The switch is not an exit.
     assert spec.has_compounding_withdrawal_credential(
         state.validators[consolidation_validator_index]
     )
     assert state.validators[consolidation_validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
     assert state.balances[consolidation_validator_index] <= spec.MIN_ACTIVATION_BALANCE
 
-    # 2) Each full-exit withdrawal request applied in block_2: exit is
-    # scheduled, withdrawable_epoch = exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY,
-    # and balance is not zeroed.
+    # Each full-exit request was applied: exit scheduled, withdrawable_epoch
+    # follows by MIN_VALIDATOR_WITHDRAWABILITY_DELAY, balance not zeroed.
     current_epoch = spec.get_current_epoch(state)
     exit_epochs = []
     for exit_index in exit_validator_indices:
@@ -646,32 +641,30 @@ def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):
         assert state.balances[exit_index] > 0
         exit_epochs.append(post_exit_epoch)
 
-    # Exit-churn progression: the request-processing loop called
-    # initiate_validator_exit three times in order, each consuming
-    # exit-balance churn from the same state, so exit epochs must be
-    # monotonically non-decreasing.
+    # Exit-churn progression: the three initiate_validator_exit calls share
+    # churn state, so exit epochs must be monotonically non-decreasing.
     assert exit_epochs == sorted(exit_epochs)
-    # The churn state advanced — either earliest_exit_epoch moved forward
-    # or exit_balance_to_consume was drawn down.
+    # Churn state must have advanced. compute_exit_epoch_and_update_churn
+    # either rolls earliest_exit_epoch forward (resetting
+    # exit_balance_to_consume) or draws exit_balance_to_consume down, so
+    # either field advancing proves progress.
     assert (
         state.earliest_exit_epoch > pre_earliest_exit_epoch
         or state.exit_balance_to_consume < pre_exit_balance_to_consume
     )
 
-    # 3) Deposit request appended to state.pending_deposits by block_2's
-    # block-level processing. The consolidation's excess was already drained
-    # by block_1's partial-withdrawal sweep, so queue_excess_active_balance
-    # is a no-op and no consolidation pending-deposit entry appears.
+    # Deposit request was appended to pending_deposits. The consolidation's
+    # excess was drained by block_1's partial-withdrawal sweep, so
+    # queue_excess_active_balance is a no-op and no consolidation entry is
+    # appended.
     pending_pubkeys = [pd.pubkey for pd in state.pending_deposits]
     assert deposit_target_pubkey in pending_pubkeys
     assert consolidation_pubkey not in pending_pubkeys
     assert len(state.pending_deposits) >= pre_pending_deposits + 1
 
-    # Block_1's withdrawal sweep advanced the global withdrawal index by at
-    # least one (the consolidation validator's partial withdrawal). No
-    # blocks run in the 5-epoch gap, so no additional sweeps contribute
-    # there; block_2 may add more depending on state — we assert the lower
-    # bound.
+    # Block_1's withdrawal sweep advanced the global withdrawal index. No
+    # blocks run in the gap, so only block_1 and block_2 contribute.
+    # block_2 may add more depending on state, so we assert the lower bound.
     assert state.next_withdrawal_index >= pre_withdrawal_index + 1
 
     assert state.slot == block_2_slot
