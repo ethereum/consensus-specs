@@ -264,7 +264,9 @@ def _run_epoch_boundary_full_parent(spec, state, gap_epochs):
     assert consolidation_pubkey not in pending_pubkeys
     assert len(state.pending_deposits) >= pre_pending_deposits + 1
 
-    # Block_1's withdrawal sweep advanced the global withdrawal index.
+    # Block_1's withdrawal sweep processed the consolidation validator's
+    # partial withdrawal, so the global withdrawal index advanced by at
+    # least 1.
     assert state.next_withdrawal_index >= pre_withdrawal_index + 1
 
     assert state.slot == block_2_slot
@@ -662,9 +664,10 @@ def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):
     assert consolidation_pubkey not in pending_pubkeys
     assert len(state.pending_deposits) >= pre_pending_deposits + 1
 
-    # Block_1's withdrawal sweep advanced the global withdrawal index. No
-    # blocks run in the gap, so only block_1 and block_2 contribute.
-    # block_2 may add more depending on state, so we assert the lower bound.
+    # Block_1's withdrawal sweep processed the consolidation validator's
+    # partial withdrawal, so the global withdrawal index advanced by at
+    # least 1. No blocks run in the gap, so only block_1 and block_2 can
+    # contribute. block_2 may add more, so we assert the lower bound.
     assert state.next_withdrawal_index >= pre_withdrawal_index + 1
 
     assert state.slot == block_2_slot
