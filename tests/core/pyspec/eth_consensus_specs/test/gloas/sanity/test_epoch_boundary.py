@@ -62,8 +62,8 @@ def _build_multi_request_execution_requests(
     deposit_amount,
 ):
     """
-    Build an ExecutionRequests with a switch-to-compounding consolidation
-    and a top-up deposit.
+    Build ExecutionRequests with a switch-to-compounding consolidation and
+    a top-up deposit.
     """
     consolidation_request = _setup_switch_to_compounding_validator(
         spec, state, consolidation_validator_index
@@ -94,10 +94,9 @@ def _build_all_requests_execution_requests(
     deposit_amount,
 ):
     """
-    Build an ExecutionRequests with all three request types. Multiple
-    full-exit withdrawal requests are included so the request-processing
-    loop and the exit-churn progression are both exercised within a single
-    payload.
+    Build ExecutionRequests with all three request types. Multiple full-exit
+    withdrawal requests are included so the request-processing loop and the
+    exit-churn progression are both exercised within a single payload.
     """
     consolidation_request = _setup_switch_to_compounding_validator(
         spec, state, consolidation_validator_index
@@ -247,13 +246,20 @@ def _run_epoch_boundary_full_parent(spec, state, gap_epochs):
     yield "blocks", [signed_block_1, signed_block_2]
     yield "post", state
 
-    # Switch-to-compounding applied in block_2. The credential flipped but no
-    # exit was initiated (switch-to-compounding is not an exit).
+    # Switch-to-compounding applied in block_2. The credential changed but
+    # no exit was initiated (switch-to-compounding is not an exit).
     assert spec.has_compounding_withdrawal_credential(
         state.validators[consolidation_validator_index]
     )
     assert state.validators[consolidation_validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
     assert state.balances[consolidation_validator_index] <= spec.MIN_ACTIVATION_BALANCE
+    # effective_balance must not jump to the compounding cap: the epoch
+    # transition ran against 0x01 credentials before block_2 applied the
+    # switch, so it stays at MIN_ACTIVATION_BALANCE.
+    assert (
+        state.validators[consolidation_validator_index].effective_balance
+        == spec.MIN_ACTIVATION_BALANCE
+    )
 
     # Deposit request was appended to pending_deposits. The consolidation's
     # excess was drained by block_1's partial-withdrawal sweep, so
@@ -320,7 +326,7 @@ def _run_epoch_boundary_empty_parent(spec, state, gap_epochs):
     )
     signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
 
-    # Payload is NOT delivered: parent stays empty.
+    # Payload is not delivered: credentials remain 0x01.
     assert spec.has_eth1_withdrawal_credential(state.validators[consolidation_validator_index])
 
     # Block 2: after the gap, with empty parent_execution_requests (parent
@@ -393,7 +399,7 @@ def test_epoch_boundary_full_parent_gap_5_epochs(spec, state):
 def test_epoch_boundary_empty_parent_gap_1_epoch(spec, state):
     """
     Last-payload requests (consolidation + deposit) committed in bid, parent
-    NOT delivered, then 1 epoch of missed slots. Requests are never applied.
+    not delivered, then 1 epoch of missed slots. Requests are never applied.
     """
     yield from _run_epoch_boundary_empty_parent(spec, state, gap_epochs=1)
 
@@ -404,7 +410,7 @@ def test_epoch_boundary_empty_parent_gap_1_epoch(spec, state):
 def test_epoch_boundary_empty_parent_gap_2_epochs(spec, state):
     """
     Last-payload requests (consolidation + deposit) committed in bid, parent
-    NOT delivered, then 2 epochs of missed slots. Requests are never applied.
+    not delivered, then 2 epochs of missed slots. Requests are never applied.
     """
     yield from _run_epoch_boundary_empty_parent(spec, state, gap_epochs=2)
 
@@ -415,7 +421,7 @@ def test_epoch_boundary_empty_parent_gap_2_epochs(spec, state):
 def test_epoch_boundary_empty_parent_gap_5_epochs(spec, state):
     """
     Last-payload requests (consolidation + deposit) committed in bid, parent
-    NOT delivered, then 5 epochs of missed slots. Requests are never applied.
+    not delivered, then 5 epochs of missed slots. Requests are never applied.
     """
     yield from _run_epoch_boundary_empty_parent(spec, state, gap_epochs=5)
 
@@ -428,7 +434,7 @@ def test_switch_to_compounding_across_epoch_boundary(spec, state):
     A validator with balance above MIN_ACTIVATION_BALANCE and 0x01
     credentials submits a switch-to-compounding request in the last payload
     of an epoch. The request is deferred to the next block, so the epoch
-    transition runs without the credential flip. Balance-dependent
+    transition runs without the credential switch. Balance-dependent
     assignments (proposer lookahead, sync committees, PTC window) are
     computed against the pre-switch effective balance, not the
     post-compounding cap.
@@ -502,7 +508,7 @@ def test_switch_to_compounding_across_epoch_boundary(spec, state):
     # max_effective_balance == MIN_ACTIVATION_BALANCE, so the excess balance
     # makes the validator partially withdrawable and block_1's sweep drains
     # it. queue_excess_active_balance is a no-op when the switch runs in
-    # block_2. The credential flip still only happens in block_2.
+    # block_2.
 
     # proposer_lookahead has fixed shape (MIN_SEED_LOOKAHEAD + 1) *
     # SLOTS_PER_EPOCH and each entry must reference a real validator.
@@ -626,6 +632,12 @@ def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):
     )
     assert state.validators[consolidation_validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
     assert state.balances[consolidation_validator_index] <= spec.MIN_ACTIVATION_BALANCE
+    # effective_balance must not jump to the compounding cap across the
+    # epoch boundary.
+    assert (
+        state.validators[consolidation_validator_index].effective_balance
+        == spec.MIN_ACTIVATION_BALANCE
+    )
 
     # Each full-exit request was applied: exit scheduled, withdrawable_epoch
     # follows by MIN_VALIDATOR_WITHDRAWABILITY_DELAY, balance not zeroed.
