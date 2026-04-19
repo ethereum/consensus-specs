@@ -70,12 +70,10 @@ def _add_block_to_store(spec, state, execution_requests=None):
     return store, signed_block, block_root
 
 
-def _setup_full_parent(spec, state, execution_requests=None):
+def _setup_full_parent(spec, state):
     store, signed_block, block_root = _add_block_to_store(spec, state)
 
-    envelope = build_signed_execution_payload_envelope(
-        spec, state, block_root, signed_block, execution_requests=execution_requests
-    )
+    envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     run_on_execution_payload_envelope(spec, store, envelope)
 
     assert spec.is_payload_verified(store, block_root)
@@ -124,11 +122,6 @@ def test_prepare_execution_payload__extend_payload(spec, state):
     assert spec.is_payload_verified(store, block_root)
     assert spec.should_extend_payload(store, block_root)
 
-    # Advance to the proposal slot before modifying balances. process_slots
-    # fills latest_block_header.state_root using the current state hash, so
-    # any balance change before this point would make that hash (and the
-    # resulting parent_root inside prepare_execution_payload) diverge from
-    # block_1's state_root.
     # Advance to the proposal slot before modifying balances. process_slots
     # fills latest_block_header.state_root using the current state hash, so
     # any balance change before this point would make that hash (and the
