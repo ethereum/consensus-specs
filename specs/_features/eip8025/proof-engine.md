@@ -84,14 +84,8 @@ def request_proofs(
 ) -> Root:
     """
     Request proof generation for a new payload request with specified proof
-    attributes. Returns ``new_payload_request.hash_tree_root()``, which serves
-    as the identifier for tracking generation and correlating the completed
-    proof on the gossip layer (it is the public input carried in
-    ``ExecutionProof.public_input.new_payload_request_root``).
-
-    Generated proofs are delivered asynchronously via the proof engine's
-    Server-Sent Events (SSE) stream. The concrete SSE event shape and
-    transport are defined by the proof engine API specification.
+    attributes. Returns ``new_payload_request.hash_tree_root()`` to track the
+    generation request.
     """
     ...
 ```
