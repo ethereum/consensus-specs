@@ -309,8 +309,7 @@ Each file is an SSZ-snappy encoded `SignedExecutionPayloadEnvelope`.
 
 ### `payload_attestation_<32-byte-root>.ssz_snappy`
 
-`<32-byte-root>` is the hash tree root of the given payload attestation
-message.
+`<32-byte-root>` is the hash tree root of the given payload attestation message.
 
 Each file is an SSZ-snappy encoded `PayloadAttestationMessage`.
 
@@ -325,8 +324,7 @@ Each file is an SSZ-snappy encoded `PayloadAttestationMessage`.
      - For the `on_block` execution step: if
        `len(block.message.body.attestations) > 0`, execute each attestation with
        `on_attestation(store, attestation)` after executing
-       `on_block(store, block)`.
-       For Gloas and later forks, if
+       `on_block(store, block)`. For Gloas and later forks, if
        `len(block.message.body.payload_attestations) > 0`, expand each
        `PayloadAttestation` into its constituent `PayloadAttestationMessage`
        values and execute each one with
