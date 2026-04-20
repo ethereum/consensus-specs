@@ -230,12 +230,6 @@ As seen by the client at the time of sending the message:
   fork or new client release. Peers SHOULD use this field to inform proof type
   selection during synchronization.
 
-Clients use this message for peer selection during proof synchronization: by
-comparing a remote peer's advertised `(block_root, slot)` proof-verification
-frontier against the local chain view and checking `proof_types` for capability
-overlap, a client can identify peers well-placed to serve subsequent
-`ExecutionProofsByRange` or `ExecutionProofsByRoot` requests.
-
 The request/response MUST be encoded as an SSZ-container.
 
 The response MUST consist of a single `response_chunk`.
