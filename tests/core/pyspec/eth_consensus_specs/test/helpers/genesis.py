@@ -17,6 +17,12 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_fulu,
     is_post_gloas,
 )
+from eth_consensus_specs.test.helpers.fulu.state import (
+    initialize_proposer_lookahead,
+)
+from eth_consensus_specs.test.helpers.gloas.state import (
+    initialize_ptc_window,
+)
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys, pubkeys
 
 
@@ -248,10 +254,10 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             spec.BuilderPendingPayment() for _ in range(2 * spec.SLOTS_PER_EPOCH)
         ]
         state.builder_pending_withdrawals = []
-        state.ptc_window = spec.initialize_ptc_window(state)
+        state.ptc_window = initialize_ptc_window(spec, state)
 
     if is_post_fulu(spec):
         # Initialize proposer lookahead list
-        state.proposer_lookahead = spec.initialize_proposer_lookahead(state)
+        state.proposer_lookahead = initialize_proposer_lookahead(spec, state)
 
     return state
