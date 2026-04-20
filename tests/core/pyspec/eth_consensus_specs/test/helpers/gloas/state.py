@@ -1,4 +1,4 @@
-def compute_ptc_window(spec, state):
+def initialize_ptc_window(spec, state):
     empty_previous_epoch = [
         spec.Vector[spec.ValidatorIndex, spec.PTC_SIZE](
             [spec.ValidatorIndex(0) for _ in range(spec.PTC_SIZE)]

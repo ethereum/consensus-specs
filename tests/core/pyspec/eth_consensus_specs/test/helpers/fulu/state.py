@@ -1,4 +1,4 @@
-def compute_proposer_lookahead(spec, state):
+def initialize_proposer_lookahead(spec, state):
     current_epoch = spec.get_current_epoch(state)
     lookahead = []
     for i in range(spec.MIN_SEED_LOOKAHEAD + 1):
