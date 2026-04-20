@@ -91,9 +91,7 @@ def request_proofs(
 
     Generated proofs are delivered asynchronously via the proof engine's
     Server-Sent Events (SSE) stream. The concrete SSE event shape and
-    transport are defined by the proof engine API; see the zkboost reference
-    implementation:
-    https://github.com/eth-act/zkboost/blob/v0.5.0/openapi.json.
+    transport are defined by the proof engine API specification.
     """
     ...
 ```

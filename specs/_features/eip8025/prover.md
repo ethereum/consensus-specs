@@ -52,9 +52,7 @@ proofs for a `BeaconBlock` performs the following steps:
 1. At startup, subscribe to:
    - `Block` events from the beacon node via SSE.
    - Proof completion events from the proof engine via SSE. The concrete SSE
-     event shape is defined by the proof engine API; see the zkboost reference
-     implementation:
-     https://github.com/eth-act/zkboost/blob/v0.5.0/openapi.json.
+     event shape is defined by the proof engine API specification.
 2. Upon receiving a `Block` event:
    - Fetch the full `BeaconBlock` via RPC.
    - Construct `NewPayloadRequest` from the block.
