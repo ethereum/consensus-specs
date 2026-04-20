@@ -169,7 +169,7 @@ jobs:
           python-version-file: "pyproject.toml"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
 
@@ -183,7 +183,7 @@ jobs:
           seed=${{ needs.config.outputs.seed }}
 
       - name: Upload compliance tests
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: comptests-${{ matrix.config }}-${{ matrix.preset }}-${{ matrix.fork }}
           path: compliance-spec-tests/${{ matrix.config }}
@@ -219,7 +219,7 @@ jobs:
               tests
 
       - name: Upload ${{ matrix.config }}.tar.gz
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: ${{ matrix.config }}.tar.gz
           archive: false

@@ -1,5 +1,8 @@
 import random
 
+from eth_consensus_specs.test.helpers.fork_choice import (
+    get_genesis_forkchoice_store_and_block,
+)
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
     transition_to,
@@ -204,7 +207,7 @@ def _generate_filter_block_tree(
 
 def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTestData, object):
     anchor_state = state
-    anchor_block = spec.BeaconBlock(state_root=anchor_state.hash_tree_root())
+    _, anchor_block = get_genesis_forkchoice_store_and_block(spec, anchor_state)
 
     if debug:
         print("\nseed:", seed)

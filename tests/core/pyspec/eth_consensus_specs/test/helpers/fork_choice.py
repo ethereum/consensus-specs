@@ -460,12 +460,19 @@ def add_attester_slashing(spec, store, attester_slashing, test_steps, valid=True
     test_steps.append({"attester_slashing": slashing_file_name})
 
 
-def get_formatted_head_output(spec, store):
+def _get_head_root(spec, store):
     head = spec.get_head(store)
     if is_post_gloas(spec):
         head_root = head.root
     else:
         head_root = head
+    return head_root
+
+
+def get_formatted_head_output(spec, store, head_root=None):
+    if head_root is None:
+        head_root = _get_head_root(spec, store)
+
     slot = store.blocks[head_root].slot
     return {
         "slot": int(slot),
@@ -483,10 +490,13 @@ def output_head_check(spec, store, test_steps):
     )
 
 
-def get_basic_store_checks(spec, store):
+def get_basic_store_checks(spec, store, head_root=None):
+    if head_root is None:
+        head_root = _get_head_root(spec, store)
+
     return {
         "time": int(store.time),
-        "head": get_formatted_head_output(spec, store),
+        "head": get_formatted_head_output(spec, store, head_root),
         "justified_checkpoint": {
             "epoch": int(store.justified_checkpoint.epoch),
             "root": encode_hex(store.justified_checkpoint.root),
@@ -500,11 +510,12 @@ def get_basic_store_checks(spec, store):
 
 
 def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=False):
-    checks = get_basic_store_checks(spec, store)
-
     if is_post_gloas(spec):
         head = spec.get_head(store)
+        checks = get_basic_store_checks(spec, store, head.root)
         checks["head_payload_status"] = int(head.payload_status)
+    else:
+        checks = get_basic_store_checks(spec, store)
 
     if with_viable_for_head_weights and not is_post_gloas(spec):
         filtered_block_roots = spec.get_filtered_block_tree(store).keys()

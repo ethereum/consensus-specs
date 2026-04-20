@@ -129,12 +129,21 @@ def run_test(test_info):
                 )
         elif "checks" in step:
             checks = step["checks"]
+
+            cached_head = None
+
+            def get_head():
+                nonlocal cached_head
+                if cached_head is None:
+                    cached_head = spec.get_head(store)
+                return cached_head
+
             for check, value in checks.items():
                 if check == "time":
                     expected_time = value
                     assert store.time == expected_time
                 elif check == "head":
-                    head = spec.get_head(store)
+                    head = get_head()
                     head_root = head.root if hasattr(head, "root") else head
                     assert store.blocks[head_root].slot == value["slot"]
                     assert str(head_root) == value["root"]
@@ -164,7 +173,7 @@ def run_test(test_info):
                     expected = {kv["root"]: kv["weight"] for kv in value}
                     assert expected == viable_for_head_roots_and_weights
                 elif check == "head_payload_status":
-                    head = spec.get_head(store)
+                    head = get_head()
                     assert head.payload_status == value
                 else:
                     assert False
