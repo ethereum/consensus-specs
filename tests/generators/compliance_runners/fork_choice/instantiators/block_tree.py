@@ -3,6 +3,9 @@ import random
 from eth_consensus_specs.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
 )
+from eth_consensus_specs.test.helpers.fork_choice import (
+    get_genesis_forkchoice_store_and_block,
+)
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
     transition_to,
@@ -645,7 +648,7 @@ def gen_block_tree_test_data(
     sm_links = [SmLink(l) for l in sm_links]
 
     anchor_state = state
-    anchor_block = spec.BeaconBlock(state_root=anchor_state.hash_tree_root())
+    _, anchor_block = get_genesis_forkchoice_store_and_block(spec, anchor_state)
 
     # Find a reachable solution trying with different seeds if needed
     # sm_links constraints may not have a solution because of the randomization affecting validator partitions
