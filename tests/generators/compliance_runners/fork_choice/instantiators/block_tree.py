@@ -53,6 +53,7 @@ ON_CHAIN_SLASHING_RATE = 33
 
 INVALID_MESSAGES_RATE = 5
 EXECUTION_PAYLOAD_SEND_RATE = 65
+PAYLOAD_ATTESTATION_SEND_RATE = 65
 
 
 class SmLink(tuple):
@@ -681,7 +682,12 @@ def _generate_block_tree(
                 )
 
         if is_post_gloas(spec):
-            if valid_block_was_produced:
+            if valid_block_was_produced and rnd.randint(0, 99) < PAYLOAD_ATTESTATION_SEND_RATE:
+                # TODO: Consider explicit payload-attestation cases without a
+                # newly produced block in this iteration, e.g. delayed votes
+                # for an older known block root or invalid votes for an unknown
+                # root. Those should stay out of the orderly base scenario
+                # unless `with_invalid_messages` is enabled.
                 for ptc_message in _get_random_payload_attestation_messages(
                     spec, post_state, rnd
                 ):
