@@ -148,10 +148,6 @@ reply within `proof_serve_range` SHOULD respond with error code
 `3: ResourceUnavailable`. Such peers MAY get descored or disconnected at any
 time.
 
-Clients MUST respond with execution proofs from their view of the current fork
-choice -- that is, proofs for blocks in the single chain defined by the current
-head.
-
 The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `SignedExecutionProof` payload.
 
