@@ -89,13 +89,13 @@ def process_inclusion_list(
 *Note*: `get_inclusion_list_transactions` returns a list of unique transactions
 from all valid and non-equivocating `InclusionList`s for the given slot and for
 which the `inclusion_list_committee_root` in the `InclusionList` matches the one
-calculated based on the current state. When `timely_only` is `True`, only
+calculated based on the current state. When `only_timely` is `True`, only
 `InclusionList`s received in a timely manner on the p2p network are considered;
 otherwise, timeliness is not considered.
 
 ```python
 def get_inclusion_list_transactions(
-    store: InclusionListStore, state: BeaconState, slot: Slot, timely_only: bool = True
+    store: InclusionListStore, state: BeaconState, slot: Slot, only_timely: bool = True
 ) -> Sequence[Transaction]:
     committee = get_inclusion_list_committee(state, slot)
     committee_root = hash_tree_root(committee)
@@ -109,7 +109,7 @@ def get_inclusion_list_transactions(
         transaction
         for inclusion_list_root in inclusion_lists
         if inclusion_lists[inclusion_list_root].validator_index not in equivocators
-        if not timely_only or timeliness[inclusion_list_root]
+        if not only_timely or timeliness[inclusion_list_root]
         for transaction in inclusion_lists[inclusion_list_root].transactions
     ]
 
@@ -121,7 +121,7 @@ def get_inclusion_list_transactions(
 
 ```python
 def get_inclusion_list_bits(
-    store: InclusionListStore, state: BeaconState, slot: Slot, timely_only: bool = True
+    store: InclusionListStore, state: BeaconState, slot: Slot, only_timely: bool = True
 ) -> Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]:
     """
     Return a ``Bitvector`` over inclusion list committee indices with bits set
@@ -139,7 +139,7 @@ def get_inclusion_list_bits(
         inclusion_lists[inclusion_list_root].validator_index
         for inclusion_list_root in inclusion_lists
         if inclusion_lists[inclusion_list_root].validator_index not in equivocators
-        if not timely_only or timeliness[inclusion_list_root]
+        if not only_timely or timeliness[inclusion_list_root]
     ]
 
     return Bitvector[INCLUSION_LIST_COMMITTEE_SIZE](
