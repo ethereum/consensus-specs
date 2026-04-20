@@ -155,12 +155,13 @@ def is_inclusion_list_bits_inclusive(
     state: BeaconState,
     slot: Slot,
     inclusion_list_bits: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE],
+    only_timely: bool = True,
 ) -> bool:
     """
     Return ``True`` if and only if ``inclusion_list_bits`` is a superset of
     the locally observed inclusion list bits for the given ``slot``.
     """
-    local_inclusion_list_bits = get_inclusion_list_bits(store, state, slot)
+    local_inclusion_list_bits = get_inclusion_list_bits(store, state, slot, only_timely)
 
     return all(
         inclusion_bit or not local_inclusion_bit
