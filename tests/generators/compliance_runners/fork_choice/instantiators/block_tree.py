@@ -54,6 +54,7 @@ ON_CHAIN_SLASHING_RATE = 33
 INVALID_MESSAGES_RATE = 5
 EXECUTION_PAYLOAD_SEND_RATE = 65
 PAYLOAD_ATTESTATION_SEND_RATE = 65
+GLOAS_FULL_ATTESTATION_RATE = 50
 
 
 class SmLink(tuple):
@@ -571,10 +572,13 @@ def _generate_block_tree(
     signed_block_messages = []
     signed_envelope_messages = []
     in_block_pa_messages = []
+    payload_known_block_indices = set()
 
     while block_index < len(block_parents):
         envelope = None
         valid_block_was_produced = False
+        new_block_index = None
+        valid_execution_payload_sent = False
         # Propose a block if slot shouldn't be empty
         if rnd.randint(1, 100) > EMPTY_SLOTS_RATE:
             # Advance parent state to the current slot
@@ -620,6 +624,7 @@ def _generate_block_tree(
                 signed_block_messages.append(ProtocolMessage(signed_block, True))
                 post_states.append(post_state)
                 valid_block_was_produced = True
+                new_block_index = block_index
 
                 # Update tips
                 block_tree_tips.discard(parent_index)
@@ -644,6 +649,9 @@ def _generate_block_tree(
                     _spoil_execution_payload_envelope(spec, rnd, envelope)
                     valid = False
                 signed_envelope_messages.append(ProtocolMessage(envelope, valid))
+                valid_execution_payload_sent = valid
+                if valid:
+                    payload_known_block_indices.add(new_block_index)
 
         # Attest to randomly selected tips
         def split_list(lst, n):
@@ -661,25 +669,47 @@ def _generate_block_tree(
             transition_to(spec, attesting_state, current_slot)
 
             # Attest to the block
+            payload_index = None
+            att_payload_index_invalid = False
+            if is_post_gloas(spec):
+                if valid_execution_payload_sent and attesting_block_index == new_block_index:
+                    if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
+                        # payload_index=1 for a same-slot block is GLOAS-invalid:
+                        # spec requires data.index==0 when block_slot==attestation.data.slot
+                        payload_index = 1
+                        att_payload_index_invalid = True
+                    else:
+                        payload_index = 0
+                elif attesting_block_index != new_block_index and attesting_block_index in payload_known_block_indices:
+                    if rnd.randint(0, 99) < GLOAS_FULL_ATTESTATION_RATE:
+                        payload_index = 1
+                    else:
+                        payload_index = 0
             attestations_in_slot = attest_to_slot(
                 spec,
                 attesting_state,
                 attesting_state.slot,
                 lambda comm: [i for i in comm if i in attesters[index]],
+                payload_index=payload_index,
             )
 
             # Sample on chain and off chain attestations
             for a in attestations_in_slot:
-                _disseminate(
-                    rnd,
-                    a,
-                    out_of_block_attestation_messages,
-                    in_block_attestations,
-                    OFF_CHAIN_ATTESTATION_RATE,
-                    ON_CHAIN_ATTESTATION_RATE,
-                    with_invalid_messages,
-                    spoil_fn=lambda msg: _spoil_attestation(spec, rnd, msg),
-                )
+                if att_payload_index_invalid:
+                    # Already known invalid due to GLOAS payload_index constraint;
+                    # skip _disseminate to avoid it being marked valid=True
+                    out_of_block_attestation_messages.append(ProtocolMessage(a, False))
+                else:
+                    _disseminate(
+                        rnd,
+                        a,
+                        out_of_block_attestation_messages,
+                        in_block_attestations,
+                        OFF_CHAIN_ATTESTATION_RATE,
+                        ON_CHAIN_ATTESTATION_RATE,
+                        with_invalid_messages,
+                        spoil_fn=lambda msg: _spoil_attestation(spec, rnd, msg),
+                    )
 
         if is_post_gloas(spec):
             if valid_block_was_produced and rnd.randint(0, 99) < PAYLOAD_ATTESTATION_SEND_RATE:
