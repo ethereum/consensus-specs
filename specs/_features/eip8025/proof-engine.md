@@ -11,6 +11,7 @@
 - [Proof engine](#proof-engine)
   - [New `verify_execution_proof`](#new-verify_execution_proof)
   - [New `notify_new_payload`](#new-notify_new_payload)
+  - [New `notify_forkchoice_updated`](#new-notify_forkchoice_updated)
   - [New `ProofAttributes`](#new-proofattributes)
   - [New `request_proofs`](#new-request_proofs)
 
@@ -32,6 +33,8 @@ sub-system logic via:
   proofs
 - a notification function `self.notify_new_payload` to notify the proof engine
   of the new payload
+- a notification function `self.notify_forkchoice_updated` to notify the proof
+  engine of forkchoice state changes
 - a generation function `self.request_proofs` to initiate asynchronous proof
   generation
 
@@ -62,6 +65,22 @@ def notify_new_payload(
 ) -> None:
     """
     Notify the proof engine of the new payload.
+    """
+    ...
+```
+
+### New `notify_forkchoice_updated`
+
+```python
+def notify_forkchoice_updated(
+    self: ProofEngine,
+    head_block_hash: Hash32,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+) -> None:
+    """
+    Notify the proof engine of a forkchoice state update. Allows the proof
+    engine to track the canonical chain for retention and pruning.
     """
     ...
 ```

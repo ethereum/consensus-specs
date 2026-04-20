@@ -60,6 +60,12 @@ class NoopProofEngine(ProofEngine):
                            new_payload_request: NewPayloadRequest) -> None:
         return None
 
+    def notify_forkchoice_updated(self: ProofEngine,
+                                  head_block_hash: Hash32,
+                                  safe_block_hash: Hash32,
+                                  finalized_block_hash: Hash32) -> None:
+        return None
+
     def request_proofs(self: ProofEngine,
                        new_payload_request: NewPayloadRequest,
                        proof_attributes: ProofAttributes) -> Root:
