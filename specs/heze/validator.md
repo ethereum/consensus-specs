@@ -117,7 +117,7 @@ with respect to the proposer's inclusion list view, which comprises all valid
 and non-equivocating inclusion lists they have observed.
 
 - The `bid.inclusion_list_bits` must satisfy
-  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), state, slot - 1, bid.inclusion_list_bits, False)`.
+  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), state, slot - 1, bid.inclusion_list_bits, only_timely=False)`.
 
 ##### ExecutionPayload
 
@@ -167,7 +167,7 @@ def prepare_execution_payload(
         slot_number=state.slot,
         # [New in Heze:EIP7805]
         inclusion_list_transactions=get_inclusion_list_transactions(
-            get_inclusion_list_store(), state, Slot(state.slot - 1), False
+            get_inclusion_list_store(), state, Slot(state.slot - 1), only_timely=False
         ),
     )
     return execution_engine.notify_forkchoice_updated(

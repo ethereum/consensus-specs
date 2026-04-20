@@ -24,4 +24,4 @@ builder" to implement Heze.
 comprises all valid and non-equivocating inclusion lists they have observed.
 
 1. Set `bid.inclusion_list_bits` to
-   `get_inclusion_list_bits(get_inclusion_list_store(), state, Slot(bid.slot - 1), False)`.
+   `get_inclusion_list_bits(get_inclusion_list_store(), state, Slot(bid.slot - 1), only_timely=False)`.
