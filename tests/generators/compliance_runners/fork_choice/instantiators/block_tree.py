@@ -474,7 +474,7 @@ def _spoil_payload_attestation_message(spec, rnd: random.Random, state, ptc_mess
 
 
 def _get_random_payload_attestation_messages(spec, state, rnd: random.Random):
-    """Build random PayloadAttestationMessage objects with diverse payload_present values."""
+    """Build random PayloadAttestationMessage objects with diverse PTC vote values."""
     attested_slot = state.latest_block_header.slot
     if attested_slot != state.slot or attested_slot == 0:
         return []
@@ -501,6 +501,7 @@ def _get_random_payload_attestation_messages(spec, state, rnd: random.Random):
             beacon_block_root=beacon_block_root,
             slot=attested_slot,
             payload_present=rnd.choice([True, False]),
+            blob_data_available=rnd.choice([True, False]),
         )
         messages.append(
             spec.PayloadAttestationMessage(
