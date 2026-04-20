@@ -12,7 +12,6 @@ ALL_EXECUTABLE_SPEC_NAMES = \
 	fulu      \
 	gloas     \
 	heze      \
-	eip7928   \
 	eip8025
 
 # A list of fake targets.
@@ -72,6 +71,7 @@ help-verbose:
 	@echo "    kzg=<type>         KZG library: spec, ckzg (default: ckzg)"
 	@echo ""
 	@echo "  Output:"
+	@echo "    verbose=true       Enable verbose pytest output"
 	@echo "    reftests=true      Generate reference test vectors"
 	@echo "    coverage=true      Enable code coverage tracking"
 	@echo ""
@@ -117,12 +117,14 @@ help-verbose:
 	@echo "    fc_gen_config=<config> Configuration size (tiny, small, standard; default: tiny)"
 	@echo "    fork=<fork>            Generate for specific fork (comma-separated)"
 	@echo "    preset=<preset>        Generate for specific preset (comma-separated)"
+	@echo "    comptests_dir=<dir>    Output directory for generated compliance tests"
 	@echo "    threads=N              Number of threads to use"
 	@echo "    seed=N                 Override test seeds (fuzzing mode)"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make comptests"
 	@echo "    make comptests fc_gen_config=standard"
+	@echo "    make comptests comptests_dir=./compliance-spec-tests/tests"
 	@echo "    make comptests fc_gen_config=standard fork=deneb preset=mainnet threads=8"
 	@echo ""
 	@echo "$(BOLD)DOCUMENTATION$(NORM)"
@@ -204,6 +206,7 @@ test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),faste
 test: KZG := $(if $(filter fw,$(component)),,--kzg-type=$(if $(kzg),$(kzg),ckzg))
 #
 # Output
+test: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),-v)
 test: MAYBE_REFTESTS := $(if $(filter true,$(reftests)),--reftests --reftests-output=$(REFTESTS_DIR))
 test: COVERAGE_PRESETS := $(if $(preset),$(preset),$(if $(filter true,$(reftests)),minimal mainnet,minimal))
 test: COV_SCOPE_SINGLE := $(foreach P,$(COVERAGE_PRESETS), --cov=eth_consensus_specs.$(fork).$P)
@@ -215,6 +218,7 @@ test: _pyspec
 	@$(UV_RUN) pytest \
 		$(MAYBE_PARALLEL) \
 		--capture=no \
+		$(MAYBE_VERBOSE) \
 		$(MAYBE_TEST) \
 		$(MAYBE_FORK) \
 		$(PRESET) \
@@ -288,7 +292,8 @@ lint: _pyspec
 ###############################################################################
 
 COMMA:= ,
-COMP_TEST_VECTOR_DIR = $(CURDIR)/../compliance-spec-tests/tests
+DEFAULT_COMPTESTS_DIR = $(CURDIR)/../compliance-spec-tests/tests
+COMPTESTS_DIR = $(if $(comptests_dir),$(comptests_dir),$(DEFAULT_COMPTESTS_DIR))
 
 # Generate compliance tests (fork choice).
 comptests: FC_GEN_CONFIG := $(if $(fc_gen_config),$(fc_gen_config),tiny)
@@ -298,7 +303,7 @@ comptests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset
 comptests: MAYBE_SEED := $(if $(seed),--fc-gen-seed $(seed))
 comptests: _pyspec
 	@$(UV_RUN) python -m tests.generators.compliance_runners.fork_choice.test_gen \
-		--output $(COMP_TEST_VECTOR_DIR) \
+		--output-dir=$(COMPTESTS_DIR) \
 		--fc-gen-config $(FC_GEN_CONFIG) \
 		$(MAYBE_THREADS) \
 		$(MAYBE_FORKS) \

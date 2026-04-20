@@ -4,7 +4,6 @@ import threading
 import time
 import uuid
 from collections.abc import Iterable
-from typing import Any
 
 import psutil
 from pathos.multiprocessing import ProcessingPool as Pool
@@ -19,7 +18,7 @@ from eth_consensus_specs.test.exceptions import SkippedTest
 from tests.infra.dumper import Dumper
 
 from .args import parse_arguments
-from .gen_typing import TestCase
+from .gen_typing import TestCaseResult, TestGroup
 from .utils import install_sigint_handler, time_since
 
 
@@ -81,30 +80,18 @@ def display_test_summary(
     console.print()
 
 
-def execute_test(test_case: TestCase, dumper: Dumper):
-    """Execute a test and write the outputs to storage."""
-    meta: dict[str, Any] = {}
-    outputs: list[tuple[str, str, Any]] = []
+def dump_test_case_result(test_case_result: TestCaseResult, dumper: Dumper) -> None:
+    """Write a collected test case result to storage."""
+    test_case = test_case_result.test_case
 
-    try:
-        for name, kind, data in test_case.case_fn():
-            if kind == "meta":
-                meta[name] = data
-            else:
-                method = getattr(dumper, f"dump_{kind}", None)
-                if method is None:
-                    raise ValueError(f"Unknown kind {kind!r}")
-                outputs.append((name, kind, data))
-    except SkippedTest:
-        # Bail without writing any files
-        raise
-
-    for name, kind, data in outputs:
-        method = getattr(dumper, f"dump_{kind}")
+    for name, kind, data in test_case_result.case_parts:
+        method = getattr(dumper, f"dump_{kind}", None)
+        if method is None:
+            raise ValueError(f"Unknown kind {kind!r}")
         method(test_case.dir, name, data)
 
-    if meta:
-        dumper.dump_meta(test_case.dir, meta)
+    if test_case_result.meta:
+        dumper.dump_meta(test_case.dir, test_case_result.meta)
 
     # Always write manifest.yml for every test case
     manifest_data = {
@@ -118,7 +105,16 @@ def execute_test(test_case: TestCase, dumper: Dumper):
     dumper.dump_manifest(test_case.dir, manifest_data)
 
 
-def run_generator(input_test_cases: Iterable[TestCase], args=None):
+def execute_test_group(
+    test_group: TestGroup,
+    dumper: Dumper,
+) -> None:
+    """Execute a test group and write all of its selected test cases to storage."""
+    for test_case_result in test_group.group_fn():
+        dump_test_case_result(test_case_result, dumper)
+
+
+def run_generator_groups(input_test_groups: Iterable[TestGroup], args=None):
     start_time = time.time()
     if args is None:
         args = parse_arguments()
@@ -135,24 +131,34 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
     install_sigint_handler(console)
 
     total_found = 0
-    selected_test_cases = []
-    for test_case in input_test_cases:
-        total_found += 1
-        # Check if the test case should be filtered out
-        if len(args.runners) != 0 and test_case.runner_name not in args.runners:
-            continue
-        if len(args.presets) != 0 and test_case.preset_name not in args.presets:
-            continue
-        if len(args.forks) != 0 and test_case.fork_name not in args.forks:
-            continue
-        if len(args.cases) != 0 and not any(s in test_case.case_name for s in args.cases):
-            continue
+    selected_test_groups = []
+    for test_group in input_test_groups:
+        selected_group_cases = []
+        for test_case in test_group.test_cases:
+            total_found += 1
+            # Check if the test case should be filtered out
+            if len(args.runners) != 0 and test_case.runner_name not in args.runners:
+                continue
+            if len(args.presets) != 0 and test_case.preset_name not in args.presets:
+                continue
+            if len(args.forks) != 0 and test_case.fork_name not in args.forks:
+                continue
+            if len(args.cases) != 0 and not any(s in test_case.case_name for s in args.cases):
+                continue
 
-        # Set the output dir and add this to out list
-        test_case.set_output_dir(args.output_dir)
-        if test_case.dir.exists():
-            shutil.rmtree(test_case.dir)
-        selected_test_cases.append(test_case)
+            selected_group_cases.append(test_case)
+
+        if selected_group_cases:
+            selected_test_groups.append(test_group)
+
+    selected_test_cases = []
+    for test_group in selected_test_groups:
+        for test_case in test_group.test_cases:
+            # Set the output dir and add this to out list
+            test_case.set_output_dir(args.output_dir)
+            if test_case.dir.exists():
+                shutil.rmtree(test_case.dir)
+            selected_test_cases.append(test_case)
 
     if len(selected_test_cases) == 0:
         # Show summary even when all tests are filtered out
@@ -164,23 +170,23 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
     tests_prefix = get_shared_prefix(selected_test_cases)
 
     def worker_function(data):
-        """Execute a test case and update active tests."""
-        test_case, active_tests = data
-        key = (uuid.uuid4(), test_case.get_identifier())
+        """Execute a test group and update active tests."""
+        test_group, active_tests = data
+        key = (uuid.uuid4(), test_group.get_identifier())
         test_start = time.time()
         active_tests[key] = test_start
 
-        debug_print(f"Starting: {test_case.get_identifier()}")
+        debug_print(f"Starting: {test_group.get_identifier()}")
 
         try:
-            execute_test(test_case, dumper)
+            execute_test_group(test_group, dumper)
             elapsed = time.time() - test_start
-            debug_print(f"Generated: {test_case.get_identifier()} (took {elapsed:.2f}s)")
-            return "generated"
+            debug_print(f"Generated: {test_group.get_identifier()} (took {elapsed:.2f}s)")
+            return ("generated", len(test_group.test_cases))
         except SkippedTest:
             elapsed = time.time() - test_start
-            debug_print(f"Skipped: {test_case.get_identifier()} (took {elapsed:.2f}s)")
-            return "skipped"
+            debug_print(f"Skipped: {test_group.get_identifier()} (took {elapsed:.2f}s)")
+            return ("skipped", len(test_group.test_cases))
         finally:
             del active_tests[key]
 
@@ -260,7 +266,7 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
             active_tests = manager.dict()
             completed = manager.Value("i", 0)
             skipped = manager.Value("i", 0)
-            width = max([len(t.get_identifier()) for t in selected_test_cases])
+            width = max([len(group.get_identifier()) for group in selected_test_groups])
 
             if not args.verbose:
                 display_thread = threading.Thread(
@@ -278,23 +284,23 @@ def run_generator(input_test_cases: Iterable[TestCase], args=None):
                 )
                 status_thread.start()
 
-            # Map each test case to a thread worker
-            inputs = [(t, active_tests) for t in selected_test_cases]
+            # Map each selected group to a worker
+            inputs = [(group, active_tests) for group in selected_test_groups]
 
             if args.threads == 1:
                 for input in inputs:
-                    result = worker_function(input)
+                    result, nr_cases = worker_function(input)
                     if result == "skipped":
-                        skipped.value += 1
-                    completed.value += 1
+                        skipped.value += nr_cases
+                    completed.value += nr_cases
             else:
                 # Restart workers periodically to prevent memory accumulation
                 pool = Pool(processes=args.threads, maxtasksperchild=100)
                 try:
-                    for result in pool.uimap(worker_function, inputs):
+                    for result, nr_cases in pool.uimap(worker_function, inputs):
                         if result == "skipped":
-                            skipped.value += 1
-                        completed.value += 1
+                            skipped.value += nr_cases
+                        completed.value += nr_cases
                 except KeyboardInterrupt:
                     # Terminate pool immediately on interrupt
                     pool.terminate()

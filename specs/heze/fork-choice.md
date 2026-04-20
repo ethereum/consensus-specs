@@ -23,7 +23,7 @@
   - [New `get_proposer_inclusion_list_cutoff_ms`](#new-get_proposer_inclusion_list_cutoff_ms)
 - [Handlers](#handlers)
   - [New `on_inclusion_list`](#new-on_inclusion_list)
-  - [Modified `on_execution_payload`](#modified-on_execution_payload)
+  - [Modified `on_execution_payload_envelope`](#modified-on_execution_payload_envelope)
 
 <!-- mdformat-toc end -->
 
@@ -100,6 +100,7 @@ class PayloadAttributes(object):
     suggested_fee_recipient: ExecutionAddress
     withdrawals: Sequence[Withdrawal]
     parent_beacon_block_root: Root
+    slot_number: uint64
     # [New in Heze:EIP7805]
     inclusion_list_transactions: Sequence[Transaction]
 ```
@@ -128,7 +129,7 @@ class Store(object):
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
-    payload_states: Dict[Root, BeaconState] = field(default_factory=dict)
+    payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
     payload_timeliness_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
     payload_data_availability_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
         default_factory=dict
@@ -161,15 +162,11 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         block_timeliness={anchor_root: [True, True]},
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
-        payload_states={anchor_root: copy(anchor_state)},
-        payload_timeliness_vote={
-            anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
-        },
-        payload_data_availability_vote={
-            anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
-        },
+        payloads={},
+        payload_timeliness_vote={},
+        payload_data_availability_vote={},
         # [New in Heze:EIP7805]
-        payload_inclusion_list_satisfaction={anchor_root: True},
+        payload_inclusion_list_satisfaction={},
     )
 ```
 
@@ -213,7 +210,7 @@ def is_payload_inclusion_list_satisfied(store: Store, root: Root) -> bool:
 
     # If the payload is not locally available, the payload
     # is not considered to satisfy the inclusion list constraints
-    if root not in store.payload_states:
+    if not is_payload_verified(store, root):
         return False
 
     return store.payload_inclusion_list_satisfaction[root]
@@ -242,21 +239,21 @@ def should_extend_payload(store: Store, root: Root) -> bool:
 ### New `get_view_freeze_cutoff_ms`
 
 ```python
-def get_view_freeze_cutoff_ms(epoch: Epoch) -> uint64:
+def get_view_freeze_cutoff_ms() -> uint64:
     return get_slot_component_duration_ms(VIEW_FREEZE_CUTOFF_BPS)
 ```
 
 ### New `get_inclusion_list_submission_due_ms`
 
 ```python
-def get_inclusion_list_submission_due_ms(epoch: Epoch) -> uint64:
+def get_inclusion_list_submission_due_ms() -> uint64:
     return get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS)
 ```
 
 ### New `get_proposer_inclusion_list_cutoff_ms`
 
 ```python
-def get_proposer_inclusion_list_cutoff_ms(epoch: Epoch) -> uint64:
+def get_proposer_inclusion_list_cutoff_ms() -> uint64:
     return get_slot_component_duration_ms(PROPOSER_INCLUSION_LIST_CUTOFF_BPS)
 ```
 
@@ -278,19 +275,20 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    epoch = get_current_store_epoch(store)
-    view_freeze_cutoff_ms = get_view_freeze_cutoff_ms(epoch)
+    view_freeze_cutoff_ms = get_view_freeze_cutoff_ms()
     is_before_view_freeze_cutoff = time_into_slot_ms < view_freeze_cutoff_ms
 
     process_inclusion_list(get_inclusion_list_store(), inclusion_list, is_before_view_freeze_cutoff)
 ```
 
-### Modified `on_execution_payload`
+### Modified `on_execution_payload_envelope`
 
 ```python
-def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEnvelope) -> None:
+def on_execution_payload_envelope(
+    store: Store, signed_envelope: SignedExecutionPayloadEnvelope
+) -> None:
     """
-    Run ``on_execution_payload`` upon receiving a new execution payload.
+    Run ``on_execution_payload_envelope`` upon receiving a new execution payload envelope.
     """
     envelope = signed_envelope.message
     # The corresponding beacon block root needs to be known
@@ -300,11 +298,10 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
     # If not, this payload MAY be queued and subsequently considered when blob data becomes available
     assert is_data_available(envelope.beacon_block_root)
 
-    # Make a copy of the state to avoid mutability issues
-    state = copy(store.block_states[envelope.beacon_block_root])
+    state = store.block_states[envelope.beacon_block_root]
 
-    # Process the execution payload
-    process_execution_payload(state, signed_envelope, EXECUTION_ENGINE)
+    # Verify the execution payload envelope
+    verify_execution_payload_envelope(state, signed_envelope, EXECUTION_ENGINE)
 
     # [New in Heze:EIP7805]
     # Check if this payload satisfies the inclusion list constraints
@@ -313,6 +310,6 @@ def on_execution_payload(store: Store, signed_envelope: SignedExecutionPayloadEn
         store, state, envelope.beacon_block_root, envelope.payload, EXECUTION_ENGINE
     )
 
-    # Add new state for this payload to the store
-    store.payload_states[envelope.beacon_block_root] = state
+    # Add execution payload envelope to the store
+    store.payloads[envelope.beacon_block_root] = envelope
 ```

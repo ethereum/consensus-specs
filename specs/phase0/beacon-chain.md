@@ -56,7 +56,6 @@
     - [`xor`](#xor)
     - [`uint_to_bytes`](#uint_to_bytes)
     - [`bytes_to_uint64`](#bytes_to_uint64)
-    - [`saturating_sub`](#saturating_sub)
   - [Crypto](#crypto)
     - [`hash`](#hash)
     - [`hash_tree_root`](#hash_tree_root)
@@ -70,6 +69,7 @@
     - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
     - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
   - [Misc](#misc-2)
+    - [`compute_shuffled_permutation`](#compute_shuffled_permutation)
     - [`compute_shuffled_index`](#compute_shuffled_index)
     - [`compute_proposer_index`](#compute_proposer_index)
     - [`compute_committee`](#compute_committee)
@@ -662,16 +662,6 @@ def bytes_to_uint64(data: bytes) -> uint64:
     return uint64(int.from_bytes(data, ENDIANNESS))
 ```
 
-#### `saturating_sub`
-
-```python
-def saturating_sub(a: int, b: int) -> int:
-    """
-    Computes a - b, saturating at numeric bounds.
-    """
-    return a - b if a > b else 0
-```
-
 ### Crypto
 
 #### `hash`
@@ -808,6 +798,35 @@ def is_valid_merkle_branch(
 
 ### Misc
 
+#### `compute_shuffled_permutation`
+
+```python
+def compute_shuffled_permutation(index_count: uint64, seed: Bytes32) -> Sequence[uint64]:
+    """
+    Return the full shuffled permutation corresponding to ``seed`` (and ``index_count``).
+    """
+    # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
+    # See the 'generalized domain' algorithm on page 3
+    indices = [uint64(i) for i in range(index_count)]
+    for current_round in range(SHUFFLE_ROUND_COUNT):
+        round_bytes = current_round.to_bytes(1, "little")
+        pivot = int.from_bytes(hash(seed + round_bytes)[0:8], "little") % index_count
+        source_by_bucket: Dict[uint64, Bytes32] = {}
+        for i in range(index_count):
+            flip = (pivot + index_count - indices[i]) % index_count
+            position = max(indices[i], flip)
+            position_bucket = position // 256
+            if position_bucket not in source_by_bucket:
+                source_by_bucket[position_bucket] = hash(
+                    seed + round_bytes + position_bucket.to_bytes(4, "little")
+                )
+            source = source_by_bucket[position_bucket]
+            byte_val = source[(position % 256) // 8]
+            bit = (byte_val >> int(position % 8)) % 2
+            indices[i] = flip if bit else indices[i]
+    return indices
+```
+
 #### `compute_shuffled_index`
 
 ```python
@@ -816,21 +835,7 @@ def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) ->
     Return the shuffled index corresponding to ``seed`` (and ``index_count``).
     """
     assert index < index_count
-
-    # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
-    # See the 'generalized domain' algorithm on page 3
-    for current_round in range(SHUFFLE_ROUND_COUNT):
-        pivot = bytes_to_uint64(hash(seed + uint_to_bytes(uint8(current_round)))[0:8]) % index_count
-        flip = (pivot + index_count - index) % index_count
-        position = max(index, flip)
-        source = hash(
-            seed + uint_to_bytes(uint8(current_round)) + uint_to_bytes(uint32(position // 256))
-        )
-        byte = uint8(source[(position % 256) // 8])
-        bit = (byte >> (position % 8)) % 2
-        index = flip if bit else index
-
-    return index
+    return compute_shuffled_permutation(index_count, seed)[index]
 ```
 
 #### `compute_proposer_index`
