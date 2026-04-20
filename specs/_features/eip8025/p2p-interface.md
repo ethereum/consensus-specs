@@ -139,6 +139,19 @@ type. The responding peer iterates through beacon blocks in the range
 whose `proof_type` is in the requested `proof_types` list. If `proof_types` is
 empty, all known proof types are returned for each block in the range.
 
+Let `proof_serve_range` be
+`[compute_start_slot_at_epoch(state.finalized_checkpoint.epoch), current_slot]`
+where `current_slot` is defined by the current wall-clock time. Clients MUST
+support serving `ExecutionProofsByRange` requests for slots in
+`proof_serve_range` from their view of the canonical chain. Peers unable to
+reply within `proof_serve_range` SHOULD respond with error code
+`3: ResourceUnavailable`. Such peers MAY get descored or disconnected at any
+time.
+
+Clients MUST respond with execution proofs from their view of the current fork
+choice -- that is, proofs for blocks in the single chain defined by the current
+head.
+
 The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `SignedExecutionProof` payload.
 
@@ -147,8 +160,8 @@ Clients MUST keep the total number of requested proofs under
 `MAX_EXECUTION_PROOFS_PER_PAYLOAD` proofs, the `count` field MUST satisfy
 `count * MAX_EXECUTION_PROOFS_PER_PAYLOAD <= compute_max_request_execution_proofs()`.
 
-Clients MUST respond with at least one proof, if they have it. Clients MAY limit
-the number of proofs in the response.
+Clients MUST respond with at least one proof, if they have it within
+`proof_serve_range`. Clients MAY limit the number of proofs in the response.
 
 Clients SHOULD return proofs in slot-ascending order within the requested range.
 
@@ -181,11 +194,16 @@ less in the case that the responding peer is missing blocks or proofs.
 No more than `compute_max_request_execution_proofs()` may be requested at a
 time.
 
+Clients MUST support serving `ExecutionProofsByRoot` requests for any block
+root on the canonical chain whose slot is in `proof_serve_range` (as defined
+for `ExecutionProofsByRange` above). Peers unable to reply SHOULD respond
+with error code `3: ResourceUnavailable`.
+
 The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `SignedExecutionProof` payload.
 
-Clients MUST respond with at least one proof, if they have it. Clients MAY limit
-the number of proofs in the response.
+Clients MUST respond with at least one proof, if they have it within
+`proof_serve_range`. Clients MAY limit the number of proofs in the response.
 
 #### ExecutionProofStatus
 
@@ -215,6 +233,12 @@ As seen by the client at the time of sending the message:
   constant, allowing clients to support new proof types without requiring a hard
   fork or new client release. Peers SHOULD use this field to inform proof type
   selection during synchronization.
+
+Clients use this message for peer selection during proof synchronization: by
+comparing a remote peer's advertised `(block_root, slot)` proof-verification
+frontier against the local chain view and checking `proof_types` for capability
+overlap, a client can identify peers well-placed to serve subsequent
+`ExecutionProofsByRange` or `ExecutionProofsByRoot` requests.
 
 The request/response MUST be encoded as an SSZ-container.
 
