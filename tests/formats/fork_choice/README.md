@@ -289,10 +289,7 @@ Each file is an SSZ-snappy encoded `SignedExecutionPayloadEnvelope`.
 
 1. Deserialize `anchor_state.ssz_snappy` and `anchor_block.ssz_snappy` to
    initialize the local store object with
-   `get_forkchoice_store(anchor_state, anchor_block)` helper. For Gloas and
-   later forks: the anchor block's payload state is initialized by seeding
-   `payload_states[anchor_root]` from `anchor_state`, as specified in
-   `get_forkchoice_store`.
+   `get_forkchoice_store(anchor_state, anchor_block)` helper.
 2. Iterate sequentially through `steps.yaml`
    - For each execution, look up the corresponding ssz_snappy file. Execute the
      corresponding helper function on the current store.
