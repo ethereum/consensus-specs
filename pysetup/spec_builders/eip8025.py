@@ -62,7 +62,7 @@ class NoopProofEngine(ProofEngine):
 
     def request_proofs(self: ProofEngine,
                        new_payload_request: NewPayloadRequest,
-                       proof_attributes: ProofAttributes) -> ProofGenId:
+                       proof_attributes: ProofAttributes) -> Root:
         # pylint: disable=unused-argument
         raise NotImplementedError("no default proof generation")
 

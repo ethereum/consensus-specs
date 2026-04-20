@@ -190,10 +190,10 @@ less in the case that the responding peer is missing blocks or proofs.
 No more than `compute_max_request_execution_proofs()` may be requested at a
 time.
 
-Clients MUST support serving `ExecutionProofsByRoot` requests for any block
-root on the canonical chain whose slot is in `proof_serve_range` (as defined
-for `ExecutionProofsByRange` above). Peers unable to reply SHOULD respond
-with error code `3: ResourceUnavailable`.
+Clients MUST support serving `ExecutionProofsByRoot` requests for any block root
+on the canonical chain whose slot is in `proof_serve_range` (as defined for
+`ExecutionProofsByRange` above). Peers unable to reply SHOULD respond with error
+code `3: ResourceUnavailable`.
 
 The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `SignedExecutionProof` payload.
