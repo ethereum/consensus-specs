@@ -8,7 +8,6 @@
 
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
-- [Types](#types)
 - [Proof engine](#proof-engine)
   - [New `verify_execution_proof`](#new-verify_execution_proof)
   - [New `notify_new_payload`](#new-notify_new_payload)
@@ -21,12 +20,6 @@
 
 This document contains the Proof Engine specification. The Proof Engine enables
 stateless validation of execution payloads through execution proofs.
-
-## Types
-
-| Name         | SSZ equivalent | Description                              |
-| ------------ | -------------- | ---------------------------------------- |
-| `ProofGenId` | `Bytes8`       | Identifier for tracking proof generation |
 
 ## Proof engine
 
@@ -88,13 +81,19 @@ def request_proofs(
     self: ProofEngine,
     new_payload_request: NewPayloadRequest,
     proof_attributes: ProofAttributes,
-) -> ProofGenId:
+) -> Root:
     """
-    Request proof generation for a new payload request with specified proof attributes.
-    Returns a ``ProofGenId`` to track the generation request.
+    Request proof generation for a new payload request with specified proof
+    attributes. Returns ``new_payload_request.hash_tree_root()``, which serves
+    as the identifier for tracking generation and correlating the completed
+    proof on the gossip layer (it is the public input carried in
+    ``ExecutionProof.public_input.new_payload_request_root``).
 
-    Generated proofs are delivered asynchronously via the beacon API endpoint
-    ``POST /eth/v1/prover/execution_proofs``.
+    Generated proofs are delivered asynchronously via the proof engine's
+    Server-Sent Events (SSE) stream. The concrete SSE event shape and
+    transport are defined by the proof engine API; see the zkboost reference
+    implementation:
+    https://github.com/eth-act/zkboost/blob/v0.5.0/openapi.json.
     """
     ...
 ```

@@ -49,7 +49,12 @@ def get_execution_proof_signature(
 An honest prover who is an active validator and wants to generate execution
 proofs for a `BeaconBlock` performs the following steps:
 
-1. Subscribe to `Block` events from the beacon node via SSE.
+1. At startup, subscribe to:
+   - `Block` events from the beacon node via SSE.
+   - Proof completion events from the proof engine via SSE. The concrete SSE
+     event shape is defined by the proof engine API; see the zkboost reference
+     implementation:
+     https://github.com/eth-act/zkboost/blob/v0.5.0/openapi.json.
 2. Upon receiving a `Block` event:
    - Fetch the full `BeaconBlock` via RPC.
    - Construct `NewPayloadRequest` from the block.
@@ -58,8 +63,7 @@ proofs for a `BeaconBlock` performs the following steps:
      `new_payload_request_root = proof_engine.request_proofs(new_payload_request, proof_attributes)`
      to initiate proof generation, tracking the request by
      `new_payload_request_root`.
-3. Subscribe to proof completion events from the proof engine via SSE.
-4. Upon receiving a proof completion event for a tracked
+3. Upon receiving a proof completion event for a tracked
    `new_payload_request_root`:
    - Fetch the completed `ExecutionProof` from the proof engine.
    - Let `validator_index` be the prover's validator index.
