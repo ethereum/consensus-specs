@@ -52,6 +52,7 @@ OFF_CHAIN_SLASHING_RATE = 33
 ON_CHAIN_SLASHING_RATE = 33
 
 INVALID_MESSAGES_RATE = 5
+EXECUTION_PAYLOAD_SEND_RATE = 65
 
 
 class SmLink(tuple):
@@ -473,6 +474,10 @@ def _spoil_payload_attestation_message(spec, rnd: random.Random, state, ptc_mess
     ptc_message.validator_index = (ptc_message.validator_index + 1) % len(state.validators)
 
 
+def _spoil_execution_payload_envelope(spec, rnd: random.Random, signed_envelope):
+    signed_envelope.message.payload.parent_hash = spec.Hash32(rnd.randbytes(32))
+
+
 def _get_random_payload_attestation_messages(spec, state, rnd: random.Random):
     """Build random PayloadAttestationMessage objects with diverse PTC vote values."""
     attested_slot = state.latest_block_header.slot
@@ -568,6 +573,7 @@ def _generate_block_tree(
 
     while block_index < len(block_parents):
         envelope = None
+        valid_block_was_produced = False
         # Propose a block if slot shouldn't be empty
         if rnd.randint(1, 100) > EMPTY_SLOTS_RATE:
             # Advance parent state to the current slot
@@ -612,6 +618,7 @@ def _generate_block_tree(
                 # Valid block
                 signed_block_messages.append(ProtocolMessage(signed_block, True))
                 post_states.append(post_state)
+                valid_block_was_produced = True
 
                 # Update tips
                 block_tree_tips.discard(parent_index)
@@ -619,14 +626,23 @@ def _generate_block_tree(
 
                 block_root = signed_block.message.hash_tree_root()
 
-                if is_post_gloas(spec):
-                    # Builder reveals execution payload
-                    envelope = build_signed_execution_payload_envelope(
-                        spec, post_state, block_root, signed_block
-                    )
-
                 # Next block
             block_index += 1
+
+        if is_post_gloas(spec) and valid_block_was_produced:
+            # Builder reveals execution payload
+            envelope = build_signed_execution_payload_envelope(
+                spec, post_state, block_root, signed_block
+            )
+            if rnd.randint(0, 99) < EXECUTION_PAYLOAD_SEND_RATE:
+                # TODO: Consider an explicit invalid case for an execution payload
+                # targeting an unknown beacon block root. That should stay out of
+                # the orderly base scenario unless `with_invalid_messages` is enabled.
+                valid = True
+                if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
+                    _spoil_execution_payload_envelope(spec, rnd, envelope)
+                    valid = False
+                signed_envelope_messages.append(ProtocolMessage(envelope, valid))
 
         # Attest to randomly selected tips
         def split_list(lst, n):
@@ -664,11 +680,11 @@ def _generate_block_tree(
                     spoil_fn=lambda msg: _spoil_attestation(spec, rnd, msg),
                 )
 
-        if is_post_gloas(spec) and envelope is not None:
-            signed_envelope_messages.append(ProtocolMessage(envelope, True))
-
-            if is_post_gloas(spec):
-                for ptc_message in _get_random_payload_attestation_messages(spec, post_state, rnd):
+        if is_post_gloas(spec):
+            if valid_block_was_produced:
+                for ptc_message in _get_random_payload_attestation_messages(
+                    spec, post_state, rnd
+                ):
                     _disseminate(
                         rnd,
                         ptc_message,

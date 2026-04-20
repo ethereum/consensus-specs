@@ -24,6 +24,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     run_on_attestation,
     run_on_attester_slashing,
     run_on_block,
+    run_on_execution_payload_envelope,
     run_on_payload_attestation_message,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
@@ -577,7 +578,8 @@ def yield_fork_choice_test_events(spec, test_data: FCTestData, test_events: list
             output_store_checks(spec, store, test_steps)
         elif event_kind == "execution_payload":
             _, signed_envelope, valid = event
-            assert valid  # invalid not supported yet
+            if valid is None:
+                valid = try_add_mesage(run_on_execution_payload_envelope, signed_envelope)
             yield from add_execution_payload(spec, store, signed_envelope, test_steps, valid=valid)
             output_store_checks(spec, store, test_steps)
         elif event_kind == "payload_attestation":
