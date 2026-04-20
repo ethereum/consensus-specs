@@ -121,7 +121,7 @@ Request Content:
 (
   start_slot: Slot
   count: uint64
-  proof_filters: List[ProofByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]
+  proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
 )
 ```
 
@@ -133,13 +133,11 @@ Response Content:
 )
 ```
 
-Requests execution proofs for a contiguous range of slots. The request specifies
-a `start_slot` and a `count` of slots. The responding peer iterates through
-beacon blocks in the range `[start_slot, start_slot + count)` and returns all
-known `SignedExecutionProof` entries associated with those blocks. If
-`proof_filters` is non-empty, only the proof types specified for each block root
-in `proof_filters` are returned for the matching blocks; blocks not listed in
-`proof_filters` return all known proof types.
+Requests execution proofs for a contiguous range of slots, filtered by proof
+type. The responding peer iterates through beacon blocks in the range
+`[start_slot, start_slot + count)` and returns `SignedExecutionProof` entries
+whose `proof_type` is in the requested `proof_types` list. If `proof_types` is
+empty, all known proof types are returned for each block in the range.
 
 The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `SignedExecutionProof` payload.
