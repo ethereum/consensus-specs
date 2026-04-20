@@ -232,9 +232,7 @@ def produce_block(
     )
 
 
-def attest_to_slot(
-    spec, state, slot_to_attest, participants_filter=None, payload_index=None
-) -> []:
+def attest_to_slot(spec, state, slot_to_attest, participants_filter=None, payload_index=None) -> []:
     """
     Creates attestation is a slot respecting participating validators.
     :return: produced attestations

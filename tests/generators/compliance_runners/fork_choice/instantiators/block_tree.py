@@ -680,7 +680,10 @@ def _generate_block_tree(
                         att_payload_index_invalid = True
                     else:
                         payload_index = 0
-                elif attesting_block_index != new_block_index and attesting_block_index in payload_known_block_indices:
+                elif (
+                    attesting_block_index != new_block_index
+                    and attesting_block_index in payload_known_block_indices
+                ):
                     if rnd.randint(0, 99) < GLOAS_FULL_ATTESTATION_RATE:
                         payload_index = 1
                     else:
@@ -718,9 +721,7 @@ def _generate_block_tree(
                 # for an older known block root or invalid votes for an unknown
                 # root. Those should stay out of the orderly base scenario
                 # unless `with_invalid_messages` is enabled.
-                for ptc_message in _get_random_payload_attestation_messages(
-                    spec, post_state, rnd
-                ):
+                for ptc_message in _get_random_payload_attestation_messages(spec, post_state, rnd):
                     _disseminate(
                         rnd,
                         ptc_message,
