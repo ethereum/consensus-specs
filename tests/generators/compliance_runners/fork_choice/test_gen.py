@@ -3,8 +3,7 @@ import os
 import warnings
 
 import pytest
-
-DEFAULT_OUTPUT_DIR = "comptests"
+from tests.generators.compliance_runners.gen_base.pytest_support import DEFAULT_OUTPUT_DIR
 
 
 def create_arg_parser() -> argparse.ArgumentParser:
