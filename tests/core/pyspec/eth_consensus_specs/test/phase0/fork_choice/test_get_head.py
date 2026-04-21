@@ -60,19 +60,11 @@ def test_genesis(spec, state):
         # Verify Gloas store fields
         assert hasattr(store, "payloads")
         assert hasattr(store, "payload_timeliness_vote")
-        assert anchor_root not in store.payloads  # genesis payload is EMPTY
-        assert anchor_root in store.payload_timeliness_vote
-
-        # Check PTC vote initialization
-        ptc_vote = store.payload_timeliness_vote[anchor_root]
-        assert len(ptc_vote) == spec.PTC_SIZE
-        assert all(ptc_vote)
-
-        # Check data availability vote initialization
-        assert anchor_root in store.payload_data_availability_vote
-        da_vote = store.payload_data_availability_vote[anchor_root]
-        assert len(da_vote) == spec.PTC_SIZE
-        assert all(da_vote)
+        assert hasattr(store, "payload_data_availability_vote")
+        # Anchor has no observed payload envelope or PTC votes
+        assert anchor_root not in store.payloads
+        assert anchor_root not in store.payload_timeliness_vote
+        assert anchor_root not in store.payload_data_availability_vote
 
         # get_head returns ForkChoiceNode
         head = spec.get_head(store)
