@@ -65,11 +65,9 @@ jobs:
     outputs:
       repo: ${{ steps.config.outputs.repo }}
       ref: ${{ steps.config.outputs.ref }}
-      presets: ${{ steps.config.outputs.presets }}
-      forks: ${{ steps.config.outputs.forks }}
       configs: ${{ steps.config.outputs.configs }}
-      generate_matrix: ${{ steps.config.outputs.generate_matrix }}
       seed: ${{ steps.config.outputs.seed }}
+      matrix: ${{ steps.config.outputs.matrix }}
     steps:
       - name: Resolve configuration
         id: config
@@ -111,7 +109,7 @@ jobs:
           fi
           echo "forks=$forks" >> "$GITHUB_OUTPUT"
 
-          # Generator configs
+          # Configs
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             configs='["tiny"]'
           else
@@ -142,8 +140,8 @@ jobs:
           fi
           echo "seed=$seed" >> "$GITHUB_OUTPUT"
 
-          # Generation matrix
-          generate_matrix=$(
+          # Matrix
+          matrix=$(
             jq -cn \
               --argjson presets "$presets" \
               --argjson forks "$forks" \
@@ -170,7 +168,7 @@ jobs:
               ]
               '
           )
-          echo "generate_matrix=$generate_matrix" >> "$GITHUB_OUTPUT"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
           # Summary
           echo "Configuration:"
@@ -180,16 +178,17 @@ jobs:
           echo "  forks:   $forks"
           echo "  configs: $configs"
           echo "  seed:    $seed"
-          echo "  slicing_config: ${{ env.COMPTEST_SLICING_CONFIG }}"
-          echo "  generate_matrix: $generate_matrix"
+          echo "  matrix:  $matrix"
+          echo "  slicing: ${{ env.COMPTEST_SLICING_CONFIG }}"
 
   generate:
     needs: config
+    name: generate (${{ matrix.fork }}, ${{ matrix.config }}, ${{ matrix.slice_index }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.config.outputs.generate_matrix) }}
+        include: ${{ fromJson(needs.config.outputs.matrix) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -228,7 +227,7 @@ jobs:
       - name: Upload compliance tests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: comptests-${{ matrix.config }}-${{ matrix.preset }}-${{ matrix.fork }}-slice${{ matrix.slice_index }}of${{ matrix.slice_count }}
+          name: comptests-${{ matrix.config }}-${{ matrix.preset }}-${{ matrix.fork }}-${{ matrix.slice_index }}
           path: compliance-spec-tests/${{ matrix.config }}
           if-no-files-found: ignore
 
