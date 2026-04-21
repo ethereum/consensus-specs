@@ -37,8 +37,11 @@ From the root directory:
 
 ```
 make _pyspec  # Initialize virtual environment
-python -m tests.generators.compliance_runners.fork_choice.test_run -i ${test_dir}
+uv run pytest tests/generators/compliance_runners/fork_choice/runner/test_run.py --test-dir ${test_dir}
 ```
+
+Optional pytest filtering and distribution flags such as `-k ...` and
+`-n logical` can be added as needed.
 
 # Generating configurations
 
