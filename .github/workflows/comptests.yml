@@ -90,7 +90,7 @@ jobs:
 
           # Forks
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            forks='["altair","bellatrix","capella","deneb","electra","fulu","gloas"]'
+            forks='["fulu","gloas"]'
           else
             selected=()
             [[ "${{ inputs.altair }}" == "true" ]] && selected+=("altair")
