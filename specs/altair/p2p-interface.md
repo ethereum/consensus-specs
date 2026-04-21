@@ -266,14 +266,8 @@ def validate_sync_committee_contribution_and_proof_gossip(
     )
     contribution_bits = tuple(bool(bit) for bit in contribution.aggregation_bits)
     seen_bits = seen.sync_contribution_data.get(contribution_key, set())
-    for prior_bits in seen_bits:
-        is_non_strict_superset = True
-        for prior_bit, new_bit in zip(prior_bits, contribution_bits):
-            if new_bit and not prior_bit:
-                is_non_strict_superset = False
-                break
-        if is_non_strict_superset:
-            raise GossipIgnore("already seen contribution for this data")
+    if is_non_strict_superset(seen_bits, contribution_bits):
+        raise GossipIgnore("already seen contribution for this data")
 
     # [IGNORE] The sync committee contribution is the first valid contribution received
     # for the aggregator with index contribution_and_proof.aggregator_index
@@ -283,6 +277,7 @@ def validate_sync_committee_contribution_and_proof_gossip(
         contribution.slot,
         contribution.subcommittee_index,
     )
+
     if aggregator_key in seen.sync_contribution_aggregator_slots:
         raise GossipIgnore("already seen contribution from this aggregator")
 
