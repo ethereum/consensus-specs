@@ -277,7 +277,6 @@ def validate_sync_committee_contribution_and_proof_gossip(
         contribution.slot,
         contribution.subcommittee_index,
     )
-
     if aggregator_key in seen.sync_contribution_aggregator_slots:
         raise GossipIgnore("already seen contribution from this aggregator")
 
