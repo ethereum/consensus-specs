@@ -8,6 +8,7 @@ from tests.infra.helpers.builders import add_builder_to_registry
 from tests.infra.helpers.withdrawals import (
     assert_process_withdrawals,
     prepare_process_withdrawals,
+    set_parent_block_empty,
 )
 
 
@@ -1064,6 +1065,10 @@ def test_full_builder_payload_reserves_sweep_slot(spec, state):
         if validator.withdrawal_credentials[0:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX:
             state.balances[i] = min(state.balances[i], spec.MAX_EFFECTIVE_BALANCE)
 
+    # Setup: Simulate parent being FULL so process_withdrawals runs (deferred
+    # processing otherwise returns early when parent was EMPTY).
+    state.latest_block_hash = state.latest_execution_payload_bid.block_hash
+
     # Verify setup: One slot reserved for sweep, so only MAX - 1 builder withdrawals
     expected_result = spec.get_expected_withdrawals(state)
     expected_builder_withdrawals = spec.MAX_WITHDRAWALS_PER_PAYLOAD - 1
@@ -1105,6 +1110,27 @@ def test_full_builder_payload_reserves_sweep_slot(spec, state):
     # Verify: One builder withdrawal remains unprocessed (slot was reserved for sweep)
     assert len(state.builder_pending_withdrawals) == 1, (
         "One builder withdrawal should remain (slot was reserved for sweep)"
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_zero_hash_genesis_skips_withdrawals(spec, state):
+    """
+    Verify that process_withdrawals does not advance withdrawal indices
+    when both hashes are Hash32().
+    """
+    state.latest_block_hash = spec.Hash32()
+    state.latest_execution_payload_bid.block_hash = spec.Hash32()
+
+    pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        all_state_unchanged=True,
     )
 
 
@@ -1483,3 +1509,51 @@ def test_builder_sweep_index_wrap_around(spec, state):
         pre_state,
         builder_balances={0: 0},  # Builder 0 swept after wrap-around
     )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_empty_parent_preserves_populated_expected_withdrawals(spec, state):
+    """
+    Test early return when parent block is empty after a prior full parent
+    already populated payload_expected_withdrawals.
+
+    Input State Configured:
+        - state.builders[0]: Builder with pending withdrawal (1 ETH)
+        - payload_expected_withdrawals: Populated by a prior full-parent pass
+        - next_withdrawal_index: Advanced by the prior pass
+        - latest_block_hash: != latest_execution_payload_bid.block_hash (parent EMPTY)
+
+    Output State Verified:
+        - All state fields UNCHANGED (early exit triggered):
+          - payload_expected_withdrawals: Unchanged (non-empty)
+          - balances[*]: Unchanged
+          - builder_pending_withdrawals: Unchanged
+          - pending_partial_withdrawals: Unchanged
+          - next_withdrawal_index: Unchanged
+          - next_withdrawal_validator_index: Unchanged
+        - get_expected_withdrawals(state).withdrawals diverges from
+          payload_expected_withdrawals (indices/balances advanced by first pass)
+    """
+    builder_index = 0
+    withdrawal_amount = spec.Gwei(1_000_000_000)
+
+    # Populate payload_expected_withdrawals via a successful full parent pass
+    prepare_process_withdrawals(
+        spec,
+        state,
+        builder_indices=[builder_index],
+        builder_withdrawal_amounts={builder_index: withdrawal_amount},
+        builder_balances={builder_index: withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT},
+    )
+    spec.process_withdrawals(state)
+    populated_withdrawals = list(state.payload_expected_withdrawals)
+    assert len(populated_withdrawals) > 0
+
+    set_parent_block_empty(spec, state)
+    pre_state = state.copy()
+
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    assert_process_withdrawals(spec, state, pre_state, all_state_unchanged=True)
+    assert list(spec.get_expected_withdrawals(state).withdrawals) != populated_withdrawals
