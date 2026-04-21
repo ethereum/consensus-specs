@@ -672,8 +672,8 @@ def validate_beacon_aggregate_and_proof_gossip(
     # [IGNORE] A valid aggregate with a superset of aggregation bits has not already been seen
     aggregate_data_root = hash_tree_root(aggregate.data)
     aggregate_bits = tuple(bool(bit) for bit in aggregation_bits)
-    seen_aggregation_bits = seen.aggregate_data_roots.get(aggregate_data_root, set())
-    if is_non_strict_superset(seen_aggregation_bits, aggregate_bits):
+    seen_bits = seen.aggregate_data_roots.get(aggregate_data_root, set())
+    if is_non_strict_superset(seen_bits, aggregate_bits):
         raise GossipIgnore("already seen aggregate for this data")
 
     # [IGNORE] This is the first valid aggregate for this aggregator in this epoch
