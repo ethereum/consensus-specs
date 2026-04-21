@@ -29,6 +29,18 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
         )
 
     @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return set(
+            [
+                "compute_proposer_index",
+                "initialize_proposer_lookahead",
+                "process_execution_payload",
+                "retrieve_column_sidecars",
+                "upgrade_to_fulu",
+            ]
+        )
+
+    @classmethod
     def sundry_functions(cls) -> str:
         return """
 def retrieve_column_sidecars_and_kzg_commitments(

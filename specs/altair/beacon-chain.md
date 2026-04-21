@@ -652,6 +652,8 @@ def process_epoch(state: BeaconState) -> None:
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
     process_historical_roots_update(state)
+    # [Modified in Altair]
+    # Removed `process_participation_record_updates`
     # [New in Altair]
     process_participation_flag_updates(state)
     # [New in Altair]

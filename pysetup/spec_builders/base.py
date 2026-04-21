@@ -61,3 +61,7 @@ class BaseSpecBuilder(ABC):
     @classmethod
     def deprecate_presets(cls) -> set[str]:
         return set()
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return set()
