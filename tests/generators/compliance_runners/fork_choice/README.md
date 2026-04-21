@@ -26,6 +26,12 @@ make comptests fc_gen_config=<config>
 where `config` can be either: [`tiny`](tiny/), [`small`](small/) or
 [`standard`](standard/).
 
+The target uses pytest collection and can be filtered with `k=<pattern>` in the
+same style as `make test`.
+
+`make comptests` is the supported generation path. The standalone `test_gen.py`
+entrypoint is kept as a legacy/manual path during the transition.
+
 # Running tests
 
 From the root directory:
