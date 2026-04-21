@@ -30,7 +30,8 @@ The target uses pytest collection and can be filtered with `k=<pattern>` in the
 same style as `make test`.
 
 `make comptests` is the supported generation path. The standalone `test_gen.py`
-entrypoint is kept as a legacy/manual path during the transition.
+entrypoint is kept as a deprecated compatibility wrapper and now delegates to
+the pytest-based generator.
 
 # Running tests
 
