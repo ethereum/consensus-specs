@@ -63,14 +63,16 @@ An SSZ-snappy encoded `BeaconState`. This state provides:
 Message files are named with a prefix indicating their type and the 32-byte hash
 tree root:
 
-| Topic                        | File prefix          | SSZ type                  |
-| ---------------------------- | -------------------- | ------------------------- |
-| `beacon_block`               | `block_`             | `SignedBeaconBlock`       |
-| `beacon_attestation`         | `attestation_`       | `Attestation`             |
-| `beacon_aggregate_and_proof` | `aggregate_`         | `SignedAggregateAndProof` |
-| `proposer_slashing`          | `proposer_slashing_` | `ProposerSlashing`        |
-| `attester_slashing`          | `attester_slashing_` | `AttesterSlashing`        |
-| `voluntary_exit`             | `voluntary_exit_`    | `SignedVoluntaryExit`     |
+| Topic                                   | File prefix               | SSZ type                     |
+| --------------------------------------- | ------------------------- | ---------------------------- |
+| `beacon_block`                          | `block_`                  | `SignedBeaconBlock`          |
+| `beacon_attestation`                    | `attestation_`            | `Attestation`                |
+| `beacon_aggregate_and_proof`            | `aggregate_`              | `SignedAggregateAndProof`    |
+| `proposer_slashing`                     | `proposer_slashing_`      | `ProposerSlashing`           |
+| `attester_slashing`                     | `attester_slashing_`      | `AttesterSlashing`           |
+| `voluntary_exit`                        | `voluntary_exit_`         | `SignedVoluntaryExit`        |
+| `sync_committee_contribution_and_proof` | `contribution_`           | `SignedContributionAndProof` |
+| `sync_committee`                        | `sync_committee_message_` | `SyncCommitteeMessage`       |
 
 Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
 
