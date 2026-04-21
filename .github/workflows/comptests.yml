@@ -1,8 +1,5 @@
 name: Compliance Tests
 
-env:
-  COMPTEST_SLICING_CONFIG: '{"tiny":1,"small":4,"standard":4}'
-
 on:
   workflow_dispatch:
     inputs:
@@ -62,6 +59,8 @@ on:
 jobs:
   config:
     runs-on: ubuntu-latest
+    env:
+      COMPTEST_SLICING_CONFIG: '{"tiny":1,"small":4,"standard":4}'
     outputs:
       repo: ${{ steps.config.outputs.repo }}
       ref: ${{ steps.config.outputs.ref }}
