@@ -11,8 +11,11 @@ from snappy import uncompress
 from tqdm import tqdm
 
 from eth_consensus_specs.test.context import expect_assertion_error
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
+
+from .instantiators.helpers import payload_attestation_to_messages
 
 bls.bls_active = False
 
@@ -33,14 +36,6 @@ def get_test_case(spec, td):
     def get_prefix(p):
         return p[p.rindex("/") + 1 : p.rindex(".")]
 
-    envelope_files = glob(f"{td}/execution_payload_envelope_*.ssz_snappy")
-    envelopes = {}
-    if envelope_files:
-        envelopes = {
-            get_prefix(e): spec.SignedExecutionPayloadEnvelope.decode_bytes(read_ssz_snappy(e))
-            for e in envelope_files
-        }
-
     return (
         read_yaml(f"{td}/meta.yaml"),
         spec.BeaconBlock.decode_bytes(read_ssz_snappy(f"{td}/anchor_block.ssz_snappy")),
@@ -57,7 +52,14 @@ def get_test_case(spec, td):
             get_prefix(b): spec.AttesterSlashing.decode_bytes(read_ssz_snappy(b))
             for b in glob(f"{td}/attester_slashing_*.ssz_snappy")
         },
-        envelopes,
+        {
+            get_prefix(e): spec.SignedExecutionPayloadEnvelope.decode_bytes(read_ssz_snappy(e))
+            for e in glob(f"{td}/execution_payload_envelope_*.ssz_snappy")
+        },
+        {
+            get_prefix(b): spec.PayloadAttestationMessage.decode_bytes(read_ssz_snappy(b))
+            for b in glob(f"{td}/payload_attestation_*.ssz_snappy")
+        },
         read_yaml(f"{td}/steps.yaml"),
     )
 
@@ -75,8 +77,8 @@ TestInfo = namedtuple(
 def run_test(test_info):
     preset, fork, test_dir = test_info
     spec = spec_targets[preset][fork]
-    meta, anchor_block, anchor_state, blocks, atts, slashings, envelopes, steps = get_test_case(
-        spec, test_dir
+    _, anchor_block, anchor_state, blocks, atts, slashings, envelopes, payload_atts, steps = (
+        get_test_case(spec, test_dir)
     )
     store = spec.get_forkchoice_store(anchor_state, anchor_block)
     for step in steps:
@@ -99,6 +101,18 @@ def run_test(test_info):
                         spec.on_attester_slashing(store, block_att_slashing)
                     except AssertionError:
                         pass
+                if is_post_gloas(spec):
+                    state = store.block_states[signed_block.message.hash_tree_root()]
+                    for payload_attestation in signed_block.message.body.payload_attestations:
+                        for ptc_message in payload_attestation_to_messages(
+                            spec, state, payload_attestation
+                        ):
+                            try:
+                                spec.on_payload_attestation_message(
+                                    store, ptc_message, is_from_block=True
+                                )
+                            except AssertionError:
+                                pass
             else:
                 expect_assertion_error(lambda: spec.on_block(store, signed_block))
         elif "attestation" in step:
@@ -122,17 +136,40 @@ def run_test(test_info):
             valid = step.get("valid", True)
             signed_envelope = envelopes[envelope_id]
             if valid:
-                spec.on_execution_payload(store, signed_envelope)
+                spec.on_execution_payload_envelope(store, signed_envelope)
             else:
-                expect_assertion_error(lambda: spec.on_execution_payload(store, signed_envelope))
+                expect_assertion_error(
+                    lambda: spec.on_execution_payload_envelope(store, signed_envelope)
+                )
+        elif "payload_attestation" in step:
+            ptc_message_id = step["payload_attestation"]
+            valid = step.get("valid", True)
+            ptc_message = payload_atts[ptc_message_id]
+            if valid:
+                spec.on_payload_attestation_message(store, ptc_message, is_from_block=False)
+            else:
+                expect_assertion_error(
+                    lambda: spec.on_payload_attestation_message(
+                        store, ptc_message, is_from_block=False
+                    )
+                )
         elif "checks" in step:
             checks = step["checks"]
+
+            cached_head = None
+
+            def get_head():
+                nonlocal cached_head
+                if cached_head is None:
+                    cached_head = spec.get_head(store)
+                return cached_head
+
             for check, value in checks.items():
                 if check == "time":
                     expected_time = value
                     assert store.time == expected_time
                 elif check == "head":
-                    head = spec.get_head(store)
+                    head = get_head()
                     head_root = head.root if hasattr(head, "root") else head
                     assert store.blocks[head_root].slot == value["slot"]
                     assert str(head_root) == value["root"]
@@ -162,7 +199,7 @@ def run_test(test_info):
                     expected = {kv["root"]: kv["weight"] for kv in value}
                     assert expected == viable_for_head_roots_and_weights
                 elif check == "head_payload_status":
-                    head = spec.get_head(store)
+                    head = get_head()
                     assert head.payload_status == value
                 else:
                     assert False
