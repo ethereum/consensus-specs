@@ -165,9 +165,9 @@ def validate_beacon_block_gossip(
         if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
             raise GossipReject("incorrect execution payload timestamp")
 
-        parent_payload_status = block_payload_statuses.get(
-            block.parent_root, PAYLOAD_STATUS_NOT_VALIDATED
-        )
+        parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
+        if block.parent_root in block_payload_statuses:
+            parent_payload_status = block_payload_statuses[block.parent_root]
 
         if block.parent_root not in store.block_states:
             if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
