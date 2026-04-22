@@ -90,9 +90,6 @@ The following validations MUST pass before forwarding the
   `(proof.public_input.new_payload_request_root, proof.proof_type, signed_execution_proof.validator_index)`
   -- i.e. the first *valid or invalid* proof for `proof.proof_type` from
   `signed_execution_proof.validator_index`.
-- _[IGNORE]_ The validator has not previously sent an invalid proof -- i.e. no
-  *invalid* proof from `signed_execution_proof.validator_index` has been
-  received.
 - _[REJECT]_ The validator with index `signed_execution_proof.validator_index`
   is an active validator -- i.e.
   `is_active_validator(state.validators[signed_execution_proof.validator_index], get_current_epoch(state))`
