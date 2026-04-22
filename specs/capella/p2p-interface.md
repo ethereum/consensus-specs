@@ -200,8 +200,8 @@ def validate_beacon_block_gossip(
 ###### `bls_to_execution_change`
 
 The `bls_to_execution_change` topic is used solely for propagating signed BLS to
-execution change (BTEC) messages on the network. Signed BTEC messages are sent
-in their entirety. The `state` parameter is the head state.
+execution change messages on the network. Signed messages are sent in their
+entirety. The `state` parameter is the head state.
 
 ```python
 def validate_bls_to_execution_change_gossip(
@@ -214,8 +214,8 @@ def validate_bls_to_execution_change_gossip(
     Validate a SignedBLSToExecutionChange for gossip propagation.
     Raises GossipIgnore or GossipReject on validation failure.
     """
-    btec = signed_bls_to_execution_change.message
-    validator_index = btec.validator_index
+    bls_to_execution_change = signed_bls_to_execution_change.message
+    validator_index = bls_to_execution_change.validator_index
 
     # [IGNORE] The current epoch is at or after the Capella fork epoch
     # (where current_epoch is defined by the current wall-clock time)
@@ -225,7 +225,7 @@ def validate_bls_to_execution_change_gossip(
     if current_epoch < CAPELLA_FORK_EPOCH:
         raise GossipIgnore("current epoch is pre-capella")
 
-    # [IGNORE] This is the first valid BTEC received for the validator
+    # [IGNORE] This is the first valid bls_to_execution_change received for the validator
     if validator_index in seen.bls_to_execution_change_indices:
         raise GossipIgnore("already seen BLS to execution change for this validator")
 
@@ -239,23 +239,23 @@ def validate_bls_to_execution_change_gossip(
     if validator.withdrawal_credentials[:1] != BLS_WITHDRAWAL_PREFIX:
         raise GossipReject("validator does not have BLS withdrawal credentials")
 
-    # [REJECT] The BTEC is for the validator's withdrawal pubkey
-    if validator.withdrawal_credentials[1:] != hash(btec.from_bls_pubkey)[1:]:
+    # [REJECT] The bls_to_execution_change is for the validator's withdrawal pubkey
+    if validator.withdrawal_credentials[1:] != hash(bls_to_execution_change.from_bls_pubkey)[1:]:
         raise GossipReject("pubkey does not match validator withdrawal credentials")
 
     # [REJECT] The signature is valid
     domain = compute_domain(
         DOMAIN_BLS_TO_EXECUTION_CHANGE, genesis_validators_root=state.genesis_validators_root
     )
-    signing_root = compute_signing_root(btec, domain)
+    signing_root = compute_signing_root(bls_to_execution_change, domain)
     if not bls.Verify(
-        btec.from_bls_pubkey,
+        bls_to_execution_change.from_bls_pubkey,
         signing_root,
         signed_bls_to_execution_change.signature,
     ):
         raise GossipReject("invalid BLS to execution change signature")
 
-    # Mark this BTEC as seen
+    # Mark this bls_to_execution_change as seen
     seen.bls_to_execution_change_indices.add(validator_index)
 ```
 
