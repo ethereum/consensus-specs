@@ -4,7 +4,7 @@ from eth_consensus_specs.test.context import (
     with_phases,
     with_presets,
 )
-from eth_consensus_specs.test.helpers.constants import ALTAIR, CAPELLA, MAINNET
+from eth_consensus_specs.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, MAINNET
 from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.utils import bls
@@ -137,7 +137,7 @@ def run_validate_contribution_gossip(
         return "reject", str(e)
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__valid(spec, state):
@@ -181,7 +181,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid(spec, state):
     )
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__valid_at_period_boundary(spec, state):
@@ -231,7 +231,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid_at_period_boundary(
     )
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__ignore_future_slot(spec, state):
     """Test that a contribution from a future slot is ignored."""
@@ -283,7 +283,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_future_slot(spec, 
     )
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__ignore_past_slot(spec, state):
     """Test that a contribution from a past slot is ignored."""
@@ -339,7 +339,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_past_slot(spec, st
     )
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__reject_invalid_subcommittee_index(
     spec, state
@@ -394,7 +394,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_subcommitt
     )
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__reject_no_participants(spec, state):
     """Test that a contribution with no participants is rejected."""
@@ -448,7 +448,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_no_participants(sp
     )
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @with_presets([MAINNET], reason="minimal preset has modulo=1, so everyone is an aggregator")
 @spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__reject_not_aggregator(spec, state):
@@ -519,7 +519,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_not_aggregator(spe
     )
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_not_in_subcommittee(
     spec, state
@@ -577,7 +577,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_not_in_
     )
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_index_out_of_range(
     spec, state
@@ -631,7 +631,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_index_o
     )
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__ignore_superset_contribution(spec, state):
@@ -755,7 +755,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_superset_contribut
     yield "messages", "meta", messages
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__valid_non_superset_contribution(spec, state):
@@ -874,7 +874,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid_non_superset_contri
     yield "messages", "meta", messages
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__ignore_duplicate_aggregator(spec, state):
@@ -951,7 +951,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_duplicate_aggregat
     yield "messages", "meta", messages
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__reject_invalid_selection_proof(spec, state):
@@ -1012,7 +1012,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_selection_
     )
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregator_signature(
@@ -1072,7 +1072,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregator
     )
 
 
-@with_phases([ALTAIR, CAPELLA])
+@with_phases([ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregate_signature(
