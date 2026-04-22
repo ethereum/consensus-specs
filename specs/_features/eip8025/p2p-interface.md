@@ -77,6 +77,8 @@ The following validations MUST pass before forwarding the
 `signed_execution_proof` on the network, assuming the alias
 `proof = signed_execution_proof.message`:
 
+- _[IGNORE]_ The proof has not already been processed -- i.e.
+  `hash_tree_root(proof)` has not been seen before.
 - _[IGNORE]_ The proof's corresponding new payload request (identified by
   `proof.public_input.new_payload_request_root`) has been seen (via gossip or
   non-gossip sources) (a client MAY queue proofs for processing once the new
@@ -116,6 +118,7 @@ Request Content:
 (
   start_slot: Slot
   count: uint64
+  proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
 )
 ```
 
@@ -127,10 +130,20 @@ Response Content:
 )
 ```
 
-Requests execution proofs for a contiguous range of slots. The request specifies
-a `start_slot` and a `count` of slots. The responding peer iterates through
-beacon blocks in the range `[start_slot, start_slot + count)` and returns all
-known `SignedExecutionProof` entries associated with those blocks.
+Requests execution proofs for a contiguous range of slots, filtered by proof
+type. The responding peer iterates through beacon blocks in the range
+`[start_slot, start_slot + count)` and returns `SignedExecutionProof` entries
+whose `proof_type` is in the requested `proof_types` list. If `proof_types` is
+empty, all known proof types are returned for each block in the range.
+
+Let `proof_serve_range` be
+`[compute_start_slot_at_epoch(state.finalized_checkpoint.epoch), current_slot]`
+where `current_slot` is defined by the current wall-clock time. Clients MUST
+support serving `ExecutionProofsByRange` requests for slots in
+`proof_serve_range` from their view of the canonical chain. Peers unable to
+reply within `proof_serve_range` SHOULD respond with error code
+`3: ResourceUnavailable`. Such peers MAY get descored or disconnected at any
+time.
 
 The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `SignedExecutionProof` payload.
@@ -140,8 +153,8 @@ Clients MUST keep the total number of requested proofs under
 `MAX_EXECUTION_PROOFS_PER_PAYLOAD` proofs, the `count` field MUST satisfy
 `count * MAX_EXECUTION_PROOFS_PER_PAYLOAD <= compute_max_request_execution_proofs()`.
 
-Clients MUST respond with at least one proof, if they have it. Clients MAY limit
-the number of proofs in the response.
+Clients MUST respond with at least one proof, if they have it within
+`proof_serve_range`. Clients MAY limit the number of proofs in the response.
 
 Clients SHOULD return proofs in slot-ascending order within the requested range.
 
@@ -174,11 +187,16 @@ less in the case that the responding peer is missing blocks or proofs.
 No more than `compute_max_request_execution_proofs()` may be requested at a
 time.
 
+Clients MUST support serving `ExecutionProofsByRoot` requests for any block root
+on the canonical chain whose slot is in `proof_serve_range` (as defined for
+`ExecutionProofsByRange` above). Peers unable to reply SHOULD respond with error
+code `3: ResourceUnavailable`.
+
 The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `SignedExecutionProof` payload.
 
-Clients MUST respond with at least one proof, if they have it. Clients MAY limit
-the number of proofs in the response.
+Clients MUST respond with at least one proof, if they have it within
+`proof_serve_range`. Clients MAY limit the number of proofs in the response.
 
 #### ExecutionProofStatus
 
@@ -190,6 +208,7 @@ Request, Response Content:
 (
   block_root: Root
   slot: Slot
+  proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
 )
 ```
 
@@ -202,6 +221,11 @@ As seen by the client at the time of sending the message:
   (`BeaconBlock`) for which the client has verified sufficient execution proofs
   to consider the block valid.
 - `slot`: The slot of the block corresponding to the `block_root`.
+- `proof_types`: The proof types that this client supports. This is
+  intentionally a dynamic capability advertisement rather than a protocol
+  constant, allowing clients to support new proof types without requiring a hard
+  fork or new client release. Peers SHOULD use this field to inform proof type
+  selection during synchronization.
 
 The request/response MUST be encoded as an SSZ-container.
 
