@@ -103,12 +103,6 @@ addition of `bls_to_execution_changes` to the inner `BeaconBlockBody`. See
 Capella [state transition document](./beacon-chain.md#beaconblockbody) for
 further details.
 
-The *type* of the payload of this topic changes to the (modified)
-`SignedBeaconBlock` found in Capella. Specifically, this type changes with the
-addition of `bls_to_execution_changes` to the inner `BeaconBlockBody`. See
-Capella [state transition document](./beacon-chain.md#beaconblockbody) for
-further details.
-
 *Note*: `is_execution_enabled` is removed in Capella because execution is
 unconditionally enabled after The Merge, which happens before Capella.
 
@@ -134,6 +128,8 @@ def validate_beacon_block_gossip(
         raise GossipIgnore("block is from a future slot")
 
     # [IGNORE] The block is from a slot greater than the latest finalized slot
+    # (MAY choose to validate and store such blocks for additional purposes
+    # -- e.g. slashing detection, archive nodes, etc).
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
@@ -154,6 +150,7 @@ def validate_beacon_block_gossip(
         raise GossipReject("invalid proposer signature")
 
     # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until parent is retrieved)
     if block.parent_root not in store.blocks:
         raise GossipIgnore("block's parent has not been seen")
 
@@ -189,6 +186,7 @@ def validate_beacon_block_gossip(
         raise GossipReject("finalized checkpoint is not an ancestor of block")
 
     # [REJECT] The block is proposed by the expected proposer for the slot
+    # (if shuffling is not available, IGNORE instead and MAY be queued for later)
     parent_state = store.block_states[block.parent_root].copy()
     process_slots(parent_state, block.slot)
     expected_proposer = get_beacon_proposer_index(parent_state)
