@@ -21,8 +21,8 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 PAYLOAD_STATUS_VALID = "VALID"
-PAYLOAD_STATUS_NOT_VALIDATED = "NOT_VALIDATED"
-PAYLOAD_STATUS_INVALIDATED = "INVALIDATED"
+PAYLOAD_STATUS_INVALID = "INVALID"
+PAYLOAD_STATUS_UNKNOWN = "UNKNOWN"
 
 
 def wrap_genesis_block(spec, block):
@@ -38,11 +38,11 @@ def get_spec_block_payload_statuses(spec, block_payload_statuses):
     for block_root, payload_status in block_payload_statuses.items():
         if payload_status == PAYLOAD_STATUS_VALID:
             spec_block_payload_statuses[block_root] = spec.PAYLOAD_STATUS_VALID
-        elif payload_status == PAYLOAD_STATUS_INVALIDATED:
-            spec_block_payload_statuses[block_root] = spec.PAYLOAD_STATUS_INVALIDATED
+        elif payload_status == PAYLOAD_STATUS_INVALID:
+            spec_block_payload_statuses[block_root] = spec.PAYLOAD_STATUS_INVALID
         else:
-            assert payload_status == PAYLOAD_STATUS_NOT_VALIDATED
-            spec_block_payload_statuses[block_root] = spec.PAYLOAD_STATUS_NOT_VALIDATED
+            assert payload_status == PAYLOAD_STATUS_UNKNOWN
+            spec_block_payload_statuses[block_root] = spec.PAYLOAD_STATUS_UNKNOWN
 
     return spec_block_payload_statuses
 
@@ -238,7 +238,7 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
 
     # Add to store.blocks but NOT store.block_states (simulating failed consensus validation)
     store.blocks[signed_block.message.hash_tree_root()] = signed_block.message
-    # Parent payload status is NOT_VALIDATED, i.e. execution is not yet validated.
+    # Parent payload status is UNKNOWN, i.e. execution is not yet validated.
 
     yield (
         "blocks",
@@ -248,7 +248,7 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
             {
                 "block": get_filename(signed_block),
                 "failed": True,
-                "payload_status": PAYLOAD_STATUS_NOT_VALIDATED,
+                "payload_status": PAYLOAD_STATUS_UNKNOWN,
             },
         ],
     )
@@ -282,7 +282,7 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
         signed_child,
         block_time_ms + 500,
         block_payload_statuses={
-            signed_block.message.hash_tree_root(): PAYLOAD_STATUS_NOT_VALIDATED,
+            signed_block.message.hash_tree_root(): PAYLOAD_STATUS_UNKNOWN,
         },
     )
     assert result == "reject"
@@ -419,7 +419,7 @@ def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, sta
     # but execution was verified as INVALID
     store.blocks[parent_root] = signed_block.message
     store.block_states[parent_root] = state.copy()
-    block_payload_statuses = {parent_root: PAYLOAD_STATUS_INVALIDATED}
+    block_payload_statuses = {parent_root: PAYLOAD_STATUS_INVALID}
 
     yield (
         "blocks",
@@ -428,7 +428,7 @@ def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, sta
             {"block": get_filename(signed_anchor)},
             {
                 "block": get_filename(signed_block),
-                "payload_status": PAYLOAD_STATUS_INVALIDATED,
+                "payload_status": PAYLOAD_STATUS_INVALID,
             },
         ],
     )
@@ -590,7 +590,7 @@ def test_gossip_beacon_block__valid_parent_optimistic(spec, state):
     # Parent passed consensus validation but execution not yet verified
     store.blocks[parent_root] = signed_block.message
     store.block_states[parent_root] = state.copy()
-    block_payload_statuses = {parent_root: PAYLOAD_STATUS_NOT_VALIDATED}
+    block_payload_statuses = {parent_root: PAYLOAD_STATUS_UNKNOWN}
 
     yield (
         "blocks",
@@ -599,7 +599,7 @@ def test_gossip_beacon_block__valid_parent_optimistic(spec, state):
             {"block": get_filename(signed_anchor)},
             {
                 "block": get_filename(signed_block),
-                "payload_status": PAYLOAD_STATUS_NOT_VALIDATED,
+                "payload_status": PAYLOAD_STATUS_UNKNOWN,
             },
         ],
     )
