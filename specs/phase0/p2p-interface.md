@@ -594,7 +594,7 @@ def validate_beacon_block_gossip(
 
     # [REJECT] The block's parent passes validation
     if block.parent_root not in store.block_states:
-        raise GossipReject("block's parent failed validation")
+        raise GossipReject("block's parent is invalid")
 
     # [REJECT] The block is from a higher slot than its parent
     if block.slot <= store.blocks[block.parent_root].slot:
