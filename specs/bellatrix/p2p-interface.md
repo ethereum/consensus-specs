@@ -172,19 +172,19 @@ def validate_beacon_block_gossip(
         if block.parent_root not in store.block_states:
             if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
                 # [REJECT] The block's parent passes validation
-                raise GossipReject("block's parent failed validation (parent execution unknown)")
+                raise GossipReject("block's parent is invalid and EL result is unknown")
 
             # [IGNORE] The block's parent passes validation
-            raise GossipIgnore("block's parent failed validation (parent execution known)")
+            raise GossipIgnore("block's parent is invalid and EL result is known")
 
         # [IGNORE] The block's parent's execution payload passes validation
         if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
-            raise GossipIgnore("block's parent's execution payload failed validation")
+            raise GossipIgnore("block's parent is valid and EL result is invalid")
     else:
         # [REJECT] The block's parent passes validation
         if block.parent_root not in store.block_states:
             # [Modified in Bellatrix]
-            raise GossipReject("block's parent failed validation (execution disabled)")
+            raise GossipReject("block's parent is invalid and execution is not enabled")
 
     # [REJECT] The block is from a higher slot than its parent
     if block.slot <= store.blocks[block.parent_root].slot:

@@ -397,7 +397,7 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
         spec, seen, store, state, signed_child, block_time_ms + 500
     )
     assert result == "reject"
-    assert reason == "block's parent failed validation"
+    assert reason == "block's parent is invalid"
 
     yield (
         "messages",
