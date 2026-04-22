@@ -51,9 +51,9 @@ understand the changes outlined in this document.
 
 | Name                           | Value                        |
 | ------------------------------ | ---------------------------- |
-| `PAYLOAD_STATUS_NOT_VALIDATED` | `PayloadValidationStatus(0)` |
-| `PAYLOAD_STATUS_VALID`         | `PayloadValidationStatus(1)` |
-| `PAYLOAD_STATUS_INVALIDATED`   | `PayloadValidationStatus(2)` |
+| `PAYLOAD_STATUS_VALID`         | `PayloadValidationStatus(0)` |
+| `PAYLOAD_STATUS_INVALIDATED`   | `PayloadValidationStatus(1)` |
+| `PAYLOAD_STATUS_NOT_VALIDATED` | `PayloadValidationStatus(2)` |
 
 ### Helpers
 
