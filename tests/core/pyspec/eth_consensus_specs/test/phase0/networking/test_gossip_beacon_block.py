@@ -8,9 +8,14 @@ from eth_consensus_specs.test.helpers.block import (
     sign_block,
 )
 from eth_consensus_specs.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, PHASE0
+from eth_consensus_specs.test.helpers.execution_payload import (
+    build_empty_execution_payload,
+    build_state_with_incomplete_transition,
+)
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_bellatrix
 from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
@@ -339,14 +344,21 @@ def test_gossip_beacon_block__ignore_parent_not_seen(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR])
+@with_phases([PHASE0, ALTAIR, BELLATRIX])
 @spec_state_test
 def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
     """
     Test that a block whose parent failed validation is rejected.
     This happens when parent is in store.blocks but not in store.block_states.
+
+    On Bellatrix, execution is disabled (pre-merge state) so we exercise the
+    else-branch of is_execution_enabled. Capella is excluded because it has no
+    pre-merge state.
     """
     yield "topic", "meta", "beacon_block"
+
+    if is_post_bellatrix(spec):
+        state = build_state_with_incomplete_transition(spec, state)
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -355,6 +367,8 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
     yield get_filename(signed_anchor), signed_anchor
 
     block = build_empty_block_for_next_slot(spec, state)
+    if is_post_bellatrix(spec):
+        block.body.execution_payload = spec.ExecutionPayload()
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield "state", state
 
@@ -385,6 +399,8 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
         parent_root=signed_block.message.hash_tree_root(),
         state_root=temp_state.hash_tree_root(),
     )
+    if is_post_bellatrix(spec):
+        child_block.body.execution_payload = spec.ExecutionPayload()
     signed_child = sign_block(spec, temp_state, child_block, proposer_index=proposer_index)
 
     yield get_filename(signed_child), signed_child
@@ -397,7 +413,10 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
         spec, seen, store, state, signed_child, block_time_ms + 500
     )
     assert result == "reject"
-    assert reason == "block's parent is invalid"
+    if is_post_bellatrix(spec):
+        assert reason == "block's parent is invalid and execution is not enabled"
+    else:
+        assert reason == "block's parent is invalid"
 
     yield (
         "messages",
@@ -413,7 +432,7 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
     """
@@ -457,6 +476,8 @@ def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
         parent_root=signed_parent.message.hash_tree_root(),
         state_root=state.hash_tree_root(),
     )
+    if is_post_bellatrix(spec):
+        block.body.execution_payload = build_empty_execution_payload(spec, state)
     signed_block = sign_block(spec, state, block, proposer_index=proposer_index)
 
     yield get_filename(signed_block), signed_block
@@ -485,7 +506,7 @@ def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, state):
     """
@@ -540,6 +561,8 @@ def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, sta
         parent_root=signed_block.message.hash_tree_root(),
         state_root=temp_state.hash_tree_root(),
     )
+    if is_post_bellatrix(spec):
+        child_block.body.execution_payload = build_empty_execution_payload(spec, temp_state)
     signed_child = sign_block(spec, temp_state, child_block, proposer_index=proposer_index)
 
     yield get_filename(signed_child), signed_child
