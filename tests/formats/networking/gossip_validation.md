@@ -17,18 +17,6 @@ validation rules for messages received via gossip topics.
 
 ## Test case format
 
-### Directory structure
-
-```
-tests/gossip/<topic>/<test_name>/
-├── meta.yaml
-├── state.ssz_snappy
-├── block_<32-byte-root>.ssz_snappy           # block file(s)
-├── attestation_<32-byte-root>.ssz_snappy     # attestation file(s) (attestation topics)
-├── aggregate_<32-byte-root>.ssz_snappy       # aggregate file(s) (aggregate topic)
-└── bls_to_execution_change_<32-byte-root>.ssz_snappy  # bls_to_execution_change file(s)
-```
-
 ### `meta.yaml`
 
 ```yaml
