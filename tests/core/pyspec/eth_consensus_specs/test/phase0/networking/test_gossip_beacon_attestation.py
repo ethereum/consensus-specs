@@ -9,7 +9,7 @@ from eth_consensus_specs.test.helpers.attestations import (
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
-from eth_consensus_specs.test.helpers.constants import ALTAIR, CAPELLA, PHASE0
+from eth_consensus_specs.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, PHASE0
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -53,7 +53,7 @@ def run_validate_beacon_attestation_gossip(
         return "reject", str(e)
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__valid(spec, state):
     """
@@ -113,7 +113,7 @@ def test_gossip_beacon_attestation__valid(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, state):
     """
@@ -166,7 +166,7 @@ def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, st
     )
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
     """
@@ -217,7 +217,7 @@ def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     """
@@ -278,7 +278,7 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     """
@@ -338,7 +338,7 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state):
     """
@@ -400,7 +400,7 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state
     )
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
     """
@@ -463,7 +463,7 @@ def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
     """
@@ -515,7 +515,7 @@ def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
     """
@@ -573,7 +573,7 @@ def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, state):
     """
@@ -629,7 +629,7 @@ def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, 
     )
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
     """
@@ -702,7 +702,7 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
     """
@@ -764,7 +764,7 @@ def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
     """
@@ -839,7 +839,7 @@ def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 @always_bls
 def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
@@ -898,7 +898,7 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
     """
@@ -959,7 +959,7 @@ def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
     """
