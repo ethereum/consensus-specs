@@ -6,7 +6,6 @@ validation rules for messages received via gossip topics.
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Test case format](#test-case-format)
-  - [Directory structure](#directory-structure)
   - [`meta.yaml`](#metayaml)
   - [`state.ssz_snappy`](#statessz_snappy)
   - [Message files](#message-files)
