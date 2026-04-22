@@ -120,12 +120,15 @@ help-verbose:
 	@echo "    comptests_dir=<dir>    Output directory for generated compliance tests"
 	@echo "    threads=N              Number of threads to use"
 	@echo "    seed=N                 Override test seeds (fuzzing mode)"
+	@echo "    group_slice_index=N    0-based shard index for deterministic test-group slicing"
+	@echo "    group_slice_count=N    Number of deterministic test-group slices"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make comptests"
 	@echo "    make comptests fc_gen_config=standard"
 	@echo "    make comptests comptests_dir=./compliance-spec-tests/tests"
 	@echo "    make comptests fc_gen_config=standard fork=deneb preset=mainnet threads=8"
+	@echo "    make comptests fc_gen_config=tiny fork=gloas group_slice_index=0 group_slice_count=4"
 	@echo ""
 	@echo "$(BOLD)DOCUMENTATION$(NORM)"
 	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
@@ -301,6 +304,8 @@ comptests: MAYBE_THREADS := $(if $(threads),--threads=$(threads),--fc-gen-multi-
 comptests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
 comptests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
 comptests: MAYBE_SEED := $(if $(seed),--fc-gen-seed $(seed))
+comptests: MAYBE_GROUP_SLICE_INDEX := $(if $(group_slice_index),--group-slice-index $(group_slice_index))
+comptests: MAYBE_GROUP_SLICE_COUNT := $(if $(group_slice_count),--group-slice-count $(group_slice_count))
 comptests: _pyspec
 	@$(UV_RUN) python -m tests.generators.compliance_runners.fork_choice.test_gen \
 		--output-dir=$(COMPTESTS_DIR) \
@@ -308,7 +313,9 @@ comptests: _pyspec
 		$(MAYBE_THREADS) \
 		$(MAYBE_FORKS) \
 		$(MAYBE_PRESETS) \
-		$(MAYBE_SEED)
+		$(MAYBE_SEED) \
+		$(MAYBE_GROUP_SLICE_INDEX) \
+		$(MAYBE_GROUP_SLICE_COUNT)
 
 ###############################################################################
 # Cleaning

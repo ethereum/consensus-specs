@@ -18,7 +18,7 @@ from eth_consensus_specs.test.exceptions import SkippedTest
 from tests.infra.dumper import Dumper
 
 from .args import parse_arguments
-from .gen_typing import TestCaseResult, TestGroup
+from .gen_typing import TestCase, TestCaseResult, TestGroup
 from .utils import install_sigint_handler, time_since
 
 
@@ -114,6 +114,61 @@ def execute_test_group(
         dump_test_case_result(test_case_result, dumper)
 
 
+def validate_group_slice_args(args) -> None:
+    """Validate deterministic group slicing arguments."""
+    slice_index = args.group_slice_index
+    slice_count = args.group_slice_count
+    if slice_index is None and slice_count is None:
+        return
+    if slice_index is None or slice_count is None:
+        raise ValueError("Both --group-slice-index and --group-slice-count must be specified")
+    if slice_count <= 0:
+        raise ValueError("--group-slice-count must be a positive integer")
+    if slice_index < 0 or slice_index >= slice_count:
+        raise ValueError("--group-slice-index must be in [0, --group-slice-count)")
+
+
+def is_selected_test_case(test_case: TestCase, args) -> bool:
+    """Return whether a test case matches the requested filters."""
+    if len(args.runners) != 0 and test_case.runner_name not in args.runners:
+        return False
+    if len(args.presets) != 0 and test_case.preset_name not in args.presets:
+        return False
+    if len(args.forks) != 0 and test_case.fork_name not in args.forks:
+        return False
+    if len(args.cases) != 0 and not any(s in test_case.case_name for s in args.cases):
+        return False
+    return True
+
+
+def select_generator_groups(
+    input_test_groups: Iterable[TestGroup], args
+) -> tuple[int, list[TestGroup]]:
+    """Filter generator groups for execution."""
+    total_found = 0
+    selected_test_groups = []
+    for test_group in input_test_groups:
+        selected_group_cases = []
+        for test_case in test_group.test_cases:
+            total_found += 1
+            if is_selected_test_case(test_case, args):
+                selected_group_cases.append(test_case)
+
+        if selected_group_cases:
+            selected_test_groups.append(test_group)
+
+    return total_found, selected_test_groups
+
+
+def slice_generator_groups(selected_test_groups: list[TestGroup], args) -> list[TestGroup]:
+    """Apply deterministic slicing to already-filtered generator groups."""
+    return [
+        test_group
+        for group_index, test_group in enumerate(selected_test_groups)
+        if group_index % args.group_slice_count == args.group_slice_index
+    ]
+
+
 def run_generator_groups(input_test_groups: Iterable[TestGroup], args=None):
     start_time = time.time()
     if args is None:
@@ -129,27 +184,11 @@ def run_generator_groups(input_test_groups: Iterable[TestGroup], args=None):
 
     # Gracefully handle Ctrl+C
     install_sigint_handler(console)
+    validate_group_slice_args(args)
 
-    total_found = 0
-    selected_test_groups = []
-    for test_group in input_test_groups:
-        selected_group_cases = []
-        for test_case in test_group.test_cases:
-            total_found += 1
-            # Check if the test case should be filtered out
-            if len(args.runners) != 0 and test_case.runner_name not in args.runners:
-                continue
-            if len(args.presets) != 0 and test_case.preset_name not in args.presets:
-                continue
-            if len(args.forks) != 0 and test_case.fork_name not in args.forks:
-                continue
-            if len(args.cases) != 0 and not any(s in test_case.case_name for s in args.cases):
-                continue
-
-            selected_group_cases.append(test_case)
-
-        if selected_group_cases:
-            selected_test_groups.append(test_group)
+    total_found, selected_test_groups = select_generator_groups(input_test_groups, args)
+    if args.group_slice_count is not None:
+        selected_test_groups = slice_generator_groups(selected_test_groups, args)
 
     selected_test_cases = []
     for test_group in selected_test_groups:
@@ -167,6 +206,12 @@ def run_generator_groups(input_test_groups: Iterable[TestGroup], args=None):
         return
 
     debug_print(f"Generating tests into {args.output_dir}")
+    if args.group_slice_count is not None:
+        debug_print(
+            f"Selecting deterministic group slice "
+            f"{args.group_slice_index + 1}/{args.group_slice_count} "
+            f"({len(selected_test_groups)} groups)"
+        )
     tests_prefix = get_shared_prefix(selected_test_cases)
 
     def worker_function(data):
