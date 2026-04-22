@@ -36,7 +36,7 @@ blocks: [{                   -- Optional. Blocks to import before validation (ol
     block: string,           -- The block file (without extension).
     failed: bool,            -- Optional. If true, block failed validation (for testing descendant rejection).
     payload_status: string,  -- Optional. Execution payload status for this block:
-                             -- "VALID" | "INVALID" | "UNKNOWN".
+                             -- "VALID" | "NOT_VALIDATED" | "INVALIDATED".
                              -- Maps to the corresponding `PAYLOAD_STATUS_*` value
                              -- in the relevant specification.
 }]
@@ -96,8 +96,12 @@ Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
    - If `payload_status` is present, track the execution payload status for that
      block.
      - `VALID`: the block's execution payload is known valid.
-     - `INVALID`: the block's execution payload is known invalid.
-     - `UNKNOWN`: the block's execution payload is unknown.
+     - `NOT_VALIDATED`: the block's execution payload has not yet been
+       validated.
+     - `INVALIDATED`: the block's execution payload is known invalid.
+     - For Bellatrix `beacon_block` gossip validation, `NOT_VALIDATED`
+       represents the optimistic case where no valid/invalid payload result is
+       yet available for the parent block.
 3. Iterate sequentially through `messages`:
    - Set `current_time_ms` to `meta.current_time_ms + message.offset_ms`.
    - Deserialize the message file based on the topic type.

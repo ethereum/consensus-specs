@@ -49,11 +49,11 @@ understand the changes outlined in this document.
 
 ### Constants
 
-| Name                     | Value                        |
-| ------------------------ | ---------------------------- |
-| `PAYLOAD_STATUS_VALID`   | `PayloadValidationStatus(0)` |
-| `PAYLOAD_STATUS_INVALID` | `PayloadValidationStatus(1)` |
-| `PAYLOAD_STATUS_UNKNOWN` | `PayloadValidationStatus(2)` |
+| Name                           | Value                        |
+| ------------------------------ | ---------------------------- |
+| `PAYLOAD_STATUS_NOT_VALIDATED` | `PayloadValidationStatus(0)` |
+| `PAYLOAD_STATUS_VALID`         | `PayloadValidationStatus(1)` |
+| `PAYLOAD_STATUS_INVALIDATED`   | `PayloadValidationStatus(2)` |
 
 ### Helpers
 
@@ -165,12 +165,12 @@ def validate_beacon_block_gossip(
         if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
             raise GossipReject("incorrect execution payload timestamp")
 
-        parent_payload_status = PAYLOAD_STATUS_UNKNOWN
+        parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
         if block.parent_root in block_payload_statuses:
             parent_payload_status = block_payload_statuses[block.parent_root]
 
         if block.parent_root not in store.block_states:
-            if parent_payload_status == PAYLOAD_STATUS_UNKNOWN:
+            if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
                 # [REJECT] The block's parent passes validation
                 raise GossipReject("block's parent failed validation (parent execution unknown)")
 
@@ -178,7 +178,7 @@ def validate_beacon_block_gossip(
             raise GossipIgnore("block's parent failed validation (parent execution known)")
 
         # [IGNORE] The block's parent's execution payload passes validation
-        if parent_payload_status == PAYLOAD_STATUS_INVALID:
+        if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
             raise GossipIgnore("block's parent's execution payload failed validation")
     else:
         # [REJECT] The block's parent passes validation
