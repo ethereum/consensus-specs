@@ -16,7 +16,6 @@ GLOAS = SpecForkName("gloas")
 HEZE = SpecForkName("heze")
 
 # Experimental phases (not included in default "ALL_PHASES"):
-EIP7928 = SpecForkName("eip7928")
 EIP8025 = SpecForkName("eip8025")
 
 #
@@ -36,7 +35,6 @@ ALL_PHASES = (
     GLOAS,
     HEZE,
     # Experimental patches
-    EIP7928,
     EIP8025,
 )
 # The forks that have light client specs
@@ -59,7 +57,6 @@ PREVIOUS_FORK_OF = {
     GLOAS: FULU,
     HEZE: GLOAS,
     # Experimental patches
-    EIP7928: FULU,
     EIP8025: FULU,
 }
 

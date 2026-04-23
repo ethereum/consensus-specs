@@ -322,7 +322,9 @@ def process_epoch(state: BeaconState) -> None:
     process_effective_balance_updates(state)
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
-    # [Modified in Capella]
+    # [Modified in Altair]
+    # Removed `process_historical_roots_update`
+    # [New in Capella]
     process_historical_summaries_update(state)
     process_participation_flag_updates(state)
     process_sync_committee_updates(state)

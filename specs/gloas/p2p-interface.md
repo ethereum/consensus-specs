@@ -307,16 +307,18 @@ The following validations MUST pass before forwarding the
   `SignedExecutionPayloadEnvelope` for this block root from this builder.
 - _[IGNORE]_ The envelope is from a slot greater than or equal to the latest
   finalized slot -- i.e. validate that
-  `envelope.slot >= compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
+  `envelope.payload.slot_number >= compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
 
 Let `block` be the block with `envelope.beacon_block_root`. Let `bid` alias
 `block.body.signed_execution_payload_bid.message` (notice that this can be
 obtained from the `state.latest_execution_payload_bid`)
 
 - _[REJECT]_ `block` passes validation.
-- _[REJECT]_ `block.slot` equals `envelope.slot`.
+- _[REJECT]_ `block.slot` equals `envelope.payload.slot_number`.
 - _[REJECT]_ `envelope.builder_index == bid.builder_index`
 - _[REJECT]_ `payload.block_hash == bid.block_hash`
+- _[REJECT]_
+  `hash_tree_root(envelope.execution_requests) == bid.execution_requests_root`
 - _[REJECT]_ `signed_execution_payload_envelope.signature` is valid as verified
   by `verify_execution_payload_envelope_signature`.
 
