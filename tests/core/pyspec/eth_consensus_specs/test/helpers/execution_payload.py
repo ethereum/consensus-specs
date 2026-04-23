@@ -449,7 +449,9 @@ def build_state_with_execution_payload_bid(spec, state, execution_payload_bid):
     return pre_state
 
 
-def build_signed_execution_payload_envelope(spec, state, block_root, signed_block):
+def build_signed_execution_payload_envelope(
+    spec, state, block_root, signed_block, execution_requests=None
+):
     # Get builder_index from the block's execution payload bid
     builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
 
@@ -459,11 +461,14 @@ def build_signed_execution_payload_envelope(spec, state, block_root, signed_bloc
     payload.gas_limit = state.latest_execution_payload_bid.gas_limit
     payload.parent_hash = state.latest_block_hash
 
+    if execution_requests is None:
+        execution_requests = spec.ExecutionRequests()
+
     # Create the execution payload envelope message
     envelope_message = spec.ExecutionPayloadEnvelope(
         beacon_block_root=block_root,
         payload=payload,
-        execution_requests=spec.ExecutionRequests(),
+        execution_requests=execution_requests,
         builder_index=builder_index,
     )
 
