@@ -307,7 +307,7 @@ def test_inclusion_list_store_equivocation_scope(spec, state):
 
 @with_heze_and_later
 @spec_state_test
-def test_inclusion_list_store_view_freeze_cutoff(spec, state):
+def test_inclusion_list_store_inclusion_list_due(spec, state):
     def run_func():
         forkchoice_store = get_genesis_forkchoice_store(spec, state)
         inclusion_list_store = spec.get_inclusion_list_store()
@@ -323,7 +323,7 @@ def test_inclusion_list_store_view_freeze_cutoff(spec, state):
             spec, state, validator_index=inclusion_list_committee[1]
         )
 
-        # An IL received before the view freeze cutoff should be stored successfully.
+        # An IL received before the inclusion list due should be stored successfully.
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_1)
 
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
@@ -332,15 +332,15 @@ def test_inclusion_list_store_view_freeze_cutoff(spec, state):
 
         assert set(inclusion_list_transactions) == set(signed_inclusion_list_1.message.transactions)
 
-        # Advance time to after the view freeze cutoff.
-        view_freeze_cutoff_ceiling = spec.get_view_freeze_cutoff_ms() // 1000 + 1
-        assert view_freeze_cutoff_ceiling < spec.config.SLOT_DURATION_MS // 1000
+        # Advance time to after the inclusion list due
+        inclusion_list_due_ceiling = spec.get_inclusion_list_due_ms() // 1000 + 1
+        assert inclusion_list_due_ceiling < spec.config.SLOT_DURATION_MS // 1000
 
-        time = forkchoice_store.time + view_freeze_cutoff_ceiling
+        time = forkchoice_store.time + inclusion_list_due_ceiling
         spec.on_tick(forkchoice_store, time)
         assert forkchoice_store.time == time
 
-        # An IL received after the view freeze cutoff should be ignored.
+        # An IL received after the inclusion list due should be ignored.
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_3)
 
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
@@ -349,7 +349,7 @@ def test_inclusion_list_store_view_freeze_cutoff(spec, state):
 
         assert set(inclusion_list_transactions) == set(signed_inclusion_list_1.message.transactions)
 
-        # Any equivocation after the view freeze cutoff should still be handled.
+        # Any equivocation after the inclusion list due should still be handled.
         spec.on_inclusion_list(forkchoice_store, signed_inclusion_list_2)
 
         inclusion_list_transactions = spec.get_inclusion_list_transactions(
