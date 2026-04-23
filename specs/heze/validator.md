@@ -150,7 +150,7 @@ def prepare_execution_payload(
         # Make a copy of the state to avoid mutability issues
         state = copy(state)
         # Apply parent payload before computing withdrawals
-        apply_parent_execution_payload(state, parent_bid, envelope.execution_requests)
+        apply_parent_execution_payload(state, envelope.execution_requests)
         withdrawals = get_expected_withdrawals(state).withdrawals
         head_block_hash = parent_bid.block_hash
     else:
