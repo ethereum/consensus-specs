@@ -71,35 +71,9 @@ def build_mock_validator(spec, i: int, balance: int):
     return validator
 
 
-def get_post_gloas_genesis_execution_payload_header(spec, slot, eth1_block_hash):
-    # For Gloas, use the standard ExecutionPayloadHeader from the parent fork
-    payload_header = spec.ExecutionPayloadHeader(
-        parent_hash=b"\x30" * 32,
-        fee_recipient=b"\x42" * 20,
-        state_root=b"\x20" * 32,
-        receipts_root=b"\x20" * 32,
-        logs_bloom=b"\x35" * spec.BYTES_PER_LOGS_BLOOM,
-        prev_randao=eth1_block_hash,
-        block_number=0,
-        gas_limit=30000000,
-        gas_used=0,
-        timestamp=0,
-        extra_data=b"",
-        base_fee_per_gas=1000000000,
-        block_hash=eth1_block_hash,
-        transactions_root=spec.Root(b"\x56" * 32),
-        withdrawals_root=spec.Root(b"\x56" * 32),
-        blob_gas_used=0,
-        excess_blob_gas=0,
-    )
-    return payload_header
-
-
 def get_sample_genesis_execution_payload_header(spec, slot, eth1_block_hash=None):
     if eth1_block_hash is None:
         eth1_block_hash = b"\x55" * 32
-    if is_post_gloas(spec):
-        return get_post_gloas_genesis_execution_payload_header(spec, slot, eth1_block_hash)
     payload_header = spec.ExecutionPayloadHeader(
         parent_hash=b"\x30" * 32,
         fee_recipient=b"\x42" * 20,
