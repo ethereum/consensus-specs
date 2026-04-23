@@ -171,19 +171,8 @@ def test_prepare_execution_payload__extend_payload(spec, state):
 @with_phases([GLOAS])
 @spec_state_test
 def test_prepare_execution_payload__no_payload_verified(spec, state):
-    store, _ = get_genesis_forkchoice_store_and_block(spec, state)
-
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    spec.on_tick(store, current_time)
-
-    block = build_empty_block_for_next_slot(spec, state)
-    signed_block = state_transition_and_sign_block(spec, state, block)
-    block_time = (
-        store.genesis_time + signed_block.message.slot * spec.config.SLOT_DURATION_MS // 1000
-    )
-    spec.on_tick(store, block_time)
-    run_on_block(spec, store, signed_block)
-    block_root = signed_block.message.hash_tree_root()
+    # Build and process block without execution requests.
+    store, _, block_root = _add_block_to_store(spec, state)
 
     assert not spec.is_payload_verified(store, block_root)
     assert not spec.should_extend_payload(store, block_root)
