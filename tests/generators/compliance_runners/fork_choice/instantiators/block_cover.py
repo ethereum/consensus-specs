@@ -49,9 +49,10 @@ def _generate_filter_block_tree(
     parents,
     previous_justifications,
     current_justifications,
+    target_block,
     rnd: random.Random,
     debug,
-) -> ([], [], [], []):
+) -> ([], [], object, object):
     JUSTIFYING_SLOT = 2 * spec.SLOTS_PER_EPOCH // 3 + 1
     JUSTIFYING_SLOT_COUNT = spec.SLOTS_PER_EPOCH - JUSTIFYING_SLOT
 
@@ -84,8 +85,8 @@ def _generate_filter_block_tree(
     )
 
     block_tips = [None for _ in range(0, len(block_epochs))]
-    model_blocks = [None for _ in range(0, len(block_epochs))]
-    model_post_states = [None for _ in range(0, len(block_epochs))]
+    target_signed_block = None
+    target_post_state = None
     # Initialize with the anchor block
     block_tips[0] = anchor_tip
 
@@ -199,8 +200,9 @@ def _generate_filter_block_tree(
                 # Propose block
                 new_block, state, _, _, _ = produce_block(spec, state, block_attestations)
                 signed_blocks.append(new_block)
-                model_blocks[block] = new_block
-                model_post_states[block] = state.copy()
+                if block == target_block and is_post_gloas(spec):
+                    target_signed_block = new_block
+                    target_post_state = state.copy()
 
             # Attest
             # TODO pick a random tip to make attestation with if the slot is empty
@@ -238,7 +240,7 @@ def _generate_filter_block_tree(
                     check_up_state.current_justified_checkpoint,
                 )
 
-    return signed_blocks, block_tips, model_blocks, model_post_states
+    return signed_blocks, block_tips, target_signed_block, target_post_state
 
 
 def _debug_run_sanity_checks(
@@ -356,15 +358,18 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
             )
 
     rnd = random.Random(seed)
-    signed_blocks, post_block_tips, model_blocks, model_post_states = _generate_filter_block_tree(
-        spec,
-        state,
-        block_epochs,
-        parents,
-        previous_justifications,
-        current_justifications,
-        rnd,
-        debug,
+    signed_blocks, post_block_tips, target_signed_block, target_post_state = (
+        _generate_filter_block_tree(
+            spec,
+            state,
+            block_epochs,
+            parents,
+            previous_justifications,
+            current_justifications,
+            target_block,
+            rnd,
+            debug,
+        )
     )
 
     # Meta data
@@ -390,8 +395,6 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
         post_block_tips[target_block].beacon_state.latest_block_header
     )
     if is_post_gloas(spec):
-        target_signed_block = model_blocks[target_block]
-        target_post_state = model_post_states[target_block]
         if target_signed_block is not None and target_post_state is not None:
             envelope_mode = rnd.choice(["none", "valid"])
             if envelope_mode == "valid":
