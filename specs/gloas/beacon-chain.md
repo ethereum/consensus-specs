@@ -948,9 +948,9 @@ and by the validator during block production before computing withdrawals.
 ```python
 def apply_parent_execution_payload(
     state: BeaconState,
-    parent_bid: ExecutionPayloadBid,
     requests: ExecutionRequests,
 ) -> None:
+    parent_bid = state.latest_execution_payload_bid
     parent_slot = parent_bid.slot
     parent_epoch = compute_epoch_at_slot(parent_slot)
 
@@ -1007,7 +1007,7 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
 
     # Parent was FULL -- verify the bid commitment and apply the payload
     assert hash_tree_root(requests) == parent_bid.execution_requests_root
-    apply_parent_execution_payload(state, parent_bid, requests)
+    apply_parent_execution_payload(state, requests)
 ```
 
 #### Withdrawals
