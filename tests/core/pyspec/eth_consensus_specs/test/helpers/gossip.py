@@ -1,6 +1,6 @@
 from eth_utils import encode_hex
 
-from eth_consensus_specs.test.helpers.forks import is_post_altair
+from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_capella
 
 
 def get_seen(spec):
@@ -20,6 +20,12 @@ def get_seen(spec):
                 sync_contribution_aggregator_slots=set(),
                 sync_contribution_data={},
                 sync_message_validator_slots=set(),
+            )
+        )
+    if is_post_capella(spec):
+        kwargs.update(
+            dict(
+                bls_to_execution_change_indices=set(),
             )
         )
     return spec.Seen(**kwargs)
@@ -47,6 +53,9 @@ def get_filename(obj):
         prefix = "contribution"
     elif class_name == "SyncCommitteeMessage":
         prefix = "sync_committee_message"
+    # capella
+    elif "BLSToExecutionChange" in class_name:
+        prefix = "bls_to_execution_change"
     else:
         raise Exception(f"unsupported type: {class_name}")
 

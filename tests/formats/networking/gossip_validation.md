@@ -6,7 +6,6 @@ validation rules for messages received via gossip topics.
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Test case format](#test-case-format)
-  - [Directory structure](#directory-structure)
   - [`meta.yaml`](#metayaml)
   - [`state.ssz_snappy`](#statessz_snappy)
   - [Message files](#message-files)
@@ -16,17 +15,6 @@ validation rules for messages received via gossip topics.
 <!-- mdformat-toc end -->
 
 ## Test case format
-
-### Directory structure
-
-```
-tests/gossip/<topic>/<test_name>/
-├── meta.yaml
-├── state.ssz_snappy
-├── block_<32-byte-root>.ssz_snappy           # block file(s)
-├── attestation_<32-byte-root>.ssz_snappy     # attestation file(s) (attestation topics)
-└── aggregate_<32-byte-root>.ssz_snappy       # aggregate file(s) (aggregate topic)
-```
 
 ### `meta.yaml`
 
@@ -67,16 +55,17 @@ An SSZ-snappy encoded `BeaconState`. This state provides:
 Message files are named with a prefix indicating their type and the 32-byte hash
 tree root:
 
-| Topic                                   | File prefix               | SSZ type                     |
-| --------------------------------------- | ------------------------- | ---------------------------- |
-| `beacon_block`                          | `block_`                  | `SignedBeaconBlock`          |
-| `beacon_attestation`                    | `attestation_`            | `Attestation`                |
-| `beacon_aggregate_and_proof`            | `aggregate_`              | `SignedAggregateAndProof`    |
-| `proposer_slashing`                     | `proposer_slashing_`      | `ProposerSlashing`           |
-| `attester_slashing`                     | `attester_slashing_`      | `AttesterSlashing`           |
-| `voluntary_exit`                        | `voluntary_exit_`         | `SignedVoluntaryExit`        |
-| `sync_committee_contribution_and_proof` | `contribution_`           | `SignedContributionAndProof` |
-| `sync_committee`                        | `sync_committee_message_` | `SyncCommitteeMessage`       |
+| Topic                                   | File prefix                | SSZ type                     |
+| --------------------------------------- | -------------------------- | ---------------------------- |
+| `beacon_block`                          | `block_`                   | `SignedBeaconBlock`          |
+| `beacon_attestation`                    | `attestation_`             | `Attestation`                |
+| `beacon_aggregate_and_proof`            | `aggregate_`               | `SignedAggregateAndProof`    |
+| `proposer_slashing`                     | `proposer_slashing_`       | `ProposerSlashing`           |
+| `attester_slashing`                     | `attester_slashing_`       | `AttesterSlashing`           |
+| `voluntary_exit`                        | `voluntary_exit_`          | `SignedVoluntaryExit`        |
+| `sync_committee_contribution_and_proof` | `contribution_`            | `SignedContributionAndProof` |
+| `sync_committee`                        | `sync_committee_message_`  | `SyncCommitteeMessage`       |
+| `bls_to_execution_change`               | `bls_to_execution_change_` | `SignedBLSToExecutionChange` |
 
 Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
 
