@@ -45,8 +45,8 @@ the user. If necessary, the user will manually update PR titles prior to
 starting the release action. Titles must be written in the imperative mood.
 Titles must not have component prefixes like the "conventional commit" style.
 Titles should use sentence case, not title case. Titles must be fewer than 72
-characters long. Titles should not be too vague; they should convey to the
-reader what changed. Words that are clearly code (functions, classes, etc) must
-be wrapped in backticks. There must be no terminal punctuation and ideally no
-punctuation at all. Titles must not contain double spaces, leading whitespace,
-or trailing whitespace. Ignore dependency updates.
+characters long. Titles should not be too vague. Words that are clearly code
+(functions, classes, etc) must be wrapped in backticks. There must be no
+terminal punctuation and ideally no punctuation at all. Titles must not contain
+double spaces, leading whitespace, or trailing whitespace. Ignore PRs with the
+dependencies label.
