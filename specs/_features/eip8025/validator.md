@@ -38,37 +38,36 @@ used throughout.
 With `process_execution_payload` no longer gating consensus on execution
 validity, an honest validator SHOULD NOT attest to a block whose
 `execution_payload` has not been independently validated. Specifically, a
-validator SHOULD withhold its attestation for a block until at least one of
-the following conditions holds by the attestation deadline:
+validator SHOULD withhold its attestation for a block until at least one of the
+following conditions holds by the attestation deadline:
 
 1. A locally-run `ExecutionEngine` has returned `VALID` for the block's
    corresponding `NewPayloadRequest` (i.e.
    `execution_engine.verify_and_notify_new_payload(new_payload_request)`
    returned `True`).
-2. A `SignedExecutionProof` has been received on the `execution_proof`
-   gossip topic for the block, and:
+2. A `SignedExecutionProof` has been received on the `execution_proof` gossip
+   topic for the block, and:
    - `proof.public_input.new_payload_request_root` equals
-     `hash_tree_root(new_payload_request)` for the block's
-     `NewPayloadRequest`, and
+     `hash_tree_root(new_payload_request)` for the block's `NewPayloadRequest`,
+     and
    - `proof_engine.verify_execution_proof(proof)` returned `True` (i.e. the
      proof passed `process_execution_proof`).
 
-If neither signal is available by the attestation deadline, the validator
-SHOULD withhold its attestation for that block. This restores a
-defense-in-depth penalty signal against attesting to blocks with invalid
-execution payloads after the removal of the consensus-level assert on the
-execution engine: validators that opt out of both running a local execution
-engine and subscribing to execution proofs will miss attestations for blocks
-whose validity they cannot independently establish, and will therefore
-incur the standard missed-attestation penalty.
+If neither signal is available by the attestation deadline, the validator SHOULD
+withhold its attestation for that block. This restores a defense-in-depth
+penalty signal against attesting to blocks with invalid execution payloads after
+the removal of the consensus-level assert on the execution engine: validators
+that opt out of both running a local execution engine and subscribing to
+execution proofs will miss attestations for blocks whose validity they cannot
+independently establish, and will therefore incur the standard
+missed-attestation penalty.
 
-*Note*: This guidance applies only to validators performing attestation
-duties. Follower or non-attesting nodes MAY accept blocks through
-state-transition without any execution-validity signal; they do not put
-network safety at risk by doing so.
+*Note*: This guidance applies only to validators performing attestation duties.
+Follower or non-attesting nodes MAY accept blocks through state-transition
+without any execution-validity signal; they do not put network safety at risk by
+doing so.
 
-*Note*: Validators running a local execution engine are unaffected in
-practice — condition (1) will be satisfied via the existing
-`verify_and_notify_new_payload` call in `process_execution_payload`. This
-rule only changes behavior for validators that have opted out of running an
-execution engine.
+*Note*: Validators running a local execution engine are unaffected in practice —
+condition (1) will be satisfied via the existing `verify_and_notify_new_payload`
+call in `process_execution_payload`. This rule only changes behavior for
+validators that have opted out of running an execution engine.

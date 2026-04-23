@@ -109,15 +109,14 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ##### Modified `process_execution_payload`
 
 *Note*: `process_execution_payload` is modified in EIP-8025 to treat both
-`ExecutionEngine` and `ProofEngine` as fire-and-forget notifications rather
-than gating consensus. The consensus state transition no longer verifies
-execution validity; it becomes an out-of-band concern handled asynchronously
-by (a) a locally-run execution engine and/or (b) gossiped execution proofs
-validated via `process_execution_proof` (see
-[p2p-interface.md](./p2p-interface.md)). Running an execution engine is
-**highly recommended** for defense-in-depth, but is no longer mandatory. A
-node doing neither accepts execution payloads without execution-validity
-verification.
+`ExecutionEngine` and `ProofEngine` as fire-and-forget notifications rather than
+gating consensus. The consensus state transition no longer verifies execution
+validity; it becomes an out-of-band concern handled asynchronously by (a) a
+locally-run execution engine and/or (b) gossiped execution proofs validated via
+`process_execution_proof` (see [p2p-interface.md](./p2p-interface.md)). Running
+an execution engine is **highly recommended** for defense-in-depth, but is no
+longer mandatory. A node doing neither accepts execution payloads without
+execution-validity verification.
 
 ```python
 def process_execution_payload(
