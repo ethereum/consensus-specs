@@ -64,6 +64,22 @@ def create_arg_parser() -> argparse.ArgumentParser:
         default=os.cpu_count(),
         help="Generate tests with N threads. Defaults to core count.",
     )
+    parser.add_argument(
+        "--group-slice-index",
+        dest="group_slice_index",
+        type=int,
+        default=None,
+        required=False,
+        help="Select the 0-based slice index of test groups to generate.",
+    )
+    parser.add_argument(
+        "--group-slice-count",
+        dest="group_slice_count",
+        type=int,
+        default=None,
+        required=False,
+        help="Split test groups into this many deterministic slices.",
+    )
     return parser
 
 

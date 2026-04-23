@@ -163,14 +163,10 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
         payloads={},
-        payload_timeliness_vote={
-            anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
-        },
-        payload_data_availability_vote={
-            anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
-        },
+        payload_timeliness_vote={},
+        payload_data_availability_vote={},
         # [New in Heze:EIP7805]
-        payload_inclusion_list_satisfaction={anchor_root: True},
+        payload_inclusion_list_satisfaction={},
     )
 ```
 

@@ -331,22 +331,19 @@ def test_on_execution_payload_envelope__wrong_withdrawals(spec, state):
 
     signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
 
-    # Inject an expected withdrawal into the store's block state so the
-    # envelope's empty withdrawals list causes a mismatch
-    block_state = store.block_states[block_root]
-    withdrawal = spec.Withdrawal(
+    # Build envelope with a non-empty withdrawal that won't match the state's
+    # empty payload_expected_withdrawals
+    wrong_withdrawal = spec.Withdrawal(
         index=0, validator_index=0, address=b"\x22" * 20, amount=spec.Gwei(1)
     )
-    block_state.payload_expected_withdrawals = spec.List[
-        spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
-    ]([withdrawal])
-
-    # Build a normal envelope (empty withdrawals won't match the expected one)
     envelope = _build_invalid_envelope(
         spec,
         state,
         block_root,
         signed_block,
+        withdrawals=spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](
+            [wrong_withdrawal]
+        ),
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
