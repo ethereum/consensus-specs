@@ -101,7 +101,7 @@ def _generate_filter_block_tree(
             if _should_justify_epoch(parents, current_justifications, previous_justifications, b)
         ]
 
-        common_prefix_len = min(JUSTIFYING_SLOT, spec.SLOTS_PER_EPOCH - len(current_blocks))
+        common_prefix_len = common_prefix_len = min(JUSTIFYING_SLOT, spec.SLOTS_PER_EPOCH - len(current_blocks))
         threshold_slot = spec.compute_start_slot_at_epoch(epoch) + common_prefix_len
 
         # Build the chain up to but excluding a block that will justify current checkpoint
@@ -137,14 +137,23 @@ def _generate_filter_block_tree(
         # if that needed. Considering that most of attestations were already included into the common chain prefix,
         # we assume it is possible
         empty_slot_count = spec.SLOTS_PER_EPOCH - common_prefix_len - len(current_blocks)
-        block_distribution = current_blocks.copy() + [-1 for _ in range(0, empty_slot_count)]
+        prefix_window_len = JUSTIFYING_SLOT - common_prefix_len
+        suffix_window_len = spec.SLOTS_PER_EPOCH - JUSTIFYING_SLOT
 
-        # Randomly distribute blocks across slots
-        rnd.shuffle(block_distribution)
+        remaining_items = [b for b in current_blocks if b not in justifying_blocks]
+        remaining_items = remaining_items + [-1 for _ in range(0, empty_slot_count)]
+        rnd.shuffle(remaining_items)
 
-        # Move all blocks that require to justify current epoch to the end to increase the chance of justification
-        block_distribution = [b for b in block_distribution if b not in justifying_blocks]
-        block_distribution = block_distribution + justifying_blocks
+        suffix_extra_count = suffix_window_len - len(justifying_blocks)
+        suffix_items = justifying_blocks.copy() + remaining_items[:suffix_extra_count]
+        prefix_items = remaining_items[suffix_extra_count:]
+
+        assert len(prefix_items) == prefix_window_len
+        assert len(suffix_items) == suffix_window_len
+
+        rnd.shuffle(prefix_items)
+        rnd.shuffle(suffix_items)
+        block_distribution = prefix_items + suffix_items
 
         for index, block in enumerate(block_distribution):
             slot = threshold_slot + index
@@ -332,7 +341,7 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
         post_block_tips[target_block].beacon_state.latest_block_header
     )
 
-    if debug:
+    if True:
         _debug_run_sanity_checks(
             spec, anchor_state, anchor_block, signed_blocks, model_params, target_block_root
         )
