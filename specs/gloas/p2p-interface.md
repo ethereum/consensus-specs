@@ -9,7 +9,6 @@
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
-    - [Removed `PartialDataColumnHeader`](#removed-partialdatacolumnheader)
     - [Modified `PartialDataColumnSidecar`](#modified-partialdatacolumnsidecar)
     - [New `PartialDataColumnGroupID`](#new-partialdatacolumngroupid)
     - [New `ProposerPreferences`](#new-proposerpreferences)
@@ -83,12 +82,6 @@ class DataColumnSidecar(Container):
     # [New in Gloas:EIP7732]
     beacon_block_root: Root
 ```
-
-#### Removed `PartialDataColumnHeader`
-
-Just as the DataColumnSidecar removes the `kzg_commitments`, so too are the
-commitments unnecessary in the PartialDataColumnHeader. Without the KZG
-commitments, there is no value in this header. It is removed.
 
 #### Modified `PartialDataColumnSidecar`
 
