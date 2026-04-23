@@ -10,9 +10,6 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
-from eth_consensus_specs.test.helpers.keys import (
-    privkeys,
-)
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
     transition_to,
@@ -28,6 +25,7 @@ from .helpers import (
     advance_branch_to_next_epoch,
     advance_state_to_anchor_epoch,
     attest_to_slot,
+    build_random_payload_attestation_messages,
     BranchTip,
     FCTestData,
     produce_block,
@@ -477,43 +475,6 @@ def _spoil_execution_payload_envelope(spec, rnd: random.Random, signed_envelope)
     signed_envelope.message.payload.parent_hash = spec.Hash32(rnd.randbytes(32))
 
 
-def _choose_payload_attestation_vote_count(spec, ptc, rnd: random.Random):
-    threshold = int(spec.PAYLOAD_TIMELY_THRESHOLD)
-    max_voters = len(ptc)
-    mode = rnd.choice(["none", "below_threshold", "edge", "above_threshold"])
-
-    if mode == "none":
-        return 0
-
-    if mode == "below_threshold":
-        max_count = min(max_voters, threshold)
-        return rnd.randint(0, max_count)
-
-    if mode == "edge":
-        candidates = [count for count in {threshold, threshold + 1} if 0 <= count <= max_voters]
-        return rnd.choice(candidates)
-
-    candidates = [count for count in range(threshold + 1, max_voters + 1)]
-    if candidates:
-        return rnd.choice(candidates)
-
-    return max_voters
-
-
-def _sample_payload_attestation_vote_values(mode, rnd: random.Random):
-    if mode == "all_true_true":
-        return True, True
-    if mode == "all_false_false":
-        return False, False
-    if mode == "mostly_true_true":
-        return (False, False) if _roll(rnd, 20) else (True, True)
-    if mode == "mostly_true_false":
-        return (False, True) if _roll(rnd, 20) else (True, False)
-    if mode == "mostly_false_true":
-        return (True, False) if _roll(rnd, 20) else (False, True)
-    return rnd.choice([True, False]), rnd.choice([True, False])
-
-
 def _get_random_payload_attestation_messages(spec, state, rnd: random.Random):
     """Build random PayloadAttestationMessage objects with diverse PTC vote values."""
     attested_slot = state.latest_block_header.slot
@@ -524,49 +485,7 @@ def _get_random_payload_attestation_messages(spec, state, rnd: random.Random):
     if parent_header.state_root == spec.Root():
         parent_header.state_root = spec.hash_tree_root(state)
     beacon_block_root = spec.hash_tree_root(parent_header)
-
-    ptc = spec.get_ptc(state, attested_slot)
-    if len(ptc) == 0:
-        return []
-
-    num_attesters = _choose_payload_attestation_vote_count(spec, ptc, rnd)
-    attesting_indices = rnd.sample(list(ptc), num_attesters) if num_attesters > 0 else []
-    if not attesting_indices:
-        return []
-
-    vote_pattern_mode = rnd.choice(
-        [
-            "all_true_true",
-            "all_false_false",
-            "mostly_true_true",
-            "mostly_true_false",
-            "mostly_false_true",
-            "mixed",
-        ]
-    )
-
-    messages = []
-    for validator_index in attesting_indices:
-        if validator_index >= len(privkeys):
-            continue
-        payload_present, blob_data_available = _sample_payload_attestation_vote_values(
-            vote_pattern_mode, rnd
-        )
-        data = spec.PayloadAttestationData(
-            beacon_block_root=beacon_block_root,
-            slot=attested_slot,
-            payload_present=payload_present,
-            blob_data_available=blob_data_available,
-        )
-        messages.append(
-            spec.PayloadAttestationMessage(
-                validator_index=validator_index,
-                data=data,
-                signature=spec.BLSSignature(),
-            )
-        )
-
-    return messages
+    return build_random_payload_attestation_messages(spec, state, beacon_block_root, attested_slot, rnd)
 
 
 def _disseminate(

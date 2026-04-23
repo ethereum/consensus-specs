@@ -1,3 +1,4 @@
+import random
 from dataclasses import dataclass, field
 
 from eth_consensus_specs.test.context import spec_test
@@ -92,6 +93,95 @@ def payload_attestation_to_messages(spec, state, payload_attestation, signed=Fal
                 state, ptc_message, privkeys[validator_index]
             )
         messages.append(ptc_message)
+    return messages
+
+
+def choose_payload_attestation_vote_count(spec, ptc, rnd: random.Random):
+    threshold = int(spec.PAYLOAD_TIMELY_THRESHOLD)
+    max_voters = len(ptc)
+    mode = rnd.choice(["none", "below_threshold", "edge", "above_threshold"])
+
+    if mode == "none":
+        return 0
+
+    if mode == "below_threshold":
+        max_count = min(max_voters, threshold)
+        return rnd.randint(0, max_count)
+
+    if mode == "edge":
+        candidates = [count for count in {threshold, threshold + 1} if 0 <= count <= max_voters]
+        return rnd.choice(candidates)
+
+    candidates = [count for count in range(threshold + 1, max_voters + 1)]
+    if candidates:
+        return rnd.choice(candidates)
+
+    return max_voters
+
+
+def choose_payload_attestation_vote_pattern_mode(ptc, rnd: random.Random):
+    return rnd.choice(
+        [
+            "all_true_true",
+            "all_false_false",
+            "mostly_true_true",
+            "mostly_true_false",
+            "mostly_false_true",
+            "mixed",
+        ]
+    )
+
+
+def sample_payload_attestation_vote_values(mode, rnd: random.Random):
+    if mode == "all_true_true":
+        return True, True
+    if mode == "all_false_false":
+        return False, False
+    if mode == "mostly_true_true":
+        return (False, False) if rnd.randint(0, 99) < 20 else (True, True)
+    if mode == "mostly_true_false":
+        return (False, True) if rnd.randint(0, 99) < 20 else (True, False)
+    if mode == "mostly_false_true":
+        return (True, False) if rnd.randint(0, 99) < 20 else (False, True)
+    return rnd.choice([True, False]), rnd.choice([True, False])
+
+
+def build_random_payload_attestation_messages(
+    spec, state, beacon_block_root, slot, rnd: random.Random
+):
+    ptc = spec.get_ptc(state, slot)
+    if len(ptc) == 0:
+        return []
+
+    num_attesters = choose_payload_attestation_vote_count(spec, ptc, rnd)
+    attesting_indices = rnd.sample(list(ptc), num_attesters) if num_attesters > 0 else []
+    if not attesting_indices:
+        return []
+
+    vote_pattern_mode = choose_payload_attestation_vote_pattern_mode(ptc, rnd)
+    messages = []
+    for validator_index in attesting_indices:
+        if validator_index >= len(privkeys):
+            continue
+
+        payload_present, blob_data_available = sample_payload_attestation_vote_values(
+            vote_pattern_mode, rnd
+        )
+        ptc_message = spec.PayloadAttestationMessage(
+            validator_index=validator_index,
+            data=spec.PayloadAttestationData(
+                beacon_block_root=beacon_block_root,
+                slot=slot,
+                payload_present=payload_present,
+                blob_data_available=blob_data_available,
+            ),
+            signature=spec.BLSSignature(),
+        )
+        ptc_message.signature = spec.get_payload_attestation_message_signature(
+            state, ptc_message, privkeys[validator_index]
+        )
+        messages.append(ptc_message)
+
     return messages
 
 
