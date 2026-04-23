@@ -1,15 +1,15 @@
 import random
 
-from eth_consensus_specs.test.helpers.fork_choice import (
-    get_genesis_forkchoice_store_and_block,
-    run_on_block,
-    run_on_attestation,
-    run_on_attester_slashing,
-    run_on_execution_payload_envelope,
-    run_on_payload_attestation_message,
-)
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
+)
+from eth_consensus_specs.test.helpers.fork_choice import (
+    get_genesis_forkchoice_store_and_block,
+    run_on_attestation,
+    run_on_attester_slashing,
+    run_on_block,
+    run_on_execution_payload_envelope,
+    run_on_payload_attestation_message,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.state import (
@@ -21,8 +21,8 @@ from eth_consensus_specs.utils import bls
 from .helpers import (
     advance_state_to_anchor_epoch,
     attest_to_slot,
-    build_random_payload_attestation_messages,
     BranchTip,
+    build_random_payload_attestation_messages,
     FCTestData,
     payload_attestation_to_messages,
     produce_block,
@@ -70,7 +70,9 @@ def _generate_filter_block_tree(
             if _should_justify_epoch(parents, current_justifications, previous_justifications, b)
         ]
         current_justifying_blocks = [b for b in justifying_blocks if current_justifications[b]]
-        previous_only_justifying_blocks = [b for b in justifying_blocks if not current_justifications[b]]
+        previous_only_justifying_blocks = [
+            b for b in justifying_blocks if not current_justifications[b]
+        ]
 
         # There should be enough slots to propose all blocks that are required to justify the epoch
         assert len(justifying_blocks) <= JUSTIFYING_SLOT_COUNT, (
@@ -158,17 +160,18 @@ def _generate_filter_block_tree(
         prefix_items = remaining_items[suffix_extra_count:]
 
         assert len(prefix_items) == prefix_window_len
-        assert len(suffix_extras) + len(previous_only_justifying_blocks) + len(
-            current_justifying_blocks
-        ) == suffix_window_len
+        assert (
+            len(suffix_extras)
+            + len(previous_only_justifying_blocks)
+            + len(current_justifying_blocks)
+            == suffix_window_len
+        )
 
         rnd.shuffle(prefix_items)
         rnd.shuffle(suffix_extras)
         rnd.shuffle(previous_only_justifying_blocks)
         rnd.shuffle(current_justifying_blocks)
-        suffix_items = (
-            suffix_extras + previous_only_justifying_blocks + current_justifying_blocks
-        )
+        suffix_items = suffix_extras + previous_only_justifying_blocks + current_justifying_blocks
         block_distribution = prefix_items + suffix_items
 
         for index, block in enumerate(block_distribution):
@@ -252,9 +255,9 @@ def _debug_run_sanity_checks(
     envelopes_by_block_root = {e.payload.message.beacon_block_root: e.payload for e in envelopes}
     payload_attestations_by_block_root = {}
     for ptc_message in payload_attestations:
-        payload_attestations_by_block_root.setdefault(ptc_message.data.beacon_block_root, []).append(
-            ptc_message
-        )
+        payload_attestations_by_block_root.setdefault(
+            ptc_message.data.beacon_block_root, []
+        ).append(ptc_message)
 
     def debug_add_block(signed_block):
         run_on_block(spec, store, signed_block, valid=True)
@@ -274,7 +277,9 @@ def _debug_run_sanity_checks(
         if is_post_gloas(spec):
             state = store.block_states[signed_block.message.hash_tree_root()]
             for payload_attestation in signed_block.message.body.payload_attestations:
-                for ptc_message in payload_attestation_to_messages(spec, state, payload_attestation):
+                for ptc_message in payload_attestation_to_messages(
+                    spec, state, payload_attestation
+                ):
                     run_on_payload_attestation_message(
                         spec, store, ptc_message, is_from_block=True, valid=True
                     )

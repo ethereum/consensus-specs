@@ -25,8 +25,8 @@ from .helpers import (
     advance_branch_to_next_epoch,
     advance_state_to_anchor_epoch,
     attest_to_slot,
-    build_random_payload_attestation_messages,
     BranchTip,
+    build_random_payload_attestation_messages,
     FCTestData,
     produce_block,
     ProtocolMessage,
@@ -485,7 +485,9 @@ def _get_random_payload_attestation_messages(spec, state, rnd: random.Random):
     if parent_header.state_root == spec.Root():
         parent_header.state_root = spec.hash_tree_root(state)
     beacon_block_root = spec.hash_tree_root(parent_header)
-    return build_random_payload_attestation_messages(spec, state, beacon_block_root, attested_slot, rnd)
+    return build_random_payload_attestation_messages(
+        spec, state, beacon_block_root, attested_slot, rnd
+    )
 
 
 def _disseminate(
@@ -535,7 +537,9 @@ class ProtocolState:
         self.out_of_block_pa_messages.append(ProtocolMessage(ptc_message, False))
 
     def add_invalid_off_chain_attester_slashing(self, attester_slashing):
-        self.out_of_block_attester_slashing_messages.append(ProtocolMessage(attester_slashing, False))
+        self.out_of_block_attester_slashing_messages.append(
+            ProtocolMessage(attester_slashing, False)
+        )
 
     def maybe_invalidate_attestation(self, rnd, attestation, with_invalid_messages):
         if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
@@ -544,9 +548,7 @@ class ProtocolState:
             return True
         return False
 
-    def maybe_invalidate_payload_attestation(
-        self, rnd, state, ptc_message, with_invalid_messages
-    ):
+    def maybe_invalidate_payload_attestation(self, rnd, state, ptc_message, with_invalid_messages):
         if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
             _spoil_payload_attestation_message(self.spec, rnd, state, ptc_message)
             self.add_invalid_off_chain_payload_attestation(ptc_message)
@@ -691,7 +693,9 @@ def _debug_print_block_tree(spec, runtime, protocol):
     print("\nblock_tree:")
     print(
         "blocks:       ",
-        print_block_tree(spec, runtime.post_states[0], [b.payload for b in protocol.signed_block_messages]),
+        print_block_tree(
+            spec, runtime.post_states[0], [b.payload for b in protocol.signed_block_messages]
+        ),
     )
     print(
         "              ",
@@ -699,7 +703,9 @@ def _debug_print_block_tree(spec, runtime, protocol):
         "(epoch="
         + str(runtime.post_states[len(runtime.post_states) - 1].current_justified_checkpoint.epoch)
         + ", root="
-        + str(runtime.post_states[len(runtime.post_states) - 1].current_justified_checkpoint.root)[:6]
+        + str(runtime.post_states[len(runtime.post_states) - 1].current_justified_checkpoint.root)[
+            :6
+        ]
         + ")",
     )
 
@@ -729,18 +735,13 @@ def _debug_print_block_tree(spec, runtime, protocol):
     )
 
 
-def _debug_run_block_tree_checks(
-    spec, debug, with_invalid_messages, anchor_tip, block_parents, runtime, protocol
-):
-    if not debug:
-        return
-
-    _debug_print_block_tree(spec, runtime, protocol)
-
-    if not with_invalid_messages:
-        _debug_assert_block_tree_shape(
-            spec, anchor_tip.beacon_state, block_parents, protocol.signed_block_messages
-        )
+def _debug_run_block_tree_checks(spec, anchor_tip, block_parents, protocol):
+    assert all(message.valid for message in protocol.signed_block_messages), (
+        "Unexpected invalid block in base block-tree scenario"
+    )
+    _debug_assert_block_tree_shape(
+        spec, anchor_tip.beacon_state, block_parents, protocol.signed_block_messages
+    )
 
 
 def _generate_block_tree(
@@ -838,7 +839,9 @@ def _generate_block_tree(
             return False
 
         block_root = signed_block.message.hash_tree_root()
-        envelope = build_signed_execution_payload_envelope(spec, post_state, block_root, signed_block)
+        envelope = build_signed_execution_payload_envelope(
+            spec, post_state, block_root, signed_block
+        )
         if not _roll(rnd, EXECUTION_PAYLOAD_SEND_RATE):
             return False
 
@@ -854,7 +857,9 @@ def _generate_block_tree(
             runtime.payload_known_block_indices.add(new_block_index)
         return valid
 
-    def get_attestation_payload_index(attesting_block_index, new_block_index, valid_execution_payload_sent):
+    def get_attestation_payload_index(
+        attesting_block_index, new_block_index, valid_execution_payload_sent
+    ):
         payload_index = None
         att_payload_index_invalid = False
         if is_post_gloas(spec):
@@ -953,15 +958,19 @@ def _generate_block_tree(
         signed_block, post_state, new_block_index = maybe_propose_block(block_edge)
         if signed_block is not None:
             block_edge = next_block_edge()
-        valid_execution_payload_sent = maybe_send_execution_payload(signed_block, post_state, new_block_index)
+        valid_execution_payload_sent = maybe_send_execution_payload(
+            signed_block, post_state, new_block_index
+        )
         make_slot_attestations(new_block_index, valid_execution_payload_sent)
         maybe_send_payload_attestations(post_state, new_block_index)
         maybe_create_attester_slashing()
         runtime.current_slot += 1
 
-    _debug_run_block_tree_checks(
-        spec, debug, with_invalid_messages, anchor_tip, block_parents, runtime, protocol
-    )
+    if debug:
+        _debug_print_block_tree(spec, runtime, protocol)
+
+        if not with_invalid_messages and not with_attester_slashings:
+            _debug_run_block_tree_checks(spec, anchor_tip, block_parents, protocol)
 
     return (
         sorted(protocol.signed_block_messages, key=lambda b: b.payload.message.slot),
@@ -970,7 +979,9 @@ def _generate_block_tree(
             protocol.out_of_block_attester_slashing_messages,
             key=lambda a: a.payload.attestation_1.data.slot,
         ),
-        sorted(protocol.signed_envelope_messages, key=lambda e: e.payload.message.payload.slot_number),
+        sorted(
+            protocol.signed_envelope_messages, key=lambda e: e.payload.message.payload.slot_number
+        ),
         sorted(protocol.out_of_block_pa_messages, key=lambda a: a.payload.data.slot),
     )
 
