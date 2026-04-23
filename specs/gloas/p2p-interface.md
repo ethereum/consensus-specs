@@ -91,12 +91,10 @@ class PartialDataColumnSidecar(Container):
     partial_column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     # [Modified in Gloas:EIP7732]
-    # removed `header`
+    # Removed `header`
 ```
 
 #### New `PartialDataColumnGroupID`
-
-*[New in Gloas:EIP7732]*
 
 ```python
 class PartialDataColumnGroupID(Container):
@@ -473,7 +471,7 @@ the sidecar.
 
 *[Modified in Gloas:EIP7732]*
 
-*Group ID*: The Partial Message Group ID is the SSZ encoded
+*Note*: The Partial Message Group ID is the SSZ encoded
 `PartialDataColumnGroupID` prefixed with the version byte `0x01`.
 Implementations MUST ignore unknown versions.
 
@@ -496,14 +494,11 @@ messages on `data_column_sidecar_{subnet_id}` as defined above.
 as the bid contains the KZG commitments.
 
 - _[REJECT]_ The cells present bitmap length is equal to the number of KZG
-  commitments in the bid.
+  commitments in `bid.blob_kzg_commitments`.
 - _[REJECT]_ The sidecar's cell and proof data is valid as verified by
-  `verify_partial_data_column_sidecar_kzg_proofs(sidecar, bid.kzg_commitments, column_index)`.
+  `verify_partial_data_column_sidecar_kzg_proofs(sidecar, bid.blob_kzg_commitments, column_index)`.
 
 **Removed from Fulu:**
-
-Rules related to the `PartialDataColumnHeader` are removed as that header is
-removed.
 
 - _[REJECT]_ If a valid header was previously received, the received header MUST
   equal the previously valid header.
