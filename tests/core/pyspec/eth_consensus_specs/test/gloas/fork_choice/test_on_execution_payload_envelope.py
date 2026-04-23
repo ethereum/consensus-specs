@@ -458,3 +458,37 @@ def test_on_execution_payload_envelope__wrong_timestamp(spec, state):
     assert block_root not in store.payloads
 
     yield "steps", test_steps
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_on_execution_payload_envelope__execution_engine_invalid(spec, state):
+    test_steps = []
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+
+    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+
+    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
+
+    envelope = _build_invalid_envelope(spec, state, block_root, signed_block)
+
+    # Temporarily replace the module-level EXECUTION_ENGINE with one whose
+    # verify_and_notify_new_payload returns False, so the envelope verification
+    # fails on the execution-engine check.
+    class InvalidEngine(spec.NoopExecutionEngine):
+        def verify_and_notify_new_payload(self, new_payload_request) -> bool:
+            return False
+
+    original_engine = spec.EXECUTION_ENGINE
+    spec.EXECUTION_ENGINE = InvalidEngine()
+    try:
+        yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
+    finally:
+        spec.EXECUTION_ENGINE = original_engine
+
+    assert block_root not in store.payloads
+
+    yield "steps", test_steps
