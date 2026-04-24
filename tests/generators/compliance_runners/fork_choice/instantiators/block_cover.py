@@ -265,16 +265,10 @@ def _debug_run_sanity_checks(
         run_on_block(spec, store, signed_block, valid=True)
 
         for attestation in signed_block.message.body.attestations:
-            try:
-                run_on_attestation(spec, store, attestation, is_from_block=True, valid=True)
-            except AssertionError:
-                pass
+            run_on_attestation(spec, store, attestation, is_from_block=True, valid=True)
 
         for attester_slashing in signed_block.message.body.attester_slashings:
-            try:
-                run_on_attester_slashing(spec, store, attester_slashing, valid=True)
-            except AssertionError:
-                pass
+            run_on_attester_slashing(spec, store, attester_slashing, valid=True)
 
         if is_post_gloas(spec):
             state = store.block_states[signed_block.message.hash_tree_root()]
