@@ -199,7 +199,7 @@ COV_REPORT_DIR = $(PYSPEC_DIR)/.htmlcov
 #
 # Filtering
 test: MAYBE_TEST := $(if $(k),-k "$(k)")
-test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
+test: MAYBE_FORK := $(if $(filter fw,$(component)),,$(if $(fork),--fork=$(fork)))
 test: PRESET := $(if $(filter fw,$(component)),,$(if $(preset),--preset=$(preset),))
 # Disable parallelism when running a specific test. Makes debugging difficult (print doesn't work).
 test: MAYBE_PARALLEL := $(if $(k),,-n logical --dist=worksteal)
@@ -217,7 +217,7 @@ test: COVERAGE_PRESETS := $(if $(preset),$(preset),$(if $(filter true,$(reftests
 test: COV_SCOPE_SINGLE := $(foreach P,$(COVERAGE_PRESETS), --cov=eth_consensus_specs.$(fork).$P)
 test: COV_SCOPE_ALL := $(foreach P,$(COVERAGE_PRESETS),$(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth_consensus_specs.$S.$P))
 test: COV_SCOPE := $(if $(filter true,$(coverage)),$(if $(fork),$(COV_SCOPE_SINGLE),$(COV_SCOPE_ALL)))
-test: COVERAGE := $(if $(filter true,$(coverage)),--coverage $(COV_SCOPE) --cov-report="html:$(COV_REPORT_DIR)" --cov-report="json:$(COV_REPORT_DIR)/coverage.json" --cov-branch --no-cov-on-fail)
+test: COVERAGE := $(if $(filter fw,$(component)),,$(if $(filter true,$(coverage)),--coverage $(COV_SCOPE) --cov-report="html:$(COV_REPORT_DIR)" --cov-report="json:$(COV_REPORT_DIR)/coverage.json" --cov-branch --no-cov-on-fail))
 test: _pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(UV_RUN) pytest \
@@ -268,7 +268,7 @@ serve_docs: _pyspec _copy_docs
 
 LINT_DIFF_BEFORE := .lint_diff_before
 LINT_DIFF_AFTER := .lint_diff_after
-MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md' -not -path '$(CURDIR)/.*')
+MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md' -not -path '$(CURDIR)/.git/*' -not -path '$(CURDIR)/.venv/*')
 MYPY_PACKAGE_BASE := $(subst /,.,$(PYSPEC_DIR:$(CURDIR)/%=%))
 MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p $(MYPY_PACKAGE_BASE).eth_consensus_specs.$S)
 

@@ -20,7 +20,8 @@ builder" to implement Heze.
 ### Constructing the `SignedExecutionPayloadBid`
 
 *Note*: The only change made to `SignedExecutionPayloadBid` is to set
-`bid.inclusion_list_bits` based on the builder's local view of inclusion lists.
+`bid.inclusion_list_bits` based on the builder's inclusion list view, which
+comprises all valid and non-equivocating inclusion lists they have observed.
 
 1. Set `bid.inclusion_list_bits` to
-   `get_inclusion_list_bits(get_inclusion_list_store(), state, Slot(bid.slot - 1))`.
+   `get_inclusion_list_bits(get_inclusion_list_store(), state, Slot(bid.slot - 1), only_timely=False)`.
