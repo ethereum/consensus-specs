@@ -202,8 +202,8 @@ transitions:
 `ProofEngine` provides a parallel source of `VALID` signals. When the
 `ProofEngine` returns `VALID` for a `SignedExecutionProof` whose
 `public_input.new_payload_request_root` matches a block's `NewPayloadRequest`
-(i.e. equals `hash_tree_root(new_payload_request)` for the corresponding
-block, as verified via
+(i.e. equals `hash_tree_root(new_payload_request)` for the corresponding block,
+as verified via
 [`process_execution_proof`](../specs/_features/eip8025/beacon-chain.md#new-process_execution_proof)),
 the consensus engine MUST transition the corresponding block from
 `NOT_VALIDATED` -> `VALID` in the same manner as an `ExecutionEngine` `VALID`
