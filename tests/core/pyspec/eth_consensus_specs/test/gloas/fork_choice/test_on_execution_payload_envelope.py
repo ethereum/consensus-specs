@@ -384,6 +384,51 @@ def test_on_execution_payload_envelope__wrong_withdrawals(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_on_execution_payload_envelope__missing_expected_withdrawal(spec, state):
+    """
+    Envelope with empty withdrawals must be rejected when the state's
+    payload_expected_withdrawals is non-empty.
+    """
+    # Seed payload_expected_withdrawals directly on the anchor state. The parent
+    # is genesis (empty), so process_withdrawals returns early in block_1 and
+    # the seeded value carries through unchanged.
+    expected_withdrawal = spec.Withdrawal(
+        index=0, validator_index=0, address=b"\x22" * 20, amount=spec.Gwei(1)
+    )
+    state.payload_expected_withdrawals = spec.List[
+        spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    ]([expected_withdrawal])
+
+    test_steps = []
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+
+    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+
+    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
+
+    # Sanity check: the seeded expected withdrawal survived block_1.
+    assert len(state.payload_expected_withdrawals) == 1
+
+    # Build envelope with empty withdrawals, omitting the expected one.
+    envelope = _build_invalid_envelope(
+        spec,
+        state,
+        block_root,
+        signed_block,
+        withdrawals=spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](),
+    )
+    yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
+
+    assert block_root not in store.payloads
+
+    yield "steps", test_steps
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_on_execution_payload_envelope__wrong_gas_limit(spec, state):
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
