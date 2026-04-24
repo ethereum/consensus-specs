@@ -174,7 +174,7 @@ To optimistically import a block:
     (e.g., `TERMINAL_BLOCK_HASH`) MUST prevent an optimistic import.
 - The parent of the block MUST NOT have an `INVALIDATED` execution payload.
 
-*[New in EIP-8025]* When the consensus engine is not configured with an
+*[New in EIP8025]* When the consensus engine is not configured with an
 `ExecutionEngine`, the
 [`verify_and_notify_new_payload`](../specs/bellatrix/beacon-chain.md#verify_and_notify_new_payload)
 call is not performed; the block is treated as if the execution engine had
@@ -198,7 +198,7 @@ transitions:
 - `NOT_VALIDATED` -> `VALID`
 - `NOT_VALIDATED` -> `INVALIDATED`
 
-*[New in EIP-8025]* In addition to the `ExecutionEngine` signal, the
+*[New in EIP8025]* In addition to the `ExecutionEngine` signal, the
 `ProofEngine` provides a parallel source of `VALID` signals. When the
 `ProofEngine` returns `VALID` for a `SignedExecutionProof` whose
 `public_input.new_payload_request_root` matches a block's `NewPayloadRequest`
