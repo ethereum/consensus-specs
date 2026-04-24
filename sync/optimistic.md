@@ -174,6 +174,18 @@ To optimistically import a block:
     (e.g., `TERMINAL_BLOCK_HASH`) MUST prevent an optimistic import.
 - The parent of the block MUST NOT have an `INVALIDATED` execution payload.
 
+*[New in EIP-8025]* When the consensus engine is not configured with an
+`ExecutionEngine`, the
+[`verify_and_notify_new_payload`](../specs/bellatrix/beacon-chain.md#verify_and_notify_new_payload)
+call is not performed; the block is treated as if the execution engine had
+returned `NOT_VALIDATED` for the purposes of optimistic import. Identically,
+when the consensus engine is not configured with a `ProofEngine`, the
+proof-engine signal is treated as `NOT_VALIDATED` for all blocks. A node
+configured with neither engine has no mechanism to transition any block out of
+`NOT_VALIDATED`; such nodes remain in the optimistic state defined below for
+all execution-enabled blocks and MUST signal `optimistic` to their consumers
+per the rules in [Fork Choice](#fork-choice).
+
 In addition to this change in validation, the consensus engine MUST track which
 blocks returned `NOT_VALIDATED` and which returned `VALID` for subsequent
 processing.
@@ -189,6 +201,22 @@ transitions:
 
 - `NOT_VALIDATED` -> `VALID`
 - `NOT_VALIDATED` -> `INVALIDATED`
+
+*[New in EIP-8025]* In addition to the `ExecutionEngine` signal, the
+`ProofEngine` provides a parallel source of `VALID` signals. When the
+`ProofEngine` returns `VALID` for a `SignedExecutionProof` whose
+`public_input.new_payload_request_root` matches a block's `NewPayloadRequest`
+(i.e. equals `hash_tree_root(new_payload_request)` for the corresponding
+block, as verified via
+[`process_execution_proof`](../specs/_features/eip8025/beacon-chain.md#new-process_execution_proof)),
+the consensus engine MUST transition the corresponding block from
+`NOT_VALIDATED` -> `VALID` in the same manner as an `ExecutionEngine` `VALID`
+response. A block is considered `VALID` when *at least one* signal source
+(`ExecutionEngine` or `ProofEngine`) has returned `VALID`; it remains
+`NOT_VALIDATED` when both sources are either absent or pending. The
+`ProofEngine` is not a source of `INVALIDATED` transitions: a non-`VALID`
+proof-engine response is handled at gossip-validation and does not constitute
+evidence that the execution payload itself is invalid.
 
 When a block transitions from `NOT_VALIDATED` -> `VALID`, all *ancestors* of the
 block MUST also transition from `NOT_VALIDATED` -> `VALID`. Such a block and any
