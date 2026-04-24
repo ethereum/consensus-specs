@@ -18,7 +18,6 @@
 - [Important commands](#important-commands)
   - [Linting](#linting)
   - [Running tests](#running-tests)
-  - [Generating reference tests](#generating-reference-tests)
   - [Cleaning](#cleaning)
 - [Writing tests](#writing-tests)
   - [Reference tests vs unittests](#reference-tests-vs-unittests)
@@ -274,72 +273,7 @@ the project standards.
 
 ### Running tests
 
-```bash
-# Run all minimal preset tests (~30 minutes)
-make test
-
-# Run all mainnet preset tests (~5 hours)
-make test preset=mainnet
-
-# Run tests for a specific fork
-make test fork=deneb
-
-# Run tests matching a pattern (partial match)
-make test k=deposit  # Runs all tests with "deposit" in the name
-
-# Combine options
-make test preset=mainnet fork=deneb k=test_verify_kzg_proof
-```
-
-When testing, focus on what might have been impacted by the changes. Running the
-full test suite is slow, so target testing to relevant areas. For example, a bug
-fix in Electra deposit handling should be tested with deposit tests for Electra
-and any later forks. This may require multiple commands with different
-`fork=<fork>` options, as there is currently no single command to run tests for
-a given fork and all subsequent forks.
-
-Use `preset=minimal` (the default) while developing and iterating on changes.
-Once everything works, run the same targeted tests with `preset=mainnet` as a
-final sanity check before committing.
-
-### Generating reference tests
-
-```bash
-# Generate all reference tests (runs both presets by default)
-make test reftests=true
-
-# AI agents should use verbose mode (default view uses dynamic tables)
-make test reftests=true verbose=true
-
-# Generate tests for a specific fork
-make test reftests=true fork=electra verbose=true
-
-# Generate tests matching a pattern (omit the "test_" prefix)
-make test reftests=true k=verify_kzg_proof verbose=true
-
-# Combine options
-make test reftests=true preset=mainnet fork=deneb k=verify_kzg_proof verbose=true
-```
-
-Reference tests are written to the `../consensus-spec-tests` directory, which is
-created automatically.
-
-If a full suite of tests has been generated and an issue is identified, there is
-no need to regenerate everything. Only the affected test cases need to be
-regenerated; the framework will delete the individual test case directories
-before regenerating them.
-
-Note that if a test case is removed from the framework,
-`make test reftests=true` will not delete previously generated reference tests
-for that case. The corresponding directories must be deleted manually, or the
-entire `../consensus-spec-tests` directory can be removed if regenerating
-everything is acceptable.
-
-To see available runners:
-
-```bash
-find tests/generators/runners -maxdepth 1 -type f -name '*.py' ! -name '__init__.py' -exec basename {} .py \;
-```
+See [`.claude/skills/run-tests/SKILL.md`](.claude/skills/run-tests/SKILL.md).
 
 ### Cleaning
 

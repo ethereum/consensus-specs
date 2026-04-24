@@ -289,6 +289,7 @@ class ExecutionPayloadEnvelope(Container):
     execution_requests: ExecutionRequests
     builder_index: BuilderIndex
     beacon_block_root: Root
+    parent_beacon_block_root: Root
 ```
 
 #### `SignedExecutionPayloadEnvelope`
@@ -972,6 +973,8 @@ def apply_parent_execution_payload(
         payment_index = parent_slot % SLOTS_PER_EPOCH
         settle_builder_payment(state, payment_index)
     elif parent_bid.value > 0:
+        # Parent is older than the previous epoch, its payment entry has been
+        # evicted from builder_pending_payments. Append the withdrawal directly.
         state.builder_pending_withdrawals.append(
             BuilderPendingWithdrawal(
                 fee_recipient=parent_bid.fee_recipient,
