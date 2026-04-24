@@ -109,7 +109,7 @@ def choose_payload_attestation_vote_count(spec, ptc, rnd: random.Random):
         return rnd.randint(0, max_count)
 
     if mode == "edge":
-        candidates = [count for count in {threshold, threshold + 1} if 0 <= count <= max_voters]
+        candidates = [count for count in (threshold, threshold + 1) if 0 <= count <= max_voters]
         return rnd.choice(candidates)
 
     candidates = [count for count in range(threshold + 1, max_voters + 1)]
