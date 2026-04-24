@@ -270,6 +270,9 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
     block = build_empty_block_for_next_slot(spec, state)
     block.body.parent_execution_requests = requests
     pre_pending_deposits_len = len(state.pending_deposits)
+    pre_pending_partial_withdrawals_len = len(state.pending_partial_withdrawals)
+    pre_pending_consolidations_len = len(state.pending_consolidations)
+    pre_validators = [v.copy() for v in state.validators]
 
     spec.process_slots(state, block.slot)
     yield from run_parent_execution_payload_processing(spec, state, block)
@@ -280,6 +283,18 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
     assert new_pending_deposit.pubkey == deposit_request.pubkey
     assert new_pending_deposit.withdrawal_credentials == deposit_request.withdrawal_credentials
     assert new_pending_deposit.amount == deposit_request.amount
+
+    # The withdrawal request (unknown validator_pubkey) and the consolidation
+    # request (unknown source/target pubkeys) must be no-ops: no queue entries,
+    # no exit initiated, no credentials or withdrawable_epoch changes.
+    assert len(state.pending_partial_withdrawals) == pre_pending_partial_withdrawals_len
+    assert len(state.pending_consolidations) == pre_pending_consolidations_len
+    assert len(state.validators) == len(pre_validators)
+    for i, pre_v in enumerate(pre_validators):
+        post_v = state.validators[i]
+        assert post_v.exit_epoch == pre_v.exit_epoch
+        assert post_v.withdrawable_epoch == pre_v.withdrawable_epoch
+        assert post_v.withdrawal_credentials == pre_v.withdrawal_credentials
 
 
 @with_gloas_and_later
