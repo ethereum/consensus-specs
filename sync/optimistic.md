@@ -180,11 +180,7 @@ To optimistically import a block:
 call is not performed; the block is treated as if the execution engine had
 returned `NOT_VALIDATED` for the purposes of optimistic import. Identically,
 when the consensus engine is not configured with a `ProofEngine`, the
-proof-engine signal is treated as `NOT_VALIDATED` for all blocks. A node
-configured with neither engine has no mechanism to transition any block out of
-`NOT_VALIDATED`; such nodes remain in the optimistic state defined below for
-all execution-enabled blocks and MUST signal `optimistic` to their consumers
-per the rules in [Fork Choice](#fork-choice).
+proof-engine signal is treated as `NOT_VALIDATED` for all blocks.
 
 In addition to this change in validation, the consensus engine MUST track which
 blocks returned `NOT_VALIDATED` and which returned `VALID` for subsequent
