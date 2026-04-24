@@ -39,6 +39,7 @@ test = [
 ]
 lint = [
   "codespell==2.4.2",
+  "mdformat-frontmatter==2.0.10",
   "mdformat-gfm-alerts==2.0.0",
   "mdformat-gfm==1.0.0",
   "mdformat-ruff==0.1.3",
