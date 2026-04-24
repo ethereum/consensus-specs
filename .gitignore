@@ -40,6 +40,10 @@ tests/core/pyspec/eth_consensus_specs/test_results.xml
 # TOC tool outputs temporary files
 *.tmp
 
+# website
+docs/
+site/
+
 # docker test results
 testResults
 
