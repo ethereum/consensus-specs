@@ -565,7 +565,9 @@ def _generate_block_tree(
     block_index = 1
     block_tree_tips = set([0])
     in_block_attester_slashings = []
-    attester_slashings_count = 0
+    # Tracks every validator selected for a generated attester slashing in this
+    # scenario, so later selections cannot target the same validator again.
+    validators_to_be_slashed = set()
     out_of_block_attestation_messages = []
     out_of_block_pa_messages = []
     out_of_block_attester_slashing_messages = []
@@ -736,10 +738,18 @@ def _generate_block_tree(
                     )
 
         # Create attester slashing
-        if with_attester_slashings and attester_slashings_count < MAX_ATTESTER_SLASHINGS:
+        if with_attester_slashings and len(validators_to_be_slashed) < MAX_ATTESTER_SLASHINGS:
             if rnd.randint(0, 99) < ATTESTER_SLASHINGS_RATE:
                 state = post_states[attesting_tips[0]]
-                indices = [rnd.randint(0, len(state.validators) - 1)]
+
+                assert len(validators_to_be_slashed) < len(state.validators)
+                while True:
+                    validator_to_slash = rnd.randint(0, len(state.validators) - 1)
+                    # avoid slashing a validator who might be slashed already
+                    if validator_to_slash not in validators_to_be_slashed:
+                        break
+
+                indices = [validator_to_slash]
                 attester_slashing = get_valid_attester_slashing_by_indices(
                     spec, state, indices, slot=current_slot, signed_1=True, signed_2=True
                 )
@@ -755,7 +765,7 @@ def _generate_block_tree(
                     spoil_fn=lambda msg: _spoil_attester_slashing(spec, rnd, msg),
                 )
 
-                attester_slashings_count += 1
+                validators_to_be_slashed.update(indices)
 
         # Next slot
         current_slot += 1
