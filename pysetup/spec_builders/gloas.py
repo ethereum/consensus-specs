@@ -33,6 +33,7 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
         return set(
             [
                 "ExecutionPayloadHeader",
+                "PartialDataColumnHeader",
                 # Temporarily deprecate light-client containers
                 # See: https://github.com/ethereum/consensus-specs/pull/5142
                 "ExecutionBranch",
@@ -54,6 +55,7 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
                 "process_execution_payload",
                 "retrieve_column_sidecars",
                 "upgrade_to_fulu",
+                "verify_partial_data_column_header_inclusion_proof",
                 # Temporarily deprecate light-client functions
                 # See: https://github.com/ethereum/consensus-specs/pull/5142
                 "apply_light_client_update",

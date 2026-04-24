@@ -466,10 +466,11 @@ def build_signed_execution_payload_envelope(
 
     # Create the execution payload envelope message
     envelope_message = spec.ExecutionPayloadEnvelope(
-        beacon_block_root=block_root,
         payload=payload,
         execution_requests=execution_requests,
         builder_index=builder_index,
+        beacon_block_root=block_root,
+        parent_beacon_block_root=signed_block.message.parent_root,
     )
 
     # Sign the envelope: self-builds use proposer key, external builds use builder key
