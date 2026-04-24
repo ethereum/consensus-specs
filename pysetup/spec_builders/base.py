@@ -63,5 +63,9 @@ class BaseSpecBuilder(ABC):
         return set()
 
     @classmethod
+    def deprecate_containers(cls) -> set[str]:
+        return set()
+
+    @classmethod
     def deprecate_functions(cls) -> set[str]:
         return set()

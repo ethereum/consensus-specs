@@ -1,23 +1,17 @@
-import argparse
-import os
 from collections import namedtuple
 from collections.abc import Iterable
 from glob import glob
 from pathlib import Path
 
-from pathos.multiprocessing import ProcessingPool as Pool
+import pytest
 from ruamel.yaml import YAML
 from snappy import uncompress
-from tqdm import tqdm
 
 from eth_consensus_specs.test.context import expect_assertion_error
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
-from eth_consensus_specs.utils import bls
 
-from .instantiators.helpers import payload_attestation_to_messages
-
-bls.bls_active = False
+from ..instantiators.helpers import payload_attestation_to_messages
 
 
 def read_yaml(fp):
@@ -64,8 +58,8 @@ def get_test_case(spec, td):
     )
 
 
-TestInfo = namedtuple(
-    "TestInfo",
+ComplianceTestInfo = namedtuple(
+    "ComplianceTestInfo",
     [
         "preset",
         "fork",
@@ -207,16 +201,15 @@ def run_test(test_info):
             assert False
 
 
-def gather_tests(tests_dir) -> Iterable[TestInfo]:
+def gather_tests(tests_dir) -> Iterable[ComplianceTestInfo]:
     for preset in [p.name for p in Path(tests_dir).glob("*") if p.name in spec_targets]:
         for fork in [
             f.name for f in (Path(tests_dir) / preset).glob("*") if f.name in spec_targets[preset]
         ]:
-            print(f"{preset}/{fork}")
             for test_dir in sorted(
                 [td for td in (Path(tests_dir) / preset / fork).glob("*/*/*/*")]
             ):
-                yield TestInfo(preset, fork, test_dir)
+                yield ComplianceTestInfo(preset, fork, test_dir)
 
 
 def _select_tests(tests, start=None, limit=None):
@@ -227,43 +220,35 @@ def _select_tests(tests, start=None, limit=None):
     return tests
 
 
-def runt_tests_parallel(tests_dir, num_proc=os.cpu_count(), start=None, limit=None):
-    def runner(test_info: TestInfo):
-        try:
-            run_test(test_info)
-        except Exception as e:
-            raise e
-
-    tests = _select_tests(list(gather_tests(tests_dir)), start, limit)
-    with Pool(processes=num_proc) as pool:
-        for _ in tqdm(pool.imap(runner, tests), total=len(tests)):
-            pass
-
-
-def run_tests(tests_dir, start=None, limit=None):
-    for test_info in _select_tests(list(gather_tests(tests_dir)), start, limit):
-        print(test_info.test_dir)
-        run_test(test_info)
-
-
-def main():
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument(
-        "-i", "--test-dir", dest="test_dir", required=True, help="directory with generated tests"
+def _test_id(test_info: ComplianceTestInfo) -> str:
+    test_path = Path(test_info.test_dir)
+    return "::".join(
+        [
+            test_info.preset,
+            test_info.fork,
+            test_path.parts[-4],
+            test_path.parts[-1],
+        ]
     )
-    arg_parser.add_argument(
-        "--sequential", action="store_true", help="run tests sequentially (useful for profiling)"
-    )
-    arg_parser.add_argument(
-        "--start", type=int, default=None, help="start index (0-based) into the test list"
-    )
-    arg_parser.add_argument("--limit", type=int, default=None, help="limit number of tests to run")
-    args = arg_parser.parse_args()
-    if args.sequential:
-        run_tests(args.test_dir, start=args.start, limit=args.limit)
-    else:
-        runt_tests_parallel(args.test_dir, start=args.start, limit=args.limit)
 
 
-if __name__ == "__main__":
-    main()
+def pytest_generate_tests(metafunc):
+    if "test_info" not in metafunc.fixturenames:
+        return
+
+    tests_dir = metafunc.config.getoption("--test-dir")
+    if tests_dir is None:
+        raise pytest.UsageError("--test-dir is required when running fork-choice compliance tests")
+
+    start = metafunc.config.getoption("--start")
+    limit = metafunc.config.getoption("--limit")
+    test_infos = _select_tests(list(gather_tests(tests_dir)), start=start, limit=limit)
+    metafunc.parametrize(
+        "test_info",
+        test_infos,
+        ids=[_test_id(test_info) for test_info in test_infos],
+    )
+
+
+def test_run_compliance_case(test_info):
+    run_test(test_info)
