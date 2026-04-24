@@ -44,6 +44,8 @@ MAX_TIPS_TO_ATTEST = 2
 OFF_CHAIN_ATTESTATION_RATE = 10
 ON_CHAIN_ATTESTATION_RATE = 20
 ATTEST_TO_PARENT_RATE = 10
+IGNORE_IN_BLOCK_ATTESTATION_RATE = 5
+COPY_IN_BLOCK_ATTESTATION_RATE = 10
 
 MAX_ATTESTER_SLASHINGS = 8
 ATTESTER_SLASHINGS_RATE = 8
@@ -779,6 +781,33 @@ def _generate_block_tree(
     def next_block_edge():
         return next(block_edges, None)
 
+    def _subtract_items_once(source_items, items_to_remove):
+        remaining_items = list(source_items)
+        for item in items_to_remove:
+            if item in remaining_items:
+                remaining_items.remove(item)
+        return remaining_items
+
+    def choose_block_attestation_pool():
+        # Model three in-block attestation behaviors:
+        # ignore: never offered for inclusion and kept in the pool,
+        # move: offered for inclusion and removed if included,
+        # copy: offered for inclusion and kept in the pool even if included.
+        candidate_attestations = []
+        ignored_attestations = []
+        copied_candidate_attestations = []
+
+        for attestation in protocol.in_block_attestations:
+            if _roll(rnd, IGNORE_IN_BLOCK_ATTESTATION_RATE):
+                ignored_attestations.append(attestation)
+                continue
+
+            candidate_attestations.append(attestation)
+            if _roll(rnd, COPY_IN_BLOCK_ATTESTATION_RATE):
+                copied_candidate_attestations.append(attestation)
+
+        return candidate_attestations, ignored_attestations, copied_candidate_attestations
+
     def produce_invalid_block(parent_state):
         # Do not include attestations and slashings into invalid block
         # as clients may opt in to process or not process attestations
@@ -791,17 +820,29 @@ def _generate_block_tree(
 
     def produce_valid_block(parent_state, parent_index, block_index):
         (
+            candidate_attestations,
+            ignored_attestations,
+            copied_candidate_attestations,
+        ) = choose_block_attestation_pool()
+        (
             signed_block,
             post_state,
-            protocol.in_block_attestations,
+            not_included_attestations,
             protocol.in_block_attester_slashings,
             protocol.in_block_pa_messages,
         ) = produce_block(
             spec,
             parent_state,
-            protocol.in_block_attestations,
+            candidate_attestations,
             protocol.in_block_attester_slashings,
             protocol.in_block_pa_messages,
+        )
+
+        copied_included_attestations = _subtract_items_once(
+            copied_candidate_attestations, not_included_attestations
+        )
+        protocol.in_block_attestations = (
+            ignored_attestations + not_included_attestations + copied_included_attestations
         )
 
         protocol.add_signed_block(signed_block, True)
