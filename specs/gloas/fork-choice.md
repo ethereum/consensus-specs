@@ -788,6 +788,7 @@ def verify_execution_payload_envelope(
     header = copy(state.latest_block_header)
     header.state_root = hash_tree_root(state)
     assert envelope.beacon_block_root == hash_tree_root(header)
+    assert envelope.parent_beacon_block_root == state.latest_block_header.parent_root
 
     # Verify consistency with the committed bid
     bid = state.latest_execution_payload_bid
@@ -809,7 +810,7 @@ def verify_execution_payload_envelope(
                 kzg_commitment_to_versioned_hash(commitment)
                 for commitment in bid.blob_kzg_commitments
             ],
-            parent_beacon_block_root=state.latest_block_header.parent_root,
+            parent_beacon_block_root=envelope.parent_beacon_block_root,
             execution_requests=envelope.execution_requests,
         )
     )
