@@ -101,6 +101,7 @@ def _attempt_payload_with_withdrawals(spec, state, withdrawals):
         execution_requests=spec.ExecutionRequests(),
         builder_index=committed_bid.builder_index,
         beacon_block_root=header.hash_tree_root(),
+        parent_beacon_block_root=test_state.latest_block_header.parent_root,
     )
 
     if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
