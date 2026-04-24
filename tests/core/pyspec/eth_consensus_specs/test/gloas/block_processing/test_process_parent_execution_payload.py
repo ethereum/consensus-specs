@@ -11,6 +11,7 @@ from eth_consensus_specs.test.helpers.deposits import (
 from eth_consensus_specs.test.helpers.execution_requests import (
     get_non_empty_execution_requests,
 )
+from eth_consensus_specs.test.helpers.keys import pubkeys
 from tests.infra.helpers.withdrawals import set_parent_block_full
 
 
@@ -289,6 +290,7 @@ def test_process_parent_execution_payload__builder_deposit_after_pending_validat
     earlier in the same parent execution requests batch.
     """
     new_validator_index = len(state.validators)
+    new_validator_pubkey = pubkeys[new_validator_index]
     amount = spec.MIN_DEPOSIT_AMOUNT
 
     # First deposit: regular validator credentials with valid signature.
@@ -298,6 +300,7 @@ def test_process_parent_execution_payload__builder_deposit_after_pending_validat
         new_validator_index,
         amount,
         index=0,
+        pubkey=new_validator_pubkey,
         withdrawal_credentials=make_withdrawal_credentials(
             spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\xab"
         ),
@@ -313,6 +316,7 @@ def test_process_parent_execution_payload__builder_deposit_after_pending_validat
         new_validator_index,
         amount,
         index=1,
+        pubkey=new_validator_pubkey,
         withdrawal_credentials=make_withdrawal_credentials(
             spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
         ),
