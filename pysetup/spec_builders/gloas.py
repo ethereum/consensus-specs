@@ -54,8 +54,8 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
                 "initialize_proposer_lookahead",
                 "process_execution_payload",
                 "retrieve_column_sidecars",
-                "verify_partial_data_column_header_inclusion_proof",
                 "upgrade_to_fulu",
+                "verify_partial_data_column_header_inclusion_proof",
                 # Temporarily deprecate light-client functions
                 # See: https://github.com/ethereum/consensus-specs/pull/5142
                 "apply_light_client_update",
