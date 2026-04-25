@@ -34,6 +34,6 @@ terminal punctuation.
 The body (and PR description) should describe what and why, not how. Wrap the
 body at 72 characters. Do not use section headers. A single paragraph is ideal,
 but multiple paragraphs are okay if necessary. Keep things simple and try to be
-concise. Do not mention running the linter or tests; CI will show this. Mention
-any relevant information, concerns, or related PRs/issues. Do not include a
+concise. Mention any relevant information, concerns, or related PRs/issues. Do
+not mention running the linter or tests; CI will show this. Do not include a
 `Co-Authored-By` trailer.
