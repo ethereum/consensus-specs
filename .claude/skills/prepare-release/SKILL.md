@@ -44,7 +44,7 @@ Review the PRs since the last release and provide a list of recommendations to
 the user. If necessary, the user will manually update PR titles prior to
 starting the release action. Titles must be written in the imperative mood.
 Titles must not have component prefixes like the "conventional commit" style.
-Titles should use sentence case, not title case. Titles must be fewer than 72
+Titles should use sentence case, not title case. Titles must be fewer than 68
 characters long. Titles should not be too vague. Words that are clearly code
 (functions, classes, etc) must be wrapped in backticks. There must be no
 terminal punctuation and ideally no punctuation at all. Titles must not contain
