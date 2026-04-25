@@ -28,7 +28,10 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     run_on_execution_payload_envelope,
     run_on_payload_attestation_message,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_gloas
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_deneb,
+    is_post_gloas,
+)
 from eth_consensus_specs.test.helpers.keys import (
     privkeys,
 )
@@ -218,6 +221,15 @@ def messages_to_payload_attestations(spec, state, messages):
     return result
 
 
+def is_attestation_eligible_for_block(spec, state, attestation) -> bool:
+    if is_post_deneb(spec):
+        return spec.compute_epoch_at_slot(attestation.data.slot) + 1 >= spec.compute_epoch_at_slot(
+            state.slot
+        )
+
+    return state.slot <= attestation.data.slot + spec.SLOTS_PER_EPOCH
+
+
 def _get_eligible_attestations(spec, state, attestations) -> []:
     def _get_voting_source(target: spec.Checkpoint) -> spec.Checkpoint:
         if target.epoch == spec.get_current_epoch(state):
@@ -228,7 +240,7 @@ def _get_eligible_attestations(spec, state, attestations) -> []:
     return [
         a
         for a in attestations
-        if state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH
+        if is_attestation_eligible_for_block(spec, state, a)
         and a.data.source == _get_voting_source(a.data.target)
     ]
 
@@ -249,7 +261,7 @@ def produce_block(
     :return: Signed block, the post block state, and operations not included into the block.
     """
 
-    # Filter out too old attestastions (TODO relax condition for Deneb)
+    # Filter out too old attestations.
     eligible_attestations = _get_eligible_attestations(spec, state, attestations)
 
     # Create a block with attestations

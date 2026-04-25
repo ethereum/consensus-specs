@@ -28,6 +28,7 @@ from .helpers import (
     BranchTip,
     build_random_payload_attestation_messages,
     FCTestData,
+    is_attestation_eligible_for_block,
     produce_block,
     ProtocolMessage,
 )
@@ -859,7 +860,7 @@ def _generate_block_tree(
         protocol.in_block_attestations = [
             a
             for a in protocol.in_block_attestations
-            if parent_state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH
+            if is_attestation_eligible_for_block(spec, parent_state, a)
         ]
 
         proposer = spec.get_beacon_proposer_index(parent_state)
