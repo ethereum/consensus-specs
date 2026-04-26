@@ -153,7 +153,7 @@ def create_light_client_update(
         )
 
     # Indicate finality whenever possible
-    if finalized_state is not None and finalized_block is not None:
+    if finalized_block is not None and finalized_state is not None:
         if finalized_block.message.slot != GENESIS_SLOT:
             update.finalized_header = block_to_light_client_header(finalized_block, finalized_state)
             assert (
