@@ -64,12 +64,13 @@ def setup_lc_sync_test(spec, state, s_spec=None, phases=None):
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2 - 1)
     trusted_block = state_transition_with_full_block(spec, state, True, True)
     trusted_block_root = trusted_block.message.hash_tree_root()
+    trusted_state = state.copy()
     yield "trusted_block_root", "meta", "0x" + trusted_block_root.hex()
 
     data_epoch = spec.compute_epoch_at_slot(trusted_block.message.slot)
     data_fork_digest = spec.compute_fork_digest(test.genesis_validators_root, data_epoch)
     d_spec = get_spec_for_fork_version(spec, spec.compute_fork_version(data_epoch), phases)
-    data = d_spec.create_light_client_bootstrap(state, trusted_block)
+    data = d_spec.create_light_client_bootstrap(trusted_block, trusted_state)
     yield "bootstrap_fork_digest", "meta", encode_hex(data_fork_digest)
     yield "bootstrap", data
 
@@ -143,12 +144,12 @@ def emit_force_update(test, spec, state):
 def emit_update(
     test,
     spec,
-    state,
     block,
-    attested_state,
+    state,
     attested_block,
-    finalized_state,
+    attested_state,
     finalized_block,
+    finalized_state,
     with_next=True,
     phases=None,
 ):
@@ -156,12 +157,12 @@ def emit_update(
     data_fork_digest = spec.compute_fork_digest(test.genesis_validators_root, data_epoch)
     d_spec = get_spec_for_fork_version(spec, spec.compute_fork_version(data_epoch), phases)
     data = d_spec.create_light_client_update(
-        state,
         block,
-        attested_state,
+        state,
         attested_block,
-        finalized_state,
+        attested_state,
         finalized_block,
+        finalized_state,
     )
     if not with_next:
         data.next_sync_committee = spec.SyncCommittee()
@@ -221,12 +222,12 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     yield from emit_update(
         test,
         spec,
-        state,
         block,
-        attested_state,
+        state,
         attested_block,
-        finalized_state,
+        attested_state,
         finalized_block,
+        finalized_state,
         phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
@@ -244,12 +245,12 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     update = yield from emit_update(
         test,
         spec,
-        state,
         block,
-        attested_state,
+        state,
         attested_block,
-        finalized_state,
+        attested_state,
         finalized_block,
+        finalized_state,
         phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
@@ -269,12 +270,12 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     yield from emit_update(
         test,
         spec,
-        state,
         block,
-        attested_state,
+        state,
         attested_block,
-        finalized_state,
+        attested_state,
         finalized_block,
+        finalized_state,
         phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
@@ -291,12 +292,12 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     yield from emit_update(
         test,
         spec,
-        state,
         block,
-        attested_state,
+        state,
         attested_block,
-        finalized_state,
+        attested_state,
         finalized_block,
+        finalized_state,
         phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
@@ -312,12 +313,12 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     yield from emit_update(
         test,
         spec,
-        state,
         block,
-        attested_state,
+        state,
         attested_block,
-        finalized_state,
+        attested_state,
         finalized_block,
+        finalized_state,
         phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
@@ -334,12 +335,12 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     yield from emit_update(
         test,
         spec,
-        state,
         block,
-        attested_state,
+        state,
         attested_block,
-        finalized_state,
+        attested_state,
         finalized_block,
+        finalized_state,
         phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
@@ -360,12 +361,12 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     yield from emit_update(
         test,
         spec,
-        state,
         block,
-        attested_state,
+        state,
         attested_block,
-        finalized_state,
+        attested_state,
         finalized_block,
+        finalized_state,
         phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
@@ -416,12 +417,12 @@ def run_lc_sync_test_multi_fork(spec, phases, state, fork_1, fork_2):
     yield from emit_update(
         test,
         spec,
-        state,
         block,
-        attested_state,
+        state,
         attested_block,
-        finalized_state,
+        attested_state,
         finalized_block,
+        finalized_state,
         phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot

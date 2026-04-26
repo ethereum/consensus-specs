@@ -7,7 +7,6 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.attestations import (
-    next_epoch_with_attestations,
     state_transition_with_full_block,
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
@@ -24,11 +23,13 @@ def setup_test(spec, state):
     trusted_block = spec.SignedBeaconBlock()
     trusted_block.message.state_root = state.hash_tree_root()
     trusted_block_root = trusted_block.message.hash_tree_root()
-    bootstrap = spec.create_light_client_bootstrap(state, trusted_block)
+    trusted_state = state.copy()
+
+    bootstrap = spec.create_light_client_bootstrap(trusted_block, trusted_state)
     store = spec.initialize_light_client_store(trusted_block_root, bootstrap)
     store.next_sync_committee = state.next_sync_committee
 
-    return (trusted_block, store)
+    return (trusted_block, trusted_state, store)
 
 
 @with_light_client
@@ -39,7 +40,7 @@ def setup_test(spec, state):
 )
 @spec_state_test_with_matching_config
 def test_process_light_client_update_not_timeout(spec, state):
-    genesis_block, store = setup_test(spec, state)
+    genesis_block, genesis_state, store = setup_test(spec, state)
 
     # Block at slot 1 doesn't increase sync committee period, so it won't force update store.finalized_header
     attested_block = state_transition_with_full_block(spec, state, False, False)
@@ -52,6 +53,7 @@ def test_process_light_client_update_not_timeout(spec, state):
         spec,
         attested_state=state,
         attested_block=attested_block,
+        finalized_state=genesis_state,
         finalized_block=genesis_block,
         with_next=False,
         with_finality=False,
@@ -77,7 +79,7 @@ def test_process_light_client_update_not_timeout(spec, state):
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_at_period_boundary(spec, state):
-    genesis_block, store = setup_test(spec, state)
+    genesis_block, genesis_state, store = setup_test(spec, state)
 
     # Forward to slot before next sync committee period so that next block is final one in period
     next_slots(spec, state, spec.UPDATE_TIMEOUT - 2)
@@ -92,6 +94,7 @@ def test_process_light_client_update_at_period_boundary(spec, state):
         spec,
         attested_state=state,
         attested_block=attested_block,
+        finalized_state=genesis_state,
         finalized_block=genesis_block,
         with_next=False,
         with_finality=False,
@@ -117,7 +120,7 @@ def test_process_light_client_update_at_period_boundary(spec, state):
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_timeout(spec, state):
-    genesis_block, store = setup_test(spec, state)
+    genesis_block, genesis_state, store = setup_test(spec, state)
 
     # Forward to next sync committee period
     next_slots(spec, state, spec.UPDATE_TIMEOUT)
@@ -132,6 +135,7 @@ def test_process_light_client_update_timeout(spec, state):
         spec,
         attested_state=state,
         attested_block=attested_block,
+        finalized_state=genesis_state,
         finalized_block=genesis_block,
         with_next=True,
         with_finality=False,
@@ -157,14 +161,15 @@ def test_process_light_client_update_timeout(spec, state):
 @spec_state_test_with_matching_config
 @with_presets([MINIMAL], reason="too slow")
 def test_process_light_client_update_finality_updated(spec, state):
-    _, store = setup_test(spec, state)
+    _, _, store = setup_test(spec, state)
 
     # Change finality
     blocks = []
+    states = []
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)
-    for epoch in range(3):
-        prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, True, True)
-        blocks += new_blocks
+    for _ in range(3 * spec.SLOTS_PER_EPOCH):
+        blocks.append(state_transition_with_full_block(spec, state, True, True))
+        states.append(state.copy())
     # Ensure that finality checkpoint has changed
     assert state.finalized_checkpoint.epoch == 3
     # Ensure that it's same period
@@ -177,6 +182,7 @@ def test_process_light_client_update_finality_updated(spec, state):
 
     # Updated finality
     finalized_block = blocks[spec.SLOTS_PER_EPOCH - 1]
+    finalized_state = states[spec.SLOTS_PER_EPOCH - 1]
     assert finalized_block.message.slot == spec.compute_start_slot_at_epoch(
         state.finalized_checkpoint.epoch
     )
@@ -186,6 +192,7 @@ def test_process_light_client_update_finality_updated(spec, state):
         spec,
         attested_state=state,
         attested_block=attested_block,
+        finalized_state=finalized_state,
         finalized_block=finalized_block,
         with_next=False,
         with_finality=True,

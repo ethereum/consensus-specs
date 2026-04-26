@@ -57,12 +57,12 @@ states and provide it to other clients.
 
 To form a `LightClientBootstrap`, the following objects are needed:
 
-- `state`: the post state of any post-Altair block
-- `block`: the corresponding block
+- `block`: any post-Altair block
+- `state`: the post state of `block`
 
 ```python
 def create_light_client_bootstrap(
-    state: BeaconState, block: SignedBeaconBlock
+    block: SignedBeaconBlock, state: BeaconState
 ) -> LightClientBootstrap:
     assert compute_epoch_at_slot(state.slot) >= ALTAIR_FORK_EPOCH
 
@@ -99,23 +99,23 @@ empty (no block proposed / orphaned).
 To form a `LightClientUpdate`, the following historical states and blocks are
 needed:
 
-- `state`: the post state of any block with a post-Altair parent block
-- `block`: the corresponding block
-- `attested_state`: the post state of `attested_block`
+- `block`: any block with a post-Altair parent block
+- `state`: the post state of `block`
 - `attested_block`: the block referred to by `block.parent_root`
-- `finalized_state`: the post state of `finalized_block`, if locally available
+- `attested_state`: the post state of `attested_block`
 - `finalized_block`: the block referred to by
   `attested_state.finalized_checkpoint.root`, if locally available (may be
   unavailable, e.g., when using checkpoint sync, or if it was pruned locally)
+- `finalized_state`: the post state of `finalized_block`, if locally available
 
 ```python
 def create_light_client_update(
-    state: BeaconState,
     block: SignedBeaconBlock,
-    attested_state: BeaconState,
+    state: BeaconState,
     attested_block: SignedBeaconBlock,
-    finalized_state: Optional[BeaconState],
+    attested_state: BeaconState,
     finalized_block: Optional[SignedBeaconBlock],
+    finalized_state: Optional[BeaconState],
 ) -> LightClientUpdate:
     assert compute_epoch_at_slot(attested_state.slot) >= ALTAIR_FORK_EPOCH
     assert (

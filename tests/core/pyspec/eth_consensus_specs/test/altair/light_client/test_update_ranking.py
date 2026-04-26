@@ -19,11 +19,12 @@ from eth_consensus_specs.test.helpers.state import (
 def create_test_update(
     spec, test, with_next, with_finality, participation_rate, signature_slot=None
 ):
-    attested_state, attested_block, finalized_block = test
+    attested_state, attested_block, finalized_state, finalized_block = test
     return create_update(
         spec,
         attested_state,
         attested_block,
+        finalized_state,
         finalized_block,
         with_next,
         with_finality,
@@ -45,8 +46,10 @@ def test_update_ranking(spec, state):
         spec, state, spec.compute_start_slot_at_epoch(spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD - 3) - 1
     )
     sig_finalized_block = state_transition_with_full_block(spec, state, True, True)
+    sig_finalized_state = state.copy()
     _, _, state = next_slots_with_attestations(spec, state, spec.SLOTS_PER_EPOCH - 1, True, True)
     att_finalized_block = state_transition_with_full_block(spec, state, True, True)
+    att_finalized_state = state.copy()
     _, _, state = next_slots_with_attestations(
         spec, state, 2 * spec.SLOTS_PER_EPOCH - 2, True, True
     )
@@ -55,18 +58,20 @@ def test_update_ranking(spec, state):
     att_attested_block = state_transition_with_full_block(spec, state, True, True)
     att_attested_state = state.copy()
     fin_finalized_block = att_attested_block
+    fin_finalized_state = att_attested_state
     _, _, state = next_slots_with_attestations(
         spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, True, True
     )
     fin_attested_block = state_transition_with_full_block(spec, state, True, True)
     fin_attested_state = state.copy()
     lat_finalized_block = fin_finalized_block
+    lat_finalized_state = fin_finalized_state
     lat_attested_block = state_transition_with_full_block(spec, state, True, True)
     lat_attested_state = state.copy()
-    sig = (sig_attested_state, sig_attested_block, sig_finalized_block)
-    att = (att_attested_state, att_attested_block, att_finalized_block)
-    fin = (fin_attested_state, fin_attested_block, fin_finalized_block)
-    lat = (lat_attested_state, lat_attested_block, lat_finalized_block)
+    sig = (sig_attested_state, sig_attested_block, sig_finalized_state, sig_finalized_block)
+    att = (att_attested_state, att_attested_block, att_finalized_state, att_finalized_block)
+    fin = (fin_attested_state, fin_attested_block, fin_finalized_state, fin_finalized_block)
+    lat = (lat_attested_state, lat_attested_block, lat_finalized_state, lat_finalized_block)
 
     # Create updates (in descending order of quality)
     updates = [

@@ -228,7 +228,10 @@ def _light_client_header_for_block(test, block):  # -> ForkedLightClientHeader
         spec = test.phases[ALTAIR]
     else:
         spec = block.spec
-    return ForkedLightClientHeader(spec=spec, data=spec.block_to_light_client_header(block.data))
+    state = test.states[block.data.message.state_root].data
+    return ForkedLightClientHeader(
+        spec=spec, data=spec.block_to_light_client_header(block.data, state)
+    )
 
 
 def _light_client_header_for_block_id(test, bid):  # -> ForkedLightClientHeader
@@ -237,7 +240,10 @@ def _light_client_header_for_block_id(test, bid):  # -> ForkedLightClientHeader
         spec = test.phases[ALTAIR]
     else:
         spec = block.spec
-    return ForkedLightClientHeader(spec=spec, data=spec.block_to_light_client_header(block.data))
+    state = test.states[block.data.message.state_root].data
+    return ForkedLightClientHeader(
+        spec=spec, data=spec.block_to_light_client_header(block.data, state)
+    )
 
 
 def _sync_aggregate_for_block_id(test, bid):  # -> Optional[SyncAggregate]
@@ -435,8 +441,9 @@ def _create_lc_bootstrap(test, spec, bid):
         test.lc_data_store.db.sync_committees[period] = (
             _get_current_sync_committee_for_finalized_period(test, period)
         )
+    state = test.states[block.data.message.state_root].data
     test.lc_data_store.db.headers[bid.root] = ForkedLightClientHeader(
-        spec=block.spec, data=block.spec.block_to_light_client_header(block.data)
+        spec=block.spec, data=block.spec.block_to_light_client_header(block.data, state)
     )
     test.lc_data_store.db.current_branches[bid.slot] = _get_light_client_data(
         test.lc_data_store, bid
