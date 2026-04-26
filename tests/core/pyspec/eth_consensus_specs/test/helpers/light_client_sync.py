@@ -61,7 +61,7 @@ def setup_lc_sync_test(spec, state, s_spec=None, phases=None):
     yield "genesis_validators_root", "meta", "0x" + state.genesis_validators_root.hex()
     test.genesis_validators_root = state.genesis_validators_root
 
-    next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2 - 1)
+    next_slots(spec, state, 2 * spec.SLOTS_PER_EPOCH - 1)
     trusted_block = state_transition_with_full_block(spec, state, True, True)
     trusted_block_root = trusted_block.message.hash_tree_root()
     trusted_state = state.copy()
@@ -80,7 +80,10 @@ def setup_lc_sync_test(spec, state, s_spec=None, phases=None):
     store_fork_digest = test.s_spec.compute_fork_digest(test.genesis_validators_root, store_epoch)
     yield "store_fork_digest", "meta", encode_hex(store_fork_digest)
 
-    return test
+    for _ in range(2 * spec.SLOTS_PER_EPOCH):
+        _ = state_transition_with_full_block(spec, state, True, True)
+
+    return (trusted_block, trusted_state, test)
 
 
 def finish_lc_sync_test(test):
@@ -209,12 +212,11 @@ def _emit_upgrade_store(test, new_s_spec, phases=None):
 
 def run_lc_sync_test_single_fork(spec, phases, state, fork):
     # Start test
-    test = yield from setup_lc_sync_test(spec, state, phases=phases)
+    finalized_block, finalized_state, test = yield from setup_lc_sync_test(
+        spec, state, phases=phases
+    )
 
     # Initial `LightClientUpdate`
-    finalized_block = spec.SignedBeaconBlock()
-    finalized_block.message.state_root = state.hash_tree_root()
-    finalized_state = state.copy()
     attested_block = state_transition_with_full_block(spec, state, True, True)
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
@@ -379,13 +381,10 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
 
 
 def run_lc_sync_test_multi_fork(spec, phases, state, fork_1, fork_2):
-    # Start test
-    test = yield from setup_lc_sync_test(spec, state, phases[fork_2], phases)
-
-    # Set up so that finalized is from `spec`, ...
-    finalized_block = spec.SignedBeaconBlock()
-    finalized_block.message.state_root = state.hash_tree_root()
-    finalized_state = state.copy()
+    # Start test so that finalized is from `spec`, ...
+    finalized_block, finalized_state, test = yield from setup_lc_sync_test(
+        spec, state, phases[fork_2], phases
+    )
 
     # ..., attested is from `fork_1`, ...
     fork_1_epoch = getattr(phases[fork_1].config, fork_1.upper() + "_FORK_EPOCH")

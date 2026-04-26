@@ -22,7 +22,7 @@ from eth_consensus_specs.test.helpers.light_client_sync import (
 @spec_test
 @with_config_overrides(
     {
-        "DENEB_FORK_EPOCH": 3,  # Test setup advances to epoch 2
+        "DENEB_FORK_EPOCH": 5,  # Test setup advances to epoch 4
     },
 )
 @with_state
@@ -36,8 +36,8 @@ def test_deneb_fork(spec, phases, state):
 @spec_test
 @with_config_overrides(
     {
-        "DENEB_FORK_EPOCH": 3,  # Test setup advances to epoch 2
-        "ELECTRA_FORK_EPOCH": 4,
+        "DENEB_FORK_EPOCH": 5,  # Test setup advances to epoch 4
+        "ELECTRA_FORK_EPOCH": 6,
     },
 )
 @with_state

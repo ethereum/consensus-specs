@@ -20,7 +20,7 @@ from eth_consensus_specs.test.helpers.light_client_sync import (
 @spec_test
 @with_config_overrides(
     {
-        "ELECTRA_FORK_EPOCH": 3,  # Test setup advances to epoch 2
+        "ELECTRA_FORK_EPOCH": 5,  # Test setup advances to epoch 4
     },
 )
 @with_state

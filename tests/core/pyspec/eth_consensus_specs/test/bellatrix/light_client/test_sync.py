@@ -23,7 +23,7 @@ from eth_consensus_specs.test.helpers.light_client_sync import (
 @spec_test
 @with_config_overrides(
     {
-        "CAPELLA_FORK_EPOCH": 3,  # Test setup advances to epoch 2
+        "CAPELLA_FORK_EPOCH": 5,  # Test setup advances to epoch 4
     },
 )
 @with_state
@@ -37,8 +37,8 @@ def test_capella_fork(spec, phases, state):
 @spec_test
 @with_config_overrides(
     {
-        "CAPELLA_FORK_EPOCH": 3,  # Test setup advances to epoch 2
-        "DENEB_FORK_EPOCH": 4,
+        "CAPELLA_FORK_EPOCH": 5,  # Test setup advances to epoch 4
+        "DENEB_FORK_EPOCH": 6,
     },
 )
 @with_state
@@ -52,9 +52,9 @@ def test_capella_deneb_fork(spec, phases, state):
 @spec_test
 @with_config_overrides(
     {
-        "CAPELLA_FORK_EPOCH": 3,  # Test setup advances to epoch 2
-        "DENEB_FORK_EPOCH": 4,
-        "ELECTRA_FORK_EPOCH": 5,
+        "CAPELLA_FORK_EPOCH": 5,  # Test setup advances to epoch 4
+        "DENEB_FORK_EPOCH": 6,
+        "ELECTRA_FORK_EPOCH": 7,
     },
 )
 @with_state

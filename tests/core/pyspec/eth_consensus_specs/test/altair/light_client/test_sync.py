@@ -46,7 +46,7 @@ from eth_consensus_specs.test.helpers.state import (
 @with_presets([MINIMAL], reason="too slow")
 def test_light_client_sync(spec, state):
     # Start test
-    test = yield from setup_lc_sync_test(spec, state)
+    _, _, test = yield from setup_lc_sync_test(spec, state)
 
     # Initial `LightClientUpdate`, populating `store.next_sync_committee`
     # ```
@@ -324,7 +324,7 @@ def test_supply_sync_committee_from_past_update(spec, state):
     past_state = state.copy()
 
     # Start test
-    test = yield from setup_lc_sync_test(spec, state)
+    _, trusted_state, test = yield from setup_lc_sync_test(spec, state)
     assert not spec.is_next_sync_committee_known(test.store)
 
     # Apply `LightClientUpdate` from the past, populating `store.next_sync_committee`
@@ -338,10 +338,10 @@ def test_supply_sync_committee_from_past_update(spec, state):
         finalized_block,
         finalized_state,
     )
-    assert test.store.finalized_header.beacon.slot == state.slot
+    assert test.store.finalized_header.beacon.slot == trusted_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
     assert test.store.best_valid_update is None
-    assert test.store.optimistic_header.beacon.slot == state.slot
+    assert test.store.optimistic_header.beacon.slot == trusted_state.slot
 
     # Finish test
     yield from finish_lc_sync_test(test)
@@ -357,7 +357,7 @@ def test_supply_sync_committee_from_past_update(spec, state):
 @with_presets([MINIMAL], reason="too slow")
 def test_advance_finality_without_sync_committee(spec, state):
     # Start test
-    test = yield from setup_lc_sync_test(spec, state)
+    _, _, test = yield from setup_lc_sync_test(spec, state)
 
     # Initial `LightClientUpdate`, populating `store.next_sync_committee`
     next_slots(spec, state, spec.SLOTS_PER_EPOCH - 1)
@@ -504,7 +504,7 @@ def test_light_client_sync_no_force_update(spec, state):
     * advance to just before timeout threshold
     * verify force update does not occur
     """
-    test = yield from setup_lc_sync_test(spec, state)
+    _, _, test = yield from setup_lc_sync_test(spec, state)
 
     next_slots(spec, state, spec.SLOTS_PER_EPOCH - 1)
     finalized_block = state_transition_with_full_block(spec, state, True, True)
@@ -555,12 +555,11 @@ def test_light_client_sync_no_force_update(spec, state):
 
 def run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
     # Start test (Legacy bootstrap with an upgraded store)
-    test = yield from setup_lc_sync_test(spec, state, phases[fork], phases)
+    finalized_block, finalized_state, test = yield from setup_lc_sync_test(
+        spec, state, phases[fork], phases
+    )
 
     # Initial `LightClientUpdate` (check that the upgraded store can process it)
-    finalized_block = spec.SignedBeaconBlock()
-    finalized_block.message.state_root = state.hash_tree_root()
-    finalized_state = state.copy()
     attested_block = state_transition_with_full_block(spec, state, True, True)
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)

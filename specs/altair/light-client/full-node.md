@@ -153,7 +153,13 @@ def create_light_client_update(
         )
 
     # Indicate finality whenever possible
-    if finalized_block is not None and finalized_state is not None:
+    if finalized_block is not None:
+        assert finalized_state is not None
+        assert finalized_state.slot == finalized_state.latest_block_header.slot
+        finalized_header = finalized_state.latest_block_header.copy()
+        finalized_header.state_root = hash_tree_root(finalized_state)
+        assert hash_tree_root(finalized_header) == hash_tree_root(finalized_block.message)
+
         if finalized_block.message.slot != GENESIS_SLOT:
             update.finalized_header = block_to_light_client_header(finalized_block, finalized_state)
             assert (
@@ -162,9 +168,12 @@ def create_light_client_update(
             )
         else:
             assert attested_state.finalized_checkpoint.root == Bytes32()
+
         update.finality_branch = FinalityBranch(
             compute_merkle_proof(attested_state, finalized_root_gindex_at_slot(attested_state.slot))
         )
+    else:
+        assert finalized_state is None
 
     update.sync_aggregate = block.message.body.sync_aggregate
     update.signature_slot = block.message.slot
