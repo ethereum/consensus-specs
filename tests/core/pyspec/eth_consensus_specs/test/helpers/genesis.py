@@ -178,16 +178,16 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 
     if is_post_gloas(spec):
         # Initialize the latest_execution_payload_bid (match fork upgrade in fork.md).
-        # Genesis payload is EMPTY: ``latest_block_hash`` stays at default zero while
-        # ``bid.block_hash`` is set to the eth1 block hash, so the parent of any
+        # Genesis payload is EMPTY: ``latest_block_hash`` is set to the eth1 block
+        # hash while ``bid.block_hash`` stays at default zero, so the parent of any
         # first post-genesis block is (correctly) treated as empty.
-        state.latest_block_hash = spec.Hash32()
+        state.latest_block_hash = spec.Hash32(eth1_block_hash)
         empty_requests_root = spec.hash_tree_root(spec.ExecutionRequests())
         state.latest_execution_payload_bid = spec.ExecutionPayloadBid(
-            block_hash=spec.Hash32(eth1_block_hash),
+            block_hash=spec.Hash32(),
             execution_requests_root=empty_requests_root,
         )
-        genesis_block_body.signed_execution_payload_bid.message.block_hash = eth1_block_hash
+        genesis_block_body.signed_execution_payload_bid.message.block_hash = spec.Hash32()
         genesis_block_body.signed_execution_payload_bid.message.execution_requests_root = (
             empty_requests_root
         )

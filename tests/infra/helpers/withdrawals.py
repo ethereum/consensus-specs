@@ -17,8 +17,8 @@ def set_parent_block_empty(spec, state):
     """
     Helper to set state indicating parent block was empty.
     """
-    state.latest_block_hash = b"\x00" * 32
-    state.latest_execution_payload_bid.block_hash = b"\x01" * 32
+    state.latest_block_hash = b"\x01" * 32
+    state.latest_execution_payload_bid.block_hash = b"\x02" * 32
 
 
 def prepare_process_withdrawals(

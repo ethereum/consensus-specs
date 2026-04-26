@@ -135,14 +135,13 @@ def test_process_parent_execution_payload__empty_parent_requires_empty_requests(
 @spec_state_test
 def test_process_parent_execution_payload_genesis(spec, state):
     """
-    Verify that process_parent_execution_payload does not update
-    latest_block_hash when both hashes are Hash32().
+    Verify that process_parent_execution_payload treats genesis as an empty
+    parent when latest_block_hash != bid.block_hash (bid.block_hash is zero).
     """
-    state.latest_block_hash = spec.Hash32()
+    state.latest_block_hash = spec.Hash32(b"\xab" * 32)
     state.latest_execution_payload_bid.block_hash = spec.Hash32()
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.signed_execution_payload_bid.message.parent_block_hash = spec.Hash32()
 
     pre_latest_block_hash = state.latest_block_hash
 

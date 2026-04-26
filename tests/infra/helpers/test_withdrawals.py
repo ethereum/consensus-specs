@@ -470,9 +470,9 @@ class TestPrepareWithdrawals:
             with patch("tests.infra.helpers.withdrawals.is_post_electra", return_value=True):
                 prepare_process_withdrawals(spec, state, parent_block_empty=True)
 
-        # latest_block_hash should be zeros, bid.block_hash should be non-zero (mismatch = empty)
-        assert state.latest_block_hash == b"\x00" * 32
-        assert state.latest_execution_payload_bid.block_hash == b"\x01" * 32
+        # latest_block_hash and bid.block_hash should differ (mismatch = empty)
+        assert state.latest_block_hash == b"\x01" * 32
+        assert state.latest_execution_payload_bid.block_hash == b"\x02" * 32
         assert state.latest_block_hash != state.latest_execution_payload_bid.block_hash
 
     def test_prepare_builder_balances(self):

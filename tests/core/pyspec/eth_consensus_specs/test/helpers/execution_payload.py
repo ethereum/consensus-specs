@@ -289,9 +289,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
     kzg_list = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
     # Use self-build: builder_index is the same as the beacon proposer index
     builder_index = spec.BUILDER_INDEX_SELF_BUILD
-    # Set block_hash to a different value than spec.Hash32(),
-    # to distinguish it from the genesis block hash and have
-    # is_parent_node_full correctly return False
+    # Use a non-zero placeholder so the test block is distinguishable
     empty_payload_hash = spec.Hash32(b"\x01" + b"\x00" * 31)
     prev_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
     return spec.ExecutionPayloadBid(
