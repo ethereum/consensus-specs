@@ -101,6 +101,7 @@ def create_update(
     spec,
     attested_state,
     attested_block,
+    finalized_state,
     finalized_block,
     with_next,
     with_finality,
@@ -111,7 +112,7 @@ def create_update(
 
     update = spec.LightClientUpdate()
 
-    update.attested_header = spec.block_to_light_client_header(attested_block)
+    update.attested_header = spec.block_to_light_client_header(attested_block, attested_state)
 
     if with_next:
         update.next_sync_committee = attested_state.next_sync_committee
@@ -120,7 +121,9 @@ def create_update(
         )
 
     if with_finality:
-        update.finalized_header = spec.block_to_light_client_header(finalized_block)
+        update.finalized_header = spec.block_to_light_client_header(
+            finalized_block, finalized_state
+        )
         update.finality_branch = spec.compute_merkle_proof(
             attested_state, latest_finalized_root_gindex(spec)
         )
@@ -168,15 +171,15 @@ def upgrade_lc_header_to_new_spec(spec, new_spec, data, phases):
 
     if needs_upgrade_to_capella(spec, new_spec):
         upgraded = phases[CAPELLA].upgrade_lc_header_to_capella(upgraded)
-        check_lc_header_equal(spec, new_spec, data, upgraded)
+        check_lc_header_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
         upgraded = phases[DENEB].upgrade_lc_header_to_deneb(upgraded)
-        check_lc_header_equal(spec, new_spec, data, upgraded)
+        check_lc_header_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
         upgraded = phases[ELECTRA].upgrade_lc_header_to_electra(upgraded)
-        check_lc_header_equal(spec, new_spec, data, upgraded)
+        check_lc_header_equal(spec, phases[ELECTRA], data, upgraded)
 
     return upgraded
 
@@ -198,15 +201,15 @@ def upgrade_lc_bootstrap_to_new_spec(spec, new_spec, data, phases):
 
     if needs_upgrade_to_capella(spec, new_spec):
         upgraded = phases[CAPELLA].upgrade_lc_bootstrap_to_capella(upgraded)
-        check_lc_bootstrap_equal(spec, new_spec, data, upgraded)
+        check_lc_bootstrap_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
         upgraded = phases[DENEB].upgrade_lc_bootstrap_to_deneb(upgraded)
-        check_lc_bootstrap_equal(spec, new_spec, data, upgraded)
+        check_lc_bootstrap_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
         upgraded = phases[ELECTRA].upgrade_lc_bootstrap_to_electra(upgraded)
-        check_lc_bootstrap_equal(spec, new_spec, data, upgraded)
+        check_lc_bootstrap_equal(spec, phases[ELECTRA], data, upgraded)
 
     return upgraded
 
@@ -238,15 +241,15 @@ def upgrade_lc_update_to_new_spec(spec, new_spec, data, phases):
 
     if needs_upgrade_to_capella(spec, new_spec):
         upgraded = phases[CAPELLA].upgrade_lc_update_to_capella(upgraded)
-        check_lc_update_equal(spec, new_spec, data, upgraded)
+        check_lc_update_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
         upgraded = phases[DENEB].upgrade_lc_update_to_deneb(upgraded)
-        check_lc_update_equal(spec, new_spec, data, upgraded)
+        check_lc_update_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
         upgraded = phases[ELECTRA].upgrade_lc_update_to_electra(upgraded)
-        check_lc_update_equal(spec, new_spec, data, upgraded)
+        check_lc_update_equal(spec, phases[ELECTRA], data, upgraded)
 
     return upgraded
 
@@ -270,15 +273,15 @@ def upgrade_lc_finality_update_to_new_spec(spec, new_spec, data, phases):
 
     if needs_upgrade_to_capella(spec, new_spec):
         upgraded = phases[CAPELLA].upgrade_lc_finality_update_to_capella(upgraded)
-        check_lc_finality_update_equal(spec, new_spec, data, upgraded)
+        check_lc_finality_update_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
         upgraded = phases[DENEB].upgrade_lc_finality_update_to_deneb(upgraded)
-        check_lc_finality_update_equal(spec, new_spec, data, upgraded)
+        check_lc_finality_update_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
         upgraded = phases[ELECTRA].upgrade_lc_finality_update_to_electra(upgraded)
-        check_lc_finality_update_equal(spec, new_spec, data, upgraded)
+        check_lc_finality_update_equal(spec, phases[ELECTRA], data, upgraded)
 
     return upgraded
 
@@ -301,14 +304,14 @@ def upgrade_lc_store_to_new_spec(spec, new_spec, data, phases):
 
     if needs_upgrade_to_capella(spec, new_spec):
         upgraded = phases[CAPELLA].upgrade_lc_store_to_capella(upgraded)
-        check_lc_store_equal(spec, new_spec, data, upgraded)
+        check_lc_store_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
         upgraded = phases[DENEB].upgrade_lc_store_to_deneb(upgraded)
-        check_lc_store_equal(spec, new_spec, data, upgraded)
+        check_lc_store_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
         upgraded = phases[ELECTRA].upgrade_lc_store_to_electra(upgraded)
-        check_lc_store_equal(spec, new_spec, data, upgraded)
+        check_lc_store_equal(spec, phases[ELECTRA], data, upgraded)
 
     return upgraded

@@ -34,7 +34,9 @@ def compute_merkle_proof(object: SSZObject, index: GeneralizedIndex) -> Sequence
 ### `block_to_light_client_header`
 
 ```python
-def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
+def block_to_light_client_header(
+    block: SignedBeaconBlock, _state: BeaconState
+) -> LightClientHeader:
     return LightClientHeader(
         beacon=BeaconBlockHeader(
             slot=block.message.slot,
@@ -70,7 +72,7 @@ def create_light_client_bootstrap(
     assert hash_tree_root(header) == hash_tree_root(block.message)
 
     return LightClientBootstrap(
-        header=block_to_light_client_header(block),
+        header=block_to_light_client_header(block, state),
         current_sync_committee=state.current_sync_committee,
         current_sync_committee_branch=CurrentSyncCommitteeBranch(
             compute_merkle_proof(state, current_sync_committee_gindex_at_slot(state.slot))
@@ -101,6 +103,7 @@ needed:
 - `block`: the corresponding block
 - `attested_state`: the post state of `attested_block`
 - `attested_block`: the block referred to by `block.parent_root`
+- `finalized_state`: the post state of `finalized_block`, if locally available
 - `finalized_block`: the block referred to by
   `attested_state.finalized_checkpoint.root`, if locally available (may be
   unavailable, e.g., when using checkpoint sync, or if it was pruned locally)
@@ -111,6 +114,7 @@ def create_light_client_update(
     block: SignedBeaconBlock,
     attested_state: BeaconState,
     attested_block: SignedBeaconBlock,
+    finalized_state: Optional[BeaconState],
     finalized_block: Optional[SignedBeaconBlock],
 ) -> LightClientUpdate:
     assert compute_epoch_at_slot(attested_state.slot) >= ALTAIR_FORK_EPOCH
@@ -137,7 +141,7 @@ def create_light_client_update(
 
     update = LightClientUpdate()
 
-    update.attested_header = block_to_light_client_header(attested_block)
+    update.attested_header = block_to_light_client_header(attested_block, attested_state)
 
     # `next_sync_committee` is only useful if the message is signed by the current sync committee
     if update_attested_period == update_signature_period:
@@ -149,9 +153,9 @@ def create_light_client_update(
         )
 
     # Indicate finality whenever possible
-    if finalized_block is not None:
+    if finalized_state is not None and finalized_block is not None:
         if finalized_block.message.slot != GENESIS_SLOT:
-            update.finalized_header = block_to_light_client_header(finalized_block)
+            update.finalized_header = block_to_light_client_header(finalized_block, finalized_state)
             assert (
                 hash_tree_root(update.finalized_header.beacon)
                 == attested_state.finalized_checkpoint.root

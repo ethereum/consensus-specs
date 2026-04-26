@@ -18,7 +18,9 @@ as part of the Capella upgrade.
 ### Modified `block_to_light_client_header`
 
 ```python
-def block_to_light_client_header(block: SignedBeaconBlock) -> LightClientHeader:
+def block_to_light_client_header(
+    block: SignedBeaconBlock, _state: BeaconState
+) -> LightClientHeader:
     epoch = compute_epoch_at_slot(block.message.slot)
 
     if epoch >= CAPELLA_FORK_EPOCH:

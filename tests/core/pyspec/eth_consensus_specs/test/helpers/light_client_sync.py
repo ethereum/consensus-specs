@@ -147,6 +147,7 @@ def emit_update(
     block,
     attested_state,
     attested_block,
+    finalized_state,
     finalized_block,
     with_next=True,
     phases=None,
@@ -155,7 +156,12 @@ def emit_update(
     data_fork_digest = spec.compute_fork_digest(test.genesis_validators_root, data_epoch)
     d_spec = get_spec_for_fork_version(spec, spec.compute_fork_version(data_epoch), phases)
     data = d_spec.create_light_client_update(
-        state, block, attested_state, attested_block, finalized_block
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state,
+        finalized_block,
     )
     if not with_next:
         data.next_sync_committee = spec.SyncCommittee()
@@ -213,7 +219,15 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state,
+        finalized_block,
+        phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -228,7 +242,15 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     update = yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state,
+        finalized_block,
+        phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -245,7 +267,15 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state,
+        finalized_block,
+        phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -259,7 +289,15 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     state, block = do_fork(state, spec, phases[fork], fork_epoch, sync_aggregate=sync_aggregate)
     spec = phases[fork]
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state,
+        finalized_block,
+        phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -272,7 +310,15 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state,
+        finalized_block,
+        phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -286,7 +332,15 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state,
+        finalized_block,
+        phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -304,7 +358,15 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state,
+        finalized_block,
+        phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -352,7 +414,15 @@ def run_lc_sync_test_multi_fork(spec, phases, state, fork_1, fork_2):
 
     # Check that update applies
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state,
+        finalized_block,
+        phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee

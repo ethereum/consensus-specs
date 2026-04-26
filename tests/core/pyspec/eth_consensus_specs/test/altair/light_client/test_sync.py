@@ -70,7 +70,7 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block
+        test, spec, state, block, attested_state, attested_block, finalized_state, finalized_block
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -100,7 +100,7 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block
+        test, spec, state, block, attested_state, attested_block, finalized_state, finalized_block
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -130,7 +130,7 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block
+        test, spec, state, block, attested_state, attested_block, finalized_state, finalized_block
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -153,7 +153,14 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     update = yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block=None
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state=None,
+        finalized_block=None,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -177,7 +184,7 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     update = yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block
+        test, spec, state, block, attested_state, attested_block, finalized_state, finalized_block
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -218,7 +225,14 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     update = yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block=None
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state=None,
+        finalized_block=None,
     )
     assert test.store.finalized_header.beacon.slot == store_state.slot
     assert test.store.next_sync_committee == store_state.next_sync_committee
@@ -241,7 +255,7 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     update = yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block
+        test, spec, state, block, attested_state, attested_block, finalized_state, finalized_block
     )
     assert test.store.finalized_header.beacon.slot == store_state.slot
     assert test.store.next_sync_committee == store_state.next_sync_committee
@@ -276,7 +290,7 @@ def test_light_client_sync(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block
+        test, spec, state, block, attested_state, attested_block, finalized_state, finalized_block
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -315,7 +329,14 @@ def test_supply_sync_committee_from_past_update(spec, state):
 
     # Apply `LightClientUpdate` from the past, populating `store.next_sync_committee`
     yield from emit_update(
-        test, spec, past_state, block, attested_state, attested_block, finalized_block
+        test,
+        spec,
+        past_state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state,
+        finalized_block,
     )
     assert test.store.finalized_header.beacon.slot == state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -350,7 +371,7 @@ def test_advance_finality_without_sync_committee(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block
+        test, spec, state, block, attested_state, attested_block, finalized_state, finalized_block
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -371,7 +392,15 @@ def test_advance_finality_without_sync_committee(spec, state):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block, with_next=False
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state,
+        finalized_block,
+        with_next=False,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert not spec.is_next_sync_committee_known(test.store)
@@ -390,7 +419,15 @@ def test_advance_finality_without_sync_committee(spec, state):
 
     # Apply `LightClientUpdate` without `finalized_header` nor `next_sync_committee`
     update = yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, None, with_next=False
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state=None,
+        finalized_block=None,
+        with_next=False,
     )
     assert test.store.finalized_header.beacon.slot == past_state.slot
     assert not spec.is_next_sync_committee_known(test.store)
@@ -399,7 +436,15 @@ def test_advance_finality_without_sync_committee(spec, state):
 
     # Apply `LightClientUpdate` with `finalized_header` but no `next_sync_committee`
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block, with_next=False
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state,
+        finalized_block,
+        with_next=False,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert not spec.is_next_sync_committee_known(test.store)
@@ -408,7 +453,7 @@ def test_advance_finality_without_sync_committee(spec, state):
 
     # Apply full `LightClientUpdate`, supplying `next_sync_committee`
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block
+        test, spec, state, block, attested_state, attested_block, finalized_state, finalized_block
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
@@ -474,13 +519,20 @@ def test_light_client_sync_no_force_update(spec, state):
 
     # Create initial update to set up store state
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block
+        test, spec, state, block, attested_state, attested_block, finalized_state, finalized_block
     )
     assert test.store.best_valid_update is None
 
     # Create a best_valid_update by emitting an update without a finalized_header
     update = yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block=None
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state=None,
+        finalized_block=None,
     )
     assert test.store.best_valid_update == update
 
@@ -514,7 +566,15 @@ def run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
     sync_aggregate, _ = get_sync_aggregate(spec, state)
     block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
     yield from emit_update(
-        test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
+        test,
+        spec,
+        state,
+        block,
+        attested_state,
+        attested_block,
+        finalized_state,
+        finalized_block,
+        phases=phases,
     )
     assert test.store.finalized_header.beacon.slot == finalized_state.slot
     assert test.store.next_sync_committee == finalized_state.next_sync_committee
