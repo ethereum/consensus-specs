@@ -67,6 +67,7 @@
     - [`is_slashable_validator`](#is_slashable_validator)
     - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
     - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
+    - [`merkle_branch_root`](#merkle_branch_root)
     - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
   - [Misc](#misc-2)
     - [`compute_shuffled_permutation`](#compute_shuffled_permutation)
@@ -778,6 +779,24 @@ def is_valid_indexed_attestation(
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
 ```
 
+#### `merkle_branch_root`
+
+```python
+def merkle_branch_root(
+    leaf: Bytes32, branch: Sequence[Bytes32], depth: uint64, index: uint64
+) -> Root:
+    """
+    Return the Merkle root obtained by hashing ``leaf`` at ``index`` with ``branch``.
+    """
+    value = leaf
+    for i in range(depth):
+        if index // (2**i) % 2:
+            value = hash(branch[i] + value)
+        else:
+            value = hash(value + branch[i])
+    return Root(value)
+```
+
 #### `is_valid_merkle_branch`
 
 ```python
@@ -787,13 +806,9 @@ def is_valid_merkle_branch(
     """
     Check if ``leaf`` at ``index`` verifies against the Merkle ``root`` and ``branch``.
     """
-    value = leaf
-    for i in range(depth):
-        if index // (2**i) % 2:
-            value = hash(branch[i] + value)
-        else:
-            value = hash(value + branch[i])
-    return value == root
+    if depth != len(branch):
+        return False
+    return merkle_branch_root(leaf, branch, depth, index) == root
 ```
 
 ### Misc
