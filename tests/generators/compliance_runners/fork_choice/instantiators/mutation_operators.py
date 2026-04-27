@@ -90,9 +90,32 @@ class MutationOps:
             shifts.append(rnd.randint(1, max(1, last_time)))
         return tuple(shifts)
 
+    def rand_event_index(self, tv, rnd: random.Random) -> int:
+        # Bias mutations toward later events to preserve more of the early
+        # scenario setup and reduce accidental truncation.
+        return rnd.choices(range(len(tv)), weights=range(1, len(tv) + 1), k=1)[0]
+
+    def rand_operator_kind(self, event_kind: str, rnd: random.Random) -> str:
+        if event_kind == "block":
+            choices = ["shift", "late_arrival", "multi_route"]
+            weights = [5, 1, 3]
+        elif event_kind in ("attestation", "payload_attestation"):
+            choices = ["shift", "late_arrival", "multi_route"]
+            weights = [2, 3, 4]
+        elif event_kind == "execution_payload":
+            choices = ["shift", "late_arrival", "multi_route"]
+            weights = [2, 4, 3]
+        else:
+            assert event_kind == "attester_slashing"
+            choices = ["shift", "late_arrival", "multi_route"]
+            weights = [4, 3, 1]
+
+        return rnd.choices(choices, weights=weights, k=1)[0]
+
     def rand_mutation(self, tv, rnd: random.Random):
-        idx = rnd.choice(range(len(tv)))
-        op_kind = rnd.choice(["shift", "late_arrival", "multi_route"])
+        idx = self.rand_event_index(tv, rnd)
+        event_kind = tv[idx][1][0]
+        op_kind = self.rand_operator_kind(event_kind, rnd)
         if op_kind == "shift":
             evt_time = int(tv[idx][0])
             params = idx, self.rand_shift(evt_time, rnd)
