@@ -67,7 +67,7 @@
     - [`is_slashable_validator`](#is_slashable_validator)
     - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
     - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
-    - [`merkle_branch_root`](#merkle_branch_root)
+    - [`compute_merkle_branch_root`](#compute_merkle_branch_root)
     - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
   - [Misc](#misc-2)
     - [`compute_shuffled_permutation`](#compute_shuffled_permutation)
@@ -779,7 +779,7 @@ def is_valid_indexed_attestation(
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
 ```
 
-#### `merkle_branch_root`
+#### `compute_merkle_branch_root`
 
 ```python
 def compute_merkle_branch_root(
@@ -808,7 +808,7 @@ def is_valid_merkle_branch(
     """
     if depth != len(branch):
         return False
-    return merkle_branch_root(leaf, branch, depth, index) == root
+    return compute_merkle_branch_root(leaf, branch, depth, index) == root
 ```
 
 ### Misc
