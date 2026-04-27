@@ -128,8 +128,6 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         previous_version = get_previous_fork_version(spec, spec.fork)
         current_version = get_fork_version(spec, spec.fork)
 
-    genesis_block_body = spec.BeaconBlockBody()
-
     state = spec.BeaconState(
         genesis_time=0,
         eth1_deposit_index=len(validator_balances),
@@ -144,7 +142,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             epoch=spec.GENESIS_EPOCH,
         ),
         latest_block_header=spec.BeaconBlockHeader(
-            body_root=spec.hash_tree_root(genesis_block_body)
+            body_root=spec.hash_tree_root(spec.BeaconBlockBody())
         ),
         randao_mixes=[eth1_block_hash] * spec.EPOCHS_PER_HISTORICAL_VECTOR,
     )
@@ -177,21 +175,16 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.next_sync_committee = spec.get_next_sync_committee(state)
 
     if is_post_gloas(spec):
-        # Initialize the latest_execution_payload_bid (match fork upgrade in fork.md).
-        # Genesis payload is EMPTY: ``latest_block_hash`` stays at default zero while
-        # ``bid.block_hash`` is set to the eth1 block hash, so the parent of any
-        # first post-genesis block is (correctly) treated as empty.
-        state.latest_block_hash = spec.Hash32()
-        empty_requests_root = spec.hash_tree_root(spec.ExecutionRequests())
+        state.latest_block_hash = spec.Hash32(eth1_block_hash)
         state.latest_execution_payload_bid = spec.ExecutionPayloadBid(
-            block_hash=spec.Hash32(eth1_block_hash),
-            execution_requests_root=empty_requests_root,
+            # The genesis bid's block hash is the empty hash
+            block_hash=spec.Hash32(),
+            parent_block_hash=spec.Hash32(eth1_block_hash),
+            execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
         )
-        genesis_block_body.signed_execution_payload_bid.message.block_hash = eth1_block_hash
-        genesis_block_body.signed_execution_payload_bid.message.execution_requests_root = (
-            empty_requests_root
-        )
-        # Recompute body_root after modifying the genesis block body
+        # Use realistic body root in the latest block header
+        genesis_block_body = spec.BeaconBlockBody()
+        genesis_block_body.signed_execution_payload_bid.message = state.latest_execution_payload_bid
         state.latest_block_header = spec.BeaconBlockHeader(
             body_root=spec.hash_tree_root(genesis_block_body)
         )
@@ -240,12 +233,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
 def create_genesis_block(spec, state):
     genesis_block_body = spec.BeaconBlockBody()
     if is_post_gloas(spec):
-        genesis_block_body.signed_execution_payload_bid.message.block_hash = (
-            state.latest_execution_payload_bid.block_hash
-        )
-        genesis_block_body.signed_execution_payload_bid.message.execution_requests_root = (
-            state.latest_execution_payload_bid.execution_requests_root
-        )
+        genesis_block_body.signed_execution_payload_bid.message = state.latest_execution_payload_bid
     return spec.SignedBeaconBlock(
         message=spec.BeaconBlock(
             state_root=spec.hash_tree_root(state),

@@ -20,6 +20,7 @@
       - [Payload attestations](#payload-attestations)
       - [Parent execution requests](#parent-execution-requests)
       - [ExecutionPayload](#executionpayload)
+      - [Voluntary exits](#voluntary-exits)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
     - [Constructing the `PayloadAttestationMessage`](#constructing-the-payloadattestationmessage)
 - [Modified functions](#modified-functions)
@@ -289,6 +290,14 @@ def prepare_execution_payload(
         payload_attributes=payload_attributes,
     )
 ```
+
+##### Voluntary exits
+
+*Note*: Because execution request processing is deferred, a request in
+`parent_execution_requests` can invalidate a voluntary exit in the same block.
+For example, a withdrawal request for a validator will cause a voluntary exit
+for the same validator to fail, invalidating the entire block. When selecting
+voluntary exits to include, proposers must take heed of this interaction.
 
 ### Payload timeliness attestation
 

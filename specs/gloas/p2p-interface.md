@@ -406,7 +406,7 @@ The following validations MUST pass before forwarding the
   `[get_current_epoch(state), get_current_epoch(state) + 1]`.
 - _[IGNORE]_ `preferences.proposal_slot` has not already passed -- i.e.
   `preferences.proposal_slot > state.slot`.
-- _[REJECT]_ `preferences.validator_index` is present at the correct slot in the
+- _[IGNORE]_ `preferences.validator_index` is present at the correct slot in the
   current or next epoch's portion of `state.proposer_lookahead` -- i.e.
   `is_valid_proposal_slot(state, preferences)` returns `True`.
 - _[IGNORE]_ The `signed_proposer_preferences` is the first valid message
