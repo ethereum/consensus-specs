@@ -2,8 +2,8 @@
 
 # Misc
 # ---------------------------------------------------------------
-# [customized] 2**1 (= 2) validators
-PTC_SIZE: 2
+# [customized] 2**3 (= 8) validators
+PTC_SIZE: 8
 
 # Max operations per block
 # ---------------------------------------------------------------
