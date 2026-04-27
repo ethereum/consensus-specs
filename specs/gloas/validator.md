@@ -297,8 +297,7 @@ def prepare_execution_payload(
 `parent_execution_requests` can invalidate a voluntary exit in the same block.
 For example, a withdrawal request for a validator will cause a voluntary exit
 for the same validator to fail, invalidating the entire block. When selecting
-voluntary exits to include, proposers should use the state after execution
-requests from the parent payload are applied.
+voluntary exits to include, proposers must take heed of this interaction.
 
 ### Payload timeliness attestation
 
