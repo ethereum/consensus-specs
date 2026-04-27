@@ -11,7 +11,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
-from eth_consensus_specs.test.helpers.genesis import create_genesis_block
+from eth_consensus_specs.test.helpers.genesis import create_signed_genesis_block
 from eth_consensus_specs.test.helpers.light_client import (
     create_update,
     sample_blob_schedule,
@@ -22,7 +22,7 @@ from eth_consensus_specs.test.helpers.state import (
 
 
 def setup_test(spec, state):
-    trusted_block = create_genesis_block(spec, state)
+    trusted_block = create_signed_genesis_block(spec, state)
     trusted_block_root = trusted_block.message.hash_tree_root()
     bootstrap = spec.create_light_client_bootstrap(state, trusted_block)
     store = spec.initialize_light_client_store(trusted_block_root, bootstrap)

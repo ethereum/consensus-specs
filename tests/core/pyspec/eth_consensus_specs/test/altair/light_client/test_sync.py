@@ -19,6 +19,7 @@ from eth_consensus_specs.test.helpers.constants import (
     ELECTRA,
     MINIMAL,
 )
+from eth_consensus_specs.test.helpers.genesis import create_signed_genesis_block
 from eth_consensus_specs.test.helpers.light_client import (
     compute_start_slot_at_next_sync_committee_period,
     get_sync_aggregate,
@@ -506,8 +507,7 @@ def run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
     test = yield from setup_lc_sync_test(spec, state, phases[fork], phases)
 
     # Initial `LightClientUpdate` (check that the upgraded store can process it)
-    finalized_block = spec.SignedBeaconBlock()
-    finalized_block.message.state_root = state.hash_tree_root()
+    finalized_block = create_signed_genesis_block(spec, state)
     finalized_state = state.copy()
     attested_block = state_transition_with_full_block(spec, state, True, True)
     attested_state = state.copy()

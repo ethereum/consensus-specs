@@ -230,7 +230,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
     return state
 
 
-def create_genesis_block(spec, state):
+def create_signed_genesis_block(spec, state):
     genesis_block_body = spec.BeaconBlockBody()
     if is_post_gloas(spec):
         genesis_block_body.signed_execution_payload_bid.message = state.latest_execution_payload_bid
