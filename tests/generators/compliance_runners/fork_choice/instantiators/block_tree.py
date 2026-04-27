@@ -45,6 +45,7 @@ MAX_TIPS_TO_ATTEST = 2
 
 OFF_CHAIN_ATTESTATION_RATE = 10
 ON_CHAIN_ATTESTATION_RATE = 20
+ATTEST_TO_PARENT_RATE = 10
 
 MAX_ATTESTER_SLASHINGS = 8
 ATTESTER_SLASHINGS_RATE = 8
@@ -575,8 +576,47 @@ def _generate_block_tree(
     signed_envelope_messages = []
     in_block_pa_messages = []
     payload_known_block_indices = set()
+    slot_assignments = {}
+
+    def get_state_by_block_index(index):
+        state = post_states[index].copy()
+        transition_to(spec, state, current_slot)
+        return state
+
+    def assign_voters_to_slots(epoch):
+        epoch_start_slot = spec.compute_start_slot_at_epoch(epoch)
+        epoch_state = get_state_by_block_index(-1)
+        committee_count_per_slot = spec.get_committee_count_per_slot(epoch_state, epoch)
+        for slot in range(epoch_start_slot, epoch_start_slot + spec.SLOTS_PER_EPOCH):
+            assignments = []
+            for index in range(committee_count_per_slot):
+                committee = spec.get_beacon_committee(
+                    epoch_state,
+                    spec.Slot(slot),
+                    spec.CommitteeIndex(index),
+                )
+                assignments.extend(committee)
+            slot_assignments[slot] = assignments
+
+    def choose_attested_block_index(tips, block_parents):
+        attesting_block_index = rnd.choice(tips)
+        while attesting_block_index != 0 and rnd.randint(0, 99) < ATTEST_TO_PARENT_RATE:
+            attesting_block_index = block_parents[attesting_block_index]
+        return attesting_block_index
+
+    def assign_committee_votes(attesting_committee, block_tree_tips, block_parents):
+        tips = sorted(block_tree_tips)
+        block_index_voters = {}
+        for validator_index in attesting_committee:
+            attesting_block_index = choose_attested_block_index(tips, block_parents)
+            block_index_voters.setdefault(attesting_block_index, set()).add(validator_index)
+        return block_index_voters
 
     while block_index < len(block_parents):
+        epoch = spec.compute_epoch_at_slot(current_slot)
+        if current_slot not in slot_assignments:
+            assign_voters_to_slots(epoch)
+
         envelope = None
         valid_block_was_produced = False
         new_block_index = None
@@ -585,8 +625,7 @@ def _generate_block_tree(
         if rnd.randint(1, 100) > EMPTY_SLOTS_RATE:
             # Advance parent state to the current slot
             parent_index = block_parents[block_index]
-            parent_state = post_states[parent_index].copy()
-            transition_to(spec, parent_state, current_slot)
+            parent_state = get_state_by_block_index(parent_index)
 
             # Filter out non-viable attestations
             in_block_attestations = [
@@ -655,20 +694,15 @@ def _generate_block_tree(
                 if valid:
                     payload_known_block_indices.add(new_block_index)
 
-        # Attest to randomly selected tips
-        def split_list(lst, n):
-            k, m = divmod(len(lst), n)
-            return [lst[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n)]
-
-        attesting_tips = rnd.sample(
-            sorted(block_tree_tips), min(len(block_tree_tips), MAX_TIPS_TO_ATTEST)
+        # Assign each validator in the current slot's committees to a block tree tip.
+        attesting_committee = slot_assignments[current_slot]
+        block_index_voters = assign_committee_votes(
+            attesting_committee, block_tree_tips, block_parents
         )
-        validator_count = len(post_states[attesting_tips[0]].validators)
-        attesters = split_list([i for i in range(validator_count)], len(attesting_tips))
-        for index, attesting_block_index in enumerate(attesting_tips):
+
+        for attesting_block_index, attesters in block_index_voters.items():
             # Advance the state to the current slot
-            attesting_state = post_states[attesting_block_index]
-            transition_to(spec, attesting_state, current_slot)
+            attesting_state = get_state_by_block_index(attesting_block_index)
 
             # Attest to the block
             payload_index = None
@@ -694,7 +728,7 @@ def _generate_block_tree(
                 spec,
                 attesting_state,
                 attesting_state.slot,
-                lambda comm: [i for i in comm if i in attesters[index]],
+                lambda comm: set(comm) & attesters,
                 payload_index=payload_index,
             )
 
@@ -740,7 +774,7 @@ def _generate_block_tree(
         # Create attester slashing
         if with_attester_slashings and len(validators_to_be_slashed) < MAX_ATTESTER_SLASHINGS:
             if rnd.randint(0, 99) < ATTESTER_SLASHINGS_RATE:
-                state = post_states[attesting_tips[0]]
+                state = get_state_by_block_index(-1)
 
                 assert len(validators_to_be_slashed) < len(state.validators)
                 while True:
