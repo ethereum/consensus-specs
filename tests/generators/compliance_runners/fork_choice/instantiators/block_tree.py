@@ -633,6 +633,33 @@ class RuntimeState:
         self.payload_known_block_indices = set()
 
 
+def _get_state_block_root(spec, state):
+    block_header = state.latest_block_header.copy()
+    if block_header.state_root == spec.Bytes32():
+        block_header.state_root = spec.hash_tree_root(state)
+    return spec.hash_tree_root(block_header)
+
+
+def _debug_assert_block_tree_shape(spec, anchor_state, block_parents, signed_block_messages):
+    signed_blocks = [message.payload for message in signed_block_messages if message.valid]
+    assert len(signed_blocks) == len(block_parents) - 1, (
+        "Constructed block tree does not match the model size: "
+        f"expected {len(block_parents) - 1} blocks, got {len(signed_blocks)}"
+    )
+
+    block_roots = [_get_state_block_root(spec, anchor_state)]
+    block_roots.extend(block.message.hash_tree_root() for block in signed_blocks)
+
+    for block_index in range(1, len(block_parents)):
+        expected_parent_index = block_parents[block_index]
+        block = signed_blocks[block_index - 1]
+        expected_parent_root = block_roots[expected_parent_index]
+        assert block.message.parent_root == expected_parent_root, (
+            f"Block {block_index} has wrong parent root: "
+            f"expected parent index {expected_parent_index}"
+        )
+
+
 def _generate_block_tree(
     spec,
     anchor_tip: BranchTip,
@@ -919,6 +946,11 @@ def _generate_block_tree(
             "              ",
             "valid =",
             len([s for s in protocol.out_of_block_attester_slashing_messages if s.valid]),
+        )
+
+    if debug and not with_invalid_messages:
+        _debug_assert_block_tree_shape(
+            spec, anchor_tip.beacon_state, block_parents, protocol.signed_block_messages
         )
 
     return (

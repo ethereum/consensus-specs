@@ -2,7 +2,12 @@ import random
 
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
+    run_on_block,
+    run_on_attestation,
+    run_on_attester_slashing,
+    run_on_payload_attestation_message,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
     transition_to,
@@ -14,6 +19,7 @@ from .helpers import (
     attest_to_slot,
     BranchTip,
     FCTestData,
+    payload_attestation_to_messages,
     produce_block,
     ProtocolMessage,
 )
@@ -205,6 +211,51 @@ def _generate_filter_block_tree(
     return signed_blocks, block_tips
 
 
+def _debug_run_sanity_checks(spec, anchor_state, anchor_block, signed_blocks, model_params, target_block_root):
+    store = spec.get_forkchoice_store(anchor_state, anchor_block)
+
+    def debug_add_block(signed_block):
+        run_on_block(spec, store, signed_block, valid=True)
+
+        for attestation in signed_block.message.body.attestations:
+            try:
+                run_on_attestation(spec, store, attestation, is_from_block=True, valid=True)
+            except AssertionError:
+                pass
+
+        for attester_slashing in signed_block.message.body.attester_slashings:
+            try:
+                run_on_attester_slashing(spec, store, attester_slashing, valid=True)
+            except AssertionError:
+                pass
+
+        if is_post_gloas(spec):
+            state = store.block_states[signed_block.message.hash_tree_root()]
+            for payload_attestation in signed_block.message.body.payload_attestations:
+                for ptc_message in payload_attestation_to_messages(spec, state, payload_attestation):
+                    run_on_payload_attestation_message(
+                        spec, store, ptc_message, is_from_block=True, valid=True
+                    )
+
+    for signed_block in signed_blocks:
+        block_time = (
+            anchor_state.genesis_time
+            + signed_block.message.slot * spec.config.SLOT_DURATION_MS // 1000
+        )
+        if block_time > store.time:
+            spec.on_tick(store, block_time)
+        debug_add_block(signed_block)
+
+    current_epoch_slot = spec.compute_start_slot_at_epoch(model_params["current_epoch"])
+    current_epoch_time = (
+        anchor_state.genesis_time + current_epoch_slot * spec.config.SLOT_DURATION_MS // 1000
+    )
+    if current_epoch_time > store.time:
+        spec.on_tick(store, current_epoch_time)
+
+    run_sanity_checks(spec, store, model_params, target_block_root)
+
+
 def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTestData, object):
     anchor_state = state
     _, anchor_block = get_genesis_forkchoice_store_and_block(spec, anchor_state)
@@ -280,6 +331,11 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
     target_block_root = spec.hash_tree_root(
         post_block_tips[target_block].beacon_state.latest_block_header
     )
+
+    if debug:
+        _debug_run_sanity_checks(
+            spec, anchor_state, anchor_block, signed_blocks, model_params, target_block_root
+        )
 
     return test_data, target_block_root
 
