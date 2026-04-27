@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.fork_transition import (
 from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
 )
+from eth_consensus_specs.test.helpers.genesis import create_genesis_block
 from eth_consensus_specs.test.helpers.light_client import (
     compute_start_slot_at_sync_committee_period,
     get_sync_aggregate,
@@ -614,10 +615,7 @@ def setup_lc_data_collection_test(spec, state, phases=None):
     bid = _state_to_block_id(state)
     yield "initial_state", state
     test.blocks[bid.root] = ForkedSignedBeaconBlock(
-        spec=spec,
-        data=spec.SignedBeaconBlock(
-            message=spec.BeaconBlock(state_root=state.hash_tree_root()),
-        ),
+        spec=spec, data=create_genesis_block(spec, state)
     )
     test.finalized_block_roots[bid.slot] = bid.root
     test.states[state.hash_tree_root()] = ForkedBeaconState(spec=spec, data=state)
@@ -822,7 +820,7 @@ def run_lc_data_collection_test_multi_fork(spec, phases, state, fork_1, fork_2):
 
     # Genesis block is post Altair and is finalized, so can be used as bootstrap
     genesis_bid = BlockID(
-        slot=state.slot, root=spec.BeaconBlock(state_root=state.hash_tree_root()).hash_tree_root()
+        slot=state.slot, root=create_genesis_block(spec, state).message.hash_tree_root()
     )
     assert (
         get_lc_bootstrap_block_id(get_light_client_bootstrap(test, genesis_bid.root).data)

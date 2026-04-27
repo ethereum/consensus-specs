@@ -235,3 +235,20 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.proposer_lookahead = initialize_proposer_lookahead(spec, state)
 
     return state
+
+
+def create_genesis_block(spec, state):
+    genesis_block_body = spec.BeaconBlockBody()
+    if is_post_gloas(spec):
+        genesis_block_body.signed_execution_payload_bid.message.block_hash = (
+            state.latest_execution_payload_bid.block_hash
+        )
+        genesis_block_body.signed_execution_payload_bid.message.execution_requests_root = (
+            state.latest_execution_payload_bid.execution_requests_root
+        )
+    return spec.SignedBeaconBlock(
+        message=spec.BeaconBlock(
+            state_root=spec.hash_tree_root(state),
+            body=genesis_block_body,
+        )
+    )
