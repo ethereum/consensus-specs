@@ -529,26 +529,108 @@ def _disseminate(
     in_block_list,
     off_chain_rate,
     on_chain_rate,
-    with_invalid_messages,
-    spoil_fn=None,
 ):
     """
-    Randomly assigns a protocol message to off-chain, on-chain, or both dissemination paths.
-    Optionally spoils the message to make it invalid (off-chain only path).
+    Randomly assigns a valid protocol message to off-chain, on-chain, or both
+    dissemination paths.
     """
     choice = rnd.randint(0, 99)
     if choice < off_chain_rate:
-        if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
-            if spoil_fn:
-                spoil_fn(message)
-            off_chain_list.append(ProtocolMessage(message, False))
-        else:
-            off_chain_list.append(ProtocolMessage(message, True))
+        off_chain_list.append(ProtocolMessage(message, True))
     elif choice < off_chain_rate + on_chain_rate:
         in_block_list.append(message)
     else:
         off_chain_list.append(ProtocolMessage(message, True))
         in_block_list.append(message)
+
+
+class ProtocolState:
+    def __init__(self, spec, anchor_tip: BranchTip):
+        self.spec = spec
+        self.in_block_attestations = anchor_tip.attestations.copy()
+        self.in_block_attester_slashings = []
+        self.in_block_pa_messages = []
+        self.out_of_block_attestation_messages = []
+        self.out_of_block_attester_slashing_messages = []
+        self.out_of_block_pa_messages = []
+        self.signed_block_messages = []
+        self.signed_envelope_messages = []
+
+    def add_signed_block(self, signed_block, valid: bool):
+        self.signed_block_messages.append(ProtocolMessage(signed_block, valid))
+
+    def add_signed_envelope(self, envelope, valid: bool):
+        self.signed_envelope_messages.append(ProtocolMessage(envelope, valid))
+
+    def add_invalid_off_chain_attestation(self, attestation):
+        self.out_of_block_attestation_messages.append(ProtocolMessage(attestation, False))
+
+    def add_invalid_off_chain_payload_attestation(self, ptc_message):
+        self.out_of_block_pa_messages.append(ProtocolMessage(ptc_message, False))
+
+    def add_invalid_off_chain_attester_slashing(self, attester_slashing):
+        self.out_of_block_attester_slashing_messages.append(ProtocolMessage(attester_slashing, False))
+
+    def maybe_invalidate_attestation(self, rnd, attestation, with_invalid_messages):
+        if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
+            _spoil_attestation(self.spec, rnd, attestation)
+            self.add_invalid_off_chain_attestation(attestation)
+            return True
+        return False
+
+    def maybe_invalidate_payload_attestation(
+        self, rnd, state, ptc_message, with_invalid_messages
+    ):
+        if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
+            _spoil_payload_attestation_message(self.spec, rnd, state, ptc_message)
+            self.add_invalid_off_chain_payload_attestation(ptc_message)
+            return True
+        return False
+
+    def maybe_invalidate_attester_slashing(self, rnd, attester_slashing, with_invalid_messages):
+        if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
+            _spoil_attester_slashing(self.spec, rnd, attester_slashing)
+            self.add_invalid_off_chain_attester_slashing(attester_slashing)
+            return True
+        return False
+
+    def disseminate_attestation(self, rnd, attestation):
+        _disseminate(
+            rnd,
+            attestation,
+            self.out_of_block_attestation_messages,
+            self.in_block_attestations,
+            OFF_CHAIN_ATTESTATION_RATE,
+            ON_CHAIN_ATTESTATION_RATE,
+        )
+
+    def disseminate_payload_attestation(self, rnd, ptc_message):
+        _disseminate(
+            rnd,
+            ptc_message,
+            self.out_of_block_pa_messages,
+            self.in_block_pa_messages,
+            OFF_CHAIN_ATTESTATION_RATE,
+            ON_CHAIN_ATTESTATION_RATE,
+        )
+
+    def disseminate_attester_slashing(self, rnd, attester_slashing):
+        _disseminate(
+            rnd,
+            attester_slashing,
+            self.out_of_block_attester_slashing_messages,
+            self.in_block_attester_slashings,
+            OFF_CHAIN_SLASHING_RATE,
+            ON_CHAIN_SLASHING_RATE,
+        )
+
+
+class RuntimeState:
+    def __init__(self, anchor_tip: BranchTip):
+        self.current_slot = anchor_tip.beacon_state.slot
+        self.post_states = [anchor_tip.beacon_state.copy()]
+        self.block_tree_tips = {0}
+        self.payload_known_block_indices = set()
 
 
 def _generate_block_tree(
@@ -560,27 +642,26 @@ def _generate_block_tree(
     with_attester_slashings,
     with_invalid_messages,
 ) -> ([], [], [], [], []):
-    in_block_attestations = anchor_tip.attestations.copy()
-    post_states = [anchor_tip.beacon_state.copy()]
-    current_slot = anchor_tip.beacon_state.slot
-    block_index = 1
-    block_tree_tips = set([0])
-    in_block_attester_slashings = []
+    protocol = ProtocolState(spec, anchor_tip)
+    runtime = RuntimeState(anchor_tip)
     # Tracks every validator selected for a generated attester slashing in this
     # scenario, so later selections cannot target the same validator again.
     validators_to_be_slashed = set()
-    out_of_block_attestation_messages = []
-    out_of_block_pa_messages = []
-    out_of_block_attester_slashing_messages = []
-    signed_block_messages = []
-    signed_envelope_messages = []
-    in_block_pa_messages = []
-    payload_known_block_indices = set()
     slot_assignments = {}
+    state_cache_key = None
+    cached_state = None
+    block_edges = iter(enumerate(block_parents[1:], start=1))
 
     def get_state_by_block_index(index):
-        state = post_states[index].copy()
-        transition_to(spec, state, current_slot)
+        nonlocal state_cache_key, cached_state
+        cache_key = (index, runtime.current_slot)
+        if state_cache_key == cache_key:
+            return cached_state.copy()
+
+        state = runtime.post_states[index].copy()
+        transition_to(spec, state, runtime.current_slot)
+        state_cache_key = cache_key
+        cached_state = state
         return state
 
     def assign_voters_to_slots(epoch):
@@ -612,118 +693,119 @@ def _generate_block_tree(
             block_index_voters.setdefault(attesting_block_index, set()).add(validator_index)
         return block_index_voters
 
-    while block_index < len(block_parents):
-        epoch = spec.compute_epoch_at_slot(current_slot)
-        if current_slot not in slot_assignments:
+    def ensure_slot_assignments():
+        epoch = spec.compute_epoch_at_slot(runtime.current_slot)
+        if runtime.current_slot not in slot_assignments:
             assign_voters_to_slots(epoch)
 
-        envelope = None
-        valid_block_was_produced = False
-        new_block_index = None
-        valid_execution_payload_sent = False
-        # Propose a block if slot shouldn't be empty
-        if rnd.randint(1, 100) > EMPTY_SLOTS_RATE:
-            # Advance parent state to the current slot
-            parent_index = block_parents[block_index]
-            parent_state = get_state_by_block_index(parent_index)
+    def next_block_edge():
+        return next(block_edges, None)
 
-            # Filter out non-viable attestations
-            in_block_attestations = [
-                a
-                for a in in_block_attestations
-                if parent_state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH
-            ]
+    def maybe_propose_block(block_edge):
+        if rnd.randint(1, 100) <= EMPTY_SLOTS_RATE:
+            return None, None, None
 
-            # Produce block
-            proposer = spec.get_beacon_proposer_index(parent_state)
-            if parent_state.validators[proposer].slashed or (
-                with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE
-            ):
-                # Do not include attestations and slashings into invalid block
-                # as clients may opt in to process or not process attestations contained by invalid block
-                signed_block, _, _, _, _ = produce_block(spec, parent_state, [], [], [])
-                _spoil_block(spec, rnd, signed_block)
-                signed_block_messages.append(ProtocolMessage(signed_block, False))
-                # Append the parent state as the post state as if the block were not applied
-                post_states.append(parent_state)
-            else:
-                (
-                    signed_block,
-                    post_state,
-                    in_block_attestations,
-                    in_block_attester_slashings,
-                    in_block_pa_messages,
-                ) = produce_block(
-                    spec,
-                    parent_state,
-                    in_block_attestations,
-                    in_block_attester_slashings,
-                    in_block_pa_messages,
-                )
+        block_index, parent_index = block_edge
+        parent_state = get_state_by_block_index(parent_index)
 
-                # Valid block
-                signed_block_messages.append(ProtocolMessage(signed_block, True))
-                post_states.append(post_state)
-                valid_block_was_produced = True
-                new_block_index = block_index
+        protocol.in_block_attestations = [
+            a
+            for a in protocol.in_block_attestations
+            if parent_state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH
+        ]
 
-                # Update tips
-                block_tree_tips.discard(parent_index)
-                block_tree_tips.add(block_index)
+        proposer = spec.get_beacon_proposer_index(parent_state)
 
-                block_root = signed_block.message.hash_tree_root()
-
-                # Next block
-            block_index += 1
-
-        if is_post_gloas(spec) and valid_block_was_produced:
-            # Builder reveals execution payload
-            envelope = build_signed_execution_payload_envelope(
-                spec, post_state, block_root, signed_block
+        if parent_state.validators[proposer].slashed or (
+            with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE
+        ):
+            # Do not include attestations and slashings into invalid block
+            # as clients may opt in to process or not process attestations
+            # contained by invalid block.
+            signed_block, _, _, _, _ = produce_block(spec, parent_state, [], [], [])
+            _spoil_block(spec, rnd, signed_block)
+            protocol.add_signed_block(signed_block, False)
+            runtime.post_states.append(parent_state)
+            post_state = parent_state
+            new_block_index = None
+        else:
+            (
+                signed_block,
+                post_state,
+                protocol.in_block_attestations,
+                protocol.in_block_attester_slashings,
+                protocol.in_block_pa_messages,
+            ) = produce_block(
+                spec,
+                parent_state,
+                protocol.in_block_attestations,
+                protocol.in_block_attester_slashings,
+                protocol.in_block_pa_messages,
             )
-            if rnd.randint(0, 99) < EXECUTION_PAYLOAD_SEND_RATE:
-                # TODO: Consider an explicit invalid case for an execution payload
-                # targeting an unknown beacon block root. That should stay out of
-                # the orderly base scenario unless `with_invalid_messages` is enabled.
-                valid = True
-                if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
-                    _spoil_execution_payload_envelope(spec, rnd, envelope)
-                    valid = False
-                signed_envelope_messages.append(ProtocolMessage(envelope, valid))
-                valid_execution_payload_sent = valid
-                if valid:
-                    payload_known_block_indices.add(new_block_index)
 
-        # Assign each validator in the current slot's committees to a block tree tip.
-        attesting_committee = slot_assignments[current_slot]
+            protocol.add_signed_block(signed_block, True)
+            runtime.post_states.append(post_state)
+            new_block_index = block_index
+
+            runtime.block_tree_tips.discard(parent_index)
+            runtime.block_tree_tips.add(block_index)
+
+        return signed_block, post_state, new_block_index
+
+    def maybe_send_execution_payload(signed_block, post_state, new_block_index):
+        if not is_post_gloas(spec) or new_block_index is None:
+            return False
+
+        block_root = signed_block.message.hash_tree_root()
+        envelope = build_signed_execution_payload_envelope(spec, post_state, block_root, signed_block)
+        if rnd.randint(0, 99) >= EXECUTION_PAYLOAD_SEND_RATE:
+            return False
+
+        # TODO: Consider an explicit invalid case for an execution payload
+        # targeting an unknown beacon block root. That should stay out of
+        # the orderly base scenario unless `with_invalid_messages` is enabled.
+        valid = True
+        if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
+            _spoil_execution_payload_envelope(spec, rnd, envelope)
+            valid = False
+        protocol.add_signed_envelope(envelope, valid)
+        if valid:
+            runtime.payload_known_block_indices.add(new_block_index)
+        return valid
+
+    def get_attestation_payload_index(attesting_block_index, new_block_index, valid_execution_payload_sent):
+        payload_index = None
+        att_payload_index_invalid = False
+        if is_post_gloas(spec):
+            if valid_execution_payload_sent and attesting_block_index == new_block_index:
+                if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
+                    # payload_index=1 for a same-slot block is GLOAS-invalid:
+                    # spec requires data.index==0 when block_slot==attestation.data.slot
+                    payload_index = 1
+                    att_payload_index_invalid = True
+                else:
+                    payload_index = 0
+            elif (
+                attesting_block_index != new_block_index
+                and attesting_block_index in runtime.payload_known_block_indices
+            ):
+                if rnd.randint(0, 99) < GLOAS_FULL_ATTESTATION_RATE:
+                    payload_index = 1
+                else:
+                    payload_index = 0
+        return payload_index, att_payload_index_invalid
+
+    def make_slot_attestations(new_block_index, valid_execution_payload_sent):
+        attesting_committee = slot_assignments[runtime.current_slot]
         block_index_voters = assign_committee_votes(
-            attesting_committee, block_tree_tips, block_parents
+            attesting_committee, runtime.block_tree_tips, block_parents
         )
 
         for attesting_block_index, attesters in block_index_voters.items():
-            # Advance the state to the current slot
             attesting_state = get_state_by_block_index(attesting_block_index)
-
-            # Attest to the block
-            payload_index = None
-            att_payload_index_invalid = False
-            if is_post_gloas(spec):
-                if valid_execution_payload_sent and attesting_block_index == new_block_index:
-                    if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
-                        # payload_index=1 for a same-slot block is GLOAS-invalid:
-                        # spec requires data.index==0 when block_slot==attestation.data.slot
-                        payload_index = 1
-                        att_payload_index_invalid = True
-                    else:
-                        payload_index = 0
-                elif (
-                    attesting_block_index != new_block_index
-                    and attesting_block_index in payload_known_block_indices
-                ):
-                    if rnd.randint(0, 99) < GLOAS_FULL_ATTESTATION_RATE:
-                        payload_index = 1
-                    else:
-                        payload_index = 0
+            payload_index, att_payload_index_invalid = get_attestation_payload_index(
+                attesting_block_index, new_block_index, valid_execution_payload_sent
+            )
             attestations_in_slot = attest_to_slot(
                 spec,
                 attesting_state,
@@ -732,127 +814,122 @@ def _generate_block_tree(
                 payload_index=payload_index,
             )
 
-            # Sample on chain and off chain attestations
-            for a in attestations_in_slot:
+            for attestation in attestations_in_slot:
                 if att_payload_index_invalid:
-                    # Already known invalid due to GLOAS payload_index constraint;
-                    # skip _disseminate to avoid it being marked valid=True
-                    out_of_block_attestation_messages.append(ProtocolMessage(a, False))
-                else:
-                    _disseminate(
-                        rnd,
-                        a,
-                        out_of_block_attestation_messages,
-                        in_block_attestations,
-                        OFF_CHAIN_ATTESTATION_RATE,
-                        ON_CHAIN_ATTESTATION_RATE,
-                        with_invalid_messages,
-                        spoil_fn=lambda msg: _spoil_attestation(spec, rnd, msg),
-                    )
+                    protocol.add_invalid_off_chain_attestation(attestation)
+                elif not protocol.maybe_invalidate_attestation(
+                    rnd, attestation, with_invalid_messages
+                ):
+                    protocol.disseminate_attestation(rnd, attestation)
 
-        if is_post_gloas(spec):
-            if valid_block_was_produced and rnd.randint(0, 99) < PAYLOAD_ATTESTATION_SEND_RATE:
-                # TODO: Consider explicit payload-attestation cases without a
-                # newly produced block in this iteration, e.g. delayed votes
-                # for an older known block root or invalid votes for an unknown
-                # root. Those should stay out of the orderly base scenario
-                # unless `with_invalid_messages` is enabled.
-                for ptc_message in _get_random_payload_attestation_messages(spec, post_state, rnd):
-                    _disseminate(
-                        rnd,
-                        ptc_message,
-                        out_of_block_pa_messages,
-                        in_block_pa_messages,
-                        OFF_CHAIN_ATTESTATION_RATE,
-                        ON_CHAIN_ATTESTATION_RATE,
-                        with_invalid_messages,
-                        spoil_fn=lambda msg: _spoil_payload_attestation_message(
-                            spec, rnd, post_state, msg
-                        ),
-                    )
+    def maybe_send_payload_attestations(post_state, new_block_index):
+        if not is_post_gloas(spec) or new_block_index is None:
+            return
+        if rnd.randint(0, 99) >= PAYLOAD_ATTESTATION_SEND_RATE:
+            return
 
-        # Create attester slashing
-        if with_attester_slashings and len(validators_to_be_slashed) < MAX_ATTESTER_SLASHINGS:
-            if rnd.randint(0, 99) < ATTESTER_SLASHINGS_RATE:
-                state = get_state_by_block_index(-1)
+        # TODO: Consider explicit payload-attestation cases without a
+        # newly produced block in this iteration, e.g. delayed votes
+        # for an older known block root or invalid votes for an unknown
+        # root. Those should stay out of the orderly base scenario
+        # unless `with_invalid_messages` is enabled.
+        for ptc_message in _get_random_payload_attestation_messages(spec, post_state, rnd):
+            if not protocol.maybe_invalidate_payload_attestation(
+                rnd, post_state, ptc_message, with_invalid_messages
+            ):
+                protocol.disseminate_payload_attestation(rnd, ptc_message)
 
-                assert len(validators_to_be_slashed) < len(state.validators)
-                while True:
-                    validator_to_slash = rnd.randint(0, len(state.validators) - 1)
-                    # avoid slashing a validator who might be slashed already
-                    if validator_to_slash not in validators_to_be_slashed:
-                        break
+    def maybe_create_attester_slashing():
+        if not with_attester_slashings or len(validators_to_be_slashed) >= MAX_ATTESTER_SLASHINGS:
+            return
+        if rnd.randint(0, 99) >= ATTESTER_SLASHINGS_RATE:
+            return
 
-                indices = [validator_to_slash]
-                attester_slashing = get_valid_attester_slashing_by_indices(
-                    spec, state, indices, slot=current_slot, signed_1=True, signed_2=True
-                )
+        state = get_state_by_block_index(-1)
 
-                _disseminate(
-                    rnd,
-                    attester_slashing,
-                    out_of_block_attester_slashing_messages,
-                    in_block_attester_slashings,
-                    OFF_CHAIN_SLASHING_RATE,
-                    ON_CHAIN_SLASHING_RATE,
-                    with_invalid_messages,
-                    spoil_fn=lambda msg: _spoil_attester_slashing(spec, rnd, msg),
-                )
+        assert len(validators_to_be_slashed) < len(state.validators)
+        while True:
+            validator_to_slash = rnd.randint(0, len(state.validators) - 1)
+            # avoid slashing a validator who might be slashed already
+            if validator_to_slash not in validators_to_be_slashed:
+                break
 
-                validators_to_be_slashed.update(indices)
+        indices = [validator_to_slash]
+        attester_slashing = get_valid_attester_slashing_by_indices(
+            spec, state, indices, slot=runtime.current_slot, signed_1=True, signed_2=True
+        )
 
-        # Next slot
-        current_slot += 1
+        if not protocol.maybe_invalidate_attester_slashing(
+            rnd, attester_slashing, with_invalid_messages
+        ):
+            protocol.disseminate_attester_slashing(rnd, attester_slashing)
+
+        validators_to_be_slashed.update(indices)
+
+    block_edge = next_block_edge()
+    while block_edge is not None:
+        ensure_slot_assignments()
+        signed_block, post_state, new_block_index = maybe_propose_block(block_edge)
+        if signed_block is not None:
+            block_edge = next_block_edge()
+        valid_execution_payload_sent = maybe_send_execution_payload(signed_block, post_state, new_block_index)
+        make_slot_attestations(new_block_index, valid_execution_payload_sent)
+        maybe_send_payload_attestations(post_state, new_block_index)
+        maybe_create_attester_slashing()
+        runtime.current_slot += 1
 
     if debug:
         print("\nblock_tree:")
         print(
             "blocks:       ",
-            print_block_tree(spec, post_states[0], [b.payload for b in signed_block_messages]),
+            print_block_tree(
+                spec, runtime.post_states[0], [b.payload for b in protocol.signed_block_messages]
+            ),
         )
         print(
             "              ",
             "state.current_justified_checkpoint:",
             "(epoch="
-            + str(post_states[len(post_states) - 1].current_justified_checkpoint.epoch)
+            + str(runtime.post_states[len(runtime.post_states) - 1].current_justified_checkpoint.epoch)
             + ", root="
-            + str(post_states[len(post_states) - 1].current_justified_checkpoint.root)[:6]
+            + str(runtime.post_states[len(runtime.post_states) - 1].current_justified_checkpoint.root)[:6]
             + ")",
         )
 
         print("on_block:")
-        print("              ", "count =", len(signed_block_messages))
-        print("              ", "valid =", len([b for b in signed_block_messages if b.valid]))
+        print("              ", "count =", len(protocol.signed_block_messages))
+        print("              ", "valid =", len([b for b in protocol.signed_block_messages if b.valid]))
         print("on_attestation:")
-        print("              ", "count =", len(out_of_block_attestation_messages))
+        print("              ", "count =", len(protocol.out_of_block_attestation_messages))
         print(
             "              ",
             "valid =",
-            len([a for a in out_of_block_attestation_messages if a.valid]),
+            len([a for a in protocol.out_of_block_attestation_messages if a.valid]),
         )
         print("on_payload_attestation_message:")
-        print("              ", "count =", len(out_of_block_pa_messages))
+        print("              ", "count =", len(protocol.out_of_block_pa_messages))
         print(
             "              ",
             "valid =",
-            len([a for a in out_of_block_pa_messages if a.valid]),
+            len([a for a in protocol.out_of_block_pa_messages if a.valid]),
         )
         print("on_attester_slashing:")
-        print("              ", "count =", len(out_of_block_attester_slashing_messages))
+        print("              ", "count =", len(protocol.out_of_block_attester_slashing_messages))
         print(
             "              ",
             "valid =",
-            len([s for s in out_of_block_attester_slashing_messages if s.valid]),
+            len([s for s in protocol.out_of_block_attester_slashing_messages if s.valid]),
         )
 
     return (
-        sorted(signed_block_messages, key=lambda b: b.payload.message.slot),
-        sorted(out_of_block_attestation_messages, key=lambda a: a.payload.data.slot),
+        sorted(protocol.signed_block_messages, key=lambda b: b.payload.message.slot),
+        sorted(protocol.out_of_block_attestation_messages, key=lambda a: a.payload.data.slot),
         sorted(
-            out_of_block_attester_slashing_messages, key=lambda a: a.payload.attestation_1.data.slot
+            protocol.out_of_block_attester_slashing_messages,
+            key=lambda a: a.payload.attestation_1.data.slot,
         ),
-        sorted(signed_envelope_messages, key=lambda e: e.payload.message.payload.slot_number),
-        sorted(out_of_block_pa_messages, key=lambda a: a.payload.data.slot),
+        sorted(protocol.signed_envelope_messages, key=lambda e: e.payload.message.payload.slot_number),
+        sorted(protocol.out_of_block_pa_messages, key=lambda a: a.payload.data.slot),
     )
 
 
