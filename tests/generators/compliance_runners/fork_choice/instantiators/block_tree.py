@@ -660,6 +660,48 @@ def _debug_assert_block_tree_shape(spec, anchor_state, block_parents, signed_blo
         )
 
 
+def _debug_print_block_tree(spec, runtime, protocol):
+    print("\nblock_tree:")
+    print(
+        "blocks:       ",
+        print_block_tree(spec, runtime.post_states[0], [b.payload for b in protocol.signed_block_messages]),
+    )
+    print(
+        "              ",
+        "state.current_justified_checkpoint:",
+        "(epoch="
+        + str(runtime.post_states[len(runtime.post_states) - 1].current_justified_checkpoint.epoch)
+        + ", root="
+        + str(runtime.post_states[len(runtime.post_states) - 1].current_justified_checkpoint.root)[:6]
+        + ")",
+    )
+
+    print("on_block:")
+    print("              ", "count =", len(protocol.signed_block_messages))
+    print("              ", "valid =", len([b for b in protocol.signed_block_messages if b.valid]))
+    print("on_attestation:")
+    print("              ", "count =", len(protocol.out_of_block_attestation_messages))
+    print(
+        "              ",
+        "valid =",
+        len([a for a in protocol.out_of_block_attestation_messages if a.valid]),
+    )
+    print("on_payload_attestation_message:")
+    print("              ", "count =", len(protocol.out_of_block_pa_messages))
+    print(
+        "              ",
+        "valid =",
+        len([a for a in protocol.out_of_block_pa_messages if a.valid]),
+    )
+    print("on_attester_slashing:")
+    print("              ", "count =", len(protocol.out_of_block_attester_slashing_messages))
+    print(
+        "              ",
+        "valid =",
+        len([s for s in protocol.out_of_block_attester_slashing_messages if s.valid]),
+    )
+
+
 def _generate_block_tree(
     spec,
     anchor_tip: BranchTip,
@@ -906,47 +948,7 @@ def _generate_block_tree(
         runtime.current_slot += 1
 
     if debug:
-        print("\nblock_tree:")
-        print(
-            "blocks:       ",
-            print_block_tree(
-                spec, runtime.post_states[0], [b.payload for b in protocol.signed_block_messages]
-            ),
-        )
-        print(
-            "              ",
-            "state.current_justified_checkpoint:",
-            "(epoch="
-            + str(runtime.post_states[len(runtime.post_states) - 1].current_justified_checkpoint.epoch)
-            + ", root="
-            + str(runtime.post_states[len(runtime.post_states) - 1].current_justified_checkpoint.root)[:6]
-            + ")",
-        )
-
-        print("on_block:")
-        print("              ", "count =", len(protocol.signed_block_messages))
-        print("              ", "valid =", len([b for b in protocol.signed_block_messages if b.valid]))
-        print("on_attestation:")
-        print("              ", "count =", len(protocol.out_of_block_attestation_messages))
-        print(
-            "              ",
-            "valid =",
-            len([a for a in protocol.out_of_block_attestation_messages if a.valid]),
-        )
-        print("on_payload_attestation_message:")
-        print("              ", "count =", len(protocol.out_of_block_pa_messages))
-        print(
-            "              ",
-            "valid =",
-            len([a for a in protocol.out_of_block_pa_messages if a.valid]),
-        )
-        print("on_attester_slashing:")
-        print("              ", "count =", len(protocol.out_of_block_attester_slashing_messages))
-        print(
-            "              ",
-            "valid =",
-            len([s for s in protocol.out_of_block_attester_slashing_messages if s.valid]),
-        )
+        _debug_print_block_tree(spec, runtime, protocol)
 
     if debug and not with_invalid_messages:
         _debug_assert_block_tree_shape(
