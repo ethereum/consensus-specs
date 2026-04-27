@@ -256,15 +256,10 @@ viable_for_head_roots_and_weights: [{
 }]
 ```
 
-Additionally, these fields if `get_proposer_head` and
-`should_override_forkchoice_update` features are implemented:
+Additionally, these fields if `get_proposer_head` is implemented:
 
 ```yaml
 get_proposer_head: string             -- Encoded 32-byte value from get_proposer_head(store)
-should_override_forkchoice_update: {  -- [New in Bellatrix]
-    validator_is_connected: bool,     -- The mocking result of `validator_is_connected(proposer_index)` in this call
-    result: bool,                     -- The result of `should_override_forkchoice_update(store, head_root)`, where head_root is the result value from get_head(store)
-}
 head_payload_status: int              -- The payload_status field from the ForkChoiceNode returned by get_head(store)
 ```
 
@@ -278,7 +273,6 @@ For example:
     finalized_checkpoint: {epoch: 2, root: '0x40d32d6283ec11c53317a46808bc88f55657d93b95a1af920403187accf48f4f'}
     proposer_boost_root: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb'
     get_proposer_head: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb'
-    should_override_forkchoice_update: {validator_is_connected: false, result: false}
     viable_for_head_roots_and_weights: [
       {root: '0x533290b6f44d31c925acd08dfc8448624979d48c40b877d4e6714648866c9ddb', weight: 192000000000},
       {root: '0x5cfb9d9099cdf1d8ab68ce96cdae9f0fa6eef16914a01070580dfdc1d2d59ec3', weight: 544000000000}
