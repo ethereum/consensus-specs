@@ -782,7 +782,7 @@ def is_valid_indexed_attestation(
 #### `merkle_branch_root`
 
 ```python
-def merkle_branch_root(
+def compute_merkle_branch_root(
     leaf: Bytes32, branch: Sequence[Bytes32], depth: uint64, index: uint64
 ) -> Root:
     """
