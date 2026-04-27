@@ -292,8 +292,9 @@ def test_builder_payment_after_missed_epochs(spec, state):
     bid.execution_requests_root = spec.hash_tree_root(spec.ExecutionRequests())
 
     # Chain onto the previous bid so both block_1 and block_2 see a FULL parent
-    bid.parent_block_hash = state.latest_execution_payload_bid.block_hash
-    bid.block_hash = state.latest_execution_payload_bid.block_hash
+    # TODO(jtraglia): make this less hacky
+    bid.parent_block_hash = state.latest_block_hash
+    bid.block_hash = state.latest_block_hash
 
     # Sign the bid with the builder's private key
     signature = spec.get_execution_payload_bid_signature(
