@@ -276,7 +276,7 @@ def get_parent_payload_status(store: Store, block: BeaconBlock) -> PayloadStatus
     parent = store.blocks[block.parent_root]
     parent_state = store.block_states[block.parent_root]
     # pre-Gloas parent has no bid field hence, treat as PENDING
-    if parent_state.fork.current_version != GLOAS_FORK_VERSION:
+    if parent_state.fork.current_version < GLOAS_FORK_VERSION:
         return PAYLOAD_STATUS_PENDING
 
     parent_block_hash = block.body.signed_execution_payload_bid.message.parent_block_hash
