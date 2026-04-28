@@ -18,33 +18,6 @@ from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root
 
 
 def get_execution_payload_header(spec, state, execution_payload):
-    if is_post_gloas(spec):
-        # For Gloas, create a standard ExecutionPayloadHeader
-        payload_header = spec.ExecutionPayloadHeader(
-            parent_hash=execution_payload.parent_hash,
-            fee_recipient=execution_payload.fee_recipient,
-            state_root=execution_payload.state_root,
-            receipts_root=execution_payload.receipts_root,
-            logs_bloom=execution_payload.logs_bloom,
-            prev_randao=execution_payload.prev_randao,
-            block_number=execution_payload.block_number,
-            gas_limit=execution_payload.gas_limit,
-            gas_used=execution_payload.gas_used,
-            timestamp=execution_payload.timestamp,
-            extra_data=execution_payload.extra_data,
-            base_fee_per_gas=execution_payload.base_fee_per_gas,
-            block_hash=execution_payload.block_hash,
-            transactions_root=execution_payload.transactions.hash_tree_root(),
-        )
-        # Add version-specific fields
-        if hasattr(execution_payload, "withdrawals"):
-            payload_header.withdrawals_root = execution_payload.withdrawals.hash_tree_root()
-        if hasattr(execution_payload, "blob_gas_used"):
-            payload_header.blob_gas_used = execution_payload.blob_gas_used
-        if hasattr(execution_payload, "excess_blob_gas"):
-            payload_header.excess_blob_gas = execution_payload.excess_blob_gas
-        return payload_header
-
     payload_header = spec.ExecutionPayloadHeader(
         parent_hash=execution_payload.parent_hash,
         fee_recipient=execution_payload.fee_recipient,
@@ -254,6 +227,8 @@ def get_consolidation_request_rlp_bytes(consolidation_request):
 
 
 def compute_el_block_hash_with_new_fields(spec, payload, parent_beacon_block_root, requests_hash):
+    if is_post_gloas(spec):
+        return spec.Hash32()
     if payload == spec.ExecutionPayload():
         return spec.Hash32()
 
@@ -473,7 +448,9 @@ def build_state_with_execution_payload_bid(spec, state, execution_payload_bid):
     return pre_state
 
 
-def build_signed_execution_payload_envelope(spec, state, block_root, signed_block):
+def build_signed_execution_payload_envelope(
+    spec, state, block_root, signed_block, execution_requests=None
+):
     # Get builder_index from the block's execution payload bid
     builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
 
@@ -483,12 +460,16 @@ def build_signed_execution_payload_envelope(spec, state, block_root, signed_bloc
     payload.gas_limit = state.latest_execution_payload_bid.gas_limit
     payload.parent_hash = state.latest_block_hash
 
+    if execution_requests is None:
+        execution_requests = spec.ExecutionRequests()
+
     # Create the execution payload envelope message
     envelope_message = spec.ExecutionPayloadEnvelope(
-        beacon_block_root=block_root,
         payload=payload,
-        execution_requests=spec.ExecutionRequests(),
+        execution_requests=execution_requests,
         builder_index=builder_index,
+        beacon_block_root=block_root,
+        parent_beacon_block_root=signed_block.message.parent_root,
     )
 
     # Sign the envelope: self-builds use proposer key, external builds use builder key

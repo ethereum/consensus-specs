@@ -1117,12 +1117,8 @@ def test_full_builder_payload_reserves_sweep_slot(spec, state):
 @spec_state_test
 def test_zero_hash_genesis_skips_withdrawals(spec, state):
     """
-    Verify that process_withdrawals does not advance withdrawal indices
-    when both hashes are Hash32().
+    Verify that process_withdrawals does not advance withdrawal indices in genesis.
     """
-    state.latest_block_hash = spec.Hash32()
-    state.latest_execution_payload_bid.block_hash = spec.Hash32()
-
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
 

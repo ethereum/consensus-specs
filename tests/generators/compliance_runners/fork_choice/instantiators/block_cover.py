@@ -1,5 +1,8 @@
 import random
 
+from eth_consensus_specs.test.helpers.fork_choice import (
+    get_genesis_forkchoice_store_and_block,
+)
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
     transition_to,
@@ -99,7 +102,7 @@ def _generate_filter_block_tree(
         while state.slot < threshold_slot:
             # Do not include attestations into blocks
             if state.slot < spec.compute_start_slot_at_epoch(epoch):
-                new_block, state, _, _ = produce_block(spec, state, [])
+                new_block, state, _, _, _ = produce_block(spec, state, [])
                 signed_blocks.append(new_block)
             else:
                 # Prevent previous epoch from being accidentally justified
@@ -108,7 +111,7 @@ def _generate_filter_block_tree(
                     a for a in attestations if epoch == spec.compute_epoch_at_slot(a.data.slot)
                 ]
                 other_attestations = [a for a in attestations if a not in curr_epoch_attestations]
-                new_block, state, curr_epoch_attestations, _ = produce_block(
+                new_block, state, curr_epoch_attestations, _, _ = produce_block(
                     spec, state, curr_epoch_attestations
                 )
                 attestations = other_attestations + curr_epoch_attestations
@@ -160,7 +163,7 @@ def _generate_filter_block_tree(
                     block_attestations = block_attestations + current_epoch_attestations
 
                 # Propose block
-                new_block, state, _, _ = produce_block(spec, state, block_attestations)
+                new_block, state, _, _, _ = produce_block(spec, state, block_attestations)
                 signed_blocks.append(new_block)
 
             # Attest
@@ -204,7 +207,7 @@ def _generate_filter_block_tree(
 
 def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTestData, object):
     anchor_state = state
-    anchor_block = spec.BeaconBlock(state_root=anchor_state.hash_tree_root())
+    _, anchor_block = get_genesis_forkchoice_store_and_block(spec, anchor_state)
 
     if debug:
         print("\nseed:", seed)

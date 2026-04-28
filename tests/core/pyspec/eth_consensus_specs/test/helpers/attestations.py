@@ -102,6 +102,7 @@ def get_valid_attestation(
     state,
     slot=None,
     index=None,
+    payload_index=None,
     filter_participant_set=None,
     beacon_block_root=None,
     signed=False,
@@ -120,6 +121,8 @@ def get_valid_attestation(
     attestation_data = build_attestation_data(
         spec, state, slot=slot, index=index, beacon_block_root=beacon_block_root
     )
+    if is_post_gloas(spec) and payload_index is not None:
+        attestation_data.index = payload_index
 
     attestation = spec.Attestation(data=attestation_data)
 

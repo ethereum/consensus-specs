@@ -18,9 +18,7 @@
   - [New `record_payload_inclusion_list_satisfaction`](#new-record_payload_inclusion_list_satisfaction)
   - [New `is_payload_inclusion_list_satisfied`](#new-is_payload_inclusion_list_satisfied)
   - [Modified `should_extend_payload`](#modified-should_extend_payload)
-  - [New `get_view_freeze_cutoff_ms`](#new-get_view_freeze_cutoff_ms)
-  - [New `get_inclusion_list_submission_due_ms`](#new-get_inclusion_list_submission_due_ms)
-  - [New `get_proposer_inclusion_list_cutoff_ms`](#new-get_proposer_inclusion_list_cutoff_ms)
+  - [New `get_inclusion_list_due_ms`](#new-get_inclusion_list_due_ms)
 - [Handlers](#handlers)
   - [New `on_inclusion_list`](#new-on_inclusion_list)
   - [Modified `on_execution_payload_envelope`](#modified-on_execution_payload_envelope)
@@ -35,9 +33,9 @@ This is the modification of the fork choice accompanying the Heze upgrade.
 
 ### Time parameters
 
-| Name                     | Value          |     Unit     |         Duration          |
-| ------------------------ | -------------- | :----------: | :-----------------------: |
-| `VIEW_FREEZE_CUTOFF_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
+| Name                     | Value          |     Unit     |          Duration          |
+| ------------------------ | -------------- | :----------: | :------------------------: |
+| `INCLUSION_LIST_DUE_BPS` | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
 
 ## Protocols
 
@@ -163,14 +161,10 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         checkpoint_states={justified_checkpoint: copy(anchor_state)},
         unrealized_justifications={anchor_root: justified_checkpoint},
         payloads={},
-        payload_timeliness_vote={
-            anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
-        },
-        payload_data_availability_vote={
-            anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
-        },
+        payload_timeliness_vote={},
+        payload_data_availability_vote={},
         # [New in Heze:EIP7805]
-        payload_inclusion_list_satisfaction={anchor_root: True},
+        payload_inclusion_list_satisfaction={},
     )
 ```
 
@@ -227,10 +221,11 @@ not satisfy the inclusion list constraints.
 
 ```python
 def should_extend_payload(store: Store, root: Root) -> bool:
+    if not is_payload_verified(store, root):
+        return False
     # [New in Heze:EIP7805]
     if not is_payload_inclusion_list_satisfied(store, root):
         return False
-
     proposer_root = store.proposer_boost_root
     return (
         (is_payload_timely(store, root) and is_payload_data_available(store, root))
@@ -240,25 +235,11 @@ def should_extend_payload(store: Store, root: Root) -> bool:
     )
 ```
 
-### New `get_view_freeze_cutoff_ms`
+### New `get_inclusion_list_due_ms`
 
 ```python
-def get_view_freeze_cutoff_ms() -> uint64:
-    return get_slot_component_duration_ms(VIEW_FREEZE_CUTOFF_BPS)
-```
-
-### New `get_inclusion_list_submission_due_ms`
-
-```python
-def get_inclusion_list_submission_due_ms() -> uint64:
-    return get_slot_component_duration_ms(INCLUSION_LIST_SUBMISSION_DUE_BPS)
-```
-
-### New `get_proposer_inclusion_list_cutoff_ms`
-
-```python
-def get_proposer_inclusion_list_cutoff_ms() -> uint64:
-    return get_slot_component_duration_ms(PROPOSER_INCLUSION_LIST_CUTOFF_BPS)
+def get_inclusion_list_due_ms() -> uint64:
+    return get_slot_component_duration_ms(INCLUSION_LIST_DUE_BPS)
 ```
 
 ## Handlers
@@ -279,10 +260,10 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 
     seconds_since_genesis = store.time - store.genesis_time
     time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    view_freeze_cutoff_ms = get_view_freeze_cutoff_ms()
-    is_before_view_freeze_cutoff = time_into_slot_ms < view_freeze_cutoff_ms
+    inclusion_list_due_ms = get_inclusion_list_due_ms()
+    is_timely = time_into_slot_ms < inclusion_list_due_ms
 
-    process_inclusion_list(get_inclusion_list_store(), inclusion_list, is_before_view_freeze_cutoff)
+    process_inclusion_list(get_inclusion_list_store(), inclusion_list, is_timely)
 ```
 
 ### Modified `on_execution_payload_envelope`

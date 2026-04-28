@@ -198,13 +198,9 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         # [New in Gloas:EIP7732]
         payloads={},
         # [New in Gloas:EIP7732]
-        payload_timeliness_vote={
-            anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
-        },
+        payload_timeliness_vote={},
         # [New in Gloas:EIP7732]
-        payload_data_availability_vote={
-            anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
-        },
+        payload_data_availability_vote={},
     )
 ```
 
@@ -291,11 +287,6 @@ def get_parent_payload_status(store: Store, block: BeaconBlock) -> PayloadStatus
     parent = store.blocks[block.parent_root]
     parent_block_hash = block.body.signed_execution_payload_bid.message.parent_block_hash
     message_block_hash = parent.body.signed_execution_payload_bid.message.block_hash
-
-    # Check for uninitialized genesis block hash
-    if message_block_hash == Hash32():
-        return PAYLOAD_STATUS_EMPTY
-
     return PAYLOAD_STATUS_FULL if parent_block_hash == message_block_hash else PAYLOAD_STATUS_EMPTY
 ```
 
@@ -792,6 +783,7 @@ def verify_execution_payload_envelope(
     header = copy(state.latest_block_header)
     header.state_root = hash_tree_root(state)
     assert envelope.beacon_block_root == hash_tree_root(header)
+    assert envelope.parent_beacon_block_root == state.latest_block_header.parent_root
 
     # Verify consistency with the committed bid
     bid = state.latest_execution_payload_bid
@@ -813,7 +805,7 @@ def verify_execution_payload_envelope(
                 kzg_commitment_to_versioned_hash(commitment)
                 for commitment in bid.blob_kzg_commitments
             ],
-            parent_beacon_block_root=state.latest_block_header.parent_root,
+            parent_beacon_block_root=envelope.parent_beacon_block_root,
             execution_requests=envelope.execution_requests,
         )
     )
