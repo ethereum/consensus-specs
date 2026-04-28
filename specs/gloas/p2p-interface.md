@@ -358,13 +358,13 @@ The following validations MUST pass before forwarding the
 `signed_execution_payload_bid` on the network, assuming the alias
 `bid = signed_execution_payload_bid.message`, the alias
 `signed_proposer_preferences` for the validated `SignedProposerPreferences`
-whose `message.proposal_slot == bid.slot` and `message.checkpoint_root` is
+whose `message.proposal_slot` matches `bid.slot` and `message.checkpoint_root`
+is
 `get_checkpoint_block(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot) - 1)`,
 and the alias `proposer_preferences = signed_proposer_preferences.message`:
 
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
-- _[IGNORE]_ `signed_proposer_preferences` is defined (i.e. a matching
-  `SignedProposerPreferences` has been seen).
+- _[IGNORE]_ The matching `signed_proposer_preferences` has been seen.
 - _[REJECT]_ `bid.builder_index` is a valid/active builder index -- i.e.
   `is_active_builder(state, bid.builder_index)` returns `True`.
 - _[REJECT]_ `bid.execution_payment` is zero.
@@ -413,8 +413,9 @@ The following validations MUST pass before forwarding the
   (via gossip or non-gossip sources) (a client MAY queue the message for
   re-processing once the block is retrieved).
 - _[REJECT]_ `is_valid_proposal_slot(state, preferences)` returns `True`, where
-  `state` is the checkpoint state at
-  `(compute_epoch_at_slot(preferences.proposal_slot) - 1, preferences.checkpoint_root)`.
+  `state` is the checkpoint state at the epoch
+  `compute_epoch_at_slot(preferences.proposal_slot) - 1` and the root
+  `preferences.checkpoint_root`.
 - _[IGNORE]_ The `signed_proposer_preferences` is the first valid message seen
   for the tuple
   `(preferences.checkpoint_root, preferences.proposal_slot, preferences.validator_index)`.
@@ -424,8 +425,8 @@ The following validations MUST pass before forwarding the
 ```python
 def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences) -> bool:
     """
-    Check if the validator is the proposer for the given slot using the
-    checkpoint ``state`` identified by ``preferences.checkpoint_root``.
+    Check if the validator is the proposer for the given slot in the current or
+    next epoch.
     """
     current_epoch = get_current_epoch(state)
     proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
