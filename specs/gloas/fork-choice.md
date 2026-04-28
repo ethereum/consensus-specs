@@ -61,6 +61,7 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 | Name            | SSZ equivalent | Description                                     |
 | --------------- | -------------- | ----------------------------------------------- |
 | `PayloadStatus` | `uint8`        | Possible status of a payload in the fork-choice |
+| `PayloadVote`   | `uint8`        | Possible payload vote value from a PTC member   |
 
 ## Constants
 
@@ -71,6 +72,9 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 | `PAYLOAD_STATUS_EMPTY`               | `PayloadStatus(0)`      |
 | `PAYLOAD_STATUS_FULL`                | `PayloadStatus(1)`      |
 | `PAYLOAD_STATUS_PENDING`             | `PayloadStatus(2)`      |
+| `PAYLOAD_VOTE_UNKNOWN`               | `PayloadVote(0)`        |
+| `PAYLOAD_VOTE_YEA`                   | `PayloadVote(1)`        |
+| `PAYLOAD_VOTE_NAY`                   | `PayloadVote(2)`        |
 | `ATTESTATION_TIMELINESS_INDEX`       | `0`                     |
 | `PTC_TIMELINESS_INDEX`               | `1`                     |
 | `NUM_BLOCK_TIMELINESS_DEADLINES`     | `2`                     |
@@ -163,9 +167,11 @@ class Store(object):
     # [New in Gloas:EIP7732]
     payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
-    payload_timeliness_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
+    payload_timeliness_vote: Dict[Root, Vector[PayloadVote, PTC_SIZE]] = field(
+        default_factory=dict
+    )
     # [New in Gloas:EIP7732]
-    payload_data_availability_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
+    payload_data_availability_vote: Dict[Root, Vector[PayloadVote, PTC_SIZE]] = field(
         default_factory=dict
     )
 ```
@@ -258,7 +264,9 @@ def is_payload_timely(store: Store, root: Root) -> bool:
     if not is_payload_verified(store, root):
         return False
 
-    return sum(store.payload_timeliness_vote[root]) > PAYLOAD_TIMELY_THRESHOLD
+    votes = store.payload_timeliness_vote[root]
+    yea_votes = sum(vote == PAYLOAD_VOTE_YEA for vote in votes)
+    return yea_votes > PAYLOAD_TIMELY_THRESHOLD
 ```
 
 ### New `is_payload_data_available`
@@ -277,7 +285,9 @@ def is_payload_data_available(store: Store, root: Root) -> bool:
     if not is_payload_verified(store, root):
         return False
 
-    return sum(store.payload_data_availability_vote[root]) > DATA_AVAILABILITY_TIMELY_THRESHOLD
+    votes = store.payload_data_availability_vote[root]
+    yea_votes = sum(vote == PAYLOAD_VOTE_YEA for vote in votes)
+    return yea_votes > DATA_AVAILABILITY_TIMELY_THRESHOLD
 ```
 
 ### New `get_parent_payload_status`
@@ -861,8 +871,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
     # Add a new PTC voting for this block to the store
-    store.payload_timeliness_vote[block_root] = [False] * PTC_SIZE
-    store.payload_data_availability_vote[block_root] = [False] * PTC_SIZE
+    store.payload_timeliness_vote[block_root] = [PAYLOAD_VOTE_UNKNOWN] * PTC_SIZE
+    store.payload_data_availability_vote[block_root] = [PAYLOAD_VOTE_UNKNOWN] * PTC_SIZE
 
     # Notify the store about the payload_attestations in the block
     notify_ptc_messages(store, state, block.body.payload_attestations)
@@ -939,8 +949,9 @@ def on_payload_attestation_message(
     # The beacon block root must be known
     data = ptc_message.data
     # PTC attestation must be for a known block. If block is unknown, delay consideration until the block is found
-    assert data.beacon_block_root in store.block_states
-    state = store.block_states[data.beacon_block_root]
+    beacon_block_root = data.beacon_block_root
+    assert beacon_block_root in store.block_states
+    state = store.block_states[beacon_block_root]
     ptc = get_ptc(state, data.slot)
     # PTC votes can only change the vote for their assigned beacon block, return early otherwise
     if data.slot != state.slot:
@@ -963,8 +974,14 @@ def on_payload_attestation_message(
         )
     # Update the votes for the block
     ptc_index = ptc.index(ptc_message.validator_index)
-    payload_timeliness_vote = store.payload_timeliness_vote[data.beacon_block_root]
-    payload_timeliness_vote[ptc_index] = data.payload_present
-    payload_data_availability_vote = store.payload_data_availability_vote[data.beacon_block_root]
-    payload_data_availability_vote[ptc_index] = data.blob_data_available
+    payload_timeliness_vote = store.payload_timeliness_vote[beacon_block_root]
+    payload_timeliness_vote[ptc_index] = (
+        PAYLOAD_VOTE_YEA if data.payload_present else PAYLOAD_VOTE_NAY
+    )
+    payload_data_availability_vote = store.payload_data_availability_vote[
+        beacon_block_root
+    ]
+    payload_data_availability_vote[ptc_index] = (
+        PAYLOAD_VOTE_YEA if data.blob_data_available else PAYLOAD_VOTE_NAY
+    )
 ```
