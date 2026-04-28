@@ -498,8 +498,8 @@ def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, 
 
     # ensure there is enough churn to apply the deposit
     if pending_deposit.amount > get_activation_churn_limit(spec, state):
-        state.deposit_balance_to_consume = (
-            pending_deposit.amount - get_activation_churn_limit(spec, state)
+        state.deposit_balance_to_consume = pending_deposit.amount - get_activation_churn_limit(
+            spec, state
         )
 
     # append pending deposit
