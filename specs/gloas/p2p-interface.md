@@ -115,9 +115,6 @@ class ProposerPreferences(Container):
     gas_limit: uint64
 ```
 
-The `checkpoint_root` is
-`get_checkpoint_block(store, head_root, compute_epoch_at_slot(proposal_slot) - 1)`.
-
 #### New `SignedProposerPreferences`
 
 *[New in Gloas:EIP7732]*
@@ -361,8 +358,8 @@ The following validations MUST pass before forwarding the
 `signed_execution_payload_bid` on the network, assuming the alias
 `bid = signed_execution_payload_bid.message`, the alias
 `signed_proposer_preferences` for the validated `SignedProposerPreferences`
-whose `message.proposal_slot == bid.slot` and
-`message.checkpoint_root == get_checkpoint_block(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot) - 1)`,
+whose `message.proposal_slot == bid.slot` and `message.checkpoint_root` is
+`get_checkpoint_block(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot) - 1)`,
 and the alias `proposer_preferences = signed_proposer_preferences.message`:
 
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
@@ -430,11 +427,15 @@ def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences)
     Check if the validator is the proposer for the given slot using the
     checkpoint ``state`` identified by ``preferences.checkpoint_root``.
     """
+    current_epoch = get_current_epoch(state)
     proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
-    if get_current_epoch(state) != proposal_epoch - Epoch(1):
+    if proposal_epoch < current_epoch:
+        return False
+    if proposal_epoch > current_epoch + Epoch(1):
         return False
 
-    index = SLOTS_PER_EPOCH + preferences.proposal_slot % SLOTS_PER_EPOCH
+    index = (proposal_epoch - current_epoch) * SLOTS_PER_EPOCH
+    index += preferences.proposal_slot % SLOTS_PER_EPOCH
     return state.proposer_lookahead[index] == preferences.validator_index
 ```
 
