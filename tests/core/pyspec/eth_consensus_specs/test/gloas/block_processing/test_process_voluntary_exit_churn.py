@@ -10,27 +10,48 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
+from eth_consensus_specs.test.helpers.voluntary_exits import (
+    run_voluntary_exit_processing,
+    sign_voluntary_exit,
+)
 
 
-def assert_exit_churn_behavior(spec, state):
+def run_exit_at_churn_boundary(spec, state):
     """
-    Shared assertions: exercise compute_exit_epoch_and_update_churn with exit churn limit.
-    Verify that exiting exactly the churn limit fits in one epoch, and exiting more spills over.
+    Exit one validator and verify its scheduled exit epoch and the resulting
+    ``exit_balance_to_consume`` reflect the exit churn limit. Spans multiple
+    epochs when the validator's effective balance exceeds the per-epoch churn.
     """
-    exit_churn = spec.get_exit_churn_limit(state)
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
     current_epoch = spec.get_current_epoch(state)
+    exit_churn = spec.get_exit_churn_limit(state)
+
+    validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
+    to_exit = state.validators[validator_index].effective_balance
+
     earliest_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
+    additional_epochs = (to_exit - 1) // exit_churn
+    expected_exit_epoch = earliest_exit_epoch + additional_epochs
+    expected_withdrawable_epoch = (
+        expected_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+    )
 
-    exit_epoch = spec.compute_exit_epoch_and_update_churn(state, exit_churn)
-    assert exit_epoch == earliest_exit_epoch
-    assert state.exit_balance_to_consume == 0
+    privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
+    signed_voluntary_exit = sign_voluntary_exit(
+        spec,
+        state,
+        spec.VoluntaryExit(epoch=current_epoch, validator_index=validator_index),
+        privkey,
+    )
 
-    state.earliest_exit_epoch = spec.Epoch(0)
-    state.exit_balance_to_consume = spec.Gwei(0)
+    yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
-    exit_epoch = spec.compute_exit_epoch_and_update_churn(state, exit_churn + 1)
-    assert exit_epoch == earliest_exit_epoch + 1
-    assert state.exit_balance_to_consume == exit_churn - 1
+    assert state.validators[validator_index].exit_epoch == expected_exit_epoch
+    assert state.validators[validator_index].withdrawable_epoch == expected_withdrawable_epoch
+    assert state.exit_balance_to_consume == (additional_epochs + 1) * exit_churn - to_exit
+    assert state.earliest_exit_epoch == expected_exit_epoch
 
 
 @with_gloas_and_later
@@ -40,8 +61,7 @@ def test_exit_churn__less_than_activation_cap(spec, state):
     exit_churn = spec.get_exit_churn_limit(state)
     activation_churn = spec.get_activation_churn_limit(state)
     assert exit_churn == activation_churn
-    assert_exit_churn_behavior(spec, state)
-    yield "post", state
+    yield from run_exit_at_churn_boundary(spec, state)
 
 
 @with_gloas_and_later
@@ -61,8 +81,7 @@ def test_exit_churn__equal_to_activation_cap(spec, state):
     activation_churn = spec.get_activation_churn_limit(state)
     assert activation_churn == spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
     assert exit_churn >= activation_churn
-    assert_exit_churn_behavior(spec, state)
-    yield "post", state
+    yield from run_exit_at_churn_boundary(spec, state)
 
 
 @with_gloas_and_later
@@ -86,5 +105,4 @@ def test_exit_churn__greater_than_activation_cap(spec, state):
     expected = total // spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
     expected = expected - expected % spec.EFFECTIVE_BALANCE_INCREMENT
     assert exit_churn == expected
-    assert_exit_churn_behavior(spec, state)
-    yield "post", state
+    yield from run_exit_at_churn_boundary(spec, state)
