@@ -34,6 +34,7 @@
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
       - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
       - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
+      - [HeadersByRoot v1](#headersbyroot-v1)
 
 <!-- mdformat-toc end -->
 
@@ -48,9 +49,10 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Configuration
 
-| Name                   | Value          | Description                                                       |
-| ---------------------- | -------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
+| Name                        | Value             | Description                                                       |
+| --------------------------- | ----------------- | ----------------------------------------------------------------- |
+| `MAX_REQUEST_PAYLOADS`      | `2**7` (= 128)    | Maximum number of execution payload envelopes in a single request |
+| `MAX_REQUEST_BLOCK_HEADERS` | `2**11` (= 2,048) | Maximum number of beacon block headers in a single request        |
 
 ### Containers
 
@@ -576,3 +578,67 @@ payload envelope in the response.
 
 Clients MUST respond with at least one payload envelope, if they have it.
 Clients MAY limit the number of payload envelopes in the response.
+
+##### HeadersByRoot v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/headers_by_root/1/`
+
+*[New in Gloas]*
+
+Request Content:
+
+```
+(
+  beacon_root: Root
+  count: uint64
+  min_slot: Slot
+)
+```
+
+Response Content:
+
+```
+(
+  List[BeaconBlockHeader, MAX_REQUEST_BLOCK_HEADERS]
+)
+```
+
+Requests beacon block headers along the ancestry of `beacon_root`, inclusive of
+the block at `beacon_root`, in descending slot order. The walk stops as soon as
+the response contains `min(count, MAX_REQUEST_BLOCK_HEADERS)` headers, the next
+ancestor has `slot < min_slot`, or the next ancestor falls outside the epoch
+range that clients are required to serve (see below).
+
+`HeadersByRoot` is primarily used to backfill a contiguous range of headers
+relative to a known head.
+
+No more than `MAX_REQUEST_BLOCK_HEADERS` may be requested at a time.
+
+The request MUST be encoded as an SSZ-container.
+
+The response MUST consist of a single `response_chunk` containing the list of
+headers.
+
+Clients MUST support requesting headers on the epoch range
+`[current_epoch - compute_min_epochs_for_block_requests(), current_epoch]`. If
+`beacon_root` references a block earlier than this range, peers MAY respond with
+error code `3: ResourceUnavailable` or with an empty list.
+
+Clients MUST respond with at least one header, if they have the block at
+`beacon_root`. Clients MAY limit the number of headers in the response.
+
+Clients SHOULD include a header in the response as soon as the corresponding
+block passes the gossip validation rules. Clients SHOULD NOT respond with
+headers whose blocks fail the beacon-chain state transition.
+
+For the successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(head_header.slot)`, where `head_header` is
+the header of `beacon_root`.
+
+Per `fork_version = compute_fork_version(epoch)`:
+
+<!-- eth_consensus_specs: skip -->
+
+| `fork_version`                 | Chunk SSZ type                                       |
+| ------------------------------ | ---------------------------------------------------- |
+| `GLOAS_FORK_VERSION` and later | `List[BeaconBlockHeader, MAX_REQUEST_BLOCK_HEADERS]` |
