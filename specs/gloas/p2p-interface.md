@@ -619,8 +619,8 @@ The response MUST consist of zero or more `response_chunk`. Each successful
 
 Clients MUST support requesting blocks on the epoch range
 `[current_epoch - compute_min_epochs_for_block_requests(), current_epoch]`. If
-`beacon_root` references a block earlier than this range, peers MAY respond
-with error code `3: ResourceUnavailable` or with no blocks in the response.
+`beacon_root` references a block earlier than this range, peers MAY respond with
+error code `3: ResourceUnavailable` or with no blocks in the response.
 
 Clients MUST respond with at least one block, if they have the block at
 `beacon_root`. Clients MAY limit the number of blocks in the response.
