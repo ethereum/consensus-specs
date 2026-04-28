@@ -37,6 +37,7 @@ def compute_weak_subjectivity_period(state: BeaconState) -> uint64:
         - consolidation churn (weighted 1)
     """
     t = get_total_active_balance(state)
+    # [Modified in Gloas:EIP8061]
     delta = (
         2 * get_exit_churn_limit(state) // 3
         + get_activation_churn_limit(state) // 3

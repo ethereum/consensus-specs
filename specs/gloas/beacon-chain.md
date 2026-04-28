@@ -798,7 +798,8 @@ def get_builder_payment_quorum_threshold(state: BeaconState) -> uint64:
 ```python
 def get_activation_churn_limit(state: BeaconState) -> Gwei:
     """
-    Per-epoch churn limit for activations, rounded to EFFECTIVE_BALANCE_INCREMENT.
+    Per-epoch churn limit for activations, rounded to
+    ``EFFECTIVE_BALANCE_INCREMENT``.
     """
     churn = max(
         MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA,
@@ -813,7 +814,8 @@ def get_activation_churn_limit(state: BeaconState) -> Gwei:
 ```python
 def get_exit_churn_limit(state: BeaconState) -> Gwei:
     """
-    Per-epoch churn limit for exits, rounded to EFFECTIVE_BALANCE_INCREMENT.
+    Per-epoch churn limit for exits, rounded to
+    ``EFFECTIVE_BALANCE_INCREMENT``.
     """
     churn = max(
         MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA,
@@ -831,7 +833,8 @@ balance using `CONSOLIDATION_CHURN_LIMIT_QUOTIENT`
 def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     """
     Per-epoch churn limit reserved for consolidations (EIP-7521).
-    Derived from total active balance and rounded to EFFECTIVE_BALANCE_INCREMENT.
+    Derived from total active balance and rounded to
+    ``EFFECTIVE_BALANCE_INCREMENT``.
     """
     churn = get_total_active_balance(state) // CONSOLIDATION_CHURN_LIMIT_QUOTIENT
     return churn - churn % EFFECTIVE_BALANCE_INCREMENT
