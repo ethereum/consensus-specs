@@ -358,8 +358,7 @@ The following validations MUST pass before forwarding the
 `signed_execution_payload_bid` on the network, assuming the alias
 `bid = signed_execution_payload_bid.message`, the alias
 `signed_proposer_preferences` for the validated `SignedProposerPreferences`
-whose `message.proposal_slot` matches `bid.slot` and `message.checkpoint_root`
-is
+whose `message.proposal_slot` is `bid.slot` and `message.checkpoint_root` is
 `get_checkpoint_block(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot) - 1)`,
 and the alias `proposer_preferences = signed_proposer_preferences.message`:
 
@@ -367,7 +366,7 @@ and the alias `proposer_preferences = signed_proposer_preferences.message`:
 - _[IGNORE]_ The matching `signed_proposer_preferences` has been seen.
 - _[REJECT]_ `bid.builder_index` is a valid/active builder index -- i.e.
   `is_active_builder(state, bid.builder_index)` returns `True`.
-- _[REJECT]_ `bid.execution_payment` is zero.
+- _[REJECT]_ `bid.execution_payment == 0`.
 - _[REJECT]_ `bid.fee_recipient == proposer_preferences.fee_recipient`.
 - _[REJECT]_ `bid.gas_limit == proposer_preferences.gas_limit`.
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
