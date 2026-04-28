@@ -800,8 +800,8 @@ def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) 
     activation_exit_epoch = compute_activation_exit_epoch(get_current_epoch(state))
     earliest_exit_epoch = max(state.earliest_exit_epoch, activation_exit_epoch)
 
-    # Route exits through the consolidation queue when it is shorter
     # [New in Gloas:EIP8080]
+    # Route exits through the consolidation queue when it is shorter
     earliest_consolidation_epoch = max(state.earliest_consolidation_epoch, activation_exit_epoch)
     if (
         earliest_exit_epoch > earliest_consolidation_epoch
