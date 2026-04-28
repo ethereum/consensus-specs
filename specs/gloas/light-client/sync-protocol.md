@@ -50,11 +50,14 @@ Existing `GeneralizedIndex` constants are frozen at their pre-Gloas values.
 
 ### New constants
 
-| Name                                | Value                                                                                                              |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `EXECUTION_BLOCK_HASH_GINDEX`       | `get_generalized_index(capella.BeaconBlockBody, 'execution_payload', 'block_hash')` (= 412)                        |
-| `EXECUTION_BLOCK_HASH_GINDEX_DENEB` | `get_generalized_index(deneb.BeaconBlockBody, 'execution_payload', 'block_hash')` (= 812)                          |
-| `EXECUTION_BLOCK_HASH_GINDEX_GLOAS` | `get_generalized_index(BeaconBlockBody, 'signed_execution_payload_bid', 'message', 'parent_block_hash')` (= 11424) |
+| Name                                  | Value                                                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `FINALIZED_ROOT_GINDEX_GLOAS`         | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 735)                                        |
+| `CURRENT_SYNC_COMMITTEE_GINDEX_GLOAS` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 2,945)                                            |
+| `NEXT_SYNC_COMMITTEE_GINDEX_GLOAS`    | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 2,946)                                               |
+| `EXECUTION_BLOCK_HASH_GINDEX`         | `get_generalized_index(capella.BeaconBlockBody, 'execution_payload', 'block_hash')` (= 412)                         |
+| `EXECUTION_BLOCK_HASH_GINDEX_DENEB`   | `get_generalized_index(deneb.BeaconBlockBody, 'execution_payload', 'block_hash')` (= 812)                           |
+| `EXECUTION_BLOCK_HASH_GINDEX_GLOAS`   | `get_generalized_index(BeaconBlockBody, 'signed_execution_payload_bid', 'message', 'parent_block_hash')` (= 11,424) |
 
 ## Containers
 
