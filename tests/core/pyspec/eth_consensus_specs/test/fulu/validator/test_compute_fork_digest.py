@@ -11,6 +11,7 @@ from eth_consensus_specs.test.context import (
 @single_phase
 @with_config_overrides(
     {
+        "FULU_FORK_EPOCH": 0,
         "BLOB_SCHEDULE": [
             {"EPOCH": 9, "MAX_BLOBS_PER_BLOCK": 9},
             {"EPOCH": 100, "MAX_BLOBS_PER_BLOCK": 100},

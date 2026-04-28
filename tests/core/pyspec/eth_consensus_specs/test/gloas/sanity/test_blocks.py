@@ -286,17 +286,14 @@ def test_builder_payment_after_missed_epochs(spec, state):
     builder_index = 0
     value = spec.Gwei(1000000)  # 0.001 ETH
     fee_recipient = b"\xab" * 20
+    block_hash = spec.Hash32(b"\x42" * 32)
 
     bid = block_1.body.signed_execution_payload_bid.message
+    bid.block_hash = block_hash
     bid.builder_index = builder_index
     bid.value = value
     bid.fee_recipient = fee_recipient
     bid.execution_requests_root = spec.hash_tree_root(spec.ExecutionRequests())
-
-    # Chain onto the previous bid so both block_1 and block_2 see a FULL parent
-    # TODO(jtraglia): make this less hacky
-    bid.parent_block_hash = state.latest_block_hash
-    bid.block_hash = state.latest_block_hash
 
     # Sign the bid with the builder's private key
     signature = spec.get_execution_payload_bid_signature(
@@ -334,6 +331,7 @@ def test_builder_payment_after_missed_epochs(spec, state):
     block_1_epoch = spec.compute_epoch_at_slot(block_1.slot)
     block_2_slot = (block_1_epoch + 2) * spec.SLOTS_PER_EPOCH + 1
     block_2 = build_empty_block(spec, state, slot=block_2_slot)
+    block_2.body.signed_execution_payload_bid.message.parent_block_hash = block_hash
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
 
     yield "blocks", [signed_block_1, signed_block_2]
