@@ -3,6 +3,7 @@ from eth_consensus_specs.test.context import (
     with_electra_and_later,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.churn import get_exit_churn_limit
 from eth_consensus_specs.test.helpers.constants import MAINNET
 from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
 from eth_consensus_specs.test.helpers.voluntary_exits import (
@@ -25,7 +26,7 @@ def test_min_balance_exit(spec, state):
     expected_withdrawable_epoch = (
         expected_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     )
-    churn_limit = spec.get_activation_exit_churn_limit(state)
+    churn_limit = get_exit_churn_limit(spec, state)
     # Set the balance to consume equal to churn limit
     state.exit_balance_to_consume = churn_limit
 
@@ -55,7 +56,7 @@ def test_min_balance_exits_up_to_churn(spec, state):
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     # This state has 64 validators each with 32 ETH
     single_validator_balance = spec.MIN_ACTIVATION_BALANCE
-    churn_limit = spec.get_activation_exit_churn_limit(state)
+    churn_limit = get_exit_churn_limit(spec, state)
     # Set the balance to consume equal to churn limit
     state.exit_balance_to_consume = churn_limit
     num_to_exit = churn_limit // single_validator_balance
@@ -101,7 +102,7 @@ def test_min_balance_exits_above_churn(spec, state):
     expected_withdrawable_epoch = (
         expected_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     )
-    churn_limit = spec.get_activation_exit_churn_limit(state)
+    churn_limit = get_exit_churn_limit(spec, state)
     # Set the balance to consume equal to churn limit
     state.exit_balance_to_consume = churn_limit
     num_to_exit = churn_limit // single_validator_balance
@@ -143,7 +144,7 @@ def test_min_balance_exits_above_churn(spec, state):
 def test_max_balance_exit(spec, state):
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     current_epoch = spec.get_current_epoch(state)
-    churn_limit = spec.get_activation_exit_churn_limit(state)
+    churn_limit = get_exit_churn_limit(spec, state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
     # Set validator effective balance to 2048 ETH
     to_exit = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
@@ -183,7 +184,7 @@ def test_max_balance_exit(spec, state):
 def test_exit_with_balance_equal_to_churn_limit(spec, state):
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     current_epoch = spec.get_current_epoch(state)
-    churn_limit = spec.get_activation_exit_churn_limit(state)
+    churn_limit = get_exit_churn_limit(spec, state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
     # Set 0th validator effective balance to churn_limit
     state.validators[validator_index].effective_balance = churn_limit
@@ -219,7 +220,7 @@ def test_exit_with_balance_equal_to_churn_limit(spec, state):
 def test_exit_with_balance_multiple_of_churn_limit(spec, state):
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     current_epoch = spec.get_current_epoch(state)
-    churn_limit = spec.get_activation_exit_churn_limit(state)
+    churn_limit = get_exit_churn_limit(spec, state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
     # Set validator effective balance to a multiple of churn_limit
     epochs_to_consume = 3
@@ -258,7 +259,7 @@ def test_exit_with_balance_multiple_of_churn_limit(spec, state):
 def test_exit_existing_churn_and_churn_limit_balance(spec, state):
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     current_epoch = spec.get_current_epoch(state)
-    churn_limit = spec.get_activation_exit_churn_limit(state)
+    churn_limit = get_exit_churn_limit(spec, state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
 
     # set exit epoch to the first available one and set exit balance to consume to full churn limit
@@ -302,7 +303,7 @@ def test_exit_existing_churn_and_churn_limit_balance(spec, state):
 def test_exit_existing_churn_and_balance_multiple_of_churn_limit(spec, state):
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     current_epoch = spec.get_current_epoch(state)
-    churn_limit = spec.get_activation_exit_churn_limit(state)
+    churn_limit = get_exit_churn_limit(spec, state)
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
 
     # set exit epoch to the first available one and set exit balance to consume to full churn limit
