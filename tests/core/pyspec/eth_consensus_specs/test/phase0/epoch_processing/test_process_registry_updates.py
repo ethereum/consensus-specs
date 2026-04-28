@@ -7,6 +7,7 @@ from eth_consensus_specs.test.context import (
     with_custom_state,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.churn import get_exit_churn_limit
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.deposits import mock_deposit
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
@@ -221,7 +222,7 @@ def run_test_ejection_past_churn_limit(spec, state):
     yield from run_process_registry_updates(spec, state)
 
     if is_post_electra(spec):
-        per_epoch_churn = spec.get_activation_exit_churn_limit(state)
+        per_epoch_churn = get_exit_churn_limit(spec, state)
 
         def map_index_to_exit_epoch(i):
             balance_so_far = i * spec.config.EJECTION_BALANCE

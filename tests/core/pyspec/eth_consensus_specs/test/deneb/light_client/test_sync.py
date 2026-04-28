@@ -9,9 +9,12 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.constants import (
     DENEB,
     ELECTRA,
+    FULU,
+    GLOAS,
     MINIMAL,
 )
 from eth_consensus_specs.test.helpers.light_client_sync import (
+    run_lc_sync_test_multi_fork,
     run_lc_sync_test_single_fork,
 )
 
@@ -28,3 +31,19 @@ from eth_consensus_specs.test.helpers.light_client_sync import (
 @with_presets([MINIMAL], reason="too slow")
 def test_electra_fork(spec, phases, state):
     yield from run_lc_sync_test_single_fork(spec, phases, state, ELECTRA)
+
+
+@with_phases(phases=[DENEB], other_phases=[ELECTRA, FULU, GLOAS])
+@spec_test
+@with_config_overrides(
+    {
+        "ELECTRA_FORK_EPOCH": 3,  # Test setup advances to epoch 2
+        "FULU_FORK_EPOCH": 4,
+        "GLOAS_FORK_EPOCH": 5,
+    },
+)
+@with_state
+@with_matching_spec_config(emitted_fork=GLOAS)
+@with_presets([MINIMAL], reason="too slow")
+def test_electra_gloas_fork(spec, phases, state):
+    yield from run_lc_sync_test_multi_fork(spec, phases, state, ELECTRA, GLOAS)
