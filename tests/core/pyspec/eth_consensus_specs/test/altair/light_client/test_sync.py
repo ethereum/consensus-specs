@@ -17,6 +17,8 @@ from eth_consensus_specs.test.helpers.constants import (
     CAPELLA,
     DENEB,
     ELECTRA,
+    FULU,
+    GLOAS,
     MINIMAL,
 )
 from eth_consensus_specs.test.helpers.genesis import create_signed_genesis_block
@@ -550,3 +552,12 @@ def test_deneb_store_with_legacy_data(spec, phases, state):
 @with_presets([MINIMAL], reason="too slow")
 def test_electra_store_with_legacy_data(spec, phases, state):
     yield from run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, ELECTRA)
+
+
+@with_all_phases_from_to(ALTAIR, GLOAS, other_phases=[CAPELLA, DENEB, ELECTRA, FULU, GLOAS])
+@spec_test
+@with_state
+@with_matching_spec_config(emitted_fork=GLOAS)
+@with_presets([MINIMAL], reason="too slow")
+def test_gloas_store_with_legacy_data(spec, phases, state):
+    yield from run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, GLOAS)

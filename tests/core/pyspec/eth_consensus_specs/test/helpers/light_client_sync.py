@@ -15,6 +15,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_capella,
     is_post_deneb,
     is_post_electra,
+    is_post_gloas,
 )
 from eth_consensus_specs.test.helpers.genesis import create_signed_genesis_block
 from eth_consensus_specs.test.helpers.light_client import (
@@ -37,6 +38,8 @@ class LightClientSyncTest:
 
 
 def _get_store_fork_epoch(s_spec):
+    if is_post_gloas(s_spec):
+        return s_spec.config.GLOAS_FORK_EPOCH
     if is_post_electra(s_spec):
         return s_spec.config.ELECTRA_FORK_EPOCH
     if is_post_deneb(s_spec):
