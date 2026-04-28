@@ -44,13 +44,6 @@ class CosetEvals(list):
     def deprecate_functions(cls) -> set[str]:
         return set(
             [
-                "normalize_merkle_branch",
-                "upgrade_lc_bootstrap_to_electra",
-                "upgrade_lc_finality_update_to_electra",
-                "upgrade_lc_header_to_electra",
-                "upgrade_lc_optimistic_update_to_electra",
-                "upgrade_lc_store_to_electra",
-                "upgrade_lc_update_to_electra",
                 "upgrade_to_electra",
             ]
         )
