@@ -18,7 +18,7 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
         return {
             "EXECUTION_BLOCK_HASH_GINDEX": "GeneralizedIndex(412)",
             "EXECUTION_BLOCK_HASH_GINDEX_DENEB": "GeneralizedIndex(812)",
-            "EXECUTION_BLOCK_HASH_GINDEX_GLOAS": "GeneralizedIndex(832)",
+            "EXECUTION_BLOCK_HASH_GINDEX_GLOAS": "GeneralizedIndex(11424)",
         }
 
     @classmethod

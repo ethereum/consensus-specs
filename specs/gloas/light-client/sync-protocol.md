@@ -39,20 +39,22 @@ Additional documents describes the impact of the upgrade on certain roles:
 
 ### Frozen constants
 
-Existing `GeneralizedIndex` constants are frozen at their
-[Capella](../../capella/light-client/sync-protocol.md#constants) values.
+Existing `GeneralizedIndex` constants are frozen at their pre-Gloas values.
 
-| Name                       | Value                                                                        |
-| -------------------------- | ---------------------------------------------------------------------------- |
-| `EXECUTION_PAYLOAD_GINDEX` | `get_generalized_index(capella.BeaconBlockBody, 'execution_payload')` (= 25) |
+| Name                                    | Value                                                                                |
+| --------------------------------------- | ------------------------------------------------------------------------------------ |
+| `FINALIZED_ROOT_GINDEX_ELECTRA`         | `get_generalized_index(electra.BeaconState, 'finalized_checkpoint', 'root')` (= 169) |
+| `CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA` | `get_generalized_index(electra.BeaconState, 'current_sync_committee')` (= 86)        |
+| `NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA`    | `get_generalized_index(electra.BeaconState, 'next_sync_committee')` (= 87)           |
+| `EXECUTION_PAYLOAD_GINDEX`              | `get_generalized_index(capella.BeaconBlockBody, 'execution_payload')` (= 25)         |
 
 ### New constants
 
-| Name                                | Value                                                                                                            |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `EXECUTION_BLOCK_HASH_GINDEX`       | `get_generalized_index(capella.BeaconBlockBody, 'execution_payload', 'block_hash')` (= 412)                      |
-| `EXECUTION_BLOCK_HASH_GINDEX_DENEB` | `get_generalized_index(deneb.BeaconBlockBody, 'execution_payload', 'block_hash')` (= 812)                        |
-| `EXECUTION_BLOCK_HASH_GINDEX_GLOAS` | `get_generalized_index(BeaconBlockBody, 'signed_execution_payload_bid', 'message', 'parent_block_hash')` (= 832) |
+| Name                                | Value                                                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `EXECUTION_BLOCK_HASH_GINDEX`       | `get_generalized_index(capella.BeaconBlockBody, 'execution_payload', 'block_hash')` (= 412)                        |
+| `EXECUTION_BLOCK_HASH_GINDEX_DENEB` | `get_generalized_index(deneb.BeaconBlockBody, 'execution_payload', 'block_hash')` (= 812)                          |
+| `EXECUTION_BLOCK_HASH_GINDEX_GLOAS` | `get_generalized_index(BeaconBlockBody, 'signed_execution_payload_bid', 'message', 'parent_block_hash')` (= 11424) |
 
 ## Containers
 
