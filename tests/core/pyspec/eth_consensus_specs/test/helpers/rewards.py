@@ -93,21 +93,21 @@ def run_deltas(spec, state):
         spec,
         state,
         spec.get_source_deltas if not is_post_altair(spec) else get_source_deltas,
-        spec.get_matching_source_attestations,
+        spec.get_matching_source_attestations if not is_post_altair(spec) else None,
         "source_deltas",
     )
     yield from run_attestation_component_deltas(
         spec,
         state,
         spec.get_target_deltas if not is_post_altair(spec) else get_target_deltas,
-        spec.get_matching_target_attestations,
+        spec.get_matching_target_attestations if not is_post_altair(spec) else None,
         "target_deltas",
     )
     yield from run_attestation_component_deltas(
         spec,
         state,
         spec.get_head_deltas if not is_post_altair(spec) else get_head_deltas,
-        spec.get_matching_head_attestations,
+        spec.get_matching_head_attestations if not is_post_altair(spec) else None,
         "head_deltas",
     )
     if not is_post_altair(spec):

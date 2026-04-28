@@ -67,10 +67,10 @@ def cache_this(key_fn, value_fn, lru_size):  # type: ignore
     return wrapper
 
 
-_compute_shuffled_index = compute_shuffled_index
-compute_shuffled_index = cache_this(
-    lambda index, index_count, seed: (index, index_count, seed),
-    _compute_shuffled_index, lru_size=SLOTS_PER_EPOCH * 3)
+_compute_shuffled_permutation = compute_shuffled_permutation
+compute_shuffled_permutation = cache_this(
+    lambda index_count, seed: (index_count, seed),
+    _compute_shuffled_permutation, lru_size=256)
 
 _get_total_active_balance = get_total_active_balance
 get_total_active_balance = cache_this(
@@ -96,16 +96,6 @@ _get_beacon_committee = get_beacon_committee
 get_beacon_committee = cache_this(
     lambda state, slot, index: (state.validators.hash_tree_root(), state.randao_mixes.hash_tree_root(), slot, index),
     _get_beacon_committee, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)
-
-_get_matching_target_attestations = get_matching_target_attestations
-get_matching_target_attestations = cache_this(
-    lambda state, epoch: (state.hash_tree_root(), epoch),
-    _get_matching_target_attestations, lru_size=10)
-
-_get_matching_head_attestations = get_matching_head_attestations
-get_matching_head_attestations = cache_this(
-    lambda state, epoch: (state.hash_tree_root(), epoch),
-    _get_matching_head_attestations, lru_size=10)
 
 _get_attesting_indices = get_attesting_indices
 get_attesting_indices = cache_this(

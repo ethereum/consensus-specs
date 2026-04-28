@@ -385,6 +385,9 @@ def assert_process_withdrawals(
         assert state.next_withdrawal_validator_index == pre_state.next_withdrawal_validator_index
         assert len(state.builder_pending_withdrawals) == len(pre_state.builder_pending_withdrawals)
         assert len(state.pending_partial_withdrawals) == len(pre_state.pending_partial_withdrawals)
+        assert list(state.payload_expected_withdrawals) == list(
+            pre_state.payload_expected_withdrawals
+        )
         return
 
     # Get expected withdrawals for invariant checks
@@ -592,13 +595,19 @@ def assert_process_withdrawals_pre_gloas(
     Verifies the correctness of the post-state after processing withdrawals.
     """
 
-    # Since gloas, if parent block was not full, no withdrawals processed, indices unchanged
-    if is_post_gloas(spec) and not spec.is_parent_block_full(pre_state):
-        assert post_state.next_withdrawal_index == pre_state.next_withdrawal_index
-        assert (
-            post_state.next_withdrawal_validator_index == pre_state.next_withdrawal_validator_index
+    # Since Gloas, if parent block was not full, no withdrawals are processed
+    # and the withdrawal indices remain unchanged.
+    if is_post_gloas(spec):
+        is_parent_block_full = (
+            pre_state.latest_block_hash == pre_state.latest_execution_payload_bid.block_hash
         )
-        return
+        if not is_parent_block_full:
+            assert post_state.next_withdrawal_index == pre_state.next_withdrawal_index
+            assert (
+                post_state.next_withdrawal_validator_index
+                == pre_state.next_withdrawal_validator_index
+            )
+            return
 
     _verify_withdrawals_next_withdrawal_index(spec, pre_state, post_state, expected_withdrawals)
 

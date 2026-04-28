@@ -88,7 +88,7 @@ class DataColumnSidecar(Container):
 
 ```python
 class PartialDataColumnHeader(Container):
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    kzg_commitments: ProgressiveList[KZGCommitment]
     # [Modified in Gloas:EIP7732]
     # Removed `signed_block_header`
     # [Modified in Gloas:EIP7732]
@@ -261,17 +261,6 @@ The *type* of the payload of this topic changes to the (modified)
 There are no new validations for this topic. However, all validations with
 regards to the `ExecutionPayload` are removed:
 
-- _[REJECT]_ The number of operations is within limits -- i.e. validate that
-  `len(body.deposits) <= MAX_DEPOSITS` and
-  `len(body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS` and
-  `len(body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA` and
-  `len(body.attestations) <= MAX_ATTESTATIONS_ELECTRA` and
-  `len(body.voluntary_exits) <= MAX_VOLUNTARY_EXITS` and
-  `len(body.bls_to_execution_changes) <= MAX_BLS_TO_EXECUTION_CHANGES` and
-  `len(body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS`
-- _[REJECT]_ The length of KZG commitments is less than or equal to the
-  limitation defined in the consensus layer -- i.e. validate that
-  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
 - _[REJECT]_ The block's execution payload timestamp is correct with respect to
   the slot -- i.e.
   `execution_payload.timestamp == compute_time_at_slot(state, block.slot)`.
@@ -286,7 +275,7 @@ regards to the `ExecutionPayload` are removed:
     `block.body.execution_payload`).
 
 And instead the following validations are set in place with the alias
-`bid = signed_execution_payload_bid.message`:
+`bid = block.body.signed_execution_payload_bid.message`:
 
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in the consensus layer -- i.e. validate that
@@ -312,29 +301,25 @@ The following validations MUST pass before forwarding the
 `payload = envelope.payload`,
 `execution_requests = envelope.execution_requests`:
 
-- _[REJECT]_ The number of execution requests is within limits -- i.e. validate
-  that `len(execution_requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD`
-  and
-  `len(execution_requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`
-  and
-  `len(execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`
-- _[IGNORE]_ The envelope's block root `envelope.block_root` has been seen (via
-  gossip or non-gossip sources) (a client MAY queue payload for processing once
-  the block is retrieved).
+- _[IGNORE]_ The envelope's block root `envelope.beacon_block_root` has been
+  seen (via gossip or non-gossip sources) (a client MAY queue payload for
+  processing once the block is retrieved).
 - _[IGNORE]_ The node has not seen another valid
   `SignedExecutionPayloadEnvelope` for this block root from this builder.
 - _[IGNORE]_ The envelope is from a slot greater than or equal to the latest
   finalized slot -- i.e. validate that
-  `envelope.slot >= compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
+  `envelope.payload.slot_number >= compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)`
 
 Let `block` be the block with `envelope.beacon_block_root`. Let `bid` alias
 `block.body.signed_execution_payload_bid.message` (notice that this can be
 obtained from the `state.latest_execution_payload_bid`)
 
 - _[REJECT]_ `block` passes validation.
-- _[REJECT]_ `block.slot` equals `envelope.slot`.
+- _[REJECT]_ `block.slot` equals `envelope.payload.slot_number`.
 - _[REJECT]_ `envelope.builder_index == bid.builder_index`
 - _[REJECT]_ `payload.block_hash == bid.block_hash`
+- _[REJECT]_
+  `hash_tree_root(envelope.execution_requests) == bid.execution_requests_root`
 - _[REJECT]_ `signed_execution_payload_envelope.signature` is valid as verified
   by `verify_execution_payload_envelope_signature`.
 
@@ -380,6 +365,9 @@ The following validations MUST pass before forwarding the
   `SignedProposerPreferences` associated with `bid.slot`.
 - _[REJECT]_ `bid.gas_limit` matches the `gas_limit` from the proposer's
   `SignedProposerPreferences` associated with `bid.slot`.
+- _[REJECT]_ The length of KZG commitments is less than or equal to the
+  limitation defined in the consensus layer -- i.e. validate that
+  `len(bid.blob_kzg_commitments) <= get_blob_parameters(compute_epoch_at_slot(bid.slot)).max_blobs_per_block`.
 - _[IGNORE]_ this is the first signed bid seen with a valid signature from the
   given builder for this slot.
 - _[IGNORE]_ this bid is the highest value bid seen for the tuple
@@ -677,7 +665,7 @@ The response MUST consist of zero or more `response_chunk`. Each successful
 `response_chunk` MUST contain a single `SignedExecutionPayloadEnvelope` payload.
 
 Clients MUST support requesting payload envelopes on the epoch range
-`[max(GLOAS_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`.
+`[max(GLOAS_FORK_EPOCH, current_epoch - compute_min_epochs_for_block_requests()), current_epoch]`.
 If any root in the request content references a block earlier than this range,
 peers MAY respond with error code `3: ResourceUnavailable` or not include the
 payload envelope in the response.

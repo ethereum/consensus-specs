@@ -120,13 +120,21 @@ def _get_ptc_from_indices(spec, state, slot, indices):
 
 
 def _compute_selection_with_acceptance_iterations(spec, state, indices, seed, size):
+    MAX_RANDOM_VALUE = 2**16 - 1
     selected = []
     accepted_at = []
     total = len(indices)
     i = 0
     while len(selected) < size:
+        offset = i % 16 * 2
+        if offset == 0:
+            random_bytes = spec.hash(seed + spec.uint_to_bytes(spec.uint64(i // 16)))
         candidate_index = indices[i % total]
-        if spec.compute_balance_weighted_acceptance(state, candidate_index, seed, spec.uint64(i)):
+        effective_balance = state.validators[candidate_index].effective_balance
+        random_value = spec.bytes_to_uint64(random_bytes[offset : offset + 2])
+        weight = effective_balance * MAX_RANDOM_VALUE
+        threshold = spec.MAX_EFFECTIVE_BALANCE_ELECTRA * random_value
+        if weight >= threshold:
             selected.append(candidate_index)
             accepted_at.append(i)
         i += 1

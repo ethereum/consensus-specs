@@ -87,6 +87,7 @@ class ExecutionPayloadBid(Container):
     value: Gwei
     execution_payment: Gwei
     blob_kzg_commitments: ProgressiveList[KZGCommitment]
+    execution_requests_root: Root
     # [New in Heze:EIP7805]
     inclusion_list_bits: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]
 ```
@@ -128,8 +129,7 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     inactivity_scores: ProgressiveList[uint64]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
-    # [Modified in Heze:EIP7805]
-    latest_execution_payload_bid: ExecutionPayloadBid
+    latest_block_hash: Hash32
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: List[HistoricalSummary, HISTORICAL_ROOTS_LIMIT]
@@ -148,7 +148,8 @@ class BeaconState(ProgressiveContainer(active_fields=[1] * 46)):
     execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
     builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
     builder_pending_withdrawals: ProgressiveList[BuilderPendingWithdrawal]
-    latest_block_hash: Hash32
+    # [Modified in Heze:EIP7805]
+    latest_execution_payload_bid: ExecutionPayloadBid
     payload_expected_withdrawals: ProgressiveList[Withdrawal]
     ptc_window: Vector[Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]
 ```
