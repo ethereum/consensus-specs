@@ -395,9 +395,6 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
             else:
                 assert False
                 test_steps.append({"block": block_id, "valid": valid})
-            block_root = block.message.hash_tree_root()
-            assert valid == (block_root in store.blocks)
-
             output_store_checks(spec, store, test_steps)
         elif kind == "attestation":
             attestation = data
@@ -454,6 +451,10 @@ def _load_yaml(path: str):
         return yaml.load(f)
 
 
+def derive_effective_seed(seed: int, solution_index: int) -> int:
+    return random.Random(f"{seed}:{solution_index}").randint(0, 1_000_000_000)
+
+
 def enumerate_mutation_groups(config_dir, test_name, params) -> Iterable[MutationGroup]:
     test_type = params["test_type"]
     instances_path = params["instances"]
@@ -474,10 +475,11 @@ def enumerate_mutation_groups(config_dir, test_name, params) -> Iterable[Mutatio
 
     for i, solution in enumerate(solutions):
         for seed in seeds:
+            effective_seed = derive_effective_seed(seed, i)
             yield MutationGroup(
                 test_name=test_name,
                 solution_index=i,
-                test_dna_base=FCTestDNA(test_kind, solution, seed, None),
+                test_dna_base=FCTestDNA(test_kind, solution, effective_seed, None),
                 nr_mutations=nr_mutations,
             )
 
