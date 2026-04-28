@@ -108,11 +108,15 @@ class PartialDataColumnGroupID(Container):
 
 ```python
 class ProposerPreferences(Container):
+    checkpoint_root: Root
     proposal_slot: Slot
     validator_index: ValidatorIndex
     fee_recipient: ExecutionAddress
     gas_limit: uint64
 ```
+
+The `checkpoint_root` is
+`get_checkpoint_block(store, head_root, compute_epoch_at_slot(proposal_slot) - 1)`.
 
 #### New `SignedProposerPreferences`
 
@@ -355,18 +359,19 @@ This topic is used to propagate signed bids as `SignedExecutionPayloadBid`.
 
 The following validations MUST pass before forwarding the
 `signed_execution_payload_bid` on the network, assuming the alias
-`bid = signed_execution_payload_bid.message`:
+`bid = signed_execution_payload_bid.message` and the alias
+`proposer_preferences` for the validated `SignedProposerPreferences` whose
+`message.proposal_slot == bid.slot` and `message.checkpoint_root ==
+get_checkpoint_block(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot) - 1)`:
 
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
-- _[IGNORE]_ the `SignedProposerPreferences` where `preferences.proposal_slot`
-  is equal to `bid.slot` has been seen.
+- _[IGNORE]_ `proposer_preferences` is defined (i.e. a matching
+  `SignedProposerPreferences` has been seen).
 - _[REJECT]_ `bid.builder_index` is a valid/active builder index -- i.e.
   `is_active_builder(state, bid.builder_index)` returns `True`.
 - _[REJECT]_ `bid.execution_payment` is zero.
-- _[REJECT]_ `bid.fee_recipient` matches the `fee_recipient` from the proposer's
-  `SignedProposerPreferences` associated with `bid.slot`.
-- _[REJECT]_ `bid.gas_limit` matches the `gas_limit` from the proposer's
-  `SignedProposerPreferences` associated with `bid.slot`.
+- _[REJECT]_ `bid.fee_recipient == proposer_preferences.message.fee_recipient`.
+- _[REJECT]_ `bid.gas_limit == proposer_preferences.message.gas_limit`.
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in the consensus layer -- i.e. validate that
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(compute_epoch_at_slot(bid.slot)).max_blobs_per_block`.
@@ -403,33 +408,32 @@ The following validations MUST pass before forwarding the
 
 - _[IGNORE]_ `preferences.proposal_slot` is in the current or next epoch -- i.e.
   `compute_epoch_at_slot(preferences.proposal_slot)` is in
-  `[get_current_epoch(state), get_current_epoch(state) + 1]`.
+  `[compute_epoch_at_slot(current_slot), compute_epoch_at_slot(current_slot) + 1]`.
 - _[IGNORE]_ `preferences.proposal_slot` has not already passed -- i.e.
-  `preferences.proposal_slot > state.slot`.
-- _[IGNORE]_ `preferences.validator_index` is present at the correct slot in the
-  current or next epoch's portion of `state.proposer_lookahead` -- i.e.
-  `is_valid_proposal_slot(state, preferences)` returns `True`.
+  `preferences.proposal_slot > current_slot`.
+- _[IGNORE]_ The block with root `preferences.checkpoint_root` is
+  unknown to the node. Implementations MAY queue the message for re-processing
+  once the block becomes known.
+- _[REJECT]_ `is_valid_proposal_slot(boundary_state, preferences)` returns
+  `False`, where `boundary_state` is the checkpoint state at
+  `(compute_epoch_at_slot(preferences.proposal_slot) - 1, preferences.checkpoint_root)`.
 - _[IGNORE]_ The `signed_proposer_preferences` is the first valid message
   received from the validator with index `preferences.validator_index` and the
-  given slot `preferences.proposal_slot`.
+  given slot `preferences.proposal_slot` for `preferences.checkpoint_root`.
 - _[REJECT]_ `signed_proposer_preferences.signature` is valid with respect to
   the validator's public key.
 
 ```python
 def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences) -> bool:
     """
-    Check if the validator is the proposer for the given slot in the current or
-    next epoch.
+    Check if the validator is the proposer for the given slot using the
+    checkpoint ``state`` identified by ``preferences.checkpoint_root``.
     """
-    current_epoch = get_current_epoch(state)
     proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
-    if proposal_epoch < current_epoch:
-        return False
-    if proposal_epoch > current_epoch + Epoch(1):
+    if get_current_epoch(state) != proposal_epoch - Epoch(1):
         return False
 
-    index = (proposal_epoch - current_epoch) * SLOTS_PER_EPOCH
-    index += preferences.proposal_slot % SLOTS_PER_EPOCH
+    index = SLOTS_PER_EPOCH + preferences.proposal_slot % SLOTS_PER_EPOCH
     return state.proposer_lookahead[index] == preferences.validator_index
 ```
 
