@@ -17,6 +17,12 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_fulu,
     is_post_gloas,
 )
+from eth_consensus_specs.test.helpers.fulu.state import (
+    initialize_proposer_lookahead,
+)
+from eth_consensus_specs.test.helpers.gloas.state import (
+    initialize_ptc_window,
+)
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys, pubkeys
 
 
@@ -65,35 +71,9 @@ def build_mock_validator(spec, i: int, balance: int):
     return validator
 
 
-def get_post_gloas_genesis_execution_payload_header(spec, slot, eth1_block_hash):
-    # For Gloas, use the standard ExecutionPayloadHeader from the parent fork
-    payload_header = spec.ExecutionPayloadHeader(
-        parent_hash=b"\x30" * 32,
-        fee_recipient=b"\x42" * 20,
-        state_root=b"\x20" * 32,
-        receipts_root=b"\x20" * 32,
-        logs_bloom=b"\x35" * spec.BYTES_PER_LOGS_BLOOM,
-        prev_randao=eth1_block_hash,
-        block_number=0,
-        gas_limit=30000000,
-        gas_used=0,
-        timestamp=0,
-        extra_data=b"",
-        base_fee_per_gas=1000000000,
-        block_hash=eth1_block_hash,
-        transactions_root=spec.Root(b"\x56" * 32),
-        withdrawals_root=spec.Root(b"\x56" * 32),
-        blob_gas_used=0,
-        excess_blob_gas=0,
-    )
-    return payload_header
-
-
 def get_sample_genesis_execution_payload_header(spec, slot, eth1_block_hash=None):
     if eth1_block_hash is None:
         eth1_block_hash = b"\x55" * 32
-    if is_post_gloas(spec):
-        return get_post_gloas_genesis_execution_payload_header(spec, slot, eth1_block_hash)
     payload_header = spec.ExecutionPayloadHeader(
         parent_hash=b"\x30" * 32,
         fee_recipient=b"\x42" * 20,
@@ -148,8 +128,6 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         previous_version = get_previous_fork_version(spec, spec.fork)
         current_version = get_fork_version(spec, spec.fork)
 
-    genesis_block_body = spec.BeaconBlockBody()
-
     state = spec.BeaconState(
         genesis_time=0,
         eth1_deposit_index=len(validator_balances),
@@ -164,7 +142,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             epoch=spec.GENESIS_EPOCH,
         ),
         latest_block_header=spec.BeaconBlockHeader(
-            body_root=spec.hash_tree_root(genesis_block_body)
+            body_root=spec.hash_tree_root(spec.BeaconBlockBody())
         ),
         randao_mixes=[eth1_block_hash] * spec.EPOCHS_PER_HISTORICAL_VECTOR,
     )
@@ -197,8 +175,19 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         state.next_sync_committee = spec.get_next_sync_committee(state)
 
     if is_post_gloas(spec):
-        # Initialize the latest_execution_payload_bid
-        genesis_block_body.signed_execution_payload_bid.message.block_hash = eth1_block_hash
+        state.latest_block_hash = spec.Hash32(eth1_block_hash)
+        state.latest_execution_payload_bid = spec.ExecutionPayloadBid(
+            # The genesis bid's block hash is the empty hash
+            block_hash=spec.Hash32(),
+            parent_block_hash=spec.Hash32(eth1_block_hash),
+            execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
+        )
+        # Use realistic body root in the latest block header
+        genesis_block_body = spec.BeaconBlockBody()
+        genesis_block_body.signed_execution_payload_bid.message = state.latest_execution_payload_bid
+        state.latest_block_header = spec.BeaconBlockHeader(
+            body_root=spec.hash_tree_root(genesis_block_body)
+        )
     elif is_post_bellatrix(spec):
         # Initialize the execution payload header (with block number and genesis time set to 0)
         state.latest_execution_payload_header = get_sample_genesis_execution_payload_header(
@@ -232,10 +221,22 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             spec.BuilderPendingPayment() for _ in range(2 * spec.SLOTS_PER_EPOCH)
         ]
         state.builder_pending_withdrawals = []
-        state.ptc_window = spec.initialize_ptc_window(state)
+        state.ptc_window = initialize_ptc_window(spec, state)
 
     if is_post_fulu(spec):
         # Initialize proposer lookahead list
-        state.proposer_lookahead = spec.initialize_proposer_lookahead(state)
+        state.proposer_lookahead = initialize_proposer_lookahead(spec, state)
 
     return state
+
+
+def create_signed_genesis_block(spec, state):
+    genesis_block_body = spec.BeaconBlockBody()
+    if is_post_gloas(spec):
+        genesis_block_body.signed_execution_payload_bid.message = state.latest_execution_payload_bid
+    return spec.SignedBeaconBlock(
+        message=spec.BeaconBlock(
+            state_root=spec.hash_tree_root(state),
+            body=genesis_block_body,
+        )
+    )

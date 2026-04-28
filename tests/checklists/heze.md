@@ -6,7 +6,7 @@
 - [`test_inclusion_list_store_by_slot_and_committee_root`](#test_inclusion_list_store_by_slot_and_committee_root)
 - [`test_inclusion_list_store_equivocation`](#test_inclusion_list_store_equivocation)
 - [`test_inclusion_list_store_equivocation_scope`](#test_inclusion_list_store_equivocation_scope)
-- [`test_inclusion_list_store_view_freeze_cutoff`](#test_inclusion_list_store_view_freeze_cutoff)
+- [`test_inclusion_list_store_inclusion_list_due`](#test_inclusion_list_store_inclusion_list_due)
 
 <!-- mdformat-toc end -->
 
@@ -90,7 +90,7 @@ Equivocate and then participate in the next slot.
 All ILs from the equivocator in that slot should be ignored. However, a
 non-equivocating IL from the equivocator in the next slot should be stored.
 
-## `test_inclusion_list_store_view_freeze_cutoff`
+## `test_inclusion_list_store_inclusion_list_due`
 
 ### Status
 
@@ -98,15 +98,15 @@ Implemented ✅
 
 ### Description
 
-ILs received after the view freeze cutoff should be ignored unless it's an
+ILs received after the inclusion list due should be ignored unless it's an
 equivocation.
 
 ### Scenario
 
-Process ILs before and after the view freeze cutoff while equivocating after the
-cutoff.
+Process ILs before and after the inclusion list due while equivocating after the
+deadline.
 
 ### Expectation
 
-An IL received after the view freeze cutoff should not be stored. An
-equivocation detected after the cutoff should be handled.
+An IL received after the inclusion list due should not be stored. An
+equivocation detected after the deadline should be handled.

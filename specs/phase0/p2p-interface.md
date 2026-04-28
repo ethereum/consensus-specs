@@ -21,6 +21,7 @@
     - [`is_within_slot_range`](#is_within_slot_range)
     - [`compute_attestation_subnet_prefix_bits`](#compute_attestation_subnet_prefix_bits)
     - [`compute_min_epochs_for_block_requests`](#compute_min_epochs_for_block_requests)
+    - [`is_non_strict_superset`](#is_non_strict_superset)
   - [MetaData](#metadata)
   - [Maximum message sizes](#maximum-message-sizes)
     - [`max_compressed_len`](#max_compressed_len)
@@ -352,6 +353,28 @@ def compute_min_epochs_for_block_requests() -> uint64:
     return uint64(MIN_VALIDATOR_WITHDRAWABILITY_DELAY + CHURN_LIMIT_QUOTIENT // 2)
 ```
 
+#### `is_non_strict_superset`
+
+```python
+def is_non_strict_superset(
+    seen_bits_set: Set[Tuple[boolean, ...]],
+    new_bits: Tuple[boolean, ...],
+) -> bool:
+    """
+    Return True if any prior bitset in ``seen_bits_set`` is a non-strict
+    superset of ``new_bits`` (every bit set in new is also set in that prior).
+    """
+    for prior_bits in seen_bits_set:
+        is_superset = True
+        for prior_bit, new_bit in zip(prior_bits, new_bits):
+            if new_bit and not prior_bit:
+                is_superset = False
+                break
+        if is_superset:
+            return True
+    return False
+```
+
 ### MetaData
 
 Clients MUST locally store the following `MetaData`:
@@ -571,7 +594,7 @@ def validate_beacon_block_gossip(
 
     # [REJECT] The block's parent passes validation
     if block.parent_root not in store.block_states:
-        raise GossipReject("block's parent failed validation")
+        raise GossipReject("block's parent is invalid")
 
     # [REJECT] The block is from a higher slot than its parent
     if block.slot <= store.blocks[block.parent_root].slot:
@@ -649,15 +672,9 @@ def validate_beacon_aggregate_and_proof_gossip(
     # [IGNORE] A valid aggregate with a superset of aggregation bits has not already been seen
     aggregate_data_root = hash_tree_root(aggregate.data)
     aggregate_bits = tuple(bool(bit) for bit in aggregation_bits)
-    seen_aggregation_bits = seen.aggregate_data_roots.get(aggregate_data_root, set())
-    for prior_aggregation_bits in seen_aggregation_bits:
-        is_non_strict_superset = True
-        for prior_bit, aggregate_bit in zip(prior_aggregation_bits, aggregate_bits):
-            if aggregate_bit and not prior_bit:
-                is_non_strict_superset = False
-                break
-        if is_non_strict_superset:
-            raise GossipIgnore("already seen aggregate for this data")
+    seen_bits = seen.aggregate_data_roots.get(aggregate_data_root, set())
+    if is_non_strict_superset(seen_bits, aggregate_bits):
+        raise GossipIgnore("already seen aggregate for this data")
 
     # [IGNORE] This is the first valid aggregate for this aggregator in this epoch
     aggregator_index = aggregate_and_proof.aggregator_index
@@ -1508,7 +1525,7 @@ The response MUST consist of zero or more `response_chunk`. Each _successful_
 `response_chunk` MUST contain a single `SignedBeaconBlock` payload.
 
 Clients MUST support requesting blocks on the epoch range
-`[max(GENESIS_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`.
+`[max(GENESIS_EPOCH, current_epoch - compute_min_epochs_for_block_requests()), current_epoch]`.
 If any root in the request content references a block earlier than this range,
 peers MAY respond with error code `3: ResourceUnavailable` or not include the
 block in the response.
@@ -2334,8 +2351,8 @@ quality since peers should validate blocks before gossiping them.
 
 When connecting, the `Status` message gives an idea about the sync status of a
 particular peer, but this changes over time. By the time a subsequent
-`BeaconBlockByRange` request is processed, the information may be stale, and the
-responder might have moved on to a new finalization point and pruned blocks
+`BeaconBlocksByRange` request is processed, the information may be stale, and
+the responder might have moved on to a new finalization point and pruned blocks
 around the previous head and finalized blocks.
 
 To avoid this race condition, we allow the responder to choose which branch to
@@ -2364,22 +2381,6 @@ from `compute_weak_subjectivity_period` found in the
 [weak subjectivity guide](./weak-subjectivity.md). Specifically to find this max
 epoch range, we use the worst case event of a very large validator size
 (`>= MIN_PER_EPOCH_CHURN_LIMIT * CHURN_LIMIT_QUOTIENT`).
-
-\<<\<<\<<< HEAD
-
-<!-- eth_consensus_specs: skip -->
-
-```python
-MIN_EPOCHS_FOR_BLOCK_REQUESTS = (
-    MIN_VALIDATOR_WITHDRAWABILITY_DELAY + MAX_SAFETY_DECAY * CHURN_LIMIT_QUOTIENT // (2 * 100)
-)
-```
-
-Where `MAX_SAFETY_DECAY = 100` and thus `MIN_EPOCHS_FOR_BLOCK_REQUESTS = 33024`.
-
-\=======
-
-> > > > > > > d4d19294d (Add compute_min_epochs_for_block_requests() helper)
 
 #### Why must the proposer signature be checked when backfilling blocks in the database?
 

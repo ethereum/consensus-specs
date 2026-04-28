@@ -252,8 +252,14 @@ def get_genesis_forkchoice_store_and_block(spec, genesis_state):
     assert genesis_state.slot == spec.GENESIS_SLOT
     genesis_block = spec.BeaconBlock(state_root=genesis_state.hash_tree_root())
     if is_post_gloas(spec):
-        genesis_block.body.signed_execution_payload_bid.message.block_hash = (
-            genesis_state.latest_block_hash
+        # Match the genesis block body bid to what ``genesis.py`` set on the
+        # state's committed bid; this keeps ``genesis_block`` consistent with
+        # ``genesis_state.latest_block_header`` (body_root).
+        genesis_block.body.signed_execution_payload_bid.message = spec.ExecutionPayloadBid(
+            # The genesis bid's block hash is the empty hash
+            block_hash=spec.Hash32(),
+            parent_block_hash=spec.Hash32(genesis_state.latest_block_hash),
+            execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
         )
     store = spec.get_forkchoice_store(genesis_state, genesis_block)
     return store, genesis_block
@@ -290,6 +296,10 @@ def get_sidecar_file_name(sidecar: DataColumnSidecar) -> str:
     Returns the file name for a single sidecar.
     """
     return f"column_{encode_hex(sidecar.hash_tree_root())}"
+
+
+def get_payload_attestation_message_file_name(ptc_message):
+    return f"payload_attestation_{encode_hex(ptc_message.hash_tree_root())}"
 
 
 def on_tick_and_append_step(spec, store, time, test_steps):
@@ -388,6 +398,24 @@ def add_block(
     for attester_slashing in signed_block.message.body.attester_slashings:
         run_on_attester_slashing(spec, store, attester_slashing, valid=True)
 
+    if is_post_gloas(spec):
+        # An on_block step implies receiving block's payload attestations (post GLOAS)
+        state = store.block_states[signed_block.message.hash_tree_root()]
+        for payload_attestation in signed_block.message.body.payload_attestations:
+            slot = payload_attestation.data.slot
+            ptc = spec.get_ptc(state, slot)
+            bits = payload_attestation.aggregation_bits
+            attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
+            for validator_index in attesting_indices:
+                ptc_message = spec.PayloadAttestationMessage(
+                    validator_index=validator_index,
+                    data=payload_attestation.data,
+                    signature=spec.BLSSignature(),
+                )
+                run_on_payload_attestation_message(
+                    spec, store, ptc_message, is_from_block=True, valid=True
+                )
+
     block_root = signed_block.message.hash_tree_root()
     assert store.blocks[block_root] == signed_block.message
     assert store.block_states[block_root].hash_tree_root() == signed_block.message.state_root
@@ -397,17 +425,17 @@ def add_block(
     return store.block_states[signed_block.message.hash_tree_root()]
 
 
-def run_on_execution_payload(spec, store, signed_envelope, valid=True):
+def run_on_execution_payload_envelope(spec, store, signed_envelope, valid=True):
     """Process execution payload envelope through the fork choice store."""
     if not valid:
-        expect_assertion_error(lambda: spec.on_execution_payload(store, signed_envelope))
+        expect_assertion_error(lambda: spec.on_execution_payload_envelope(store, signed_envelope))
         return
 
-    spec.on_execution_payload(store, signed_envelope)
+    spec.on_execution_payload_envelope(store, signed_envelope)
 
     # Verify the envelope was processed, block should now have FULL state
     envelope_root = signed_envelope.message.beacon_block_root
-    assert envelope_root in store.payload_states
+    assert envelope_root in store.payloads
 
 
 def get_execution_payload_envelope_file_name(signed_envelope):
@@ -419,11 +447,11 @@ def add_execution_payload(spec, store, signed_envelope, test_steps, valid=True):
     yield file_name, signed_envelope
 
     if not valid:
-        run_on_execution_payload(spec, store, signed_envelope, valid=False)
+        run_on_execution_payload_envelope(spec, store, signed_envelope, valid=False)
         test_steps.append({"execution_payload": file_name, "valid": False})
         return
 
-    run_on_execution_payload(spec, store, signed_envelope, valid=True)
+    run_on_execution_payload_envelope(spec, store, signed_envelope, valid=True)
     test_steps.append({"execution_payload": file_name, "valid": True})
     output_store_checks(spec, store, test_steps)
 
@@ -454,12 +482,44 @@ def add_attester_slashing(spec, store, attester_slashing, test_steps, valid=True
     test_steps.append({"attester_slashing": slashing_file_name})
 
 
-def get_formatted_head_output(spec, store):
+def run_on_payload_attestation_message(spec, store, ptc_message, is_from_block=False, valid=True):
+    if not valid:
+        expect_assertion_error(
+            lambda: spec.on_payload_attestation_message(
+                store, ptc_message, is_from_block=is_from_block
+            )
+        )
+        return
+
+    spec.on_payload_attestation_message(store, ptc_message, is_from_block=is_from_block)
+
+
+def add_payload_attestation_message(spec, store, ptc_message, test_steps, valid=True):
+    ptc_file_name = get_payload_attestation_message_file_name(ptc_message)
+    yield ptc_file_name, ptc_message
+
+    if not valid:
+        expect_assertion_error(lambda: spec.on_payload_attestation_message(store, ptc_message))
+        test_steps.append({"payload_attestation": ptc_file_name, "valid": False})
+        return
+
+    run_on_payload_attestation_message(spec, store, ptc_message)
+    test_steps.append({"payload_attestation": ptc_file_name})
+
+
+def _get_head_root(spec, store):
     head = spec.get_head(store)
     if is_post_gloas(spec):
         head_root = head.root
     else:
         head_root = head
+    return head_root
+
+
+def get_formatted_head_output(spec, store, head_root=None):
+    if head_root is None:
+        head_root = _get_head_root(spec, store)
+
     slot = store.blocks[head_root].slot
     return {
         "slot": int(slot),
@@ -477,10 +537,13 @@ def output_head_check(spec, store, test_steps):
     )
 
 
-def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=False):
-    checks = {
+def get_basic_store_checks(spec, store, head_root=None):
+    if head_root is None:
+        head_root = _get_head_root(spec, store)
+
+    return {
         "time": int(store.time),
-        "head": get_formatted_head_output(spec, store),
+        "head": get_formatted_head_output(spec, store, head_root),
         "justified_checkpoint": {
             "epoch": int(store.justified_checkpoint.epoch),
             "root": encode_hex(store.justified_checkpoint.root),
@@ -492,9 +555,14 @@ def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=Fa
         "proposer_boost_root": encode_hex(store.proposer_boost_root),
     }
 
+
+def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=False):
     if is_post_gloas(spec):
         head = spec.get_head(store)
+        checks = get_basic_store_checks(spec, store, head.root)
         checks["head_payload_status"] = int(head.payload_status)
+    else:
+        checks = get_basic_store_checks(spec, store)
 
     if with_viable_for_head_weights and not is_post_gloas(spec):
         filtered_block_roots = spec.get_filtered_block_tree(store).keys()

@@ -57,9 +57,6 @@ GLOAS_FORK_EPOCH: 18446744073709551615
 # [customized] Heze
 HEZE_FORK_VERSION: 0x08000001
 HEZE_FORK_EPOCH: 18446744073709551615
-# [customized] EIP7928
-EIP7928_FORK_VERSION: 0xe7928001
-EIP7928_FORK_EPOCH: 18446744073709551615
 
 # Time parameters
 # ---------------------------------------------------------------
@@ -101,12 +98,8 @@ CONTRIBUTION_DUE_BPS_GLOAS: 5000
 PAYLOAD_ATTESTATION_DUE_BPS: 7500
 
 # Heze
-# 7500 basis points, 75% of SLOT_DURATION_MS
-VIEW_FREEZE_CUTOFF_BPS: 7500
 # 6667 basis points, ~67% of SLOT_DURATION_MS
-INCLUSION_LIST_SUBMISSION_DUE_BPS: 6667
-# 9167 basis points, ~92% of SLOT_DURATION_MS
-PROPOSER_INCLUSION_LIST_CUTOFF_BPS: 9167
+INCLUSION_LIST_DUE_BPS: 6667
 
 # Validator cycle
 # ---------------------------------------------------------------
@@ -226,3 +219,7 @@ MAX_BYTES_PER_INCLUSION_LIST: 8192
 # ---------------------------------------------------------------
 
 BLOB_SCHEDULE: []
+
+# Fast Confirmation Rule
+# ---------------------------------------------------------------
+CONFIRMATION_BYZANTINE_THRESHOLD: 25
