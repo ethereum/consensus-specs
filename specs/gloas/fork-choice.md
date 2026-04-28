@@ -791,7 +791,16 @@ def verify_execution_payload_envelope(
     assert payload.prev_randao == bid.prev_randao
     assert payload.gas_limit == bid.gas_limit
     assert payload.block_hash == bid.block_hash
-    assert hash_tree_root(envelope.execution_requests) == bid.execution_requests_root
+    partial_header_hash = compute_partial_header_hash(
+        bid.parent_block_hash,
+        bid.prev_randao,
+        bid.gas_limit,
+        compute_time_at_slot(state, bid.slot),
+        state.payload_expected_withdrawals,
+        bid.slot,
+        envelope.execution_requests,
+    )
+    assert payload.partial_header_hash == partial_header_hash
 
     # Verify the execution payload is valid
     assert payload.slot_number == state.slot

@@ -47,6 +47,7 @@
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
     - [New `is_pending_validator`](#new-is_pending_validator)
   - [Misc](#misc-2)
+    - [New `compute_partial_header_hash`](#new-compute_partial_header_hash)
     - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
     - [New `convert_validator_index_to_builder_index`](#new-convert_validator_index_to_builder_index)
     - [New `get_pending_balance_to_withdraw_for_builder`](#new-get_pending_balance_to_withdraw_for_builder)
@@ -270,7 +271,6 @@ class ExecutionPayloadBid(Container):
     value: Gwei
     execution_payment: Gwei
     blob_kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    execution_requests_root: Root
 ```
 
 #### `SignedExecutionPayloadBid`
@@ -331,6 +331,8 @@ class BeaconBlockBody(Container):
     payload_attestations: List[PayloadAttestation, MAX_PAYLOAD_ATTESTATIONS]
     # [New in Gloas:EIP7732]
     parent_execution_requests: ExecutionRequests
+    # [New in Gloas:EIP8237]
+    partial_header_hash: Hash32
 ```
 
 #### `BeaconState`
@@ -538,6 +540,31 @@ def is_pending_validator(state: BeaconState, pubkey: BLSPubkey) -> bool:
 ```
 
 ### Misc
+
+#### New `compute_partial_header_hash`
+
+```python
+def compute_partial_header_hash(
+    parent_hash: Hash32,
+    prev_randao: Bytes32,
+    gas_limit: uint64,
+    timestamp: uint64,
+    withdrawals: Sequence[Withdrawal],
+    slot_number: uint64,
+    execution_requests: ExecutionRequests,
+) -> Hash32:
+    withdrawals_bytes = sum(ssz_serialize(w) for w in withdrawals)
+    requests_bytes = sum(ssz_serialize(r) for l in execution_requests for r in l)
+    return hash(
+        ssz_serialize(parent_hash)
+        + prev_randao
+        + ssz_serialize(gas_limit)
+        + ssz_serialize(timestamp)
+        + withdrawals_bytes
+        + ssz_serialize(slot_number)
+        + requests_bytes
+    )
+```
 
 #### New `convert_builder_index_to_validator_index`
 
@@ -1007,7 +1034,16 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
         return
 
     # Parent was FULL -- verify the bid commitment and apply the payload
-    assert hash_tree_root(requests) == parent_bid.execution_requests_root
+    partial_header_hash = compute_partial_header_hash(
+        parent_bid.parent_block_hash,
+        parent_bid.prev_randao,
+        parent_bid.gas_limit,
+        compute_time_at_slot(state, parent_bid.slot),
+        state.payload_expected_withdrawals,
+        parent_bid.slot,
+        requests,
+    )
+    assert block.body.partial_header_hash == partial_header_hash
     apply_parent_execution_payload(state, requests)
 ```
 
