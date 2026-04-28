@@ -187,8 +187,8 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 | Name                                         | Value                                    |
 | -------------------------------------------- | ---------------------------------------- |
-| `CONSOLIDATION_CHURN_LIMIT_QUOTIENT`         | `uint64(2**16)` (= 65,536)               |
 | `CHURN_LIMIT_QUOTIENT_GLOAS`                 | `uint64(2**15)` (= 32,768)               |
+| `CONSOLIDATION_CHURN_LIMIT_QUOTIENT`         | `uint64(2**16)` (= 65,536)               |
 | `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS` | `Gwei(2**8 * 10**9)` (= 256,000,000,000) |
 
 ### Time parameters
