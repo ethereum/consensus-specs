@@ -225,6 +225,8 @@ def compute_fork_digest(
     """
     fork_version = compute_fork_version(epoch)
     base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
+    if epoch < FULU_FORK_EPOCH:
+        return ForkDigest(base_digest[:4])
 
     # [Modified in Fulu:EIP7892]
     # Bitmask digest with hash of blob parameters
