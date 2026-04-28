@@ -176,7 +176,10 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
     if is_post_gloas(spec):
         num_validators = (
             spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
-            * (spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS + 2 * spec.EFFECTIVE_BALANCE_INCREMENT)
+            * (
+                spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
+                + 2 * spec.EFFECTIVE_BALANCE_INCREMENT
+            )
             // spec.MAX_EFFECTIVE_BALANCE_ELECTRA
         )
         return [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * num_validators
