@@ -157,9 +157,9 @@ def scaled_churn_balances_equal_activation_churn_limit(spec: Spec):
         num_validators = (
             spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
             * spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
-            // spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+            // spec.MIN_ACTIVATION_BALANCE
         )
-        return [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * num_validators
+        return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
     num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (
         spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
@@ -180,9 +180,9 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
                 spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
                 + 2 * spec.EFFECTIVE_BALANCE_INCREMENT
             )
-            // spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+            // spec.MIN_ACTIVATION_BALANCE
         )
-        return [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * num_validators
+        return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
     num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (
         spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2
@@ -201,9 +201,9 @@ def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
             2
             * spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
             * spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
-            // spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+            // spec.MIN_ACTIVATION_BALANCE
         )
-        return [spec.MAX_EFFECTIVE_BALANCE_ELECTRA] * num_validators
+        return [spec.MIN_ACTIVATION_BALANCE] * num_validators
 
     num_validators = (
         2

@@ -30,6 +30,10 @@ def test_get_consolidation_churn_limit_rounded(spec, state):
 
 
 @with_gloas_and_later
+@with_presets(
+    [MINIMAL],
+    reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
+)
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
     threshold_fn=default_activation_threshold,
@@ -42,6 +46,10 @@ def test_get_consolidation_churn_limit_slower_than_exit(spec, state):
 
 
 @with_gloas_and_later
+@with_presets(
+    [MINIMAL],
+    reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
+)
 @with_custom_state(
     balances_fn=scaled_churn_balances_exceed_activation_exit_churn_limit,
     threshold_fn=default_activation_threshold,

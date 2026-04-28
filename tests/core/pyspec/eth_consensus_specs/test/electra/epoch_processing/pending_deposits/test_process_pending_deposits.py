@@ -9,6 +9,7 @@ from eth_consensus_specs.test.context import (
     with_electra_and_later,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.churn import get_activation_churn_limit
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.deposits import prepare_pending_deposit
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
@@ -232,7 +233,7 @@ def test_process_pending_deposits_limit_is_reached(spec, state):
 @spec_state_test
 def test_process_pending_deposits_balance_equal_churn(spec, state):
     index = 0
-    amount = spec.get_activation_exit_churn_limit(state)
+    amount = get_activation_churn_limit(spec, state)
     state.pending_deposits.append(prepare_pending_deposit(spec, index, amount))
     pre_balance = state.balances[index]
 
@@ -247,7 +248,7 @@ def test_process_pending_deposits_balance_equal_churn(spec, state):
 @spec_state_test
 def test_process_pending_deposits_balance_above_churn(spec, state):
     index = 0
-    amount = spec.get_activation_exit_churn_limit(state) + 1
+    amount = get_activation_churn_limit(spec, state) + 1
     state.pending_deposits.append(prepare_pending_deposit(spec, index, amount))
     pre_balance = state.balances[index]
 
@@ -256,7 +257,7 @@ def test_process_pending_deposits_balance_above_churn(spec, state):
     # deposit was above churn, balance hasn't changed
     assert state.balances[index] == pre_balance
     # deposit balance to consume is the full churn limit
-    wantedBalanceToConsume = spec.get_activation_exit_churn_limit(state)
+    wantedBalanceToConsume = get_activation_churn_limit(spec, state)
     assert state.deposit_balance_to_consume == wantedBalanceToConsume
     # deposit is still in the queue
     assert state.pending_deposits == [prepare_pending_deposit(spec, index, amount)]
@@ -302,7 +303,7 @@ def test_process_pending_deposits_multiple_pending_deposits_below_churn(spec, st
 @spec_state_test
 def test_process_pending_deposits_multiple_pending_deposits_above_churn(spec, state):
     # set third deposit to be over the churn
-    amount = (spec.get_activation_exit_churn_limit(state) // 3) + 1
+    amount = (get_activation_churn_limit(spec, state) // 3) + 1
     for i in [0, 1, 2]:
         state.pending_deposits.append(
             prepare_pending_deposit(spec, validator_index=i, amount=amount)
@@ -316,9 +317,7 @@ def test_process_pending_deposits_multiple_pending_deposits_above_churn(spec, st
         assert state.balances[i] == pre_balances[i] + amount
     assert state.balances[2] == pre_balances[2]
     # Only first two subtract from the deposit balance to consume
-    assert (
-        state.deposit_balance_to_consume == spec.get_activation_exit_churn_limit(state) - 2 * amount
-    )
+    assert state.deposit_balance_to_consume == get_activation_churn_limit(spec, state) - 2 * amount
     # third deposit is still in the queue
     assert state.pending_deposits == [
         prepare_pending_deposit(spec, validator_index=2, amount=amount)
@@ -458,7 +457,7 @@ def test_process_pending_deposits_mixture_of_skipped_and_above_churn(spec, state
         assert state.balances[i] == pre_balances[i]
     # First deposit consumes some deposit balance
     # Deposit is not processed
-    wanted_balance = spec.get_activation_exit_churn_limit(state) - amount1
+    wanted_balance = get_activation_churn_limit(spec, state) - amount1
     assert state.deposit_balance_to_consume == wanted_balance
     # second and third deposit still in the queue
     assert state.pending_deposits == [
@@ -515,7 +514,7 @@ def test_process_pending_deposits_withdrawable_validator_not_churned(spec, state
     assert state.balances[1] == pre_balances[1]
     # Second deposit is not processed
     # First deposit does not consume any.
-    wanted_limit = spec.get_activation_exit_churn_limit(state)
+    wanted_limit = get_activation_churn_limit(spec, state)
     assert state.deposit_balance_to_consume == wanted_limit
     assert state.pending_deposits == [
         prepare_pending_deposit(spec, validator_index=1, amount=amount)
@@ -532,7 +531,7 @@ def test_process_pending_deposits_withdrawable_validator_not_churned(spec, state
 @single_phase
 def test_process_pending_deposits_scaled_churn(spec, state):
     index = 0
-    amount = spec.get_activation_exit_churn_limit(state)
+    amount = get_activation_churn_limit(spec, state)
     state.pending_deposits.append(prepare_pending_deposit(spec, index, amount))
     pre_balance = state.balances[index]
 
