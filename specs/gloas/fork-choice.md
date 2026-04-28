@@ -167,9 +167,7 @@ class Store(object):
     # [New in Gloas:EIP7732]
     payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
-    payload_timeliness_vote: Dict[Root, Vector[PayloadVote, PTC_SIZE]] = field(
-        default_factory=dict
-    )
+    payload_timeliness_vote: Dict[Root, Vector[PayloadVote, PTC_SIZE]] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
     payload_data_availability_vote: Dict[Root, Vector[PayloadVote, PTC_SIZE]] = field(
         default_factory=dict
@@ -978,9 +976,7 @@ def on_payload_attestation_message(
     payload_timeliness_vote[ptc_index] = (
         PAYLOAD_VOTE_YEA if data.payload_present else PAYLOAD_VOTE_NAY
     )
-    payload_data_availability_vote = store.payload_data_availability_vote[
-        beacon_block_root
-    ]
+    payload_data_availability_vote = store.payload_data_availability_vote[beacon_block_root]
     payload_data_availability_vote[ptc_index] = (
         PAYLOAD_VOTE_YEA if data.blob_data_available else PAYLOAD_VOTE_NAY
     )
