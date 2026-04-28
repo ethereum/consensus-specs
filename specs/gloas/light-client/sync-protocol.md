@@ -17,9 +17,9 @@
 
 ## Introduction
 
-This upgrade upgrades light client data to include the Gloas changes to the way
-how the execution block hash is tracked in
-[`BeaconBlockBody`](../beacon-chain.md). It extends the
+This upgrade extends light client data to reflect the Gloas changes in how
+execution data is tracked in [`BeaconBlockBody`](../beacon-chain.md). It extends
+the
 [Electra Light Client specifications](../../electra/light-client/sync-protocol.md).
 The [fork document](./fork.md) explains how to upgrade existing Electra based
 deployments to Gloas.
