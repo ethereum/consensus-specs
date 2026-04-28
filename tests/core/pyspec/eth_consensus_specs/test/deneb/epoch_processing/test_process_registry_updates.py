@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
 from eth_consensus_specs.test.helpers.forks import is_post_electra
 from eth_consensus_specs.test.helpers.keys import pubkeys
+from tests.core.pyspec.eth_consensus_specs.test.helpers.churn import get_activation_churn_limit
 
 
 def run_process_registry_updates(spec, state):
@@ -21,7 +22,7 @@ def run_process_registry_updates(spec, state):
 def run_test_activation_churn_limit(spec, state):
     if is_post_electra(spec):
         mock_activations = (
-            spec.get_activation_exit_churn_limit(state) // spec.MIN_ACTIVATION_BALANCE
+            get_activation_churn_limit(spec, state) // spec.MIN_ACTIVATION_BALANCE
         ) * 2
     else:
         mock_activations = spec.get_validator_activation_churn_limit(state) * 2
@@ -51,7 +52,7 @@ def run_test_activation_churn_limit(spec, state):
         state.validators[index].activation_epoch = spec.FAR_FUTURE_EPOCH
 
     if is_post_electra(spec):
-        churn_limit_0 = spec.get_activation_exit_churn_limit(state) // spec.MIN_ACTIVATION_BALANCE
+        churn_limit_0 = get_activation_churn_limit(spec, state) // spec.MIN_ACTIVATION_BALANCE
     else:
         churn_limit_0 = spec.get_validator_activation_churn_limit(state)
 
