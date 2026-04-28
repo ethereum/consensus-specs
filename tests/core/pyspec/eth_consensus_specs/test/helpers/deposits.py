@@ -18,6 +18,7 @@ from eth_consensus_specs.utils import bls
 from eth_consensus_specs.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
 from eth_consensus_specs.utils.ssz.ssz_impl import hash_tree_root
 from eth_consensus_specs.utils.ssz.ssz_typing import List
+from tests.core.pyspec.eth_consensus_specs.test.helpers.churn import get_activation_churn_limit
 
 
 def make_withdrawal_credentials(spec, prefix, address_byte):
@@ -496,9 +497,9 @@ def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, 
     state.deposit_requests_start_index = state.eth1_deposit_index
 
     # ensure there is enough churn to apply the deposit
-    if pending_deposit.amount > spec.get_activation_exit_churn_limit(state):
+    if pending_deposit.amount > get_activation_churn_limit(spec, state):
         state.deposit_balance_to_consume = (
-            pending_deposit.amount - spec.get_activation_exit_churn_limit(state)
+            pending_deposit.amount - get_activation_churn_limit(spec, state)
         )
 
     # append pending deposit
