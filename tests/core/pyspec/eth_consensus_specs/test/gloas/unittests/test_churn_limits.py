@@ -56,7 +56,6 @@ def test_exit_churn_approximately_double_consolidation(spec, state):
     assert abs(exit_churn - 2 * consolidation_churn) <= 2 * spec.EFFECTIVE_BALANCE_INCREMENT
 
 
-
 @with_gloas_and_later
 @spec_state_test
 def test_compute_weak_subjectivity_period_weighted_delta(spec, state):
@@ -66,11 +65,7 @@ def test_compute_weak_subjectivity_period_weighted_delta(spec, state):
     activation_churn = spec.get_activation_churn_limit(state)
     consolidation_churn = spec.get_consolidation_churn_limit(state)
 
-    expected_delta = (
-        2 * exit_churn // 3
-        + activation_churn // 3
-        + consolidation_churn
-    )
+    expected_delta = 2 * exit_churn // 3 + activation_churn // 3 + consolidation_churn
     expected_epochs = spec.SAFETY_DECAY * t // (2 * expected_delta * 100)
     expected_wsp = spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY + expected_epochs
 
@@ -97,17 +92,12 @@ def test_compute_weak_subjectivity_period_scaled(spec, state):
 
     t = spec.get_total_active_balance(state)
     consolidation_churn = spec.get_consolidation_churn_limit(state)
-    expected_delta = (
-        2 * exit_churn // 3
-        + activation_churn // 3
-        + consolidation_churn
-    )
+    expected_delta = 2 * exit_churn // 3 + activation_churn // 3 + consolidation_churn
     expected_epochs = spec.SAFETY_DECAY * t // (2 * expected_delta * 100)
     expected_wsp = spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY + expected_epochs
 
     actual_wsp = spec.compute_weak_subjectivity_period(state)
     assert actual_wsp == expected_wsp
-
 
 
 @with_gloas_and_later

@@ -12,7 +12,6 @@ from eth_consensus_specs.test.helpers.constants import MINIMAL
 
 
 def _set_queue_epochs(spec, state, exit_offset, consolidation_offset):
-    """Helper: set both queue epochs relative to the activation-exit epoch."""
     activation_exit_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
     state.earliest_exit_epoch = spec.Epoch(activation_exit_epoch + exit_offset)
     state.earliest_consolidation_epoch = spec.Epoch(activation_exit_epoch + consolidation_offset)
@@ -29,6 +28,8 @@ def test_exit_uses_exit_queue_when_queues_equal(spec, state):
     activation_exit_epoch = _set_queue_epochs(spec, state, exit_offset=3, consolidation_offset=3)
     pre_consolidation_balance = state.consolidation_balance_to_consume
     pre_consolidation_epoch = state.earliest_consolidation_epoch
+
+    yield "pre", state
 
     exit_balance = spec.Gwei(1 * 10**9)
     returned_epoch = spec.compute_exit_epoch_and_update_churn(state, exit_balance)
@@ -50,6 +51,8 @@ def test_exit_uses_exit_queue_when_consolidation_queue_longer(spec, state):
     _set_queue_epochs(spec, state, exit_offset=0, consolidation_offset=10)
     pre_consolidation_balance = state.consolidation_balance_to_consume
     pre_consolidation_epoch = state.earliest_consolidation_epoch
+
+    yield "pre", state
 
     exit_balance = spec.Gwei(1 * 10**9)
     returned_epoch = spec.compute_exit_epoch_and_update_churn(state, exit_balance)
@@ -73,6 +76,8 @@ def test_exit_uses_exit_queue_when_consolidation_churn_zero(spec, state):
 
     pre_consolidation_epoch = state.earliest_consolidation_epoch
     pre_consolidation_balance = state.consolidation_balance_to_consume
+
+    yield "pre", state
 
     returned_epoch = spec.compute_exit_epoch_and_update_churn(state, spec.Gwei(1 * 10**9))
 
@@ -101,6 +106,8 @@ def test_exit_routes_through_consolidation_when_exit_queue_longer(spec, state):
     pre_exit_epoch = state.earliest_exit_epoch
     pre_exit_balance_to_consume = state.exit_balance_to_consume
 
+    yield "pre", state
+
     exit_balance = spec.Gwei(1 * 10**9)
     returned_epoch = spec.compute_exit_epoch_and_update_churn(state, exit_balance)
 
@@ -127,6 +134,8 @@ def test_exit_routed_through_consolidation_applies_two_thirds_factor(spec, state
     state.consolidation_balance_to_consume = spec.Gwei(10**18)
     pre_consolidation_balance = state.consolidation_balance_to_consume
 
+    yield "pre", state
+
     exit_balance = spec.Gwei(300 * 10**9)
     spec.compute_exit_epoch_and_update_churn(state, exit_balance)
 
@@ -149,6 +158,8 @@ def test_exit_routes_through_consolidation_when_longer_by_one_epoch(spec, state)
     consolidation queues is still enough to trigger routing.
     """
     _set_queue_epochs(spec, state, exit_offset=1, consolidation_offset=0)
+
+    yield "pre", state
 
     exit_balance = spec.Gwei(1 * 10**9)
     returned_epoch = spec.compute_exit_epoch_and_update_churn(state, exit_balance)
@@ -175,6 +186,8 @@ def test_exit_routing_preserves_exit_queue_state(spec, state):
 
     pre_exit_epoch = state.earliest_exit_epoch
     pre_exit_balance_to_consume = state.exit_balance_to_consume
+
+    yield "pre", state
 
     spec.compute_exit_epoch_and_update_churn(state, spec.Gwei(50 * 10**9))
 
