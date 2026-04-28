@@ -361,8 +361,8 @@ The following validations MUST pass before forwarding the
 `signed_execution_payload_bid` on the network, assuming the alias
 `bid = signed_execution_payload_bid.message` and the alias
 `proposer_preferences` for the validated `SignedProposerPreferences` whose
-`message.proposal_slot == bid.slot` and `message.checkpoint_root ==
-get_checkpoint_block(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot) - 1)`:
+`message.proposal_slot == bid.slot` and
+`message.checkpoint_root == get_checkpoint_block(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot) - 1)`:
 
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
 - _[IGNORE]_ `proposer_preferences` is defined (i.e. a matching
@@ -411,15 +411,15 @@ The following validations MUST pass before forwarding the
   `[compute_epoch_at_slot(current_slot), compute_epoch_at_slot(current_slot) + 1]`.
 - _[IGNORE]_ `preferences.proposal_slot` has not already passed -- i.e.
   `preferences.proposal_slot > current_slot`.
-- _[IGNORE]_ The block with root `preferences.checkpoint_root` is
-  unknown to the node. Implementations MAY queue the message for re-processing
-  once the block becomes known.
-- _[REJECT]_ `is_valid_proposal_slot(boundary_state, preferences)` returns
-  `False`, where `boundary_state` is the checkpoint state at
+- _[IGNORE]_ The block with root `preferences.checkpoint_root` is unknown to the
+  node. Implementations MAY queue the message for re-processing once the block
+  becomes known.
+- _[REJECT]_ `is_valid_proposal_slot(state, preferences)` returns `False`, where
+  `state` is the checkpoint state at
   `(compute_epoch_at_slot(preferences.proposal_slot) - 1, preferences.checkpoint_root)`.
-- _[IGNORE]_ The `signed_proposer_preferences` is the first valid message
-  received from the validator with index `preferences.validator_index` and the
-  given slot `preferences.proposal_slot` for `preferences.checkpoint_root`.
+- _[IGNORE]_ The `signed_proposer_preferences` is the first valid message seen
+  for the tuple
+  `(preferences.checkpoint_root, preferences.proposal_slot, preferences.validator_index)`.
 - _[REJECT]_ `signed_proposer_preferences.signature` is valid with respect to
   the validator's public key.
 
