@@ -17,7 +17,6 @@ from eth_consensus_specs.test.helpers.constants import (
     CAPELLA,
     DENEB,
     ELECTRA,
-    FULU,
     GLOAS,
     MINIMAL,
 )
@@ -554,7 +553,7 @@ def test_electra_store_with_legacy_data(spec, phases, state):
     yield from run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, ELECTRA)
 
 
-@with_all_phases_from_to(ALTAIR, GLOAS, other_phases=[CAPELLA, DENEB, ELECTRA, FULU, GLOAS])
+@with_all_phases_from_to(ALTAIR, GLOAS, other_phases=[CAPELLA, DENEB, ELECTRA, GLOAS])
 @spec_test
 @with_state
 @with_matching_spec_config(emitted_fork=GLOAS)
