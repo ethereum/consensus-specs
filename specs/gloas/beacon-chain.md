@@ -839,7 +839,7 @@ def get_exit_churn_limit(state: BeaconState) -> Gwei:
 #### Modified `get_consolidation_churn_limit`
 
 *Note*: Consolidation churn is now independently derived from the total active
-balance using `CONSOLIDATION_CHURN_LIMIT_QUOTIENT`
+balance using `CONSOLIDATION_CHURN_LIMIT_QUOTIENT`.
 
 ```python
 def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
@@ -963,6 +963,7 @@ def process_epoch(state: BeaconState) -> None:
     process_registry_updates(state)
     process_slashings(state)
     process_eth1_data_reset(state)
+    # [Modified in Gloas:EIP8061]
     process_pending_deposits(state)
     process_pending_consolidations(state)
     # [New in Gloas:EIP7732]
