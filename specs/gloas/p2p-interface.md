@@ -359,19 +359,20 @@ This topic is used to propagate signed bids as `SignedExecutionPayloadBid`.
 
 The following validations MUST pass before forwarding the
 `signed_execution_payload_bid` on the network, assuming the alias
-`bid = signed_execution_payload_bid.message` and the alias
-`proposer_preferences` for the validated `SignedProposerPreferences` whose
-`message.proposal_slot == bid.slot` and
-`message.checkpoint_root == get_checkpoint_block(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot) - 1)`:
+`bid = signed_execution_payload_bid.message`, the alias
+`signed_proposer_preferences` for the validated `SignedProposerPreferences`
+whose `message.proposal_slot == bid.slot` and
+`message.checkpoint_root == get_checkpoint_block(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot) - 1)`,
+and the alias `proposer_preferences = signed_proposer_preferences.message`:
 
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
-- _[IGNORE]_ `proposer_preferences` is defined (i.e. a matching
+- _[IGNORE]_ `signed_proposer_preferences` is defined (i.e. a matching
   `SignedProposerPreferences` has been seen).
 - _[REJECT]_ `bid.builder_index` is a valid/active builder index -- i.e.
   `is_active_builder(state, bid.builder_index)` returns `True`.
 - _[REJECT]_ `bid.execution_payment` is zero.
-- _[REJECT]_ `bid.fee_recipient == proposer_preferences.message.fee_recipient`.
-- _[REJECT]_ `bid.gas_limit == proposer_preferences.message.gas_limit`.
+- _[REJECT]_ `bid.fee_recipient == proposer_preferences.fee_recipient`.
+- _[REJECT]_ `bid.gas_limit == proposer_preferences.gas_limit`.
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in the consensus layer -- i.e. validate that
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(compute_epoch_at_slot(bid.slot)).max_blobs_per_block`.
@@ -410,11 +411,11 @@ The following validations MUST pass before forwarding the
   `compute_epoch_at_slot(preferences.proposal_slot)` is in
   `[compute_epoch_at_slot(current_slot), compute_epoch_at_slot(current_slot) + 1]`.
 - _[IGNORE]_ `preferences.proposal_slot` has not already passed -- i.e.
-  `preferences.proposal_slot > current_slot`.
-- _[IGNORE]_ The block with root `preferences.checkpoint_root` is unknown to the
-  node. Implementations MAY queue the message for re-processing once the block
-  becomes known.
-- _[REJECT]_ `is_valid_proposal_slot(state, preferences)` returns `False`, where
+  `preferences.proposal_slot <= current_slot`.
+- _[IGNORE]_ The block with root `preferences.checkpoint_root` has been seen
+  (via gossip or non-gossip sources) (a client MAY queue the message for
+  re-processing once the block is retrieved).
+- _[REJECT]_ `is_valid_proposal_slot(state, preferences)` returns `True`, where
   `state` is the checkpoint state at
   `(compute_epoch_at_slot(preferences.proposal_slot) - 1, preferences.checkpoint_root)`.
 - _[IGNORE]_ The `signed_proposer_preferences` is the first valid message seen

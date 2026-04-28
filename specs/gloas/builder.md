@@ -121,14 +121,12 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
     that is `payload.prev_randao`.
 06. Set `bid.fee_recipient` to be an execution address to receive the payment.
     The proposer's preferred fee recipient is obtained from the
-    `SignedProposerPreferences` whose `message.proposal_slot == bid.slot` and
-    whose `message.checkpoint_root` equals
+    `SignedProposerPreferences` whose `message.proposal_slot` matches `bid.slot`
+    and whose `message.checkpoint_root` matches
     `get_checkpoint_block(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot) - 1)`.
-    Builders that cannot find a matching `SignedProposerPreferences` MUST NOT
-    broadcast the bid.
 07. Set `bid.gas_limit` to be the gas limit of the constructed payload, which
-    must match the `gas_limit` in the same `SignedProposerPreferences`
-    referenced in step 6.
+    must match the `gas_limit` in the `SignedProposerPreferences` referenced in
+    step 6.
 08. Set `bid.builder_index` to be the index of the builder performing these
     actions.
 09. Set `bid.slot` to be the slot for which this bid is aimed. This slot
