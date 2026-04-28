@@ -50,10 +50,10 @@ def pytest_addoption(parser):
         ),
     )
     parser.addoption(
-        "--disable-bls",
+        "--coverage",
         action="store_true",
         default=False,
-        help="bls-default: make tests that are not dependent on BLS run without BLS",
+        help="coverage: enable code coverage tracking",
     )
     parser.addoption(
         "--bls-type",
@@ -129,13 +129,6 @@ def run_phases(request):
         context.DEFAULT_PYTEST_FORKS = set(forks)
     elif not context.is_generator:
         context.DEFAULT_PYTEST_FORKS = ALL_PHASES
-
-
-@fixture(autouse=True)
-def bls_default(request):
-    disable_bls = request.config.getoption("--disable-bls")
-    if disable_bls:
-        context.DEFAULT_BLS_ACTIVE = False
 
 
 @fixture(autouse=True)

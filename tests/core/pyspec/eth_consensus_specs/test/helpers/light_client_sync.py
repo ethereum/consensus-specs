@@ -16,6 +16,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_deneb,
     is_post_electra,
 )
+from eth_consensus_specs.test.helpers.genesis import create_signed_genesis_block
 from eth_consensus_specs.test.helpers.light_client import (
     get_sync_aggregate,
     upgrade_lc_bootstrap_to_new_spec,
@@ -205,8 +206,7 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     test = yield from setup_lc_sync_test(spec, state, phases=phases)
 
     # Initial `LightClientUpdate`
-    finalized_block = spec.SignedBeaconBlock()
-    finalized_block.message.state_root = state.hash_tree_root()
+    finalized_block = create_signed_genesis_block(spec, state)
     finalized_state = state.copy()
     attested_block = state_transition_with_full_block(spec, state, True, True)
     attested_state = state.copy()
@@ -320,8 +320,7 @@ def run_lc_sync_test_multi_fork(spec, phases, state, fork_1, fork_2):
     test = yield from setup_lc_sync_test(spec, state, phases[fork_2], phases)
 
     # Set up so that finalized is from `spec`, ...
-    finalized_block = spec.SignedBeaconBlock()
-    finalized_block.message.state_root = state.hash_tree_root()
+    finalized_block = create_signed_genesis_block(spec, state)
     finalized_state = state.copy()
 
     # ..., attested is from `fork_1`, ...

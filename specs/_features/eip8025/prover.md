@@ -12,7 +12,6 @@
   - [New `get_execution_proof_signature`](#new-get_execution_proof_signature)
 - [Execution proof](#execution-proof)
   - [Constructing the `SignedExecutionProof`](#constructing-the-signedexecutionproof)
-- [Honest prover relay](#honest-prover-relay)
 
 <!-- mdformat-toc end -->
 
@@ -50,41 +49,24 @@ def get_execution_proof_signature(
 An honest prover who is an active validator and wants to generate execution
 proofs for a `BeaconBlock` performs the following steps:
 
-1. Extract `NewPayloadRequest` from `BeaconBlock`:
-   - `execution_payload = block.body.execution_payload`
-   - `versioned_hashes = [kzg_commitment_to_versioned_hash(c) for c in block.body.blob_kzg_commitments]`
-   - `parent_beacon_block_root = block.parent_root`
-   - `execution_requests = block.body.execution_requests`
-2. Create `ProofAttributes` with desired proof types.
-3. Call
-   `proof_gen_id = proof_engine.request_proofs(new_payload_request, proof_attributes)`
-   to initiate proof generation.
-4. The proof engine generates proofs asynchronously and delivers them to the
-   prover via `POST /eth/v1/prover/execution_proofs`. Each proof is delivered
-   with its associated `proof_gen_id` to link it to the original request.
-5. Upon receiving each `ExecutionProof` with its `proof_gen_id`:
-   - Validate the proof matches a pending `proof_gen_id`.
-   - Set `message` to the `ExecutionProof`.
-   - Set `validator_index` to the prover's validator index.
-   - Sign the proof using
-     `get_execution_proof_signature(state, proof, prover_privkey)`.
-   - Broadcast the `SignedExecutionProof` on the `execution_proof` gossip topic.
-
-## Honest prover relay
-
-A prover relay is a trusted intermediary that accepts unsigned execution proofs
-from proof engines and signs them for broadcast. The relay MUST be an active
-validator.
-
-When a prover relay receives an unsigned `ExecutionProof` via
-`POST /eth/v1/prover/execution_proofs`:
-
-1. Validate that `proof_data` is non-empty.
-2. Verify the execution proof is valid using
-   `proof_engine.verify_execution_proof(proof)`.
-3. Check the proof is not a duplicate (same `new_payload_request_root`,
-   `proof_type`).
-4. If valid and not a duplicate:
-   - Create a `SignedExecutionProof` with the relay's validator index and
-     signature.
-   - Broadcast on the `execution_proof` gossip topic.
+1. At startup, subscribe to:
+   - `Block` events from the beacon node via SSE.
+   - Proof completion events from the proof engine via SSE. The concrete SSE
+     event shape is defined by the proof engine API specification.
+2. Upon receiving a `Block` event:
+   - Fetch the full `BeaconBlock` via RPC.
+   - Construct `NewPayloadRequest` from the block.
+   - Create `ProofAttributes` with desired proof types.
+   - Call
+     `new_payload_request_root = proof_engine.request_proofs(new_payload_request, proof_attributes)`
+     to initiate proof generation, tracking the request by
+     `new_payload_request_root`.
+3. Upon receiving a proof completion event for a tracked
+   `new_payload_request_root`:
+   - Fetch the completed `ExecutionProof` from the proof engine.
+   - Let `validator_index` be the prover's validator index.
+   - Let
+     `signature = get_execution_proof_signature(state, proof, prover_privkey)`.
+   - Let
+     `signed_proof = SignedExecutionProof(message=proof, validator_index=validator_index, signature=signature)`.
+   - Broadcast `signed_proof` on the `execution_proof` gossip topic.

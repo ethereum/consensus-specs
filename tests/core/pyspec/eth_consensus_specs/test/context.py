@@ -20,7 +20,6 @@ from .helpers.constants import (
     BELLATRIX,
     CAPELLA,
     DENEB,
-    EIP7928,
     EIP8025,
     ELECTRA,
     FULU,
@@ -116,12 +115,13 @@ def zero_activation_threshold(spec: Spec):
     return 0
 
 
-def default_balances(spec: Spec):
+def default_balances(spec: Spec, num_validators=None):
     """
     Helper method to create a series of default balances.
     Usage: `@with_custom_state(balances_fn=default_balances, ...)`
     """
-    num_validators = spec.SLOTS_PER_EPOCH * 8
+    if num_validators is None:
+        num_validators = spec.SLOTS_PER_EPOCH * 8
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
 
 
@@ -290,17 +290,6 @@ def single_phase(fn):
     return entry
 
 
-# BLS is turned on by default, it can be disabled in tests by overriding this, or using `--disable-bls`.
-# *This is for performance purposes during TESTING, DO NOT DISABLE IN PRODUCTION*.
-# The runner of the test can indicate the preferred setting (test generators prefer BLS to be ON).
-# - Some tests are marked as BLS-requiring, and ignore this setting.
-#    (tests that express differences caused by BLS, e.g. invalid signatures being rejected)
-# - Some other tests are marked as BLS-ignoring, and ignore this setting.
-#    (tests that are heavily performance impacted / require unsigned state transitions)
-# - Most tests respect the BLS setting.
-DEFAULT_BLS_ACTIVE = True
-
-
 is_pytest = True
 is_generator = False
 
@@ -436,7 +425,7 @@ def bls_switch(fn):
 
     def entry(*args, **kw):
         old_state = bls.bls_active
-        bls.bls_active = kw.pop("bls_active", DEFAULT_BLS_ACTIVE)
+        bls.bls_active = kw.pop("bls_active", True)
         res = fn(*args, **kw)
         if res is not None:
             yield from res
@@ -536,7 +525,7 @@ def _get_preset_targets(kw):
     return spec_targets[preset_name]
 
 
-def _get_run_phases(phases, kw):
+def _get_run_phases(phases, kw, other_phases=None):
     """
     Return the fork names for the base `spec` in test cases
     """
@@ -550,6 +539,12 @@ def _get_run_phases(phases, kw):
     else:
         # If pytest `--fork` flag is set, filter out the rest of the forks
         run_phases = set(phases).intersection(DEFAULT_PYTEST_FORKS)
+        # Fork/transition tests run on the pre-fork but emit output under the
+        # post-fork (carried via `other_phases`). If the post-fork is selected
+        # but the pre-fork isn't, still run — the dump-level filter decides
+        # whether the resolved output fork is written.
+        if not run_phases and other_phases and set(other_phases).intersection(DEFAULT_PYTEST_FORKS):
+            run_phases = set(phases)
 
     return run_phases
 
@@ -565,7 +560,7 @@ def _get_available_phases(run_phases, other_phases):
 
 
 def _run_test_case_with_phases(fn, phases, other_phases, kw, args, is_fork_transition=False):
-    run_phases = _get_run_phases(phases, kw)
+    run_phases = _get_run_phases(phases, kw, other_phases=other_phases)
 
     if len(run_phases) == 0:
         if not is_fork_transition:
@@ -626,6 +621,8 @@ def with_phases(phases, other_phases=None):
                     # so that each fork transition produces a test vector.
                     accumulated = {}
                     for fork_meta in fork_metas:
+                        if fork_meta.post_fork_name not in DEFAULT_PYTEST_FORKS:
+                            continue
                         _phases = [fork_meta.pre_fork_name]
                         _other_phases = [fork_meta.post_fork_name]
                         ret = _run_test_case_with_phases(
@@ -635,7 +632,10 @@ def with_phases(phases, other_phases=None):
                             accumulated.update(ret)
                     ret = accumulated if accumulated else None
                 else:
+                    ret = None
                     for fork_meta in fork_metas:
+                        if fork_meta.post_fork_name not in DEFAULT_PYTEST_FORKS:
+                            continue
                         _phases = [fork_meta.pre_fork_name]
                         _other_phases = [fork_meta.post_fork_name]
                         ret = _run_test_case_with_phases(
@@ -679,7 +679,6 @@ with_electra_and_later = with_all_phases_from(ELECTRA)
 with_fulu_and_later = with_all_phases_from(FULU, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_gloas_and_later = with_all_phases_from(GLOAS, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_heze_and_later = with_all_phases_from(HEZE, all_phases=ALLOWED_TEST_RUNNER_FORKS)
-with_eip7928_and_later = with_all_phases_from(EIP7928, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8025_and_later = with_all_phases_from(EIP8025, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 with_bellatrix_only = with_phases([BELLATRIX])
