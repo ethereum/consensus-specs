@@ -225,7 +225,7 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
     unknown pubkeys are no-ops.
     """
     requests = spec.ExecutionRequests(
-        deposits=spec.List[spec.DepositRequest, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD](
+        deposits=spec.ProgressiveList[spec.DepositRequest](
             [
                 spec.DepositRequest(
                     pubkey=spec.BLSPubkey(b"\x01" * 48),
@@ -236,7 +236,7 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
                 )
             ]
         ),
-        withdrawals=spec.List[spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD](
+        withdrawals=spec.ProgressiveList[spec.WithdrawalRequest](
             [
                 spec.WithdrawalRequest(
                     source_address=spec.ExecutionAddress(b"\x04" * 20),
@@ -245,9 +245,7 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
                 )
             ]
         ),
-        consolidations=spec.List[
-            spec.ConsolidationRequest, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
-        ](
+        consolidations=spec.ProgressiveList[spec.ConsolidationRequest](
             [
                 spec.ConsolidationRequest(
                     source_address=spec.ExecutionAddress(b"\x06" * 20),
@@ -333,13 +331,9 @@ def test_process_parent_execution_payload__builder_deposit_after_pending_validat
     )
 
     requests = spec.ExecutionRequests(
-        deposits=spec.List[spec.DepositRequest, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD](
-            [deposit_request_1, deposit_request_2]
-        ),
-        withdrawals=spec.List[spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD](),
-        consolidations=spec.List[
-            spec.ConsolidationRequest, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
-        ](),
+        deposits=spec.ProgressiveList[spec.DepositRequest]([deposit_request_1, deposit_request_2]),
+        withdrawals=spec.ProgressiveList[spec.WithdrawalRequest](),
+        consolidations=spec.ProgressiveList[spec.ConsolidationRequest](),
     )
 
     _commit_parent_requests(spec, state, requests)

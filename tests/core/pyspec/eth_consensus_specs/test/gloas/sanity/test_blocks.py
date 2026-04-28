@@ -543,9 +543,7 @@ def test_voluntary_exit_fails_after_parent_payload_withdrawal_request(spec, stat
     set_parent_block_full(spec, state)
     withdrawal_request = prepare_withdrawal_request(spec, state, validator_index)
     requests = spec.ExecutionRequests(
-        withdrawals=spec.List[spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD](
-            [withdrawal_request]
-        ),
+        withdrawals=spec.ProgressiveList[spec.WithdrawalRequest]([withdrawal_request]),
     )
     state.latest_execution_payload_bid.execution_requests_root = spec.hash_tree_root(requests)
 
