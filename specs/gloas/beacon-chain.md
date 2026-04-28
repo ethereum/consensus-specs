@@ -113,10 +113,10 @@
 
 Gloas is a consensus-layer upgrade containing a number of features. Including:
 
-- [EIP-8061](https://eips.ethereum.org/EIPS/eip-8061): Increase exit and
-  consolidation churn
 - [EIP-7732](https://eips.ethereum.org/EIPS/eip-7732): Enshrined
   Proposer-Builder Separation
+- [EIP-8061](https://eips.ethereum.org/EIPS/eip-8061): Increase exit and
+  consolidation churn
 
 ## Types
 
