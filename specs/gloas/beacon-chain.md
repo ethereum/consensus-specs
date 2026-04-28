@@ -64,7 +64,6 @@
     - [New `get_activation_churn_limit`](#new-get_activation_churn_limit)
     - [New `get_exit_churn_limit`](#new-get_exit_churn_limit)
     - [Modified `get_consolidation_churn_limit`](#modified-get_consolidation_churn_limit)
-    - [Modified `compute_exit_epoch_and_update_churn`](#modified-compute_exit_epoch_and_update_churn)
   - [Beacon state mutators](#beacon-state-mutators)
     - [New `initiate_builder_exit`](#new-initiate_builder_exit)
     - [Modified `compute_exit_epoch_and_update_churn`](#modified-compute_exit_epoch_and_update_churn)
@@ -830,38 +829,6 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     return churn - churn % EFFECTIVE_BALANCE_INCREMENT
 ```
 
-#### Modified `compute_exit_epoch_and_update_churn`
-
-*Note*: Exit processing now uses the uncapped exit churn, while deposit
-processing remains capped by `get_activation_churn_limit`.
-
-```python
-def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) -> Epoch:
-    earliest_exit_epoch = max(
-        state.earliest_exit_epoch, compute_activation_exit_epoch(get_current_epoch(state))
-    )
-    # [Modified in Gloas:EIP8061]
-    per_epoch_churn = get_exit_churn_limit(state)
-    # New epoch for exits.
-    if state.earliest_exit_epoch < earliest_exit_epoch:
-        exit_balance_to_consume = per_epoch_churn
-    else:
-        exit_balance_to_consume = state.exit_balance_to_consume
-
-    # Exit doesn't fit in the current earliest epoch.
-    if exit_balance > exit_balance_to_consume:
-        balance_to_process = exit_balance - exit_balance_to_consume
-        additional_epochs = (balance_to_process - 1) // per_epoch_churn + 1
-        earliest_exit_epoch += additional_epochs
-        exit_balance_to_consume += additional_epochs * per_epoch_churn
-
-    # Consume the balance and update state variables.
-    state.exit_balance_to_consume = exit_balance_to_consume - exit_balance
-    state.earliest_exit_epoch = earliest_exit_epoch
-
-    return state.earliest_exit_epoch
-```
-
 ### Beacon state mutators
 
 #### New `initiate_builder_exit`
@@ -882,10 +849,12 @@ def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> No
 
 #### Modified `compute_exit_epoch_and_update_churn`
 
-*Note*: `compute_exit_epoch_and_update_churn` is modified to route exits through
-the consolidation queue whenever the exit queue is longer than the consolidation
-queue, converting the requested `exit_balance` by the `2/3` factor that reflects
-the relative weak-subjectivity weight of exit vs. consolidation churn.
+*Note*: `compute_exit_epoch_and_update_churn` is modified to (i) route exits
+through the consolidation queue whenever the exit queue is longer than the
+consolidation queue, converting the requested `exit_balance` by the `2/3` factor
+that reflects the relative weak-subjectivity weight of exit vs. consolidation
+churn (EIP-8080); and (ii) consume the uncapped exit churn budget via
+`get_exit_churn_limit` instead of the activation-exit churn limit (EIP-8061).
 
 ```python
 def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) -> Epoch:
@@ -901,7 +870,8 @@ def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) 
     ):
         return compute_consolidation_epoch_and_update_churn(state, Gwei(2 * exit_balance // 3))
 
-    per_epoch_churn = get_activation_exit_churn_limit(state)
+    # [Modified in Gloas:EIP8061]
+    per_epoch_churn = get_exit_churn_limit(state)
     # New epoch for exits.
     if state.earliest_exit_epoch < earliest_exit_epoch:
         exit_balance_to_consume = per_epoch_churn
