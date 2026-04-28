@@ -34,7 +34,7 @@
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
       - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
       - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
-      - [HeadersByRoot v1](#headersbyroot-v1)
+      - [BeaconBlockHeadersByRoot v1](#beaconblockheadersbyroot-v1)
 
 <!-- mdformat-toc end -->
 
@@ -579,9 +579,9 @@ payload envelope in the response.
 Clients MUST respond with at least one payload envelope, if they have it.
 Clients MAY limit the number of payload envelopes in the response.
 
-##### HeadersByRoot v1
+##### BeaconBlockHeadersByRoot v1
 
-**Protocol ID:** `/eth2/beacon_chain/req/headers_by_root/1/`
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_block_headers_by_root/1/`
 
 *[New in Gloas]*
 
@@ -609,8 +609,8 @@ the response contains `min(count, MAX_REQUEST_BLOCK_HEADERS)` headers, the next
 ancestor has `slot < min_slot`, or the next ancestor falls outside the epoch
 range that clients are required to serve (see below).
 
-`HeadersByRoot` is primarily used to backfill a contiguous range of headers
-relative to a known head.
+`BeaconBlockHeadersByRoot` is primarily used to backfill a contiguous range of
+headers relative to a known head.
 
 No more than `MAX_REQUEST_BLOCK_HEADERS` may be requested at a time.
 
