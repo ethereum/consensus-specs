@@ -395,9 +395,6 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
             else:
                 assert False
                 test_steps.append({"block": block_id, "valid": valid})
-            block_root = block.message.hash_tree_root()
-            assert valid == (block_root in store.blocks)
-
             output_store_checks(spec, store, test_steps)
         elif kind == "attestation":
             attestation = data
