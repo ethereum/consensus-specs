@@ -464,9 +464,9 @@ The following validations MUST pass before forwarding the
 `BeaconBlock` associated with `sidecar.beacon_block_root`:
 
 - _[IGNORE]_ A valid block for the sidecar's `slot` has been seen (via gossip or
-  non-gossip sources). If not yet seen, a client MUST queue the sidecar for
+  non-gossip sources). If not yet seen, a client SHOULD queue the sidecar for
   deferred validation and possible processing once the block is received or
-  retrieved.
+  retrieved. A client SHOULD queue at least one sidecar per peer per subnet.
 - _[REJECT]_ The sidecar's `slot` matches the slot of the block with root
   `beacon_block_root`.
 - _[REJECT]_ The sidecar is valid as verified by
@@ -496,9 +496,9 @@ Implementations MUST ignore unknown versions.
 messages on `data_column_sidecar_{subnet_id}` as defined above.
 
 - _[IGNORE]_ A valid block for the Group ID's `slot` has been seen (via gossip
-  or non-gossip sources). If not yet seen, a client MUST queue the sidecar for
+  or non-gossip sources). If not yet seen, a client SHOULD queue the sidecar for
   deferred validation and possible processing once the block is received or
-  retrieved.
+  retrieved. A client SHOULD queue at least 1 sidecar per peer per subnet.
 - _[REJECT]_ The Group ID's `slot` matches the slot of the block with root
   `beacon_block_root`. The `beacon_block_root` is also identified by the Group
   ID.
