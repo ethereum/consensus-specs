@@ -163,9 +163,11 @@ class Store(object):
     # [New in Gloas:EIP7732]
     payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
-    payload_timeliness_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
+    payload_timeliness_vote: Dict[Root, Vector[Optional[boolean], PTC_SIZE]] = field(
+        default_factory=dict
+    )
     # [New in Gloas:EIP7732]
-    payload_data_availability_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
+    payload_data_availability_vote: Dict[Root, Vector[Optional[boolean], PTC_SIZE]] = field(
         default_factory=dict
     )
 ```
@@ -258,7 +260,8 @@ def is_payload_timely(store: Store, root: Root) -> bool:
     if not is_payload_verified(store, root):
         return False
 
-    return sum(store.payload_timeliness_vote[root]) > PAYLOAD_TIMELY_THRESHOLD
+    votes = store.payload_timeliness_vote[root]
+    return sum(vote is True for vote in votes) > PAYLOAD_TIMELY_THRESHOLD
 ```
 
 ### New `is_payload_data_available`
@@ -277,7 +280,8 @@ def is_payload_data_available(store: Store, root: Root) -> bool:
     if not is_payload_verified(store, root):
         return False
 
-    return sum(store.payload_data_availability_vote[root]) > DATA_AVAILABILITY_TIMELY_THRESHOLD
+    votes = store.payload_data_availability_vote[root]
+    return sum(vote is True for vote in votes) > DATA_AVAILABILITY_TIMELY_THRESHOLD
 ```
 
 ### New `get_parent_payload_status`
@@ -861,8 +865,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
     # Add a new PTC voting for this block to the store
-    store.payload_timeliness_vote[block_root] = [False] * PTC_SIZE
-    store.payload_data_availability_vote[block_root] = [False] * PTC_SIZE
+    store.payload_timeliness_vote[block_root] = [None] * PTC_SIZE
+    store.payload_data_availability_vote[block_root] = [None] * PTC_SIZE
 
     # Notify the store about the payload_attestations in the block
     notify_ptc_messages(store, state, block.body.payload_attestations)
