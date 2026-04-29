@@ -260,7 +260,9 @@ def is_payload_timely(store: Store, root: Root) -> bool:
     if not is_payload_verified(store, root):
         return False
 
-    return sum(store.payload_timeliness_vote[root]) > PAYLOAD_TIMELY_THRESHOLD
+    return (
+        sum(vote is True for vote in store.payload_timeliness_vote[root]) > PAYLOAD_TIMELY_THRESHOLD
+    )
 ```
 
 ### New `is_payload_data_available`
@@ -279,7 +281,10 @@ def is_payload_data_available(store: Store, root: Root) -> bool:
     if not is_payload_verified(store, root):
         return False
 
-    return sum(store.payload_data_availability_vote[root]) > DATA_AVAILABILITY_TIMELY_THRESHOLD
+    return (
+        sum(vote is True for vote in store.payload_data_availability_vote[root])
+        > DATA_AVAILABILITY_TIMELY_THRESHOLD
+    )
 ```
 
 ### New `get_parent_payload_status`
