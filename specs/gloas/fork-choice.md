@@ -7,6 +7,9 @@
 - [Introduction](#introduction)
 - [Types](#types)
 - [Constants](#constants)
+- [Protocols](#protocols)
+  - [`ExecutionEngine`](#executionengine)
+    - [Modified `notify_forkchoice_updated`](#modified-notify_forkchoice_updated)
 - [Helpers](#helpers)
   - [New `ForkChoiceNode`](#new-forkchoicenode)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
@@ -74,6 +77,42 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 | `ATTESTATION_TIMELINESS_INDEX`       | `0`                     |
 | `PTC_TIMELINESS_INDEX`               | `1`                     |
 | `NUM_BLOCK_TIMELINESS_DEADLINES`     | `2`                     |
+
+## Protocols
+
+### `ExecutionEngine`
+
+*Note*: The `notify_forkchoice_updated` function is modified in the
+`ExecutionEngine` protocol at the Gloas upgrade.
+
+#### Modified `notify_forkchoice_updated`
+
+The only modification is the computation of the `finalized_block_hash` and
+`safe_block_hash` that Consensus layer client passes to the call of this
+function.
+
+Starting with Gloas `finalized_block_hash` value **MUST** be computed as the
+following. Let:
+
+- `finalized_block = store.blocks[store.finalized_checkpoint.root]`
+- `finalized_block_bid = finalized_block.body.signed_execution_payload_bid.message`
+
+Then `finalized_block_hash = finalized_block_bid.parent_block_hash`.
+
+*Note:* The post-Gloas `safe_block_hash` computation is handled by extending
+[`get_safe_execution_block_hash(store: Store)`](../../fork_choice/safe-block.md#get_safe_execution_block_hash).
+
+```python
+def notify_forkchoice_updated(
+    self: ExecutionEngine,
+    head_block_hash: Hash32,
+    # [Modified in Gloas:EIP7732]
+    safe_block_hash: Hash32,
+    # [Modified in Gloas:EIP7732]
+    finalized_block_hash: Hash32,
+    payload_attributes: Optional[PayloadAttributes],
+) -> Optional[PayloadId]: ...
+```
 
 ## Helpers
 
