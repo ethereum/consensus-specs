@@ -1,6 +1,7 @@
 import random
 from collections.abc import Iterable
 from dataclasses import dataclass
+from math import ceil
 from os import path
 from typing import Any
 
@@ -42,6 +43,7 @@ from .scheduler import MessageScheduler
 BLS_ACTIVE = False
 GENERATOR_NAME = "fork_choice_compliance"
 SUITE_NAME = "pyspec_tests"
+MAX_MUTATION_GROUP_LENGTH = 4
 
 
 @dataclass(eq=True, frozen=True)
@@ -65,6 +67,12 @@ class FCTestDNA:
     kind: FCTestKind
     solution: Any
     variation_seed: int
+    mutation_seed: int | None
+
+
+@dataclass(eq=True, frozen=True)
+class MutationGroupCase:
+    case_id: int
     mutation_seed: int | None
 
 
@@ -99,12 +107,21 @@ class PlainFCTestCase(TestCase):
 @dataclass(init=False)
 class MutationGroupTestGroup(TestGroup):
     mutation_group: MutationGroup
+    group_cases: tuple[MutationGroupCase, ...]
     fork_name: str
     preset_name: str
     bls_active: bool
     debug: bool
 
-    def __init__(self, mutation_group, fork_name, preset_name, bls_active=False, debug=False):
+    def __init__(
+        self,
+        mutation_group,
+        group_cases,
+        fork_name,
+        preset_name,
+        bls_active=False,
+        debug=False,
+    ):
         test_cases = [
             PlainFCTestCase(
                 test_dna=test_dna,
@@ -117,18 +134,20 @@ class MutationGroupTestGroup(TestGroup):
                 suite_name=SUITE_NAME,
                 case_name=case_name,
             )
-            for case_name, test_dna in enumerate_test_dnas(mutation_group)
+            for case_name, test_dna in enumerate_test_dnas(mutation_group, group_cases)
         ]
         super().__init__(
             group_name=(
                 f"{preset_name}::{fork_name}::{GENERATOR_NAME}::"
                 f"{mutation_group.test_name}::{mutation_group.solution_index}::"
                 f"{mutation_group.test_dna_base.variation_seed}"
+                f"{get_mutation_group_suffix(mutation_group.nr_mutations, group_cases)}"
             ),
             test_cases=test_cases,
             group_fn=self.execute_group,
         )
         self.mutation_group = mutation_group
+        self.group_cases = group_cases
         self.fork_name = fork_name
         self.preset_name = preset_name
         self.bls_active = bls_active
@@ -455,6 +474,48 @@ def derive_effective_seed(seed: int, solution_index: int) -> int:
     return random.Random(f"{seed}:{solution_index}").randint(0, 1_000_000_000)
 
 
+def get_mutation_group_suffix(nr_mutations: int, group_cases: tuple[MutationGroupCase, ...]) -> str:
+    group_case_ids = [group_case.case_id for group_case in group_cases]
+    full_case_ids = list(range(0, nr_mutations + 1))
+    if group_case_ids == full_case_ids:
+        return ""
+    joined_case_ids = ",".join(str(case_id) for case_id in group_case_ids)
+    return f"::cases={joined_case_ids}"
+
+
+def iter_mutation_group_chunks(
+    mutation_seeds: list[int],
+) -> Iterable[tuple[MutationGroupCase, ...]]:
+    all_group_cases = [MutationGroupCase(0, None)] + [
+        MutationGroupCase(case_id=i, mutation_seed=mutation_seed)
+        for i, mutation_seed in enumerate(mutation_seeds, start=1)
+    ]
+    total_group_length = len(all_group_cases)
+    if total_group_length <= MAX_MUTATION_GROUP_LENGTH:
+        yield tuple(all_group_cases)
+        return
+
+    bucket_count = ceil(total_group_length / MAX_MUTATION_GROUP_LENGTH)
+    base_bucket_size = total_group_length // bucket_count
+    remainder = total_group_length % bucket_count
+    bucket_sizes = [
+        base_bucket_size + (1 if bucket_index < remainder else 0)
+        for bucket_index in range(bucket_count)
+    ]
+
+    remaining_mutation_cases = all_group_cases[1:]
+    for bucket_index, bucket_size in enumerate(bucket_sizes):
+        if bucket_index == 0:
+            mutations_in_bucket = bucket_size - 1
+            bucket_cases = remaining_mutation_cases[:mutations_in_bucket]
+            yield (all_group_cases[0], *bucket_cases)
+        else:
+            mutations_in_bucket = bucket_size
+            bucket_cases = remaining_mutation_cases[:mutations_in_bucket]
+            yield tuple(bucket_cases)
+        remaining_mutation_cases = remaining_mutation_cases[mutations_in_bucket:]
+
+
 def enumerate_mutation_groups(config_dir, test_name, params) -> Iterable[MutationGroup]:
     test_type = params["test_type"]
     instances_path = params["instances"]
@@ -484,20 +545,32 @@ def enumerate_mutation_groups(config_dir, test_name, params) -> Iterable[Mutatio
             )
 
 
-def enumerate_test_dnas(mutation_group: MutationGroup) -> Iterable[tuple[str, FCTestDNA]]:
+def split_mutation_group(mutation_group: MutationGroup) -> Iterable[tuple[MutationGroupCase, ...]]:
+    mutation_seeds = [
+        mutation_group.test_dna_base.variation_seed + j - 1
+        for j in range(1, mutation_group.nr_mutations + 1)
+    ]
+    yield from iter_mutation_group_chunks(mutation_seeds)
+
+
+def enumerate_test_dnas(
+    mutation_group: MutationGroup, group_cases: tuple[MutationGroupCase, ...]
+) -> Iterable[tuple[str, FCTestDNA]]:
     test_name = mutation_group.test_name
     solution_index = mutation_group.solution_index
     test_dna_base = mutation_group.test_dna_base
     seed = test_dna_base.variation_seed
 
-    for j in range(1 + mutation_group.nr_mutations):
+    for group_case in group_cases:
+        case_id = group_case.case_id
+        mutation_seed = group_case.mutation_seed
         test_dna = FCTestDNA(
             test_dna_base.kind,
             test_dna_base.solution,
             seed,
-            None if j == 0 else seed + j - 1,
+            mutation_seed,
         )
-        case_name = test_name + "_" + str(solution_index) + "_" + str(seed) + "_" + str(j)
+        case_name = test_name + "_" + str(solution_index) + "_" + str(seed) + "_" + str(case_id)
         yield case_name, test_dna
 
 
@@ -514,10 +587,12 @@ def enumerate_test_groups(config_path, forks, presets, debug, initial_seed: int 
         for fork_name in forks:
             for preset_name in presets:
                 for mutation_group in enumerate_mutation_groups(config_dir, test_name, params):
-                    yield MutationGroupTestGroup(
-                        mutation_group=mutation_group,
-                        fork_name=fork_name,
-                        preset_name=preset_name,
-                        bls_active=BLS_ACTIVE,
-                        debug=debug,
-                    )
+                    for group_cases in split_mutation_group(mutation_group):
+                        yield MutationGroupTestGroup(
+                            mutation_group=mutation_group,
+                            group_cases=group_cases,
+                            fork_name=fork_name,
+                            preset_name=preset_name,
+                            bls_active=BLS_ACTIVE,
+                            debug=debug,
+                        )
