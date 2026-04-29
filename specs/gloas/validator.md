@@ -153,9 +153,10 @@ def get_upcoming_proposal_slots(
 To construct each `SignedProposerPreferences`:
 
 1. Instantiate a new `ProposerPreferences` object as `preferences`.
-2. Set `preferences.checkpoint_root` to
-   `get_checkpoint_block(store, head_root, compute_epoch_at_slot(preferences.proposal_slot) - 1)`,
-   where `head_root` is the proposer's current head.
+2. Set `preferences.dependent_root` to
+   `get_proposer_dependent_root(state, compute_epoch_at_slot(preferences.proposal_slot))`,
+   where `state` is the proposer's current head state. Use the genesis block
+   root in case of underflow.
 3. Set `preferences.proposal_slot` to `upcoming_proposal_slots[i]`.
 4. Set `preferences.validator_index` to the validator's index.
 5. Set `preferences.fee_recipient` to the execution address where the validator
@@ -331,6 +332,7 @@ The validator creates `payload_attestation_message` as follows:
 - If a previously seen `SignedExecutionPayloadEnvelope` references the block
   with root `data.beacon_block_root`, set `data.payload_present` to `True`;
   otherwise, set `data.payload_present` to `False`.
+- Set `data.blob_data_available` to `is_data_available(data.beacon_block_root)`.
 - Set `payload_attestation_message.validator_index = validator_index` where
   `validator_index` is the validator chosen to submit. The private key mapping
   to `state.validators[validator_index].pubkey` is used to sign the payload
