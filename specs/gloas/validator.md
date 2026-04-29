@@ -153,15 +153,18 @@ def get_upcoming_proposal_slots(
 To construct each `SignedProposerPreferences`:
 
 1. Instantiate a new `ProposerPreferences` object as `preferences`.
-2. Set `preferences.proposal_slot` to `upcoming_proposal_slots[i]`.
-3. Set `preferences.validator_index` to the validator's index.
-4. Set `preferences.fee_recipient` to the execution address where the validator
+2. Set `preferences.checkpoint_root` to
+   `get_checkpoint_block(store, head_root, compute_epoch_at_slot(preferences.proposal_slot) - 1)`,
+   where `head_root` is the proposer's current head.
+3. Set `preferences.proposal_slot` to `upcoming_proposal_slots[i]`.
+4. Set `preferences.validator_index` to the validator's index.
+5. Set `preferences.fee_recipient` to the execution address where the validator
    wishes to receive the builder payment.
-5. Set `preferences.gas_limit` to the validator's preferred gas limit for this
+6. Set `preferences.gas_limit` to the validator's preferred gas limit for this
    execution payload.
-6. Instantiate a new `SignedProposerPreferences` object as `signed_preferences`.
-7. Set `signed_preferences.message` to `preferences`.
-8. Set `signed_preferences.signature` to the result of
+7. Instantiate a new `SignedProposerPreferences` object as `signed_preferences`.
+8. Set `signed_preferences.message` to `preferences`.
+9. Set `signed_preferences.signature` to the result of
    `get_proposer_preferences_signature(state, preferences, privkey)`.
 
 ```python

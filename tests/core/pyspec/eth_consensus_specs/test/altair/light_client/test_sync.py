@@ -17,8 +17,10 @@ from eth_consensus_specs.test.helpers.constants import (
     CAPELLA,
     DENEB,
     ELECTRA,
+    GLOAS,
     MINIMAL,
 )
+from eth_consensus_specs.test.helpers.genesis import create_signed_genesis_block
 from eth_consensus_specs.test.helpers.light_client import (
     compute_start_slot_at_next_sync_committee_period,
     get_sync_aggregate,
@@ -506,8 +508,7 @@ def run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
     test = yield from setup_lc_sync_test(spec, state, phases[fork], phases)
 
     # Initial `LightClientUpdate` (check that the upgraded store can process it)
-    finalized_block = spec.SignedBeaconBlock()
-    finalized_block.message.state_root = state.hash_tree_root()
+    finalized_block = create_signed_genesis_block(spec, state)
     finalized_state = state.copy()
     attested_block = state_transition_with_full_block(spec, state, True, True)
     attested_state = state.copy()
@@ -550,3 +551,12 @@ def test_deneb_store_with_legacy_data(spec, phases, state):
 @with_presets([MINIMAL], reason="too slow")
 def test_electra_store_with_legacy_data(spec, phases, state):
     yield from run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, ELECTRA)
+
+
+@with_all_phases_from_to(ALTAIR, GLOAS, other_phases=[CAPELLA, DENEB, ELECTRA, GLOAS])
+@spec_test
+@with_state
+@with_matching_spec_config(emitted_fork=GLOAS)
+@with_presets([MINIMAL], reason="too slow")
+def test_gloas_store_with_legacy_data(spec, phases, state):
+    yield from run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, GLOAS)
