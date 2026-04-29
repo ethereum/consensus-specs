@@ -124,6 +124,14 @@ MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA: 64000000000
 # [customized] 2**7 * 10**9 (= 128,000,000,000) Gwei
 MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT: 128000000000
 
+# Gloas
+# [customized] 2**4 (= 16)
+CHURN_LIMIT_QUOTIENT_GLOAS: 16
+# [customized] 2**5 (= 32)
+CONSOLIDATION_CHURN_LIMIT_QUOTIENT: 32
+# [customized] 2**7 * 10**9 (= 128,000,000,000) Gwei
+MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS: 128000000000
+
 # Fork choice
 # ---------------------------------------------------------------
 # 40%

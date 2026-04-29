@@ -47,6 +47,8 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
         return set(
             [
                 "compute_proposer_index",
+                "get_activation_exit_churn_limit",
+                "get_balance_churn_limit",
                 "initialize_proposer_lookahead",
                 "process_execution_payload",
                 "retrieve_column_sidecars",
