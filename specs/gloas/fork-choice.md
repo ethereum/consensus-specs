@@ -941,9 +941,8 @@ def on_payload_attestation_message(
     # The beacon block root must be known
     data = ptc_message.data
     # PTC attestation must be for a known block. If block is unknown, delay consideration until the block is found
-    beacon_block_root = data.beacon_block_root
-    assert beacon_block_root in store.block_states
-    state = store.block_states[beacon_block_root]
+    assert data.beacon_block_root in store.block_states
+    state = store.block_states[data.beacon_block_root]
     ptc = get_ptc(state, data.slot)
     # PTC votes can only change the vote for their assigned beacon block, return early otherwise
     if data.slot != state.slot:
@@ -966,9 +965,9 @@ def on_payload_attestation_message(
         )
     # Update the votes for the block
     ptc_index = ptc.index(ptc_message.validator_index)
-    payload_timeliness_vote = store.payload_timeliness_vote[beacon_block_root]
+    payload_timeliness_vote = store.payload_timeliness_vote[data.beacon_block_root]
     payload_timeliness_vote[ptc_index] = data.payload_present
 
-    payload_data_availability_vote = store.payload_data_availability_vote[beacon_block_root]
+    payload_data_availability_vote = store.payload_data_availability_vote[data.beacon_block_root]
     payload_data_availability_vote[ptc_index] = data.blob_data_available
 ```
