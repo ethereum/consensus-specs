@@ -141,7 +141,7 @@ def get_random_deposits(spec, state, rng, num_deposits=None):
     # First build deposit data leaves
     for i in range(num_deposits):
         index = len(state.validators) + i
-        withdrawal_pubkey = pubkeys[-1 - index]
+        withdrawal_pubkey = pubkeys[((32 * 256) - 1 - index) % len(pubkeys)]
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
         _, root, deposit_data_leaves = build_deposit(
             spec,
