@@ -556,6 +556,49 @@ def get_basic_store_checks(spec, store, head_root=None):
     }
 
 
+def get_viable_for_head_checks(spec, store):
+    filtered_blocks = spec.get_filtered_block_tree(store)
+
+    if is_post_gloas(spec):
+        root_node = spec.ForkChoiceNode(
+            root=store.justified_checkpoint.root,
+            payload_status=spec.PAYLOAD_STATUS_PENDING,
+        )
+        pending_nodes = [root_node]
+        leaves_viable_for_head = []
+
+        while len(pending_nodes) > 0:
+            node = pending_nodes.pop()
+            children = spec.get_node_children(store, filtered_blocks, node)
+            if len(children) == 0:
+                leaves_viable_for_head.append(node)
+            else:
+                pending_nodes.extend(children)
+
+        return [
+            {
+                "root": encode_hex(node.root),
+                "payload_status": int(node.payload_status),
+                "weight": int(spec.get_weight(store, node)),
+            }
+            for node in leaves_viable_for_head
+        ]
+
+    filtered_block_roots = filtered_blocks.keys()
+    leaves_viable_for_head = [
+        root
+        for root in filtered_block_roots
+        if not any(c for c in filtered_block_roots if store.blocks[c].parent_root == root)
+    ]
+    return [
+        {
+            "root": encode_hex(viable_for_head_root),
+            "weight": int(spec.get_weight(store, viable_for_head_root)),
+        }
+        for viable_for_head_root in leaves_viable_for_head
+    ]
+
+
 def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=False):
     if is_post_gloas(spec):
         head = spec.get_head(store)
@@ -564,22 +607,8 @@ def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=Fa
     else:
         checks = get_basic_store_checks(spec, store)
 
-    if with_viable_for_head_weights and not is_post_gloas(spec):
-        filtered_block_roots = spec.get_filtered_block_tree(store).keys()
-        leaves_viable_for_head = [
-            root
-            for root in filtered_block_roots
-            if not any(c for c in filtered_block_roots if store.blocks[c].parent_root == root)
-        ]
-
-        viable_for_head_roots_and_weights = [
-            {
-                "root": encode_hex(viable_for_head_root),
-                "weight": int(spec.get_weight(store, viable_for_head_root)),
-            }
-            for viable_for_head_root in leaves_viable_for_head
-        ]
-        checks["viable_for_head_roots_and_weights"] = viable_for_head_roots_and_weights
+    if with_viable_for_head_weights:
+        checks["viable_for_head_roots_and_weights"] = get_viable_for_head_checks(spec, store)
 
     test_steps.append({"checks": checks})
 
