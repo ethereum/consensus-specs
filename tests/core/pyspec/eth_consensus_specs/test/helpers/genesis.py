@@ -38,7 +38,7 @@ def build_mock_builder(spec, i: int, balance: int):
 
 def build_mock_validator(spec, i: int, balance: int):
     active_pubkey = pubkeys[i]
-    withdrawal_pubkey = pubkeys[-1 - i]
+    withdrawal_pubkey = pubkeys[((32 * 256) - 1 - i) % len(pubkeys)]
     if is_post_electra(spec):
         if balance > spec.MIN_ACTIVATION_BALANCE:
             # use compounding withdrawal credentials if the balance is higher than MIN_ACTIVATION_BALANCE

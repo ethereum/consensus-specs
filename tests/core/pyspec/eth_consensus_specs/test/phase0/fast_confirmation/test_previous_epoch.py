@@ -1886,7 +1886,7 @@ def test_fcr_previous_epoch_061(spec, state):
     test_spec = PreviousEpochTestSpecification(
         prev_head_ancestor=True,
         first_slot_call=False,
-        is_one_confirmed=True,
+        is_one_confirmed=False,
         no_conflicting_chkp=True,
         prev_head_vs_fresh=True,
         prev_head_uj_fresh=False,
