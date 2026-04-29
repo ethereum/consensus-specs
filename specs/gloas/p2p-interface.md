@@ -646,6 +646,18 @@ Per `fork_version = compute_fork_version(epoch)`:
 | -------------------- | -------------------------------------- |
 | `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
 
+Clients MUST respond with payload envelopes from their view of the current fork
+choice, that is, payload envelopes as included by blocks from the single chain
+defined by the current head. Of note, blocks from slots before the finalization
+MUST lead to the finalized block reported in the `Status` handshake.
+
+Clients MUST respond with payload envelopes that are consistent from a single
+chain within the context of the request.
+
+After the initial payload envelope, clients MAY stop in the process of
+responding if their fork choice changes the view of the chain in the context of
+the request.
+
 ##### ExecutionPayloadEnvelopesByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_root/1/`
@@ -704,3 +716,14 @@ payload envelope in the response.
 
 Clients MUST respond with at least one payload envelope, if they have it.
 Clients MAY limit the number of payload envelopes in the response.
+
+Clients SHOULD include a payload envelope in the response as soon as it passes
+the gossip validation rules. Clients SHOULD NOT respond with payload envelopes
+related to blocks that fail gossip validation rules. Clients SHOULD NOT respond
+with payload envelopes related to blocks that fail the beacon-chain state
+transition.
+
+For unfinalized blocks, clients MAY respond with payload envelopes whose
+`beacon_block_root` is not part of the current fork choice canonical chain.
+Unlike range requests, this is a single-item lookup and the requester can verify
+canonical status independently.
