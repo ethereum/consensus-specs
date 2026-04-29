@@ -23,6 +23,7 @@
   - [Modified `get_ancestor`](#modified-get_ancestor)
   - [Modified `get_checkpoint_block`](#modified-get_checkpoint_block)
   - [New `is_supporting_vote`](#new-is_supporting_vote)
+  - [New `should_build_on_full`](#new-should_build_on_full)
   - [New `should_extend_payload`](#new-should_extend_payload)
   - [New `get_payload_status_tiebreaker`](#new-get_payload_status_tiebreaker)
   - [New `should_apply_proposer_boost`](#new-should_apply_proposer_boost)
@@ -366,6 +367,21 @@ def is_supporting_vote(store: Store, node: ForkChoiceNode, message: LatestMessag
             node.payload_status == PAYLOAD_STATUS_PENDING
             or node.payload_status == ancestor.payload_status
         )
+```
+
+### New `should_build_on_full`
+
+*Note*: `should_build_on_full` is called by the proposer before deciding if he
+should build on top of the empty or full parent pending node. This function is
+similar to `should_extend_payload` but it takes into consideration the PTC view
+on DA
+
+```python
+def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
+    assert head.payload_status != PAYLOAD_STATUS_PENDING
+    if head.payload_status == PAYLOAD_STATUS_EMPTY:
+        return False
+    return is_payload_data_available(store, head.root)
 ```
 
 ### New `should_extend_payload`
