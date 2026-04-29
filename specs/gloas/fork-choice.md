@@ -72,9 +72,9 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 | `PAYLOAD_STATUS_EMPTY`               | `PayloadStatus(0)`      |
 | `PAYLOAD_STATUS_FULL`                | `PayloadStatus(1)`      |
 | `PAYLOAD_STATUS_PENDING`             | `PayloadStatus(2)`      |
-| `PAYLOAD_VOTE_UNKNOWN`               | `PayloadVote(0)`        |
-| `PAYLOAD_VOTE_YEA`                   | `PayloadVote(1)`        |
-| `PAYLOAD_VOTE_NAY`                   | `PayloadVote(2)`        |
+| `PAYLOAD_VOTE_EMPTY`                 | `PayloadVote(0)`        |
+| `PAYLOAD_VOTE_FULL`                  | `PayloadVote(1)`        |
+| `PAYLOAD_VOTE_UNKNOWN`               | `PayloadVote(2)`        |
 | `ATTESTATION_TIMELINESS_INDEX`       | `0`                     |
 | `PTC_TIMELINESS_INDEX`               | `1`                     |
 | `NUM_BLOCK_TIMELINESS_DEADLINES`     | `2`                     |
