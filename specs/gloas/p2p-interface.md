@@ -108,7 +108,7 @@ class PartialDataColumnGroupID(Container):
 
 ```python
 class ProposerPreferences(Container):
-    checkpoint_root: Root
+    dependent_root: Root
     proposal_slot: Slot
     validator_index: ValidatorIndex
     fee_recipient: ExecutionAddress
@@ -358,9 +358,10 @@ The following validations MUST pass before forwarding the
 `signed_execution_payload_bid` on the network, assuming the alias
 `bid = signed_execution_payload_bid.message`, the alias
 `signed_proposer_preferences` for the validated `SignedProposerPreferences`
-whose `message.proposal_slot` is `bid.slot` and `message.checkpoint_root` is
-`get_checkpoint_block(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot) - 1)`,
-and the alias `proposer_preferences = signed_proposer_preferences.message`:
+whose `message.proposal_slot` is `bid.slot` and `message.dependent_root` is
+`get_proposer_dependent_root(parent_state, compute_epoch_at_slot(bid.slot))`,
+where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
+`proposer_preferences = signed_proposer_preferences.message`:
 
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
 - _[IGNORE]_ The matching `signed_proposer_preferences` has been seen.
@@ -408,16 +409,16 @@ The following validations MUST pass before forwarding the
   `[compute_epoch_at_slot(current_slot), compute_epoch_at_slot(current_slot) + 1]`.
 - _[IGNORE]_ `preferences.proposal_slot` has not already passed -- i.e.
   `preferences.proposal_slot > current_slot`.
-- _[IGNORE]_ The block with root `preferences.checkpoint_root` has been seen
-  (via gossip or non-gossip sources) (a client MAY queue the message for
+- _[IGNORE]_ The block with root `preferences.dependent_root` has been seen (via
+  gossip or non-gossip sources) (a client MAY queue the message for
   re-processing once the block is retrieved).
 - _[REJECT]_ `is_valid_proposal_slot(state, preferences)` returns `True`, where
   `state` is the checkpoint state at the epoch
   `compute_epoch_at_slot(preferences.proposal_slot) - 1` and the root
-  `preferences.checkpoint_root`.
+  `preferences.dependent_root`.
 - _[IGNORE]_ The `signed_proposer_preferences` is the first valid message seen
   for the tuple
-  `(preferences.checkpoint_root, preferences.proposal_slot, preferences.validator_index)`.
+  `(preferences.dependent_root, preferences.proposal_slot, preferences.validator_index)`.
 - _[REJECT]_ `signed_proposer_preferences.signature` is valid with respect to
   the validator's public key.
 
@@ -437,6 +438,14 @@ def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences)
     index = (proposal_epoch - current_epoch) * SLOTS_PER_EPOCH
     index += preferences.proposal_slot % SLOTS_PER_EPOCH
     return state.proposer_lookahead[index] == preferences.validator_index
+```
+
+```python
+def get_proposer_dependent_root(state: BeaconState, epoch: Epoch) -> Root:
+    """
+    Return the dependent root for the proposer lookahead at ``epoch``.
+    """
+    return get_block_root_at_slot(state, Slot(compute_start_slot_at_epoch(Epoch(epoch - 1)) - 1))
 ```
 
 *Note*: Nodes SHOULD subscribe to this topic at least one epoch before the fork

@@ -153,9 +153,10 @@ def get_upcoming_proposal_slots(
 To construct each `SignedProposerPreferences`:
 
 1. Instantiate a new `ProposerPreferences` object as `preferences`.
-2. Set `preferences.checkpoint_root` to
-   `get_checkpoint_block(store, head_root, compute_epoch_at_slot(preferences.proposal_slot) - 1)`,
-   where `head_root` is the proposer's current head.
+2. Set `preferences.dependent_root` to
+   `get_proposer_dependent_root(state, compute_epoch_at_slot(preferences.proposal_slot))`,
+   where `state` is the proposer's current head state. Use the genesis block
+   root in case of underflow.
 3. Set `preferences.proposal_slot` to `upcoming_proposal_slots[i]`.
 4. Set `preferences.validator_index` to the validator's index.
 5. Set `preferences.fee_recipient` to the execution address where the validator
