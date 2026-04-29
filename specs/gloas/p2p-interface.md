@@ -407,7 +407,7 @@ The following validations MUST pass before forwarding the
   `compute_epoch_at_slot(preferences.proposal_slot)` is in
   `[compute_epoch_at_slot(current_slot), compute_epoch_at_slot(current_slot) + 1]`.
 - _[IGNORE]_ `preferences.proposal_slot` has not already passed -- i.e.
-  `preferences.proposal_slot <= current_slot`.
+  `preferences.proposal_slot > current_slot`.
 - _[IGNORE]_ The block with root `preferences.checkpoint_root` has been seen
   (via gossip or non-gossip sources) (a client MAY queue the message for
   re-processing once the block is retrieved).
