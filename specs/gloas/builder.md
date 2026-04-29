@@ -122,8 +122,9 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
 06. Set `bid.fee_recipient` to be an execution address to receive the payment.
     The proposer's preferred fee recipient is obtained from the
     `SignedProposerPreferences` whose `message.proposal_slot` matches `bid.slot`
-    and whose `message.checkpoint_root` matches
-    `get_checkpoint_block(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot) - 1)`.
+    and whose `message.dependent_root` matches
+    `get_proposer_dependent_root(parent_state, compute_epoch_at_slot(bid.slot))`,
+    where `parent_state` is the post-state of `bid.parent_block_root`.
 07. Set `bid.gas_limit` to be the gas limit of the constructed payload, which
     must match the `gas_limit` in the `SignedProposerPreferences` referenced in
     step 6.
