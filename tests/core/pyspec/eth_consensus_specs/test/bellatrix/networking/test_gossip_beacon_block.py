@@ -6,7 +6,7 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block,
 )
-from eth_consensus_specs.test.helpers.constants import BELLATRIX, CAPELLA
+from eth_consensus_specs.test.helpers.constants import BELLATRIX, CAPELLA, DENEB
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
     build_state_with_complete_transition,
@@ -15,63 +15,21 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen
+from eth_consensus_specs.test.helpers.gossip import (
+    get_filename,
+    get_seen,
+    PAYLOAD_STATUS_INVALIDATED,
+    PAYLOAD_STATUS_NOT_VALIDATED,
+    PAYLOAD_STATUS_VALID,
+    run_validate_beacon_block_gossip,
+    wrap_genesis_block,
+)
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
 
-PAYLOAD_STATUS_VALID = "VALID"
-PAYLOAD_STATUS_INVALIDATED = "INVALIDATED"
-PAYLOAD_STATUS_NOT_VALIDATED = "NOT_VALIDATED"
 
-
-def wrap_genesis_block(spec, block):
-    """Wrap an unsigned genesis block in a SignedBeaconBlock with empty signature."""
-    return spec.SignedBeaconBlock(message=block)
-
-
-def get_spec_block_payload_statuses(spec, block_payload_statuses):
-    spec_block_payload_statuses = {}
-    if block_payload_statuses is None:
-        return spec_block_payload_statuses
-
-    for block_root, payload_status in block_payload_statuses.items():
-        if payload_status == PAYLOAD_STATUS_VALID:
-            spec_block_payload_statuses[block_root] = spec.PAYLOAD_STATUS_VALID
-        elif payload_status == PAYLOAD_STATUS_INVALIDATED:
-            spec_block_payload_statuses[block_root] = spec.PAYLOAD_STATUS_INVALIDATED
-        else:
-            assert payload_status == PAYLOAD_STATUS_NOT_VALIDATED
-            spec_block_payload_statuses[block_root] = spec.PAYLOAD_STATUS_NOT_VALIDATED
-
-    return spec_block_payload_statuses
-
-
-def run_validate_beacon_block_gossip(
-    spec, seen, store, state, signed_block, current_time_ms, block_payload_statuses=None
-):
-    """
-    Run validate_beacon_block_gossip and return the result.
-    Returns: tuple of (result, reason) where result is "valid", "ignore", or "reject"
-             and reason is the exception message (or None for valid).
-    """
-    try:
-        spec.validate_beacon_block_gossip(
-            seen,
-            store,
-            state,
-            signed_block,
-            current_time_ms,
-            block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
-        )
-        return "valid", None
-    except spec.GossipIgnore as e:
-        return "ignore", str(e)
-    except spec.GossipReject as e:
-        return "reject", str(e)
-
-
-@with_phases([BELLATRIX, CAPELLA])
+@with_phases([BELLATRIX, CAPELLA, DENEB])
 @spec_state_test
 def test_gossip_beacon_block__valid_execution_enabled(spec, state):
     """
@@ -152,7 +110,7 @@ def test_gossip_beacon_block__valid_execution_disabled(spec, state):
     )
 
 
-@with_phases([BELLATRIX, CAPELLA])
+@with_phases([BELLATRIX, CAPELLA, DENEB])
 @spec_state_test
 def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec, state):
     """
@@ -203,7 +161,7 @@ def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec,
     )
 
 
-@with_phases([BELLATRIX, CAPELLA])
+@with_phases([BELLATRIX, CAPELLA, DENEB])
 @spec_state_test
 def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verified(spec, state):
     """
@@ -292,7 +250,7 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
     )
 
 
-@with_phases([BELLATRIX, CAPELLA])
+@with_phases([BELLATRIX, CAPELLA, DENEB])
 @spec_state_test
 def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spec, state):
     """
@@ -380,7 +338,7 @@ def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spe
     )
 
 
-@with_phases([BELLATRIX, CAPELLA])
+@with_phases([BELLATRIX, CAPELLA, DENEB])
 @spec_state_test
 def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, state):
     """
@@ -470,7 +428,7 @@ def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, sta
     )
 
 
-@with_phases([BELLATRIX, CAPELLA])
+@with_phases([BELLATRIX, CAPELLA, DENEB])
 @spec_state_test
 def test_gossip_beacon_block__valid_parent_execution_verified_valid(spec, state):
     """
@@ -552,7 +510,7 @@ def test_gossip_beacon_block__valid_parent_execution_verified_valid(spec, state)
     )
 
 
-@with_phases([BELLATRIX, CAPELLA])
+@with_phases([BELLATRIX, CAPELLA, DENEB])
 @spec_state_test
 def test_gossip_beacon_block__valid_parent_optimistic(spec, state):
     """
