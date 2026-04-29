@@ -112,8 +112,9 @@ def get_random_attester_slashings(spec, state, rng, slashed_indices=[]):
     return slashings
 
 
-def get_random_attestations(spec, state, rng):
-    num_attestations = rng.randrange(1, get_max_attestations(spec))
+def get_random_attestations(spec, state, rng, num_attestations=None):
+    if num_attestations is None:
+        num_attestations = rng.randrange(1, get_max_attestations(spec))
 
     attestations = [
         get_valid_attestation(
@@ -140,7 +141,7 @@ def get_random_deposits(spec, state, rng, num_deposits=None):
     # First build deposit data leaves
     for i in range(num_deposits):
         index = len(state.validators) + i
-        withdrawal_pubkey = pubkeys[-1 - index]
+        withdrawal_pubkey = pubkeys[((32 * 256) - 1 - index) % len(pubkeys)]
         withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(withdrawal_pubkey)[1:]
         _, root, deposit_data_leaves = build_deposit(
             spec,

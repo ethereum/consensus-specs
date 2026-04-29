@@ -10,6 +10,9 @@
 - [Containers](#containers)
   - [Modified `LightClientHeader`](#modified-lightclientheader)
 - [Helpers](#helpers)
+  - [Modified `finalized_root_gindex_at_slot`](#modified-finalized_root_gindex_at_slot)
+  - [Modified `current_sync_committee_gindex_at_slot`](#modified-current_sync_committee_gindex_at_slot)
+  - [Modified `next_sync_committee_gindex_at_slot`](#modified-next_sync_committee_gindex_at_slot)
   - [Modified `get_lc_execution_root`](#modified-get_lc_execution_root)
   - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
@@ -31,28 +34,36 @@ Additional documents describes the impact of the upgrade on certain roles:
 
 ## Types
 
-| Name              | SSZ equivalent                                                  | Description                                                                                                                                       |
-| ----------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ExecutionBranch` | `Vector[Bytes32, floorlog2(EXECUTION_BLOCK_HASH_GINDEX_GLOAS)]` | Merkle branch of `signed_execution_payload_bid.message.parent_block_hash` (post-Gloas) or `execution_payload.block_hash` within `BeaconBlockBody` |
+| Name                         | SSZ equivalent                                                    | Description                                                                                                                                       |
+| ---------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FinalityBranch`             | `Vector[Bytes32, floorlog2(FINALIZED_ROOT_GINDEX_GLOAS)]`         | Merkle branch of `finalized_checkpoint.root` within `BeaconState`                                                                                 |
+| `CurrentSyncCommitteeBranch` | `Vector[Bytes32, floorlog2(CURRENT_SYNC_COMMITTEE_GINDEX_GLOAS)]` | Merkle branch of `current_sync_committee` within `BeaconState`                                                                                    |
+| `NextSyncCommitteeBranch`    | `Vector[Bytes32, floorlog2(NEXT_SYNC_COMMITTEE_GINDEX_GLOAS)]`    | Merkle branch of `next_sync_committee` within `BeaconState`                                                                                       |
+| `ExecutionBranch`            | `Vector[Bytes32, floorlog2(EXECUTION_BLOCK_HASH_GINDEX_GLOAS)]`   | Merkle branch of `signed_execution_payload_bid.message.parent_block_hash` (post-Gloas) or `execution_payload.block_hash` within `BeaconBlockBody` |
 
 ## Constants
 
 ### Frozen constants
 
-Existing `GeneralizedIndex` constants are frozen at their
-[Capella](../../capella/light-client/sync-protocol.md#constants) values.
+Existing `GeneralizedIndex` constants are frozen at their pre-Gloas values.
 
-| Name                       | Value                                                                        |
-| -------------------------- | ---------------------------------------------------------------------------- |
-| `EXECUTION_PAYLOAD_GINDEX` | `get_generalized_index(capella.BeaconBlockBody, 'execution_payload')` (= 25) |
+| Name                                    | Value                                                                                |
+| --------------------------------------- | ------------------------------------------------------------------------------------ |
+| `FINALIZED_ROOT_GINDEX_ELECTRA`         | `get_generalized_index(electra.BeaconState, 'finalized_checkpoint', 'root')` (= 169) |
+| `CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA` | `get_generalized_index(electra.BeaconState, 'current_sync_committee')` (= 86)        |
+| `NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA`    | `get_generalized_index(electra.BeaconState, 'next_sync_committee')` (= 87)           |
+| `EXECUTION_PAYLOAD_GINDEX`              | `get_generalized_index(capella.BeaconBlockBody, 'execution_payload')` (= 25)         |
 
 ### New constants
 
-| Name                                | Value                                                                                                            |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `EXECUTION_BLOCK_HASH_GINDEX`       | `get_generalized_index(capella.BeaconBlockBody, 'execution_payload', 'block_hash')` (= 412)                      |
-| `EXECUTION_BLOCK_HASH_GINDEX_DENEB` | `get_generalized_index(deneb.BeaconBlockBody, 'execution_payload', 'block_hash')` (= 812)                        |
-| `EXECUTION_BLOCK_HASH_GINDEX_GLOAS` | `get_generalized_index(BeaconBlockBody, 'signed_execution_payload_bid', 'message', 'parent_block_hash')` (= 832) |
+| Name                                  | Value                                                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `FINALIZED_ROOT_GINDEX_GLOAS`         | `get_generalized_index(BeaconState, 'finalized_checkpoint', 'root')` (= 735)                                        |
+| `CURRENT_SYNC_COMMITTEE_GINDEX_GLOAS` | `get_generalized_index(BeaconState, 'current_sync_committee')` (= 2,945)                                            |
+| `NEXT_SYNC_COMMITTEE_GINDEX_GLOAS`    | `get_generalized_index(BeaconState, 'next_sync_committee')` (= 2,946)                                               |
+| `EXECUTION_BLOCK_HASH_GINDEX`         | `get_generalized_index(capella.BeaconBlockBody, 'execution_payload', 'block_hash')` (= 412)                         |
+| `EXECUTION_BLOCK_HASH_GINDEX_DENEB`   | `get_generalized_index(deneb.BeaconBlockBody, 'execution_payload', 'block_hash')` (= 812)                           |
+| `EXECUTION_BLOCK_HASH_GINDEX_GLOAS`   | `get_generalized_index(BeaconBlockBody, 'signed_execution_payload_bid', 'message', 'parent_block_hash')` (= 11,424) |
 
 ## Containers
 
@@ -70,6 +81,48 @@ class LightClientHeader(Container):
 ```
 
 ## Helpers
+
+### Modified `finalized_root_gindex_at_slot`
+
+```python
+def finalized_root_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
+    epoch = compute_epoch_at_slot(slot)
+
+    # [Modified in Gloas:EIP7688]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return FINALIZED_ROOT_GINDEX_GLOAS
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return FINALIZED_ROOT_GINDEX_ELECTRA
+    return FINALIZED_ROOT_GINDEX
+```
+
+### Modified `current_sync_committee_gindex_at_slot`
+
+```python
+def current_sync_committee_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
+    epoch = compute_epoch_at_slot(slot)
+
+    # [Modified in Gloas:EIP7688]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return CURRENT_SYNC_COMMITTEE_GINDEX_GLOAS
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA
+    return CURRENT_SYNC_COMMITTEE_GINDEX
+```
+
+### Modified `next_sync_committee_gindex_at_slot`
+
+```python
+def next_sync_committee_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
+    epoch = compute_epoch_at_slot(slot)
+
+    # [Modified in Gloas:EIP7688]
+    if epoch >= GLOAS_FORK_EPOCH:
+        return NEXT_SYNC_COMMITTEE_GINDEX_GLOAS
+    if epoch >= ELECTRA_FORK_EPOCH:
+        return NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA
+    return NEXT_SYNC_COMMITTEE_GINDEX
+```
 
 ### Modified `get_lc_execution_root`
 

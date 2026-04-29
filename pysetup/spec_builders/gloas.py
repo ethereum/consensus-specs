@@ -8,15 +8,20 @@ class GloasSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
+from eth_consensus_specs.utils.ssz.ssz_typing import ProgressiveBitlist, ProgressiveContainer, ProgressiveList
+
 from eth_consensus_specs.fulu import {preset_name} as fulu
 """
 
     @classmethod
     def hardcoded_ssz_dep_constants(cls) -> dict[str, str]:
         return {
+            "FINALIZED_ROOT_GINDEX_GLOAS": "GeneralizedIndex(735)",
+            "CURRENT_SYNC_COMMITTEE_GINDEX_GLOAS": "GeneralizedIndex(2945)",
+            "NEXT_SYNC_COMMITTEE_GINDEX_GLOAS": "GeneralizedIndex(2946)",
             "EXECUTION_BLOCK_HASH_GINDEX": "GeneralizedIndex(412)",
             "EXECUTION_BLOCK_HASH_GINDEX_DENEB": "GeneralizedIndex(812)",
-            "EXECUTION_BLOCK_HASH_GINDEX_GLOAS": "GeneralizedIndex(832)",
+            "EXECUTION_BLOCK_HASH_GINDEX_GLOAS": "GeneralizedIndex(11424)",
         }
 
     @classmethod

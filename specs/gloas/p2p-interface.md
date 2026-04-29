@@ -69,10 +69,10 @@ longer required in Gloas. The KZG commitments are now located at
 ```python
 class DataColumnSidecar(Container):
     index: ColumnIndex
-    column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    column: ProgressiveList[Cell]
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments`
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    kzg_proofs: ProgressiveList[KZGProof]
     # [Modified in Gloas:EIP7732]
     # Removed `signed_block_header`
     # [Modified in Gloas:EIP7732]
@@ -87,9 +87,9 @@ class DataColumnSidecar(Container):
 
 ```python
 class PartialDataColumnSidecar(Container):
-    cells_present_bitmap: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    partial_column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    cells_present_bitmap: ProgressiveBitlist
+    partial_column: ProgressiveList[Cell]
+    kzg_proofs: ProgressiveList[KZGProof]
     # [Modified in Gloas:EIP7732]
     # Removed `header`
 ```
@@ -157,7 +157,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 def verify_data_column_sidecar_kzg_proofs(
     sidecar: DataColumnSidecar,
     # [New in Gloas:EIP7732]
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    kzg_commitments: ProgressiveList[KZGCommitment],
 ) -> bool:
     """
     Verify if the KZG proofs are correct.
@@ -181,7 +181,7 @@ def verify_data_column_sidecar_kzg_proofs(
 def verify_data_column_sidecar(
     sidecar: DataColumnSidecar,
     # [New in Gloas:EIP7732]
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    kzg_commitments: ProgressiveList[KZGCommitment],
 ) -> bool:
     """
     Verify if the data column sidecar is valid.
@@ -302,7 +302,8 @@ This topic is used to propagate execution payload messages as
 The following validations MUST pass before forwarding the
 `signed_execution_payload_envelope` on the network, assuming the alias
 `envelope = signed_execution_payload_envelope.message`,
-`payload = envelope.payload`:
+`payload = envelope.payload`,
+`execution_requests = envelope.execution_requests`:
 
 - _[IGNORE]_ The envelope's block root `envelope.beacon_block_root` has been
   seen (via gossip or non-gossip sources) (a client MAY queue payload for

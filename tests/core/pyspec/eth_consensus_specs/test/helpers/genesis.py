@@ -38,7 +38,7 @@ def build_mock_builder(spec, i: int, balance: int):
 
 def build_mock_validator(spec, i: int, balance: int):
     active_pubkey = pubkeys[i]
-    withdrawal_pubkey = pubkeys[-1 - i]
+    withdrawal_pubkey = pubkeys[((32 * 256) - 1 - i) % len(pubkeys)]
     if is_post_electra(spec):
         if balance > spec.MIN_ACTIVATION_BALANCE:
             # use compounding withdrawal credentials if the balance is higher than MIN_ACTIVATION_BALANCE
@@ -214,9 +214,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         builder_balance = 2 * spec.MIN_DEPOSIT_AMOUNT
         state.builders = [build_mock_builder(spec, i, builder_balance) for i in range(8)]
         state.execution_payload_availability = [0b1 for _ in range(spec.SLOTS_PER_HISTORICAL_ROOT)]
-        state.payload_expected_withdrawals = spec.List[
-            spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
-        ]()
+        state.payload_expected_withdrawals = spec.ProgressiveList[spec.Withdrawal]()
         state.builder_pending_payments = [
             spec.BuilderPendingPayment() for _ in range(2 * spec.SLOTS_PER_EPOCH)
         ]

@@ -466,7 +466,8 @@ def _build_random_signed_bid(spec, state, block, rng):
         slot=block.slot,
         value=value,
         execution_payment=spec.Gwei(0),
-        blob_kzg_commitments=list(blob_kzg_commitments),
+        blob_kzg_commitments=spec.ProgressiveList[spec.KZGCommitment](blob_kzg_commitments),
+        execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
     )
 
     if use_real_builder:

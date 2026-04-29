@@ -82,7 +82,9 @@ def upgrade_lc_bootstrap_to_gloas(pre: electra.LightClientBootstrap) -> LightCli
     return LightClientBootstrap(
         header=upgrade_lc_header_to_gloas(pre.header),
         current_sync_committee=pre.current_sync_committee,
-        current_sync_committee_branch=pre.current_sync_committee_branch,
+        current_sync_committee_branch=normalize_merkle_branch(
+            pre.current_sync_committee_branch, CURRENT_SYNC_COMMITTEE_GINDEX_GLOAS
+        ),
     )
 ```
 
@@ -91,9 +93,11 @@ def upgrade_lc_update_to_gloas(pre: electra.LightClientUpdate) -> LightClientUpd
     return LightClientUpdate(
         attested_header=upgrade_lc_header_to_gloas(pre.attested_header),
         next_sync_committee=pre.next_sync_committee,
-        next_sync_committee_branch=pre.next_sync_committee_branch,
+        next_sync_committee_branch=normalize_merkle_branch(
+            pre.next_sync_committee_branch, NEXT_SYNC_COMMITTEE_GINDEX_GLOAS
+        ),
         finalized_header=upgrade_lc_header_to_gloas(pre.finalized_header),
-        finality_branch=pre.finality_branch,
+        finality_branch=normalize_merkle_branch(pre.finality_branch, FINALIZED_ROOT_GINDEX_GLOAS),
         sync_aggregate=pre.sync_aggregate,
         signature_slot=pre.signature_slot,
     )
@@ -106,7 +110,7 @@ def upgrade_lc_finality_update_to_gloas(
     return LightClientFinalityUpdate(
         attested_header=upgrade_lc_header_to_gloas(pre.attested_header),
         finalized_header=upgrade_lc_header_to_gloas(pre.finalized_header),
-        finality_branch=pre.finality_branch,
+        finality_branch=normalize_merkle_branch(pre.finality_branch, FINALIZED_ROOT_GINDEX_GLOAS),
         sync_aggregate=pre.sync_aggregate,
         signature_slot=pre.signature_slot,
     )

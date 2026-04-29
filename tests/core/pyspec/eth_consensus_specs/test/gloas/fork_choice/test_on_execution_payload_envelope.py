@@ -317,7 +317,7 @@ def test_on_execution_payload_envelope__wrong_execution_requests_root(spec, stat
 
     # Build envelope with non-empty requests but bid commits to empty requests
     non_empty_requests = spec.ExecutionRequests(
-        deposits=spec.List[spec.DepositRequest, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD](
+        deposits=spec.ProgressiveList[spec.DepositRequest](
             [
                 spec.DepositRequest(
                     pubkey=spec.BLSPubkey(b"\x01" * 48),
@@ -328,10 +328,8 @@ def test_on_execution_payload_envelope__wrong_execution_requests_root(spec, stat
                 )
             ]
         ),
-        withdrawals=spec.List[spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD](),
-        consolidations=spec.List[
-            spec.ConsolidationRequest, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
-        ](),
+        withdrawals=spec.ProgressiveList[spec.WithdrawalRequest](),
+        consolidations=spec.ProgressiveList[spec.ConsolidationRequest](),
     )
 
     envelope = _build_invalid_envelope(
@@ -371,9 +369,7 @@ def test_on_execution_payload_envelope__wrong_withdrawals(spec, state):
         state,
         block_root,
         signed_block,
-        withdrawals=spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](
-            [wrong_withdrawal]
-        ),
+        withdrawals=spec.ProgressiveList[spec.Withdrawal]([wrong_withdrawal]),
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
@@ -395,9 +391,9 @@ def test_on_execution_payload_envelope__missing_expected_withdrawal(spec, state)
     expected_withdrawal = spec.Withdrawal(
         index=0, validator_index=0, address=b"\x22" * 20, amount=spec.Gwei(1)
     )
-    state.payload_expected_withdrawals = spec.List[
-        spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
-    ]([expected_withdrawal])
+    state.payload_expected_withdrawals = spec.ProgressiveList[spec.Withdrawal](
+        [expected_withdrawal]
+    )
 
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -418,7 +414,7 @@ def test_on_execution_payload_envelope__missing_expected_withdrawal(spec, state)
         state,
         block_root,
         signed_block,
-        withdrawals=spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](),
+        withdrawals=spec.ProgressiveList[spec.Withdrawal](),
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
