@@ -84,24 +84,17 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 
 #### `notify_forkchoice_updated`
 
-Gloas affects computation of `finalized_block_hash` and `safe_block_hash` that
-consensus layer client passes to the call of this function. Other than that,
-`notify_forkchoice_updated` and its invocation inherit all the prior semantics.
-
-Starting with Gloas `finalized_block_hash` and `safe_block_hash` values **MUST**
-be computed as the following. Let:
-
-- `finalized_block = store.blocks[store.finalized_checkpoint.root]`,
-- `finalized_block_bid = finalized_block.body.signed_execution_payload_bid.message`.
-
-Then:
+In Gloas, `finalized_block_hash` and `safe_block_hash` values **MUST** be
+computed as the following. All other semantics of `notify_forkchoice_updated`
+and its invocation are inherited from prior forks.
 
 - `finalized_block_hash = finalized_block_bid.parent_block_hash`,
 - `safe_block_hash = get_safe_execution_block_hash(store)`.
 
-*Note:* Gloas modification of the `safe_block_hash` computation is handled by
-extending
-[`get_safe_execution_block_hash(store: Store)`](../../fork_choice/safe-block.md#get_safe_execution_block_hash).
+Where:
+
+- `finalized_block = store.blocks[store.finalized_checkpoint.root]`,
+- `finalized_block_bid = finalized_block.body.signed_execution_payload_bid.message`.
 
 ## Helpers
 
