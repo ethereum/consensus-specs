@@ -91,12 +91,16 @@ consensus layer client passes to the call of this function. Other than that,
 Starting with Gloas `finalized_block_hash` value **MUST** be computed as the
 following. Let:
 
-- `finalized_block = store.blocks[store.finalized_checkpoint.root]`
-- `finalized_block_bid = finalized_block.body.signed_execution_payload_bid.message`
+- `finalized_block = store.blocks[store.finalized_checkpoint.root]`,
+- `finalized_block_bid = finalized_block.body.signed_execution_payload_bid.message`.
 
-Then `finalized_block_hash = finalized_block_bid.parent_block_hash`.
+Then:
 
-*Note:* The post-Gloas `safe_block_hash` computation is handled by extending
+- `finalized_block_hash = finalized_block_bid.parent_block_hash`,
+- `safe_block_hash = get_safe_execution_block_hash(store)`.
+
+*Note:* Gloas modification of the `safe_block_hash` computation is handled by
+extending
 [`get_safe_execution_block_hash(store: Store)`](../../fork_choice/safe-block.md#get_safe_execution_block_hash).
 
 ## Helpers
