@@ -9,6 +9,7 @@ class GloasSpecBuilder(BaseSpecBuilder):
     def imports(cls, preset_name: str):
         return f"""
 from eth_consensus_specs.fulu import {preset_name} as fulu
+from eth_consensus_specs.utils.ssz.ssz_typing import Union
 """
 
     @classmethod

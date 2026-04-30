@@ -163,11 +163,11 @@ class Store(object):
     # [New in Gloas:EIP7732]
     payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
-    payload_timeliness_vote: Dict[Root, Vector[Optional[boolean], PTC_SIZE]] = field(
+    payload_timeliness_vote: Dict[Root, Vector[Union[None, boolean], PTC_SIZE]] = field(
         default_factory=dict
     )
     # [New in Gloas:EIP7732]
-    payload_data_availability_vote: Dict[Root, Vector[Optional[boolean], PTC_SIZE]] = field(
+    payload_data_availability_vote: Dict[Root, Vector[Union[None, boolean], PTC_SIZE]] = field(
         default_factory=dict
     )
 ```

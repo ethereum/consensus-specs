@@ -303,6 +303,7 @@ ignored_dependencies = [
     "field",
     "floorlog2",
     "List",
+    "None",
     "Optional",
     "ProgressiveBitlist",
     "ProgressiveList",
@@ -315,6 +316,7 @@ ignored_dependencies = [
     "uint32",
     "uint64",
     "uint8",
+    "Union",
     "Vector",
 ]
 
