@@ -88,8 +88,8 @@ Gloas affects computation of `finalized_block_hash` and `safe_block_hash` that
 consensus layer client passes to the call of this function. Other than that,
 `notify_forkchoice_updated` and its invocation inherit all the prior semantics.
 
-Starting with Gloas `finalized_block_hash` value **MUST** be computed as the
-following. Let:
+Starting with Gloas `finalized_block_hash` and `safe_block_hash` values **MUST**
+be computed as the following. Let:
 
 - `finalized_block = store.blocks[store.finalized_checkpoint.root]`,
 - `finalized_block_bid = finalized_block.body.signed_execution_payload_bid.message`.
