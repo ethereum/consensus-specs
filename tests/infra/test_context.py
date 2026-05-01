@@ -306,28 +306,52 @@ class TestWithCustomStateDecorator:
         """Test that pyspec context re-exports the infra decorator."""
         assert exported_with_custom_state is with_custom_state
 
+    def test_prepare_state_creates_genesis_from_input_functions(self, monkeypatch):
+        spec = FakeSpec()
+        phases = {"phase0": spec}
+        prepared_state = FakeState(object())
+        calls = {}
+
+        def balances_fn(input_spec):
+            calls["balances_spec"] = input_spec
+            return [32, 64]
+
+        def threshold_fn(input_spec):
+            calls["threshold_spec"] = input_spec
+            return 32
+
+        def create_genesis_state(*, spec, validator_balances, activation_threshold):
+            calls["genesis_args"] = (spec, validator_balances, activation_threshold)
+            return prepared_state
+
+        monkeypatch.setattr(infra_context, "create_genesis_state", create_genesis_state)
+
+        state = infra_context._prepare_state(balances_fn, threshold_fn, spec, phases)
+
+        assert state is prepared_state
+        assert calls["balances_spec"] is spec
+        assert calls["threshold_spec"] is spec
+        assert calls["genesis_args"] == (spec, [32, 64], 32)
+
     def test_with_custom_state_injects_state_and_preserves_call_arguments(self, monkeypatch):
         spec = FakeSpec()
         phases = {"phase0": spec}
         prepared_backing = object()
         calls = {}
 
-        def balances_fn(_spec):
-            return [1]
+        def balances_fn(input_spec):
+            calls["balances_spec"] = input_spec
+            return [1, 2]
 
-        def threshold_fn(_spec):
+        def threshold_fn(input_spec):
+            calls["threshold_spec"] = input_spec
             return 1
 
-        def prepare_state(input_balances_fn, input_threshold_fn, input_spec, input_phases):
-            calls["prepare_args"] = (
-                input_balances_fn,
-                input_threshold_fn,
-                input_spec,
-                input_phases,
-            )
+        def create_genesis_state(*, spec, validator_balances, activation_threshold):
+            calls["genesis_args"] = (spec, validator_balances, activation_threshold)
             return FakeState(prepared_backing)
 
-        monkeypatch.setattr(infra_context, "_prepare_state", prepare_state)
+        monkeypatch.setattr(infra_context, "create_genesis_state", create_genesis_state)
 
         @with_custom_state(balances_fn=balances_fn, threshold_fn=threshold_fn)
         def test_case(first_arg, *, spec, phases, state, extra_kwarg):
@@ -340,7 +364,9 @@ class TestWithCustomStateDecorator:
             extra_kwarg="extra",
         )
 
-        assert calls["prepare_args"] == (balances_fn, threshold_fn, spec, phases)
+        assert calls["balances_spec"] is spec
+        assert calls["threshold_spec"] is spec
+        assert calls["genesis_args"] == (spec, [1, 2], 1)
         assert first_arg == "first"
         assert output_spec is spec
         assert output_phases is phases
@@ -350,21 +376,25 @@ class TestWithCustomStateDecorator:
     def test_with_custom_state_caches_backing_and_returns_fresh_views(self, monkeypatch):
         spec = FakeSpec()
         phases = {"phase0": spec}
-        prepare_calls = []
+        balances_calls = []
+        threshold_calls = []
+        genesis_calls = []
         received_args = {}
 
-        def balances_fn(_spec):
+        def balances_fn(input_spec):
+            balances_calls.append(input_spec)
             return [1]
 
-        def threshold_fn(_spec):
+        def threshold_fn(input_spec):
+            threshold_calls.append(input_spec)
             return 1
 
-        def prepare_state(input_balances_fn, input_threshold_fn, input_spec, input_phases):
+        def create_genesis_state(*, spec, validator_balances, activation_threshold):
             backing = object()
-            prepare_calls.append((input_balances_fn, input_threshold_fn, input_spec, input_phases))
+            genesis_calls.append((spec, validator_balances, activation_threshold))
             return FakeState(backing)
 
-        monkeypatch.setattr(infra_context, "_prepare_state", prepare_state)
+        monkeypatch.setattr(infra_context, "create_genesis_state", create_genesis_state)
 
         @with_custom_state(balances_fn=balances_fn, threshold_fn=threshold_fn)
         def test_case(*, spec, phases, state):
@@ -376,7 +406,9 @@ class TestWithCustomStateDecorator:
         first_state = test_case(spec=spec, phases=phases)
         second_state = test_case(spec=spec, phases=phases)
 
-        assert prepare_calls == [(balances_fn, threshold_fn, spec, phases)]
+        assert balances_calls == [spec]
+        assert threshold_calls == [spec]
+        assert genesis_calls == [(spec, [1], 1)]
         assert first_state is not second_state
         assert first_state.get_backing() is second_state.get_backing()
         assert received_args["spec"] is spec
@@ -385,25 +417,25 @@ class TestWithCustomStateDecorator:
 
     def test_with_custom_state_cache_key_includes_spec_and_input_functions(self, monkeypatch):
         phases = {}
-        prepare_calls = []
+        genesis_calls = []
 
         def balances_fn(_spec):
             return [1]
 
         def other_balances_fn(_spec):
-            return [1]
+            return [2]
 
         def threshold_fn(_spec):
-            return 1
+            return 10
 
         def other_threshold_fn(_spec):
-            return 1
+            return 20
 
-        def prepare_state(input_balances_fn, input_threshold_fn, input_spec, input_phases):
-            prepare_calls.append((input_balances_fn, input_threshold_fn, input_spec))
+        def create_genesis_state(*, spec, validator_balances, activation_threshold):
+            genesis_calls.append((spec, validator_balances, activation_threshold))
             return FakeState(object())
 
-        monkeypatch.setattr(infra_context, "_prepare_state", prepare_state)
+        monkeypatch.setattr(infra_context, "create_genesis_state", create_genesis_state)
 
         @with_custom_state(balances_fn=balances_fn, threshold_fn=threshold_fn)
         def test_case(*, spec, phases, state):
@@ -431,11 +463,11 @@ class TestWithCustomStateDecorator:
         test_case_other_balances(spec=base_spec, phases=phases)
         test_case_other_threshold(spec=base_spec, phases=phases)
 
-        assert prepare_calls == [
-            (balances_fn, threshold_fn, base_spec),
-            (balances_fn, threshold_fn, other_fork_spec),
-            (balances_fn, threshold_fn, other_config_spec),
-            (balances_fn, threshold_fn, other_file_spec),
-            (other_balances_fn, threshold_fn, base_spec),
-            (balances_fn, other_threshold_fn, base_spec),
+        assert genesis_calls == [
+            (base_spec, [1], 10),
+            (other_fork_spec, [1], 10),
+            (other_config_spec, [1], 10),
+            (other_file_spec, [1], 10),
+            (base_spec, [2], 10),
+            (base_spec, [1], 20),
         ]
