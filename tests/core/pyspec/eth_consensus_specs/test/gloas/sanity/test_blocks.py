@@ -357,6 +357,7 @@ def test_invalid_payload_attestation_invalid_signature(spec, state):
 
     yield "blocks", [signed_block]
     yield "post", None
+    
 def test_builder_payment_after_missed_epochs(spec, state):
     """
     Test that a builder is correctly charged when their canonical payload
