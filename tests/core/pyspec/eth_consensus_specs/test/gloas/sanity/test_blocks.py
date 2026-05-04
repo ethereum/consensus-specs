@@ -261,7 +261,7 @@ def test_missed_payload_recovery_resumes_without_remaining_withdrawals(spec, sta
 
     # Once recovery is complete, the stale Block 1 withdrawals must no longer be accepted.
     assert not _attempt_payload_with_withdrawals(spec, state, satisfying)
-    
+
 
 @with_gloas_and_later
 @spec_state_test
