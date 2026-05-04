@@ -95,7 +95,7 @@ BLS12-381 signature) is not verified by the deposit contract.
 ## Solidity code
 
 The deposit contract source code, written in Solidity, is available
-[here](../../solidity_deposit_contract/deposit_contract.sol).
+[here](https://github.com/ethereum/solidity-deposit-contract/blob/master/deposit_contract.sol).
 
 *Note*: To save on gas, the deposit contract uses a progressive Merkle root
 calculation algorithm that requires only O(log(n)) storage. See

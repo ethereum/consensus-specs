@@ -18,6 +18,14 @@ from eth_consensus_specs.bellatrix import {preset_name} as bellatrix
         }
 
     @classmethod
+    def deprecate_containers(cls) -> set[str]:
+        return set(
+            [
+                "HistoricalBatch",
+            ]
+        )
+
+    @classmethod
     def deprecate_functions(cls) -> set[str]:
         return set(
             [
@@ -26,6 +34,7 @@ from eth_consensus_specs.bellatrix import {preset_name} as bellatrix
                 "is_merge_transition_block",
                 "is_merge_transition_complete",
                 "process_historical_roots_update",
+                "upgrade_to_bellatrix",
                 "validate_merge_block",
             ]
         )

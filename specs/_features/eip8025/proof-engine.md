@@ -8,10 +8,10 @@
 
 - [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
-- [Types](#types)
 - [Proof engine](#proof-engine)
   - [New `verify_execution_proof`](#new-verify_execution_proof)
-  - [New `verify_new_payload_request_header`](#new-verify_new_payload_request_header)
+  - [New `notify_new_payload`](#new-notify_new_payload)
+  - [New `notify_forkchoice_updated`](#new-notify_forkchoice_updated)
   - [New `ProofAttributes`](#new-proofattributes)
   - [New `request_proofs`](#new-request_proofs)
 
@@ -22,12 +22,6 @@
 This document contains the Proof Engine specification. The Proof Engine enables
 stateless validation of execution payloads through execution proofs.
 
-## Types
-
-| Name         | SSZ equivalent | Description                              |
-| ------------ | -------------- | ---------------------------------------- |
-| `ProofGenId` | `Bytes8`       | Identifier for tracking proof generation |
-
 ## Proof engine
 
 The implementation-dependent `ProofEngine` protocol encapsulates the proof
@@ -37,8 +31,10 @@ sub-system logic via:
   proofs
 - a verification function `self.verify_execution_proof` to verify individual
   proofs
-- a verification function `self.verify_new_payload_request_header` to verify new
-  payload request headers using stored proofs
+- a notification function `self.notify_new_payload` to notify the proof engine
+  of the new payload
+- a notification function `self.notify_forkchoice_updated` to notify the proof
+  engine of forkchoice state changes
 - a generation function `self.request_proofs` to initiate asynchronous proof
   generation
 
@@ -60,16 +56,31 @@ def verify_execution_proof(
     ...
 ```
 
-### New `verify_new_payload_request_header`
+### New `notify_new_payload`
 
 ```python
-def verify_new_payload_request_header(
+def notify_new_payload(
     self: ProofEngine,
-    new_payload_request_header: NewPayloadRequestHeader,
-) -> bool:
+    new_payload_request: NewPayloadRequest,
+) -> None:
     """
-    Verify the corresponding new payload request execution is valid.
-    Return ``True`` if proof requirements are satisfied.
+    Notify the proof engine of the new payload.
+    """
+    ...
+```
+
+### New `notify_forkchoice_updated`
+
+```python
+def notify_forkchoice_updated(
+    self: ProofEngine,
+    head_block_hash: Hash32,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+) -> None:
+    """
+    Notify the proof engine of a forkchoice state update. Allows the proof
+    engine to track the canonical chain for retention and pruning.
     """
     ...
 ```
@@ -89,13 +100,11 @@ def request_proofs(
     self: ProofEngine,
     new_payload_request: NewPayloadRequest,
     proof_attributes: ProofAttributes,
-) -> ProofGenId:
+) -> Root:
     """
-    Request proof generation for a new payload request with specified proof attributes.
-    Returns a ``ProofGenId`` to track the generation request.
-
-    Generated proofs are delivered asynchronously via the beacon API endpoint
-    ``POST /eth/v1/prover/execution_proofs``.
+    Request proof generation for a new payload request with specified proof
+    attributes. Returns ``new_payload_request.hash_tree_root()`` to track the
+    generation request.
     """
     ...
 ```

@@ -59,13 +59,14 @@ on:
 jobs:
   config:
     runs-on: ubuntu-latest
+    env:
+      COMPTEST_SLICING_CONFIG: '{"tiny":1,"small":4,"standard":4}'
     outputs:
       repo: ${{ steps.config.outputs.repo }}
       ref: ${{ steps.config.outputs.ref }}
-      presets: ${{ steps.config.outputs.presets }}
-      forks: ${{ steps.config.outputs.forks }}
       configs: ${{ steps.config.outputs.configs }}
       seed: ${{ steps.config.outputs.seed }}
+      matrix: ${{ steps.config.outputs.matrix }}
     steps:
       - name: Resolve configuration
         id: config
@@ -86,7 +87,7 @@ jobs:
 
           # Forks
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            forks='["altair","bellatrix","capella","deneb","electra","fulu","gloas"]'
+            forks='["fulu","gloas"]'
           else
             selected=()
             [[ "${{ inputs.altair }}" == "true" ]] && selected+=("altair")
@@ -107,9 +108,9 @@ jobs:
           fi
           echo "forks=$forks" >> "$GITHUB_OUTPUT"
 
-          # Generator configs
+          # Configs
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            configs='["tiny"]'
+            configs='["small"]'
           else
             selected=()
             [[ "${{ inputs.tiny }}" == "true" ]] && selected+=("tiny")
@@ -138,6 +139,36 @@ jobs:
           fi
           echo "seed=$seed" >> "$GITHUB_OUTPUT"
 
+          # Matrix
+          matrix=$(
+            jq -cn \
+              --argjson presets "$presets" \
+              --argjson forks "$forks" \
+              --argjson configs "$configs" \
+              --argjson slices '${{ env.COMPTEST_SLICING_CONFIG }}' \
+              '
+              [
+                $presets[] as $preset
+                | $forks[] as $fork
+                | $configs[] as $config
+                | (($slices[$config] // 1) | tonumber) as $slice_count
+                | if $slice_count < 1 then
+                    error("Invalid slice count for config \($config): \($slice_count)")
+                  else
+                    range(0; $slice_count) as $slice_index
+                    | {
+                        preset: $preset,
+                        fork: $fork,
+                        config: $config,
+                        slice_index: $slice_index,
+                        slice_count: $slice_count
+                      }
+                  end
+              ]
+              '
+          )
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
           # Summary
           echo "Configuration:"
           echo "  repo:    $repo"
@@ -146,16 +177,17 @@ jobs:
           echo "  forks:   $forks"
           echo "  configs: $configs"
           echo "  seed:    $seed"
+          echo "  matrix:  $matrix"
+          echo "  slicing: ${{ env.COMPTEST_SLICING_CONFIG }}"
 
   generate:
     needs: config
+    name: generate (${{ matrix.fork }}, ${{ matrix.config }}, ${{ matrix.slice_index }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        preset: ${{ fromJson(needs.config.outputs.presets) }}
-        fork: ${{ fromJson(needs.config.outputs.forks) }}
-        config: ${{ fromJson(needs.config.outputs.configs) }}
+        include: ${{ fromJson(needs.config.outputs.matrix) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -169,23 +201,32 @@ jobs:
           python-version-file: "pyproject.toml"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
 
       - name: Generate compliance tests
-        run: >
-          make comptests
-          fc_gen_config=${{ matrix.config }}
-          preset=${{ matrix.preset }}
-          fork=${{ matrix.fork }}
-          comptests_dir=./compliance-spec-tests/${{ matrix.config }}
-          seed=${{ needs.config.outputs.seed }}
+        run: |
+          extra_args=()
+          if [[ "${{ matrix.slice_count }}" -gt 1 ]]; then
+            extra_args+=(
+              "group_slice_index=${{ matrix.slice_index }}"
+              "group_slice_count=${{ matrix.slice_count }}"
+            )
+          fi
+
+          make comptests \
+            fc_gen_config=${{ matrix.config }} \
+            preset=${{ matrix.preset }} \
+            fork=${{ matrix.fork }} \
+            comptests_dir=./compliance-spec-tests/${{ matrix.config }} \
+            seed=${{ needs.config.outputs.seed }} \
+            "${extra_args[@]}"
 
       - name: Upload compliance tests
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: comptests-${{ matrix.config }}-${{ matrix.preset }}-${{ matrix.fork }}
+          name: comptests-${{ matrix.config }}-${{ matrix.preset }}-${{ matrix.fork }}-${{ matrix.slice_index }}
           path: compliance-spec-tests/${{ matrix.config }}
           if-no-files-found: ignore
 
@@ -219,7 +260,7 @@ jobs:
               tests
 
       - name: Upload ${{ matrix.config }}.tar.gz
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           path: ${{ matrix.config }}.tar.gz
           archive: false

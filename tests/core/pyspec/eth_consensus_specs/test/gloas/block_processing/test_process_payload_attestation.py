@@ -11,6 +11,7 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.gloas.state import initialize_ptc_window
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
 from eth_consensus_specs.utils.ssz.ssz_typing import Bitvector
@@ -384,7 +385,7 @@ def test_process_payload_attestation_sampling_not_capped(spec, state):
     for validator in state.validators:
         validator.effective_balance = low_balance
     # Direct balance mutations bypass epoch processing, so refresh the cached current-epoch PTC.
-    state.ptc_window = spec.initialize_ptc_window(state)
+    state.ptc_window = initialize_ptc_window(spec, state)
 
     chosen_slot = None
     chosen_index = None

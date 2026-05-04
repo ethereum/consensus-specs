@@ -9,6 +9,7 @@
 - [Constants](#constants)
 - [Helpers](#helpers)
   - [New `ForkChoiceNode`](#new-forkchoicenode)
+  - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [Modified `LatestMessage`](#modified-latestmessage)
   - [Modified `update_latest_messages`](#modified-update_latest_messages)
   - [Modified `Store`](#modified-store)
@@ -84,6 +85,20 @@ class ForkChoiceNode(Container):
     payload_status: PayloadStatus  # One of PAYLOAD_STATUS_* values
 ```
 
+### Modified `PayloadAttributes`
+
+```python
+@dataclass
+class PayloadAttributes(object):
+    timestamp: uint64
+    prev_randao: Bytes32
+    suggested_fee_recipient: ExecutionAddress
+    withdrawals: Sequence[Withdrawal]
+    parent_beacon_block_root: Root
+    # [New in Gloas:EIP7843]
+    slot_number: uint64
+```
+
 ### Modified `LatestMessage`
 
 *Note*: The class is modified to keep track of the slot instead of the epoch.
@@ -148,9 +163,11 @@ class Store(object):
     # [New in Gloas:EIP7732]
     payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
-    payload_timeliness_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
+    payload_timeliness_vote: Dict[Root, Vector[Optional[boolean], PTC_SIZE]] = field(
+        default_factory=dict
+    )
     # [New in Gloas:EIP7732]
-    payload_data_availability_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
+    payload_data_availability_vote: Dict[Root, Vector[Optional[boolean], PTC_SIZE]] = field(
         default_factory=dict
     )
 ```
@@ -183,13 +200,9 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         # [New in Gloas:EIP7732]
         payloads={},
         # [New in Gloas:EIP7732]
-        payload_timeliness_vote={
-            anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
-        },
+        payload_timeliness_vote={},
         # [New in Gloas:EIP7732]
-        payload_data_availability_vote={
-            anchor_root: Vector[boolean, PTC_SIZE](True for _ in range(PTC_SIZE))
-        },
+        payload_data_availability_vote={},
     )
 ```
 
@@ -247,7 +260,8 @@ def is_payload_timely(store: Store, root: Root) -> bool:
     if not is_payload_verified(store, root):
         return False
 
-    return sum(store.payload_timeliness_vote[root]) > PAYLOAD_TIMELY_THRESHOLD
+    votes = store.payload_timeliness_vote[root]
+    return sum(vote is True for vote in votes) > PAYLOAD_TIMELY_THRESHOLD
 ```
 
 ### New `is_payload_data_available`
@@ -266,7 +280,8 @@ def is_payload_data_available(store: Store, root: Root) -> bool:
     if not is_payload_verified(store, root):
         return False
 
-    return sum(store.payload_data_availability_vote[root]) > DATA_AVAILABILITY_TIMELY_THRESHOLD
+    votes = store.payload_data_availability_vote[root]
+    return sum(vote is True for vote in votes) > DATA_AVAILABILITY_TIMELY_THRESHOLD
 ```
 
 ### New `get_parent_payload_status`
@@ -338,7 +353,8 @@ def is_supporting_vote(store: Store, node: ForkChoiceNode, message: LatestMessag
     if node.root == message.root:
         if node.payload_status == PAYLOAD_STATUS_PENDING:
             return True
-        if message.slot <= block.slot:
+        assert message.slot >= block.slot
+        if message.slot == block.slot:
             return False
         if message.payload_present:
             return node.payload_status == PAYLOAD_STATUS_FULL
@@ -771,7 +787,7 @@ def verify_execution_payload_envelope(
     header = copy(state.latest_block_header)
     header.state_root = hash_tree_root(state)
     assert envelope.beacon_block_root == hash_tree_root(header)
-    assert envelope.slot == state.slot
+    assert envelope.parent_beacon_block_root == state.latest_block_header.parent_root
 
     # Verify consistency with the committed bid
     bid = state.latest_execution_payload_bid
@@ -782,6 +798,7 @@ def verify_execution_payload_envelope(
     assert hash_tree_root(envelope.execution_requests) == bid.execution_requests_root
 
     # Verify the execution payload is valid
+    assert payload.slot_number == state.slot
     assert payload.parent_hash == state.latest_block_hash
     assert payload.timestamp == compute_time_at_slot(state, state.slot)
     assert hash_tree_root(payload.withdrawals) == hash_tree_root(state.payload_expected_withdrawals)
@@ -792,7 +809,7 @@ def verify_execution_payload_envelope(
                 kzg_commitment_to_versioned_hash(commitment)
                 for commitment in bid.blob_kzg_commitments
             ],
-            parent_beacon_block_root=state.latest_block_header.parent_root,
+            parent_beacon_block_root=envelope.parent_beacon_block_root,
             execution_requests=envelope.execution_requests,
         )
     )
@@ -848,8 +865,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
     # Add a new PTC voting for this block to the store
-    store.payload_timeliness_vote[block_root] = [False] * PTC_SIZE
-    store.payload_data_availability_vote[block_root] = [False] * PTC_SIZE
+    store.payload_timeliness_vote[block_root] = [None] * PTC_SIZE
+    store.payload_data_availability_vote[block_root] = [None] * PTC_SIZE
 
     # Notify the store about the payload_attestations in the block
     notify_ptc_messages(store, state, block.body.payload_attestations)

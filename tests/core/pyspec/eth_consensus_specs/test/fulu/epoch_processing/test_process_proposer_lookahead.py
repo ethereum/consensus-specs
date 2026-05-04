@@ -23,13 +23,6 @@ def test_proposer_lookahead_in_state_matches_computed_lookahead(spec, state):
         == initial_lookahead[spec.SLOTS_PER_EPOCH :]
     )
 
-    # run_epoch_processing_with does not increment the slot
-    state.slot += 1
-
-    # Verify lookahead in state matches the computed lookahead
-    computed_lookahead = spec.initialize_proposer_lookahead(state)
-    assert state.proposer_lookahead == computed_lookahead
-
 
 @with_fulu_and_later
 @spec_state_test

@@ -58,6 +58,7 @@ RUNNERS: dict[str, RunnerConfig] = {
     "sanity": {
         "handler_name_map": {
             "test_deposit_transition": "blocks",
+            "test_epoch_boundary": "blocks",
             "test_lookahead": "blocks",
             "test_lookahead_slots": "slots",
         },
@@ -337,6 +338,11 @@ class YieldGeneratorPlugin:
 
     def _dump_phase(self, manifest: Manifest, phase_result: list, fork_name: SpecForkName) -> None:
         """Write a single phase's test vector to disk."""
+        # Skip output whose resolved fork isn't in the selected --fork set.
+        # Fork/transition tests run on the pre-fork but emit under the post-fork;
+        # this keeps vectors under the directory matching the selected fork.
+        if fork_name not in context.DEFAULT_PYTEST_FORKS:
+            return
         manifest = manifest.with_defaults(Manifest(fork_name=fork_name))
         assert manifest.is_complete(), (
             f"Manifest must be complete to generate test vector for {manifest}"

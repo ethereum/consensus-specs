@@ -112,6 +112,7 @@ help-verbose:
 	@echo ""
 	@echo "  Generates compliance tests for fork choice. These tests verify that"
 	@echo "  implementations correctly handle fork choice scenarios."
+	@echo "  Uses pytest collection and xdist parallelism."
 	@echo ""
 	@echo "  Parameters:"
 	@echo "    fc_gen_config=<config> Configuration size (tiny, small, standard; default: tiny)"
@@ -120,12 +121,16 @@ help-verbose:
 	@echo "    comptests_dir=<dir>    Output directory for generated compliance tests"
 	@echo "    threads=N              Number of threads to use"
 	@echo "    seed=N                 Override test seeds (fuzzing mode)"
+	@echo "    group_slice_index=N    0-based shard index for deterministic test-group slicing"
+	@echo "    group_slice_count=N    Number of deterministic test-group slices"
+	@echo "    k=<name>               Run only generated cases matching this pytest pattern"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make comptests"
 	@echo "    make comptests fc_gen_config=standard"
 	@echo "    make comptests comptests_dir=./compliance-spec-tests/tests"
 	@echo "    make comptests fc_gen_config=standard fork=deneb preset=mainnet threads=8"
+	@echo "    make comptests fc_gen_config=tiny fork=gloas group_slice_index=0 group_slice_count=4"
 	@echo ""
 	@echo "$(BOLD)DOCUMENTATION$(NORM)"
 	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
@@ -194,7 +199,7 @@ COV_REPORT_DIR = $(PYSPEC_DIR)/.htmlcov
 #
 # Filtering
 test: MAYBE_TEST := $(if $(k),-k "$(k)")
-test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
+test: MAYBE_FORK := $(if $(filter fw,$(component)),,$(if $(fork),--fork=$(fork)))
 test: PRESET := $(if $(filter fw,$(component)),,$(if $(preset),--preset=$(preset),))
 # Disable parallelism when running a specific test. Makes debugging difficult (print doesn't work).
 test: MAYBE_PARALLEL := $(if $(k),,-n logical --dist=worksteal)
@@ -212,7 +217,7 @@ test: COVERAGE_PRESETS := $(if $(preset),$(preset),$(if $(filter true,$(reftests
 test: COV_SCOPE_SINGLE := $(foreach P,$(COVERAGE_PRESETS), --cov=eth_consensus_specs.$(fork).$P)
 test: COV_SCOPE_ALL := $(foreach P,$(COVERAGE_PRESETS),$(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth_consensus_specs.$S.$P))
 test: COV_SCOPE := $(if $(filter true,$(coverage)),$(if $(fork),$(COV_SCOPE_SINGLE),$(COV_SCOPE_ALL)))
-test: COVERAGE := $(if $(filter true,$(coverage)),--coverage $(COV_SCOPE) --cov-report="html:$(COV_REPORT_DIR)" --cov-report="json:$(COV_REPORT_DIR)/coverage.json" --cov-branch --no-cov-on-fail)
+test: COVERAGE := $(if $(filter fw,$(component)),,$(if $(filter true,$(coverage)),--coverage $(COV_SCOPE) --cov-report="html:$(COV_REPORT_DIR)" --cov-report="json:$(COV_REPORT_DIR)/coverage.json" --cov-branch --no-cov-on-fail))
 test: _pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(UV_RUN) pytest \
@@ -263,7 +268,7 @@ serve_docs: _pyspec _copy_docs
 
 LINT_DIFF_BEFORE := .lint_diff_before
 LINT_DIFF_AFTER := .lint_diff_after
-MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md' -not -path '$(CURDIR)/.*')
+MARKDOWN_FILES := $(shell find $(CURDIR) -name '*.md' -not -path '$(CURDIR)/.git/*' -not -path '$(CURDIR)/.venv/*')
 MYPY_PACKAGE_BASE := $(subst /,.,$(PYSPEC_DIR:$(CURDIR)/%=%))
 MYPY_SCOPE := $(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), -p $(MYPY_PACKAGE_BASE).eth_consensus_specs.$S)
 
@@ -297,18 +302,26 @@ COMPTESTS_DIR = $(if $(comptests_dir),$(comptests_dir),$(DEFAULT_COMPTESTS_DIR))
 
 # Generate compliance tests (fork choice).
 comptests: FC_GEN_CONFIG := $(if $(fc_gen_config),$(fc_gen_config),tiny)
-comptests: MAYBE_THREADS := $(if $(threads),--threads=$(threads),--fc-gen-multi-processing)
-comptests: MAYBE_FORKS := $(if $(fork),--forks $(subst ${COMMA}, ,$(fork)))
-comptests: MAYBE_PRESETS := $(if $(preset),--presets $(subst ${COMMA}, ,$(preset)))
+comptests: MAYBE_TEST := $(if $(k),-k "$(k)")
+comptests: MAYBE_PARALLEL := $(if $(filter 1,$(threads)),,$(if $(threads),-n $(threads) --dist=worksteal,-n logical --dist=worksteal))
+comptests: MAYBE_FORKS := $(foreach F,$(subst ${COMMA}, ,$(fork)),--forks $(F))
+comptests: MAYBE_PRESETS := $(foreach P,$(subst ${COMMA}, ,$(preset)),--presets $(P))
 comptests: MAYBE_SEED := $(if $(seed),--fc-gen-seed $(seed))
+comptests: MAYBE_GROUP_SLICE_INDEX := $(if $(group_slice_index),--group-slice-index $(group_slice_index))
+comptests: MAYBE_GROUP_SLICE_COUNT := $(if $(group_slice_count),--group-slice-count $(group_slice_count))
 comptests: _pyspec
-	@$(UV_RUN) python -m tests.generators.compliance_runners.fork_choice.test_gen \
-		--output-dir=$(COMPTESTS_DIR) \
+	@$(UV_RUN) pytest \
+		$(MAYBE_PARALLEL) \
+		--capture=no \
+		$(MAYBE_TEST) \
+		--comptests-output=$(COMPTESTS_DIR) \
 		--fc-gen-config $(FC_GEN_CONFIG) \
-		$(MAYBE_THREADS) \
 		$(MAYBE_FORKS) \
 		$(MAYBE_PRESETS) \
-		$(MAYBE_SEED)
+		$(MAYBE_SEED) \
+		$(MAYBE_GROUP_SLICE_INDEX) \
+		$(MAYBE_GROUP_SLICE_COUNT) \
+		$(CURDIR)/tests/generators/compliance_runners/fork_choice/generate_comptests.py
 
 ###############################################################################
 # Cleaning
