@@ -2,6 +2,9 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
+from eth_consensus_specs.test.gloas.block_processing.test_process_payload_attestation import (
+    prepare_signed_payload_attestation,
+)
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
     build_empty_block_for_next_slot,
@@ -270,6 +273,7 @@ def test_invalid_payload_attestation_wrong_beacon_block_root(spec, state):
     )
     block.body.payload_attestations = [payload_attestation]
 
+
 def test_process_parent_execution_payload__wrong_execution_requests_root(spec, state):
     """
     Test that process_parent_execution_payload rejects a block whose
@@ -360,7 +364,8 @@ def test_invalid_payload_attestation_invalid_signature(spec, state):
 
     yield "blocks", [signed_block]
     yield "post", None
-    
+
+
 def test_builder_payment_after_missed_epochs(spec, state):
     """
     Test that a builder is correctly charged when their canonical payload
