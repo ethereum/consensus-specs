@@ -8,8 +8,8 @@ class ElectraSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth2spec.deneb import {preset_name} as deneb
-from eth2spec.utils.ssz.ssz_impl import ssz_serialize, ssz_deserialize
+from eth_consensus_specs.deneb import {preset_name} as deneb
+from eth_consensus_specs.utils.ssz.ssz_impl import ssz_serialize, ssz_deserialize
 """
 
     @classmethod
@@ -19,6 +19,14 @@ from eth2spec.utils.ssz.ssz_impl import ssz_serialize, ssz_deserialize
             "CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA": "GeneralizedIndex(86)",
             "NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA": "GeneralizedIndex(87)",
         }
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return set(
+            [
+                "get_validator_activation_churn_limit",
+            ]
+        )
 
     @classmethod
     def execution_engine_cls(cls) -> str:

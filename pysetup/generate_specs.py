@@ -7,7 +7,7 @@ for each fork (phase0, altair, bellatrix, capella, deneb, electra, etc.)
 with different presets (minimal, mainnet).
 
 The generated Python modules are written to the output directory and can be
-imported as part of the eth2spec package.
+imported as part of the eth_consensus_specs package.
 
 Usage:
     python pysetup/generate_specs.py [options]
@@ -256,7 +256,7 @@ def main() -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Generate all forks to default location (tests/core/pyspec/eth2spec/)
+  # Generate all forks to default location (tests/core/pyspec/eth_consensus_specs/)
   python pysetup/generate_specs.py --all-forks
 
   # Generate specific fork
@@ -288,7 +288,7 @@ Examples:
         "--out-dir",
         type=Path,
         default=None,
-        help="Output directory (default: tests/core/pyspec/eth2spec/<fork>)",
+        help="Output directory (default: tests/core/pyspec/eth_consensus_specs/<fork>)",
     )
 
     parser.add_argument(
@@ -336,7 +336,7 @@ Examples:
             if args.out_dir:
                 out_dir = args.out_dir
             else:
-                out_dir = Path("tests/core/pyspec/eth2spec") / fork
+                out_dir = Path("tests/core/pyspec/eth_consensus_specs") / fork
 
             generate_fork_specs(
                 fork=fork,

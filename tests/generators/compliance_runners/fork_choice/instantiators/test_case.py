@@ -6,19 +6,25 @@ from typing import Any
 
 from ruamel.yaml import YAML
 
-from eth2spec.gen_helpers.gen_base.gen_typing import TestCase
-from eth2spec.test.context import (
+from eth_consensus_specs.test.context import (
     spec_state_test,
+    spec_test,
     with_altair_and_later,
 )
-from eth2spec.test.helpers.fork_choice import (
+from eth_consensus_specs.test.helpers.fork_choice import (
     get_attestation_file_name,
     get_attester_slashing_file_name,
     get_block_file_name,
     on_tick_and_append_step,
     output_store_checks,
 )
-from eth2spec.utils import bls
+from eth_consensus_specs.utils import bls
+from tests.generators.compliance_runners.gen_base.gen_typing import (
+    TestCase,
+    TestCasePart,
+    TestCaseResult,
+    TestGroup,
+)
 
 from .block_cover import gen_block_cover_test_data
 from .block_tree import gen_block_tree_test_data
@@ -60,6 +66,14 @@ class FCTestDNA:
     mutation_seed: int | None
 
 
+@dataclass(eq=True, frozen=True)
+class MutationGroup:
+    test_name: str
+    solution_index: int
+    test_dna_base: FCTestDNA
+    nr_mutations: int
+
+
 @dataclass(init=False)
 class PlainFCTestCase(TestCase):
     test_dna: FCTestDNA
@@ -74,29 +88,90 @@ class PlainFCTestCase(TestCase):
             handler_name=kwds["handler_name"],
             suite_name=kwds["suite_name"],
             case_name=kwds["case_name"],
-            case_fn=self.mutation_case_fn,
         )
         self.test_dna = test_dna
         self.bls_active = bls_active
         self.debug = debug
 
-    def mutation_case_fn(self):
-        test_kind = self.test_dna.kind
-        phase, preset = self.fork_name, self.preset_name
-        bls_active, debug = self.bls_active, self.debug
-        solution, seed = self.test_dna.solution, self.test_dna.variation_seed
-        mut_seed = self.test_dna.mutation_seed
-        return yield_mutation_test_case(
-            generator_mode=True,
-            phase=phase,
-            preset=preset,
+
+@dataclass(init=False)
+class MutationGroupTestGroup(TestGroup):
+    mutation_group: MutationGroup
+    fork_name: str
+    preset_name: str
+    bls_active: bool
+    debug: bool
+
+    def __init__(self, mutation_group, fork_name, preset_name, bls_active=False, debug=False):
+        test_cases = [
+            PlainFCTestCase(
+                test_dna=test_dna,
+                bls_active=bls_active,
+                debug=debug,
+                fork_name=fork_name,
+                preset_name=preset_name,
+                runner_name=GENERATOR_NAME,
+                handler_name=mutation_group.test_name,
+                suite_name=SUITE_NAME,
+                case_name=case_name,
+            )
+            for case_name, test_dna in enumerate_test_dnas(mutation_group)
+        ]
+        super().__init__(
+            group_name=(
+                f"{preset_name}::{fork_name}::{GENERATOR_NAME}::"
+                f"{mutation_group.test_name}::{mutation_group.solution_index}::"
+                f"{mutation_group.test_dna_base.variation_seed}"
+            ),
+            test_cases=test_cases,
+            group_fn=self.execute_group,
+        )
+        self.mutation_group = mutation_group
+        self.fork_name = fork_name
+        self.preset_name = preset_name
+        self.bls_active = bls_active
+        self.debug = debug
+
+    def execute_group(self) -> Iterable[TestCaseResult]:
+        bls_active = self.bls_active
+        debug = self.debug
+
+        spec, test_data, events = make_test_context(
+            self.mutation_group.test_dna_base,
+            self.fork_name,
+            self.preset_name,
             bls_active=bls_active,
             debug=debug,
-            seed=seed,
-            mut_seed=mut_seed,
-            test_kind=test_kind,
-            solution=solution,
         )
+
+        for test_case in self.test_cases:
+            mut_seed = test_case.test_dna.mutation_seed
+            if mut_seed is None:
+                parts_iter = yield_fork_choice_test_events(
+                    spec, test_data, events, debug, bls_active=bls_active
+                )
+            else:
+                parts_iter = yield_mutated_test_case_parts(
+                    spec, test_data, events, mut_seed, bls_active=bls_active
+                )
+
+            yield collect_test_case_result_from_iterator(test_case, parts_iter)
+
+
+def collect_test_case_result_from_iterator(
+    test_case: TestCase,
+    parts_iter: Iterable[TestCasePart],
+) -> TestCaseResult:
+    meta: dict[str, Any] = {}
+    outputs: list[TestCasePart] = []
+
+    for name, kind, data in parts_iter:
+        if kind == "meta":
+            meta[name] = data
+        else:
+            outputs.append(TestCasePart((name, kind, data)))
+
+    return TestCaseResult(test_case=test_case, meta=meta, case_parts=outputs)
 
 
 def get_test_data(spec, state, test_kind, solution, debug, seed):
@@ -123,26 +198,45 @@ def get_test_data(spec, state, test_kind, solution, debug, seed):
     return test_data
 
 
-@with_altair_and_later
-@spec_state_test
-def yield_mutation_test_case(spec, state, test_kind, solution, debug, seed, mut_seed):
-    test_data = get_test_data(spec, state, test_kind, solution, debug, seed)
-    events = make_events(spec, test_data)
+def make_test_context(
+    test_dna_base: FCTestDNA,
+    fork_name: str,
+    preset_name: str,
+    bls_active: bool = False,
+    debug: bool = False,
+):
+    @with_altair_and_later
+    @spec_state_test
+    def get_spec_test_data_and_events(spec, state):
+        test_kind = test_dna_base.kind
+        solution = test_dna_base.solution
+        seed = test_dna_base.variation_seed
+        test_data = get_test_data(spec, state, test_kind, solution, debug, seed)
+        events = make_events(spec, test_data)
+        yield (spec, test_data, events)
+
+    ((spec, test_data, events),) = get_spec_test_data_and_events(
+        phase=fork_name,
+        preset=preset_name,
+        bls_active=bls_active,
+    )
+
+    return spec, test_data, events
+
+
+@spec_test
+def yield_mutated_test_case_parts(spec, test_data, events, mut_seed):
     store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
 
-    if mut_seed is None:
-        return yield_fork_choice_test_events(spec, store, test_data, events, debug)
-    else:
-        test_vector = events_to_test_vector(events)
-        mops = MutationOps(store.time, spec.config.SECONDS_PER_SLOT)
-        mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
+    test_vector = events_to_test_vector(events)
+    mops = MutationOps(store.time, spec.config.SLOT_DURATION_MS // 1000)
+    mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
 
-        test_data.meta["mut_seed"] = mut_seed
-        test_data.meta["mutations"] = mutations
+    test_data.meta["mut_seed"] = mut_seed
+    test_data.meta["mutations"] = mutations
 
-        mutated_events = test_vector_to_events(mutated_vector)
-
-        return yield_test_parts(spec, store, test_data, mutated_events)
+    mutated_events = convert_test_vector_to_events(mutated_vector)
+    return yield_test_parts(spec, store, test_data, mutated_events)
 
 
 def events_to_test_vector(events) -> list[Any]:
@@ -165,7 +259,7 @@ def events_to_test_vector(events) -> list[Any]:
     return test_vector
 
 
-def test_vector_to_events(test_vector):
+def convert_test_vector_to_events(test_vector):
     events = []
     current_time = None
     for time, (event_kind, data) in test_vector:
@@ -282,7 +376,8 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
         else:
             raise ValueError(f"not implemented {kind}")
     next_slot_time = (
-        store.genesis_time + (spec.get_current_slot(store) + 1) * spec.config.SECONDS_PER_SLOT
+        store.genesis_time
+        + (spec.get_current_slot(store) + 1) * spec.config.SLOT_DURATION_MS // 1000
     )
     on_tick_and_append_step(spec, store, next_slot_time, test_steps)
     output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
@@ -309,7 +404,7 @@ def _load_yaml(path: str):
         return yaml.load(f)
 
 
-def enumerate_test_dnas(config_dir, test_name, params) -> Iterable[tuple[str, FCTestData]]:
+def enumerate_mutation_groups(config_dir, test_name, params) -> Iterable[MutationGroup]:
     test_type = params["test_type"]
     instances_path = params["instances"]
     initial_seed = params["seed"]
@@ -329,13 +424,32 @@ def enumerate_test_dnas(config_dir, test_name, params) -> Iterable[tuple[str, FC
 
     for i, solution in enumerate(solutions):
         for seed in seeds:
-            for j in range(1 + nr_mutations):
-                test_dna = FCTestDNA(test_kind, solution, seed, None if j == 0 else seed + j - 1)
-                case_name = test_name + "_" + str(i) + "_" + str(seed) + "_" + str(j)
-                yield case_name, test_dna
+            yield MutationGroup(
+                test_name=test_name,
+                solution_index=i,
+                test_dna_base=FCTestDNA(test_kind, solution, seed, None),
+                nr_mutations=nr_mutations,
+            )
 
 
-def enumerate_test_cases(config_path, forks, presets, debug, initial_seed: int = None):
+def enumerate_test_dnas(mutation_group: MutationGroup) -> Iterable[tuple[str, FCTestDNA]]:
+    test_name = mutation_group.test_name
+    solution_index = mutation_group.solution_index
+    test_dna_base = mutation_group.test_dna_base
+    seed = test_dna_base.variation_seed
+
+    for j in range(1 + mutation_group.nr_mutations):
+        test_dna = FCTestDNA(
+            test_dna_base.kind,
+            test_dna_base.solution,
+            seed,
+            None if j == 0 else seed + j - 1,
+        )
+        case_name = test_name + "_" + str(solution_index) + "_" + str(seed) + "_" + str(j)
+        yield case_name, test_dna
+
+
+def enumerate_test_groups(config_path, forks, presets, debug, initial_seed: int = None):
     config_dir = path.dirname(config_path)
     test_gen_config = _load_yaml(config_path)
 
@@ -347,15 +461,11 @@ def enumerate_test_cases(config_path, forks, presets, debug, initial_seed: int =
             print(test_name)
         for fork_name in forks:
             for preset_name in presets:
-                for case_name, test_dna in enumerate_test_dnas(config_dir, test_name, params):
-                    yield PlainFCTestCase(
-                        test_dna=test_dna,
-                        bls_active=BLS_ACTIVE,
-                        debug=debug,
+                for mutation_group in enumerate_mutation_groups(config_dir, test_name, params):
+                    yield MutationGroupTestGroup(
+                        mutation_group=mutation_group,
                         fork_name=fork_name,
                         preset_name=preset_name,
-                        runner_name=GENERATOR_NAME,
-                        handler_name=test_name,
-                        suite_name=SUITE_NAME,
-                        case_name=case_name,
+                        bls_active=BLS_ACTIVE,
+                        debug=debug,
                     )

@@ -9,7 +9,7 @@ class FuluSpecBuilder(BaseSpecBuilder):
     def imports(cls, preset_name: str):
         return f"""
 from frozendict import frozendict
-from eth2spec.electra import {preset_name} as electra
+from eth_consensus_specs.electra import {preset_name} as electra
 """
 
     @classmethod

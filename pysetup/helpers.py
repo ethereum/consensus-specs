@@ -86,6 +86,11 @@ def objects_to_spec(
     functions = reduce(
         lambda fns, builder: builder.implement_optimizations(fns), builders, spec_object.functions
     )
+    # Remove deprecated functions
+    deprecate_functions = reduce(
+        lambda obj, builder: obj.union(builder.deprecate_functions()), builders, set()
+    )
+    functions = {k: v for k, v in functions.items() if k not in deprecate_functions}
     functions_spec = "\n\n\n".join(functions.values())
     ordered_class_objects_spec = "\n\n\n".join(ordered_class_objects.values())
 
@@ -395,7 +400,7 @@ def finalized_spec_object(spec_object: SpecObject) -> SpecObject:
     custom_types = {}
     ssz_objects = spec_object.ssz_objects
     for name, value in spec_object.custom_types.items():
-        if any(k in name for k in all_config_dependencies):
+        if any(name in k for k in all_config_dependencies):
             custom_types[name] = value
         else:
             ssz_objects[name] = gen_new_type_definition(name, value)

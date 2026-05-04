@@ -12,17 +12,19 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 - [Table of contents](#table-of-contents)
 - [Constants](#constants)
   - [Execution](#execution)
+- [Containers](#containers)
+  - [`ProofByRootIdentifier`](#proofbyrootidentifier)
 - [Helpers](#helpers)
-  - [Modified `compute_fork_version`](#modified-compute_fork_version)
-- [MetaData](#metadata)
+  - [New `compute_max_request_execution_proofs`](#new-compute_max_request_execution_proofs)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
       - [`execution_proof`](#execution_proof)
 - [The Req/Resp domain](#the-reqresp-domain)
   - [Messages](#messages)
+    - [ExecutionProofsByRange](#executionproofsbyrange)
     - [ExecutionProofsByRoot](#executionproofsbyroot)
-    - [GetMetaData v4](#getmetadata-v4)
+    - [ExecutionProofStatus](#executionproofstatus)
 - [The discovery domain: discv5](#the-discovery-domain-discv5)
   - [ENR structure](#enr-structure)
     - [Execution proof awareness](#execution-proof-awareness)
@@ -39,55 +41,27 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 | ---------------------------------- | ----------- |
 | `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)` |
 
-## Helpers
+## Containers
 
-### Modified `compute_fork_version`
+### `ProofByRootIdentifier`
 
 ```python
-def compute_fork_version(epoch: Epoch) -> Version:
+class ProofByRootIdentifier(Container):
+    block_root: Root
+    proof_types: List[ProofType, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
+```
+
+## Helpers
+
+### New `compute_max_request_execution_proofs`
+
+```python
+def compute_max_request_execution_proofs() -> uint64:
     """
-    Return the fork version at the given ``epoch``.
+    Return the maximum number of execution proofs in a single request.
     """
-    if epoch >= EIP8025_FORK_EPOCH:
-        return EIP8025_FORK_VERSION
-    if epoch >= FULU_FORK_EPOCH:
-        return FULU_FORK_VERSION
-    if epoch >= ELECTRA_FORK_EPOCH:
-        return ELECTRA_FORK_VERSION
-    if epoch >= DENEB_FORK_EPOCH:
-        return DENEB_FORK_VERSION
-    if epoch >= CAPELLA_FORK_EPOCH:
-        return CAPELLA_FORK_VERSION
-    if epoch >= BELLATRIX_FORK_EPOCH:
-        return BELLATRIX_FORK_VERSION
-    if epoch >= ALTAIR_FORK_EPOCH:
-        return ALTAIR_FORK_VERSION
-    return GENESIS_FORK_VERSION
+    return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_EXECUTION_PROOFS_PER_PAYLOAD)
 ```
-
-## MetaData
-
-The `MetaData` stored locally by clients is updated with an additional field to
-communicate execution proof awareness.
-
-```
-(
-  seq_number: uint64
-  attnets: Bitvector[ATTESTATION_SUBNET_COUNT]
-  syncnets: Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]
-  custody_group_count: uint64  # cgc
-  execution_proof_aware: bool  # eproof
-)
-```
-
-Where
-
-- `seq_number`, `attnets`, `syncnets`, and `custody_group_count` have the same
-  meaning defined in the previous documents.
-- `execution_proof_aware` indicates whether the node is aware of optional
-  execution proofs. A value of `True` signals that the node understands
-  execution proof gossip topics and can participate in execution proof
-  propagation.
 
 ## The gossip domain: gossipsub
 
@@ -132,60 +106,114 @@ The following validations MUST pass before forwarding the
 
 ### Messages
 
-#### ExecutionProofsByRoot
+#### ExecutionProofsByRange
 
-**Protocol ID:** `/eth2/beacon_chain/req/execution_proofs_by_root/1/`
-
-The `<context-bytes>` field is calculated as
-`context = compute_fork_digest(fork_version, genesis_validators_root)`.
+**Protocol ID:** `/eth2/beacon_chain/req/execution_proofs_by_range/1/`
 
 Request Content:
 
 ```
 (
+  start_slot: Slot
+  count: uint64
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedExecutionProof, compute_max_request_execution_proofs()]
+)
+```
+
+Requests execution proofs for a contiguous range of slots. The request specifies
+a `start_slot` and a `count` of slots. The responding peer iterates through
+beacon blocks in the range `[start_slot, start_slot + count)` and returns all
+known `SignedExecutionProof` entries associated with those blocks.
+
+The response MUST consist of zero or more `response_chunk`. Each _successful_
+`response_chunk` MUST contain a single `SignedExecutionProof` payload.
+
+Clients MUST keep the total number of requested proofs under
+`compute_max_request_execution_proofs()`. Since each slot may contain up to
+`MAX_EXECUTION_PROOFS_PER_PAYLOAD` proofs, the `count` field MUST satisfy
+`count * MAX_EXECUTION_PROOFS_PER_PAYLOAD <= compute_max_request_execution_proofs()`.
+
+Clients MUST respond with at least one proof, if they have it. Clients MAY limit
+the number of proofs in the response.
+
+Clients SHOULD return proofs in slot-ascending order within the requested range.
+
+#### ExecutionProofsByRoot
+
+**Protocol ID:** `/eth2/beacon_chain/req/execution_proofs_by_root/1/`
+
+Request Content:
+
+```
+(
+  List[ProofByRootIdentifier, MAX_REQUEST_BLOCKS_DENEB]
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedExecutionProof, compute_max_request_execution_proofs()]
+)
+```
+
+Requests execution proofs by block root and proof types. The response is a list
+of `SignedExecutionProof` whose length is less than or equal to
+`requested_proofs_count`, where
+`requested_proofs_count = sum(len(r.proof_types) for r in request)`. It may be
+less in the case that the responding peer is missing blocks or proofs.
+
+No more than `compute_max_request_execution_proofs()` may be requested at a
+time.
+
+The response MUST consist of zero or more `response_chunk`. Each _successful_
+`response_chunk` MUST contain a single `SignedExecutionProof` payload.
+
+Clients MUST respond with at least one proof, if they have it. Clients MAY limit
+the number of proofs in the response.
+
+#### ExecutionProofStatus
+
+**Protocol ID:** `/eth2/beacon_chain/req/execution_proof_status/1/`
+
+Request, Response Content:
+
+```
+(
   block_root: Root
+  slot: Slot
 )
 ```
 
-Response Content:
+This protocol enables peers to exchange their current execution proof
+verification status. The request and response use the same type.
 
-```
-(
-  List[SignedExecutionProof, MAX_EXECUTION_PROOFS_PER_PAYLOAD]
-)
-```
+As seen by the client at the time of sending the message:
 
-Requests execution proofs for the given `block_root`. The response MUST contain
-all available proofs for the requested beacon block, up to
-`MAX_EXECUTION_PROOFS_PER_PAYLOAD`.
+- `block_root`: The `hash_tree_root` root of the most recent block
+  (`BeaconBlock`) for which the client has verified sufficient execution proofs
+  to consider the block valid.
+- `slot`: The slot of the block corresponding to the `block_root`.
 
-The following validations MUST pass:
+The request/response MUST be encoded as an SSZ-container.
 
-- _[REJECT]_ The `block_root` is a 32-byte value.
+The response MUST consist of a single `response_chunk`.
 
-The response MUST contain:
+Upon receiving an `ExecutionProofStatus` request, the responder MUST reply with
+its own local execution proof status. The requester SHOULD use the peer's
+response to inform peer selection during execution proof synchronization.
 
-- All available execution proofs for the requested `block_root`.
-- The response MUST NOT contain more than `MAX_EXECUTION_PROOFS_PER_PAYLOAD`
-  proofs.
-
-#### GetMetaData v4
-
-**Protocol ID:** `/eth2/beacon_chain/req/metadata/4/`
-
-No Request Content.
-
-Response Content:
-
-```
-(
-  MetaData
-)
-```
-
-Requests the MetaData of a peer, using the new `MetaData` definition given above
-that is extended from Altair. Other conditions for the `GetMetaData` protocol
-are unchanged from the Altair p2p networking document.
+Upon establishing a connection with a peer that is execution proof–aware (i.e.
+the peer's ENR contains `eproof != 0`), the dialing client MUST send an
+`ExecutionProofStatus` request.
 
 ## The discovery domain: discv5
 

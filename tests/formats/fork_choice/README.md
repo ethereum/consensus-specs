@@ -16,9 +16,11 @@ components of the fork choice.
     - [`on_merge_block` execution step](#on_merge_block-execution-step)
     - [`on_attester_slashing` execution step](#on_attester_slashing-execution-step)
     - [`on_payload_info` execution step](#on_payload_info-execution-step)
+    - [`on_execution_payload_envelope` execution step](#on_execution_payload_envelope-execution-step)
     - [Checks step](#checks-step)
   - [`attestation_<32-byte-root>.ssz_snappy`](#attestation_32-byte-rootssz_snappy)
   - [`block_<32-byte-root>.ssz_snappy`](#block_32-byte-rootssz_snappy)
+  - [`execution_payload_envelope_<32-byte-root>.ssz_snappy`](#execution_payload_envelope_32-byte-rootssz_snappy)
 - [Condition](#condition)
 
 <!-- mdformat-toc end -->
@@ -180,6 +182,24 @@ the corresponding `on_block` execution step.
 *Note*: Status of the same payload may be updated for several times throughout
 the test.
 
+#### `on_execution_payload_envelope` execution step
+
+The parameter that is required for executing
+`on_execution_payload_envelope(store, signed_execution_payload_envelope)`.
+
+```yaml
+{
+    execution_payload: string  -- the name of the `execution_payload_envelope_<32-byte-root>.ssz_snappy` file.
+                                  To execute `on_execution_payload_envelope(store, signed_envelope)` with the given envelope.
+    valid: bool                -- optional, default to `true`.
+                                  If it's `false`, this execution step is expected to be invalid.
+}
+```
+
+The file is located in the same folder (see below).
+
+After this step, the `store` object may have been updated.
+
 #### Checks step
 
 The checks to verify the current status of `store`.
@@ -223,6 +243,7 @@ should_override_forkchoice_update: {  -- [New in Bellatrix]
     validator_is_connected: bool,     -- The mocking result of `validator_is_connected(proposer_index)` in this call
     result: bool,                     -- The result of `should_override_forkchoice_update(store, head_root)`, where head_root is the result value from get_head(store)
 }
+head_payload_status: int              -- The payload_status field from the ForkChoiceNode returned by get_head(store)
 ```
 
 For example:
@@ -253,15 +274,25 @@ Each file is an SSZ-snappy encoded `Attestation`.
 
 ### `block_<32-byte-root>.ssz_snappy`
 
-`<32-byte-root>` is the hash tree root of the given block.
+`<32-byte-root>` is the hash tree root of the `BeaconBlock` (the `message` field
+of the `SignedBeaconBlock`).
 
 Each file is an SSZ-snappy encoded `SignedBeaconBlock`.
+
+### `execution_payload_envelope_<32-byte-root>.ssz_snappy`
+
+`<32-byte-root>` is the hash tree root of the given signed envelope.
+
+Each file is an SSZ-snappy encoded `SignedExecutionPayloadEnvelope`.
 
 ## Condition
 
 1. Deserialize `anchor_state.ssz_snappy` and `anchor_block.ssz_snappy` to
-   initialize the local store object by with
-   `get_forkchoice_store(anchor_state, anchor_block)` helper.
+   initialize the local store object with
+   `get_forkchoice_store(anchor_state, anchor_block)` helper. For Gloas and
+   later forks: the anchor block's payload state is initialized by seeding
+   `payload_states[anchor_root]` from `anchor_state`, as specified in
+   `get_forkchoice_store`.
 2. Iterate sequentially through `steps.yaml`
    - For each execution, look up the corresponding ssz_snappy file. Execute the
      corresponding helper function on the current store.
@@ -269,5 +300,8 @@ Each file is an SSZ-snappy encoded `SignedBeaconBlock`.
        `len(block.message.body.attestations) > 0`, execute each attestation with
        `on_attestation(store, attestation)` after executing
        `on_block(store, block)`.
+     - For the `on_execution_payload_envelope` execution step: look up the
+       corresponding `execution_payload_envelope_<root>.ssz_snappy` file and
+       execute `on_execution_payload_envelope(store, signed_envelope)`.
    - For each `checks` step, the assertions on the current store must be
      satisfied.

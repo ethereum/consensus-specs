@@ -67,7 +67,7 @@ operates.
 
 ```
 /tests/
-  core/pyspec/eth2spec/
+  core/pyspec/eth_consensus_specs/
     <fork>/              # Assembled pyspec (do not edit)
     test/<fork>/         # Test cases organized by fork
       block_processing/
@@ -121,8 +121,8 @@ manually. New spec files need these TOC markers added manually:
 
 Special HTML comments control spec parsing:
 
-- `<!-- eth2spec: skip -->` - Skip the next code block (used for non-executable
-  specs like `p2p-interface.md`)
+- `<!-- eth_consensus_specs: skip -->` - Skip the next code block (used for
+  non-executable specs like `p2p-interface.md`)
 - `<!-- predefined-type -->` - Type is defined externally
 - `<!-- predefined -->` - Constant is predefined or function-dependent
 
@@ -306,22 +306,19 @@ final sanity check before committing.
 
 ```bash
 # Generate all reference tests (runs both presets by default)
-make reftests
+make test reftests=true
 
 # AI agents should use verbose mode (default view uses dynamic tables)
-make reftests verbose=true
+make test reftests=true verbose=true
 
 # Generate tests for a specific fork
-make reftests fork=electra verbose=true
+make test reftests=true fork=electra verbose=true
 
 # Generate tests matching a pattern (omit the "test_" prefix)
-make reftests k=verify_kzg_proof verbose=true
-
-# Generate a specific test runner's suite
-make reftests runner=bls verbose=true
+make test reftests=true k=verify_kzg_proof verbose=true
 
 # Combine options
-make reftests preset=mainnet fork=deneb k=verify_kzg_proof verbose=true
+make test reftests=true preset=mainnet fork=deneb k=verify_kzg_proof verbose=true
 ```
 
 Reference tests are written to the `../consensus-spec-tests` directory, which is
@@ -332,10 +329,11 @@ no need to regenerate everything. Only the affected test cases need to be
 regenerated; the framework will delete the individual test case directories
 before regenerating them.
 
-Note that if a test case is removed from the framework, `make reftests` will not
-delete previously generated reference tests for that case. The corresponding
-directories must be deleted manually, or the entire `../consensus-spec-tests`
-directory can be removed if regenerating everything is acceptable.
+Note that if a test case is removed from the framework,
+`make test reftests=true` will not delete previously generated reference tests
+for that case. The corresponding directories must be deleted manually, or the
+entire `../consensus-spec-tests` directory can be removed if regenerating
+everything is acceptable.
 
 To see available runners:
 
@@ -409,7 +407,7 @@ def test_example(spec, state):
 ### Adding a new helper function
 
 1. Add the Python function to the appropriate spec markdown file
-2. Add tests in `tests/core/pyspec/eth2spec/test/`
+2. Add tests in `tests/core/pyspec/eth_consensus_specs/test/`
 3. Run `make lint` to run checks
 
 ### Modifying an existing function
@@ -445,7 +443,7 @@ Adding a new fork (e.g., "foobar") requires updates to many files:
 - `pysetup/spec_builders/foobar.py` - Create SpecBuilder class
 - `pysetup/spec_builders/__init__.py` - Import and register the SpecBuilder
 
-**4. Test infrastructure (`tests/core/pyspec/eth2spec/test/`):**
+**4. Test infrastructure (`tests/core/pyspec/eth_consensus_specs/test/`):**
 
 - `helpers/constants.py` - Add constant, update `ALL_PHASES`,
   `PREVIOUS_FORK_OF`, `POST_FORK_OF`

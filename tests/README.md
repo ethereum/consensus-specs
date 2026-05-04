@@ -52,7 +52,7 @@ s..                                                                             
 
 One of the `test_empty_block_transition` tests is implemented by a function with
 the same name located in
-[`~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`](https://github.com/ethereum/consensus-specs/blob/master/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py).
+[`~/consensus-specs/tests/core/pyspec/eth_consensus_specs/test/phase0/sanity/test_blocks.py`](https://github.com/ethereum/consensus-specs/blob/master/tests/core/pyspec/eth_consensus_specs/test/phase0/sanity/test_blocks.py).
 To learn how consensus spec tests are written, let's go over the code:
 
 ```
@@ -172,8 +172,8 @@ find . -name '*.py' -exec grep 'def state_transition_and_sign_block' {} \; -prin
 ```
 
 And you'll find that the function is defined in
-`eth2spec/test/helpers/state.py`. Looking in that file, we see that the second
-function is:
+`eth_consensus_specs/test/helpers/state.py`. Looking in that file, we see that
+the second function is:
 
 ```python
 def next_slot(spec, state):
@@ -201,7 +201,7 @@ It is important to make sure that the system rejects invalid input, so our next
 step is to deal with cases where the protocol is supposed to reject something.
 To see such a test, look at `test_prev_slot_block_transition` (in the same file
 we used previously,
-`~/consensus-specs/tests/core/pyspec/eth2spec/test/phase0/sanity/test_blocks.py`).
+`~/consensus-specs/tests/core/pyspec/eth_consensus_specs/test/phase0/sanity/test_blocks.py`).
 
 ```python
 @with_all_phases
@@ -232,8 +232,8 @@ expect_assertion_error(lambda: transition_unsigned_block(spec, state, block))
 
 Specify that the function `transition_unsigned_block` will cause an assertion
 error. You can see this function in
-`~/consensus-specs/tests/core/pyspec/eth2spec/test/helpers/block.py`, and one of
-the tests is that the block must be for this slot:
+`~/consensus-specs/tests/core/pyspec/eth_consensus_specs/test/helpers/block.py`,
+and one of the tests is that the block must be for this slot:
 
 > ```python
 > assert state.slot == block.slot
@@ -289,7 +289,7 @@ they are sent as independent messages. The proposer for a block is able to
 include attestations from previous slots, which is how they get on chain to form
 consensus, reward honest validators, etc.
 
-[You can see a simple successful attestation test here](https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L26-L30):
+[You can see a simple successful attestation test here](https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth_consensus_specs/test/phase0/block_processing/test_process_attestation.py#L26-L30):
 Lets go over it line by line.
 
 ```python
@@ -299,7 +299,7 @@ def test_success(spec, state):
     attestation = get_valid_attestation(spec, state, signed=True)
 ```
 
-[This function](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth2spec/test/helpers/attestations.py#L88-L120)
+[This function](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth_consensus_specs/test/helpers/attestations.py#L88-L120)
 creates a valid attestation (which can then be modified to make it invalid if
 needed). To see an attestation "from the inside" we need to follow it.
 
@@ -329,7 +329,7 @@ attestation_data = build_attestation_data(spec, state, slot=slot, index=index)
 ```
 
 Build the actual attestation. You can see this function
-[here](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth2spec/test/helpers/attestations.py#L53-L85)
+[here](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth_consensus_specs/test/helpers/attestations.py#L53-L85)
 to see the exact data in an attestation.
 
 ```python
@@ -375,7 +375,7 @@ change in the future.
 yield from run_attestation_processing(spec, state, attestation)
 ```
 
-[This function](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth2spec/test/helpers/attestations.py#L13-L50)
+[This function](https://github.com/ethereum/consensus-specs/blob/30fe7ba1107d976100eb0c3252ca7637b791e43a/tests/core/pyspec/eth_consensus_specs/test/helpers/attestations.py#L13-L50)
 processes the attestation and returns the result.
 
 ### Adding an Attestation Test
@@ -404,7 +404,7 @@ In the last line you can see two conditions being asserted:
 This is how the consensus-layer tests deal with edge cases, by asserting the
 conditions required for the values to be legitimate. In the case of these
 particular conditions, they are tested
-[here](https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py#L87-L104).
+[here](https://github.com/ethereum/consensus-specs/blob/926e5a3d722df973b9a12f12c015783de35cafa9/tests/core/pyspec/eth_consensus_specs/test/phase0/block_processing/test_process_attestation.py#L87-L104).
 One test checks what happens if the attestation is too early, and another if it
 is too late.
 
@@ -433,7 +433,7 @@ def test_almost_after_epoch_slots(spec, state):
 ```
 
 Add this function to the file
-`consensus-specs/tests/core/pyspec/eth2spec/test/phase0/block_processing/test_process_attestation.py`,
+`consensus-specs/tests/core/pyspec/eth_consensus_specs/test/phase0/block_processing/test_process_attestation.py`,
 and run the test against Altair fork:
 
 ```sh

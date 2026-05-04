@@ -8,7 +8,7 @@ class CapellaSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth2spec.bellatrix import {preset_name} as bellatrix
+from eth_consensus_specs.bellatrix import {preset_name} as bellatrix
 """
 
     @classmethod
@@ -16,3 +16,16 @@ from eth2spec.bellatrix import {preset_name} as bellatrix
         return {
             "EXECUTION_PAYLOAD_GINDEX": "GeneralizedIndex(25)",
         }
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return set(
+            [
+                "get_terminal_pow_block",
+                "is_execution_enabled",
+                "is_merge_transition_block",
+                "is_merge_transition_complete",
+                "process_historical_roots_update",
+                "validate_merge_block",
+            ]
+        )

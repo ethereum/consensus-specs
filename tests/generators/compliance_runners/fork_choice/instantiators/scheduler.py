@@ -32,7 +32,7 @@ class MessageScheduler:
 
     def is_early_message(self, item: QueueItem) -> bool:
         current_slot = self.spec.get_current_slot(self.store)
-        return item.effective_slot < current_slot or any(
+        return item.effective_slot > current_slot or any(
             root not in self.store.blocks for root in item.dependencies
         )
 
@@ -75,13 +75,13 @@ class MessageScheduler:
 
     def process_tick(self, time) -> list:
         applied_events = []
-        SECONDS_PER_SLOT = self.spec.config.SECONDS_PER_SLOT
+        SLOT_DURATION_MS = self.spec.config.SLOT_DURATION_MS
         assert time >= self.store.time
-        tick_slot = (time - self.store.genesis_time) // SECONDS_PER_SLOT
+        tick_slot = (time - self.store.genesis_time) * 1000 // SLOT_DURATION_MS
         while self.spec.get_current_slot(self.store) < tick_slot:
             previous_time = (
                 self.store.genesis_time
-                + (self.spec.get_current_slot(self.store) + 1) * SECONDS_PER_SLOT
+                + (self.spec.get_current_slot(self.store) + 1) * SLOT_DURATION_MS // 1000
             )
             self.spec.on_tick(self.store, previous_time)
             applied_events.append(
