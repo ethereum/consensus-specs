@@ -273,6 +273,7 @@ def test_invalid_payload_attestation_wrong_beacon_block_root(spec, state):
     )
     block.body.payload_attestations = [payload_attestation]
 
+
 @with_gloas_and_later
 @spec_state_test
 def test_process_parent_execution_payload__wrong_execution_requests_root(spec, state):
@@ -365,6 +366,7 @@ def test_invalid_payload_attestation_invalid_signature(spec, state):
 
     yield "blocks", [signed_block]
     yield "post", None
+
 
 @with_gloas_and_later
 @spec_state_test
