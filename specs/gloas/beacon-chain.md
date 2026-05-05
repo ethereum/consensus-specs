@@ -106,6 +106,7 @@
         - [Modified `process_attestation`](#modified-process_attestation)
       - [Payload attestations](#payload-attestations)
         - [New `process_payload_attestation`](#new-process_payload_attestation)
+        - [New `verify_payload_attestation_votes`](#new-verify_payload_attestation_votes)
       - [Proposer slashing](#proposer-slashing)
         - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
 
@@ -1515,6 +1516,9 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # Removed `process_consolidation_request`
     # [New in Gloas:EIP7732]
     for_ops(body.payload_attestations, process_payload_attestation)
+
+    # [New in Gloas:EIP7732]
+    verify_payload_attestation_votes(state, body.payload_attestations)
 ```
 
 ##### Deposit requests
@@ -1776,6 +1780,23 @@ def process_payload_attestation(
     # Verify signature
     indexed_payload_attestation = get_indexed_payload_attestation(state, payload_attestation)
     assert is_valid_indexed_payload_attestation(state, indexed_payload_attestation)
+```
+
+###### New `verify_payload_attestation_votes`
+
+```python
+def verify_payload_attestation_votes(
+    state: BeaconState, payload_attestations: Sequence[PayloadAttestation]
+) -> None:
+    """
+    Verify no validator appears in multiple payload attestations with conflicting votes.
+    """
+    validator_votes: Dict[ValidatorIndex, PayloadAttestationData] = {}
+    for payload_attestation in payload_attestations:
+        indexed = get_indexed_payload_attestation(state, payload_attestation)
+        for index in indexed.attesting_indices:
+            assert validator_votes.get(index, indexed.data) == indexed.data
+            validator_votes[index] = indexed.data
 ```
 
 ##### Proposer slashing

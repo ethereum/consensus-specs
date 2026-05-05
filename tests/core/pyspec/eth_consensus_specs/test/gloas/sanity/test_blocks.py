@@ -2,6 +2,9 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
+from eth_consensus_specs.test.gloas.block_processing.test_process_payload_attestation import (
+    prepare_signed_payload_attestation,
+)
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
     build_empty_block_for_next_slot,
@@ -379,4 +382,78 @@ def test_voluntary_exit_fails_after_parent_payload_withdrawal_request(spec, stat
     yield "pre", state
     signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
     yield "blocks", [signed_block]
+    yield "post", None
+
+
+def _build_payload_attestation_for_parent(spec, state, payload_present, attesting_indices):
+    """
+    Build a signed payload attestation voting on the parent block (the block
+    referenced by ``state.latest_block_header``). Computes the parent's root
+    with state_root filled in if needed.
+    """
+    parent_header = state.latest_block_header.copy()
+    if parent_header.state_root == spec.Root():
+        parent_header.state_root = spec.hash_tree_root(state)
+    return prepare_signed_payload_attestation(
+        spec,
+        state,
+        slot=state.latest_block_header.slot,
+        beacon_block_root=spec.hash_tree_root(parent_header),
+        attesting_indices=attesting_indices,
+        payload_present=payload_present,
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_payload_attestations_duplicate_non_conflicting_votes(spec, state):
+    """
+    A block including two payload attestations that share the same PTC member
+    with matching votes is accepted.
+    """
+    parent_block = build_empty_block_for_next_slot(spec, state)
+    signed_parent_block = state_transition_and_sign_block(spec, state, parent_block)
+
+    ptc = spec.get_ptc(state, state.latest_block_header.slot)
+    payload_attestation_1 = _build_payload_attestation_for_parent(
+        spec, state, payload_present=True, attesting_indices=[ptc[0]]
+    )
+    payload_attestation_2 = _build_payload_attestation_for_parent(
+        spec, state, payload_present=True, attesting_indices=[ptc[0]]
+    )
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.payload_attestations = [payload_attestation_1, payload_attestation_2]
+
+    yield "pre", state
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    yield "blocks", [signed_parent_block, signed_block]
+    yield "post", state
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_payload_attestations_duplicate_conflicting_votes(spec, state):
+    """
+    A block including two payload attestations that share the same PTC member
+    with conflicting votes (different ``payload_present``) is rejected by
+    ``verify_payload_attestation_votes``.
+    """
+    parent_block = build_empty_block_for_next_slot(spec, state)
+    signed_parent_block = state_transition_and_sign_block(spec, state, parent_block)
+
+    ptc = spec.get_ptc(state, state.latest_block_header.slot)
+    payload_attestation_1 = _build_payload_attestation_for_parent(
+        spec, state, payload_present=True, attesting_indices=[ptc[0]]
+    )
+    payload_attestation_2 = _build_payload_attestation_for_parent(
+        spec, state, payload_present=False, attesting_indices=[ptc[0]]
+    )
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.payload_attestations = [payload_attestation_1, payload_attestation_2]
+
+    yield "pre", state
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+    yield "blocks", [signed_parent_block, signed_block]
     yield "post", None
