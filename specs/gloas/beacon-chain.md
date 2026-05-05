@@ -130,6 +130,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 | ----------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------- |
 | `AggregationBits`       | `ProgressiveBitlist`                    | *[Modified in Gloas:EIP7688]* Combined participation info for all participating subcommittees |
 | `AttestingIndices`      | `ProgressiveList[ValidatorIndex]`       | *[Modified in Gloas:EIP7688]* List of attesting validator indices                             |
+| `Transaction`           | `ProgressiveByteList`                   | *[Modified in Gloas:EIP7688]* Either a typed transaction envelope or a legacy transaction     |
 | `DepositRequests`       | `ProgressiveList[DepositRequest]`       | *[Modified in Gloas:EIP7688]* List of deposit requests pertaining to an execution payload     |
 | `WithdrawalRequests`    | `ProgressiveList[WithdrawalRequest]`    | *[Modified in Gloas:EIP7688]* List of withdrawal requests pertaining to an execution payload  |
 | `ConsolidationRequests` | `ProgressiveList[ConsolidationRequest]` | *[Modified in Gloas:EIP7688]* List of withdrawal requests pertaining to an execution payload  |

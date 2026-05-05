@@ -8,7 +8,7 @@ class GloasSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth_consensus_specs.utils.ssz.ssz_typing import ProgressiveBitlist, ProgressiveContainer, ProgressiveList
+from eth_consensus_specs.utils.ssz.ssz_typing import ProgressiveBitlist, ProgressiveByteList, ProgressiveContainer, ProgressiveList
 
 from eth_consensus_specs.fulu import {preset_name} as fulu
 """

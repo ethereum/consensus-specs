@@ -305,6 +305,7 @@ ignored_dependencies = [
     "List",
     "Optional",
     "ProgressiveBitlist",
+    "ProgressiveByteList",
     "ProgressiveList",
     "Sequence",
     "Set",

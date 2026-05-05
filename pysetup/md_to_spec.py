@@ -213,6 +213,7 @@ class MarkdownToSpec:
                         "Bytes",
                         "List",
                         "ProgressiveBitlist",
+                        "ProgressiveByteList",
                         "ProgressiveList",
                         "Union",
                         "Vector",
