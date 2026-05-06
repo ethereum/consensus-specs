@@ -313,7 +313,7 @@ def ptc_voted_data_unavailable(store: Store, root: Root) -> bool:
     was voted as unavailable by the PTC.
     """
     # The beacon block root must be known
-    assert root in store.payload_timeliness_vote
+    assert root in store.payload_data_vote
 
     # If the payload is not locally available, the blob data
     # is not considered available regardless of the PTC vote
