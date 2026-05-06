@@ -37,13 +37,14 @@ validator" to implement Gloas.
 
 ### Time parameters
 
-| Name                          | Value          |     Unit     |         Duration          |
-| ----------------------------- | -------------- | :----------: | :-----------------------: |
-| `ATTESTATION_DUE_BPS_GLOAS`   | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `AGGREGATE_DUE_BPS_GLOAS`     | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `CONTRIBUTION_DUE_BPS_GLOAS`  | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `PAYLOAD_ATTESTATION_DUE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
+| Name                           | Value          |     Unit     |         Duration          |
+| ------------------------------ | -------------- | :----------: | :-----------------------: |
+| `ATTESTATION_DUE_BPS_GLOAS`    | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
+| `AGGREGATE_DUE_BPS_GLOAS`      | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `SYNC_MESSAGE_DUE_BPS_GLOAS`   | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
+| `CONTRIBUTION_DUE_BPS_GLOAS`   | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_ATTESTATION_DUE_BPS`  | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
+| `PAYLOAD_AVAILABILITY_DUE_BPS` | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
 
 ## Validator assignment
 
@@ -322,6 +323,13 @@ create the `payload_attestation_message` and broadcast to the global
 `payload_attestation_message` pubsub topic within the first
 `get_payload_attestation_due_ms()` milliseconds of the slot.
 
+The following helper is needed to construct the payload attestation message
+
+```python
+def get_payload_availability_due_ms() -> uint64:
+    return get_slot_component_duration_ms(PAYLOAD_AVAILABILITY_DUE_BPS)
+```
+
 The validator creates `payload_attestation_message` as follows:
 
 - If the validator has not seen any beacon block for the assigned slot, do not
@@ -330,8 +338,9 @@ The validator creates `payload_attestation_message` as follows:
   for the assigned slot.
 - Set `data.slot` to be the assigned slot.
 - If a previously seen `SignedExecutionPayloadEnvelope` references the block
-  with root `data.beacon_block_root`, set `data.payload_present` to `True`;
-  otherwise, set `data.payload_present` to `False`.
+  with root `data.beacon_block_root`, and it was seen before
+  `get_payload_availability_due_ms()` into the slot, set `data.payload_present`
+  to `True`; otherwise, set `data.payload_present` to `False`.
 - Set `data.blob_data_available` to `is_data_available(data.beacon_block_root)`.
 - Set `payload_attestation_message.validator_index = validator_index` where
   `validator_index` is the validator chosen to submit. The private key mapping
