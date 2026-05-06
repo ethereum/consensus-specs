@@ -423,7 +423,7 @@ def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
 
     if ptc_voted_data_unavailable(store, head.root):
         return False
-    return not ptc_voted_payload_untimely
+    return not ptc_voted_payload_untimely(store, head.root)
 ```
 
 ### New `should_extend_payload`
