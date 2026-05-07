@@ -404,9 +404,9 @@ The following validations MUST pass before forwarding the
 `signed_proposer_preferences` on the network, assuming the alias
 `preferences = signed_proposer_preferences.message`:
 
-- _[IGNORE]_ `preferences.proposal_slot` is in the current or next epoch -- i.e.
-  `compute_epoch_at_slot(preferences.proposal_slot)` is in
-  `[compute_epoch_at_slot(current_slot), compute_epoch_at_slot(current_slot) + 1]`.
+- _[IGNORE]_ `preferences.proposal_slot` is within the proposer lookahead --
+  i.e. `compute_epoch_at_slot(preferences.proposal_slot)` is in the range
+  `[compute_epoch_at_slot(current_slot), compute_epoch_at_slot(current_slot) + MIN_SEED_LOOKAHEAD]`.
 - _[IGNORE]_ `preferences.proposal_slot` has not already passed -- i.e.
   `preferences.proposal_slot > current_slot`.
 - _[IGNORE]_ The block with root `preferences.dependent_root` has been seen (via
@@ -414,8 +414,8 @@ The following validations MUST pass before forwarding the
   re-processing once the block is retrieved).
 - _[REJECT]_ `is_valid_proposal_slot(state, preferences)` returns `True`, where
   `state` is the checkpoint state at the epoch
-  `compute_epoch_at_slot(preferences.proposal_slot) - 1` and the root
-  `preferences.dependent_root`.
+  `compute_epoch_at_slot(preferences.proposal_slot) - MIN_SEED_LOOKAHEAD` and
+  the root `preferences.dependent_root`.
 - _[IGNORE]_ The `signed_proposer_preferences` is the first valid message seen
   for the tuple
   `(preferences.dependent_root, preferences.proposal_slot, preferences.validator_index)`.
@@ -425,14 +425,14 @@ The following validations MUST pass before forwarding the
 ```python
 def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences) -> bool:
     """
-    Check if the validator is the proposer for the given slot in the current or
-    next epoch.
+    Check if the validator is the proposer for the given slot within the
+    proposer lookahead.
     """
     current_epoch = get_current_epoch(state)
     proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)
     if proposal_epoch < current_epoch:
         return False
-    if proposal_epoch > current_epoch + Epoch(1):
+    if proposal_epoch > current_epoch + Epoch(MIN_SEED_LOOKAHEAD):
         return False
 
     index = (proposal_epoch - current_epoch) * SLOTS_PER_EPOCH
@@ -445,7 +445,9 @@ def get_proposer_dependent_root(state: BeaconState, epoch: Epoch) -> Root:
     """
     Return the dependent root for the proposer lookahead at ``epoch``.
     """
-    return get_block_root_at_slot(state, Slot(compute_start_slot_at_epoch(Epoch(epoch - 1)) - 1))
+    return get_block_root_at_slot(
+        state, Slot(compute_start_slot_at_epoch(Epoch(epoch - MIN_SEED_LOOKAHEAD)) - 1)
+    )
 ```
 
 *Note*: Nodes SHOULD subscribe to this topic at least one epoch before the fork
