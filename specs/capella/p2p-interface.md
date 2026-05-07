@@ -208,6 +208,7 @@ def validate_bls_to_execution_change_gossip(
     seen: Seen,
     state: BeaconState,
     signed_bls_to_execution_change: SignedBLSToExecutionChange,
+    current_time_ms: uint64,
 ) -> None:
     """
     Validate a SignedBLSToExecutionChange for gossip propagation.
@@ -215,6 +216,14 @@ def validate_bls_to_execution_change_gossip(
     """
     bls_to_execution_change = signed_bls_to_execution_change.message
     validator_index = bls_to_execution_change.validator_index
+
+    # [IGNORE] The current epoch is at or after the Capella fork epoch
+    # (where current_epoch is defined by the current wall-clock time)
+    time_since_genesis_ms = current_time_ms - state.genesis_time * 1000
+    current_slot = Slot(time_since_genesis_ms // SLOT_DURATION_MS)
+    current_epoch = compute_epoch_at_slot(current_slot)
+    if current_epoch < CAPELLA_FORK_EPOCH:
+        raise GossipIgnore("current epoch is pre-capella")
 
     # [IGNORE] This is the first valid bls_to_execution_change received for the validator
     if validator_index in seen.bls_to_execution_change_indices:
