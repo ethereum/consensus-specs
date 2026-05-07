@@ -80,7 +80,8 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 ### New `ForkChoiceNode`
 
 ```python
-class ForkChoiceNode(Container):
+@dataclass
+class ForkChoiceNode(object):
     root: Root
     payload_status: PayloadStatus  # One of PAYLOAD_STATUS_* values
 ```
