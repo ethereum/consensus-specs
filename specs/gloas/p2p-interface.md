@@ -404,8 +404,8 @@ The following validations MUST pass before forwarding the
 `signed_proposer_preferences` on the network, assuming the alias
 `preferences = signed_proposer_preferences.message`:
 
-- _[IGNORE]_ `preferences.proposal_slot` is within the proposer lookahead range
-  -- i.e. `compute_epoch_at_slot(preferences.proposal_slot)` is in
+- _[IGNORE]_ `preferences.proposal_slot` is within the proposer lookahead --
+  i.e. `compute_epoch_at_slot(preferences.proposal_slot)` is in
   `[compute_epoch_at_slot(current_slot), compute_epoch_at_slot(current_slot) + MIN_SEED_LOOKAHEAD]`.
 - _[IGNORE]_ `preferences.proposal_slot` has not already passed -- i.e.
   `preferences.proposal_slot > current_slot`.
@@ -426,7 +426,7 @@ The following validations MUST pass before forwarding the
 def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences) -> bool:
     """
     Check if the validator is the proposer for the given slot within the
-    proposer lookahead range.
+    proposer lookahead.
     """
     current_epoch = get_current_epoch(state)
     proposal_epoch = compute_epoch_at_slot(preferences.proposal_slot)

@@ -125,19 +125,18 @@ previous forks as follows
 A validator MAY broadcast `SignedProposerPreferences` messages to the
 `proposer_preferences` gossip topic for each slot returned by
 `get_upcoming_proposal_slots(state, validator_index)`. These include any future
-proposal slots within the proposer lookahead range, i.e. the current epoch and
-the next `MIN_SEED_LOOKAHEAD` epochs. This allows builders to construct
-execution payloads with the validator's preferred `fee_recipient` and
-`gas_limit`. If a validator does not broadcast a `SignedProposerPreferences`
-message, this implies that the validator will not accept any trustless bids for
-that slot.
+proposal slots within the proposer lookahead, i.e. the current epoch up to
+`MIN_SEED_LOOKAHEAD` epochs ahead. This allows builders to construct execution
+payloads with the validator's preferred `fee_recipient` and `gas_limit`. If a
+validator does not broadcast a `SignedProposerPreferences` message, this implies
+that the validator will not accept any trustless bids for that slot.
 
 ```python
 def get_upcoming_proposal_slots(
     state: BeaconState, validator_index: ValidatorIndex
 ) -> Sequence[Slot]:
     """
-    Get the future slots within the proposer lookahead range for which
+    Get the future slots within the proposer lookahead for which
     ``validator_index`` is proposing.
     """
     current_epoch_start_slot = compute_start_slot_at_epoch(get_current_epoch(state))
