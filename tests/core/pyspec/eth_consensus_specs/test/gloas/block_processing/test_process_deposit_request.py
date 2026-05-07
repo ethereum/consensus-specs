@@ -42,12 +42,18 @@ def run_builder_deposit_request_processing(
     yield "post", state
 
     if not valid:
-        # Invalid deposit should not change state (builder not created)
+        # Under Gloas+, builder deposits queue into ``pending_builder_deposits``
+        # regardless of signature; the signature is only verified at drain time.
+        # The assertion helper drains the queued entry on a copy, so for an
+        # invalid-signature new-builder deposit no builder is added to the
+        # registry. The queue invariants are still validated.
         assert_process_deposit_request(
             spec,
             state,
             pre_state,
-            state_unchanged=True,
+            deposit_request=deposit_request,
+            is_builder_deposit=True,
+            expected_builder_count=pre_builder_count,
         )
     elif is_new_builder:
         # New builder should be added to registry
@@ -607,85 +613,9 @@ def test_process_deposit_request__builder_top_up_last_index(spec, state):
 # Deposit routing tests
 #
 # These tests verify the routing logic in process_deposit_request:
-# - Existing builder pubkey → builder (regardless of credentials)
-# - Existing validator pubkey → validator queue (regardless of credentials)
-# - New pubkey + builder credentials → new builder
-# - New pubkey + validator credentials → validator queue
+# - Builder credentials → pending_builder_deposits
+# - Anything else → pending_deposits
 #
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_process_deposit_request__routing__builder_pubkey_validator_credentials(spec, state):
-    """Test that existing builder pubkey with validator credentials still tops up builder."""
-    builder_pubkey = state.builders[0].pubkey
-    amount = spec.MIN_DEPOSIT_AMOUNT
-    pre_balance = state.builders[0].balance
-    pre_builder_count = len(state.builders)
-
-    # Create validator-style withdrawal credentials (BLS prefix) - but use builder pubkey
-    withdrawal_credentials = spec.BLS_WITHDRAWAL_PREFIX + spec.hash(builder_pubkey)[1:]
-
-    # Use builder_index=0 to use existing builder's pubkey with validator credentials
-    deposit_request = prepare_process_deposit_request(
-        spec,
-        state,
-        builder_index=0,
-        amount=amount,
-        signed=True,
-        withdrawal_credentials=withdrawal_credentials,
-    )
-    pre_state = state.copy()
-
-    yield from run_deposit_request_processing(spec, state, deposit_request)
-
-    # Should top up existing builder (credentials are ignored for existing builders)
-    # is_builder_deposit=True because the pubkey belongs to an existing builder
-    assert_process_deposit_request(
-        spec,
-        state,
-        pre_state,
-        deposit_request=deposit_request,
-        is_builder_deposit=True,
-        expected_builder_count=pre_builder_count,
-        expected_builder_balance=pre_balance + amount,
-    )
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_process_deposit_request__routing__validator_pubkey_builder_credentials(spec, state):
-    """Test that existing validator pubkey with builder credentials goes to validator queue."""
-    validator_pubkey = state.validators[0].pubkey
-    amount = spec.MIN_DEPOSIT_AMOUNT
-
-    # Create builder withdrawal credentials - but use existing validator pubkey
-    withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
-
-    # Use validator_index=0 to use existing validator's pubkey with builder credentials
-    deposit_request = prepare_process_deposit_request(
-        spec,
-        state,
-        validator_index=0,
-        amount=amount,
-        signed=True,
-        withdrawal_credentials=withdrawal_credentials,
-    )
-    pre_state = state.copy()
-
-    yield from run_deposit_request_processing(spec, state, deposit_request)
-
-    # Should route to validator queue (pubkey lookup finds validator first)
-    # is_builder_deposit=False because it goes to validator queue
-    assert_process_deposit_request(
-        spec,
-        state,
-        pre_state,
-        deposit_request=deposit_request,
-        is_builder_deposit=False,
-        expected_pending_deposit_pubkey=validator_pubkey,
-        expected_pending_deposit_amount=amount,
-    )
 
 
 @with_gloas_and_later
@@ -852,54 +782,6 @@ def test_process_deposit_request__routing__new_pubkey_compounding_credentials(sp
 @with_gloas_and_later
 @spec_state_test
 @always_bls
-def test_process_deposit_request__routing__pending_deposit_valid_signature(spec, state):
-    """Test that pubkey with pending deposit with valid signature goes to validator queue."""
-    # Use a pubkey that doesn't exist as validator or builder yet
-    new_validator_index = len(state.validators)
-    amount = spec.MIN_DEPOSIT_AMOUNT
-
-    # Add a pending deposit with a valid signature for this pubkey
-    pending_withdrawal_credentials = make_withdrawal_credentials(
-        spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\xab"
-    )
-    pending_deposit = prepare_pending_deposit(
-        spec,
-        new_validator_index,
-        amount,
-        withdrawal_credentials=pending_withdrawal_credentials,
-        signed=True,
-    )
-    state.pending_deposits.append(pending_deposit)
-
-    # Now create a deposit request with builder credentials for the same pubkey
-    deposit_request = prepare_deposit_request(
-        spec,
-        new_validator_index,
-        amount,
-        index=0,
-        withdrawal_credentials=make_withdrawal_credentials(
-            spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
-        ),
-        signed=True,
-    )
-
-    pre_state = state.copy()
-
-    yield from run_deposit_request_processing(spec, state, deposit_request)
-
-    # Should NOT create a new builder (pubkey is a pending validator)
-    assert_process_deposit_request(
-        spec,
-        state,
-        pre_state,
-        deposit_request=deposit_request,
-        is_builder_deposit=False,
-    )
-
-
-@with_gloas_and_later
-@spec_state_test
-@always_bls
 def test_process_deposit_request__routing__pending_deposit_invalid_signature(spec, state):
     """Test that pubkey with pending deposit with invalid signature becomes builder."""
     # Use a pubkey from builder_pubkeys that doesn't exist as validator or builder yet
@@ -1012,183 +894,6 @@ def test_process_deposit_request__nonstandard_credential_padding(spec, state):
         expected_builder_count=pre_builder_count + 1,
         expected_builder_balance=amount,
         expected_execution_address=spec.ExecutionAddress(execution_address),
-    )
-
-
-@with_gloas_and_later
-@spec_state_test
-@always_bls
-def test_process_deposit_request__routing__pending_deposits_invalid_then_valid(spec, state):
-    """Test that pubkey with invalid pending deposits followed by valid one goes to validator queue."""
-    # Use a pubkey that doesn't exist as validator or builder yet
-    new_validator_index = len(state.validators)
-    new_pubkey = pubkeys[new_validator_index]
-    amount = spec.MIN_DEPOSIT_AMOUNT
-
-    # Add multiple pending deposits with invalid signatures first
-    for _ in range(3):
-        invalid_pending_deposit = spec.PendingDeposit(
-            pubkey=new_pubkey,
-            amount=amount,
-            withdrawal_credentials=make_withdrawal_credentials(
-                spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\xab"
-            ),
-            signature=spec.BLSSignature(),  # Invalid empty signature
-            slot=spec.GENESIS_SLOT,
-        )
-        state.pending_deposits.append(invalid_pending_deposit)
-
-    # Add a valid pending deposit after the invalid ones
-    valid_withdrawal_credentials = make_withdrawal_credentials(
-        spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\xcd"
-    )
-    valid_pending_deposit = prepare_pending_deposit(
-        spec,
-        new_validator_index,
-        amount,
-        withdrawal_credentials=valid_withdrawal_credentials,
-        signed=True,
-    )
-    state.pending_deposits.append(valid_pending_deposit)
-
-    # Now create a deposit request with builder credentials for the same pubkey
-    deposit_request = prepare_deposit_request(
-        spec,
-        new_validator_index,
-        amount,
-        index=0,
-        withdrawal_credentials=make_withdrawal_credentials(
-            spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
-        ),
-        signed=True,
-    )
-
-    pre_state = state.copy()
-
-    yield from run_deposit_request_processing(spec, state, deposit_request)
-
-    # Should NOT create a new builder (there's a valid pending deposit in the queue)
-    assert_process_deposit_request(
-        spec,
-        state,
-        pre_state,
-        deposit_request=deposit_request,
-        is_builder_deposit=False,
-    )
-
-
-@with_gloas_and_later
-@spec_state_test
-@always_bls
-def test_process_deposit_request__routing__pending_deposit_builder_credentials(spec, state):
-    """Test that pubkey with pending deposit with builder credentials goes to validator queue."""
-    # Use a pubkey that doesn't exist as validator or builder yet
-    new_validator_index = len(state.validators)
-    amount = spec.MIN_DEPOSIT_AMOUNT
-
-    # Add a pending deposit with builder credentials and a valid signature
-    pending_withdrawal_credentials = make_withdrawal_credentials(
-        spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\xab"
-    )
-    pending_deposit = prepare_pending_deposit(
-        spec,
-        new_validator_index,
-        amount,
-        withdrawal_credentials=pending_withdrawal_credentials,
-        signed=True,
-    )
-    state.pending_deposits.append(pending_deposit)
-
-    # Now create another deposit request with builder credentials for the same pubkey
-    deposit_request = prepare_deposit_request(
-        spec,
-        new_validator_index,
-        amount,
-        index=0,
-        withdrawal_credentials=make_withdrawal_credentials(
-            spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
-        ),
-        signed=True,
-    )
-
-    pre_state = state.copy()
-
-    yield from run_deposit_request_processing(spec, state, deposit_request)
-
-    # Should NOT create a new builder (pubkey has valid pending deposit)
-    assert_process_deposit_request(
-        spec,
-        state,
-        pre_state,
-        deposit_request=deposit_request,
-        is_builder_deposit=False,
-    )
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_process_deposit_request__routing__pending_deposit_different_pubkeys(spec, state):
-    """
-    Test is_pending_validator skips non-matching pubkeys before finding matching one.
-
-    Exercises the `continue` branch in is_pending_validator when pending deposits
-    with different pubkeys exist before the matching deposit.
-
-    Input State Configured:
-        - Pending deposits for two unrelated validator pubkeys
-        - Pending deposit for the target pubkey
-        - Builder-credential deposit request for the target pubkey
-
-    Output State Verified:
-        - Deposit routed to validator queue (not builder)
-        - is_pending_validator returns True after skipping non-matching deposits
-    """
-    new_validator_index = len(state.validators)
-    amount = spec.MIN_DEPOSIT_AMOUNT
-
-    # Add pending deposits with different pubkeys (these will be skipped via `continue`)
-    for i in range(2):
-        unrelated_index = new_validator_index + 1 + i
-        unrelated_pending = prepare_pending_deposit(
-            spec,
-            unrelated_index,
-            amount,
-            signed=True,
-        )
-        state.pending_deposits.append(unrelated_pending)
-
-    # Add a pending deposit with the target pubkey (this will match)
-    target_pending = prepare_pending_deposit(
-        spec,
-        new_validator_index,
-        amount,
-        signed=True,
-    )
-    state.pending_deposits.append(target_pending)
-
-    # Create a deposit request with builder credentials for the target pubkey
-    deposit_request = prepare_deposit_request(
-        spec,
-        new_validator_index,
-        amount,
-        index=0,
-        withdrawal_credentials=make_withdrawal_credentials(
-            spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
-        ),
-        signed=True,
-    )
-
-    pre_state = state.copy()
-
-    yield from run_deposit_request_processing(spec, state, deposit_request)
-
-    # Should NOT create a new builder (is_pending_validator finds matching deposit)
-    assert_process_deposit_request(
-        spec,
-        state,
-        pre_state,
-        deposit_request=deposit_request,
-        is_builder_deposit=False,
     )
 
 

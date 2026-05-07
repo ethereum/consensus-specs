@@ -140,6 +140,7 @@ class BeaconState(Container):
     consolidation_balance_to_consume: Gwei
     earliest_consolidation_epoch: Epoch
     pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
+    pending_builder_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
     proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]

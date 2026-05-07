@@ -93,6 +93,7 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         consolidation_balance_to_consume=pre.consolidation_balance_to_consume,
         earliest_consolidation_epoch=pre.earliest_consolidation_epoch,
         pending_deposits=pre.pending_deposits,
+        pending_builder_deposits=pre.pending_builder_deposits,
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
         proposer_lookahead=pre.proposer_lookahead,

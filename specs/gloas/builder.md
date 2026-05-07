@@ -75,16 +75,20 @@ identify the builder in execution payload bids and envelopes.
 
 ### Activation
 
-Builders become active once the epoch in which they were registered (assigned an
-index) has been finalized. Since registrations occur as soon as deposits reach
-the beacon chain, builders typically become active two epochs after submitting
-their deposit.
+Builders become active as soon as they are registered (assigned an index in
+`state.builders`). Registration only occurs through `apply_deposit_for_builder`,
+which is invoked from `process_builder_pending_deposits` once the originating
+deposit has been finalized. Since deposits typically finalize about two epochs
+after reaching the beacon chain, builders typically become active two epochs
+after submitting their deposit.
 
 *Note*: At the fork, pending deposits with the `BUILDER_WITHDRAWAL_PREFIX` are
-applied to the builder registry. The builder's `deposit_epoch` is set to the
-epoch of the pending deposit, not the fork epoch. Therefore, if that epoch is
-finalized at the fork, the builder will be immediately active. See
-`onboard_builders_from_pending_deposits` for details.
+applied to the builder registry up to `MAX_PENDING_BUILDER_DEPOSITS_PER_EPOCH`
+per epoch (and only if the deposit's slot is already finalized at the fork); any
+remaining builder-routed deposits are appended to
+`state.pending_builder_deposits` and drained over subsequent epochs by
+`process_builder_pending_deposits`. See `onboard_builders_from_pending_deposits`
+for details.
 
 ## Builder activities
 

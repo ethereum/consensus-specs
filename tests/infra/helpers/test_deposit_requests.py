@@ -255,46 +255,6 @@ def test_prepare_process_deposit_request_builder_custom_amount(spec, state):
     assert deposit_request.amount == custom_amount
 
 
-def test_assert_new_builder_deposit():
-    """Test assert_process_deposit_request passes for a new builder deposit."""
-    spec = MagicMock()
-
-    builder_pubkey = b"\x03" * 48
-    deposit_request = MagicMock()
-    deposit_request.pubkey = builder_pubkey
-    deposit_request.withdrawal_credentials = b"\x03" + b"\x00" * 11 + b"\x59" * 20
-    deposit_request.amount = 32_000_000_000
-    deposit_request.signature = b"\x02" * 96
-    deposit_request.index = 0
-
-    # Pre state: no builders
-    pre_state = MagicMock()
-    pre_state.pending_deposits = []
-    pre_state.validators = [MagicMock()]
-    pre_state.balances = [32_000_000_000]
-    pre_state.builders = []
-
-    # Post state: one new builder with matching pubkey
-    new_builder = MagicMock()
-    new_builder.pubkey = builder_pubkey
-    new_builder.balance = deposit_request.amount
-
-    state = MagicMock()
-    state.pending_deposits = []
-    state.validators = [MagicMock()]
-    state.balances = [32_000_000_000]
-    state.builders = [new_builder]
-
-    with patch("tests.infra.helpers.deposit_requests.is_post_gloas", return_value=True):
-        assert_process_deposit_request(
-            spec,
-            state,
-            pre_state,
-            deposit_request=deposit_request,
-            is_builder_deposit=True,
-        )
-
-
 @with_all_phases_from_to(ELECTRA, GLOAS)
 @spec_state_test
 def test_prepare_process_deposit_request_builder_credentials_before_gloas(spec, state):

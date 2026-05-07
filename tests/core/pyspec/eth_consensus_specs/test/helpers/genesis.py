@@ -31,7 +31,6 @@ def build_mock_builder(spec, i: int, balance: int):
         pubkey=builder_pubkeys[i],
         execution_address=spec.ExecutionAddress(spec.hash(builder_pubkeys[i])[12:]),
         balance=balance,
-        deposit_epoch=0,
         withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
     )
 

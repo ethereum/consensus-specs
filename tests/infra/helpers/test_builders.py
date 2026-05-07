@@ -28,7 +28,6 @@ class TestAddBuilderToRegistry:
         assert builder.pubkey == (0).to_bytes(48, "little")
         assert builder.execution_address == (0).to_bytes(20, "little")
         assert builder.balance == spec.MIN_DEPOSIT_AMOUNT
-        assert builder.deposit_epoch == 0
         assert builder.withdrawable_epoch == spec.FAR_FUTURE_EPOCH
         assert builder.version == 0
 
@@ -60,7 +59,6 @@ class TestAddBuilderToRegistry:
         custom_pubkey = b"\xab" * 48
         custom_address = b"\xcd" * 20
         custom_balance = 5_000_000_000
-        custom_deposit_epoch = 100
         custom_withdrawable_epoch = 200
 
         add_builder_to_registry(
@@ -70,7 +68,6 @@ class TestAddBuilderToRegistry:
             pubkey=custom_pubkey,
             execution_address=custom_address,
             balance=custom_balance,
-            deposit_epoch=custom_deposit_epoch,
             withdrawable_epoch=custom_withdrawable_epoch,
         )
 
@@ -78,7 +75,6 @@ class TestAddBuilderToRegistry:
         assert builder.pubkey == custom_pubkey
         assert builder.execution_address == custom_address
         assert builder.balance == custom_balance
-        assert builder.deposit_epoch == custom_deposit_epoch
         assert builder.withdrawable_epoch == custom_withdrawable_epoch
 
     def test_add_builder_updates_existing(self):

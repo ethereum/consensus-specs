@@ -124,34 +124,6 @@ def test_fork_single_builder_deposit(spec, phases, state):
 @spec_test
 @with_state
 @with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
-def test_fork_builder_deposit_uses_deposit_slot_epoch(spec, phases, state):
-    """
-    Test fork uses the deposit's slot epoch when onboarding builders.
-    """
-    post_spec = phases[GLOAS]
-    amount = post_spec.MIN_DEPOSIT_AMOUNT
-
-    # Set state slot to a later epoch than the deposit slot
-    state.slot = post_spec.SLOTS_PER_EPOCH * 2
-
-    builder_pubkey = builder_pubkeys[0]
-    pending_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
-    pending_deposit.slot = state.slot - 1
-    state.pending_deposits = [pending_deposit]
-
-    post_state = yield from run_fork_test(post_spec, state)
-
-    assert len(post_state.builders) == 1
-    builder = post_state.builders[0]
-    assert builder.deposit_epoch == post_spec.compute_epoch_at_slot(pending_deposit.slot)
-    assert builder.deposit_epoch != post_spec.get_current_epoch(post_state)
-    assert len(post_state.pending_deposits) == 0
-
-
-@with_phases(phases=[FULU], other_phases=[GLOAS])
-@spec_test
-@with_state
-@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
 def test_fork_multiple_builder_deposits(spec, phases, state):
     """
     Test fork with multiple pending deposits with builder credentials.
@@ -609,4 +581,127 @@ def test_fork_valid_builder_deposit_followed_by_invalid_builder_deposit(spec, ph
     assert post_state.builders[0].balance == amount * 2
 
     # No pending deposits should remain
+    assert len(post_state.pending_deposits) == 0
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_too_many_builder_deposits(spec, phases, state):
+    """
+    Test that fork-time builder onboarding caps inline applications at
+    ``MAX_PENDING_BUILDER_DEPOSITS_PER_EPOCH`` and routes the rest to
+    ``state.pending_builder_deposits`` for later draining by
+    ``process_builder_pending_deposits``.
+    """
+    post_spec = phases[GLOAS]
+    cap = post_spec.MAX_PENDING_BUILDER_DEPOSITS_PER_EPOCH
+    overflow = 5
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+
+    # Create cap+overflow pending builder deposits with distinct pubkeys.
+    pending_deposits = []
+    for i in range(cap + overflow):
+        builder_pubkey = builder_pubkeys[i]
+        pending_deposits.append(
+            create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
+        )
+    state.pending_deposits = pending_deposits
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    # Exactly ``cap`` builders applied inline; the first ``cap`` pubkeys are in
+    # the registry in the same order they appeared in pre.pending_deposits.
+    assert len(post_state.builders) == cap
+    for i in range(cap):
+        assert post_state.builders[i].pubkey == builder_pubkeys[i]
+        assert post_state.builders[i].balance == amount
+
+    # Remaining ``overflow`` deposits are queued for later draining.
+    assert len(post_state.pending_builder_deposits) == overflow
+    for i in range(overflow):
+        queued = post_state.pending_builder_deposits[i]
+        assert queued.pubkey == builder_pubkeys[cap + i]
+        assert queued.amount == amount
+
+    # Validator queue is empty (all deposits had builder credentials).
+    assert len(post_state.pending_deposits) == 0
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_unfinalized_builder_deposit(spec, phases, state):
+    """
+    Test that a builder-credentialed pending deposit whose ``slot`` exceeds
+    ``state.finalized_checkpoint.epoch``'s start slot is queued in
+    ``state.pending_builder_deposits`` at the fork rather than applied inline.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+
+    # Advance past genesis and leave finalization behind so the deposit's slot
+    # is unfinalized at the fork boundary.
+    state.slot = post_spec.SLOTS_PER_EPOCH * 4
+    state.finalized_checkpoint.epoch = post_spec.Epoch(1)
+
+    builder_pubkey = builder_pubkeys[0]
+    pending_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
+    pending_deposit.slot = state.slot
+    state.pending_deposits = [pending_deposit]
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    # Not finalized at fork → no inline application.
+    assert len(post_state.builders) == 0
+
+    # Deposit is queued in pending_builder_deposits for a later epoch drain.
+    assert len(post_state.pending_builder_deposits) == 1
+    queued = post_state.pending_builder_deposits[0]
+    assert queued.pubkey == builder_pubkey
+    assert queued.amount == amount
+    assert queued.slot == pending_deposit.slot
+
+    # Validator queue is empty.
+    assert len(post_state.pending_deposits) == 0
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_mixed_finalized_and_unfinalized_builder_deposits(spec, phases, state):
+    """
+    Test fork onboarding with mixed finalized and unfinalized builder deposits:
+    finalized ones (within the cap) are applied inline, unfinalized ones are
+    appended to ``state.pending_builder_deposits``.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+
+    # State has progressed; finalization covers epoch 1.
+    state.slot = post_spec.SLOTS_PER_EPOCH * 4
+    state.finalized_checkpoint.epoch = post_spec.Epoch(1)
+    finalized_slot = post_spec.compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
+
+    finalized_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkeys[0], amount)
+    finalized_deposit.slot = finalized_slot
+
+    unfinalized_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkeys[1], amount)
+    unfinalized_deposit.slot = state.slot
+
+    state.pending_deposits = [finalized_deposit, unfinalized_deposit]
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    # The finalized deposit becomes a builder; the unfinalized one is queued.
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == builder_pubkeys[0]
+    assert post_state.builders[0].balance == amount
+
+    assert len(post_state.pending_builder_deposits) == 1
+    assert post_state.pending_builder_deposits[0].pubkey == builder_pubkeys[1]
+
     assert len(post_state.pending_deposits) == 0

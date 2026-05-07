@@ -16,6 +16,7 @@
   - [Max operations per block](#max-operations-per-block)
   - [State list lengths](#state-list-lengths)
   - [Withdrawals processing](#withdrawals-processing)
+  - [Pending deposits processing](#pending-deposits-processing)
 - [Configuration](#configuration)
   - [Validator cycle](#validator-cycle)
   - [Time parameters](#time-parameters)
@@ -73,6 +74,7 @@
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
     - [Modified `process_pending_deposits`](#modified-process_pending_deposits)
+    - [New `process_builder_pending_deposits`](#new-process_builder_pending_deposits)
     - [New `process_builder_pending_payments`](#new-process_builder_pending_payments)
     - [New `process_ptc_window`](#new-process_ptc_window)
   - [Block processing](#block-processing)
@@ -185,6 +187,12 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 | ------------------------------------ | ------------------ |
 | `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` | `2**14` (= 16,384) |
 
+### Pending deposits processing
+
+| Name                                     | Value                  | Description                                                     |
+| ---------------------------------------- | ---------------------- | --------------------------------------------------------------- |
+| `MAX_PENDING_BUILDER_DEPOSITS_PER_EPOCH` | `uint64(2**7)` (= 128) | Maximum number of builder pending deposits to process per epoch |
+
 ## Configuration
 
 ### Validator cycle
@@ -213,7 +221,6 @@ class Builder(Container):
     version: uint8
     execution_address: ExecutionAddress
     balance: Gwei
-    deposit_epoch: Epoch
     withdrawable_epoch: Epoch
 ```
 
@@ -391,6 +398,8 @@ class BeaconState(Container):
     consolidation_balance_to_consume: Gwei
     earliest_consolidation_epoch: Epoch
     pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
+    # [New in Gloas:EIP7732]
+    pending_builder_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
     pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
     pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
     proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
@@ -476,12 +485,7 @@ def is_active_builder(state: BeaconState, builder_index: BuilderIndex) -> bool:
     Check if the builder at ``builder_index`` is active for the given ``state``.
     """
     builder = state.builders[builder_index]
-    return (
-        # Placement in builder list is finalized
-        builder.deposit_epoch < state.finalized_checkpoint.epoch
-        # Has not initiated exit
-        and builder.withdrawable_epoch == FAR_FUTURE_EPOCH
-    )
+    return builder.withdrawable_epoch == FAR_FUTURE_EPOCH
 ```
 
 #### New `is_builder_withdrawal_credential`
@@ -953,7 +957,8 @@ def process_slot(state: BeaconState) -> None:
 #### Modified `process_epoch`
 
 *Note*: The function `process_epoch` is modified in Gloas to call the new
-helpers `process_builder_pending_payments` and `process_ptc_window`.
+helpers `process_builder_pending_deposits`, `process_builder_pending_payments`,
+and `process_ptc_window`.
 
 ```python
 def process_epoch(state: BeaconState) -> None:
@@ -965,6 +970,8 @@ def process_epoch(state: BeaconState) -> None:
     process_eth1_data_reset(state)
     # [Modified in Gloas:EIP8061]
     process_pending_deposits(state)
+    # [New in Gloas:EIP7732]
+    process_builder_pending_deposits(state)
     process_pending_consolidations(state)
     # [New in Gloas:EIP7732]
     process_builder_pending_payments(state)
@@ -1047,6 +1054,31 @@ def process_pending_deposits(state: BeaconState) -> None:
         state.deposit_balance_to_consume = available_for_processing - processed_amount
     else:
         state.deposit_balance_to_consume = Gwei(0)
+```
+
+#### New `process_builder_pending_deposits`
+
+```python
+def process_builder_pending_deposits(state: BeaconState) -> None:
+    finalized_slot = compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
+
+    next_deposit_index = 0
+    for deposit in state.pending_builder_deposits:
+        if deposit.slot > finalized_slot:
+            break
+        if next_deposit_index >= MAX_PENDING_BUILDER_DEPOSITS_PER_EPOCH:
+            break
+
+        apply_deposit_for_builder(
+            state,
+            deposit.pubkey,
+            deposit.withdrawal_credentials,
+            deposit.amount,
+            deposit.signature,
+        )
+        next_deposit_index += 1
+
+    state.pending_builder_deposits = state.pending_builder_deposits[next_deposit_index:]
 ```
 
 #### New `process_builder_pending_payments`
@@ -1537,7 +1569,6 @@ def add_builder_to_registry(
     pubkey: BLSPubkey,
     withdrawal_credentials: Bytes32,
     amount: uint64,
-    slot: Slot,
 ) -> None:
     set_or_append_list(
         state.builders,
@@ -1547,7 +1578,6 @@ def add_builder_to_registry(
             version=uint8(withdrawal_credentials[0]),
             execution_address=ExecutionAddress(withdrawal_credentials[12:]),
             balance=amount,
-            deposit_epoch=compute_epoch_at_slot(slot),
             withdrawable_epoch=FAR_FUTURE_EPOCH,
         ),
     )
@@ -1569,13 +1599,12 @@ def apply_deposit_for_builder(
     withdrawal_credentials: Bytes32,
     amount: uint64,
     signature: BLSSignature,
-    slot: Slot,
 ) -> None:
     builder_pubkeys = [b.pubkey for b in state.builders]
     if pubkey not in builder_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
-            add_builder_to_registry(state, pubkey, withdrawal_credentials, amount, slot)
+            add_builder_to_registry(state, pubkey, withdrawal_credentials, amount)
     else:
         # Increase balance by deposit amount
         builder_index = builder_pubkeys.index(pubkey)
@@ -1586,41 +1615,24 @@ def apply_deposit_for_builder(
 
 ```python
 def process_deposit_request(state: BeaconState, deposit_request: DepositRequest) -> None:
-    # [New in Gloas:EIP7732]
-    builder_pubkeys = [b.pubkey for b in state.builders]
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    # Set deposit request start index
+    if state.deposit_requests_start_index == UNSET_DEPOSIT_REQUESTS_START_INDEX:
+        state.deposit_requests_start_index = deposit_request.index
 
-    # [New in Gloas:EIP7732]
-    # Regardless of the withdrawal credentials prefix, if a builder/validator
-    # already exists with this pubkey, apply the deposit to their balance
-    is_builder = deposit_request.pubkey in builder_pubkeys
-    is_validator = deposit_request.pubkey in validator_pubkeys
-    if is_builder or (
-        is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
-        and not is_validator
-        and not is_pending_validator(state, deposit_request.pubkey)
-    ):
-        # Apply builder deposits immediately
-        apply_deposit_for_builder(
-            state,
-            deposit_request.pubkey,
-            deposit_request.withdrawal_credentials,
-            deposit_request.amount,
-            deposit_request.signature,
-            state.slot,
-        )
-        return
-
-    # Add validator deposits to the queue
-    state.pending_deposits.append(
-        PendingDeposit(
-            pubkey=deposit_request.pubkey,
-            withdrawal_credentials=deposit_request.withdrawal_credentials,
-            amount=deposit_request.amount,
-            signature=deposit_request.signature,
-            slot=state.slot,
-        )
+    pending_deposit = PendingDeposit(
+        pubkey=deposit_request.pubkey,
+        withdrawal_credentials=deposit_request.withdrawal_credentials,
+        amount=deposit_request.amount,
+        signature=deposit_request.signature,
+        slot=state.slot,
     )
+
+    # [New in Gloas:EIP7732]
+    # Route by withdrawal credential prefix into the appropriate pending queue.
+    if is_builder_withdrawal_credential(deposit_request.withdrawal_credentials):
+        state.pending_builder_deposits.append(pending_deposit)
+    else:
+        state.pending_deposits.append(pending_deposit)
 ```
 
 ##### Voluntary exits

@@ -60,11 +60,15 @@ def initialize_ptc_window(
 ```python
 def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
     """
-    Applies any pending deposit for builders, effectively
-    onboarding builders at the fork.
+    Applies up to ``MAX_PENDING_BUILDER_DEPOSITS_PER_EPOCH`` pending deposits for builders
+    inline at the fork, onboarding those builders. Builder-routed deposits beyond
+    the limit are appended to ``state.pending_builder_deposits`` for later draining
+    by ``process_builder_pending_deposits``.
     """
     validator_pubkeys = [v.pubkey for v in state.validators]
+    finalized_slot = compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
 
+    processed = 0
     pending_deposits = []
     for deposit in state.pending_deposits:
         # Deposits for existing validators stay in pending queue
@@ -73,23 +77,27 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
             continue
 
         # If the pubkey is associated with a builder that was created in a
-        # previous iteration or it is a builder deposit, try to apply the
-        # deposit to the new/existing builder. Note that the function
-        # apply_deposit_for_builder can mutate the state and may add a builder
-        # to the registry. For this reason, the list of builder pubkeys must
-        # be recomputed each iteration.
+        # previous iteration or it is a builder deposit, route to the builder
+        # path. Note that the function apply_deposit_for_builder can mutate the
+        # state and may add a builder to the registry. For this reason, the
+        # list of builder pubkeys must be recomputed each iteration.
         builder_pubkeys = [b.pubkey for b in state.builders]
         is_existing_builder = deposit.pubkey in builder_pubkeys
         has_builder_credentials = is_builder_withdrawal_credential(deposit.withdrawal_credentials)
         if is_existing_builder or has_builder_credentials:
-            apply_deposit_for_builder(
-                state,
-                deposit.pubkey,
-                deposit.withdrawal_credentials,
-                deposit.amount,
-                deposit.signature,
-                deposit.slot,
-            )
+            is_deposit_finalized = deposit.slot <= finalized_slot
+            is_within_limit = processed < MAX_PENDING_BUILDER_DEPOSITS_PER_EPOCH
+            if is_deposit_finalized and is_within_limit:
+                apply_deposit_for_builder(
+                    state,
+                    deposit.pubkey,
+                    deposit.withdrawal_credentials,
+                    deposit.amount,
+                    deposit.signature,
+                )
+                processed += 1
+            else:
+                state.pending_builder_deposits.append(deposit)
             continue
 
         # If there is a pending deposit for a new validator that has a valid
@@ -166,6 +174,8 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         consolidation_balance_to_consume=pre.consolidation_balance_to_consume,
         earliest_consolidation_epoch=pre.earliest_consolidation_epoch,
         pending_deposits=pre.pending_deposits,
+        # [New in Gloas:EIP7732]
+        pending_builder_deposits=[],
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
         proposer_lookahead=pre.proposer_lookahead,

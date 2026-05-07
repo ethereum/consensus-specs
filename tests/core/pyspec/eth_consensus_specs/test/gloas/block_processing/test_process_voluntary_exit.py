@@ -51,34 +51,6 @@ def test_builder_voluntary_exit__success(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_builder_voluntary_exit__invalid__inactive_deposit_epoch(spec, state):
-    """Test that inactive builders cannot exit."""
-    builder_index = 0
-    pubkey = state.builders[builder_index].pubkey
-    privkey = builder_pubkey_to_privkey[pubkey]
-
-    # Set builder's deposit epoch to a non-finalized epoch
-    state.builders[builder_index].deposit_epoch = spec.Epoch(1)
-
-    advance_past_finalization(spec, state)
-    assert state.finalized_checkpoint.epoch == state.builders[builder_index].deposit_epoch
-    assert not spec.is_active_builder(state, builder_index)
-
-    validator_index = spec.convert_builder_index_to_validator_index(builder_index)
-    voluntary_exit = spec.VoluntaryExit(
-        epoch=spec.get_current_epoch(state),
-        validator_index=validator_index,
-    )
-    signed_voluntary_exit = sign_voluntary_exit(spec, state, voluntary_exit, privkey)
-
-    yield "pre", state
-    yield "voluntary_exit", signed_voluntary_exit
-    expect_assertion_error(lambda: spec.process_voluntary_exit(state, signed_voluntary_exit))
-    yield "post", None
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_builder_voluntary_exit__invalid__inactive_already_exited(spec, state):
     """Test that already-exited builders cannot exit again."""
     builder_index = 0
