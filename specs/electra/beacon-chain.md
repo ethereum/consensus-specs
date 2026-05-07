@@ -54,6 +54,7 @@
     - [New `get_balance_churn_limit`](#new-get_balance_churn_limit)
     - [New `get_activation_exit_churn_limit`](#new-get_activation_exit_churn_limit)
     - [New `get_consolidation_churn_limit`](#new-get_consolidation_churn_limit)
+    - [New `get_deposit_churn_limit`](#new-get_deposit_churn_limit)
     - [New `get_pending_balance_to_withdraw`](#new-get_pending_balance_to_withdraw)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
     - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
@@ -632,6 +633,16 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     return get_balance_churn_limit(state) - get_activation_exit_churn_limit(state)
 ```
 
+#### New `get_deposit_churn_limit`
+
+```python
+def get_deposit_churn_limit(state: BeaconState) -> Gwei:
+    """
+    Per-epoch churn limit reserved for pending deposits.
+    """
+    return state.deposit_balance_to_consume + get_activation_exit_churn_limit(state)
+```
+
 #### New `get_pending_balance_to_withdraw`
 
 ```python
@@ -989,10 +1000,8 @@ before applying pending deposit:
 ```python
 def process_pending_deposits(state: BeaconState) -> None:
     next_epoch = Epoch(get_current_epoch(state) + 1)
-    available_for_processing = state.deposit_balance_to_consume + get_activation_exit_churn_limit(
-        state
-    )
-    processed_amount = 0
+    available_for_processing = get_deposit_churn_limit(state)
+    processed_amount = Gwei(0)
     next_deposit_index = 0
     deposits_to_postpone = []
     is_churn_limit_reached = False

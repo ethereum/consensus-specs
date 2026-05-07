@@ -64,6 +64,7 @@
     - [New `get_activation_churn_limit`](#new-get_activation_churn_limit)
     - [New `get_exit_churn_limit`](#new-get_exit_churn_limit)
     - [Modified `get_consolidation_churn_limit`](#modified-get_consolidation_churn_limit)
+    - [Modified `get_deposit_churn_limit`](#modified-get_deposit_churn_limit)
     - [Modified `compute_exit_epoch_and_update_churn`](#modified-compute_exit_epoch_and_update_churn)
   - [Beacon state mutators](#beacon-state-mutators)
     - [New `initiate_builder_exit`](#new-initiate_builder_exit)
@@ -72,7 +73,6 @@
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
-    - [Modified `process_pending_deposits`](#modified-process_pending_deposits)
     - [New `process_builder_pending_payments`](#new-process_builder_pending_payments)
     - [New `process_ptc_window`](#new-process_ptc_window)
   - [Block processing](#block-processing)
@@ -852,6 +852,17 @@ def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
     return churn - churn % EFFECTIVE_BALANCE_INCREMENT
 ```
 
+#### Modified `get_deposit_churn_limit`
+
+```python
+def get_deposit_churn_limit(state: BeaconState) -> Gwei:
+    """
+    Per-epoch churn limit reserved for pending deposits.
+    """
+    # [Modified in Gloas:EIP8061]
+    return state.deposit_balance_to_consume + get_activation_churn_limit(state)
+```
+
 #### Modified `compute_exit_epoch_and_update_churn`
 
 *Note*: Exit processing now uses the uncapped exit churn, while deposit
@@ -977,76 +988,6 @@ def process_epoch(state: BeaconState) -> None:
     process_proposer_lookahead(state)
     # [New in Gloas:EIP7732]
     process_ptc_window(state)
-```
-
-#### Modified `process_pending_deposits`
-
-```python
-def process_pending_deposits(state: BeaconState) -> None:
-    next_epoch = Epoch(get_current_epoch(state) + 1)
-    # [Modified in Gloas:EIP8061]
-    # Deposits still consume the activation-only churn budget in Gloas.
-    available_for_processing = state.deposit_balance_to_consume + get_activation_churn_limit(state)
-    processed_amount = 0
-    next_deposit_index = 0
-    deposits_to_postpone = []
-    is_churn_limit_reached = False
-    finalized_slot = compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
-
-    for deposit in state.pending_deposits:
-        # Do not process deposit requests if Eth1 bridge deposits are not yet applied.
-        if (
-            # Is deposit request
-            deposit.slot > GENESIS_SLOT
-            and
-            # There are pending Eth1 bridge deposits
-            state.eth1_deposit_index < state.deposit_requests_start_index
-        ):
-            break
-
-        # Check if deposit has been finalized, otherwise, stop processing.
-        if deposit.slot > finalized_slot:
-            break
-
-        # Check if number of processed deposits has not reached the limit, otherwise, stop processing.
-        if next_deposit_index >= MAX_PENDING_DEPOSITS_PER_EPOCH:
-            break
-
-        # Read validator state
-        is_validator_exited = False
-        is_validator_withdrawn = False
-        validator_pubkeys = [v.pubkey for v in state.validators]
-        if deposit.pubkey in validator_pubkeys:
-            validator = state.validators[ValidatorIndex(validator_pubkeys.index(deposit.pubkey))]
-            is_validator_exited = validator.exit_epoch < FAR_FUTURE_EPOCH
-            is_validator_withdrawn = validator.withdrawable_epoch < next_epoch
-
-        if is_validator_withdrawn:
-            # Deposited balance will never become active. Increase balance but do not consume churn
-            apply_pending_deposit(state, deposit)
-        elif is_validator_exited:
-            # Validator is exiting, postpone the deposit until after withdrawable epoch
-            deposits_to_postpone.append(deposit)
-        else:
-            # Check if deposit fits in the churn, otherwise, do no more deposit processing in this epoch.
-            is_churn_limit_reached = processed_amount + deposit.amount > available_for_processing
-            if is_churn_limit_reached:
-                break
-
-            # Consume churn and apply deposit.
-            processed_amount += deposit.amount
-            apply_pending_deposit(state, deposit)
-
-        # Regardless of how the deposit was handled, we move on in the queue.
-        next_deposit_index += 1
-
-    state.pending_deposits = state.pending_deposits[next_deposit_index:] + deposits_to_postpone
-
-    # Accumulate churn only if the churn limit has been hit.
-    if is_churn_limit_reached:
-        state.deposit_balance_to_consume = available_for_processing - processed_amount
-    else:
-        state.deposit_balance_to_consume = Gwei(0)
 ```
 
 #### New `process_builder_pending_payments`
