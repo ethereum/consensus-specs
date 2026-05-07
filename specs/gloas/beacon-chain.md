@@ -47,7 +47,6 @@
     - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
     - [New `is_attestation_same_slot`](#new-is_attestation_same_slot)
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
-    - [New `is_pending_validator`](#new-is_pending_validator)
   - [Misc](#misc-2)
     - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
     - [New `convert_validator_index_to_builder_index`](#new-convert_validator_index_to_builder_index)
@@ -532,29 +531,6 @@ def is_valid_indexed_payload_attestation(
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(attestation.data.slot))
     signing_root = compute_signing_root(attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, attestation.signature)
-```
-
-#### New `is_pending_validator`
-
-*Note*: This function naively revalidates deposit signatures on every call.
-Implementations SHOULD cache verification results to avoid repeated work.
-
-```python
-def is_pending_validator(state: BeaconState, pubkey: BLSPubkey) -> bool:
-    """
-    Check if a pending deposit with a valid signature is in the queue for the given pubkey.
-    """
-    for pending_deposit in state.pending_deposits:
-        if pending_deposit.pubkey != pubkey:
-            continue
-        if is_valid_deposit_signature(
-            pending_deposit.pubkey,
-            pending_deposit.withdrawal_credentials,
-            pending_deposit.amount,
-            pending_deposit.signature,
-        ):
-            return True
-    return False
 ```
 
 ### Misc
@@ -1628,8 +1604,20 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     )
 
     # [New in Gloas:EIP7732]
-    # Route by withdrawal credential prefix into the appropriate pending queue.
-    if is_builder_withdrawal_credential(deposit_request.withdrawal_credentials):
+    # Route to the path that already covers this pubkey (existing entry in
+    # builders, validators, or either pending queue) so top-ups reach the
+    # right target and a pubkey cannot exist as both a builder and a
+    # validator. Otherwise route by withdrawal credential prefix.
+    pubkey = deposit_request.pubkey
+    builder_pubkeys = [b.pubkey for b in state.builders]
+    validator_pubkeys = [v.pubkey for v in state.validators]
+    is_pending_builder = any(d.pubkey == pubkey for d in state.pending_builder_deposits)
+    is_pending_validator = any(d.pubkey == pubkey for d in state.pending_deposits)
+    if pubkey in builder_pubkeys or is_pending_builder:
+        state.pending_builder_deposits.append(pending_deposit)
+    elif pubkey in validator_pubkeys or is_pending_validator:
+        state.pending_deposits.append(pending_deposit)
+    elif is_builder_withdrawal_credential(deposit_request.withdrawal_credentials):
         state.pending_builder_deposits.append(pending_deposit)
     else:
         state.pending_deposits.append(pending_deposit)

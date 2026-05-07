@@ -170,11 +170,23 @@ def prepare_process_deposit_request(
 def _is_builder_deposit(spec, pre_state, deposit_request):
     """Check if request routes to builder path under Gloas+ deposit routing rules.
 
-    Under the simplified routing, this is determined purely by the credential
-    prefix: builder credentials route to ``state.pending_builder_deposits``,
-    everything else routes to ``state.pending_deposits``.
+    A deposit routes to ``state.pending_builder_deposits`` when:
+      1. the pubkey is already a builder in the registry, or
+      2. the pubkey already has an entry in ``pending_builder_deposits``, or
+      3. the pubkey is unknown to validators / builders / either pending queue
+         and the withdrawal credentials use the builder prefix.
+    Otherwise it routes to ``state.pending_deposits``.
     """
     if not is_post_gloas(spec):
+        return False
+    pubkey = deposit_request.pubkey
+    if pubkey in {b.pubkey for b in pre_state.builders}:
+        return True
+    if pubkey in {v.pubkey for v in pre_state.validators}:
+        return False
+    if any(d.pubkey == pubkey for d in pre_state.pending_builder_deposits):
+        return True
+    if any(d.pubkey == pubkey for d in pre_state.pending_deposits):
         return False
     return spec.is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
 

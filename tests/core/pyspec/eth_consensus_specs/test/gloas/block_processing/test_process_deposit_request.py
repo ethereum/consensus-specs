@@ -6,7 +6,6 @@ from eth_consensus_specs.test.helpers.deposits import (
     prepare_pending_deposit,
 )
 from eth_consensus_specs.test.helpers.keys import (
-    builder_pubkey_to_privkey,
     pubkeys,
 )
 from tests.infra.helpers.deposit_requests import (
@@ -782,62 +781,99 @@ def test_process_deposit_request__routing__new_pubkey_compounding_credentials(sp
 @with_gloas_and_later
 @spec_state_test
 @always_bls
-def test_process_deposit_request__routing__pending_deposit_invalid_signature(spec, state):
-    """Test that pubkey with pending deposit with invalid signature becomes builder."""
-    # Use a pubkey from builder_pubkeys that doesn't exist as validator or builder yet
-    existing_builder_pubkeys = {builder.pubkey for builder in state.builders}
-    new_builder_pubkey = None
-    for pk in builder_pubkey_to_privkey:
-        if pk not in existing_builder_pubkeys:
-            new_builder_pubkey = pk
-            break
-    assert new_builder_pubkey is not None
-    privkey = builder_pubkey_to_privkey[new_builder_pubkey]
+def test_process_deposit_request__routing__pending_validator_locks_pubkey(spec, state):
+    """A builder-credentialed deposit_request whose pubkey already has any
+    entry in ``pending_deposits`` (even an invalid-signature one) routes to
+    the validator path. Pending checks are signature-agnostic so the routing
+    fast path doesn't have to verify signatures."""
+    new_validator_index = len(state.validators)
+    new_pubkey = pubkeys[new_validator_index]
     amount = spec.MIN_DEPOSIT_AMOUNT
 
-    # Add a pending deposit with an invalid signature (won't create a validator)
-    invalid_pending_deposit = spec.PendingDeposit(
-        pubkey=new_builder_pubkey,
-        amount=amount,
-        withdrawal_credentials=make_withdrawal_credentials(
-            spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\xab"
-        ),
-        signature=spec.BLSSignature(),  # Invalid empty signature
-        slot=spec.GENESIS_SLOT,
+    # Plant an invalid-signature pending validator deposit for the pubkey.
+    state.pending_deposits.append(
+        spec.PendingDeposit(
+            pubkey=new_pubkey,
+            amount=amount,
+            withdrawal_credentials=make_withdrawal_credentials(
+                spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\xab"
+            ),
+            signature=spec.BLSSignature(),
+            slot=spec.GENESIS_SLOT,
+        )
     )
-    state.pending_deposits.append(invalid_pending_deposit)
 
-    # Now create a deposit request with builder credentials for the same pubkey
+    # Now a builder-credentialed deposit_request for the same pubkey arrives.
     deposit_request = prepare_deposit_request(
         spec,
-        0,
+        new_validator_index,
         amount,
         index=0,
-        pubkey=new_builder_pubkey,
-        privkey=privkey,
         withdrawal_credentials=make_withdrawal_credentials(
             spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
         ),
         signed=True,
     )
 
-    pre_builder_count = len(state.builders)
     pre_state = state.copy()
-
     yield from run_deposit_request_processing(spec, state, deposit_request)
 
-    # SHOULD create a new builder (pending deposit has invalid sig, so is_pending_validator is False)
+    # The pending-validator entry locks the pubkey to the validator path.
+    assert_process_deposit_request(
+        spec,
+        state,
+        pre_state,
+        deposit_request=deposit_request,
+        is_builder_deposit=False,
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
+def test_process_deposit_request__routing__pending_builder_locks_pubkey(spec, state):
+    """A validator-credentialed deposit_request whose pubkey already has any
+    entry in ``pending_builder_deposits`` routes to the builder path,
+    preventing the pubkey from existing as both a builder and a validator."""
+    new_validator_index = len(state.validators)
+    new_pubkey = pubkeys[new_validator_index]
+    amount = spec.MIN_DEPOSIT_AMOUNT
+
+    # Plant a pending builder deposit for the pubkey.
+    state.pending_builder_deposits.append(
+        spec.PendingDeposit(
+            pubkey=new_pubkey,
+            amount=amount,
+            withdrawal_credentials=make_withdrawal_credentials(
+                spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
+            ),
+            signature=spec.BLSSignature(),
+            slot=spec.GENESIS_SLOT,
+        )
+    )
+
+    # Now a validator-credentialed deposit_request for the same pubkey arrives.
+    deposit_request = prepare_deposit_request(
+        spec,
+        new_validator_index,
+        amount,
+        index=0,
+        withdrawal_credentials=make_withdrawal_credentials(
+            spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\xab"
+        ),
+        signed=True,
+    )
+
+    pre_state = state.copy()
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+
+    # The pending-builder entry locks the pubkey to the builder path.
     assert_process_deposit_request(
         spec,
         state,
         pre_state,
         deposit_request=deposit_request,
         is_builder_deposit=True,
-        expected_builder_count=pre_builder_count + 1,
-        expected_builder_balance=amount,
-        expected_execution_address=spec.ExecutionAddress(
-            deposit_request.withdrawal_credentials[12:]
-        ),
     )
 
 

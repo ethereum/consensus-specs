@@ -293,12 +293,12 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_parent_execution_payload__deposit_routing_by_credentials(spec, state):
+def test_process_parent_execution_payload__same_pubkey_locked_to_first_path(spec, state):
     """
-    Test that two deposits for the same pubkey route by credential prefix:
-    validator credentials go to ``pending_deposits``, builder credentials go to
-    ``pending_builder_deposits``. Routing is independent of any pubkey already
-    sitting in either queue.
+    Test that the first deposit for a pubkey locks it to that path: a later
+    deposit in the same batch with conflicting credentials still routes to the
+    first deposit's queue, preventing the same pubkey from existing as both a
+    builder and a validator.
     """
     new_validator_index = len(state.validators)
     new_validator_pubkey = pubkeys[new_validator_index]
@@ -351,18 +351,18 @@ def test_process_parent_execution_payload__deposit_routing_by_credentials(spec, 
     spec.process_slots(state, block.slot)
     yield from run_parent_execution_payload_processing(spec, state, block)
 
-    # Validator-credential deposit goes to pending_deposits; builder-credential
-    # deposit goes to pending_builder_deposits. No new builder is created at
-    # block time (drain happens at epoch).
-    assert len(state.pending_deposits) == pre_pending_deposits_len + 1
-    assert len(state.pending_builder_deposits) == pre_pending_builder_deposits_len + 1
+    # Both deposits land in pending_deposits — the first locks the pubkey to
+    # the validator path, and the second is routed there despite its builder
+    # credentials.
+    assert len(state.pending_deposits) == pre_pending_deposits_len + 2
+    assert len(state.pending_builder_deposits) == pre_pending_builder_deposits_len
     assert len(state.builders) == pre_builder_count
 
-    queued_validator = state.pending_deposits[pre_pending_deposits_len]
-    queued_builder = state.pending_builder_deposits[pre_pending_builder_deposits_len]
-    assert queued_validator.pubkey == deposit_request_1.pubkey
-    assert queued_validator.withdrawal_credentials == deposit_request_1.withdrawal_credentials
-    assert queued_validator.amount == deposit_request_1.amount
-    assert queued_builder.pubkey == deposit_request_2.pubkey
-    assert queued_builder.withdrawal_credentials == deposit_request_2.withdrawal_credentials
-    assert queued_builder.amount == deposit_request_2.amount
+    first_queued = state.pending_deposits[pre_pending_deposits_len]
+    second_queued = state.pending_deposits[pre_pending_deposits_len + 1]
+    assert first_queued.pubkey == deposit_request_1.pubkey
+    assert first_queued.withdrawal_credentials == deposit_request_1.withdrawal_credentials
+    assert first_queued.amount == deposit_request_1.amount
+    assert second_queued.pubkey == deposit_request_2.pubkey
+    assert second_queued.withdrawal_credentials == deposit_request_2.withdrawal_credentials
+    assert second_queued.amount == deposit_request_2.amount
