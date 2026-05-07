@@ -14,7 +14,9 @@ from eth_consensus_specs.test.helpers.state import (
     next_epoch_with_full_participation,
     state_transition_and_sign_block,
 )
+from eth_consensus_specs.test.helpers.voluntary_exits import prepare_signed_exits
 from eth_consensus_specs.test.helpers.withdrawals import (
+    prepare_withdrawal_request,
     set_validator_fully_withdrawable,
 )
 from tests.infra.helpers.withdrawals import (
@@ -101,6 +103,7 @@ def _attempt_payload_with_withdrawals(spec, state, withdrawals):
         execution_requests=spec.ExecutionRequests(),
         builder_index=committed_bid.builder_index,
         beacon_block_root=header.hash_tree_root(),
+        parent_beacon_block_root=test_state.latest_block_header.parent_root,
     )
 
     if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
@@ -283,16 +286,14 @@ def test_builder_payment_after_missed_epochs(spec, state):
     builder_index = 0
     value = spec.Gwei(1000000)  # 0.001 ETH
     fee_recipient = b"\xab" * 20
+    block_hash = spec.Hash32(b"\x42" * 32)
 
     bid = block_1.body.signed_execution_payload_bid.message
+    bid.block_hash = block_hash
     bid.builder_index = builder_index
     bid.value = value
     bid.fee_recipient = fee_recipient
     bid.execution_requests_root = spec.hash_tree_root(spec.ExecutionRequests())
-
-    # Chain onto the previous bid so both block_1 and block_2 see a FULL parent
-    bid.parent_block_hash = state.latest_execution_payload_bid.block_hash
-    bid.block_hash = state.latest_execution_payload_bid.block_hash
 
     # Sign the bid with the builder's private key
     signature = spec.get_execution_payload_bid_signature(
@@ -330,6 +331,7 @@ def test_builder_payment_after_missed_epochs(spec, state):
     block_1_epoch = spec.compute_epoch_at_slot(block_1.slot)
     block_2_slot = (block_1_epoch + 2) * spec.SLOTS_PER_EPOCH + 1
     block_2 = build_empty_block(spec, state, slot=block_2_slot)
+    block_2.body.signed_execution_payload_bid.message.parent_block_hash = block_hash
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
 
     yield "blocks", [signed_block_1, signed_block_2]
@@ -341,3 +343,40 @@ def test_builder_payment_after_missed_epochs(spec, state):
 
     # Verify the builder was charged — balance decreased by the bid value
     assert state.builders[builder_index].balance == pre_builder_balance - value
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_voluntary_exit_fails_after_parent_payload_withdrawal_request(spec, state):
+    """
+    Test that a voluntary exit is rejected when the parent payload's deferred
+    execution requests have already initiated the validator's exit.
+    """
+    validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
+
+    # Move state forward SHARD_COMMITTEE_PERIOD epochs so the validator can exit
+    state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
+
+    # Set up the parent block as FULL with a bid that commits to a full-exit
+    # withdrawal request for the validator.
+    set_parent_block_full(spec, state)
+    withdrawal_request = prepare_withdrawal_request(spec, state, validator_index)
+    requests = spec.ExecutionRequests(
+        withdrawals=spec.List[spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD](
+            [withdrawal_request]
+        ),
+    )
+    state.latest_execution_payload_bid.execution_requests_root = spec.hash_tree_root(requests)
+
+    # Build a block that delivers the parent's deferred execution requests
+    # (initiating the validator's exit) and also tries to voluntarily exit the
+    # same validator. The voluntary exit fails the FAR_FUTURE_EPOCH check.
+    signed_exits = prepare_signed_exits(spec, state, [validator_index])
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.parent_execution_requests = requests
+    block.body.voluntary_exits = signed_exits
+
+    yield "pre", state
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+    yield "blocks", [signed_block]
+    yield "post", None

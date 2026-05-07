@@ -154,18 +154,17 @@ class Store(object):
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
-    block_timeliness: Dict[Root, Vector[boolean, NUM_BLOCK_TIMELINESS_DEADLINES]] = field(
-        default_factory=dict
-    )
+    # [Modified in Gloas:EIP7732]
+    block_timeliness: Dict[Root, list[boolean]] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
     payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
-    payload_timeliness_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
+    payload_timeliness_vote: Dict[Root, list[Optional[boolean]]] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
-    payload_data_availability_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
+    payload_data_availability_vote: Dict[Root, list[Optional[boolean]]] = field(
         default_factory=dict
     )
 ```
@@ -258,7 +257,8 @@ def is_payload_timely(store: Store, root: Root) -> bool:
     if not is_payload_verified(store, root):
         return False
 
-    return sum(store.payload_timeliness_vote[root]) > PAYLOAD_TIMELY_THRESHOLD
+    votes = store.payload_timeliness_vote[root]
+    return sum(vote is True for vote in votes) > PAYLOAD_TIMELY_THRESHOLD
 ```
 
 ### New `is_payload_data_available`
@@ -277,7 +277,8 @@ def is_payload_data_available(store: Store, root: Root) -> bool:
     if not is_payload_verified(store, root):
         return False
 
-    return sum(store.payload_data_availability_vote[root]) > DATA_AVAILABILITY_TIMELY_THRESHOLD
+    votes = store.payload_data_availability_vote[root]
+    return sum(vote is True for vote in votes) > DATA_AVAILABILITY_TIMELY_THRESHOLD
 ```
 
 ### New `get_parent_payload_status`
@@ -287,11 +288,6 @@ def get_parent_payload_status(store: Store, block: BeaconBlock) -> PayloadStatus
     parent = store.blocks[block.parent_root]
     parent_block_hash = block.body.signed_execution_payload_bid.message.parent_block_hash
     message_block_hash = parent.body.signed_execution_payload_bid.message.block_hash
-
-    # Check for uninitialized genesis block hash
-    if message_block_hash == Hash32():
-        return PAYLOAD_STATUS_EMPTY
-
     return PAYLOAD_STATUS_FULL if parent_block_hash == message_block_hash else PAYLOAD_STATUS_EMPTY
 ```
 
@@ -788,6 +784,7 @@ def verify_execution_payload_envelope(
     header = copy(state.latest_block_header)
     header.state_root = hash_tree_root(state)
     assert envelope.beacon_block_root == hash_tree_root(header)
+    assert envelope.parent_beacon_block_root == state.latest_block_header.parent_root
 
     # Verify consistency with the committed bid
     bid = state.latest_execution_payload_bid
@@ -809,7 +806,7 @@ def verify_execution_payload_envelope(
                 kzg_commitment_to_versioned_hash(commitment)
                 for commitment in bid.blob_kzg_commitments
             ],
-            parent_beacon_block_root=state.latest_block_header.parent_root,
+            parent_beacon_block_root=envelope.parent_beacon_block_root,
             execution_requests=envelope.execution_requests,
         )
     )
@@ -865,8 +862,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
     # Add a new PTC voting for this block to the store
-    store.payload_timeliness_vote[block_root] = [False] * PTC_SIZE
-    store.payload_data_availability_vote[block_root] = [False] * PTC_SIZE
+    store.payload_timeliness_vote[block_root] = [None] * PTC_SIZE
+    store.payload_data_availability_vote[block_root] = [None] * PTC_SIZE
 
     # Notify the store about the payload_attestations in the block
     notify_ptc_messages(store, state, block.body.payload_attestations)

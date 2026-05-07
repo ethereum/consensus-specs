@@ -443,11 +443,8 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
     # Generate an anchor block with correct state root
     anchor_block = spec.BeaconBlock(state_root=anchor_state.hash_tree_root())
     if is_post_gloas(spec):
-        anchor_block.body.signed_execution_payload_bid.message.block_hash = (
-            anchor_state.latest_execution_payload_bid.block_hash
-        )
-        anchor_block.body.signed_execution_payload_bid.message.execution_requests_root = (
-            anchor_state.latest_execution_payload_bid.execution_requests_root
+        anchor_block.body.signed_execution_payload_bid.message = (
+            anchor_state.latest_execution_payload_bid
         )
     yield "anchor_state", anchor_state
     yield "anchor_block", anchor_block

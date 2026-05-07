@@ -30,9 +30,10 @@ These are the inclusion list specifications to implement Heze.
 ```python
 @dataclass
 class InclusionListStore(object):
-    inclusion_lists: DefaultDict[Tuple[Slot, Root], Set[InclusionList]] = field(
-        default_factory=lambda: defaultdict(set)
+    inclusion_lists: DefaultDict[Tuple[Slot, Root], Dict[Root, InclusionList]] = field(
+        default_factory=lambda: defaultdict(dict)
     )
+    inclusion_list_timeliness: Dict[Root, boolean] = field(default_factory=dict)
     equivocators: DefaultDict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(
         default_factory=lambda: defaultdict(set)
     )
@@ -56,7 +57,9 @@ def get_inclusion_list_store() -> InclusionListStore:
 
 ```python
 def process_inclusion_list(
-    store: InclusionListStore, inclusion_list: InclusionList, is_before_view_freeze_cutoff: bool
+    store: InclusionListStore,
+    inclusion_list: InclusionList,
+    is_timely: bool,
 ) -> None:
     key = (inclusion_list.slot, inclusion_list.inclusion_list_committee_root)
 
@@ -64,71 +67,83 @@ def process_inclusion_list(
     if inclusion_list.validator_index in store.equivocators[key]:
         return
 
-    for stored_inclusion_list in store.inclusion_lists[key]:
+    for stored_root in store.inclusion_lists[key]:
+        stored_inclusion_list = store.inclusion_lists[key][stored_root]
         if stored_inclusion_list.validator_index != inclusion_list.validator_index:
             continue
 
         if stored_inclusion_list != inclusion_list:
             store.equivocators[key].add(inclusion_list.validator_index)
-            store.inclusion_lists[key].remove(stored_inclusion_list)
 
         # Whether it was an equivocation or not, we have processed this `inclusion_list`.
         return
 
-    # Only store `inclusion_list` if it arrived before the view freeze cutoff.
-    if is_before_view_freeze_cutoff:
-        store.inclusion_lists[key].add(inclusion_list)
+    # Store `inclusion_list` and its timeliness.
+    inclusion_list_root = hash_tree_root(inclusion_list)
+    store.inclusion_lists[key][inclusion_list_root] = inclusion_list
+    store.inclusion_list_timeliness[inclusion_list_root] = is_timely
 ```
 
 ### New `get_inclusion_list_transactions`
 
 *Note*: `get_inclusion_list_transactions` returns a list of unique transactions
-from all valid and non-equivocating `InclusionList`s that were received in a
-timely manner on the p2p network for the given slot and for which the
-`inclusion_list_committee_root` in the `InclusionList` matches the one
-calculated based on the current state.
+from all valid and non-equivocating `InclusionList`s for the given slot and for
+which the `inclusion_list_committee_root` in the `InclusionList` matches the one
+calculated based on the current state. When `only_timely` is `True`, only
+`InclusionList`s received in a timely manner on the p2p network are considered;
+otherwise, timeliness is not considered.
 
 ```python
 def get_inclusion_list_transactions(
-    store: InclusionListStore, state: BeaconState, slot: Slot
+    store: InclusionListStore, state: BeaconState, slot: Slot, only_timely: bool = True
 ) -> Sequence[Transaction]:
-    inclusion_list_committee = get_inclusion_list_committee(state, slot)
-    inclusion_list_committee_root = hash_tree_root(inclusion_list_committee)
-    key = (slot, inclusion_list_committee_root)
+    committee = get_inclusion_list_committee(state, slot)
+    committee_root = hash_tree_root(committee)
+    key = (slot, committee_root)
 
-    inclusion_list_transactions = [
+    inclusion_lists = store.inclusion_lists[key]
+    equivocators = store.equivocators[key]
+    timeliness = store.inclusion_list_timeliness
+
+    transactions = [
         transaction
-        for inclusion_list in store.inclusion_lists[key]
-        if inclusion_list.validator_index not in store.equivocators[key]
-        for transaction in inclusion_list.transactions
+        for inclusion_list_root in inclusion_lists
+        if inclusion_lists[inclusion_list_root].validator_index not in equivocators
+        if not only_timely or timeliness[inclusion_list_root]
+        for transaction in inclusion_lists[inclusion_list_root].transactions
     ]
 
     # Deduplicate inclusion list transactions. Order does not need to be preserved.
-    return list(set(inclusion_list_transactions))
+    return list(set(transactions))
 ```
 
 ### New `get_inclusion_list_bits`
 
 ```python
 def get_inclusion_list_bits(
-    store: InclusionListStore, state: BeaconState, slot: Slot
+    store: InclusionListStore, state: BeaconState, slot: Slot, only_timely: bool = True
 ) -> Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]:
     """
     Return a ``Bitvector`` over inclusion list committee indices with bits set
-    for valid, non-equivocating inclusion list submissions for the given ``slot``.
+    for valid and non-equivocating inclusion list submissions for the given ``slot``.
     """
-    inclusion_list_committee = get_inclusion_list_committee(state, slot)
-    inclusion_list_committee_root = hash_tree_root(inclusion_list_committee)
-    key = (slot, inclusion_list_committee_root)
+    committee = get_inclusion_list_committee(state, slot)
+    committee_root = hash_tree_root(committee)
+    key = (slot, committee_root)
+
+    inclusion_lists = store.inclusion_lists[key]
+    equivocators = store.equivocators[key]
+    timeliness = store.inclusion_list_timeliness
 
     validator_indices = [
-        inclusion_list.validator_index
-        for inclusion_list in store.inclusion_lists[key]
-        if inclusion_list.validator_index not in store.equivocators[key]
+        inclusion_lists[inclusion_list_root].validator_index
+        for inclusion_list_root in inclusion_lists
+        if inclusion_lists[inclusion_list_root].validator_index not in equivocators
+        if not only_timely or timeliness[inclusion_list_root]
     ]
 
     return Bitvector[INCLUSION_LIST_COMMITTEE_SIZE](
-        validator_index in validator_indices for validator_index in inclusion_list_committee
+        validator_index in validator_indices for validator_index in committee
     )
 ```
 
@@ -140,12 +155,13 @@ def is_inclusion_list_bits_inclusive(
     state: BeaconState,
     slot: Slot,
     inclusion_list_bits: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE],
+    only_timely: bool = True,
 ) -> bool:
     """
     Return ``True`` if and only if ``inclusion_list_bits`` is a superset of
     the locally observed inclusion list bits for the given ``slot``.
     """
-    local_inclusion_list_bits = get_inclusion_list_bits(store, state, slot)
+    local_inclusion_list_bits = get_inclusion_list_bits(store, state, slot, only_timely)
 
     return all(
         inclusion_bit or not local_inclusion_bit

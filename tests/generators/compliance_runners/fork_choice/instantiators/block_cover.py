@@ -1,8 +1,17 @@
 import random
 
+from eth_consensus_specs.test.helpers.execution_payload import (
+    build_signed_execution_payload_envelope,
+)
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
+    run_on_attestation,
+    run_on_attester_slashing,
+    run_on_block,
+    run_on_execution_payload_envelope,
+    run_on_payload_attestation_message,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
     transition_to,
@@ -13,7 +22,9 @@ from .helpers import (
     advance_state_to_anchor_epoch,
     attest_to_slot,
     BranchTip,
+    build_random_payload_attestation_messages,
     FCTestData,
+    payload_attestation_to_messages,
     produce_block,
     ProtocolMessage,
 )
@@ -38,9 +49,10 @@ def _generate_filter_block_tree(
     parents,
     previous_justifications,
     current_justifications,
+    target_block,
     rnd: random.Random,
     debug,
-) -> ([], []):
+) -> ([], [], object, object):
     JUSTIFYING_SLOT = 2 * spec.SLOTS_PER_EPOCH // 3 + 1
     JUSTIFYING_SLOT_COUNT = spec.SLOTS_PER_EPOCH - JUSTIFYING_SLOT
 
@@ -58,6 +70,10 @@ def _generate_filter_block_tree(
             for b in current_blocks
             if _should_justify_epoch(parents, current_justifications, previous_justifications, b)
         ]
+        current_justifying_blocks = [b for b in justifying_blocks if current_justifications[b]]
+        previous_only_justifying_blocks = [
+            b for b in justifying_blocks if not current_justifications[b]
+        ]
 
         # There should be enough slots to propose all blocks that are required to justify the epoch
         assert len(justifying_blocks) <= JUSTIFYING_SLOT_COUNT, (
@@ -69,6 +85,8 @@ def _generate_filter_block_tree(
     )
 
     block_tips = [None for _ in range(0, len(block_epochs))]
+    target_signed_block = None
+    target_post_state = None
     # Initialize with the anchor block
     block_tips[0] = anchor_tip
 
@@ -131,14 +149,31 @@ def _generate_filter_block_tree(
         # if that needed. Considering that most of attestations were already included into the common chain prefix,
         # we assume it is possible
         empty_slot_count = spec.SLOTS_PER_EPOCH - common_prefix_len - len(current_blocks)
-        block_distribution = current_blocks.copy() + [-1 for _ in range(0, empty_slot_count)]
+        prefix_window_len = JUSTIFYING_SLOT - common_prefix_len
+        suffix_window_len = spec.SLOTS_PER_EPOCH - JUSTIFYING_SLOT
 
-        # Randomly distribute blocks across slots
-        rnd.shuffle(block_distribution)
+        remaining_items = [b for b in current_blocks if b not in justifying_blocks]
+        remaining_items = remaining_items + [-1 for _ in range(0, empty_slot_count)]
+        rnd.shuffle(remaining_items)
 
-        # Move all blocks that require to justify current epoch to the end to increase the chance of justification
-        block_distribution = [b for b in block_distribution if b not in justifying_blocks]
-        block_distribution = block_distribution + justifying_blocks
+        suffix_extra_count = suffix_window_len - len(justifying_blocks)
+        suffix_extras = remaining_items[:suffix_extra_count]
+        prefix_items = remaining_items[suffix_extra_count:]
+
+        assert len(prefix_items) == prefix_window_len
+        assert (
+            len(suffix_extras)
+            + len(previous_only_justifying_blocks)
+            + len(current_justifying_blocks)
+            == suffix_window_len
+        )
+
+        rnd.shuffle(prefix_items)
+        rnd.shuffle(suffix_extras)
+        rnd.shuffle(previous_only_justifying_blocks)
+        rnd.shuffle(current_justifying_blocks)
+        suffix_items = suffix_extras + previous_only_justifying_blocks + current_justifying_blocks
+        block_distribution = prefix_items + suffix_items
 
         for index, block in enumerate(block_distribution):
             slot = threshold_slot + index
@@ -165,6 +200,9 @@ def _generate_filter_block_tree(
                 # Propose block
                 new_block, state, _, _, _ = produce_block(spec, state, block_attestations)
                 signed_blocks.append(new_block)
+                if block == target_block and is_post_gloas(spec):
+                    target_signed_block = new_block
+                    target_post_state = state.copy()
 
             # Attest
             # TODO pick a random tip to make attestation with if the slot is empty
@@ -202,7 +240,72 @@ def _generate_filter_block_tree(
                     check_up_state.current_justified_checkpoint,
                 )
 
-    return signed_blocks, block_tips
+    return signed_blocks, block_tips, target_signed_block, target_post_state
+
+
+def _debug_run_sanity_checks(
+    spec,
+    anchor_state,
+    anchor_block,
+    signed_blocks,
+    envelopes,
+    payload_attestations,
+    model_params,
+    target_block_root,
+):
+    store = spec.get_forkchoice_store(anchor_state, anchor_block)
+    envelopes_by_block_root = {e.payload.message.beacon_block_root: e.payload for e in envelopes}
+    payload_attestations_by_block_root = {}
+    for ptc_message in payload_attestations:
+        payload_attestations_by_block_root.setdefault(
+            ptc_message.data.beacon_block_root, []
+        ).append(ptc_message)
+
+    def debug_add_block(signed_block):
+        run_on_block(spec, store, signed_block, valid=True)
+
+        for attestation in signed_block.message.body.attestations:
+            run_on_attestation(spec, store, attestation, is_from_block=True, valid=True)
+
+        for attester_slashing in signed_block.message.body.attester_slashings:
+            run_on_attester_slashing(spec, store, attester_slashing, valid=True)
+
+        if is_post_gloas(spec):
+            state = store.block_states[signed_block.message.hash_tree_root()]
+            for payload_attestation in signed_block.message.body.payload_attestations:
+                for ptc_message in payload_attestation_to_messages(
+                    spec, state, payload_attestation
+                ):
+                    run_on_payload_attestation_message(
+                        spec, store, ptc_message, is_from_block=True, valid=True
+                    )
+
+            envelope = envelopes_by_block_root.get(signed_block.message.hash_tree_root())
+            if envelope is not None:
+                run_on_execution_payload_envelope(spec, store, envelope, valid=True)
+
+            for ptc_message in payload_attestations_by_block_root.get(
+                signed_block.message.hash_tree_root(), []
+            ):
+                run_on_payload_attestation_message(spec, store, ptc_message, valid=True)
+
+    for signed_block in signed_blocks:
+        block_time = (
+            anchor_state.genesis_time
+            + signed_block.message.slot * spec.config.SLOT_DURATION_MS // 1000
+        )
+        if block_time > store.time:
+            spec.on_tick(store, block_time)
+        debug_add_block(signed_block)
+
+    current_epoch_slot = spec.compute_start_slot_at_epoch(model_params["current_epoch"])
+    current_epoch_time = (
+        anchor_state.genesis_time + current_epoch_slot * spec.config.SLOT_DURATION_MS // 1000
+    )
+    if current_epoch_time > store.time:
+        spec.on_tick(store, current_epoch_time)
+
+    run_sanity_checks(spec, store, model_params, target_block_root)
 
 
 def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTestData, object):
@@ -249,15 +352,18 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
             )
 
     rnd = random.Random(seed)
-    signed_blocks, post_block_tips = _generate_filter_block_tree(
-        spec,
-        state,
-        block_epochs,
-        parents,
-        previous_justifications,
-        current_justifications,
-        rnd,
-        debug,
+    signed_blocks, post_block_tips, target_signed_block, target_post_state = (
+        _generate_filter_block_tree(
+            spec,
+            state,
+            block_epochs,
+            parents,
+            previous_justifications,
+            current_justifications,
+            target_block,
+            rnd,
+            debug,
+        )
     )
 
     # Meta data
@@ -268,6 +374,8 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
     }
 
     blocks = [ProtocolMessage(block) for block in signed_blocks]
+    envelopes = []
+    payload_attestations = []
 
     current_epoch_slot = spec.compute_start_slot_at_epoch(model_params["current_epoch"])
     current_epoch_time = (
@@ -280,6 +388,40 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
     target_block_root = spec.hash_tree_root(
         post_block_tips[target_block].beacon_state.latest_block_header
     )
+    if is_post_gloas(spec):
+        if target_signed_block is not None and target_post_state is not None:
+            envelope_mode = rnd.choice(["none", "valid"])
+            if envelope_mode == "valid":
+                envelopes.append(
+                    ProtocolMessage(
+                        build_signed_execution_payload_envelope(
+                            spec, target_post_state, target_block_root, target_signed_block
+                        )
+                    )
+                )
+                for ptc_message in build_random_payload_attestation_messages(
+                    spec,
+                    target_post_state,
+                    target_block_root,
+                    target_signed_block.message.slot,
+                    rnd,
+                ):
+                    payload_attestations.append(ProtocolMessage(ptc_message))
+
+    test_data.envelopes = envelopes
+    test_data.payload_atts = payload_attestations
+
+    if debug:
+        _debug_run_sanity_checks(
+            spec,
+            anchor_state,
+            anchor_block,
+            signed_blocks,
+            envelopes,
+            [m.payload for m in payload_attestations],
+            model_params,
+            target_block_root,
+        )
 
     return test_data, target_block_root
 

@@ -48,7 +48,7 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 
 | Name             | Value                |
 | ---------------- | -------------------- |
-| `MAX_PROOF_SIZE` | `307200` (= 300 KiB) |
+| `MAX_PROOF_SIZE` | `409600` (= 400 KiB) |
 
 ### Domains
 

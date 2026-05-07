@@ -6,6 +6,7 @@ from eth_consensus_specs.test.context import (
     with_electra_and_later,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.churn import get_exit_churn_limit
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.state import (
     get_validator_index_by_pubkey,
@@ -496,7 +497,7 @@ def test_partial_withdrawal_request_with_high_balance(spec, state):
         amount=amount,
     )
 
-    churn_limit = spec.get_activation_exit_churn_limit(state)
+    churn_limit = get_exit_churn_limit(spec, state)
 
     yield from run_withdrawal_request_processing(
         spec,

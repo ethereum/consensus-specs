@@ -58,6 +58,7 @@ RUNNERS: dict[str, RunnerConfig] = {
     "sanity": {
         "handler_name_map": {
             "test_deposit_transition": "blocks",
+            "test_epoch_boundary": "blocks",
             "test_lookahead": "blocks",
             "test_lookahead_slots": "slots",
         },

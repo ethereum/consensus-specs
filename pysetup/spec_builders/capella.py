@@ -18,6 +18,14 @@ from eth_consensus_specs.bellatrix import {preset_name} as bellatrix
         }
 
     @classmethod
+    def deprecate_containers(cls) -> set[str]:
+        return set(
+            [
+                "HistoricalBatch",
+            ]
+        )
+
+    @classmethod
     def deprecate_functions(cls) -> set[str]:
         return set(
             [

@@ -24,7 +24,7 @@ markdown_extensions:
   - pymdownx.highlight:
       use_pygments: true
       noclasses: true
-      pygments_style: monokai
+      pygments_style: default
       linenums: true
       anchor_linenums: true
   - mdx_truly_sane_lists:
@@ -35,8 +35,6 @@ plugins:
   - gen-files:
       scripts:
         - scripts/gen_spec_indices.py
-extra_css:
-  - stylesheets/extra.css
 extra:
   social:
     - icon: fontawesome/brands/github
