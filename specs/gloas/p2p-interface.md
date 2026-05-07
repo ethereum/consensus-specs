@@ -405,7 +405,7 @@ The following validations MUST pass before forwarding the
 `preferences = signed_proposer_preferences.message`:
 
 - _[IGNORE]_ `preferences.proposal_slot` is within the proposer lookahead --
-  i.e. `compute_epoch_at_slot(preferences.proposal_slot)` is in
+  i.e. `compute_epoch_at_slot(preferences.proposal_slot)` is in the range
   `[compute_epoch_at_slot(current_slot), compute_epoch_at_slot(current_slot) + MIN_SEED_LOOKAHEAD]`.
 - _[IGNORE]_ `preferences.proposal_slot` has not already passed -- i.e.
   `preferences.proposal_slot > current_slot`.
