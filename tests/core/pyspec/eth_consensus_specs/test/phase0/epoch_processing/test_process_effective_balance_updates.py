@@ -1,6 +1,5 @@
 from eth_consensus_specs.test.context import spec_state_test, with_all_phases
 from eth_consensus_specs.test.helpers.epoch_processing import (
-    run_epoch_processing_from,
     run_epoch_processing_to,
     run_process_slots_up_to_epoch_boundary,
 )
@@ -21,7 +20,6 @@ def run_test_effective_balance_hysteresis(spec, state, with_compounding_credenti
     # Prepare state up to the final-updates.
     # Then overwrite the balances, we only want to focus to be on the hysteresis based changes.
     run_process_slots_up_to_epoch_boundary(spec, state)
-    yield "pre_epoch", state
     run_epoch_processing_to(
         spec, state, "process_effective_balance_updates", enable_slots_processing=False
     )
@@ -100,6 +98,3 @@ def run_test_effective_balance_hysteresis(spec, state, with_compounding_credenti
 
     for i, (_, _, post_eff, name) in enumerate(cases):
         assert state.validators[i].effective_balance == post_eff, name
-
-    run_epoch_processing_from(spec, state, "process_effective_balance_updates")
-    yield "post_epoch", state
