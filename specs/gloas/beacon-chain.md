@@ -15,6 +15,7 @@
   - [Misc](#misc-1)
   - [Max operations per block](#max-operations-per-block)
   - [State list lengths](#state-list-lengths)
+  - [Execution](#execution)
   - [Withdrawals processing](#withdrawals-processing)
 - [Configuration](#configuration)
   - [Validator cycle](#validator-cycle)
@@ -33,6 +34,7 @@
     - [`ExecutionPayloadEnvelope`](#executionpayloadenvelope)
     - [`SignedExecutionPayloadEnvelope`](#signedexecutionpayloadenvelope)
   - [Modified containers](#modified-containers)
+    - [`ExecutionRequests`](#executionrequests)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
     - [`ExecutionPayload`](#executionpayload)
@@ -179,6 +181,12 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 | `BUILDER_REGISTRY_LIMIT`            | `uint64(2**40)` (= 1,099,511,627,776) | Builders                    |
 | `BUILDER_PENDING_WITHDRAWALS_LIMIT` | `uint64(2**20)` (= 1,048,576)         | Builder pending withdrawals |
 
+### Execution
+
+| Name                                     | Value                                 | Description                                                        |
+| ---------------------------------------- | ------------------------------------- | ------------------------------------------------------------------ |
+| `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD_GLOAS` | `uint64(2**41)` (= 2,199,023,255,552) | Maximum number of execution-layer deposit requests in each payload |
+
 ### Withdrawals processing
 
 | Name                                 | Value              |
@@ -317,6 +325,16 @@ class SignedExecutionPayloadEnvelope(Container):
 ```
 
 ### Modified containers
+
+#### `ExecutionRequests`
+
+```python
+class ExecutionRequests(Container):
+    # [Modified in Gloas]
+    deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD_GLOAS]
+    withdrawals: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
+    consolidations: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]
+```
 
 #### `BeaconBlockBody`
 
