@@ -937,8 +937,8 @@ def on_payload_attestation_message(
     Run ``on_payload_attestation_message`` upon receiving a new ``ptc_message`` from
     either within a block or directly on the wire.
     """
-    # The beacon block root must be known
     data = ptc_message.data
+
     # PTC attestation must be for a known block. If block is unknown, delay consideration until the block is found
     assert data.beacon_block_root in store.block_states
     state = store.block_states[data.beacon_block_root]
