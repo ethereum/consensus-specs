@@ -614,7 +614,7 @@ def compute_balance_weighted_selection(
     Return ``size`` indices sampled by effective balance, using ``indices``
     as candidates. If ``shuffle_indices`` is ``True``, candidate indices
     are themselves sampled from ``indices`` by shuffling it, otherwise
-    ``indices`` is traversed in order.
+    ``indices`` is traversed in order. The returned list can contain duplicates.
     """
     MAX_RANDOM_VALUE = 2**16 - 1
     total = uint64(len(indices))
