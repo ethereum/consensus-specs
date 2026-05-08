@@ -25,4 +25,4 @@ MAX_BUILDERS_PER_WITHDRAWALS_SWEEP: 16384
 # Pending deposits processing
 # ---------------------------------------------------------------
 # 2**4 (= 16) builder pending deposits per epoch
-MAX_PENDING_BUILDER_DEPOSITS_PER_EPOCH: 16
+MAX_BUILDER_DEPOSIT_SIGNATURES_PER_EPOCH: 16

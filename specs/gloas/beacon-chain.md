@@ -190,7 +190,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 | Name                                     | Value                 | Description                                                     |
 | ---------------------------------------- | --------------------- | --------------------------------------------------------------- |
-| `MAX_PENDING_BUILDER_DEPOSITS_PER_EPOCH` | `uint64(2**4)` (= 16) | Maximum number of builder pending deposits to process per epoch |
+| `MAX_BUILDER_DEPOSIT_SIGNATURES_PER_EPOCH` | `uint64(2**4)` (= 16) | Maximum number of builder pending deposits to process per epoch |
 
 ## Configuration
 
@@ -972,6 +972,7 @@ def process_pending_deposits(state: BeaconState) -> None:
     available_for_processing = state.deposit_balance_to_consume + get_activation_churn_limit(state)
     processed_amount = 0
     next_deposit_index = 0
+    builder_deposit_count = 0
     deposits_to_postpone = []
     is_churn_limit_reached = False
     finalized_slot = compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
@@ -992,8 +993,9 @@ def process_pending_deposits(state: BeaconState) -> None:
         if deposit.slot > finalized_slot:
             break
 
-        # Check if number of processed deposits has not reached the limit, otherwise, stop processing.
-        if next_deposit_index >= MAX_PENDING_DEPOSITS_PER_EPOCH:
+        # [Modified in Gloas:EIP8061]
+        # Stop processing if number of processed validator deposits has reached the limit
+        if next_deposit_index - builder_deposit_count >= MAX_PENDING_DEPOSITS_PER_EPOCH:
             break
 
         # Compute validator and builder predicates
@@ -1006,11 +1008,14 @@ def process_pending_deposits(state: BeaconState) -> None:
             is_validator_exited = validator.exit_epoch < FAR_FUTURE_EPOCH
             is_validator_withdrawn = validator.withdrawable_epoch < next_epoch
         else:
+            # [New in Gloas:EIP8061]
             is_builder = deposit.pubkey in builder_pubkeys
 
         if is_builder:
-            # Process builder top up
-            apply_deposit_for_builder(state, deposit)
+            # [New in Gloas:EIP8061]
+            # Move deposit to the builder deposit queue
+            state.pending_builder_deposits.append(deposit)
+            builder_deposit_count += 1
         elif is_validator_withdrawn:
             # Deposited balance will never become active. Increase balance but do not consume churn
             apply_pending_deposit(state, deposit)
@@ -1047,16 +1052,24 @@ def process_pending_builder_deposits(state: BeaconState) -> None:
     validator_pubkeys = [v.pubkey for v in state.validators]
 
     next_deposit_index = 0
+    signature_count = 0
     for deposit in state.pending_builder_deposits:
         if deposit.slot > finalized_slot:
             break
-        if next_deposit_index >= MAX_PENDING_BUILDER_DEPOSITS_PER_EPOCH:
+
+        # Stop processing if number of verified signatures has reached the limit
+        if signature_count >= MAX_BUILDER_DEPOSIT_SIGNATURES_PER_EPOCH:
             break
 
         if deposit.pubkey in validator_pubkeys:
             # Move deposit to the validator deposit queue
             state.pending_deposits.append(deposit)
         else:
+            # Process deposit
+            builder_pubkeys = [b.pubkey for b in state.builders]
+            if deposit.pubkey not in builder_pubkeys:
+                signature_count += 1
+
             apply_deposit_for_builder(state, deposit)
 
         next_deposit_index += 1
