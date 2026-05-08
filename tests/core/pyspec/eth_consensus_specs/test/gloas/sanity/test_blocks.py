@@ -1,7 +1,4 @@
-from eth_consensus_specs.test.context import (
-    spec_state_test,
-    with_gloas_and_later,
-)
+from eth_consensus_specs.test.context import always_bls, spec_state_test, with_gloas_and_later
 from eth_consensus_specs.test.gloas.block_processing.test_process_payload_attestation import (
     prepare_signed_payload_attestation,
 )
@@ -273,6 +270,11 @@ def test_invalid_payload_attestation_wrong_beacon_block_root(spec, state):
     )
     block.body.payload_attestations = [payload_attestation]
 
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield "blocks", [signed_block]
+    yield "post", None
+
 
 @with_gloas_and_later
 @spec_state_test
@@ -335,6 +337,7 @@ def test_invalid_payload_attestation_too_old_slot(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+@always_bls
 def test_invalid_payload_attestation_invalid_signature(spec, state):
     """
     Test that payload attestation with invalid signature fails.
