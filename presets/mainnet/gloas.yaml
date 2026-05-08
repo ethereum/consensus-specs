@@ -19,8 +19,8 @@ BUILDER_PENDING_WITHDRAWALS_LIMIT: 1048576
 
 # Execution
 # ---------------------------------------------------------------
-# 2**41 (= 2,199,023,255,552) deposit requests
-MAX_DEPOSIT_REQUESTS_PER_PAYLOAD_GLOAS: 2199023255552
+# 2**20 (= 1,048,576) deposit requests
+MAX_DEPOSIT_REQUESTS_PER_PAYLOAD_GLOAS: 1048576
 
 # Withdrawals processing
 # ---------------------------------------------------------------

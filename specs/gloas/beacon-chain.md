@@ -183,9 +183,9 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 ### Execution
 
-| Name                                     | Value                                 | Description                                                        |
-| ---------------------------------------- | ------------------------------------- | ------------------------------------------------------------------ |
-| `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD_GLOAS` | `uint64(2**41)` (= 2,199,023,255,552) | Maximum number of execution-layer deposit requests in each payload |
+| Name                                     | Value                         | Description                                                        |
+| ---------------------------------------- | ----------------------------- | ------------------------------------------------------------------ |
+| `MAX_DEPOSIT_REQUESTS_PER_PAYLOAD_GLOAS` | `uint64(2**20)` (= 1,048,576) | Maximum number of execution-layer deposit requests in each payload |
 
 ### Withdrawals processing
 
