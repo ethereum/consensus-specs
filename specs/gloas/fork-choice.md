@@ -948,8 +948,8 @@ def on_payload_attestation_message(
         return
 
     # Get all positions of the attester in the PTC
-    ptc = get_ptc(state, data.slot)
     ptc_indices = []
+    ptc = get_ptc(state, data.slot)
     for ptc_index, validator_index in enumerate(ptc):
         if validator_index == ptc_message.validator_index:
             ptc_indices.append(ptc_index)
@@ -971,10 +971,9 @@ def on_payload_attestation_message(
             ),
         )
 
-    # Update the votes for the block for all ptc positions
+    # Update the votes for the block
     payload_timeliness_vote = store.payload_timeliness_vote[data.beacon_block_root]
     payload_data_availability_vote = store.payload_data_availability_vote[data.beacon_block_root]
-
     for ptc_index in ptc_indices:
         payload_timeliness_vote[ptc_index] = data.payload_present
         payload_data_availability_vote[ptc_index] = data.blob_data_available
