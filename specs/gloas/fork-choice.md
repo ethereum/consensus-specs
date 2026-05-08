@@ -942,12 +942,20 @@ def on_payload_attestation_message(
     # PTC attestation must be for a known block. If block is unknown, delay consideration until the block is found
     assert data.beacon_block_root in store.block_states
     state = store.block_states[data.beacon_block_root]
-    ptc = get_ptc(state, data.slot)
+
     # PTC votes can only change the vote for their assigned beacon block, return early otherwise
     if data.slot != state.slot:
         return
+
+    # Get all positions of the attester in the PTC
+    ptc = get_ptc(state, data.slot)
+    ptc_indices = []
+    for ptc_index, validator_index in enumerate(ptc):
+        if validator_index == ptc_message.validator_index:
+            ptc_indices.append(ptc_index)
+
     # Check that the attester is from the PTC
-    assert ptc_message.validator_index in ptc
+    assert len(ptc_indices) > 0
 
     # Verify the signature and check that its for the current slot if it is coming from the wire
     if not is_from_block:
@@ -962,11 +970,12 @@ def on_payload_attestation_message(
                 signature=ptc_message.signature,
             ),
         )
-    # Update the votes for the block
+
+    # Update the votes for the block for all ptc positions
     payload_timeliness_vote = store.payload_timeliness_vote[data.beacon_block_root]
     payload_data_availability_vote = store.payload_data_availability_vote[data.beacon_block_root]
-    for ptc_index, idx in enumerate(ptc):
-        if idx == ptc_message.validator_index:
-            payload_timeliness_vote[ptc_index] = data.payload_present
-            payload_data_availability_vote[ptc_index] = data.blob_data_available
+
+    for ptc_index in ptc_indices:
+        payload_timeliness_vote[ptc_index] = data.payload_present
+        payload_data_availability_vote[ptc_index] = data.blob_data_available
 ```
