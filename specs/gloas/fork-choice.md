@@ -963,9 +963,10 @@ def on_payload_attestation_message(
             ),
         )
     # Update the votes for the block
-    ptc_index = ptc.index(ptc_message.validator_index)
     payload_timeliness_vote = store.payload_timeliness_vote[data.beacon_block_root]
-    payload_timeliness_vote[ptc_index] = data.payload_present
     payload_data_availability_vote = store.payload_data_availability_vote[data.beacon_block_root]
-    payload_data_availability_vote[ptc_index] = data.blob_data_available
+    for ptc_index, idx in enumerate(ptc):
+        if idx == ptc_message.validator_index:
+            payload_timeliness_vote[ptc_index] = data.payload_present
+            payload_data_availability_vote[ptc_index] = data.blob_data_available
 ```

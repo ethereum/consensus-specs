@@ -364,6 +364,48 @@ def test_process_payload_attestation_uses_multiple_committees(spec, state):
 
 
 @with_gloas_and_later
+@spec_state_test
+@always_bls
+def test_process_payload_attestation_duplicate_validator_in_ptc(spec, state):
+    """
+    Ensure ``process_payload_attestation`` accepts an aggregate that sets
+    multiple ``aggregation_bits`` for a validator that occupies several PTC
+    positions for the same slot. The proposer must aggregate that validator's
+    signature once per set bit so ``FastAggregateVerify`` succeeds against the
+    duplicated pubkey list reconstructed by ``get_indexed_payload_attestation``.
+    """
+    spec.process_slots(state, state.slot + 1)
+    ptc = spec.get_ptc(state, state.slot - 1)
+
+    # Find a validator that appears at multiple positions in this slot's PTC.
+    seen = {}
+    duplicated_validator = None
+    for index in ptc:
+        seen[index] = seen.get(index, 0) + 1
+        if seen[index] >= 2:
+            duplicated_validator = index
+            break
+
+    # Skip cleanly when the random seed didn't produce a duplicate this slot.
+    if duplicated_validator is None:
+        return
+
+    occurrence_count = sum(1 for index in ptc if index == duplicated_validator)
+    assert occurrence_count >= 2
+
+    # Pass the validator index `occurrence_count` times so the helper sets one
+    # bit per PTC position and aggregates the signature once per set bit.
+    payload_attestation = prepare_signed_payload_attestation(
+        spec, state, attesting_indices=[duplicated_validator] * occurrence_count
+    )
+
+    set_bit_count = sum(1 for bit in payload_attestation.aggregation_bits if bit)
+    assert set_bit_count == occurrence_count
+
+    yield from run_payload_attestation_processing(spec, state, payload_attestation)
+
+
+@with_gloas_and_later
 @with_presets([MINIMAL], reason="mainnet preset requires a much larger validator set")
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=default_activation_threshold)
 @spec_test
