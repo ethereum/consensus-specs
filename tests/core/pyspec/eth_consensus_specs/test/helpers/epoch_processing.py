@@ -18,6 +18,7 @@ def get_process_calls(spec):
         "process_eth1_data_reset",
         "process_pending_deposits",  # electra
         "process_pending_consolidations",  # electra
+        "process_builder_pending_payments",  # gloas
         "process_effective_balance_updates",
         "process_slashings_reset",
         "process_randao_mixes_reset",
@@ -35,6 +36,7 @@ def get_process_calls(spec):
         ),
         "process_sync_committee_updates",  # altair
         "process_proposer_lookahead",  # fulu
+        "process_ptc_window",  # gloas
     ]
 
 

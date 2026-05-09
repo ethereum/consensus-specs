@@ -8,6 +8,7 @@ from ruamel.yaml import YAML
 from snappy import uncompress
 
 from eth_consensus_specs.test.context import expect_assertion_error
+from eth_consensus_specs.test.helpers.fork_choice import get_viable_for_head_checks
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
 
@@ -178,20 +179,9 @@ def run_test(test_info):
                     assert checkpoint.epoch == value["epoch"]
                     assert str(checkpoint.root) == str(value["root"])
                 elif check == "viable_for_head_roots_and_weights":
-                    filtered_block_roots = spec.get_filtered_block_tree(store).keys()
-                    leaves_viable_for_head = [
-                        root
-                        for root in filtered_block_roots
-                        if not any(
-                            c for c in filtered_block_roots if store.blocks[c].parent_root == root
-                        )
-                    ]
-                    viable_for_head_roots_and_weights = {
-                        str(viable_for_head_root): int(spec.get_weight(store, viable_for_head_root))
-                        for viable_for_head_root in leaves_viable_for_head
-                    }
-                    expected = {kv["root"]: kv["weight"] for kv in value}
-                    assert expected == viable_for_head_roots_and_weights
+                    actual = value
+                    expected = get_viable_for_head_checks(spec, store)
+                    assert {frozenset(e) for e in actual} == {frozenset(e) for e in expected}
                 elif check == "head_payload_status":
                     head = get_head()
                     assert head.payload_status == value
