@@ -73,7 +73,7 @@ def _setup_test(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_payload_attestation_unknown_block_root(spec, state):
+def test_on_payload_attestation_message_unknown_block_root(spec, state):
     """
     Test that messages for an unknown beacon_block_root are rejected.
     """
@@ -107,7 +107,7 @@ def test_on_payload_attestation_unknown_block_root(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_payload_attestation_slot_mismatch(spec, state):
+def test_on_payload_attestation_message_slot_mismatch(spec, state):
     """
     Test that a message whose slot doesn't match the block's slot is dropped without error.
     """
@@ -136,7 +136,7 @@ def test_on_payload_attestation_slot_mismatch(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_payload_attestation_not_ptc_member(spec, state):
+def test_on_payload_attestation_message_not_ptc_member(spec, state):
     """
     Test that a message from a validator outside the PTC is rejected.
     """
@@ -171,7 +171,7 @@ def test_on_payload_attestation_not_ptc_member(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_payload_attestation_current_slot_and_signature(spec, state):
+def test_on_payload_attestation_message_current_slot_and_signature(spec, state):
     """
     Test that current slot and signature checks reject invalid messages.
     """
@@ -226,7 +226,7 @@ def test_on_payload_attestation_current_slot_and_signature(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_payload_attestation_valid_message(spec, state):
+def test_on_payload_attestation_message_valid(spec, state):
     """
     Test that valid messages update attestations.
     """
@@ -285,7 +285,7 @@ def test_on_payload_attestation_valid_message(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_payload_attestation_multiple_ptc_members_vote_independently(spec, state):
+def test_on_payload_attestation_message_multiple_ptc_members_vote_independently(spec, state):
     """
     Test that two different PTC members voting for the same block update independent vote sets.
     """
