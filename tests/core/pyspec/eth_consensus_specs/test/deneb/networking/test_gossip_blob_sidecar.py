@@ -582,13 +582,17 @@ def test_gossip_blob_sidecar__ignore_parent_not_seen(spec, state):
     yield "state", state
 
     seen = get_seen(spec)
-    store, _ = setup_store_with_anchor(spec, state)
-    # Drop anchor from store so the parent_root check fails
-    store.blocks = {}
-    store.block_states = {}
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     blob_sidecar = sidecars[0]
+
+    # Modify parent_root to something unknown to the store
+    blob_sidecar.signed_block_header.message.parent_root = b"\x12" * 32
+    resign_blob_sidecar_header(spec, state, blob_sidecar)
 
     yield get_filename(blob_sidecar), blob_sidecar
 
@@ -626,14 +630,19 @@ def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
+    yield "state", state
+
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     yield get_filename(signed_anchor), signed_anchor
 
-    parent_block = build_empty_block_for_next_slot(spec, state)
-    signed_parent = state_transition_and_sign_block(spec, state, parent_block)
-    yield "state", state
+    # Build the failed parent on a separate state copy so the yielded anchor state stays
+    # at slot 0 (its `latest_block_header` points at the genesis-equivalent anchor, not at
+    # `signed_parent`)
+    parent_state = state.copy()
+    parent_block = build_empty_block_for_next_slot(spec, parent_state)
+    signed_parent = state_transition_and_sign_block(spec, parent_state, parent_block)
 
     yield get_filename(signed_parent), signed_parent
 
@@ -650,7 +659,7 @@ def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
         ],
     )
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state.copy(), blob_count=1)
+    _, sidecars = build_signed_block_and_sidecars(spec, parent_state.copy(), blob_count=1)
     blob_sidecar = sidecars[0]
 
     yield get_filename(blob_sidecar), blob_sidecar
