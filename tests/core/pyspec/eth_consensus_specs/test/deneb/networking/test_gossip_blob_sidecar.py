@@ -286,7 +286,6 @@ def test_gossip_blob_sidecar__reject_invalid_inclusion_proof(spec, state):
     blob_sidecar.kzg_commitment_inclusion_proof = spec.compute_merkle_proof(
         spec.BeaconBlockBody(), 0
     )
-    resign_blob_sidecar_header(spec, state, blob_sidecar)
 
     yield get_filename(blob_sidecar), blob_sidecar
 
