@@ -209,9 +209,10 @@ The parameter that is required for executing
 
 ```yaml
 {
-    payload_attestation_message: string  -- the name of the `payload_attestation_message_<32-byte-root>.ssz_snappy` file.                                   To execute `on_payload_attestation_message(store, ptc_message)` with the given message.
-    valid: bool                  -- optional, default to `true`.
-                                   If it's `false`, this execution step is expected to be invalid.
+    payload_attestation_message: string  -- the name of the `payload_attestation_message_<32-byte-root>.ssz_snappy` file.
+                                            To execute `on_payload_attestation_message(store, ptc_message)` with the given message.
+    valid: bool                          -- optional, default to `true`.
+                                            If it's `false`, this execution step is expected to be invalid.
 }
 ```
 
