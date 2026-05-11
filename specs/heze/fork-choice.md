@@ -99,6 +99,7 @@ class PayloadAttributes(object):
     withdrawals: Sequence[Withdrawal]
     parent_beacon_block_root: Root
     slot_number: uint64
+    target_gas_limit: uint64
     # [New in Heze:EIP7805]
     inclusion_list_transactions: Sequence[Transaction]
 ```
