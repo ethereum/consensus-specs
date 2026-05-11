@@ -765,20 +765,23 @@ def test_gossip_blob_sidecar__reject_slot_not_higher_than_parent(spec, state):
     yield "topic", "meta", "blob_sidecar"
 
     state = build_state_with_complete_transition(spec, state)
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = setup_store_with_anchor(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     yield get_filename(signed_anchor), signed_anchor
 
-    parent_block = build_empty_block_for_next_slot(spec, state)
-    signed_parent = state_transition_and_sign_block(spec, state, parent_block)
-    yield "state", state
+    # Build the parent on a separate state copy so the yielded anchor state stays at
+    # slot 0 with `latest_block_header` pointing at the genesis-equivalent anchor.
+    parent_state = state.copy()
+    parent_block = build_empty_block_for_next_slot(spec, parent_state)
+    signed_parent = state_transition_and_sign_block(spec, parent_state, parent_block)
 
     yield get_filename(signed_parent), signed_parent
     parent_root = signed_parent.message.hash_tree_root()
     store.blocks[parent_root] = signed_parent.message
-    store.block_states[parent_root] = state.copy()
+    store.block_states[parent_root] = parent_state.copy()
     yield (
         "blocks",
         "meta",
@@ -788,10 +791,10 @@ def test_gossip_blob_sidecar__reject_slot_not_higher_than_parent(spec, state):
         ],
     )
 
-    _, sidecars = build_signed_block_and_sidecars(spec, state.copy(), blob_count=1)
+    _, sidecars = build_signed_block_and_sidecars(spec, parent_state.copy(), blob_count=1)
     blob_sidecar = sidecars[0]
     blob_sidecar.signed_block_header.message.slot = signed_parent.message.slot
-    resign_blob_sidecar_header(spec, state, blob_sidecar)
+    resign_blob_sidecar_header(spec, parent_state, blob_sidecar)
 
     yield get_filename(blob_sidecar), blob_sidecar
 
