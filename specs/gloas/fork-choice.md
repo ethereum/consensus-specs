@@ -118,7 +118,7 @@ class PayloadAttributes(object):
     parent_beacon_block_root: Root
     # [New in Gloas:EIP7843]
     slot_number: uint64
-    # [New in Gloas:EIP7732]
+    # [New in Gloas]
     target_gas_limit: uint64
 ```
 

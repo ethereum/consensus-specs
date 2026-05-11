@@ -258,7 +258,7 @@ def prepare_execution_payload(
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
     suggested_fee_recipient: ExecutionAddress,
-    # [New in Gloas:EIP7732]
+    # [New in Gloas]
     target_gas_limit: uint64,
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
@@ -287,7 +287,7 @@ def prepare_execution_payload(
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
         # [New in Gloas:EIP7843]
         slot_number=state.slot,
-        # [New in Gloas:EIP7732]
+        # [New in Gloas]
         target_gas_limit=target_gas_limit,
     )
     return execution_engine.notify_forkchoice_updated(
