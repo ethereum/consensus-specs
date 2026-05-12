@@ -376,8 +376,8 @@ def is_gas_limit_target_compatible(
     """
     Check if the bid's gas limit is compatible with the proposer's preferences.
     """
-    min_gas_limit = parent_gas_limit - parent_gas_limit // 1024
-    max_gas_limit = parent_gas_limit + parent_gas_limit // 1024
+    min_gas_limit = parent_gas_limit - parent_gas_limit // 1024 + 1
+    max_gas_limit = parent_gas_limit + parent_gas_limit // 1024 - 1
 
     if proposer_gas_limit >= min_gas_limit and proposer_gas_limit <= max_gas_limit:
         return gas_limit == proposer_gas_limit
