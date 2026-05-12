@@ -740,7 +740,7 @@ def test_gossip_blob_sidecar__ignore_already_seen_tuple(spec, state):
         spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 600
     )
     assert result == "ignore"
-    assert reason == "already seen blob sidecar for this slot/proposer/index"
+    assert reason == "already seen blob sidecar from this proposer for this slot and index"
     messages.append(
         {
             "subnet_id": int(subnet_id),

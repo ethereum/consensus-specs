@@ -219,7 +219,7 @@ def validate_beacon_block_gossip(
 
     # [IGNORE] The block is from a slot greater than the latest finalized slot
     # (MAY choose to validate and store such blocks for additional purposes
-    # -- e.g. slashing detection, archive nodes, etc).
+    # -- e.g. slashing detection, archive nodes, etc)
     finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
     if block.slot <= finalized_slot:
         raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
@@ -288,7 +288,7 @@ def validate_beacon_block_gossip(
     if block.proposer_index != expected_proposer:
         raise GossipReject("block proposer_index does not match expected proposer")
 
-    # Mark this block as seen for this proposer/slot combination
+    # Mark this block as seen
     seen.proposer_slots.add((block.proposer_index, block.slot))
 ```
 
@@ -322,13 +322,12 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     # [New in Deneb:EIP7045]
     # [IGNORE] The aggregate attestation's slot is not from a future slot
-    # (with a MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
+    # (MAY be queued for processing at the appropriate slot)
     if not is_not_from_future_slot(state, aggregate.data.slot, current_time_ms):
         raise GossipIgnore("aggregate slot is from a future slot")
 
     # [Modified in Deneb:EIP7045]
     # [IGNORE] The aggregate attestation's epoch is either the current or previous epoch
-    # (with a MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     attestation_epoch = compute_epoch_at_slot(aggregate.data.slot)
     is_previous_epoch_attestation = is_within_slot_range(
         state,
@@ -362,15 +361,9 @@ def validate_beacon_aggregate_and_proof_gossip(
     # [IGNORE] A valid aggregate with a superset of aggregation bits has not already been seen
     aggregate_data_root = hash_tree_root(aggregate.data)
     aggregate_bits = tuple(bool(bit) for bit in aggregation_bits)
-    seen_aggregation_bits = seen.aggregate_data_roots.get(aggregate_data_root, set())
-    for prior_aggregation_bits in seen_aggregation_bits:
-        is_non_strict_superset = True
-        for prior_bit, aggregate_bit in zip(prior_aggregation_bits, aggregate_bits):
-            if aggregate_bit and not prior_bit:
-                is_non_strict_superset = False
-                break
-        if is_non_strict_superset:
-            raise GossipIgnore("already seen aggregate for this data")
+    seen_bits = seen.aggregate_data_roots.get(aggregate_data_root, set())
+    if is_non_strict_superset(seen_bits, aggregate_bits):
+        raise GossipIgnore("already seen aggregate for this data")
 
     # [IGNORE] This is the first valid aggregate for this aggregator in this epoch
     aggregator_index = aggregate_and_proof.aggregator_index
@@ -403,7 +396,8 @@ def validate_beacon_aggregate_and_proof_gossip(
     if not is_valid_indexed_attestation(state, get_indexed_attestation(state, aggregate)):
         raise GossipReject("invalid aggregate signature")
 
-    # [IGNORE] The block being voted for has been seen
+    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
     if aggregate.data.beacon_block_root not in store.blocks:
         raise GossipIgnore("block being voted for has not been seen")
 
@@ -523,7 +517,7 @@ def validate_blob_sidecar_gossip(
         raise GossipReject("blob sidecar is for wrong subnet")
 
     # [IGNORE] The sidecar is not from a future slot
-    # (a client MAY queue future sidecars for processing at the appropriate slot)
+    # (MAY be queued for processing at the appropriate slot)
     if not is_not_from_future_slot(state, block_header.slot, current_time_ms):
         raise GossipIgnore("blob sidecar is from a future slot")
 
@@ -532,9 +526,11 @@ def validate_blob_sidecar_gossip(
     if block_header.slot <= finalized_slot:
         raise GossipIgnore("blob sidecar is not from a slot greater than the latest finalized slot")
 
-    # [REJECT] The proposer signature of blob_sidecar.signed_block_header is valid
+    # [REJECT] The proposer index is a valid validator index
     if block_header.proposer_index >= len(state.validators):
         raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer signature of blob_sidecar.signed_block_header is valid
     proposer = state.validators[block_header.proposer_index]
     domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block_header.slot))
     signing_root = compute_signing_root(block_header, domain)
@@ -542,6 +538,7 @@ def validate_blob_sidecar_gossip(
         raise GossipReject("invalid proposer signature on blob sidecar block header")
 
     # [IGNORE] The sidecar's block's parent has been seen
+    # (MAY be queued for processing once the parent block is retrieved)
     if block_header.parent_root not in store.blocks:
         raise GossipIgnore("blob sidecar's parent has not been seen")
 
@@ -560,7 +557,7 @@ def validate_blob_sidecar_gossip(
     if checkpoint_block != store.finalized_checkpoint.root:
         raise GossipReject("finalized checkpoint is not an ancestor of blob sidecar's block")
 
-    # [REJECT] The sidecar's inclusion proof is valid
+    # [REJECT] The sidecar's inclusion proof is valid as verified by verify_blob_sidecar_inclusion_proof
     if not verify_blob_sidecar_inclusion_proof(blob_sidecar):
         raise GossipReject("invalid blob sidecar inclusion proof")
 
@@ -574,12 +571,10 @@ def validate_blob_sidecar_gossip(
     # (block_header.slot, block_header.proposer_index, blob_sidecar.index)
     sidecar_tuple = (block_header.slot, block_header.proposer_index, blob_sidecar.index)
     if sidecar_tuple in seen.blob_sidecar_tuples:
-        raise GossipIgnore("already seen blob sidecar for this slot/proposer/index")
+        raise GossipIgnore("already seen blob sidecar from this proposer for this slot and index")
 
     # [REJECT] The sidecar is proposed by the expected proposer_index
-    # (If the proposer_index cannot immediately be verified against the expected shuffling,
-    # the sidecar MAY be queued for later processing while proposers for the block's branch
-    # are calculated -- in such a case do not REJECT, instead IGNORE this message)
+    # (if shuffling is not available, IGNORE instead and MAY be queued for later)
     parent_state = store.block_states[block_header.parent_root].copy()
     process_slots(parent_state, block_header.slot)
     expected_proposer = get_beacon_proposer_index(parent_state)
@@ -661,13 +656,12 @@ def validate_beacon_attestation_gossip(
 
     # [Modified in Deneb:EIP7045]
     # [IGNORE] The attestation's slot is not from a future slot
-    # (with a MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
+    # (MAY be queued for processing at the appropriate slot)
     if not is_not_from_future_slot(state, data.slot, current_time_ms):
         raise GossipIgnore("attestation slot is from a future slot")
 
     # [Modified in Deneb:EIP7045]
     # [IGNORE] The attestation's epoch is either the current or previous epoch
-    # (with a MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     attestation_epoch = compute_epoch_at_slot(data.slot)
     is_previous_epoch_attestation = is_within_slot_range(
         state,
@@ -708,7 +702,8 @@ def validate_beacon_attestation_gossip(
     if not is_valid_indexed_attestation(state, indexed_attestation):
         raise GossipReject("invalid attestation signature")
 
-    # [IGNORE] The block being voted for has been seen
+    # [IGNORE] The block being voted for has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
     beacon_block_root = data.beacon_block_root
     if beacon_block_root not in store.blocks:
         raise GossipIgnore("block being voted for has not been seen")
