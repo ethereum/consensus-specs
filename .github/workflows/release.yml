@@ -18,7 +18,7 @@ jobs:
       - name: Create tag
         id: tag
         run: |
-          version="v$(cat tests/core/pyspec/eth_consensus_specs/VERSION.txt)"
+          version="v$(yq -p toml '.project.version' pyproject.toml)"
           if git rev-parse "refs/tags/$version" >/dev/null 2>&1; then
             echo "Error: Tag $version already exists"
             exit 1

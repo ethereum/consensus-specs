@@ -3,7 +3,7 @@ requires = ["setuptools==82.0.1"]
 
 [project]
 name = "eth-consensus-specs"
-dynamic = ["version"]
+version = "1.7.0-alpha.8"
 authors = [{ name = "ethereum" }]
 description = "Ethereum consensus layer specifications package"
 license = "CC0-1.0"
@@ -98,6 +98,3 @@ ignore = [
 combine-as-imports = true
 known-first-party = ["eth_consensus_specs"]
 order-by-type = false
-
-[tool.setuptools.dynamic]
-version = { file = "tests/core/pyspec/eth_consensus_specs/VERSION.txt" }
