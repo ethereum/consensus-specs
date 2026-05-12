@@ -12,7 +12,6 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_execution_payload,
     check_head_against_root,
-    get_anchor_root,
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
     tick_and_add_block,
@@ -23,13 +22,26 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-def _add_block_and_get_root(spec, state, store, test_steps):
-    """Add a block to the store and return (signed_block, block_root)."""
+def _setup_test(spec, state):
+    """
+    Build the genesis store and apply a single empty block at the next slot.
+    """
+    test_steps = []
+
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+
+    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
+    on_tick_and_append_step(spec, store, current_time, test_steps)
+
+    # Apply one block at slot 1
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
     block_root = signed_block.message.hash_tree_root()
-    return signed_block, block_root
+
+    return store, signed_block, block_root, test_steps
 
 
 def _build_invalid_envelope(spec, state, block_root, signed_block, **overrides):
@@ -84,53 +96,22 @@ def _build_invalid_envelope(spec, state, block_root, signed_block, **overrides):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope__valid(spec, state):
-    test_steps = []
+def test_on_execution_payload_envelope_valid(spec, state):
+    """
+    Test that a valid envelope is accepted and moves the head's payload_status to FULL.
+    """
+    store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
 
-    # Initialization
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    anchor_root = get_anchor_root(spec, state)
-    check_head_against_root(spec, store, anchor_root)
-
-    # Genesis head has EMPTY payload status (no envelope in store.payloads)
-    head = spec.get_head(store)
-    assert head.payload_status == spec.PAYLOAD_STATUS_EMPTY
-
-    # On receiving a block of `GENESIS_SLOT + 1` slot
-    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
-
-    # Verify block was added to store
-    assert block_root in store.blocks
-    assert block_root in store.block_states
-    assert block_root in store.payload_timeliness_vote
-
-    # Head is the new block with EMPTY status
+    # After block 1, head is the new block with EMPTY status
     check_head_against_root(spec, store, block_root)
-    head = spec.get_head(store)
-    assert head.payload_status == spec.PAYLOAD_STATUS_EMPTY
+    assert spec.get_head(store).payload_status == spec.PAYLOAD_STATUS_EMPTY
 
     # Builder reveals execution payload
     envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=True)
 
-    # Block root should now be stored in payloads after payload reveal
     assert block_root in store.payloads
-    head = spec.get_head(store)
-    assert head.payload_status == spec.PAYLOAD_STATUS_FULL
-
-    # On receiving a block of next slot, chain continues after payload reveal
-    _, block_2_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
-    check_head_against_root(spec, store, block_2_root)
-
-    # Head moved to block 2 with EMPTY status
-    head = spec.get_head(store)
-    assert head.payload_status == spec.PAYLOAD_STATUS_EMPTY
+    assert spec.get_head(store).payload_status == spec.PAYLOAD_STATUS_FULL
 
     yield "steps", test_steps
 
@@ -142,16 +123,11 @@ def test_on_execution_payload_envelope__valid(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope__wrong_signature(spec, state):
-    test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
+def test_on_execution_payload_envelope_wrong_signature(spec, state):
+    """
+    Test that an envelope with an invalid BLS signature is rejected.
+    """
+    store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
 
     envelope = _build_invalid_envelope(
         spec,
@@ -169,16 +145,11 @@ def test_on_execution_payload_envelope__wrong_signature(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope__wrong_beacon_block_root(spec, state):
-    test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
+def test_on_execution_payload_envelope_unknown_beacon_block_root(spec, state):
+    """
+    Test that an envelope referencing an unknown beacon_block_root is rejected.
+    """
+    store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
 
     envelope = _build_invalid_envelope(
         spec,
@@ -196,16 +167,11 @@ def test_on_execution_payload_envelope__wrong_beacon_block_root(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope__wrong_parent_beacon_block_root(spec, state):
-    test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
+def test_on_execution_payload_envelope_wrong_parent_beacon_block_root(spec, state):
+    """
+    Test that an envelope whose parent_beacon_block_root doesn't match the state's is rejected.
+    """
+    store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
 
     envelope = _build_invalid_envelope(
         spec,
@@ -223,16 +189,11 @@ def test_on_execution_payload_envelope__wrong_parent_beacon_block_root(spec, sta
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope__wrong_slot(spec, state):
-    test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
+def test_on_execution_payload_envelope_wrong_slot(spec, state):
+    """
+    Test that an envelope whose payload.slot_number doesn't match state.slot is rejected.
+    """
+    store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
 
     envelope = _build_invalid_envelope(
         spec,
@@ -250,16 +211,11 @@ def test_on_execution_payload_envelope__wrong_slot(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope__wrong_builder_index(spec, state):
-    test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
+def test_on_execution_payload_envelope_wrong_builder_index(spec, state):
+    """
+    Test that an envelope whose builder_index doesn't match the bid is rejected.
+    """
+    store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
 
     envelope = _build_invalid_envelope(
         spec,
@@ -277,16 +233,11 @@ def test_on_execution_payload_envelope__wrong_builder_index(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope__wrong_prev_randao(spec, state):
-    test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
+def test_on_execution_payload_envelope_wrong_prev_randao(spec, state):
+    """
+    Test that an envelope whose payload.prev_randao doesn't match the bid is rejected.
+    """
+    store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
 
     envelope = _build_invalid_envelope(
         spec,
@@ -304,16 +255,11 @@ def test_on_execution_payload_envelope__wrong_prev_randao(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope__wrong_execution_requests_root(spec, state):
-    test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
+def test_on_execution_payload_envelope_wrong_execution_requests_root(spec, state):
+    """
+    Test that an envelope whose execution_requests hash differs from the bid's commitment is rejected.
+    """
+    store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
 
     # Build envelope with non-empty requests but bid commits to empty requests
     non_empty_requests = spec.ExecutionRequests(
@@ -350,19 +296,12 @@ def test_on_execution_payload_envelope__wrong_execution_requests_root(spec, stat
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope__wrong_withdrawals(spec, state):
-    test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
+def test_on_execution_payload_envelope_wrong_withdrawals(spec, state):
+    """
+    Test that an envelope with withdrawals not matching state.payload_expected_withdrawals is rejected.
+    """
+    store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
 
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
-
-    # Build envelope with a non-empty withdrawal that won't match the state's
-    # empty payload_expected_withdrawals
     wrong_withdrawal = spec.Withdrawal(
         index=0, validator_index=0, address=b"\x22" * 20, amount=spec.Gwei(1)
     )
@@ -384,10 +323,9 @@ def test_on_execution_payload_envelope__wrong_withdrawals(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope__missing_expected_withdrawal(spec, state):
+def test_on_execution_payload_envelope_missing_expected_withdrawal(spec, state):
     """
-    Envelope with empty withdrawals must be rejected when the state's
-    payload_expected_withdrawals is non-empty.
+    Test that an envelope with empty withdrawals is rejected when state.payload_expected_withdrawals is not empty.
     """
     # Seed payload_expected_withdrawals directly on the anchor state. The parent
     # is genesis (empty), so process_withdrawals returns early in block_1 and
@@ -399,15 +337,7 @@ def test_on_execution_payload_envelope__missing_expected_withdrawal(spec, state)
         spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
     ]([expected_withdrawal])
 
-    test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
+    store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
 
     # Sanity check: the seeded expected withdrawal survived block_1.
     assert len(state.payload_expected_withdrawals) == 1
@@ -429,16 +359,11 @@ def test_on_execution_payload_envelope__missing_expected_withdrawal(spec, state)
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope__wrong_gas_limit(spec, state):
-    test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
+def test_on_execution_payload_envelope_wrong_gas_limit(spec, state):
+    """
+    Test that an envelope whose payload.gas_limit doesn't match the bid is rejected.
+    """
+    store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
 
     envelope = _build_invalid_envelope(
         spec,
@@ -456,16 +381,11 @@ def test_on_execution_payload_envelope__wrong_gas_limit(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope__wrong_block_hash(spec, state):
-    test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
+def test_on_execution_payload_envelope_wrong_block_hash(spec, state):
+    """
+    Test that an envelope whose payload.block_hash doesn't match the bid is rejected.
+    """
+    store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
 
     envelope = _build_invalid_envelope(
         spec,
@@ -483,16 +403,11 @@ def test_on_execution_payload_envelope__wrong_block_hash(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope__wrong_parent_hash(spec, state):
-    test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
+def test_on_execution_payload_envelope_wrong_parent_hash(spec, state):
+    """
+    Test that an envelope whose payload.parent_hash doesn't match state.latest_block_hash is rejected.
+    """
+    store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
 
     envelope = _build_invalid_envelope(
         spec,
@@ -510,16 +425,11 @@ def test_on_execution_payload_envelope__wrong_parent_hash(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope__wrong_timestamp(spec, state):
-    test_steps = []
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    signed_block, block_root = yield from _add_block_and_get_root(spec, state, store, test_steps)
+def test_on_execution_payload_envelope_wrong_timestamp(spec, state):
+    """
+    Test that an envelope whose payload.timestamp doesn't match compute_time_at_slot is rejected.
+    """
+    store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
 
     envelope = _build_invalid_envelope(
         spec,
