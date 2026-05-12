@@ -6,9 +6,11 @@
 
 - [Introduction](#introduction)
 - [Modification in Gloas](#modification-in-gloas)
+  - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
+    - [New `BuilderConfig`](#new-builderconfig)
     - [New `ProposerPreferences`](#new-proposerpreferences)
     - [New `SignedProposerPreferences`](#new-signedproposerpreferences)
   - [Helpers](#helpers)
@@ -46,6 +48,12 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modification in Gloas
 
+### Preset
+
+| Name                  | Value                  |
+| --------------------- | ---------------------- |
+| `MAX_BUILDER_CONFIGS` | `uint64(2**7)` (= 128) |
+
 ### Configuration
 
 | Name                   | Value          | Description                                                       |
@@ -80,9 +88,7 @@ class DataColumnSidecar(Container):
     beacon_block_root: Root
 ```
 
-#### New `ProposerPreferences`
-
-*[New in Gloas:EIP7732]*
+#### New `BuilderConfig`
 
 *Note*: `max_execution_payment` defines the maximum trusted payment (in Gwei)
 that the proposer will accept. Builders MUST NOT set `bid.execution_payment` to
@@ -91,13 +97,23 @@ proposer does not accept any trusted payments. A value of `UINT64_MAX` indicates
 that the proposer accepts any trusted payment amount.
 
 ```python
+class BuilderConfig(Container):
+    builder_pubkey: BLSPubkey
+    max_execution_payment: uint64
+```
+
+#### New `ProposerPreferences`
+
+*[New in Gloas:EIP7732]*
+
+```python
 class ProposerPreferences(Container):
     dependent_root: Root
     proposal_slot: Slot
     validator_index: ValidatorIndex
     fee_recipient: ExecutionAddress
     gas_limit: uint64
-    max_execution_payment: uint64
+    builder_configs: List[BuilderConfig, MAX_BUILDER_CONFIGS]
 ```
 
 #### New `SignedProposerPreferences`

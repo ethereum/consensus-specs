@@ -21,3 +21,8 @@ BUILDER_PENDING_WITHDRAWALS_LIMIT: 1048576
 # ---------------------------------------------------------------
 # 2**14 (= 16,384) builders
 MAX_BUILDERS_PER_WITHDRAWALS_SWEEP: 16384
+
+# Networking
+# ---------------------------------------------------------------
+# 2**7 (= 128) builder configurations
+MAX_BUILDER_CONFIGS: 128
