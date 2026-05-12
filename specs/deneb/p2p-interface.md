@@ -328,7 +328,6 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     # [Modified in Deneb:EIP7045]
     # [IGNORE] The aggregate attestation's epoch is either the current or previous epoch
-    # (MAY be queued for processing at the appropriate slot)
     attestation_epoch = compute_epoch_at_slot(aggregate.data.slot)
     is_previous_epoch_attestation = is_within_slot_range(
         state,
@@ -663,7 +662,6 @@ def validate_beacon_attestation_gossip(
 
     # [Modified in Deneb:EIP7045]
     # [IGNORE] The attestation's epoch is either the current or previous epoch
-    # (MAY be queued for processing at the appropriate slot)
     attestation_epoch = compute_epoch_at_slot(data.slot)
     is_previous_epoch_attestation = is_within_slot_range(
         state,

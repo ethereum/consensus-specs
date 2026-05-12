@@ -229,7 +229,6 @@ def validate_sync_committee_contribution_and_proof_gossip(
     contribution = contribution_and_proof.contribution
 
     # [IGNORE] The contribution's slot is for the current slot
-    # (MAY be queued for processing at the appropriate slot)
     if not is_current_slot(state, contribution.slot, current_time_ms):
         raise GossipIgnore("contribution is not for the current slot")
 
@@ -345,7 +344,6 @@ def validate_sync_committee_message_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     # [IGNORE] The message's slot is for the current slot
-    # (MAY be queued for processing at the appropriate slot)
     if not is_current_slot(state, sync_committee_message.slot, current_time_ms):
         raise GossipIgnore("message is not for the current slot")
 
