@@ -278,7 +278,8 @@ def produce_block(
         block.body.attestations.append(a)
 
     # Add attester slashings
-    attester_slashings_in_block = attester_slashings[: spec.MAX_ATTESTER_SLASHINGS]
+    limit = type(block.body.attester_slashings).limit()
+    attester_slashings_in_block = attester_slashings[:limit]
     for s in attester_slashings_in_block:
         block.body.attester_slashings.append(s)
 
