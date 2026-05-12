@@ -13,6 +13,7 @@ from eth_consensus_specs.test.helpers.constants import (
     CAPELLA,
     DENEB,
     ELECTRA,
+    FULU,
     PHASE0,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
@@ -34,7 +35,7 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__valid_block(spec, state):
     """
@@ -72,7 +73,7 @@ def test_gossip_beacon_block__valid_block(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__ignore_future_slot(spec, state):
     """
@@ -118,7 +119,7 @@ def test_gossip_beacon_block__ignore_future_slot(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__valid_within_clock_disparity(spec, state):
     """
@@ -157,7 +158,7 @@ def test_gossip_beacon_block__valid_within_clock_disparity(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
     """
@@ -209,7 +210,7 @@ def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__ignore_slot_not_greater_than_finalized(spec, state):
     """
@@ -281,7 +282,7 @@ def test_gossip_beacon_block__ignore_slot_not_greater_than_finalized(spec, state
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__ignore_parent_not_seen(spec, state):
     """
@@ -424,7 +425,7 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
     """
@@ -498,7 +499,7 @@ def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, state):
     """
@@ -583,7 +584,7 @@ def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, sta
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 @always_bls
 def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
@@ -632,7 +633,7 @@ def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__reject_invalid_proposer_index(spec, state):
     """
@@ -680,7 +681,7 @@ def test_gossip_beacon_block__reject_invalid_proposer_index(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__reject_wrong_proposer_index(spec, state):
     """

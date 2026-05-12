@@ -6,7 +6,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
     to_single_attestation,
 )
-from eth_consensus_specs.test.helpers.constants import ELECTRA
+from eth_consensus_specs.test.helpers.constants import ELECTRA, FULU
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -45,7 +45,7 @@ def prepare_single_attestation(spec, state):
     return store, signed_anchor, single
 
 
-@with_phases([ELECTRA])
+@with_phases([ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_nonzero_data_index(spec, state):
     """
@@ -90,7 +90,7 @@ def test_gossip_beacon_attestation__reject_nonzero_data_index(spec, state):
     )
 
 
-@with_phases([ELECTRA])
+@with_phases([ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_attester_not_in_committee(spec, state):
     """
