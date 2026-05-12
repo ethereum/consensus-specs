@@ -30,6 +30,9 @@ runs:
     - name: Archive tests
       shell: bash
       run: |
+        # Ensure source-path exists so tar succeeds even when zero artifacts
+        # were downloaded (e.g. presets with no per-fork reftests).
+        mkdir -p ${{ inputs.source-path }}
         tar --sort=name \
             --owner=0 \
             --group=0 \
