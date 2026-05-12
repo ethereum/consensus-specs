@@ -87,7 +87,7 @@ def test_gossip_beacon_attestation__valid(spec, state):
     if is_post_electra(spec):
         attestation = to_single_attestation(spec, state, attestation)
     else:
-        # Make sure it's unaggregated (exactly one bit set)
+        # Make it unaggregated (exactly one bit set)
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
@@ -755,7 +755,7 @@ def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
     if is_post_electra(spec):
         attestation = to_single_attestation(spec, state, attestation)
     else:
-        # Make it unaggregated
+        # Make it unaggregated (exactly one bit set)
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
@@ -833,7 +833,7 @@ def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
     if is_post_electra(spec):
         attestation = to_single_attestation(spec, state, attestation)
     else:
-        # Make it unaggregated
+        # Make it unaggregated (exactly one bit set)
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
@@ -896,7 +896,7 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
     if is_post_electra(spec):
         attestation = to_single_attestation(spec, state, attestation)
     else:
-        # Make it unaggregated
+        # Make it unaggregated (exactly one bit set)
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
@@ -959,7 +959,7 @@ def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
         # `to_single_attestation` signs with the (now-modified) data.
         attestation = to_single_attestation(spec, state, attestation)
     else:
-        # Make it unaggregated
+        # Make it unaggregated (exactly one bit set)
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
@@ -1039,7 +1039,7 @@ def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
     if is_post_electra(spec):
         attestation = to_single_attestation(spec, state, attestation)
     else:
-        # Make it unaggregated
+        # Make it unaggregated (exactly one bit set)
         committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
         single_bit = [False] * len(committee)
         single_bit[0] = True
