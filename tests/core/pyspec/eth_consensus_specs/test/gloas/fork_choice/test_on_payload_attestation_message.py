@@ -260,11 +260,11 @@ def test_on_payload_attestation_message_valid(spec, state):
     yield from add_payload_attestation_message(spec, store, msg_1, test_steps)
 
     for i in voter_positions:
-        assert store.payload_timeliness_vote[block_root][i]
-        assert store.payload_data_availability_vote[block_root][i]
+        assert store.payload_timeliness_vote[block_root][i] == True
+        assert store.payload_data_availability_vote[block_root][i] == True
     for i in other_positions:
-        assert store.payload_timeliness_vote[block_root][i] is None
-        assert store.payload_data_availability_vote[block_root][i] is None
+        assert store.payload_timeliness_vote[block_root][i] == None
+        assert store.payload_data_availability_vote[block_root][i] == None
     add_payload_vote_checks(store, block_root, test_steps)
 
     # Re-vote with both fields False
@@ -279,13 +279,11 @@ def test_on_payload_attestation_message_valid(spec, state):
     yield from add_payload_attestation_message(spec, store, msg_2, test_steps)
 
     for i in voter_positions:
-        timeliness = store.payload_timeliness_vote[block_root][i]
-        availability = store.payload_data_availability_vote[block_root][i]
-        assert timeliness is not None and not timeliness
-        assert availability is not None and not availability
+        assert store.payload_timeliness_vote[block_root][i] == False
+        assert store.payload_data_availability_vote[block_root][i] == False
     for i in other_positions:
-        assert store.payload_timeliness_vote[block_root][i] is None
-        assert store.payload_data_availability_vote[block_root][i] is None
+        assert store.payload_timeliness_vote[block_root][i] == None
+        assert store.payload_data_availability_vote[block_root][i] == None
     add_payload_vote_checks(store, block_root, test_steps)
 
     yield "steps", test_steps
@@ -339,18 +337,18 @@ def test_on_payload_attestation_message_multiple_ptc_members_vote_independently(
 
     # Validator A's votes landed at every position A occupies
     for i in positions_a:
-        assert timeliness[i]
-        assert availability[i]
+        assert timeliness[i] == True
+        assert availability[i] == True
 
     # Validator B's votes landed at every position B occupies
     for i in positions_b:
-        assert timeliness[i]
-        assert availability[i] is not None and not availability[i]
+        assert timeliness[i] == True
+        assert availability[i] == False
 
     # Other positions stayed at their default values
     for i in other_positions:
-        assert timeliness[i] is None
-        assert availability[i] is None
+        assert timeliness[i] == None
+        assert availability[i] == None
 
     add_payload_vote_checks(store, block_root, test_steps)
 
@@ -410,11 +408,11 @@ def test_on_payload_attestation_message_from_block(spec, state):
     # Votes landed at every PTC position each voter occupies
     for i, validator_index in enumerate(ptc_list):
         if validator_index in voter_set:
-            assert store.payload_timeliness_vote[block_root][i]
-            assert store.payload_data_availability_vote[block_root][i]
+            assert store.payload_timeliness_vote[block_root][i] == True
+            assert store.payload_data_availability_vote[block_root][i] == True
         else:
-            assert store.payload_timeliness_vote[block_root][i] is None
-            assert store.payload_data_availability_vote[block_root][i] is None
+            assert store.payload_timeliness_vote[block_root][i] == None
+            assert store.payload_data_availability_vote[block_root][i] == None
 
     add_payload_vote_checks(store, block_root, test_steps)
     yield "steps", test_steps
