@@ -338,8 +338,9 @@ The following validations MUST pass before forwarding the
 `signed_proposer_preferences` for the validated `SignedProposerPreferences`
 whose `message.proposal_slot` is `bid.slot` and `message.dependent_root` is
 `get_proposer_dependent_root(parent_state, compute_epoch_at_slot(bid.slot))`,
-where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
-`proposer_preferences = signed_proposer_preferences.message`:
+where `parent_block` is the block with block root equal to
+`bid.parent_block_root`, `parent_state` is the post-state of `parent_block`, and
+the alias `proposer_preferences = signed_proposer_preferences.message`.
 
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
 - _[IGNORE]_ The matching `signed_proposer_preferences` has been seen.
