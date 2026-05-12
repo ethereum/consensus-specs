@@ -3,7 +3,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_phases,
 )
-from eth_consensus_specs.test.helpers.constants import DENEB
+from eth_consensus_specs.test.helpers.constants import DENEB, ELECTRA
 from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.voluntary_exits import (
@@ -30,7 +30,7 @@ def run_validate_voluntary_exit_gossip(spec, seen, state, signed_voluntary_exit)
         return "reject", str(e)
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_voluntary_exit__valid_capella_signature(spec, state):
     """
@@ -53,7 +53,7 @@ def test_gossip_voluntary_exit__valid_capella_signature(spec, state):
     yield "messages", "meta", [{"message": get_filename(signed_exit), "expected": "valid"}]
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 @always_bls
 def test_gossip_voluntary_exit__reject_deneb_signature(spec, state):

@@ -5,7 +5,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
 )
-from eth_consensus_specs.test.helpers.constants import DENEB
+from eth_consensus_specs.test.helpers.constants import DENEB, ELECTRA
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -96,7 +96,7 @@ def build_message(signed_agg, current_time_ms, offset_ms, expected, reason=None)
     return message
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__accepts_one_millisecond_before_slot_start(spec, state):
     """Test that an aggregate is accepted one millisecond before its slot starts."""
@@ -123,7 +123,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_one_millisecond_before_slot_
     yield "messages", "meta", [build_message(signed_agg, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__accepts_at_slot_start(spec, state):
     """Test that an aggregate is accepted exactly at its slot start."""
@@ -148,7 +148,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_at_slot_start(spec, state):
     yield "messages", "meta", [build_message(signed_agg, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignores_first_slot_before_epoch_window_opens(
     spec, state
@@ -181,7 +181,7 @@ def test_gossip_beacon_aggregate_and_proof__ignores_first_slot_before_epoch_wind
     yield "messages", "meta", [build_message(signed_agg, current_time_ms, 0, "ignore", reason)]
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__accepts_first_slot_when_epoch_window_opens(spec, state):
     """Test that a first-slot aggregate is accepted when the Deneb epoch window opens."""
@@ -209,7 +209,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_first_slot_when_epoch_window
     yield "messages", "meta", [build_message(signed_agg, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__accepts_first_slot_when_epoch_window_closes(
     spec, state
@@ -239,7 +239,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_first_slot_when_epoch_window
     yield "messages", "meta", [build_message(signed_agg, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignores_first_slot_after_epoch_window_closes(
     spec, state
@@ -269,7 +269,7 @@ def test_gossip_beacon_aggregate_and_proof__ignores_first_slot_after_epoch_windo
     yield "messages", "meta", [build_message(signed_agg, current_time_ms, 0, "ignore", reason)]
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_one_millisecond_before_slot_start(
     spec, state
@@ -307,7 +307,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_one_millisecond_be
     yield "messages", "meta", [build_message(signed_agg, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_at_slot_start(spec, state):
     """Test that a last-slot aggregate is accepted exactly at its slot start."""
@@ -338,7 +338,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_at_slot_start(spec
     yield "messages", "meta", [build_message(signed_agg, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_when_epoch_window_closes(spec, state):
     """Test that a last-slot aggregate is accepted at the last valid Deneb epoch time."""
@@ -369,7 +369,7 @@ def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_when_epoch_window_
     yield "messages", "meta", [build_message(signed_agg, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignores_last_slot_after_epoch_window_closes(
     spec, state

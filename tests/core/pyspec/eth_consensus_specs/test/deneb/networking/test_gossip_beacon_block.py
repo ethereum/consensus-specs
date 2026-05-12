@@ -6,7 +6,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.blob import get_block_with_blob, get_max_blob_count
 from eth_consensus_specs.test.helpers.block import sign_block
-from eth_consensus_specs.test.helpers.constants import DENEB
+from eth_consensus_specs.test.helpers.constants import DENEB, ELECTRA
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
 )
@@ -24,7 +24,7 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_block__valid_with_blob_kzg_commitments(spec, state):
     """
@@ -64,7 +64,7 @@ def test_gossip_beacon_block__valid_with_blob_kzg_commitments(spec, state):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_block__reject_too_many_kzg_commitments(spec, state):
     """

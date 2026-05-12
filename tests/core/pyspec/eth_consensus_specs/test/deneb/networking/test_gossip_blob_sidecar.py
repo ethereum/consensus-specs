@@ -5,9 +5,9 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_phases,
 )
-from eth_consensus_specs.test.helpers.blob import get_block_with_blob
+from eth_consensus_specs.test.helpers.blob import get_block_with_blob, get_max_blob_count
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.constants import DENEB
+from eth_consensus_specs.test.helpers.constants import DENEB, ELECTRA
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
 )
@@ -73,7 +73,7 @@ def resign_blob_sidecar_header(spec, state, blob_sidecar):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__valid(spec, state):
     """Test that a valid blob sidecar passes gossip validation."""
@@ -119,7 +119,7 @@ def test_gossip_blob_sidecar__valid(spec, state):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__reject_index_out_of_range(spec, state):
     """Test that a blob sidecar with index >= MAX_BLOBS_PER_BLOCK is rejected."""
@@ -136,7 +136,7 @@ def test_gossip_blob_sidecar__reject_index_out_of_range(spec, state):
 
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     blob_sidecar = sidecars[0]
-    blob_sidecar.index = spec.BlobIndex(spec.config.MAX_BLOBS_PER_BLOCK)
+    blob_sidecar.index = spec.BlobIndex(get_max_blob_count(spec, state))
 
     yield get_filename(blob_sidecar), blob_sidecar
 
@@ -167,7 +167,7 @@ def test_gossip_blob_sidecar__reject_index_out_of_range(spec, state):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__reject_wrong_subnet(spec, state):
     """Test that a blob sidecar on the wrong subnet is rejected."""
@@ -215,7 +215,7 @@ def test_gossip_blob_sidecar__reject_wrong_subnet(spec, state):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 @always_bls
 def test_gossip_blob_sidecar__reject_invalid_proposer_signature(spec, state):
@@ -265,7 +265,7 @@ def test_gossip_blob_sidecar__reject_invalid_proposer_signature(spec, state):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__reject_invalid_inclusion_proof(spec, state):
     """Test that a blob sidecar with a broken inclusion proof is rejected."""
@@ -316,7 +316,7 @@ def test_gossip_blob_sidecar__reject_invalid_inclusion_proof(spec, state):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__reject_invalid_kzg_proof(spec, state):
     """Test that a blob sidecar with an invalid KZG proof is rejected."""
@@ -365,7 +365,7 @@ def test_gossip_blob_sidecar__reject_invalid_kzg_proof(spec, state):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__ignore_future_slot(spec, state):
     """Test that a blob sidecar from a future slot is ignored."""
@@ -413,7 +413,7 @@ def test_gossip_blob_sidecar__ignore_future_slot(spec, state):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__valid_slot_within_clock_disparity(spec, state):
     """Test that a blob sidecar at the future-slot boundary is valid."""
@@ -460,7 +460,7 @@ def test_gossip_blob_sidecar__valid_slot_within_clock_disparity(spec, state):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__ignore_not_later_than_finalized_slot(spec, state):
     """Test that a blob sidecar at the latest finalized slot is ignored."""
@@ -521,7 +521,7 @@ def test_gossip_blob_sidecar__ignore_not_later_than_finalized_slot(spec, state):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__reject_proposer_index_out_of_range(spec, state):
     """Test that a blob sidecar with proposer_index out of range is rejected."""
@@ -571,7 +571,7 @@ def test_gossip_blob_sidecar__reject_proposer_index_out_of_range(spec, state):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__ignore_parent_not_seen(spec, state):
     """Test that a blob sidecar whose parent is unknown to the store is ignored."""
@@ -622,7 +622,7 @@ def test_gossip_blob_sidecar__ignore_parent_not_seen(spec, state):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
     """Test that a blob sidecar whose parent failed validation is rejected."""
@@ -690,7 +690,7 @@ def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__ignore_already_seen_tuple(spec, state):
     """
@@ -754,7 +754,7 @@ def test_gossip_blob_sidecar__ignore_already_seen_tuple(spec, state):
     yield "messages", "meta", messages
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__reject_slot_not_higher_than_parent(spec, state):
     """
@@ -824,7 +824,7 @@ def test_gossip_blob_sidecar__reject_slot_not_higher_than_parent(spec, state):
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__reject_non_ancestor_finalized_checkpoint(spec, state):
     """Test that a blob sidecar is rejected if the finalized checkpoint is not an ancestor."""
@@ -878,7 +878,7 @@ def test_gossip_blob_sidecar__reject_non_ancestor_finalized_checkpoint(spec, sta
     )
 
 
-@with_phases([DENEB])
+@with_phases([DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_blob_sidecar__reject_wrong_proposer_index(spec, state):
     """Test that a blob sidecar with the wrong proposer_index is rejected."""

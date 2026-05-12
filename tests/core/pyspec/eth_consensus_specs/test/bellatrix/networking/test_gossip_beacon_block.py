@@ -6,7 +6,7 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block,
 )
-from eth_consensus_specs.test.helpers.constants import BELLATRIX, CAPELLA, DENEB
+from eth_consensus_specs.test.helpers.constants import BELLATRIX, CAPELLA, DENEB, ELECTRA
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
     build_state_with_complete_transition,
@@ -29,7 +29,7 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB])
+@with_phases([BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_block__valid_execution_enabled(spec, state):
     """
@@ -110,7 +110,7 @@ def test_gossip_beacon_block__valid_execution_disabled(spec, state):
     )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB])
+@with_phases([BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec, state):
     """
@@ -161,7 +161,7 @@ def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec,
     )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB])
+@with_phases([BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verified(spec, state):
     """
@@ -250,7 +250,7 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
     )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB])
+@with_phases([BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spec, state):
     """
@@ -338,7 +338,7 @@ def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spe
     )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB])
+@with_phases([BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, state):
     """
@@ -428,7 +428,7 @@ def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, sta
     )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB])
+@with_phases([BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_block__valid_parent_execution_verified_valid(spec, state):
     """
@@ -510,7 +510,7 @@ def test_gossip_beacon_block__valid_parent_execution_verified_valid(spec, state)
     )
 
 
-@with_phases([BELLATRIX, CAPELLA, DENEB])
+@with_phases([BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_block__valid_parent_optimistic(spec, state):
     """

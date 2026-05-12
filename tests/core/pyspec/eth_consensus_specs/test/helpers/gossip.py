@@ -96,6 +96,8 @@ def get_filename(obj):
         prefix = "block"
     elif class_name == "Attestation":
         prefix = "attestation"
+    elif class_name == "SingleAttestation":
+        prefix = "single_attestation"
     elif "AggregateAndProof" in class_name:
         prefix = "aggregate"
     elif class_name == "ProposerSlashing":
