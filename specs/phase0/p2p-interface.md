@@ -615,7 +615,7 @@ def validate_beacon_block_gossip(
     if block.proposer_index != expected_proposer:
         raise GossipReject("block proposer_index does not match expected proposer")
 
-    # Mark this block as seen for this proposer/slot combination
+    # Mark this block as seen
     seen.proposer_slots.add((block.proposer_index, block.slot))
 ```
 
