@@ -102,10 +102,7 @@ def payload_attestation_to_messages(spec, state, payload_attestation, signed=Fal
 def choose_payload_attestation_vote_count(spec, ptc, rnd: random.Random):
     threshold = int(spec.PAYLOAD_TIMELY_THRESHOLD)
     max_voters = len(ptc)
-    mode = rnd.choice(["none", "below_threshold", "edge", "above_threshold"])
-
-    if mode == "none":
-        return 0
+    mode = rnd.choice(["below_threshold", "edge", "above_threshold"])
 
     if mode == "below_threshold":
         max_count = min(max_voters, threshold)
