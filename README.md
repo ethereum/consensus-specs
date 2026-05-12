@@ -45,6 +45,7 @@ ready.
 
 ### External specifications
 
+- [Deposit Contract](https://github.com/ethereum/solidity-deposit-contract)
 - [Beacon APIs](https://github.com/ethereum/beacon-apis)
 - [Engine APIs](https://github.com/ethereum/execution-apis/tree/main/src/engine)
 - [Beacon Metrics](https://github.com/ethereum/beacon-metrics)

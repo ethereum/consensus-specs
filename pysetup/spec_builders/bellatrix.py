@@ -23,10 +23,6 @@ def get_pow_block(hash: Bytes32) -> Optional[PowBlock]:
     return PowBlock(block_hash=hash, parent_hash=Bytes32(), total_difficulty=uint256(0))
 
 
-def get_execution_state(_execution_state_root: Bytes32) -> ExecutionState:
-    pass
-
-
 def validator_is_connected(validator_index: ValidatorIndex) -> bool:
     # pylint: disable=unused-argument
     return True"""
@@ -59,3 +55,12 @@ class NoopExecutionEngine(ExecutionEngine):
 
 
 EXECUTION_ENGINE = NoopExecutionEngine()"""
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return set(
+            [
+                "translate_participation",
+                "upgrade_to_altair",
+            ]
+        )

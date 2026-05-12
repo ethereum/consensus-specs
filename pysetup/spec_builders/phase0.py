@@ -97,16 +97,6 @@ get_beacon_committee = cache_this(
     lambda state, slot, index: (state.validators.hash_tree_root(), state.randao_mixes.hash_tree_root(), slot, index),
     _get_beacon_committee, lru_size=SLOTS_PER_EPOCH * MAX_COMMITTEES_PER_SLOT * 3)
 
-_get_matching_target_attestations = get_matching_target_attestations
-get_matching_target_attestations = cache_this(
-    lambda state, epoch: (state.hash_tree_root(), epoch),
-    _get_matching_target_attestations, lru_size=10)
-
-_get_matching_head_attestations = get_matching_head_attestations
-get_matching_head_attestations = cache_this(
-    lambda state, epoch: (state.hash_tree_root(), epoch),
-    _get_matching_head_attestations, lru_size=10)
-
 _get_attesting_indices = get_attesting_indices
 get_attesting_indices = cache_this(
     lambda state, attestation: (

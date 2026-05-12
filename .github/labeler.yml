@@ -68,13 +68,6 @@ eip6914:
       - 'presets/*/eip6914.yaml'
       - 'pysetup/spec_builders/eip6914.py'
 
-eip7928:
-  - changed-files:
-    - any-glob-to-any-file:
-      - 'specs/_features/eip7928/**'
-      - 'presets/*/eip7928.yaml'
-      - 'pysetup/spec_builders/eip7928.py'
-
 eip8025:
   - changed-files:
     - any-glob-to-any-file:

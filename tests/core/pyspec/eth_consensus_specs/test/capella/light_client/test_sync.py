@@ -10,6 +10,8 @@ from eth_consensus_specs.test.helpers.constants import (
     CAPELLA,
     DENEB,
     ELECTRA,
+    FULU,
+    GLOAS,
     MINIMAL,
 )
 from eth_consensus_specs.test.helpers.light_client_sync import (
@@ -45,3 +47,20 @@ def test_deneb_fork(spec, phases, state):
 @with_presets([MINIMAL], reason="too slow")
 def test_deneb_electra_fork(spec, phases, state):
     yield from run_lc_sync_test_multi_fork(spec, phases, state, DENEB, ELECTRA)
+
+
+@with_phases(phases=[CAPELLA], other_phases=[DENEB, ELECTRA, FULU, GLOAS])
+@spec_test
+@with_config_overrides(
+    {
+        "DENEB_FORK_EPOCH": 3,  # Test setup advances to epoch 2
+        "ELECTRA_FORK_EPOCH": 4,
+        "FULU_FORK_EPOCH": 5,
+        "GLOAS_FORK_EPOCH": 6,
+    },
+)
+@with_state
+@with_matching_spec_config(emitted_fork=GLOAS)
+@with_presets([MINIMAL], reason="too slow")
+def test_deneb_gloas_fork(spec, phases, state):
+    yield from run_lc_sync_test_multi_fork(spec, phases, state, DENEB, GLOAS)

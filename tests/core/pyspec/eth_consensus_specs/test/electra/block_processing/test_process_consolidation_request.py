@@ -9,6 +9,7 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.withdrawals import (
     set_compounding_withdrawal_credential,
     set_compounding_withdrawal_credential_with_balance,
@@ -701,6 +702,17 @@ def test_incorrect_not_enough_consolidation_churn_available(spec, state):
     )
 
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
+
+    if is_post_gloas(spec):
+        # Gloas's CONSOLIDATION_CHURN_LIMIT_QUOTIENT yields a churn that exceeds
+        # MIN_ACTIVATION_BALANCE in default state — zero out other validators' effective
+        # balance so total active balance drops low enough to trigger the spec's
+        # churn-insufficient early return. The target's compounding-balance set above
+        # alone produces enough churn to defeat the precondition, so reset it too.
+        state.validators[target_index].effective_balance = spec.MIN_ACTIVATION_BALANCE
+        for i in range(len(state.validators)):
+            if i not in (source_index, target_index):
+                state.validators[i].effective_balance = 0
 
     # Check the return condition
     assert spec.get_consolidation_churn_limit(state) <= spec.MIN_ACTIVATION_BALANCE

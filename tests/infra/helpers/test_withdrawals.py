@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -19,17 +20,19 @@ class TestVerifyWithdrawalsPostState:
         spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP = 16384
 
         # Mock states
-        pre_state = MagicMock()
-        pre_state.next_withdrawal_index = 100
-        pre_state.next_withdrawal_validator_index = 50
-        pre_state.validators = [MagicMock() for _ in range(1000)]
+        pre_state = SimpleNamespace(
+            next_withdrawal_index=100,
+            next_withdrawal_validator_index=50,
+            validators=[MagicMock() for _ in range(1000)],
+        )
 
-        post_state = MagicMock()
-        post_state.next_withdrawal_index = 102
-        # Calculate expected next_withdrawal_validator_index: (50 + 16384) % 1000 = 434
-        post_state.next_withdrawal_validator_index = (50 + 16384) % 1000  # 434
-        post_state.validators = pre_state.validators
-        post_state.balances = [32 * 10**9] * 1000  # 32 ETH per validator
+        post_state = SimpleNamespace(
+            next_withdrawal_index=102,
+            # Calculate expected next_withdrawal_validator_index: (50 + 16384) % 1000 = 434
+            next_withdrawal_validator_index=(50 + 16384) % 1000,
+            validators=pre_state.validators,
+            balances=[32 * 10**9] * 1000,  # 32 ETH per validator
+        )
 
         # Mock execution payload
         execution_payload = MagicMock()
@@ -65,12 +68,13 @@ class TestVerifyWithdrawalsPostState:
         """Test post-gloas behavior when parent block is not full"""
         # Mock spec
         spec = MagicMock()
-        spec.is_parent_block_full.return_value = False
 
-        # Mock states with same withdrawal indices
+        # Mock states with same withdrawal indices but different block hashes (parent not full)
         pre_state = MagicMock()
         pre_state.next_withdrawal_index = 100
         pre_state.next_withdrawal_validator_index = 50
+        pre_state.latest_block_hash = b"\x01" * 32
+        pre_state.latest_execution_payload_bid.block_hash = b"\x02" * 32
 
         post_state = MagicMock()
         post_state.next_withdrawal_index = 100  # Should remain unchanged

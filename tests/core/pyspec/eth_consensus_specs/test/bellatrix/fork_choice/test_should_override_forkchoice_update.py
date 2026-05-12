@@ -129,8 +129,7 @@ def test_should_override_forkchoice_update__true(spec, state):
 
     # Make the head block late
     # Round up to nearest second
-    epoch = spec.get_current_store_epoch(store)
-    attestation_due_ms = spec.get_attestation_due_ms(epoch)
+    attestation_due_ms = spec.get_attestation_due_ms()
     attesting_cutoff = (attestation_due_ms + 999) // 1000
     current_time = (
         state.slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time + attesting_cutoff

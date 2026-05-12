@@ -172,7 +172,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
         body_root=block.body.hash_tree_root(),
     )
     if is_post_bellatrix(spec) and not is_post_gloas(spec):
-        if spec.is_execution_enabled(state, block.body):
+        if is_post_capella(spec) or spec.is_execution_enabled(state, block.body):
             if is_post_eip8025(spec):
                 spec.process_execution_payload(
                     state, block.body, spec.EXECUTION_ENGINE, spec.PROOF_ENGINE

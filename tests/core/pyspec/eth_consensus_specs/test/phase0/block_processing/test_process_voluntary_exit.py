@@ -8,6 +8,7 @@ from eth_consensus_specs.test.context import (
     with_custom_state,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.churn import get_validator_exit_count_per_epoch
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
 from eth_consensus_specs.test.helpers.voluntary_exits import (
@@ -67,7 +68,7 @@ def run_test_success_exit_queue(spec, state):
 
     # exit `MAX_EXITS_PER_EPOCH`
     initial_indices = spec.get_active_validator_indices(state, current_epoch)[
-        : spec.get_validator_churn_limit(state)
+        : get_validator_exit_count_per_epoch(spec, state)
     ]
 
     # Prepare a bunch of exits, based on the current state

@@ -147,8 +147,7 @@ def Verify(PK, message, signature):
             result = bls.Verify(PK, message, signature)
     except Exception:
         result = False
-    finally:
-        return result
+    return result
 
 
 @only_with_bls(alt_return=True)
@@ -160,8 +159,7 @@ def AggregateVerify(pubkeys, messages, signature):
             result = bls.AggregateVerify(list(pubkeys), list(messages), signature)
     except Exception:
         result = False
-    finally:
-        return result
+    return result
 
 
 @only_with_bls(alt_return=True)
@@ -173,8 +171,7 @@ def FastAggregateVerify(pubkeys, message, signature):
             result = bls.FastAggregateVerify(list(pubkeys), message, signature)
     except Exception:
         result = False
-    finally:
-        return result
+    return result
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
