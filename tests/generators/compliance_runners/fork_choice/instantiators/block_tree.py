@@ -763,7 +763,9 @@ def _generate_block_tree(
     validators_to_be_slashed = set()
     block_edges = iter(enumerate(block_parents[1:], start=1))
     state_cache = StateCache(spec, runtime)
-    committee_assignments = CommitteeAssignments(spec, state_cache.get_state_by_block_index_and_slot)
+    committee_assignments = CommitteeAssignments(
+        spec, state_cache.get_state_by_block_index_and_slot
+    )
 
     def choose_attested_block_index(tips, block_parents):
         attesting_block_index = rnd.choice(tips)
