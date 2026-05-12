@@ -299,7 +299,7 @@ def get_sidecar_file_name(sidecar: DataColumnSidecar) -> str:
 
 
 def get_payload_attestation_message_file_name(ptc_message):
-    return f"payload_attestation_{encode_hex(ptc_message.hash_tree_root())}"
+    return f"payload_attestation_message_{encode_hex(ptc_message.hash_tree_root())}"
 
 
 def on_tick_and_append_step(spec, store, time, test_steps):
@@ -498,13 +498,34 @@ def add_payload_attestation_message(spec, store, ptc_message, test_steps, valid=
     ptc_file_name = get_payload_attestation_message_file_name(ptc_message)
     yield ptc_file_name, ptc_message
 
-    if not valid:
-        expect_assertion_error(lambda: spec.on_payload_attestation_message(store, ptc_message))
-        test_steps.append({"payload_attestation": ptc_file_name, "valid": False})
-        return
+    run_on_payload_attestation_message(spec, store, ptc_message, valid=valid)
+    step = {"payload_attestation_message": ptc_file_name}
 
-    run_on_payload_attestation_message(spec, store, ptc_message)
-    test_steps.append({"payload_attestation": ptc_file_name})
+    if not valid:
+        step["valid"] = False
+    test_steps.append(step)
+
+
+def add_payload_vote_checks(store, block_root, test_steps):
+    timeliness = [None if v is None else bool(v) for v in store.payload_timeliness_vote[block_root]]
+    availability = [
+        None if v is None else bool(v) for v in store.payload_data_availability_vote[block_root]
+    ]
+
+    test_steps.append(
+        {
+            "checks": {
+                "payload_timeliness_vote": {
+                    "block_root": encode_hex(block_root),
+                    "votes": timeliness,
+                },
+                "payload_data_availability_vote": {
+                    "block_root": encode_hex(block_root),
+                    "votes": availability,
+                },
+            }
+        }
+    )
 
 
 def _get_head_root(spec, store):

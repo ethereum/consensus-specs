@@ -32,6 +32,7 @@
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
       - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
       - [GetMetaData v3](#getmetadata-v3)
+      - [BeaconBlocksByHead v1](#beaconblocksbyhead-v1)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
       - [`eth2` field](#eth2-field)
@@ -563,6 +564,75 @@ Response Content:
 Requests the MetaData of a peer, using the new `MetaData` definition given above
 that is extended from Altair. Other conditions for the `GetMetaData` protocol
 are unchanged from the Altair p2p networking document.
+
+##### BeaconBlocksByHead v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_head/1/`
+
+*[New in Fulu]*
+
+Request Content:
+
+```
+(
+  beacon_root: Root
+  count: uint64
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+)
+```
+
+Requests beacon blocks along the ancestry of `beacon_root`, inclusive of the
+block at `beacon_root`, in descending slot order. The walk stops as soon as the
+response contains `min(count, MAX_REQUEST_BLOCKS_DENEB)` blocks or the next
+ancestor falls outside the epoch range that clients are required to serve (see
+below).
+
+`BeaconBlocksByHead` is primarily used to backfill a contiguous range of blocks
+relative to a known head.
+
+No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
+
+The request MUST be encoded as an SSZ-container.
+
+The response MUST consist of zero or more `response_chunk`. Each successful
+`response_chunk` MUST contain a single `SignedBeaconBlock` payload.
+
+Clients MUST support requesting blocks on the epoch range
+`[current_epoch - compute_min_epochs_for_block_requests(), current_epoch]`. If
+`beacon_root` references a block earlier than this range, peers MAY respond with
+error code `3: ResourceUnavailable` or with no blocks in the response.
+
+Clients MUST respond with at least one block, if they have the block at
+`beacon_root`. Clients MAY limit the number of blocks in the response.
+
+Clients SHOULD include a block in the response as soon as it passes the gossip
+validation rules. Clients SHOULD NOT respond with blocks that fail the
+beacon-chain state transition.
+
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
+
+Per `fork_version = compute_fork_version(epoch)`:
+
+<!-- eth_consensus_specs: skip -->
+
+| `fork_version`           | Chunk SSZ type                |
+| ------------------------ | ----------------------------- |
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
+| `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
+| `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
+| `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
+| `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
+| `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 
 ### The discovery domain: discv5
 
