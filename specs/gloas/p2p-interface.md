@@ -338,9 +338,8 @@ The following validations MUST pass before forwarding the
 `signed_proposer_preferences` for the validated `SignedProposerPreferences`
 whose `message.proposal_slot` is `bid.slot` and `message.dependent_root` is
 `get_proposer_dependent_root(parent_state, compute_epoch_at_slot(bid.slot))`,
-where `parent_block` is the block with block root equal to
-`bid.parent_block_root`, `parent_state` is the post-state of `parent_block`, and
-the alias `proposer_preferences = signed_proposer_preferences.message`.
+where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
+`proposer_preferences = signed_proposer_preferences.message`:
 
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
 - _[IGNORE]_ The matching `signed_proposer_preferences` has been seen.
@@ -358,10 +357,10 @@ the alias `proposer_preferences = signed_proposer_preferences.message`.
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
   i.e. `can_builder_cover_bid(state, builder_index, amount)` returns `True`.
 - _[IGNORE]_ `bid.parent_block_hash` is the block hash of a known execution
-  payload in fork choice. Let `parent_bid` be the `ExecutionPayloadBid` in the
-  beacon block such that `parent_bid.block_hash == bid.parent_block_hash`.
+  payload in fork choice. Let `parent_gas_limit` be the `gas_limit` of that
+  execution payload.
 - _[IGNORE]_
-  `is_gas_limit_target_compatible(parent_bid.gas_limit, bid.gas_limit, proposer_preferences.gas_limit) == True`.
+  `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, proposer_preferences.gas_limit) == True`.
 - _[IGNORE]_ `bid.parent_block_root` is the hash tree root of a known beacon
   block in fork choice.
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
@@ -376,8 +375,9 @@ def is_gas_limit_target_compatible(
     """
     Check if the bid's gas limit is compatible with the proposer's preferences.
     """
-    min_gas_limit = parent_gas_limit - parent_gas_limit // 1024
-    max_gas_limit = parent_gas_limit + parent_gas_limit // 1024
+    max_gas_limit_difference = parent_gas_limit // 1024 - 1
+    min_gas_limit = parent_gas_limit - max_gas_limit_difference
+    max_gas_limit = parent_gas_limit + max_gas_limit_difference
 
     if proposer_gas_limit >= min_gas_limit and proposer_gas_limit <= max_gas_limit:
         return gas_limit == proposer_gas_limit
