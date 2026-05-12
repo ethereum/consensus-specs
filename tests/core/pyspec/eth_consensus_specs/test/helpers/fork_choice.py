@@ -506,7 +506,7 @@ def add_payload_attestation_message(spec, store, ptc_message, test_steps, valid=
     test_steps.append(step)
 
 
-def add_payload_vote_checks(spec, store, block_root, test_steps):
+def add_payload_vote_checks(store, block_root, test_steps):
     timeliness = [None if v is None else bool(v) for v in store.payload_timeliness_vote[block_root]]
     availability = [
         None if v is None else bool(v) for v in store.payload_data_availability_vote[block_root]

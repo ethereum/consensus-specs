@@ -19,14 +19,22 @@ from eth_consensus_specs.test.helpers.state import (
 
 
 def _build_signed_payload_attestation_message(
-    spec, state, block_root, validator_index, payload_present=True, blob_data_available=True
+    spec,
+    state,
+    block_root,
+    validator_index,
+    payload_present=True,
+    blob_data_available=True,
+    slot=None,
 ):
     """
     Build a signed PayloadAttestationMessage for a given block root and validator.
     """
+    if slot is None:
+        slot = state.slot
     data = spec.PayloadAttestationData(
         beacon_block_root=block_root,
-        slot=state.slot,
+        slot=slot,
         payload_present=payload_present,
         blob_data_available=blob_data_available,
     )
@@ -100,7 +108,7 @@ def test_on_payload_attestation_message_unknown_block_root(spec, state):
     # Vote arrays for the known block must remain at their default values
     assert all(v is None for v in store.payload_timeliness_vote[block_root])
     assert all(v is None for v in store.payload_data_availability_vote[block_root])
-    add_payload_vote_checks(spec, store, block_root, test_steps)
+    add_payload_vote_checks(store, block_root, test_steps)
 
     yield "steps", test_steps
 
@@ -113,15 +121,15 @@ def test_on_payload_attestation_message_slot_mismatch(spec, state):
     """
     store, block_root, block_state, ptc, test_steps = yield from _setup_test(spec, state)
 
-    # Build message and set the slot to a different one
+    # Build message signed over a mismatching slot
     ptc_message = _build_signed_payload_attestation_message(
         spec,
         block_state,
         block_root,
         ptc[0],
         payload_present=True,
+        slot=spec.Slot(block_state.slot + 1),
     )
-    ptc_message.data.slot = spec.Slot(block_state.slot + 1)
 
     # Spec function runs without error but returns early on the slot mismatch
     yield from add_payload_attestation_message(spec, store, ptc_message, test_steps)
@@ -129,7 +137,7 @@ def test_on_payload_attestation_message_slot_mismatch(spec, state):
     # Vote arrays must remain at their default values
     assert all(v is None for v in store.payload_timeliness_vote[block_root])
     assert all(v is None for v in store.payload_data_availability_vote[block_root])
-    add_payload_vote_checks(spec, store, block_root, test_steps)
+    add_payload_vote_checks(store, block_root, test_steps)
 
     yield "steps", test_steps
 
@@ -164,7 +172,7 @@ def test_on_payload_attestation_message_not_ptc_member(spec, state):
     # Assert rejected message didn't mutate the block vote arrays
     assert all(v is None for v in store.payload_timeliness_vote[block_root])
     assert all(v is None for v in store.payload_data_availability_vote[block_root])
-    add_payload_vote_checks(spec, store, block_root, test_steps)
+    add_payload_vote_checks(store, block_root, test_steps)
 
     yield "steps", test_steps
 
@@ -197,7 +205,7 @@ def test_on_payload_attestation_message_current_slot_and_signature(spec, state):
     # Vote arrays must remain at their default values
     assert all(v is None for v in store.payload_timeliness_vote[block_root])
     assert all(v is None for v in store.payload_data_availability_vote[block_root])
-    add_payload_vote_checks(spec, store, block_root, test_steps)
+    add_payload_vote_checks(store, block_root, test_steps)
 
     # Valid signature, stale slot
     valid_msg = _build_signed_payload_attestation_message(
@@ -219,7 +227,7 @@ def test_on_payload_attestation_message_current_slot_and_signature(spec, state):
     # Rejected message must not partially mutate vote arrays
     assert all(v is None for v in store.payload_timeliness_vote[block_root])
     assert all(v is None for v in store.payload_data_availability_vote[block_root])
-    add_payload_vote_checks(spec, store, block_root, test_steps)
+    add_payload_vote_checks(store, block_root, test_steps)
 
     yield "steps", test_steps
 
@@ -257,7 +265,7 @@ def test_on_payload_attestation_message_valid(spec, state):
     for i in other_positions:
         assert store.payload_timeliness_vote[block_root][i] is None
         assert store.payload_data_availability_vote[block_root][i] is None
-    add_payload_vote_checks(spec, store, block_root, test_steps)
+    add_payload_vote_checks(store, block_root, test_steps)
 
     # Re-vote with both fields False
     msg_2 = _build_signed_payload_attestation_message(
@@ -278,7 +286,7 @@ def test_on_payload_attestation_message_valid(spec, state):
     for i in other_positions:
         assert store.payload_timeliness_vote[block_root][i] is None
         assert store.payload_data_availability_vote[block_root][i] is None
-    add_payload_vote_checks(spec, store, block_root, test_steps)
+    add_payload_vote_checks(store, block_root, test_steps)
 
     yield "steps", test_steps
 
@@ -344,7 +352,7 @@ def test_on_payload_attestation_message_multiple_ptc_members_vote_independently(
         assert timeliness[i] is None
         assert availability[i] is None
 
-    add_payload_vote_checks(spec, store, block_root, test_steps)
+    add_payload_vote_checks(store, block_root, test_steps)
 
     yield "steps", test_steps
 
@@ -408,5 +416,5 @@ def test_on_payload_attestation_message_from_block(spec, state):
             assert store.payload_timeliness_vote[block_root][i] is None
             assert store.payload_data_availability_vote[block_root][i] is None
 
-    add_payload_vote_checks(spec, store, block_root, test_steps)
+    add_payload_vote_checks(store, block_root, test_steps)
     yield "steps", test_steps
