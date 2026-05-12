@@ -84,6 +84,12 @@ class DataColumnSidecar(Container):
 
 *[New in Gloas:EIP7732]*
 
+*Note*: `max_execution_payment` defines the maximum trusted payment (in Gwei)
+that the proposer will accept. Builders MUST NOT set `bid.execution_payment` to
+a value greater than `max_execution_value`. A value of `0` indicates that the
+proposer does not accept any trusted payments. A value of `UINT64_MAX` indicates
+that the proposer accepts any trusted payment amount.
+
 ```python
 class ProposerPreferences(Container):
     dependent_root: Root
@@ -91,6 +97,7 @@ class ProposerPreferences(Container):
     validator_index: ValidatorIndex
     fee_recipient: ExecutionAddress
     gas_limit: uint64
+    max_execution_payment: uint64
 ```
 
 #### New `SignedProposerPreferences`
