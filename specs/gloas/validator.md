@@ -238,38 +238,39 @@ constructs this field as follows:
   `parent_execution_requests` to an empty `ExecutionRequests()`.
 - If `should_build_on_full(store, head)` is true (the proposer is building on
   the parent's full payload), set `parent_execution_requests` to
-  `store.payloads[block.parent_root].execution_requests`.
+  `store.payloads[head.root].execution_requests`.
 - Otherwise (the proposer is building on the parent's empty variant), set
   `parent_execution_requests` to an empty `ExecutionRequests()`.
 
 ##### ExecutionPayload
 
-*Note*: `prepare_execution_payload` is modified in Gloas to take `store` as an
-additional parameter. It consults `should_extend_payload` to decide whether to
-build on the parent's full payload or its empty variant, selecting both the
-withdrawals source and the execution head for the new payload. When building on
-a full parent, `apply_parent_execution_payload` is called so that withdrawals
-are computed against the post-processing state.
+*Note*: `prepare_execution_payload` is modified in Gloas to take `store` and
+`head` as additional parameters. `head` is the return value of `get_head(store)`
+and must correspond to the parent that `state` was derived from. It consults
+`should_build_on_full(store, head)` to decide whether to build on the parent's
+full payload or its empty variant, selecting both the withdrawals source and the
+execution head for the new payload. When building on a full parent,
+`apply_parent_execution_payload` is called so that withdrawals are computed
+against the post-processing state.
 
 ```python
 def prepare_execution_payload(
     # [New in Gloas:EIP7732]
     store: Store,
-    slot: Slot,
+    # [New in Gloas:EIP7732]
+    head: ForkChoiceNode,
+    state: BeaconState,
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
     suggested_fee_recipient: ExecutionAddress,
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
     # [New in Gloas:EIP7732]
-    head = get_head(store)
-    state = store.block_states[head.root]
-    # Make a copy of the state to avoid mutability issues
-    state = copy(state)
-    process_slots(state, slot)
     parent_bid = state.latest_execution_payload_bid
     if should_build_on_full(store, head):
         envelope = store.payloads[head.root]
+        # Make a copy of the state to avoid mutability issues
+        state = copy(state)
         # Apply parent payload before computing withdrawals
         apply_parent_execution_payload(state, envelope.execution_requests)
         withdrawals = get_expected_withdrawals(state).withdrawals
@@ -280,14 +281,14 @@ def prepare_execution_payload(
 
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(
-        timestamp=compute_time_at_slot(state, slot),
-        prev_randao=get_randao_mix(state, compute_epoch_at_slot(slot)),
+        timestamp=compute_time_at_slot(state, state.slot),
+        prev_randao=get_randao_mix(state, get_current_epoch(state)),
         suggested_fee_recipient=suggested_fee_recipient,
         # [Modified in Gloas:EIP7732]
         withdrawals=withdrawals,
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
         # [New in Gloas:EIP7843]
-        slot_number=slot,
+        slot_number=state.slot,
     )
     return execution_engine.notify_forkchoice_updated(
         # [Modified in Gloas:EIP7732]

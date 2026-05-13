@@ -389,10 +389,10 @@ def is_supporting_vote(store: Store, node: ForkChoiceNode, message: LatestMessag
 
 ### New `should_build_on_full`
 
-*Note*: `should_build_on_full` is called by the proposer before deciding if he
-should build on top of the empty or full parent pending node. This function is
-similar to `should_extend_payload` but it takes into consideration the PTC view
-on DA
+*Note*: `should_build_on_full` is called by the proposer before deciding whether
+to build on top of the empty or full parent pending node. This function is
+similar to `should_extend_payload` but takes into consideration the PTC view on
+data availability.
 
 ```python
 def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
