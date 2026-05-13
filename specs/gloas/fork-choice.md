@@ -7,6 +7,9 @@
 - [Introduction](#introduction)
 - [Types](#types)
 - [Constants](#constants)
+- [Protocols](#protocols)
+  - [`ExecutionEngine`](#executionengine)
+    - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
 - [Helpers](#helpers)
   - [New `ForkChoiceNode`](#new-forkchoicenode)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
@@ -74,6 +77,24 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 | `ATTESTATION_TIMELINESS_INDEX`       | `0`                     |
 | `PTC_TIMELINESS_INDEX`               | `1`                     |
 | `NUM_BLOCK_TIMELINESS_DEADLINES`     | `2`                     |
+
+## Protocols
+
+### `ExecutionEngine`
+
+#### `notify_forkchoice_updated`
+
+In Gloas, `finalized_block_hash` and `safe_block_hash` values **MUST** be
+computed as the following. All other semantics of `notify_forkchoice_updated`
+and its invocation are inherited from prior forks.
+
+- `finalized_block_hash = finalized_block_bid.parent_block_hash`,
+- `safe_block_hash = get_safe_execution_block_hash(store)`.
+
+Where:
+
+- `finalized_block = store.blocks[store.finalized_checkpoint.root]`,
+- `finalized_block_bid = finalized_block.body.signed_execution_payload_bid.message`.
 
 ## Helpers
 
