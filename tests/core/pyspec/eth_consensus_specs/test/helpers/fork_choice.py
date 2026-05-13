@@ -15,11 +15,7 @@ from eth_consensus_specs.test.helpers.forks import is_post_fulu, is_post_gloas
 
 
 def check_head_against_root(spec, store, root):
-    head = spec.get_head(store)
-    if is_post_gloas(spec):
-        assert head.root == root
-    else:
-        assert head == root
+    assert spec.get_head(store).root == root
 
 
 class BlobData(NamedTuple):
@@ -507,43 +503,32 @@ def add_payload_attestation_message(spec, store, ptc_message, test_steps, valid=
     test_steps.append({"payload_attestation": ptc_file_name})
 
 
-def _get_head_root(spec, store):
-    head = spec.get_head(store)
-    if is_post_gloas(spec):
-        head_root = head.root
-    else:
-        head_root = head
-    return head_root
-
-
-def get_formatted_head_output(spec, store, head_root=None):
-    if head_root is None:
-        head_root = _get_head_root(spec, store)
-
-    slot = store.blocks[head_root].slot
+def get_formatted_head_output(spec, store, head=None):
+    if head is None:
+        head = spec.get_head(store)
+    slot = store.blocks[head.root].slot
     return {
         "slot": int(slot),
-        "root": encode_hex(head_root),
+        "root": encode_hex(head.root),
     }
 
 
 def output_head_check(spec, store, test_steps):
+    head = spec.get_head(store)
     test_steps.append(
         {
             "checks": {
-                "head": get_formatted_head_output(spec, store),
+                "head": get_formatted_head_output(spec, store, head),
             }
         }
     )
 
 
-def get_basic_store_checks(spec, store, head_root=None):
-    if head_root is None:
-        head_root = _get_head_root(spec, store)
-
-    return {
+def get_basic_store_checks(spec, store):
+    head = spec.get_head(store)
+    checks = {
         "time": int(store.time),
-        "head": get_formatted_head_output(spec, store, head_root),
+        "head": get_formatted_head_output(spec, store, head),
         "justified_checkpoint": {
             "epoch": int(store.justified_checkpoint.epoch),
             "root": encode_hex(store.justified_checkpoint.root),
@@ -555,57 +540,45 @@ def get_basic_store_checks(spec, store, head_root=None):
         "proposer_boost_root": encode_hex(store.proposer_boost_root),
     }
 
+    if is_post_gloas(spec):
+        checks["head_payload_status"] = int(head.payload_status)
+
+    return checks
+
+
+def get_weighed_node_checks(spec, store, node):
+    if is_post_gloas(spec):
+        return {
+            "root": encode_hex(node.root),
+            "weight": int(spec.get_weight(store, node)),
+            "payload_status": int(node.payload_status),
+        }
+    else:
+        return {
+            "root": encode_hex(node.root),
+            "weight": int(spec.get_weight(store, node)),
+        }
+
 
 def get_viable_for_head_checks(spec, store):
     filtered_blocks = spec.get_filtered_block_tree(store)
+    root_node = spec.get_block_root_node(store.justified_checkpoint.root)
+    pending_nodes = [root_node]
+    leaves_viable_for_head = []
 
-    if is_post_gloas(spec):
-        root_node = spec.ForkChoiceNode(
-            root=store.justified_checkpoint.root,
-            payload_status=spec.PAYLOAD_STATUS_PENDING,
-        )
-        pending_nodes = [root_node]
-        leaves_viable_for_head = []
+    while len(pending_nodes) > 0:
+        node = pending_nodes.pop()
+        children = spec.get_node_children(store, filtered_blocks, node)
+        if len(children) == 0:
+            leaves_viable_for_head.append(node)
+        else:
+            pending_nodes.extend(children)
 
-        while len(pending_nodes) > 0:
-            node = pending_nodes.pop()
-            children = spec.get_node_children(store, filtered_blocks, node)
-            if len(children) == 0:
-                leaves_viable_for_head.append(node)
-            else:
-                pending_nodes.extend(children)
-
-        return [
-            {
-                "root": encode_hex(node.root),
-                "payload_status": int(node.payload_status),
-                "weight": int(spec.get_weight(store, node)),
-            }
-            for node in leaves_viable_for_head
-        ]
-
-    filtered_block_roots = filtered_blocks.keys()
-    leaves_viable_for_head = [
-        root
-        for root in filtered_block_roots
-        if not any(c for c in filtered_block_roots if store.blocks[c].parent_root == root)
-    ]
-    return [
-        {
-            "root": encode_hex(viable_for_head_root),
-            "weight": int(spec.get_weight(store, viable_for_head_root)),
-        }
-        for viable_for_head_root in leaves_viable_for_head
-    ]
+    return [get_weighed_node_checks(spec, store, node) for node in leaves_viable_for_head]
 
 
 def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=False):
-    if is_post_gloas(spec):
-        head = spec.get_head(store)
-        checks = get_basic_store_checks(spec, store, head.root)
-        checks["head_payload_status"] = int(head.payload_status)
-    else:
-        checks = get_basic_store_checks(spec, store)
+    checks = get_basic_store_checks(spec, store)
 
     if with_viable_for_head_weights:
         checks["viable_for_head_roots_and_weights"] = get_viable_for_head_checks(spec, store)
@@ -689,3 +662,17 @@ def get_pow_block_file_name(pow_block):
 def add_pow_block(spec, store, pow_block, test_steps):
     yield get_pow_block_file_name(pow_block), pow_block
     test_steps.append({"pow_block": get_pow_block_file_name(pow_block)})
+
+
+def is_ancestor(spec, store, root_or_node, maybe_ancestor_root_or_node) -> bool:
+    if hasattr(root_or_node, "root"):
+        node = root_or_node
+    else:
+        node = spec.get_block_root_node(root_or_node)
+
+    if hasattr(maybe_ancestor_root_or_node, "root"):
+        maybe_ancestor = maybe_ancestor_root_or_node
+    else:
+        maybe_ancestor = spec.get_block_root_node(maybe_ancestor_root_or_node)
+
+    return spec.is_ancestor(store, node, maybe_ancestor)

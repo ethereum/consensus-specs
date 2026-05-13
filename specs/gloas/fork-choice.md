@@ -8,7 +8,7 @@
 - [Types](#types)
 - [Constants](#constants)
 - [Helpers](#helpers)
-  - [New `ForkChoiceNode`](#new-forkchoicenode)
+  - [Modified `ForkChoiceNode`](#modified-forkchoicenode)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [Modified `LatestMessage`](#modified-latestmessage)
   - [Modified `update_latest_messages`](#modified-update_latest_messages)
@@ -20,15 +20,17 @@
   - [New `is_payload_data_available`](#new-is_payload_data_available)
   - [New `get_parent_payload_status`](#new-get_parent_payload_status)
   - [New `is_parent_node_full`](#new-is_parent_node_full)
-  - [Modified `get_ancestor`](#modified-get_ancestor)
+    - [Modified `get_block_root_node`](#modified-get_block_root_node)
+    - [Modified `get_ancestor`](#modified-get_ancestor)
+    - [Modified `is_ancestor`](#modified-is_ancestor)
   - [Modified `get_checkpoint_block`](#modified-get_checkpoint_block)
-  - [New `is_supporting_vote`](#new-is_supporting_vote)
+    - [Modified `get_supported_node`](#modified-get_supported_node)
   - [New `should_extend_payload`](#new-should_extend_payload)
   - [New `get_payload_status_tiebreaker`](#new-get_payload_status_tiebreaker)
   - [New `should_apply_proposer_boost`](#new-should_apply_proposer_boost)
   - [Modified `get_attestation_score`](#modified-get_attestation_score)
   - [Modified `get_weight`](#modified-get_weight)
-  - [New `get_node_children`](#new-get_node_children)
+  - [Modified `get_node_children`](#modified-get_node_children)
   - [Modified `get_head`](#modified-get_head)
   - [Modified `record_block_timeliness`](#modified-record_block_timeliness)
   - [Modified `update_proposer_boost_root`](#modified-update_proposer_boost_root)
@@ -77,10 +79,13 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 
 ## Helpers
 
-### New `ForkChoiceNode`
+### Modified `ForkChoiceNode`
+
+*Note:* This structure is extended with `payload_status` introduced by EIP-7732.
 
 ```python
-class ForkChoiceNode(Container):
+@dataclass(eq=True, frozen=True)
+class ForkChoiceNode(object):
     root: Root
     payload_status: PayloadStatus  # One of PAYLOAD_STATUS_* values
 ```
@@ -298,36 +303,60 @@ def is_parent_node_full(store: Store, block: BeaconBlock) -> bool:
     return get_parent_payload_status(store, block) == PAYLOAD_STATUS_FULL
 ```
 
-### Modified `get_ancestor`
+#### Modified `get_block_root_node`
 
-*Note*: `get_ancestor` is modified to return whether the chain is based on an
-*empty* or *full* block.
+*Note:* This function is modified to return an extended `ForkChoiceNode`
+structure with `PAYLOAD_STATUS_PENDING` payload status as a common ancestor of
+all nodes referring to a given `block_root`.
 
 ```python
-def get_ancestor(store: Store, root: Root, slot: Slot) -> ForkChoiceNode:
-    """
-    Returns the beacon block root and the payload status of the ancestor of the beacon block
-    with ``root`` at ``slot``. If the beacon block with ``root`` is already at ``slot`` or we are
-    requesting an ancestor "in the future", it returns ``PAYLOAD_STATUS_PENDING``.
-    """
-    block = store.blocks[root]
-    if block.slot <= slot:
-        return ForkChoiceNode(root=root, payload_status=PAYLOAD_STATUS_PENDING)
+def get_block_root_node(block_root: Root) -> ForkChoiceNode:
+    return ForkChoiceNode(root=block_root, payload_status=PAYLOAD_STATUS_PENDING)
+```
 
-    parent = store.blocks[block.parent_root]
-    while parent.slot > slot:
-        block = parent
-        parent = store.blocks[block.parent_root]
+#### Modified `get_ancestor`
 
-    return ForkChoiceNode(
-        root=block.parent_root,
-        payload_status=get_parent_payload_status(store, block),
+*Note*: `get_ancestor` is modified to return whether the chain is based on an
+*empty* or *full* block. If a `node.root` is from the same `slot` then the
+`node` is returned as is. For past slots this function returns nodes with either
+`PAYLOAD_STATUS_FULL` or `PAYLOAD_STATUS_EMPTY` payload status.
+
+```python
+def get_ancestor(store: Store, node: ForkChoiceNode, slot: Slot) -> ForkChoiceNode:
+    block = store.blocks[node.root]
+    if block.slot > slot:
+        # [Modified in Gloas:EIP7732]
+        parent = ForkChoiceNode(
+            root=block.parent_root, payload_status=get_parent_payload_status(store, block)
+        )
+        return get_ancestor(store, parent, slot)
+    return node
+```
+
+#### Modified `is_ancestor`
+
+*Note*: This function is modified to use an extended `ForkChoiceNode` structure.
+It handles relation between the same slot nodes based on the payload status of
+`maybe_ancestor` and `ancestor`.
+
+```python
+def is_ancestor(store: Store, node: ForkChoiceNode, maybe_ancestor: ForkChoiceNode) -> bool:
+    ancestor = get_ancestor(store, node, store.blocks[maybe_ancestor.root].slot)
+    if ancestor.root != maybe_ancestor.root:
+        # Nodes at the same depth are from different chains
+        return False
+
+    # [New in Gloas:EIP7732]
+    return (
+        ancestor.payload_status == maybe_ancestor.payload_status
+        or maybe_ancestor.payload_status == PAYLOAD_STATUS_PENDING
     )
 ```
 
 ### Modified `get_checkpoint_block`
 
-*Note*: `get_checkpoint_block` is modified to use the new `get_ancestor`
+*Note*: `get_checkpoint_block` is modified to use an extended `ForkChoiceNode`
+structure.
 
 ```python
 def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
@@ -335,34 +364,33 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
     Compute the checkpoint block for epoch ``epoch`` in the chain of block ``root``
     """
     epoch_first_slot = compute_start_slot_at_epoch(epoch)
-    return get_ancestor(store, root, epoch_first_slot).root
+    # [Modified in Gloas:EIP7732]
+    node = ForkChoiceNode(root=root, payload_status=PAYLOAD_STATUS_PENDING)
+    return get_ancestor(store, node, epoch_first_slot).root
 ```
 
-### New `is_supporting_vote`
+#### Modified `get_supported_node`
+
+*Note*: `get_supported_node` is modified to use an extended `ForkChoiceNode` and
+`LatestMessage` structures. It sets the `payload_status` according to message
+`block.slot` and `message.payload_present`.
 
 ```python
-def is_supporting_vote(store: Store, node: ForkChoiceNode, message: LatestMessage) -> bool:
+def get_supported_node(store: Store, message: LatestMessage) -> ForkChoiceNode:
     """
-    Returns whether the vote ``message`` supports the chain containing the
-    forkchoice node ``node``.
+    Return a node supported by the ``message``.
     """
-    block = store.blocks[node.root]
-    if node.root == message.root:
-        if node.payload_status == PAYLOAD_STATUS_PENDING:
-            return True
-        assert message.slot >= block.slot
-        if message.slot == block.slot:
-            return False
+    # [Modified in Gloas:EIP7732]
+    block = store.blocks[message.root]
+    if block.slot < message.slot:
         if message.payload_present:
-            return node.payload_status == PAYLOAD_STATUS_FULL
+            payload_status = PAYLOAD_STATUS_FULL
         else:
-            return node.payload_status == PAYLOAD_STATUS_EMPTY
+            payload_status = PAYLOAD_STATUS_EMPTY
     else:
-        ancestor = get_ancestor(store, message.root, block.slot)
-        return node.root == ancestor.root and (
-            node.payload_status == PAYLOAD_STATUS_PENDING
-            or node.payload_status == ancestor.payload_status
-        )
+        payload_status = PAYLOAD_STATUS_PENDING
+
+    return ForkChoiceNode(root=message.root, payload_status=payload_status)
 ```
 
 ### New `should_extend_payload`
@@ -442,15 +470,11 @@ def should_apply_proposer_boost(store: Store) -> bool:
 
 ### Modified `get_attestation_score`
 
+*Note*: This function is modified to use modified `is_ancestor` and
+`get_supported_node` functions.
+
 ```python
-def get_attestation_score(
-    store: Store,
-    # [Modified in Gloas:EIP7732]
-    # Removed `root`
-    # [New in Gloas:EIP7732]
-    node: ForkChoiceNode,
-    state: BeaconState,
-) -> Gwei:
+def get_attestation_score(store: Store, node: ForkChoiceNode, state: BeaconState) -> Gwei:
     unslashed_and_active_indices = [
         i
         for i in get_active_validator_indices(state, get_current_epoch(state))
@@ -464,7 +488,7 @@ def get_attestation_score(
                 i in store.latest_messages
                 and i not in store.equivocating_indices
                 # [Modified in Gloas:EIP7732]
-                and is_supporting_vote(store, node, store.latest_messages[i])
+                and is_ancestor(store, get_supported_node(store, store.latest_messages[i]), node)
             )
         )
     )
@@ -472,17 +496,17 @@ def get_attestation_score(
 
 ### Modified `get_weight`
 
+*Note*: This function is modified to use new `should_apply_proposer_boost`
+function and extended `ForkChoiceNode` structure.
+
 ```python
-def get_weight(
-    store: Store,
-    # [Modified in Gloas:EIP7732]
-    node: ForkChoiceNode,
-) -> Gwei:
+def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
     if node.payload_status == PAYLOAD_STATUS_PENDING or store.blocks[
         node.root
     ].slot + 1 != get_current_slot(store):
         state = store.checkpoint_states[store.justified_checkpoint]
         attestation_score = get_attestation_score(store, node, state)
+        # [Modified in Gloas:EIP7732]
         if not should_apply_proposer_boost(store):
             # Return only attestation score if
             # proposer boost should not apply
@@ -490,16 +514,12 @@ def get_weight(
 
         # Calculate proposer score if `proposer_boost_root` is set
         proposer_score = Gwei(0)
-
-        # `proposer_boost_root` is treated as a vote for the
-        # proposer's block in the current slot. Proposer boost
-        # is applied accordingly to all ancestors
-        message = LatestMessage(
-            slot=get_current_slot(store),
-            root=store.proposer_boost_root,
-            payload_present=False,
+        # [Modified in Gloas:EIP7732]
+        proposer_boost_node = ForkChoiceNode(
+            root=store.proposer_boost_root, payload_status=PAYLOAD_STATUS_PENDING
         )
-        if is_supporting_vote(store, node, message):
+        # Boost is applied if ``node`` is an ancestor of ``proposer_boost_node``
+        if is_ancestor(store, proposer_boost_node, node):
             proposer_score = get_proposer_score(store)
 
         return attestation_score + proposer_score
@@ -507,7 +527,10 @@ def get_weight(
         return Gwei(0)
 ```
 
-### New `get_node_children`
+### Modified `get_node_children`
+
+*Note*: This function is modified to introduce new type of children nodes
+representing *full* and *empty* blocks.
 
 ```python
 def get_node_children(
@@ -531,8 +554,10 @@ def get_node_children(
 
 ### Modified `get_head`
 
-*Note*: `get_head` is modified to use the new `get_weight` function. It returns
-the `ForkChoiceNode` object corresponding to the head block.
+*Note*: `get_head` is modified to use modified `get_weight`, `get_node_children`
+functions and new `get_payload_status_tiebreaker` function. The latter is used
+to break the ties between *full* and *empty* nodes that have an equal block
+root.
 
 ```python
 def get_head(store: Store) -> ForkChoiceNode:
@@ -545,6 +570,7 @@ def get_head(store: Store) -> ForkChoiceNode:
     )
 
     while True:
+        # [Modified in Gloas:EIP7732]
         children = get_node_children(store, blocks, head)
         if len(children) == 0:
             return head
@@ -552,8 +578,10 @@ def get_head(store: Store) -> ForkChoiceNode:
         head = max(
             children,
             key=lambda child: (
+                # [Modified in Gloas:EIP7732]
                 get_weight(store, child),
                 child.root,
+                # [New in Gloas:EIP7732]
                 get_payload_status_tiebreaker(store, child),
             ),
         )

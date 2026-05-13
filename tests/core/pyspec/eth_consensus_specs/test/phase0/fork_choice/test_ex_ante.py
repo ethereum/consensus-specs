@@ -24,7 +24,6 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     on_tick_and_append_step,
     tick_and_add_block,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -35,12 +34,8 @@ def _apply_base_block_a(spec, state, store, test_steps):
     block = build_empty_block(spec, state, slot=state.slot + 1)
     signed_block_a = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block_a, test_steps)
-    head = spec.get_head(store)
     expected_root = signed_block_a.message.hash_tree_root()
-    if is_post_gloas(spec):
-        assert head.root == expected_root
-    else:
-        check_head_against_root(spec, store, signed_block_a.message.hash_tree_root())
+    check_head_against_root(spec, store, expected_root)
 
 
 @with_altair_and_later
@@ -121,7 +116,10 @@ def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_ro
     # calculate proposer boost score
     block = store.blocks[root]
     proposer_score = 0
-    if spec.get_ancestor(store, root, block.slot) == proposer_boost_root:
+    if (
+        spec.get_ancestor(store, spec.get_block_root_node(root), block.slot).root
+        == proposer_boost_root
+    ):
         num_validators = len(
             spec.get_active_validator_indices(state, spec.get_current_epoch(state))
         )
@@ -136,8 +134,7 @@ def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_ro
     return proposer_score // base_effective_balance + 1
 
 
-# TODO(jtraglia): Investigate why this doesn't work with Gloas
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MAINNET], reason="to create non-duplicate committee")
 @spec_state_test
 def test_ex_ante_attestations_is_greater_than_proposer_boost_with_boost(spec, state):

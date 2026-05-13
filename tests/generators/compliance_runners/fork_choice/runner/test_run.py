@@ -165,9 +165,8 @@ def run_test(test_info):
                     assert store.time == expected_time
                 elif check == "head":
                     head = get_head()
-                    head_root = head.root if hasattr(head, "root") else head
-                    assert store.blocks[head_root].slot == value["slot"]
-                    assert str(head_root) == value["root"]
+                    assert store.blocks[head.root].slot == value["slot"]
+                    assert str(head.root) == value["root"]
                 elif check == "proposer_boost_root":
                     assert str(store.proposer_boost_root) == str(value)
                 elif check == "justified_checkpoint":
