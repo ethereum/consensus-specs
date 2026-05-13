@@ -29,7 +29,7 @@
     - [`get_voting_source`](#get_voting_source)
     - [`filter_block_tree`](#filter_block_tree)
     - [`get_filtered_block_tree`](#get_filtered_block_tree)
-  - [`get_node_children`](#get_node_children)
+    - [`get_node_children`](#get_node_children)
     - [`get_head`](#get_head)
     - [`update_checkpoints`](#update_checkpoints)
     - [`update_unrealized_checkpoints`](#update_unrealized_checkpoints)
@@ -470,7 +470,7 @@ def get_filtered_block_tree(store: Store) -> Dict[Root, BeaconBlock]:
     return blocks
 ```
 
-### `get_node_children`
+#### `get_node_children`
 
 ```python
 def get_node_children(

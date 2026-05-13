@@ -20,11 +20,11 @@
   - [New `is_payload_data_available`](#new-is_payload_data_available)
   - [New `get_parent_payload_status`](#new-get_parent_payload_status)
   - [New `is_parent_node_full`](#new-is_parent_node_full)
-    - [Modified `get_block_root_node`](#modified-get_block_root_node)
-    - [Modified `get_ancestor`](#modified-get_ancestor)
-    - [Modified `is_ancestor`](#modified-is_ancestor)
+  - [Modified `get_block_root_node`](#modified-get_block_root_node)
+  - [Modified `get_ancestor`](#modified-get_ancestor)
+  - [Modified `is_ancestor`](#modified-is_ancestor)
   - [Modified `get_checkpoint_block`](#modified-get_checkpoint_block)
-    - [Modified `get_supported_node`](#modified-get_supported_node)
+  - [Modified `get_supported_node`](#modified-get_supported_node)
   - [New `should_extend_payload`](#new-should_extend_payload)
   - [New `get_payload_status_tiebreaker`](#new-get_payload_status_tiebreaker)
   - [New `should_apply_proposer_boost`](#new-should_apply_proposer_boost)
@@ -303,7 +303,7 @@ def is_parent_node_full(store: Store, block: BeaconBlock) -> bool:
     return get_parent_payload_status(store, block) == PAYLOAD_STATUS_FULL
 ```
 
-#### Modified `get_block_root_node`
+### Modified `get_block_root_node`
 
 *Note:* This function is modified to return an extended `ForkChoiceNode`
 structure with `PAYLOAD_STATUS_PENDING` payload status as a common ancestor of
@@ -314,7 +314,7 @@ def get_block_root_node(block_root: Root) -> ForkChoiceNode:
     return ForkChoiceNode(root=block_root, payload_status=PAYLOAD_STATUS_PENDING)
 ```
 
-#### Modified `get_ancestor`
+### Modified `get_ancestor`
 
 *Note*: `get_ancestor` is modified to return whether the chain is based on an
 *empty* or *full* block. If a `node.root` is from the same `slot` then the
@@ -333,7 +333,7 @@ def get_ancestor(store: Store, node: ForkChoiceNode, slot: Slot) -> ForkChoiceNo
     return node
 ```
 
-#### Modified `is_ancestor`
+### Modified `is_ancestor`
 
 *Note*: This function is modified to use an extended `ForkChoiceNode` structure.
 It handles relation between the same slot nodes based on the payload status of
@@ -369,7 +369,7 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
     return get_ancestor(store, node, epoch_first_slot).root
 ```
 
-#### Modified `get_supported_node`
+### Modified `get_supported_node`
 
 *Note*: `get_supported_node` is modified to use an extended `ForkChoiceNode` and
 `LatestMessage` structures. It sets the `payload_status` according to message
