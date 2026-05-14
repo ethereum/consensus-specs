@@ -420,7 +420,6 @@ def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
     assert head.payload_status != PAYLOAD_STATUS_PENDING
     if head.payload_status == PAYLOAD_STATUS_EMPTY:
         return False
-
     return not ptc_voted_data_unavailable(store, head.root)
 ```
 

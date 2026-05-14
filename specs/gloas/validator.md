@@ -236,8 +236,8 @@ constructs this field as follows:
 
 - If the parent block is pre-Gloas (first Gloas block), set
   `parent_execution_requests` to an empty `ExecutionRequests()`.
-- If `should_build_on_full(store, head)` is true (the proposer is building on
-  the parent's full payload), set `parent_execution_requests` to
+- If `should_build_on_full(store, head)` returns `True` (the proposer is
+  building on the parent's full payload), set `parent_execution_requests` to
   `store.payloads[head.root].execution_requests`.
 - Otherwise (the proposer is building on the parent's empty variant), set
   `parent_execution_requests` to an empty `ExecutionRequests()`.
