@@ -210,6 +210,9 @@ def test_missed_payload_recovery_resumes_with_remaining_withdrawals(spec, state)
     resumed = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](resumed_withdrawals)
     assert _attempt_payload_with_withdrawals(spec, state, resumed)
 
+    # Once recovery resumes, Block 1's stale withdrawals must be rejected.
+    assert not _attempt_payload_with_withdrawals(spec, state, satisfying)
+
 
 @with_gloas_and_later
 @spec_state_test
