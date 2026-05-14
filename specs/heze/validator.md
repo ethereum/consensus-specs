@@ -137,6 +137,7 @@ inclusion lists they have observed.
 ```python
 def prepare_execution_payload(
     store: Store,
+    head: ForkChoiceNode,
     state: BeaconState,
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
@@ -144,9 +145,8 @@ def prepare_execution_payload(
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
     parent_bid = state.latest_execution_payload_bid
-    parent_root = hash_tree_root(state.latest_block_header)
-    if should_extend_payload(store, parent_root):
-        envelope = store.payloads[parent_root]
+    if should_build_on_full(store, head):
+        envelope = store.payloads[head.root]
         # Make a copy of the state to avoid mutability issues
         state = copy(state)
         # Apply parent payload before computing withdrawals
