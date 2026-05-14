@@ -321,6 +321,8 @@ def test_process_parent_execution_payload__wrong_execution_requests_root(spec, s
     yield "post", None
 
 
+@with_gloas_and_later
+@spec_state_test
 def test_invalid_too_many_proposer_slashings(spec, state):
     num_slashings = spec.MAX_PROPOSER_SLASHINGS + 1
     proposer_slashings = get_valid_proposer_slashings(spec, state, num_slashings)
