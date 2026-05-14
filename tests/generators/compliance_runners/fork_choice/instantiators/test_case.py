@@ -360,7 +360,10 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                                 event_data
                             )
                             test_steps.append(
-                                {"payload_attestation": _payload_attestation_id, "valid": True}
+                                {
+                                    "payload_attestation_message": _payload_attestation_id,
+                                    "valid": True,
+                                }
                             )
                         else:
                             assert False
@@ -404,7 +407,10 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                             )
                             assert recovery
                             test_steps.append(
-                                {"payload_attestation": _payload_attestation_id, "valid": True}
+                                {
+                                    "payload_attestation_message": _payload_attestation_id,
+                                    "valid": True,
+                                }
                             )
                         else:
                             assert False
@@ -437,7 +443,7 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
             ptc_message = data
             ptc_message_id = get_payload_attestation_message_file_name(ptc_message)
             valid = scheduler.process_payload_attestation_message(ptc_message, is_from_block=False)
-            test_steps.append({"payload_attestation": ptc_message_id, "valid": valid})
+            test_steps.append({"payload_attestation_message": ptc_message_id, "valid": valid})
             output_store_checks(spec, store, test_steps)
         else:
             raise ValueError(f"not implemented {kind}")

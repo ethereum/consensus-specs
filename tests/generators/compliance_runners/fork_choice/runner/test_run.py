@@ -4,6 +4,7 @@ from glob import glob
 from pathlib import Path
 
 import pytest
+from eth_utils import decode_hex
 from ruamel.yaml import YAML
 from snappy import uncompress
 
@@ -53,7 +54,7 @@ def get_test_case(spec, td):
         },
         {
             get_prefix(b): spec.PayloadAttestationMessage.decode_bytes(read_ssz_snappy(b))
-            for b in glob(f"{td}/payload_attestation_*.ssz_snappy")
+            for b in glob(f"{td}/payload_attestation_message_*.ssz_snappy")
         },
         read_yaml(f"{td}/steps.yaml"),
     )
@@ -136,8 +137,8 @@ def run_test(test_info):
                 expect_assertion_error(
                     lambda: spec.on_execution_payload_envelope(store, signed_envelope)
                 )
-        elif "payload_attestation" in step:
-            ptc_message_id = step["payload_attestation"]
+        elif "payload_attestation_message" in step:
+            ptc_message_id = step["payload_attestation_message"]
             valid = step.get("valid", True)
             ptc_message = payload_atts[ptc_message_id]
             if valid:
@@ -185,6 +186,9 @@ def run_test(test_info):
                 elif check == "head_payload_status":
                     head = get_head()
                     assert head.payload_status == value
+                elif check in ("payload_timeliness_vote", "payload_data_availability_vote"):
+                    target_root = spec.Root(decode_hex(value["block_root"]))
+                    assert list(getattr(store, check)[target_root]) == value["votes"]
                 else:
                     assert False
         else:

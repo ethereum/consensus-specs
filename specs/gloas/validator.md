@@ -126,19 +126,19 @@ previous forks as follows
 A validator MAY broadcast `SignedProposerPreferences` messages to the
 `proposer_preferences` gossip topic for each slot returned by
 `get_upcoming_proposal_slots(state, validator_index)`. These include any future
-proposal slots in the current epoch and all proposal slots in the next epoch.
-This allows builders to construct execution payloads with the validator's
-preferred `fee_recipient` and `gas_limit`. If a validator does not broadcast a
-`SignedProposerPreferences` message, this implies that the validator will not
-accept any trustless bids for that slot.
+proposal slots within the proposer lookahead, i.e. the current epoch up to
+`MIN_SEED_LOOKAHEAD` epochs ahead. This allows builders to construct execution
+payloads with the validator's preferred `fee_recipient` and `gas_limit`. If a
+validator does not broadcast a `SignedProposerPreferences` message, this implies
+that the validator will not accept any trustless bids for that slot.
 
 ```python
 def get_upcoming_proposal_slots(
     state: BeaconState, validator_index: ValidatorIndex
 ) -> Sequence[Slot]:
     """
-    Get the future slots in the current epoch and the slots in the next
-    epoch for which ``validator_index`` is proposing.
+    Get the future slots within the proposer lookahead for which
+    ``validator_index`` is proposing.
     """
     current_epoch_start_slot = compute_start_slot_at_epoch(get_current_epoch(state))
     upcoming_proposal_slots = []
@@ -232,29 +232,34 @@ construct the `payload_attestations` field in `BeaconBlockBody`:
 ##### Parent execution requests
 
 The `parent_execution_requests` field contains the execution requests from the
-parent's execution payload. The proposer constructs this field as follows:
+parent's execution payload. Let `head = get_head(store)`. The proposer
+constructs this field as follows:
 
 - If the parent block is pre-Gloas (first Gloas block), set
   `parent_execution_requests` to an empty `ExecutionRequests()`.
-- If `should_extend_payload(store, block.parent_root)` is true (the proposer is
+- If `should_build_on_full(store, head)` returns `True` (the proposer is
   building on the parent's full payload), set `parent_execution_requests` to
-  `store.payloads[block.parent_root].execution_requests`.
+  `store.payloads[head.root].execution_requests`.
 - Otherwise (the proposer is building on the parent's empty variant), set
   `parent_execution_requests` to an empty `ExecutionRequests()`.
 
 ##### ExecutionPayload
 
-*Note*: `prepare_execution_payload` is modified in Gloas to take `store` as an
-additional parameter. It consults `should_extend_payload` to decide whether to
-build on the parent's full payload or its empty variant, selecting both the
-withdrawals source and the execution head for the new payload. When building on
-a full parent, `apply_parent_execution_payload` is called so that withdrawals
-are computed against the post-processing state.
+*Note*: `prepare_execution_payload` is modified in Gloas to take `store` and
+`head` as additional parameters. `head` is the return value of `get_head(store)`
+and must correspond to the parent that `state` was derived from. It consults
+`should_build_on_full(store, head)` to decide whether to build on the parent's
+full payload or its empty variant, selecting both the withdrawals source and the
+execution head for the new payload. When building on a full parent,
+`apply_parent_execution_payload` is called so that withdrawals are computed
+against the post-processing state.
 
 ```python
 def prepare_execution_payload(
     # [New in Gloas:EIP7732]
     store: Store,
+    # [New in Gloas:EIP7732]
+    head: ForkChoiceNode,
     state: BeaconState,
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
@@ -263,9 +268,8 @@ def prepare_execution_payload(
 ) -> Optional[PayloadId]:
     # [New in Gloas:EIP7732]
     parent_bid = state.latest_execution_payload_bid
-    parent_root = hash_tree_root(state.latest_block_header)
-    if should_extend_payload(store, parent_root):
-        envelope = store.payloads[parent_root]
+    if should_build_on_full(store, head):
+        envelope = store.payloads[head.root]
         # Make a copy of the state to avoid mutability issues
         state = copy(state)
         # Apply parent payload before computing withdrawals

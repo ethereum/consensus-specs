@@ -7,6 +7,9 @@
 - [Introduction](#introduction)
 - [Types](#types)
 - [Constants](#constants)
+- [Protocols](#protocols)
+  - [`ExecutionEngine`](#executionengine)
+    - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
 - [Helpers](#helpers)
   - [New `ForkChoiceNode`](#new-forkchoicenode)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
@@ -16,13 +19,14 @@
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [New `notify_ptc_messages`](#new-notify_ptc_messages)
   - [New `is_payload_verified`](#new-is_payload_verified)
-  - [New `is_payload_timely`](#new-is_payload_timely)
-  - [New `is_payload_data_available`](#new-is_payload_data_available)
+  - [New `payload_timeliness`](#new-payload_timeliness)
+  - [New `payload_data_availability`](#new-payload_data_availability)
   - [New `get_parent_payload_status`](#new-get_parent_payload_status)
   - [New `is_parent_node_full`](#new-is_parent_node_full)
   - [Modified `get_ancestor`](#modified-get_ancestor)
   - [Modified `get_checkpoint_block`](#modified-get_checkpoint_block)
   - [New `is_supporting_vote`](#new-is_supporting_vote)
+  - [New `should_build_on_full`](#new-should_build_on_full)
   - [New `should_extend_payload`](#new-should_extend_payload)
   - [New `get_payload_status_tiebreaker`](#new-get_payload_status_tiebreaker)
   - [New `should_apply_proposer_boost`](#new-should_apply_proposer_boost)
@@ -74,6 +78,24 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 | `ATTESTATION_TIMELINESS_INDEX`       | `0`                     |
 | `PTC_TIMELINESS_INDEX`               | `1`                     |
 | `NUM_BLOCK_TIMELINESS_DEADLINES`     | `2`                     |
+
+## Protocols
+
+### `ExecutionEngine`
+
+#### `notify_forkchoice_updated`
+
+In Gloas, `finalized_block_hash` and `safe_block_hash` values **MUST** be
+computed as the following. All other semantics of `notify_forkchoice_updated`
+and its invocation are inherited from prior forks.
+
+- `finalized_block_hash = finalized_block_bid.parent_block_hash`,
+- `safe_block_hash = get_safe_execution_block_hash(store)`.
+
+Where:
+
+- `finalized_block = store.blocks[store.finalized_checkpoint.root]`,
+- `finalized_block_bid = finalized_block.body.signed_execution_payload_bid.message`.
 
 ## Helpers
 
@@ -241,13 +263,14 @@ def is_payload_verified(store: Store, root: Root) -> bool:
     return root in store.payloads
 ```
 
-### New `is_payload_timely`
+### New `payload_timeliness`
 
 ```python
-def is_payload_timely(store: Store, root: Root) -> bool:
+def payload_timeliness(store: Store, root: Root, timely: bool) -> bool:
     """
     Return whether the execution payload for the beacon block with root ``root``
-    was voted as present by the PTC, and was locally determined to be available.
+    is considered ``timely`` (or not, when ``timely`` is ``False``), taking into
+    consideration local availability and PTC votes.
     """
     # The beacon block root must be known
     assert root in store.payload_timeliness_vote
@@ -255,19 +278,20 @@ def is_payload_timely(store: Store, root: Root) -> bool:
     # If the payload is not locally available, the payload
     # is not considered available regardless of the PTC vote
     if not is_payload_verified(store, root):
-        return False
+        return not timely
 
     votes = store.payload_timeliness_vote[root]
-    return sum(vote is True for vote in votes) > PAYLOAD_TIMELY_THRESHOLD
+    return sum(vote is timely for vote in votes) > PAYLOAD_TIMELY_THRESHOLD
 ```
 
-### New `is_payload_data_available`
+### New `payload_data_availability`
 
 ```python
-def is_payload_data_available(store: Store, root: Root) -> bool:
+def payload_data_availability(store: Store, root: Root, available: bool) -> bool:
     """
-    Return whether the blob data for the beacon block with root ``root``
-    was voted as present by the PTC, and was locally determined to be available.
+    Return whether the blob data for the beacon block with root ``root`` is
+    considered ``available`` (or not, when ``available`` is ``False``), taking into
+    consideration local availability and PTC votes.
     """
     # The beacon block root must be known
     assert root in store.payload_data_availability_vote
@@ -275,10 +299,10 @@ def is_payload_data_available(store: Store, root: Root) -> bool:
     # If the payload is not locally available, the blob data
     # is not considered available regardless of the PTC vote
     if not is_payload_verified(store, root):
-        return False
+        return not available
 
     votes = store.payload_data_availability_vote[root]
-    return sum(vote is True for vote in votes) > DATA_AVAILABILITY_TIMELY_THRESHOLD
+    return sum(vote is available for vote in votes) > DATA_AVAILABILITY_TIMELY_THRESHOLD
 ```
 
 ### New `get_parent_payload_status`
@@ -365,6 +389,21 @@ def is_supporting_vote(store: Store, node: ForkChoiceNode, message: LatestMessag
         )
 ```
 
+### New `should_build_on_full`
+
+*Note*: `should_build_on_full` is called by the proposer before deciding whether
+to build on top of the empty or full parent pending node. This function is
+similar to `should_extend_payload` but takes into consideration the PTC view on
+data availability.
+
+```python
+def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
+    assert head.payload_status != PAYLOAD_STATUS_PENDING
+    if head.payload_status == PAYLOAD_STATUS_EMPTY:
+        return False
+    return not payload_data_availability(store, head.root, available=False)
+```
+
 ### New `should_extend_payload`
 
 *Note*: `should_extend_payload` decides whether to extend an available payload
@@ -379,8 +418,10 @@ def should_extend_payload(store: Store, root: Root) -> bool:
     if not is_payload_verified(store, root):
         return False
     proposer_root = store.proposer_boost_root
+    payload_is_timely = payload_timeliness(store, root, timely=True)
+    payload_data_is_available = payload_data_availability(store, root, available=True)
     return (
-        (is_payload_timely(store, root) and is_payload_data_available(store, root))
+        (payload_is_timely and payload_data_is_available)
         or proposer_root == Root()
         or store.blocks[proposer_root].parent_root != root
         or is_parent_node_full(store, store.blocks[proposer_root])
@@ -937,17 +978,25 @@ def on_payload_attestation_message(
     Run ``on_payload_attestation_message`` upon receiving a new ``ptc_message`` from
     either within a block or directly on the wire.
     """
-    # The beacon block root must be known
     data = ptc_message.data
+
     # PTC attestation must be for a known block. If block is unknown, delay consideration until the block is found
     assert data.beacon_block_root in store.block_states
     state = store.block_states[data.beacon_block_root]
-    ptc = get_ptc(state, data.slot)
+
     # PTC votes can only change the vote for their assigned beacon block, return early otherwise
     if data.slot != state.slot:
         return
+
+    # Get all positions of the attester in the PTC
+    ptc_indices = []
+    ptc = get_ptc(state, data.slot)
+    for ptc_index, validator_index in enumerate(ptc):
+        if validator_index == ptc_message.validator_index:
+            ptc_indices.append(ptc_index)
+
     # Check that the attester is from the PTC
-    assert ptc_message.validator_index in ptc
+    assert len(ptc_indices) > 0
 
     # Verify the signature and check that its for the current slot if it is coming from the wire
     if not is_from_block:
@@ -962,10 +1011,11 @@ def on_payload_attestation_message(
                 signature=ptc_message.signature,
             ),
         )
+
     # Update the votes for the block
-    ptc_index = ptc.index(ptc_message.validator_index)
     payload_timeliness_vote = store.payload_timeliness_vote[data.beacon_block_root]
-    payload_timeliness_vote[ptc_index] = data.payload_present
     payload_data_availability_vote = store.payload_data_availability_vote[data.beacon_block_root]
-    payload_data_availability_vote[ptc_index] = data.blob_data_available
+    for ptc_index in ptc_indices:
+        payload_timeliness_vote[ptc_index] = data.payload_present
+        payload_data_availability_vote[ptc_index] = data.blob_data_available
 ```

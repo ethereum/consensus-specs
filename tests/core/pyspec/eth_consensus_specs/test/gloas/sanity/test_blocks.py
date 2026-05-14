@@ -1,6 +1,6 @@
-from eth_consensus_specs.test.context import (
-    spec_state_test,
-    with_gloas_and_later,
+from eth_consensus_specs.test.context import always_bls, spec_state_test, with_gloas_and_later
+from eth_consensus_specs.test.gloas.block_processing.test_process_payload_attestation import (
+    prepare_signed_payload_attestation,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
@@ -248,6 +248,36 @@ def test_missed_payload_next_block_without_withdrawals_unsatisfying_payload(spec
 
 @with_gloas_and_later
 @spec_state_test
+def test_invalid_payload_attestation_wrong_beacon_block_root(spec, state):
+    """
+    Test that payload attestation with wrong beacon_block_root fails.
+    """
+    yield "pre", state
+
+    block = build_empty_block_for_next_slot(spec, state)
+
+    parent_slot = state.latest_block_header.slot
+    ptc = spec.get_ptc(state, parent_slot)
+
+    wrong_root = spec.Root(b"\x42" * 32)
+    payload_attestation = prepare_signed_payload_attestation(
+        spec,
+        state,
+        slot=parent_slot,
+        beacon_block_root=wrong_root,
+        payload_present=True,
+        attesting_indices=ptc,
+    )
+    block.body.payload_attestations = [payload_attestation]
+
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield "blocks", [signed_block]
+    yield "post", None
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_process_parent_execution_payload__wrong_execution_requests_root(spec, state):
     """
     Test that process_parent_execution_payload rejects a block whose
@@ -263,6 +293,78 @@ def test_process_parent_execution_payload__wrong_execution_requests_root(spec, s
     block.body.parent_execution_requests = get_non_empty_execution_requests(spec)
 
     yield "pre", state
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield "blocks", [signed_block]
+    yield "post", None
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_invalid_payload_attestation_too_old_slot(spec, state):
+    """
+    Test that payload attestation for slot too far in past fails.
+    """
+    yield "pre", state
+
+    # Advance state to slot 3
+    spec.process_slots(state, state.slot + 3)
+
+    block = build_empty_block_for_next_slot(spec, state)
+
+    ptc = spec.get_ptc(state, state.slot - 2)
+
+    parent_header = state.latest_block_header.copy()
+    if parent_header.state_root == spec.Root():
+        parent_header.state_root = spec.hash_tree_root(state)
+    beacon_block_root = spec.hash_tree_root(parent_header)
+
+    payload_attestation = prepare_signed_payload_attestation(
+        spec,
+        state,
+        slot=state.slot - 2,  # Too old - should fail
+        beacon_block_root=beacon_block_root,
+        payload_present=True,
+        attesting_indices=ptc,
+    )
+    block.body.payload_attestations = [payload_attestation]
+
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield "blocks", [signed_block]
+    yield "post", None
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
+def test_invalid_payload_attestation_invalid_signature(spec, state):
+    """
+    Test that payload attestation with invalid signature fails.
+    """
+    yield "pre", state
+
+    block = build_empty_block_for_next_slot(spec, state)
+
+    parent_slot = state.latest_block_header.slot
+    ptc = spec.get_ptc(state, parent_slot)
+
+    parent_header = state.latest_block_header.copy()
+    if parent_header.state_root == spec.Root():
+        parent_header.state_root = spec.hash_tree_root(state)
+    beacon_block_root = spec.hash_tree_root(parent_header)
+
+    payload_attestation = prepare_signed_payload_attestation(
+        spec,
+        state,
+        slot=parent_slot,
+        beacon_block_root=beacon_block_root,
+        payload_present=True,
+        attesting_indices=ptc,
+        valid_signature=False,
+    )
+    block.body.payload_attestations = [payload_attestation]
+
     signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
 
     yield "blocks", [signed_block]

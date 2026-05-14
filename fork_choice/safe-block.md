@@ -26,12 +26,16 @@ def get_safe_execution_block_hash(store: Store) -> Hash32:
     safe_block_root = retrieve_fast_confirmed_root()
     safe_block = store.blocks[safe_block_root]
 
-    # Return Hash32() if no payload is yet justified
+    if compute_epoch_at_slot(safe_block.slot) >= GLOAS_FORK_EPOCH:
+        safe_block_bid = safe_block.body.signed_execution_payload_bid.message
+        return safe_block_bid.parent_block_hash
     if compute_epoch_at_slot(safe_block.slot) >= BELLATRIX_FORK_EPOCH:
         return safe_block.body.execution_payload.block_hash
     else:
+        # Return Hash32() if no safe block is yet available
         return Hash32()
 ```
 
 *Note*: This helper uses beacon block container extended in
-[Bellatrix](../specs/bellatrix/beacon-chain.md).
+[Bellatrix](../specs/bellatrix/beacon-chain.md) and
+[Gloas](../specs/gloas/beacon-chain.md).
