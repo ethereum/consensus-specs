@@ -19,9 +19,8 @@
   - [Modified `get_forkchoice_store`](#modified-get_forkchoice_store)
   - [New `notify_ptc_messages`](#new-notify_ptc_messages)
   - [New `is_payload_verified`](#new-is_payload_verified)
-  - [New `is_payload_timely`](#new-is_payload_timely)
-  - [New `is_payload_data_available`](#new-is_payload_data_available)
-  - [New `ptc_voted_data_unavailable`](#new-ptc_voted_data_unavailable)
+  - [New `payload_timeliness`](#new-payload_timeliness)
+  - [New `payload_data_availability`](#new-payload_data_availability)
   - [New `get_parent_payload_status`](#new-get_parent_payload_status)
   - [New `is_parent_node_full`](#new-is_parent_node_full)
   - [Modified `get_ancestor`](#modified-get_ancestor)
@@ -264,13 +263,14 @@ def is_payload_verified(store: Store, root: Root) -> bool:
     return root in store.payloads
 ```
 
-### New `is_payload_timely`
+### New `payload_timeliness`
 
 ```python
-def is_payload_timely(store: Store, root: Root) -> bool:
+def payload_timeliness(store: Store, root: Root, timely: bool) -> bool:
     """
     Return whether the execution payload for the beacon block with root ``root``
-    was voted as present by the PTC, and was locally determined to be available.
+    is considered ``timely`` (or not, when ``timely`` is ``False``), taking into
+    consideration local availability and PTC votes.
     """
     # The beacon block root must be known
     assert root in store.payload_timeliness_vote
@@ -278,19 +278,20 @@ def is_payload_timely(store: Store, root: Root) -> bool:
     # If the payload is not locally available, the payload
     # is not considered available regardless of the PTC vote
     if not is_payload_verified(store, root):
-        return False
+        return not timely
 
     votes = store.payload_timeliness_vote[root]
-    return sum(vote is True for vote in votes) > PAYLOAD_TIMELY_THRESHOLD
+    return sum(vote is timely for vote in votes) > PAYLOAD_TIMELY_THRESHOLD
 ```
 
-### New `is_payload_data_available`
+### New `payload_data_availability`
 
 ```python
-def is_payload_data_available(store: Store, root: Root) -> bool:
+def payload_data_availability(store: Store, root: Root, available: bool) -> bool:
     """
-    Return whether the blob data for the beacon block with root ``root``
-    was voted as present by the PTC, and was locally determined to be available.
+    Return whether the blob data for the beacon block with root ``root`` is
+    considered ``available`` (or not, when ``available`` is ``False``), taking into
+    consideration local availability and PTC votes.
     """
     # The beacon block root must be known
     assert root in store.payload_data_availability_vote
@@ -298,30 +299,10 @@ def is_payload_data_available(store: Store, root: Root) -> bool:
     # If the payload is not locally available, the blob data
     # is not considered available regardless of the PTC vote
     if not is_payload_verified(store, root):
-        return False
+        return not available
 
     votes = store.payload_data_availability_vote[root]
-    return sum(vote is True for vote in votes) > DATA_AVAILABILITY_TIMELY_THRESHOLD
-```
-
-### New `ptc_voted_data_unavailable`
-
-```python
-def ptc_voted_data_unavailable(store: Store, root: Root) -> bool:
-    """
-    Return whether the execution payload for the beacon block with root ``root``
-    was voted as unavailable by the PTC.
-    """
-    # The beacon block root must be known
-    assert root in store.payload_data_availability_vote
-
-    # If the payload is not locally available, the blob data
-    # is not considered available regardless of the PTC vote
-    if not is_payload_verified(store, root):
-        return True
-
-    votes = store.payload_data_availability_vote[root]
-    return sum(vote is False for vote in votes) > DATA_AVAILABILITY_TIMELY_THRESHOLD
+    return sum(vote is available for vote in votes) > DATA_AVAILABILITY_TIMELY_THRESHOLD
 ```
 
 ### New `get_parent_payload_status`
@@ -420,7 +401,7 @@ def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
     assert head.payload_status != PAYLOAD_STATUS_PENDING
     if head.payload_status == PAYLOAD_STATUS_EMPTY:
         return False
-    return not ptc_voted_data_unavailable(store, head.root)
+    return payload_data_availability(store, head.root, available=True)
 ```
 
 ### New `should_extend_payload`
@@ -437,8 +418,10 @@ def should_extend_payload(store: Store, root: Root) -> bool:
     if not is_payload_verified(store, root):
         return False
     proposer_root = store.proposer_boost_root
+    payload_is_timely = payload_timeliness(store, root, timely=True)
+    payload_data_is_available = payload_data_availability(store, root, available=True)
     return (
-        (is_payload_timely(store, root) and is_payload_data_available(store, root))
+        (payload_is_timely and payload_data_is_available)
         or proposer_root == Root()
         or store.blocks[proposer_root].parent_root != root
         or is_parent_node_full(store, store.blocks[proposer_root])
