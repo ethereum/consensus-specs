@@ -7,6 +7,9 @@
 - [Introduction](#introduction)
 - [Types](#types)
 - [Constants](#constants)
+- [Protocols](#protocols)
+  - [`ExecutionEngine`](#executionengine)
+    - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
 - [Helpers](#helpers)
   - [New `ForkChoiceNode`](#new-forkchoicenode)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
@@ -74,6 +77,24 @@ This is the modification of the fork-choice accompanying the Gloas upgrade.
 | `ATTESTATION_TIMELINESS_INDEX`       | `0`                     |
 | `PTC_TIMELINESS_INDEX`               | `1`                     |
 | `NUM_BLOCK_TIMELINESS_DEADLINES`     | `2`                     |
+
+## Protocols
+
+### `ExecutionEngine`
+
+#### `notify_forkchoice_updated`
+
+In Gloas, `finalized_block_hash` and `safe_block_hash` values **MUST** be
+computed as the following. All other semantics of `notify_forkchoice_updated`
+and its invocation are inherited from prior forks.
+
+- `finalized_block_hash = finalized_block_bid.parent_block_hash`,
+- `safe_block_hash = get_safe_execution_block_hash(store)`.
+
+Where:
+
+- `finalized_block = store.blocks[store.finalized_checkpoint.root]`,
+- `finalized_block_bid = finalized_block.body.signed_execution_payload_bid.message`.
 
 ## Helpers
 
@@ -154,20 +175,17 @@ class Store(object):
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
-    block_timeliness: Dict[Root, Vector[boolean, NUM_BLOCK_TIMELINESS_DEADLINES]] = field(
-        default_factory=dict
-    )
+    # [Modified in Gloas:EIP7732]
+    block_timeliness: Dict[Root, list[boolean]] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
     payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
-    payload_timeliness_vote: Dict[Root, Vector[Optional[boolean], PTC_SIZE]] = field(
-        default_factory=dict
-    )
+    payload_timeliness_vote: Dict[Root, list[Optional[boolean]]] = field(default_factory=dict)
     # [New in Gloas:EIP7732]
-    payload_data_availability_vote: Dict[Root, Vector[Optional[boolean], PTC_SIZE]] = field(
+    payload_data_availability_vote: Dict[Root, list[Optional[boolean]]] = field(
         default_factory=dict
     )
 ```
@@ -940,17 +958,25 @@ def on_payload_attestation_message(
     Run ``on_payload_attestation_message`` upon receiving a new ``ptc_message`` from
     either within a block or directly on the wire.
     """
-    # The beacon block root must be known
     data = ptc_message.data
+
     # PTC attestation must be for a known block. If block is unknown, delay consideration until the block is found
     assert data.beacon_block_root in store.block_states
     state = store.block_states[data.beacon_block_root]
-    ptc = get_ptc(state, data.slot)
+
     # PTC votes can only change the vote for their assigned beacon block, return early otherwise
     if data.slot != state.slot:
         return
+
+    # Get all positions of the attester in the PTC
+    ptc_indices = []
+    ptc = get_ptc(state, data.slot)
+    for ptc_index, validator_index in enumerate(ptc):
+        if validator_index == ptc_message.validator_index:
+            ptc_indices.append(ptc_index)
+
     # Check that the attester is from the PTC
-    assert ptc_message.validator_index in ptc
+    assert len(ptc_indices) > 0
 
     # Verify the signature and check that its for the current slot if it is coming from the wire
     if not is_from_block:
@@ -965,10 +991,11 @@ def on_payload_attestation_message(
                 signature=ptc_message.signature,
             ),
         )
+
     # Update the votes for the block
-    ptc_index = ptc.index(ptc_message.validator_index)
     payload_timeliness_vote = store.payload_timeliness_vote[data.beacon_block_root]
-    payload_timeliness_vote[ptc_index] = data.payload_present
     payload_data_availability_vote = store.payload_data_availability_vote[data.beacon_block_root]
-    payload_data_availability_vote[ptc_index] = data.blob_data_available
+    for ptc_index in ptc_indices:
+        payload_timeliness_vote[ptc_index] = data.payload_present
+        payload_data_availability_vote[ptc_index] = data.blob_data_available
 ```

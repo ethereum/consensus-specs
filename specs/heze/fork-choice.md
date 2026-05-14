@@ -121,15 +121,13 @@ class Store(object):
     equivocating_indices: Set[ValidatorIndex]
     blocks: Dict[Root, BeaconBlock] = field(default_factory=dict)
     block_states: Dict[Root, BeaconState] = field(default_factory=dict)
-    block_timeliness: Dict[Root, Vector[boolean, NUM_BLOCK_TIMELINESS_DEADLINES]] = field(
-        default_factory=dict
-    )
+    block_timeliness: Dict[Root, list[boolean]] = field(default_factory=dict)
     checkpoint_states: Dict[Checkpoint, BeaconState] = field(default_factory=dict)
     latest_messages: Dict[ValidatorIndex, LatestMessage] = field(default_factory=dict)
     unrealized_justifications: Dict[Root, Checkpoint] = field(default_factory=dict)
     payloads: Dict[Root, ExecutionPayloadEnvelope] = field(default_factory=dict)
-    payload_timeliness_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(default_factory=dict)
-    payload_data_availability_vote: Dict[Root, Vector[boolean, PTC_SIZE]] = field(
+    payload_timeliness_vote: Dict[Root, list[Optional[boolean]]] = field(default_factory=dict)
+    payload_data_availability_vote: Dict[Root, list[Optional[boolean]]] = field(
         default_factory=dict
     )
     # [New in Heze:EIP7805]

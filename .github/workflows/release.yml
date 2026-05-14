@@ -18,7 +18,7 @@ jobs:
       - name: Create tag
         id: tag
         run: |
-          version="v$(cat tests/core/pyspec/eth_consensus_specs/VERSION.txt)"
+          version="v$(yq -p toml '.project.version' pyproject.toml)"
           if git rev-parse "refs/tags/$version" >/dev/null 2>&1; then
             echo "Error: Tag $version already exists"
             exit 1
@@ -29,7 +29,7 @@ jobs:
           echo "name=$version" >> "$GITHUB_OUTPUT"
 
       - name: Create draft release
-        uses: release-drafter/release-drafter@5de93583980a40bd78603b6dfdcda5b4df377b32 # v7.2.0
+        uses: release-drafter/release-drafter@c2e2804cc59f45f57076a99af580d0fedb697927 # v7.3.0
         with:
           name: ${{ steps.tag.outputs.name }}
           tag: ${{ steps.tag.outputs.name }}
@@ -97,41 +97,19 @@ jobs:
           - minimal
           - mainnet
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: reftests-${{ matrix.preset }}-*
-          path: tests/${{ matrix.preset }}
-          merge-multiple: true
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Archive reference tests
-        run: |
-          tar --sort=name \
-              --owner=0 \
-              --group=0 \
-              --numeric-owner \
-              --mtime='@0' \
-              --format=gnu \
-              --use-compress-program='gzip --no-name' \
-              --create \
-              --file=${{ matrix.preset }}.tar.gz \
-              tests/${{ matrix.preset }}
+      - name: Package reference tests
+        uses: ./.github/actions/package
+        with:
+          name: ${{ matrix.preset }}
+          artifact-prefix: reftests
+          source-path: tests/${{ matrix.preset }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload to release
         run: gh release upload "${{ needs.setup.outputs.tag }}" ${{ matrix.preset }}.tar.gz
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-
-      - name: Delete intermediate artifacts
-        continue-on-error: true
-        run: |
-          gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
-            --paginate --jq '.artifacts[]
-              | select(.name | startswith("reftests-${{ matrix.preset }}-"))
-              | .id' | while read id; do
-            gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
-          done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}

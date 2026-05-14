@@ -302,6 +302,7 @@ ignored_dependencies = [
     "Dict",
     "field",
     "floorlog2",
+    "list",
     "List",
     "Optional",
     "ProgressiveBitlist",
