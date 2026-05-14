@@ -327,13 +327,6 @@ create the `payload_attestation_message` and broadcast to the global
 `payload_attestation_message` pubsub topic within the first
 `get_payload_attestation_due_ms()` milliseconds of the slot.
 
-The following helper is needed to construct the payload attestation message
-
-```python
-def get_payload_availability_due_ms() -> uint64:
-    return get_slot_component_duration_ms(PAYLOAD_AVAILABILITY_DUE_BPS)
-```
-
 The validator creates `payload_attestation_message` as follows:
 
 - If the validator has not seen any beacon block for the assigned slot, do not
