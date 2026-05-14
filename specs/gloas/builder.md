@@ -124,7 +124,7 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
     where `parent_state` is the post-state of `bid.parent_block_root`.
 07. Set `bid.gas_limit` to be the gas limit of the constructed payload, which
     **MUST** satisfy `is_gas_limit_target_compatible` with respect to the
-    `gas_limit` in the `SignedProposerPreferences` referenced in step 6.
+    `target_gas_limit` in the `SignedProposerPreferences` referenced in step 6.
 08. Set `bid.builder_index` to be the index of the builder performing these
     actions.
 09. Set `bid.slot` to be the slot for which this bid is aimed. This slot
