@@ -401,7 +401,7 @@ def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
     assert head.payload_status != PAYLOAD_STATUS_PENDING
     if head.payload_status == PAYLOAD_STATUS_EMPTY:
         return False
-    return payload_data_availability(store, head.root, available=True)
+    return not payload_data_availability(store, head.root, available=False)
 ```
 
 ### New `should_extend_payload`
