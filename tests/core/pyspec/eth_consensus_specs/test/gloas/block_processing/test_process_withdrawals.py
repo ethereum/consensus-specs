@@ -1305,6 +1305,91 @@ def test_builder_sweep_not_withdrawable_skipped(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_builder_pending_and_sweep_same_builder(spec, state):
+    """
+    Test the queue+sweep collision: when a single builder has both
+    (a) an entry in `state.builder_pending_withdrawals` AND
+    (b) is sweep-eligible (withdrawable_epoch <= current_epoch and balance > 0),
+    the sweep withdrawal amount MUST equal the pre-block `builder.balance`.
+
+    Spec reference (`get_builders_sweep_withdrawals` in specs/gloas/beacon-chain.md):
+    the sweep `Withdrawal.amount` is read directly from
+    `state.builders[builder_index].balance` (pre-block state), independently
+    of any pending queue entries that drain in the same block.
+
+    A client that caches `builder.balance` across `get_builder_withdrawals` and
+    `get_builders_sweep_withdrawals` and emits the sweep amount from the cached
+    (post-queue-drain) value diverges from spec by exactly the queue total. The
+    post-`apply_withdrawals` `builders[i].balance` converges to 0 in both
+    implementations (via `min(amount, balance)` saturation), but
+    `state.payload_expected_withdrawals[1].amount` differs, producing different
+    state roots and EL block hashes.
+
+    Input State Configured:
+        - builders[0].balance: 5 ETH
+        - builders[0].withdrawable_epoch: current_epoch (sweep eligible)
+        - builder_pending_withdrawals: 1 entry for builder 0 with amount = 0.2 ETH
+        - next_withdrawal_builder_index: 0
+
+    Output State Verified:
+        - payload_expected_withdrawals: 2 withdrawals (queue, then sweep)
+        - withdrawal[0]: queue, amount = 0.2 ETH
+        - withdrawal[1]: sweep, amount = 5 ETH (pre-block balance, NOT 4.8 ETH)
+        - builders[0].balance: 0
+    """
+    builder_index = 0
+    builder_balance = spec.Gwei(5_000_000_000)
+    queue_amount = spec.Gwei(200_000_000)
+
+    prepare_process_withdrawals(
+        spec,
+        state,
+        builder_indices=[builder_index],
+        builder_sweep_indices=[builder_index],
+        builder_balances={builder_index: builder_balance},
+        builder_withdrawal_amounts={builder_index: queue_amount},
+        next_withdrawal_builder_index=builder_index,
+    )
+
+    pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    # `withdrawal_amounts_builders` cannot be used here because it asserts exactly
+    # 1 withdrawal per builder, and this case has 2 withdrawals for builder 0.
+    # The invariant check inside `assert_process_withdrawals` enforces
+    # `state.payload_expected_withdrawals == spec.get_expected_withdrawals(pre_state)`,
+    # which transitively asserts the spec-correct sweep amount.
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        withdrawal_count=2,
+        builder_balances={builder_index: 0},
+        builder_pending_delta=-1,
+    )
+
+    # Explicit assertions on the two withdrawals for clarity. A client that reads
+    # the sweep amount from a queue-decremented cache would fail the second one
+    # with `builder_balance - queue_amount`.
+    withdrawals = list(state.payload_expected_withdrawals)
+    builder_validator_idx = spec.convert_builder_index_to_validator_index(builder_index)
+    builder_withdrawals = [w for w in withdrawals if w.validator_index == builder_validator_idx]
+    assert len(builder_withdrawals) == 2, (
+        f"Expected 2 withdrawals for builder {builder_index} (queue + sweep), "
+        f"got {len(builder_withdrawals)}"
+    )
+    assert builder_withdrawals[0].amount == queue_amount, (
+        f"Queue withdrawal amount: expected {queue_amount}, got {builder_withdrawals[0].amount}"
+    )
+    assert builder_withdrawals[1].amount == builder_balance, (
+        f"Sweep withdrawal amount: expected pre-block builder.balance ({builder_balance}), "
+        f"got {builder_withdrawals[1].amount}; if {builder_balance - queue_amount}, "
+        f"client read the sweep amount from a queue-decremented cache instead of state"
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_invalid_builder_index_pending(spec, state):
     """
     Test that process_withdrawals raises IndexError for invalid builder index
