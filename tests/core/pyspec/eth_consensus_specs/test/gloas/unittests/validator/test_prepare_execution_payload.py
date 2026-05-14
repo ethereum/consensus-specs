@@ -119,6 +119,10 @@ def test_prepare_execution_payload__extend_payload(spec, state):
     )
     run_on_execution_payload_envelope(spec, store, envelope)
 
+    # Mark the PTC as having voted that the payload is available, so
+    # should_build_on_full returns True under the strict majority rule.
+    store.payload_data_availability_vote[block_root] = [True] * spec.PTC_SIZE
+
     assert spec.is_payload_verified(store, block_root)
     assert spec.should_extend_payload(store, block_root)
 
@@ -144,6 +148,7 @@ def test_prepare_execution_payload__extend_payload(spec, state):
     parent_bid = proposal_state.latest_execution_payload_bid
     payload_id = spec.prepare_execution_payload(
         store=store,
+        head=spec.get_head(store),
         state=proposal_state,
         safe_block_hash=spec.Hash32(),
         finalized_block_hash=spec.Hash32(),
@@ -181,6 +186,7 @@ def test_prepare_execution_payload__no_payload_verified(spec, state):
     parent_bid = proposal_state.latest_execution_payload_bid
     payload_id = spec.prepare_execution_payload(
         store=store,
+        head=spec.get_head(store),
         state=proposal_state,
         safe_block_hash=spec.Hash32(),
         finalized_block_hash=spec.Hash32(),
@@ -204,6 +210,7 @@ def test_prepare_execution_payload__extend_payload_does_not_mutate_state(spec, s
     engine = CaptureEngine()
     spec.prepare_execution_payload(
         store=store,
+        head=spec.get_head(store),
         state=proposal_state,
         safe_block_hash=spec.Hash32(),
         finalized_block_hash=spec.Hash32(),
@@ -223,6 +230,7 @@ def test_prepare_execution_payload__payload_attributes(spec, state):
     engine = CaptureEngine()
     spec.prepare_execution_payload(
         store=store,
+        head=spec.get_head(store),
         state=proposal_state,
         safe_block_hash=spec.Hash32(),
         finalized_block_hash=spec.Hash32(),
@@ -253,6 +261,7 @@ def test_prepare_execution_payload__block_passes_state_transition(spec, state):
     engine = CaptureEngine()
     spec.prepare_execution_payload(
         store=store,
+        head=spec.get_head(store),
         state=proposal_state,
         safe_block_hash=spec.Hash32(),
         finalized_block_hash=spec.Hash32(),
