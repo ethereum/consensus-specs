@@ -57,9 +57,9 @@ def initialize_ptc_window(
 
 ### New `onboard_builders_from_pending_deposits`
 
-*Note*: Implementations SHOULD validate deposit signatures and cache the results
-in the epochs leading up to the fork. There may be many pending deposits for new
-builders, and validating them all at the fork transition could be slow.
+*Note*: In the slots leading up to the fork, implementations SHOULD validate
+pending deposit signatures and cache the results. The pending deposit queue
+might be large and verifying many signatures at the fork could be slow.
 
 ```python
 def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
