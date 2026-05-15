@@ -178,7 +178,7 @@ def _is_builder_deposit(spec, pre_state, deposit_request):
     return is_builder or (
         spec.is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
         and not is_validator
-        and not spec.is_pending_validator(pre_state, deposit_request.pubkey)
+        and not spec.is_pending_validator(pre_state.pending_deposits, deposit_request.pubkey)
     )
 
 

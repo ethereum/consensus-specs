@@ -536,11 +536,11 @@ def is_valid_indexed_payload_attestation(
 Implementations SHOULD cache verification results to avoid repeated work.
 
 ```python
-def is_pending_validator(state: BeaconState, pubkey: BLSPubkey) -> bool:
+def is_pending_validator(pending_deposits: Sequence[PendingDeposit], pubkey: BLSPubkey) -> bool:
     """
     Check if a pending deposit with a valid signature is in the queue for the given pubkey.
     """
-    for pending_deposit in state.pending_deposits:
+    for pending_deposit in pending_deposits:
         if pending_deposit.pubkey != pubkey:
             continue
         if is_valid_deposit_signature(
@@ -1598,7 +1598,7 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     if is_builder or (
         is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
         and not is_validator
-        and not is_pending_validator(state, deposit_request.pubkey)
+        and not is_pending_validator(state.pending_deposits, deposit_request.pubkey)
     ):
         # Apply builder deposits immediately
         apply_deposit_for_builder(

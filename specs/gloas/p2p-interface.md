@@ -90,7 +90,7 @@ class ProposerPreferences(Container):
     proposal_slot: Slot
     validator_index: ValidatorIndex
     fee_recipient: ExecutionAddress
-    gas_limit: uint64
+    target_gas_limit: uint64
 ```
 
 #### New `SignedProposerPreferences`
@@ -347,7 +347,6 @@ where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
   `is_active_builder(state, bid.builder_index)` returns `True`.
 - _[REJECT]_ `bid.execution_payment == 0`.
 - _[REJECT]_ `bid.fee_recipient == proposer_preferences.fee_recipient`.
-- _[REJECT]_ `bid.gas_limit == proposer_preferences.gas_limit`.
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in the consensus layer -- i.e. validate that
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(compute_epoch_at_slot(bid.slot)).max_blobs_per_block`.
@@ -358,11 +357,33 @@ where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
   i.e. `can_builder_cover_bid(state, builder_index, amount)` returns `True`.
 - _[IGNORE]_ `bid.parent_block_hash` is the block hash of a known execution
-  payload in fork choice.
+  payload in fork choice and
+  `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit)`
+  is `True` where `parent_gas_limit` is the `gas_limit` of that execution
+  payload.
 - _[IGNORE]_ `bid.parent_block_root` is the hash tree root of a known beacon
   block in fork choice.
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
+
+```python
+def is_gas_limit_target_compatible(
+    parent_gas_limit: uint64, gas_limit: uint64, target_gas_limit: uint64
+) -> bool:
+    """
+    Check if ``gas_limit`` is compatible with ``target_gas_limit`` under the
+    EIP-1559 transition rule from ``parent_gas_limit``.
+    """
+    max_gas_limit_difference = max(parent_gas_limit // 1024, 1) - 1
+    min_gas_limit = parent_gas_limit - max_gas_limit_difference
+    max_gas_limit = parent_gas_limit + max_gas_limit_difference
+
+    if target_gas_limit >= min_gas_limit and target_gas_limit <= max_gas_limit:
+        return gas_limit == target_gas_limit
+    if target_gas_limit > max_gas_limit:
+        return gas_limit == max_gas_limit
+    return gas_limit == min_gas_limit
+```
 
 *Note*: Implementations SHOULD include DoS prevention measures to mitigate spam
 from malicious builders submitting numerous bids with minimal value increments.
@@ -376,7 +397,7 @@ bid at regular time intervals.
 
 This topic is used to propagate signed proposer preferences as
 `SignedProposerPreferences`. These messages allow validators to communicate
-their preferred `fee_recipient` and `gas_limit` to builders.
+their preferred `fee_recipient` and `target_gas_limit` to builders.
 
 The following validations MUST pass before forwarding the
 `signed_proposer_preferences` on the network, assuming the alias
