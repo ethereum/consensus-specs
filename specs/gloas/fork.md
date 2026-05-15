@@ -72,16 +72,22 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
             pending_deposits.append(deposit)
             continue
 
-        # If the pubkey is associated with a builder that was created in a
-        # previous iteration or it is a builder deposit, try to apply the
-        # deposit to the new/existing builder. Note that the function
-        # apply_deposit_for_builder can mutate the state and may add a builder
-        # to the registry. For this reason, the list of builder pubkeys must
-        # be recomputed each iteration.
+        # Note that the function apply_deposit_for_builder can mutate the
+        # state and may add a builder to the registry. For this reason, the
+        # list of builder pubkeys must be recomputed each iteration.
         builder_pubkeys = [b.pubkey for b in state.builders]
-        is_existing_builder = deposit.pubkey in builder_pubkeys
-        has_builder_credentials = is_builder_withdrawal_credential(deposit.withdrawal_credentials)
-        if is_existing_builder or has_builder_credentials:
+        if deposit.pubkey in builder_pubkeys:
+            apply_deposit_for_builder(
+                state,
+                deposit.pubkey,
+                deposit.withdrawal_credentials,
+                deposit.amount,
+                deposit.signature,
+                deposit.slot,
+            )
+            continue
+
+        if is_builder_withdrawal_credential(deposit.withdrawal_credentials):
             # Check if there is a valid pending deposit for a new validator
             # with this pubkey. If there is, the deposit should instead be
             # applied to that validator later.
