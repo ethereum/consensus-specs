@@ -336,8 +336,8 @@ The validator creates `payload_attestation_message` as follows:
 - Set `data.slot` to be the assigned slot.
 - If a previously seen `SignedExecutionPayloadEnvelope` references the block
   with root `data.beacon_block_root`, and it was seen before
-  `get_payload_due_ms()` into the slot, set `data.payload_present` to `True`;
-  otherwise, set `data.payload_present` to `False`.
+  `get_payload_due_ms()` milliseconds into the slot, set `data.payload_present`
+  to `True`; otherwise, set `data.payload_present` to `False`.
 - Set `data.blob_data_available` to `is_data_available(data.beacon_block_root)`.
 - Set `payload_attestation_message.validator_index = validator_index` where
   `validator_index` is the validator chosen to submit. The private key mapping
