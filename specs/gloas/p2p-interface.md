@@ -366,8 +366,6 @@ where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
 
-The following helper is used to validate the bid's gas limit
-
 ```python
 def is_gas_limit_target_compatible(
     parent_gas_limit: uint64, gas_limit: uint64, target_gas_limit: uint64
