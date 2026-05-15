@@ -536,10 +536,7 @@ def is_valid_indexed_payload_attestation(
 Implementations SHOULD cache verification results to avoid repeated work.
 
 ```python
-def is_pending_validator(
-    pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT],
-    pubkey: BLSPubkey,
-) -> bool:
+def is_pending_validator(pending_deposits: Sequence[PendingDeposit], pubkey: BLSPubkey) -> bool:
     """
     Check if a pending deposit with a valid signature is in the queue for the given pubkey.
     """

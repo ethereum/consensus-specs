@@ -82,8 +82,9 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
         is_existing_builder = deposit.pubkey in builder_pubkeys
         has_builder_credentials = is_builder_withdrawal_credential(deposit.withdrawal_credentials)
         if is_existing_builder or has_builder_credentials:
-            # This is for frontrunning resistance: invalid prior
-            # deposits do not block legit builder creation.
+            # Check if there is a valid pending deposit for a new validator
+            # with this pubkey. If there is, the deposit should instead be
+            # applied to that validator later.
             if is_pending_validator(pending_deposits, deposit.pubkey):
                 pending_deposits.append(deposit)
             else:
@@ -97,11 +98,7 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
                 )
             continue
 
-        # Non-builder, fresh pubkey: defer signature validation. Keep the
-        # deposit in pending so a later same-pubkey builder deposit can
-        # detect a validator claim via is_pending_validator. Invalid
-        # signatures are not dropped here; they will be dropped later by
-        # apply_pending_deposit.
+        # Deposits for new validators stay in pending queue
         pending_deposits.append(deposit)
 
     state.pending_deposits = pending_deposits
