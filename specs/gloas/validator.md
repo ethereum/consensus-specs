@@ -37,14 +37,14 @@ validator" to implement Gloas.
 
 ### Time parameters
 
-| Name                           | Value          |     Unit     |         Duration          |
-| ------------------------------ | -------------- | :----------: | :-----------------------: |
-| `ATTESTATION_DUE_BPS_GLOAS`    | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `AGGREGATE_DUE_BPS_GLOAS`      | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `SYNC_MESSAGE_DUE_BPS_GLOAS`   | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
-| `CONTRIBUTION_DUE_BPS_GLOAS`   | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
-| `PAYLOAD_ATTESTATION_DUE_BPS`  | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
-| `PAYLOAD_AVAILABILITY_DUE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
+| Name                          | Value          |     Unit     |         Duration          |
+| ----------------------------- | -------------- | :----------: | :-----------------------: |
+| `ATTESTATION_DUE_BPS_GLOAS`   | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
+| `AGGREGATE_DUE_BPS_GLOAS`     | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
+| `CONTRIBUTION_DUE_BPS_GLOAS`  | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_ATTESTATION_DUE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
+| `PAYLOAD_DUE_BPS`             | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
 
 ## Validator assignment
 
@@ -336,8 +336,8 @@ The validator creates `payload_attestation_message` as follows:
 - Set `data.slot` to be the assigned slot.
 - If a previously seen `SignedExecutionPayloadEnvelope` references the block
   with root `data.beacon_block_root`, and it was seen before
-  `get_payload_availability_due_ms()` into the slot, set `data.payload_present`
-  to `True`; otherwise, set `data.payload_present` to `False`.
+  `get_payload_due_ms()` into the slot, set `data.payload_present` to `True`;
+  otherwise, set `data.payload_present` to `False`.
 - Set `data.blob_data_available` to `is_data_available(data.beacon_block_root)`.
 - Set `payload_attestation_message.validator_index = validator_index` where
   `validator_index` is the validator chosen to submit. The private key mapping
