@@ -348,10 +348,11 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
     pre-merge state.
     """
     yield "topic", "meta", "beacon_block"
-    yield "state", state
 
     if is_post_bellatrix(spec):
         state = build_state_with_incomplete_transition(spec, state)
+
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)

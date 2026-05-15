@@ -43,6 +43,7 @@ validator" to implement Gloas.
 | `AGGREGATE_DUE_BPS_GLOAS`     | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
 | `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
 | `CONTRIBUTION_DUE_BPS_GLOAS`  | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_DUE_BPS`             | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
 | `PAYLOAD_ATTESTATION_DUE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
 
 ## Validator assignment
@@ -127,9 +128,9 @@ A validator MAY broadcast `SignedProposerPreferences` messages to the
 `get_upcoming_proposal_slots(state, validator_index)`. These include any future
 proposal slots within the proposer lookahead, i.e. the current epoch up to
 `MIN_SEED_LOOKAHEAD` epochs ahead. This allows builders to construct execution
-payloads with the validator's preferred `fee_recipient` and `gas_limit`. If a
-validator does not broadcast a `SignedProposerPreferences` message, this implies
-that the validator will not accept any trustless bids for that slot.
+payloads with the validator's preferred `fee_recipient` and `target_gas_limit`.
+If a validator does not broadcast a `SignedProposerPreferences` message, this
+implies that the validator will not accept any trustless bids for that slot.
 
 ```python
 def get_upcoming_proposal_slots(
@@ -161,8 +162,8 @@ To construct each `SignedProposerPreferences`:
 4. Set `preferences.validator_index` to the validator's index.
 5. Set `preferences.fee_recipient` to the execution address where the validator
    wishes to receive the builder payment.
-6. Set `preferences.gas_limit` to the validator's preferred gas limit for this
-   execution payload.
+6. Set `preferences.target_gas_limit` to the validator's preferred gas limit for
+   this execution payload.
 7. Instantiate a new `SignedProposerPreferences` object as `signed_preferences`.
 8. Set `signed_preferences.message` to `preferences`.
 9. Set `signed_preferences.signature` to the result of
@@ -231,40 +232,46 @@ construct the `payload_attestations` field in `BeaconBlockBody`:
 ##### Parent execution requests
 
 The `parent_execution_requests` field contains the execution requests from the
-parent's execution payload. The proposer constructs this field as follows:
+parent's execution payload. Let `head = get_head(store)`. The proposer
+constructs this field as follows:
 
 - If the parent block is pre-Gloas (first Gloas block), set
   `parent_execution_requests` to an empty `ExecutionRequests()`.
-- If `should_extend_payload(store, block.parent_root)` is true (the proposer is
+- If `should_build_on_full(store, head)` returns `True` (the proposer is
   building on the parent's full payload), set `parent_execution_requests` to
-  `store.payloads[block.parent_root].execution_requests`.
+  `store.payloads[head.root].execution_requests`.
 - Otherwise (the proposer is building on the parent's empty variant), set
   `parent_execution_requests` to an empty `ExecutionRequests()`.
 
 ##### ExecutionPayload
 
-*Note*: `prepare_execution_payload` is modified in Gloas to take `store` as an
-additional parameter. It consults `should_extend_payload` to decide whether to
-build on the parent's full payload or its empty variant, selecting both the
-withdrawals source and the execution head for the new payload. When building on
-a full parent, `apply_parent_execution_payload` is called so that withdrawals
-are computed against the post-processing state.
+*Note*: `prepare_execution_payload` is modified in Gloas to take `store` and
+`head` as additional parameters. `head` is the return value of `get_head(store)`
+and must correspond to the parent that `state` was derived from. It consults
+`should_build_on_full(store, head)` to decide whether to build on the parent's
+full payload or its empty variant, selecting both the withdrawals source and the
+execution head for the new payload. When building on a full parent,
+`apply_parent_execution_payload` is called so that withdrawals are computed
+against the post-processing state.
 
 ```python
 def prepare_execution_payload(
     # [New in Gloas:EIP7732]
     store: Store,
+    # [New in Gloas:EIP7732]
+    head: ForkChoiceNode,
     state: BeaconState,
     safe_block_hash: Hash32,
     finalized_block_hash: Hash32,
     suggested_fee_recipient: ExecutionAddress,
+    # [New in Gloas]
+    target_gas_limit: uint64,
     execution_engine: ExecutionEngine,
 ) -> Optional[PayloadId]:
     # [New in Gloas:EIP7732]
     parent_bid = state.latest_execution_payload_bid
-    parent_root = hash_tree_root(state.latest_block_header)
-    if should_extend_payload(store, parent_root):
-        envelope = store.payloads[parent_root]
+    if should_build_on_full(store, head):
+        envelope = store.payloads[head.root]
         # Make a copy of the state to avoid mutability issues
         state = copy(state)
         # Apply parent payload before computing withdrawals
@@ -285,6 +292,8 @@ def prepare_execution_payload(
         parent_beacon_block_root=hash_tree_root(state.latest_block_header),
         # [New in Gloas:EIP7843]
         slot_number=state.slot,
+        # [New in Gloas]
+        target_gas_limit=target_gas_limit,
     )
     return execution_engine.notify_forkchoice_updated(
         # [Modified in Gloas:EIP7732]
@@ -330,8 +339,9 @@ The validator creates `payload_attestation_message` as follows:
   for the assigned slot.
 - Set `data.slot` to be the assigned slot.
 - If a previously seen `SignedExecutionPayloadEnvelope` references the block
-  with root `data.beacon_block_root`, set `data.payload_present` to `True`;
-  otherwise, set `data.payload_present` to `False`.
+  with root `data.beacon_block_root`, and it was seen before
+  `get_payload_due_ms()` milliseconds into the slot, set `data.payload_present`
+  to `True`; otherwise, set `data.payload_present` to `False`.
 - Set `data.blob_data_available` to `is_data_available(data.beacon_block_root)`.
 - Set `payload_attestation_message.validator_index = validator_index` where
   `validator_index` is the validator chosen to submit. The private key mapping

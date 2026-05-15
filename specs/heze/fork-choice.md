@@ -99,6 +99,7 @@ class PayloadAttributes(object):
     withdrawals: Sequence[Withdrawal]
     parent_beacon_block_root: Root
     slot_number: uint64
+    target_gas_limit: uint64
     # [New in Heze:EIP7805]
     inclusion_list_transactions: Sequence[Transaction]
 ```
@@ -225,8 +226,10 @@ def should_extend_payload(store: Store, root: Root) -> bool:
     if not is_payload_inclusion_list_satisfied(store, root):
         return False
     proposer_root = store.proposer_boost_root
+    payload_is_timely = payload_timeliness(store, root, timely=True)
+    payload_data_is_available = payload_data_availability(store, root, available=True)
     return (
-        (is_payload_timely(store, root) and is_payload_data_available(store, root))
+        (payload_is_timely and payload_data_is_available)
         or proposer_root == Root()
         or store.blocks[proposer_root].parent_root != root
         or is_parent_node_full(store, store.blocks[proposer_root])
