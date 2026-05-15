@@ -53,6 +53,14 @@ def _generate_filter_block_tree(
     rnd: random.Random,
     debug,
 ) -> ([], [], object, object):
+    """
+    Return target block data only for blocks produced by this block tree.
+
+    When `target_block == 0`, the target is the anchor block. The anchor tip has
+    already been advanced to the next epoch, so it is not the exact post-state of
+    the anchor block. In that case the returned `target_signed_block` and
+    `target_post_state` are both None.
+    """
     JUSTIFYING_SLOT = 2 * spec.SLOTS_PER_EPOCH // 3 + 1
     JUSTIFYING_SLOT_COUNT = spec.SLOTS_PER_EPOCH - JUSTIFYING_SLOT
 
@@ -200,7 +208,7 @@ def _generate_filter_block_tree(
                 # Propose block
                 new_block, state, _, _, _ = produce_block(spec, state, block_attestations)
                 signed_blocks.append(new_block)
-                if block == target_block and is_post_gloas(spec):
+                if block == target_block:
                     target_signed_block = new_block
                     target_post_state = state.copy()
 
@@ -389,7 +397,8 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
         post_block_tips[target_block].beacon_state.latest_block_header
     )
     if is_post_gloas(spec):
-        if target_signed_block is not None and target_post_state is not None:
+        if target_signed_block is not None:
+            assert target_post_state is not None
             envelope_mode = rnd.choice(["none", "valid"])
             if envelope_mode == "valid":
                 envelopes.append(
@@ -407,6 +416,8 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
                     rnd,
                 ):
                     payload_attestations.append(ProtocolMessage(ptc_message))
+        else:
+            assert target_block == 0
 
     test_data.envelopes = envelopes
     test_data.payload_atts = payload_attestations

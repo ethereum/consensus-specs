@@ -172,6 +172,28 @@ def get_attestation_signature(spec, state, attestation_data, privkey):
     return bls.Sign(privkey, signing_root)
 
 
+def to_single_attestation(spec, state, attestation, attester_index=None):
+    """
+    Convert an Electra-style ``Attestation`` (with ``committee_bits``) into a
+    ``SingleAttestation`` signed by a single committee member. By default the
+    first member of the encoded committee is used.
+    """
+    assert is_post_electra(spec)
+    committee_indices = spec.get_committee_indices(attestation.committee_bits)
+    assert len(committee_indices) == 1
+    committee_index = committee_indices[0]
+    committee = spec.get_beacon_committee(state, attestation.data.slot, committee_index)
+    if attester_index is None:
+        attester_index = committee[0]
+    signature = get_attestation_signature(spec, state, attestation.data, privkeys[attester_index])
+    return spec.SingleAttestation(
+        committee_index=committee_index,
+        attester_index=attester_index,
+        data=attestation.data,
+        signature=signature,
+    )
+
+
 def compute_max_inclusion_slot(spec, attestation):
     if is_post_deneb(spec):
         next_epoch = spec.compute_epoch_at_slot(attestation.data.slot) + 1
