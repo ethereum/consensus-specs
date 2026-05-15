@@ -82,26 +82,27 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
         is_existing_builder = deposit.pubkey in builder_pubkeys
         has_builder_credentials = is_builder_withdrawal_credential(deposit.withdrawal_credentials)
         if is_existing_builder or has_builder_credentials:
-            apply_deposit_for_builder(
-                state,
-                deposit.pubkey,
-                deposit.withdrawal_credentials,
-                deposit.amount,
-                deposit.signature,
-                deposit.slot,
-            )
+            # This is for frontrunning resistance: invalid prior
+            # deposits do not block legit builder creation.
+            if is_pending_validator(pending_deposits, deposit.pubkey):
+                pending_deposits.append(deposit)
+            else:
+                apply_deposit_for_builder(
+                    state,
+                    deposit.pubkey,
+                    deposit.withdrawal_credentials,
+                    deposit.amount,
+                    deposit.signature,
+                    deposit.slot,
+                )
             continue
 
-        # If there is a pending deposit for a new validator that has a valid
-        # signature, track the pubkey so that subsequent builder deposits for
-        # the same pubkey stay in pending (applied to the validator later)
-        # rather than creating a builder. Deposits with invalid signatures are
-        # dropped here since they would fail in apply_pending_deposit anyway.
-        if is_valid_deposit_signature(
-            deposit.pubkey, deposit.withdrawal_credentials, deposit.amount, deposit.signature
-        ):
-            validator_pubkeys.append(deposit.pubkey)
-            pending_deposits.append(deposit)
+        # Non-builder, fresh pubkey: defer signature validation. Keep the
+        # deposit in pending so a later same-pubkey builder deposit can
+        # detect a validator claim via is_pending_validator. Invalid
+        # signatures are not dropped here; they will be dropped later by
+        # apply_pending_deposit.
+        pending_deposits.append(deposit)
 
     state.pending_deposits = pending_deposits
 ```
