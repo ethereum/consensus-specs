@@ -279,6 +279,11 @@ class YieldGeneratorPlugin:
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_protocol(self, item, nextitem):
+        if self.reftests_enabled and isinstance(item, SpecTestFunction):
+            manifest = item.get_manifest()
+            if manifest is not None:
+                self._clear_output_dirs(manifest)
+
         yield
 
         if not self._should_generate(item):
@@ -325,6 +330,34 @@ class YieldGeneratorPlugin:
                 return data
         return default
 
+    def _case_output_dir(self, manifest: Manifest) -> Path:
+        """Return the output directory for a complete case manifest."""
+        assert manifest.is_complete(), (
+            f"Manifest must be complete to generate test vector for {manifest}"
+        )
+        return (
+            Path(self.output_dir)
+            / manifest.preset_name  # type: ignore
+            / manifest.fork_name
+            / manifest.runner_name
+            / manifest.handler_name
+            / manifest.suite_name
+            / manifest.case_name
+        )
+
+    def _clear_output_dirs(self, manifest: Manifest) -> None:
+        """Remove stale case outputs for the selected reftest forks."""
+        if manifest.fork_name is not None:
+            if manifest.fork_name not in context.DEFAULT_PYTEST_FORKS:
+                return
+            fork_names = [manifest.fork_name]
+        else:
+            fork_names = context.DEFAULT_PYTEST_FORKS
+        for fork_name in fork_names:
+            manifest_with_fork = manifest.with_defaults(Manifest(fork_name=fork_name))
+            if manifest_with_fork.is_complete():
+                self.dumper.clear_case_dir(self._case_output_dir(manifest_with_fork))
+
     def generate_test_vector(self, manifest: Manifest, result: MultiPhaseResult | list) -> None:
         if isinstance(result, dict):
             for fork_name, phase_result in result.items():
@@ -347,16 +380,7 @@ class YieldGeneratorPlugin:
         assert manifest.is_complete(), (
             f"Manifest must be complete to generate test vector for {manifest}"
         )
-
-        output_dir = (
-            Path(self.output_dir)
-            / manifest.preset_name  # type: ignore
-            / manifest.fork_name
-            / manifest.runner_name
-            / manifest.handler_name
-            / manifest.suite_name
-            / manifest.case_name
-        )
+        output_dir = self._case_output_dir(manifest)
 
         outputs: list[tuple[str, Any, Any]] = []
         meta: dict[str, Any] = {}
@@ -369,6 +393,8 @@ class YieldGeneratorPlugin:
                 if method is None:
                     raise ValueError(f"Unknown kind {kind!r}")
                 outputs.append((name, method, data))
+
+        self.dumper.clear_case_dir(output_dir)
 
         for name, method, data in outputs:
             method(output_dir, name, data)

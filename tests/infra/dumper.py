@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 from eth_utils import encode_hex
@@ -56,6 +57,11 @@ class Dumper:
         if not meta:
             return
         self._dump_yaml(dir, "meta", meta, self.default_yaml)
+
+    def clear_case_dir(self, dir: Path) -> None:
+        """Remove previously generated outputs for a test case."""
+        if dir.exists():
+            shutil.rmtree(dir)
 
     def dump_cfg(self, dir: Path, name: str, data: any) -> None:
         self._dump_yaml(dir, name, data, self.cfg_yaml)
