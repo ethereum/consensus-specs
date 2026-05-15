@@ -17,12 +17,12 @@ components of the fork choice.
     - [`on_attester_slashing` execution step](#on_attester_slashing-execution-step)
     - [`on_payload_info` execution step](#on_payload_info-execution-step)
     - [`on_execution_payload_envelope` execution step](#on_execution_payload_envelope-execution-step)
-    - [`on_payload_attestation` execution step](#on_payload_attestation-execution-step)
+    - [`on_payload_attestation_message` execution step](#on_payload_attestation_message-execution-step)
     - [Checks step](#checks-step)
   - [`attestation_<32-byte-root>.ssz_snappy`](#attestation_32-byte-rootssz_snappy)
   - [`block_<32-byte-root>.ssz_snappy`](#block_32-byte-rootssz_snappy)
   - [`execution_payload_envelope_<32-byte-root>.ssz_snappy`](#execution_payload_envelope_32-byte-rootssz_snappy)
-  - [`payload_attestation_<32-byte-root>.ssz_snappy`](#payload_attestation_32-byte-rootssz_snappy)
+  - [`payload_attestation_message_<32-byte-root>.ssz_snappy`](#payload_attestation_message_32-byte-rootssz_snappy)
 - [Condition](#condition)
 
 <!-- mdformat-toc end -->
@@ -202,17 +202,17 @@ The file is located in the same folder (see below).
 
 After this step, the `store` object may have been updated.
 
-#### `on_payload_attestation` execution step
+#### `on_payload_attestation_message` execution step
 
 The parameter that is required for executing
 `on_payload_attestation_message(store, ptc_message)`.
 
 ```yaml
 {
-    payload_attestation: string  -- the name of the `payload_attestation_<32-byte-root>.ssz_snappy` file.
-                                   To execute `on_payload_attestation_message(store, ptc_message)` with the given message.
-    valid: bool                  -- optional, default to `true`.
-                                   If it's `false`, this execution step is expected to be invalid.
+    payload_attestation_message: string  -- the name of the `payload_attestation_message_<32-byte-root>.ssz_snappy` file.
+                                            To execute `on_payload_attestation_message(store, ptc_message)` with the given message.
+    valid: bool                          -- optional, default to `true`.
+                                            If it's `false`, this execution step is expected to be invalid.
 }
 ```
 
@@ -267,6 +267,14 @@ should_override_forkchoice_update: {  -- [New in Bellatrix]
     result: bool,                     -- The result of `should_override_forkchoice_update(store, head_root)`, where head_root is the result value from get_head(store)
 }
 head_payload_status: int              -- The payload_status field from the ForkChoiceNode returned by get_head(store)
+payload_timeliness_vote: {            -- [New in Gloas]
+    block_root: string,               -- Encoded 32-byte beacon block root
+    votes: [bool | null, ...]         -- Votes ordered by PTC positions. Length is `PTC_SIZE`.
+}
+payload_data_availability_vote: {     -- [New in Gloas]
+    block_root: string,               -- Encoded 32-byte beacon block root
+    votes: [bool | null, ...]         -- Votes ordered by PTC positions. Length is `PTC_SIZE`.
+}
 ```
 
 For example:
@@ -308,7 +316,7 @@ Each file is an SSZ-snappy encoded `SignedBeaconBlock`.
 
 Each file is an SSZ-snappy encoded `SignedExecutionPayloadEnvelope`.
 
-### `payload_attestation_<32-byte-root>.ssz_snappy`
+### `payload_attestation_message_<32-byte-root>.ssz_snappy`
 
 `<32-byte-root>` is the hash tree root of the given payload attestation message.
 
@@ -334,8 +342,8 @@ Each file is an SSZ-snappy encoded `PayloadAttestationMessage`.
      - For the `on_execution_payload_envelope` execution step: look up the
        corresponding `execution_payload_envelope_<root>.ssz_snappy` file and
        execute `on_execution_payload_envelope(store, signed_envelope)`.
-     - For the `on_payload_attestation` execution step: look up the
-       corresponding `payload_attestation_<root>.ssz_snappy` file and execute
-       `on_payload_attestation_message(store, ptc_message)`.
+     - For the `on_payload_attestation_message` execution step: look up the
+       corresponding `payload_attestation_message_<root>.ssz_snappy` file and
+       execute `on_payload_attestation_message(store, ptc_message)`.
    - For each `checks` step, the assertions on the current store must be
      satisfied.

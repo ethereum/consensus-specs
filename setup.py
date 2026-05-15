@@ -11,7 +11,6 @@ setup(
     include_package_data=False,
     package_data={
         "configs": ["*.yaml"],
-        "eth_consensus_specs": ["VERSION.txt"],
         "presets": ["**/*.yaml", "**/*.json"],
         "specs": ["**/*.md"],
         "sync": ["optimistic.md"],

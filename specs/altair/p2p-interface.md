@@ -151,7 +151,7 @@ added in Altair to support the sync committees and the beacon block topic is
 updated with the modified type.
 
 The specification around the creation, validation, and dissemination of messages
-has not changed from the Phase 0 document.
+has not changed from the Phase 0 document unless explicitly noted here.
 
 The derivation of the `message-id` has changed starting with Altair to
 incorporate the message `topic` along with the message `data`. These are fields
@@ -229,7 +229,6 @@ def validate_sync_committee_contribution_and_proof_gossip(
     contribution = contribution_and_proof.contribution
 
     # [IGNORE] The contribution's slot is for the current slot
-    # (with a MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance)
     if not is_current_slot(state, contribution.slot, current_time_ms):
         raise GossipIgnore("contribution is not for the current slot")
 
@@ -345,7 +344,6 @@ def validate_sync_committee_message_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     # [IGNORE] The message's slot is for the current slot
-    # (with a MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance)
     if not is_current_slot(state, sync_committee_message.slot, current_time_ms):
         raise GossipIgnore("message is not for the current slot")
 

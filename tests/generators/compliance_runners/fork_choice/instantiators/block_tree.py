@@ -619,7 +619,7 @@ class StateCache:
         self.cache_key = None
         self.cached_state = None
 
-    def get_state_by_block_index(self, index):
+    def get_state_by_block_index_and_slot(self, index):
         cache_key = (index, self.runtime.current_slot)
         if self.cache_key == cache_key:
             return self.cached_state.copy()
@@ -632,14 +632,14 @@ class StateCache:
 
 
 class CommitteeAssignments:
-    def __init__(self, spec, get_state_by_block_index):
+    def __init__(self, spec, get_state_by_block_index_and_slot):
         self.spec = spec
-        self.get_state_by_block_index = get_state_by_block_index
+        self.get_state_by_block_index_and_slot = get_state_by_block_index_and_slot
         self.slot_assignments = {}
 
     def assign_voters_to_slots(self, epoch):
         epoch_start_slot = self.spec.compute_start_slot_at_epoch(epoch)
-        epoch_state = self.get_state_by_block_index(-1)
+        epoch_state = self.get_state_by_block_index_and_slot(-1)
         committee_count_per_slot = self.spec.get_committee_count_per_slot(epoch_state, epoch)
         for slot in range(epoch_start_slot, epoch_start_slot + self.spec.SLOTS_PER_EPOCH):
             assignments = []
@@ -763,7 +763,9 @@ def _generate_block_tree(
     validators_to_be_slashed = set()
     block_edges = iter(enumerate(block_parents[1:], start=1))
     state_cache = StateCache(spec, runtime)
-    committee_assignments = CommitteeAssignments(spec, state_cache.get_state_by_block_index)
+    committee_assignments = CommitteeAssignments(
+        spec, state_cache.get_state_by_block_index_and_slot
+    )
 
     def choose_attested_block_index(tips, block_parents):
         attesting_block_index = rnd.choice(tips)
@@ -855,23 +857,23 @@ def _generate_block_tree(
             return None, None, None
 
         block_index, parent_index = block_edge
-        parent_state = state_cache.get_state_by_block_index(parent_index)
+        pre_state = state_cache.get_state_by_block_index_and_slot(parent_index)
 
         protocol.in_block_attestations = [
             a
             for a in protocol.in_block_attestations
-            if is_attestation_eligible_for_block(spec, parent_state, a)
+            if is_attestation_eligible_for_block(spec, pre_state, a)
         ]
 
-        proposer = spec.get_beacon_proposer_index(parent_state)
+        proposer = spec.get_beacon_proposer_index(pre_state)
 
-        if parent_state.validators[proposer].slashed or (
+        if pre_state.validators[proposer].slashed or (
             with_invalid_messages and _roll(rnd, INVALID_MESSAGES_RATE)
         ):
-            signed_block, post_state, new_block_index = produce_invalid_block(parent_state)
+            signed_block, post_state, new_block_index = produce_invalid_block(pre_state)
         else:
             signed_block, post_state, new_block_index = produce_valid_block(
-                parent_state, parent_index, block_index
+                pre_state, parent_index, block_index
             )
 
         return signed_block, post_state, new_block_index
@@ -930,7 +932,7 @@ def _generate_block_tree(
         )
 
         for attesting_block_index, attesters in block_index_voters.items():
-            attesting_state = state_cache.get_state_by_block_index(attesting_block_index)
+            attesting_state = state_cache.get_state_by_block_index_and_slot(attesting_block_index)
             payload_index, att_payload_index_invalid = get_attestation_payload_index(
                 attesting_block_index, new_block_index, valid_execution_payload_sent
             )
@@ -973,7 +975,7 @@ def _generate_block_tree(
         if not _roll(rnd, ATTESTER_SLASHINGS_RATE):
             return
 
-        state = state_cache.get_state_by_block_index(-1)
+        state = state_cache.get_state_by_block_index_and_slot(-1)
 
         assert len(validators_to_be_slashed) < len(state.validators)
         while True:
