@@ -67,7 +67,7 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
 
     pending_deposits = []
     for deposit in state.pending_deposits:
-        # Deposits for existing validators stay in pending queue
+        # Deposits for existing validators stay in the pending queue
         if deposit.pubkey in validator_pubkeys:
             pending_deposits.append(deposit)
             continue
@@ -76,36 +76,26 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
         # state and may add a builder to the registry. For this reason, the
         # list of builder pubkeys must be recomputed each iteration.
         builder_pubkeys = [b.pubkey for b in state.builders]
-        if deposit.pubkey in builder_pubkeys:
-            apply_deposit_for_builder(
-                state,
-                deposit.pubkey,
-                deposit.withdrawal_credentials,
-                deposit.amount,
-                deposit.signature,
-                deposit.slot,
-            )
-            continue
 
-        if is_builder_withdrawal_credential(deposit.withdrawal_credentials):
-            # Check if there is a valid pending deposit for a new validator
-            # with this pubkey. If there is, the deposit should instead be
-            # applied to that validator later.
+        # Deposits for non-builders stay in the pending queue. If there is a
+        # valid pending deposit for a new validator with this pubkey, keep this
+        # deposit in the pending queue to be applied to that validator later.
+        if deposit.pubkey not in builder_pubkeys:
+            if not is_builder_withdrawal_credential(deposit.withdrawal_credentials):
+                pending_deposits.append(deposit)
+                continue
             if is_pending_validator(pending_deposits, deposit.pubkey):
                 pending_deposits.append(deposit)
-            else:
-                apply_deposit_for_builder(
-                    state,
-                    deposit.pubkey,
-                    deposit.withdrawal_credentials,
-                    deposit.amount,
-                    deposit.signature,
-                    deposit.slot,
-                )
-            continue
+                continue
 
-        # Deposits for new validators stay in pending queue
-        pending_deposits.append(deposit)
+        apply_deposit_for_builder(
+            state,
+            deposit.pubkey,
+            deposit.withdrawal_credentials,
+            deposit.amount,
+            deposit.signature,
+            deposit.slot,
+        )
 
     state.pending_deposits = pending_deposits
 ```
