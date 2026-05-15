@@ -559,7 +559,7 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
         spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
     )
     assert result == "reject"
-    assert reason == "header kzg_commitments is empty"
+    assert reason == "header's kzg_commitments is empty"
 
     yield (
         "messages",
@@ -1159,7 +1159,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
         spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
     )
     assert result == "ignore"
-    assert reason == "no validated header seen for this block"
+    assert reason == "valid corresponding header has not been seen"
 
     yield (
         "messages",
@@ -1220,7 +1220,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
         spec, seen, store, state, cells_msg, block_root, column_index, current_time_ms
     )
     assert result == "ignore"
-    assert reason == "cached header is from a future slot"
+    assert reason == "corresponding header is from a future slot"
 
     yield (
         "messages",
@@ -1307,7 +1307,9 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
         spec, seen, store, state, cells_msg, block_root, column_index, block_time_ms + 500
     )
     assert result == "ignore"
-    assert reason == "cached header is not from a slot greater than the latest finalized slot"
+    assert (
+        reason == "corresponding header is not from a slot greater than the latest finalized slot"
+    )
 
     yield (
         "messages",
@@ -1330,7 +1332,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
 def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec, state):
     """
     Test that a cells-bearing partial sidecar whose bitmap length does not match
-    the cached header's commitment count is rejected.
+    the corresponding header's commitment count is rejected.
     """
     yield "topic", "meta", "partial_data_column_sidecar"
 
@@ -1350,7 +1352,7 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     # Seed the cache with a valid header for `block_root`.
     header_msg = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     cells_msg = make_partial_sidecar(spec, sidecar, blob_indices=[0], include_header=False)
-    # Stretch the bitmap so its length exceeds the cached header's commitments.
+    # Stretch the bitmap so its length exceeds the corresponding header's commitments.
     Bitlist = type(cells_msg.cells_present_bitmap)
     cells_msg.cells_present_bitmap = Bitlist(list(cells_msg.cells_present_bitmap) + [False, False])
 
@@ -1381,7 +1383,7 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
         spec, seen, store, state, cells_msg, block_root, column_index, block_time_ms + 600
     )
     assert result == "reject"
-    assert reason == "bitmap length does not match number of commitments"
+    assert reason == "bitmap length does not match commitments length"
     messages.append(
         {
             "block_root": "0x" + block_root.hex(),

@@ -201,7 +201,7 @@ def validate_partial_data_column_sidecar_gossip(
 
         # [REJECT] The header's kzg_commitments list is non-empty
         if len(header.kzg_commitments) == 0:
-            raise GossipReject("header kzg_commitments is empty")
+            raise GossipReject("header's kzg_commitments is empty")
 
         # [IGNORE] The header is not from a future slot
         # (MAY be queued for processing at the appropriate slot)
@@ -256,32 +256,32 @@ def validate_partial_data_column_sidecar_gossip(
         if block_header.proposer_index != expected_proposer:
             raise GossipReject("header proposer_index does not match expected proposer")
 
-        # Cache the validated header for future partial messages
+        # Mark this header as seen
         seen.partial_data_column_headers[block_root] = header
 
     if has_cells:
         # [IGNORE] A valid corresponding PartialDataColumnHeader has been seen
         header = seen.partial_data_column_headers.get(block_root)
         if header is None:
-            raise GossipIgnore("no validated header seen for this block")
+            raise GossipIgnore("valid corresponding header has not been seen")
 
         block_header = header.signed_block_header.message
 
         # [IGNORE] The corresponding header is not from a future slot
         # (MAY be queued for processing at the appropriate slot)
         if not is_not_from_future_slot(state, block_header.slot, current_time_ms):
-            raise GossipIgnore("cached header is from a future slot")
+            raise GossipIgnore("corresponding header is from a future slot")
 
         # [IGNORE] The corresponding header is from a slot greater than the latest finalized slot
         finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
         if block_header.slot <= finalized_slot:
             raise GossipIgnore(
-                "cached header is not from a slot greater than the latest finalized slot"
+                "corresponding header is not from a slot greater than the latest finalized slot"
             )
 
         # [REJECT] The cells_present_bitmap length equals the number of header kzg_commitments
         if len(sidecar.cells_present_bitmap) != len(header.kzg_commitments):
-            raise GossipReject("bitmap length does not match number of commitments")
+            raise GossipReject("bitmap length does not match commitments length")
 
         # [REJECT] The sidecar's cell and proof data is valid
         if not verify_partial_data_column_sidecar_kzg_proofs(

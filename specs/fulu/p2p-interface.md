@@ -366,6 +366,12 @@ def validate_data_column_sidecar_gossip(
     """
     block_header = sidecar.signed_block_header.message
 
+    # [IGNORE] The sidecar is the first sidecar for the tuple
+    # (block_header.slot, block_header.proposer_index, sidecar.index)
+    sidecar_tuple = (block_header.slot, block_header.proposer_index, sidecar.index)
+    if sidecar_tuple in seen.data_column_sidecar_tuples:
+        raise GossipIgnore("already seen sidecar from this proposer for this slot and index")
+
     # [REJECT] The sidecar is valid as verified by verify_data_column_sidecar
     if not verify_data_column_sidecar(sidecar):
         raise GossipReject("invalid sidecar")
@@ -422,12 +428,6 @@ def validate_data_column_sidecar_gossip(
     # [REJECT] The sidecar is valid as verified by verify_data_column_sidecar_kzg_proofs
     if not verify_data_column_sidecar_kzg_proofs(sidecar):
         raise GossipReject("invalid sidecar kzg proofs")
-
-    # [IGNORE] The sidecar is the first sidecar for the tuple
-    # (block_header.slot, block_header.proposer_index, sidecar.index)
-    sidecar_tuple = (block_header.slot, block_header.proposer_index, sidecar.index)
-    if sidecar_tuple in seen.data_column_sidecar_tuples:
-        raise GossipIgnore("already seen sidecar from this proposer for this slot and index")
 
     # [REJECT] The sidecar is proposed by the expected proposer_index
     # (if shuffling is not available, IGNORE instead and MAY be queued for later)
