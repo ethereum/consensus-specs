@@ -3,7 +3,7 @@ requires = ["setuptools==82.0.1"]
 
 [project]
 name = "eth-consensus-specs"
-version = "1.7.0-alpha.8"
+version = "1.7.0-alpha.9"
 authors = [{ name = "ethereum" }]
 description = "Ethereum consensus layer specifications package"
 license = "CC0-1.0"

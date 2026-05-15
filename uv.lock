@@ -469,7 +469,7 @@ wheels = [
 
 [[package]]
 name = "eth-consensus-specs"
-version = "1.7.0a8"
+version = "1.7.0a9"
 source = { editable = "." }
 dependencies = [
     { name = "eth-remerkleable" },
