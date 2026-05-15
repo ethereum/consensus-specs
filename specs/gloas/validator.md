@@ -44,7 +44,7 @@ validator" to implement Gloas.
 | `SYNC_MESSAGE_DUE_BPS_GLOAS`   | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
 | `CONTRIBUTION_DUE_BPS_GLOAS`   | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
 | `PAYLOAD_ATTESTATION_DUE_BPS`  | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
-| `PAYLOAD_AVAILABILITY_DUE_BPS` | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
+| `PAYLOAD_AVAILABILITY_DUE_BPS` | `uint64(7500)` | basis points | 75% of `SLOT_DURATION_MS` |
 
 ## Validator assignment
 
