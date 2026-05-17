@@ -41,7 +41,7 @@ specifications before continuing and use them as a reference throughout.
 
 ```python
 @dataclass
-class GetPayloadResponse(object):
+class GetPayloadResponse:
     execution_payload: ExecutionPayload
 ```
 

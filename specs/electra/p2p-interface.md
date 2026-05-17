@@ -51,7 +51,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ```python
 @dataclass
-class Seen(object):
+class Seen:
     proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
     aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
     # [Modified in Electra:EIP7549]

@@ -447,7 +447,7 @@ class ExecutionPayload(Container):
 
 ```python
 @dataclass
-class ExpectedWithdrawals(object):
+class ExpectedWithdrawals:
     withdrawals: Sequence[Withdrawal]
     # [New in Gloas:EIP7732]
     processed_builder_withdrawals_count: uint64

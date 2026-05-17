@@ -29,7 +29,7 @@ These are the inclusion list specifications to implement Heze.
 
 ```python
 @dataclass
-class InclusionListStore(object):
+class InclusionListStore:
     inclusion_lists: DefaultDict[Tuple[Slot, Root], Dict[Root, InclusionList]] = field(
         default_factory=lambda: defaultdict(dict)
     )

@@ -112,7 +112,7 @@ class ForkChoiceNode(Container):
 
 ```python
 @dataclass
-class PayloadAttributes(object):
+class PayloadAttributes:
     timestamp: uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
@@ -130,7 +130,7 @@ class PayloadAttributes(object):
 
 ```python
 @dataclass(eq=True, frozen=True)
-class LatestMessage(object):
+class LatestMessage:
     slot: Slot
     root: Root
     payload_present: boolean
@@ -168,7 +168,7 @@ def update_latest_messages(
 
 ```python
 @dataclass
-class Store(object):
+class Store:
     time: uint64
     genesis_time: uint64
     justified_checkpoint: Checkpoint
@@ -439,13 +439,11 @@ def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> uint8:
         node.root
     ].slot + 1 != get_current_slot(store):
         return node.payload_status
-    else:
-        # To decide on a payload from the previous slot, choose
-        # between FULL and EMPTY based on `should_extend_payload`
-        if node.payload_status == PAYLOAD_STATUS_EMPTY:
-            return 1
-        else:
-            return 2 if should_extend_payload(store, node.root) else 0
+    # To decide on a payload from the previous slot, choose
+    # between FULL and EMPTY based on `should_extend_payload`
+    if node.payload_status == PAYLOAD_STATUS_EMPTY:
+        return 1
+    return 2 if should_extend_payload(store, node.root) else 0
 ```
 
 ### New `should_apply_proposer_boost`
