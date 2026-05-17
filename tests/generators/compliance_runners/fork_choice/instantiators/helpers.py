@@ -661,7 +661,7 @@ def yield_fork_choice_test_events(spec, test_data: FCTestData, test_events: list
                 if valid:
                     assert store.blocks[block_root] == signed_block.message
                 else:
-                    assert block_root not in store.blocks.values()
+                    assert block_root not in store.blocks
             output_store_checks(spec, store, test_steps)
         elif event_kind == "attestation":
             _, attestation, valid = event
