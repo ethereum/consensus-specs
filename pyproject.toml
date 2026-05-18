@@ -121,9 +121,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# Code blocks in markdown reference names defined in other markdown files,
-# so F821 (pyflakes, undefined name) produces many false positives.
-"**/*.md" = ["F821"]
+"**/*.md" = [
+  "F821", # https://docs.astral.sh/ruff/rules/undefined-name/
+]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
