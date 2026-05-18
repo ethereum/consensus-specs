@@ -603,9 +603,9 @@ The walk is inclusive of the block at `start_root`, in descending slot order.
 The walk stops as soon as one of the following is true:
 
 - the response contains `min(count, MAX_REQUEST_BLOCKS_DENEB)` blocks
-- the slot of a block in the response is <= min_slot
+- the slot of a block in the response is `<= min_slot`
 - the next ancestor falls outside the epoch range that clients are required to
-serve (see below).
+  serve (see below).
 
 `BeaconBlocksByHead` is primarily used to backfill a contiguous range of blocks
 relative to a known head.
