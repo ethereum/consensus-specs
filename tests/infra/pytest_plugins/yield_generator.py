@@ -349,7 +349,7 @@ class YieldGeneratorPlugin:
 
         output_dir = (
             Path(self.output_dir)
-            / manifest.preset_name  # type: ignore
+            / manifest.preset_name
             / manifest.fork_name
             / manifest.runner_name
             / manifest.handler_name

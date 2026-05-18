@@ -94,6 +94,7 @@ extend-select = [
   "I",   # https://docs.astral.sh/ruff/rules/#isort-i
   "INP", # https://docs.astral.sh/ruff/rules/#flake8-no-pep420-inp
   "ISC", # https://docs.astral.sh/ruff/rules/#flake8-implicit-str-concat-isc
+  "PGH", # https://docs.astral.sh/ruff/rules/#pygrep-hooks-pgh
   "PIE", # https://docs.astral.sh/ruff/rules/#flake8-pie-pie
   "PL",  # https://docs.astral.sh/ruff/rules/#pylint-pl
   "PT",  # https://docs.astral.sh/ruff/rules/#flake8-pytest-style-pt
