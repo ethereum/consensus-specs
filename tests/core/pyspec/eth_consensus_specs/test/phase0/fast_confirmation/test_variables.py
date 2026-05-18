@@ -383,7 +383,7 @@ def test_slot_head_variables_updated_every_slot(spec, state):
     curr_slot_head_before = fcr_store.current_slot_head
 
     # Run several slots and verify the cascade happens each slot
-    for i in range(S + 2):  # Run past one epoch boundary
+    for _i in range(S + 2):  # Run past one epoch boundary
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
         # After each slot, previous should equal what current was before

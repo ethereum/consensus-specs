@@ -936,7 +936,7 @@ def _generate_block_tree(
                 spec,
                 attesting_state,
                 attesting_state.slot,
-                lambda comm: set(comm) & attesters,
+                lambda comm, attesters=attesters: set(comm) & attesters,
                 payload_index=payload_index,
             )
 

@@ -277,7 +277,7 @@ def events_to_test_vector(events) -> list[Any]:
             ):
                 event_id = data
             else:
-                assert False, event_kind
+                raise AssertionError(event_kind)
             test_vector.append((current_time, (event_kind, event_id)))
     return test_vector
 
@@ -364,9 +364,9 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                                 }
                             )
                         else:
-                            assert False
+                            raise AssertionError()
                 else:
-                    assert False
+                    raise AssertionError()
                 if time > store.time:
                     # inside a slot
                     on_tick_and_append_step(spec, store, time, test_steps)
@@ -393,7 +393,7 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                                     yield _attestation_id, event_data
                                 test_steps.append({"attestation": _attestation_id, "valid": True})
                             else:
-                                assert False
+                                raise AssertionError()
                                 test_steps.append({"attestation": _attestation_id, "valid": True})
                         elif event_kind == "execution_payload":
                             assert recovery
@@ -411,12 +411,12 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                                 }
                             )
                         else:
-                            assert False
+                            raise AssertionError()
                 else:
                     assert len(applied_events) == 0
                     test_steps.append({"block": block_id, "valid": valid})
             else:
-                assert False
+                raise AssertionError()
                 test_steps.append({"block": block_id, "valid": valid})
             output_store_checks(spec, store, test_steps)
         elif kind == "attestation":

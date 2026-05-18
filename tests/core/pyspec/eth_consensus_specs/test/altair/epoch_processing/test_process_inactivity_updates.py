@@ -290,7 +290,7 @@ def test_some_slashed_zero_scores_full_participation_leaking(spec, state):
     assert spec.is_in_inactivity_leak(state)
 
     # Ensure some zero scores (non-slashed values) and non-zero scores (slashed vals) in there
-    for score, validator in zip(state.inactivity_scores, state.validators):
+    for score, validator in zip(state.inactivity_scores, state.validators, strict=False):
         if validator.slashed:
             assert score > 0
         else:

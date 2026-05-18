@@ -253,8 +253,8 @@ def _get_light_client_data(lc_data_store, bid):  # -> CachedLightClientData
     # Data must be cached (`_cache_lc_data`) before calling this function.
     try:
         return lc_data_store.cache.data[bid]
-    except KeyError:
-        raise ValueError("Trying to get light client data that was not cached")
+    except KeyError as e:
+        raise ValueError("Trying to get light client data that was not cached") from e
 
 
 def _cache_lc_data(

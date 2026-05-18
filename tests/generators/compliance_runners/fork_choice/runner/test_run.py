@@ -105,7 +105,7 @@ def run_test(test_info):
                                     store, ptc_message, is_from_block=True
                                 )
             else:
-                expect_assertion_error(lambda: spec.on_block(store, signed_block))
+                expect_assertion_error(lambda sb=signed_block: spec.on_block(store, sb))
         elif "attestation" in step:
             att_id = step["attestation"]
             valid = step.get("valid", True)
@@ -114,7 +114,7 @@ def run_test(test_info):
                 spec.on_attestation(store, attestation, is_from_block=False)
             else:
                 expect_assertion_error(
-                    lambda: spec.on_attestation(store, attestation, is_from_block=False)
+                    lambda att=attestation: spec.on_attestation(store, att, is_from_block=False)
                 )
         elif "attester_slashing" in step:
             slashing_id = step["attester_slashing"]
@@ -130,7 +130,7 @@ def run_test(test_info):
                 spec.on_execution_payload_envelope(store, signed_envelope)
             else:
                 expect_assertion_error(
-                    lambda: spec.on_execution_payload_envelope(store, signed_envelope)
+                    lambda se=signed_envelope: spec.on_execution_payload_envelope(store, se)
                 )
         elif "payload_attestation_message" in step:
             ptc_message_id = step["payload_attestation_message"]
@@ -140,8 +140,8 @@ def run_test(test_info):
                 spec.on_payload_attestation_message(store, ptc_message, is_from_block=False)
             else:
                 expect_assertion_error(
-                    lambda: spec.on_payload_attestation_message(
-                        store, ptc_message, is_from_block=False
+                    lambda msg=ptc_message: spec.on_payload_attestation_message(
+                        store, msg, is_from_block=False
                     )
                 )
         elif "checks" in step:
@@ -185,9 +185,9 @@ def run_test(test_info):
                     target_root = spec.Root(decode_hex(value["block_root"]))
                     assert list(getattr(store, check)[target_root]) == value["votes"]
                 else:
-                    assert False
+                    raise AssertionError()
         else:
-            assert False
+            raise AssertionError()
 
 
 def gather_tests(tests_dir) -> Iterable[ComplianceTestInfo]:

@@ -146,7 +146,7 @@ class ScenarioGenerator:
         transitions_generator = (
             itertools.product(prefix, blocks_set) for prefix in randomized_skips
         )
-        block_transitions = zip(*transitions_generator)
+        block_transitions = zip(*transitions_generator, strict=False)
 
         # Combine with leak transitions
         leak_transitions = (

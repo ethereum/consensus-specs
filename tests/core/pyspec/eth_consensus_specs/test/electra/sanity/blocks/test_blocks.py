@@ -245,7 +245,9 @@ def test_multiple_el_partial_withdrawal_requests_different_validator(spec, state
     addresses = [bytes([v * 0x11]) * 20 for v in validator_indices]
     balances = [spec.MIN_ACTIVATION_BALANCE + v * 2000000000 for v in validator_indices]
 
-    for validator_index, address, balance in zip(validator_indices, addresses, balances):
+    for validator_index, address, balance in zip(
+        validator_indices, addresses, balances, strict=False
+    ):
         set_compounding_withdrawal_credential_with_balance(
             spec, state, validator_index, balance, balance, address
         )
@@ -255,7 +257,7 @@ def test_multiple_el_partial_withdrawal_requests_different_validator(spec, state
 
     withdrawal_requests = []
 
-    for validator_index, address in zip(validator_indices, addresses):
+    for validator_index, address in zip(validator_indices, addresses, strict=False):
         validator_pubkey = state.validators[validator_index].pubkey
         withdrawal_request = spec.WithdrawalRequest(
             source_address=address,
@@ -911,7 +913,7 @@ def test_multi_epoch_consolidation_chain(spec, state):
         assert state.validators[i].exit_epoch != spec.FAR_FUTURE_EPOCH
 
     # Remove MIN_VALIDATOR_WITHDRAWABILITY_DELAY to speed things up
-    for i, consolidation in enumerate(state.pending_consolidations):
+    for consolidation in state.pending_consolidations:
         state.validators[consolidation.source_index].withdrawable_epoch = (
             state.validators[consolidation.source_index].exit_epoch + 1
         )

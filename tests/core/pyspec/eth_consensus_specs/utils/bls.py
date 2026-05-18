@@ -288,7 +288,7 @@ def multi_exp(points, scalars):
     else:
         raise Exception("Invalid point type")
 
-    for point, scalar in zip(points, scalars):
+    for point, scalar in zip(points, scalars, strict=False):
         result = add(result, multiply(point, scalar))
     return result
 

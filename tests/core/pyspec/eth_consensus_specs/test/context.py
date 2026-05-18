@@ -611,13 +611,13 @@ def _run_test_case_with_phases(fn, phases, other_phases, kw, args, is_fork_trans
         results: MultiPhaseResult = {}
 
         for phase in run_phases:
-            ret = fn(spec=targets[phase], phases=phase_dir, *args, **kw)
+            ret = fn(*args, spec=targets[phase], phases=phase_dir, **kw)
             results[phase] = ret
 
         return results
 
     for phase in run_phases:
-        ret = fn(spec=targets[phase], phases=phase_dir, *args, **kw)
+        ret = fn(*args, spec=targets[phase], phases=phase_dir, **kw)
 
     return ret
 

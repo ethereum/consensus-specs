@@ -251,7 +251,7 @@ def _compute_pseudo_randao_reveal(spec, proposer_index, epoch):
 
 
 def produce_block(
-    spec, state, attestations, attester_slashings=[], payload_attestation_messages=[]
+    spec, state, attestations, attester_slashings=None, payload_attestation_messages=None
 ):
     """
     Produces a block including as many attestations as it is possible.
@@ -260,6 +260,10 @@ def produce_block(
     """
 
     # Filter out too old attestations.
+    if payload_attestation_messages is None:
+        payload_attestation_messages = []
+    if attester_slashings is None:
+        attester_slashings = []
     eligible_attestations = _get_eligible_attestations(spec, state, attestations)
 
     # Create a block with attestations
@@ -516,7 +520,7 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
         elif event_kind == "payload_attestation":
             return data.data.slot
         else:
-            assert False
+            raise AssertionError()
 
     messages = (
         [("attestation", m.payload, m.valid) for m in test_data.atts]

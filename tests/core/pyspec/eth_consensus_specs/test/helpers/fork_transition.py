@@ -187,8 +187,8 @@ def get_upgrade_fn(spec, fork):
         # TODO: make all upgrade_to_* function names consistent?
         fn = eval(f"spec.upgrade_to_{fork}")
         return fn
-    except Exception:
-        raise ValueError(f"Unknown fork: {fork}")
+    except Exception as e:
+        raise ValueError(f"Unknown fork: {fork}") from e
 
 
 def do_fork(

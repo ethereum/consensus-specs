@@ -27,10 +27,10 @@ def _run_eth_aggregate_pubkeys_valid(spec, pubkeys):
 
 
 def _run_eth_aggregate_pubkeys_invalid(spec, pubkeys):
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         spec.eth_aggregate_pubkeys(pubkeys)
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         milagro_bls._AggregatePKs(pubkeys)
 
     yield (

@@ -82,7 +82,7 @@ def test_merkleize_chunks_and_get_merkle_root(count, limit, value):
         except AssertionError:
             pass
         if bad:
-            assert False, "expected merkleization to be invalid"
+            raise AssertionError("expected merkleization to be invalid")
     else:
         assert merkleize_chunks(chunks, limit=limit) == value
         assert get_merkle_root(chunks, pad_to=limit) == value

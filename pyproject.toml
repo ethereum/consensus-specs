@@ -87,6 +87,7 @@ extend-exclude = [
 
 [tool.ruff.lint]
 extend-select = [
+  "B",   # https://docs.astral.sh/ruff/rules/#flake8-bugbear-b
   "C4",  # https://docs.astral.sh/ruff/rules/#flake8-comprehensions-c4
   "I",   # https://docs.astral.sh/ruff/rules/#isort-i
   "INP", # https://docs.astral.sh/ruff/rules/#flake8-no-pep420-inp

@@ -72,7 +72,7 @@ def get_random_proposer_slashings(spec, state, rng):
     return slashings
 
 
-def get_random_attester_slashings(spec, state, rng, slashed_indices=[]):
+def get_random_attester_slashings(spec, state, rng, slashed_indices=None):
     """
     Caller can supply ``slashed_indices`` if they are aware of other indices
     that will be slashed by other operations in the same block as the one that
@@ -80,6 +80,8 @@ def get_random_attester_slashings(spec, state, rng, slashed_indices=[]):
     """
     # ensure at least one attester slashing, the max count
     # is small so not much room for random inclusion
+    if slashed_indices is None:
+        slashed_indices = []
     num_slashings = rng.randrange(1, spec.MAX_ATTESTER_SLASHINGS)
     active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     indices = [

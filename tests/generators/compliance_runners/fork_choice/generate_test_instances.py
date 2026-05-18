@@ -37,7 +37,7 @@ def check_uniqueness(solutions: Collection[dict]):
             if count >= 1:
                 print(f"{count} solutions: {sol}")
 
-        assert False
+        raise AssertionError()
 
 
 def solve_sm_links(
@@ -54,7 +54,9 @@ def solve_sm_links(
     solutions = instance.solve(all_solutions=True)
 
     for i in range(len(solutions)):
-        yield {"sm_links": list(zip(solutions[i, "sources"], solutions[i, "targets"]))}
+        yield {
+            "sm_links": list(zip(solutions[i, "sources"], solutions[i, "targets"], strict=False))
+        }
 
 
 def generate_sm_links(params):
@@ -328,7 +330,7 @@ if __name__ == "__main__":
         solutions = []
         for params in parameters["params"]:
             model_solutions = []
-            for model, mod_params in zip(models, params):
+            for model, mod_params in zip(models, params, strict=False):
                 print(f"  model: {model}")
                 print(f"  parameters: {mod_params}")
                 if isinstance(mod_params, list):
@@ -343,7 +345,7 @@ if __name__ == "__main__":
                     else:
                         print("todo", model, mod_params)
                 else:
-                    assert False
+                    raise AssertionError()
             results = [merge(*sol) for sol in product(*model_solutions)]
             solutions.extend(results)
 
