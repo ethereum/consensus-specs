@@ -227,7 +227,7 @@ def run_test_ejection_past_churn_limit(spec, state):
         def map_index_to_exit_epoch(i):
             balance_so_far = i * spec.config.EJECTION_BALANCE
             offset_epoch = balance_so_far // per_epoch_churn
-            if spec.config.EJECTION_BALANCE > per_epoch_churn - (balance_so_far % per_epoch_churn):
+            if per_epoch_churn - (balance_so_far % per_epoch_churn) < spec.config.EJECTION_BALANCE:
                 offset_epoch += 1
             return expected_ejection_epoch + offset_epoch
 

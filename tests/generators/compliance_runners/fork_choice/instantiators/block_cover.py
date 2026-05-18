@@ -35,11 +35,7 @@ def _should_justify_epoch(parents, current_justifications, previous_justificatio
         return True
 
     # Check if any child of the block justifies the epoch
-    for c in (b for b, p in enumerate(parents) if p == block):
-        if previous_justifications[c]:
-            return True
-
-    return False
+    return any(previous_justifications[c] for c in (b for b, p in enumerate(parents) if p == block))
 
 
 def _generate_filter_block_tree(
@@ -485,4 +481,4 @@ def run_sanity_checks(spec, store, model_params, target_block_root):
         or predicates["block_vse_eq_store_je"]
         or predicates["block_vse_plus_two_ge_curr_e"]
     ):
-        assert target_block_root in spec.get_filtered_block_tree(store).keys()
+        assert target_block_root in spec.get_filtered_block_tree(store)

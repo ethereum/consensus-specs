@@ -114,11 +114,12 @@ class PreviousEpochTestSpecification:
         if not (self.no_conflicting_chkp or self.first_slot_call):
             return fcr_store.confirmed_root
 
-        if (self.prev_head_vs_fresh and self.prev_head_ancestor) and (
-            self.first_slot_call or self.prev_head_uj_fresh or self.head_uj_fresh
+        if (
+            (self.prev_head_vs_fresh and self.prev_head_ancestor)
+            and (self.first_slot_call or self.prev_head_uj_fresh or self.head_uj_fresh)
+            or self.block_vs_fresh
+            and (self.first_slot_call or self.head_uj_fresh)
         ):
-            return self.get_last_one_confirmed_block(spec, fcr_store)
-        elif self.block_vs_fresh and (self.first_slot_call or self.head_uj_fresh):
             return self.get_last_one_confirmed_block(spec, fcr_store)
         else:
             return fcr_store.confirmed_root

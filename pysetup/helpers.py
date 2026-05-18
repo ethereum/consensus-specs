@@ -64,7 +64,7 @@ def objects_to_spec(
 
     def format_protocol(protocol_name: str, protocol_def: ProtocolDefinition) -> str:
         abstract_functions = ["verify_and_notify_new_payload"]
-        for key in protocol_def.functions.keys():
+        for key in protocol_def.functions:
             if key in abstract_functions:
                 make_function_abstract(protocol_def, key)
 
@@ -103,7 +103,7 @@ def objects_to_spec(
 
     # Access global dict of config vars for runtime configurables
     # Ignore variable between quotes and doubles quotes
-    for name in spec_object.config_vars.keys():
+    for name in spec_object.config_vars:
         functions_spec = re.sub(rf"(?<!['\"])\b{name}\b(?!['\"])", "config." + name, functions_spec)
         ordered_class_objects_spec = re.sub(
             rf"(?<!['\"])\b{name}\b(?!['\"])", "config." + name, ordered_class_objects_spec

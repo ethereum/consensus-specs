@@ -361,9 +361,7 @@ by the recursive logic in this function) MUST set `block_root` to
 ```python
 def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconBlock]) -> bool:
     block = store.blocks[block_root]
-    children = [
-        root for root in store.blocks.keys() if store.blocks[root].parent_root == block_root
-    ]
+    children = [root for root in store.blocks if store.blocks[root].parent_root == block_root]
 
     # If any children branches contain expected finalized/justified checkpoints,
     # add to filtered block-tree and signal viability to parent.
@@ -428,7 +426,7 @@ def get_head(store: Store) -> Root:
     # Execute the LMD-GHOST fork choice
     head = store.justified_checkpoint.root
     while True:
-        children = [root for root in blocks.keys() if blocks[root].parent_root == head]
+        children = [root for root in blocks if blocks[root].parent_root == head]
         if len(children) == 0:
             return head
         # Sort by latest attesting balance with ties broken lexicographically

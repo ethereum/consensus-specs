@@ -116,9 +116,7 @@ class FCRTest:
 
     def get_children(self, block_root):
         return [
-            root
-            for root in self.store.blocks.keys()
-            if self.store.blocks[root].parent_root == block_root
+            root for root in self.store.blocks if self.store.blocks[root].parent_root == block_root
         ]
 
     def find_block_root(self, predicate: Callable[[object], bool]) -> object:

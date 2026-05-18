@@ -78,6 +78,7 @@ extend-select = [
   "I",   # https://docs.astral.sh/ruff/rules/#isort-i
   "INP", # https://docs.astral.sh/ruff/rules/#flake8-no-pep420-inp
   "PL",  # https://docs.astral.sh/ruff/rules/#pylint-pl
+  "SIM", # https://docs.astral.sh/ruff/rules/#flake8-simplify-sim
   "UP",  # https://docs.astral.sh/ruff/rules/#pyupgrade-up
 ]
 ignore = [
@@ -91,6 +92,9 @@ ignore = [
   "PLW0128", # https://docs.astral.sh/ruff/rules/redeclared-assigned-name/
   "PLW0603", # https://docs.astral.sh/ruff/rules/global-statement/
   "PLW2901", # https://docs.astral.sh/ruff/rules/redefined-loop-name/
+  "SIM102",  # https://docs.astral.sh/ruff/rules/collapsible-if/
+  "SIM103",  # https://docs.astral.sh/ruff/rules/needless-bool/
+  "SIM108",  # https://docs.astral.sh/ruff/rules/if-else-block-instead-of-if-exp/
 ]
 
 [tool.ruff.lint.per-file-ignores]

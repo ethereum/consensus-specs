@@ -1,4 +1,5 @@
 import ast
+import contextlib
 import json
 import re
 import string
@@ -599,13 +600,11 @@ def check_yaml_matches_spec(
 
             else:
                 raise ValueError(f"Variable {var} should be a string in the yaml file.")
-    try:
+    # NameError is okay; anything more serious will surface elsewhere.
+    with contextlib.suppress(NameError):
         assert yaml[var_name] == repr(eval(updated_value)), (
             f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
         )
-    except NameError:
-        # Okay it's probably something more serious, let's ignore
-        pass
 
 
 def _has_decorator(decorateable: ast.ClassDef | ast.FunctionDef, name: str) -> bool:

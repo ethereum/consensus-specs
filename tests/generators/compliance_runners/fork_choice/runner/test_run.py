@@ -1,3 +1,4 @@
+import contextlib
 from collections import namedtuple
 from collections.abc import Iterable
 from glob import glob
@@ -88,27 +89,21 @@ def run_test(test_info):
             if valid:
                 spec.on_block(store, signed_block)
                 for block_att in signed_block.message.body.attestations:
-                    try:
+                    with contextlib.suppress(AssertionError):
                         spec.on_attestation(store, block_att, is_from_block=True)
-                    except AssertionError:
-                        pass
                 for block_att_slashing in signed_block.message.body.attester_slashings:
-                    try:
+                    with contextlib.suppress(AssertionError):
                         spec.on_attester_slashing(store, block_att_slashing)
-                    except AssertionError:
-                        pass
                 if is_post_gloas(spec):
                     state = store.block_states[signed_block.message.hash_tree_root()]
                     for payload_attestation in signed_block.message.body.payload_attestations:
                         for ptc_message in payload_attestation_to_messages(
                             spec, state, payload_attestation
                         ):
-                            try:
+                            with contextlib.suppress(AssertionError):
                                 spec.on_payload_attestation_message(
                                     store, ptc_message, is_from_block=True
                                 )
-                            except AssertionError:
-                                pass
             else:
                 expect_assertion_error(lambda: spec.on_block(store, signed_block))
         elif "attestation" in step:

@@ -215,11 +215,7 @@ def _any_change_to_validator_partitions(spec, sm_links, current_epoch, anchor_ep
     if previous_epoch == anchor_epoch:
         return True
 
-    for l in sm_links:
-        if l.target == current_epoch or l.target == previous_epoch:
-            return True
-
-    return False
+    return any(l.target == current_epoch or l.target == previous_epoch for l in sm_links)
 
 
 def _generate_sm_link_tree(
@@ -283,7 +279,7 @@ def _generate_sm_link_tree(
             partitions = _compute_validator_partitions(
                 spec, branch_tips, current_epoch_sm_links, current_epoch, rnd
             )
-            for l in partitions.keys():
+            for l in partitions:
                 old_tip_state = branch_tips[l]
                 new_tip_state = BranchTip(
                     old_tip_state.beacon_state,

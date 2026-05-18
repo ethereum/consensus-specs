@@ -520,7 +520,7 @@ def is_valid_indexed_payload_attestation(
     """
     # Verify indices are non-empty and sorted
     indices = attestation.attesting_indices
-    if len(indices) == 0 or not indices == sorted(indices):
+    if len(indices) == 0 or indices != sorted(indices):
         return False
 
     # Verify aggregate signature

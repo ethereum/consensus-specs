@@ -268,15 +268,13 @@ def events_to_test_vector(events) -> list[Any]:
         if event_kind == "tick":
             current_time = data
         else:
-            if event_kind == "block":
-                event_id = data
-            elif event_kind == "attestation":
-                event_id = data
-            elif event_kind == "attester_slashing":
-                event_id = data
-            elif event_kind == "execution_payload":
-                event_id = data
-            elif event_kind == "payload_attestation":
+            if (
+                event_kind == "block"
+                or event_kind == "attestation"
+                or event_kind == "attester_slashing"
+                or event_kind == "execution_payload"
+                or event_kind == "payload_attestation"
+            ):
                 event_id = data
             else:
                 assert False, event_kind

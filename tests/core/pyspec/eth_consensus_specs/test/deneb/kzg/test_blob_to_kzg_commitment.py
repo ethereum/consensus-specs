@@ -2,6 +2,8 @@
 # Test cases for blob_to_kzg_commitment
 ###############################################################################
 
+import contextlib
+
 from eth_utils import encode_hex
 
 from eth_consensus_specs.test.context import only_generator, single_phase, spec_test, with_phases
@@ -53,10 +55,8 @@ def _blob_to_kzg_commitment_case_invalid_blob(index):
     @single_phase
     def the_test(spec):
         commitment = None
-        try:
+        with contextlib.suppress(Exception):
             commitment = spec.blob_to_kzg_commitment(blob)
-        except Exception:
-            pass
 
         # exception is thrown
         assert commitment is None

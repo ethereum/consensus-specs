@@ -1,3 +1,4 @@
+import contextlib
 import random
 from dataclasses import dataclass, field
 
@@ -574,19 +575,15 @@ def _add_block(spec, store, signed_block, test_steps):
     if valid:
         # An on_block step implies receiving block's attestations
         for attestation in signed_block.message.body.attestations:
-            try:
+            # ignore possible faults, if the block is valid
+            with contextlib.suppress(AssertionError):
                 run_on_attestation(spec, store, attestation, is_from_block=True, valid=True)
-            except AssertionError:
-                # ignore possible faults, if the block is valid
-                pass
 
         # An on_block step implies receiving block's attester slashings
         for attester_slashing in signed_block.message.body.attester_slashings:
-            try:
+            # ignore possible faults, if the block is valid
+            with contextlib.suppress(AssertionError):
                 run_on_attester_slashing(spec, store, attester_slashing, valid=True)
-            except AssertionError:
-                # ignore possible faults, if the block is valid
-                pass
 
         if is_post_gloas(spec):
             # An on_block step implies receiving block's payload attestations (post GLOAS)

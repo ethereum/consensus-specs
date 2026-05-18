@@ -563,7 +563,7 @@ def get_node_children(
     else:
         return [
             ForkChoiceNode(root=root, payload_status=PAYLOAD_STATUS_PENDING)
-            for root in blocks.keys()
+            for root in blocks
             if (
                 blocks[root].parent_root == node.root
                 and node.payload_status == get_parent_payload_status(store, blocks[root])
