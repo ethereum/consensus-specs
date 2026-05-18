@@ -19,7 +19,7 @@ validation rules for messages received via gossip topics.
 ### `meta.yaml`
 
 ```yaml
-topic: string                -- The gossip topic name (e.g., "beacon_block", "beacon_attestation").
+topic: string                -- The gossip topic name (e.g., "beacon_block", "beacon_attestation", "blob_sidecar").
 blocks: [{                   -- Optional. Blocks to import before validation (oldest to newest).
     block: string,           -- The block file (without extension).
     failed: bool,            -- Optional. If true, block failed validation (for testing descendant rejection).
@@ -58,6 +58,7 @@ tree root:
 | Topic                                   | File prefix                | SSZ type                     |
 | --------------------------------------- | -------------------------- | ---------------------------- |
 | `beacon_block`                          | `block_`                   | `SignedBeaconBlock`          |
+| `blob_sidecar`                          | `blob_sidecar_`            | `BlobSidecar`                |
 | `beacon_attestation`                    | `attestation_`             | `Attestation`                |
 | `beacon_aggregate_and_proof`            | `aggregate_`               | `SignedAggregateAndProof`    |
 | `proposer_slashing`                     | `proposer_slashing_`       | `ProposerSlashing`           |
