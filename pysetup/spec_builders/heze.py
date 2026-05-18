@@ -1,4 +1,5 @@
-from ..constants import HEZE
+from pysetup.constants import HEZE
+
 from .base import BaseSpecBuilder
 
 

@@ -1,4 +1,5 @@
-from ..constants import EIP8025
+from pysetup.constants import EIP8025
+
 from .base import BaseSpecBuilder
 
 

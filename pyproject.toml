@@ -96,6 +96,7 @@ extend-select = [
   "Q",   # https://docs.astral.sh/ruff/rules/#flake8-quotes-q
   "RSE", # https://docs.astral.sh/ruff/rules/#flake8-raise-rse
   "SIM", # https://docs.astral.sh/ruff/rules/#flake8-simplify-sim
+  "TID", # https://docs.astral.sh/ruff/rules/#flake8-tidy-imports-tid
   "UP",  # https://docs.astral.sh/ruff/rules/#pyupgrade-up
   "W",   # https://docs.astral.sh/ruff/rules/#pycodestyle-e-w
 ]

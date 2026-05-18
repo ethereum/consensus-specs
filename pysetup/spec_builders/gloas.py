@@ -1,4 +1,5 @@
-from ..constants import GLOAS
+from pysetup.constants import GLOAS
+
 from .base import BaseSpecBuilder
 
 

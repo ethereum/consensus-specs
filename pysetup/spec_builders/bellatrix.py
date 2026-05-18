@@ -1,4 +1,5 @@
-from ..constants import BELLATRIX
+from pysetup.constants import BELLATRIX
+
 from .base import BaseSpecBuilder
 
 

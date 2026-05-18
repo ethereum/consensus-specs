@@ -13,8 +13,9 @@ from eth_consensus_specs.test.context import expect_assertion_error
 from eth_consensus_specs.test.helpers.fork_choice import get_viable_for_head_checks
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
-
-from ..instantiators.helpers import payload_attestation_to_messages
+from tests.generators.compliance_runners.fork_choice.instantiators.helpers import (
+    payload_attestation_to_messages,
+)
 
 
 def read_yaml(fp):

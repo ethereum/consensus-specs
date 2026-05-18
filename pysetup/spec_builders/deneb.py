@@ -1,4 +1,5 @@
-from ..constants import DENEB
+from pysetup.constants import DENEB
+
 from .base import BaseSpecBuilder
 
 

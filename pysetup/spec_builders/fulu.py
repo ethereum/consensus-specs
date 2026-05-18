@@ -1,4 +1,5 @@
-from ..constants import FULU
+from pysetup.constants import FULU
+
 from .base import BaseSpecBuilder
 
 

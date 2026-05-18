@@ -1,4 +1,5 @@
-from ..constants import CAPELLA
+from pysetup.constants import CAPELLA
+
 from .base import BaseSpecBuilder
 
 

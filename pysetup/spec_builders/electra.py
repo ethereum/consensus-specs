@@ -1,4 +1,5 @@
-from ..constants import ELECTRA
+from pysetup.constants import ELECTRA
+
 from .base import BaseSpecBuilder
 
 

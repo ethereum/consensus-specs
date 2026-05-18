@@ -1,4 +1,5 @@
-from ..constants import ALTAIR, OPTIMIZED_BLS_AGGREGATE_PUBKEYS
+from pysetup.constants import ALTAIR, OPTIMIZED_BLS_AGGREGATE_PUBKEYS
+
 from .base import BaseSpecBuilder
 
 
