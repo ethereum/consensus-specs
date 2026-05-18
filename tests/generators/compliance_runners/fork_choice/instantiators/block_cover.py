@@ -100,7 +100,7 @@ def _generate_filter_block_tree(
             continue
 
         # Case 2. Blocks are from disjoint subtrees -- not supported yet
-        assert len(set([a for i, a in enumerate(parents) if i in current_blocks])) == 1, (
+        assert len({a for i, a in enumerate(parents) if i in current_blocks}) == 1, (
             "Disjoint trees are not supported"
         )
 

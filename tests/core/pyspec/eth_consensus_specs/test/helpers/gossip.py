@@ -55,34 +55,34 @@ def run_validate_beacon_block_gossip(
 
 def get_seen(spec):
     """Create an empty Seen object for gossip validation."""
-    kwargs = dict(
-        proposer_slots=set(),
-        aggregator_epochs=set(),
-        aggregate_data_roots={},
-        voluntary_exit_indices=set(),
-        proposer_slashing_indices=set(),
-        attester_slashing_indices=set(),
-        attestation_validator_epochs=set(),
-    )
+    kwargs = {
+        "proposer_slots": set(),
+        "aggregator_epochs": set(),
+        "aggregate_data_roots": {},
+        "voluntary_exit_indices": set(),
+        "proposer_slashing_indices": set(),
+        "attester_slashing_indices": set(),
+        "attestation_validator_epochs": set(),
+    }
     if is_post_altair(spec):
         kwargs.update(
-            dict(
-                sync_contribution_aggregator_slots=set(),
-                sync_contribution_data={},
-                sync_message_validator_slots=set(),
-            )
+            {
+                "sync_contribution_aggregator_slots": set(),
+                "sync_contribution_data": {},
+                "sync_message_validator_slots": set(),
+            }
         )
     if is_post_capella(spec):
         kwargs.update(
-            dict(
-                bls_to_execution_change_indices=set(),
-            )
+            {
+                "bls_to_execution_change_indices": set(),
+            }
         )
     if is_post_deneb(spec):
         kwargs.update(
-            dict(
-                blob_sidecar_tuples=set(),
-            )
+            {
+                "blob_sidecar_tuples": set(),
+            }
         )
     return spec.Seen(**kwargs)
 

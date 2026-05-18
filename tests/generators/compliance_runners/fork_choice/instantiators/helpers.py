@@ -113,7 +113,7 @@ def choose_payload_attestation_vote_count(spec, ptc, rnd: random.Random):
         candidates = [count for count in (threshold, threshold + 1) if 0 <= count <= max_voters]
         return rnd.choice(candidates)
 
-    candidates = [count for count in range(threshold + 1, max_voters + 1)]
+    candidates = list(range(threshold + 1, max_voters + 1))
     if candidates:
         return rnd.choice(candidates)
 
@@ -313,7 +313,7 @@ def produce_block(
             s for s in attester_slashings if s not in attester_slashings_in_block
         ]
         if is_post_gloas(spec):
-            included_pa_indices = set(m.validator_index for m in eligible_pa_messages)
+            included_pa_indices = {m.validator_index for m in eligible_pa_messages}
             not_included_pa_messages = [
                 m
                 for m in payload_attestation_messages

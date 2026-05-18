@@ -68,10 +68,8 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
 
     @classmethod
     def deprecate_functions(cls) -> set[str]:
-        return set(
-            [
-                "initialize_ptc_window",
-                "onboard_builders_from_pending_deposits",
-                "upgrade_to_gloas",
-            ]
-        )
+        return {
+            "initialize_ptc_window",
+            "onboard_builders_from_pending_deposits",
+            "upgrade_to_gloas",
+        }

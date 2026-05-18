@@ -215,19 +215,14 @@ def objects_to_spec(
         format_constant(k, v) for k, v in spec_object.preset_vars.items()
     )
     ssz_dep_constants = "\n".join(
-        map(lambda x: f"{x} = {hardcoded_ssz_dep_constants[x]}", hardcoded_ssz_dep_constants)
+        f"{x} = {hardcoded_ssz_dep_constants[x]}" for x in hardcoded_ssz_dep_constants
     )
     ssz_dep_constants_verification = "\n".join(
-        map(
-            lambda x: f"assert {x} == {spec_object.ssz_dep_constants[x]}",
-            filtered_ssz_dep_constants,
-        )
+        f"assert {x} == {spec_object.ssz_dep_constants[x]}" for x in filtered_ssz_dep_constants
     )
     func_dep_presets_verification = "\n".join(
-        map(
-            lambda x: f"assert {x} == {spec_object.func_dep_presets[x]}  # noqa: E501",
-            filtered_hardcoded_func_dep_presets,
-        )
+        f"assert {x} == {spec_object.func_dep_presets[x]}  # noqa: E501"
+        for x in filtered_hardcoded_func_dep_presets
     )
     spec_strs = [
         imports,
@@ -432,7 +427,7 @@ def parse_config_vars(conf: dict[str, str]) -> dict[str, str | list[dict[str, st
     """
     Parses a dict of basic str/int/list types into a dict for insertion into the spec code.
     """
-    out: dict[str, str | list[dict[str, str]]] = dict()
+    out: dict[str, str | list[dict[str, str]]] = {}
     for k, v in conf.items():
         if isinstance(v, list):
             # A special case for list of records

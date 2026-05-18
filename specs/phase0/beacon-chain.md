@@ -1194,7 +1194,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
     Return the set of attesting indices corresponding to ``data`` and ``bits``.
     """
     committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    return set(index for i, index in enumerate(committee) if attestation.aggregation_bits[i])
+    return {index for i, index in enumerate(committee) if attestation.aggregation_bits[i]}
 ```
 
 ### Beacon state mutators
@@ -1315,7 +1315,7 @@ def initialize_beacon_state_from_eth1(
     )
 
     # Process deposits
-    leaves = list(map(lambda deposit: deposit.data, deposits))
+    leaves = [deposit.data for deposit in deposits]
     for index, deposit in enumerate(deposits):
         deposit_data_list = List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[: index + 1])
         state.eth1_data.deposit_root = hash_tree_root(deposit_data_list)

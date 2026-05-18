@@ -52,28 +52,24 @@ def compute_merkle_proof(object: SSZObject,
 
     @classmethod
     def deprecate_containers(cls) -> set[str]:
-        return set(
-            [
-                "PendingAttestation",
-            ]
-        )
+        return {
+            "PendingAttestation",
+        }
 
     @classmethod
     def deprecate_functions(cls) -> set[str]:
-        return set(
-            [
-                "get_attestation_component_deltas",
-                "get_attestation_deltas",
-                "get_attesting_balance",
-                "get_head_deltas",
-                "get_inclusion_delay_deltas",
-                "get_matching_head_attestations",
-                "get_matching_source_attestations",
-                "get_matching_target_attestations",
-                "get_proposer_reward",
-                "get_source_deltas",
-                "get_target_deltas",
-                "get_unslashed_attesting_indices",
-                "process_participation_record_updates",
-            ]
-        )
+        return {
+            "get_attestation_component_deltas",
+            "get_attestation_deltas",
+            "get_attesting_balance",
+            "get_head_deltas",
+            "get_inclusion_delay_deltas",
+            "get_matching_head_attestations",
+            "get_matching_source_attestations",
+            "get_matching_target_attestations",
+            "get_proposer_reward",
+            "get_source_deltas",
+            "get_target_deltas",
+            "get_unslashed_attesting_indices",
+            "process_participation_record_updates",
+        }

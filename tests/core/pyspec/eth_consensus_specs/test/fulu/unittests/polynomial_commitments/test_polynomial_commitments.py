@@ -254,7 +254,7 @@ def test_recover_cells_and_kzg_proofs(spec):
     recovered_data = [x for xs in recovered_cells for x in xs]
 
     # Check that the original data match the non-extended portion of the recovered data
-    blob_byte_array = [b for b in blob]
+    blob_byte_array = list(blob)
     assert blob_byte_array == recovered_data[: len(recovered_data) // 2]
 
     # Check that the recovered cells/proofs match the original cells/proofs

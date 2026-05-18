@@ -52,7 +52,7 @@ class MegaStore:
     spec = None
     fc_store = None
     opt_store = None
-    block_payload_statuses: dict[Bytes32, PayloadStatusV1] = dict()
+    block_payload_statuses: dict[Bytes32, PayloadStatusV1] = {}
 
     def __init__(self, spec, fc_store, opt_store):
         self.spec = spec

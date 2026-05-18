@@ -58,9 +58,7 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
 
     @classmethod
     def deprecate_functions(cls) -> set[str]:
-        return set(
-            [
-                "translate_participation",
-                "upgrade_to_altair",
-            ]
-        )
+        return {
+            "translate_participation",
+            "upgrade_to_altair",
+        }

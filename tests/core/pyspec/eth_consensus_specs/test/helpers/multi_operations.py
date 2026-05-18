@@ -191,7 +191,7 @@ def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
     active_indices = set(
         spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     )
-    indices = set(index for index in active_indices if _eligible_for_exit(spec, state, index))
+    indices = {index for index in active_indices if _eligible_for_exit(spec, state, index)}
     eligible_indices = indices - to_be_slashed_indices
     indices_count = min(num_exits, len(eligible_indices))
     exit_indices = [eligible_indices.pop() for _ in range(indices_count)]
@@ -253,12 +253,10 @@ def build_random_block_from_state_for_next_slot(spec, state, rng=None, deposits=
         block.body.deposits = deposits
 
     # cannot include to be slashed indices as exits
-    slashed_indices = set(
-        [
-            slashing.signed_header_1.message.proposer_index
-            for slashing in block.body.proposer_slashings
-        ]
-    )
+    slashed_indices = {
+        slashing.signed_header_1.message.proposer_index
+        for slashing in block.body.proposer_slashings
+    }
     for attester_slashing in block.body.attester_slashings:
         slashed_indices = slashed_indices.union(attester_slashing.attestation_1.attesting_indices)
         slashed_indices = slashed_indices.union(attester_slashing.attestation_2.attesting_indices)

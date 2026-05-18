@@ -509,7 +509,7 @@ def _is_constant_id(name: str) -> bool:
     """
     if name[0] not in string.ascii_uppercase + "_":
         return False
-    return all(map(lambda c: c in string.ascii_uppercase + "_" + string.digits, name[1:]))
+    return all(c in string.ascii_uppercase + "_" + string.digits for c in name[1:])
 
 
 @cache

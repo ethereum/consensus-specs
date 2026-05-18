@@ -181,7 +181,7 @@ def coset_fft_field(
     This is useful for when one wants to divide by a polynomial which
     vanishes on one or more elements in the domain.
     """
-    vals = [v for v in vals]  # copy
+    vals = list(vals)  # copy
 
     def shift_vals(
         vals: Sequence[BLSFieldElement], factor: BLSFieldElement

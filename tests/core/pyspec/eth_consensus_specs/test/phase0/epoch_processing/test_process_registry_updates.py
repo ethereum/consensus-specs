@@ -114,7 +114,7 @@ def test_activation_queue_sorting(spec, state):
         # NOTE: EIP-7521 changed how activations are gated
         # given the prefix setup here, all validators should be activated
         activation_epochs = [state.validators[i].activation_epoch for i in range(mock_activations)]
-        assert all([epoch != spec.FAR_FUTURE_EPOCH for epoch in activation_epochs])
+        assert all(epoch != spec.FAR_FUTURE_EPOCH for epoch in activation_epochs)
     else:
         # the first got in as second
         assert state.validators[0].activation_epoch != spec.FAR_FUTURE_EPOCH

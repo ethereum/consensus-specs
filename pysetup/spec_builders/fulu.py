@@ -42,11 +42,9 @@ class CosetEvals(list):
 
     @classmethod
     def deprecate_functions(cls) -> set[str]:
-        return set(
-            [
-                "upgrade_to_electra",
-            ]
-        )
+        return {
+            "upgrade_to_electra",
+        }
 
     @classmethod
     def sundry_functions(cls) -> str:

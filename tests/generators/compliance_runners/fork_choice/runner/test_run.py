@@ -195,9 +195,7 @@ def gather_tests(tests_dir) -> Iterable[ComplianceTestInfo]:
         for fork in [
             f.name for f in (Path(tests_dir) / preset).glob("*") if f.name in spec_targets[preset]
         ]:
-            for test_dir in sorted(
-                [td for td in (Path(tests_dir) / preset / fork).glob("*/*/*/*")]
-            ):
+            for test_dir in sorted((Path(tests_dir) / preset / fork).glob("*/*/*/*")):
                 yield ComplianceTestInfo(preset, fork, test_dir)
 
 

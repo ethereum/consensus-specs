@@ -76,7 +76,7 @@ def test_all_zero_inactivity_scores_empty_participation(spec, state):
     yield from run_inactivity_scores_test(
         spec, state, set_empty_participation, zero_inactivity_scores
     )
-    assert set(state.inactivity_scores) == set([0])
+    assert set(state.inactivity_scores) == {0}
 
 
 @with_altair_and_later
@@ -104,7 +104,7 @@ def test_all_zero_inactivity_scores_random_participation(spec, state):
         zero_inactivity_scores,
         rng=Random(5555),
     )
-    assert set(state.inactivity_scores) == set([0])
+    assert set(state.inactivity_scores) == {0}
 
 
 @with_altair_and_later
@@ -137,7 +137,7 @@ def test_all_zero_inactivity_scores_full_participation(spec, state):
         zero_inactivity_scores,
     )
 
-    assert set(state.inactivity_scores) == set([0])
+    assert set(state.inactivity_scores) == {0}
 
 
 @with_altair_and_later
@@ -155,7 +155,7 @@ def test_all_zero_inactivity_scores_full_participation_leaking(spec, state):
     # Check still in leak
     assert spec.is_in_inactivity_leak(state)
 
-    assert set(state.inactivity_scores) == set([0])
+    assert set(state.inactivity_scores) == {0}
 
 
 @with_altair_and_later
@@ -271,7 +271,7 @@ def test_some_slashed_zero_scores_full_participation(spec, state):
         zero_inactivity_scores,
     )
 
-    assert set(state.inactivity_scores) == set([0])
+    assert set(state.inactivity_scores) == {0}
 
 
 @with_altair_and_later

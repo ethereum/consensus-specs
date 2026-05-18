@@ -725,9 +725,9 @@ def _get_basic_value(v: Any) -> Any:
     elif isinstance(v, bytes):
         return bytes(bytearray(v))
     elif isinstance(v, list | tuple):
-        return list(_get_basic_value(v) for v in v)
+        return [_get_basic_value(v) for v in v]
     elif isinstance(v, dict | frozendict):
-        return dict({k: _get_basic_value(v) for k, v in dict(v).items()})
+        return {k: _get_basic_value(v) for k, v in dict(v).items()}
     else:
         return quoted_str(v)
 

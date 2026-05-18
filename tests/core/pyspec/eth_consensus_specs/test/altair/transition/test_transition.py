@@ -161,9 +161,7 @@ def test_transition_missing_first_post_block(state, fork_epoch, spec, post_spec,
 
     slots_with_blocks = [block.message.slot for block in blocks]
     assert len(set(slots_with_blocks)) == len(slots_with_blocks)
-    expected_slots = set(range(1, state.slot + 1)).difference(
-        set([fork_epoch * spec.SLOTS_PER_EPOCH])
-    )
+    expected_slots = set(range(1, state.slot + 1)).difference({fork_epoch * spec.SLOTS_PER_EPOCH})
     assert expected_slots == set(slots_with_blocks)
 
     yield "blocks", blocks
@@ -213,7 +211,7 @@ def test_transition_missing_last_pre_fork_block(
 
     slots_with_blocks = [block.message.slot for block in blocks]
     assert len(set(slots_with_blocks)) == len(slots_with_blocks)
-    expected_slots = set(range(1, state.slot + 1)).difference(set([last_slot_of_pre_fork]))
+    expected_slots = set(range(1, state.slot + 1)).difference({last_slot_of_pre_fork})
     assert expected_slots == set(slots_with_blocks)
 
     yield "blocks", blocks
@@ -355,9 +353,10 @@ def _run_transition_test_with_attestations(
     assert len(blocks_without_attestations) == 2
     slots_without_attestations = [b.message.slot for b in blocks_without_attestations]
 
-    assert set(slots_without_attestations) == set(
-        [spec.SLOTS_PER_EPOCH, fork_epoch * spec.SLOTS_PER_EPOCH]
-    )
+    assert set(slots_without_attestations) == {
+        spec.SLOTS_PER_EPOCH,
+        fork_epoch * spec.SLOTS_PER_EPOCH,
+    }
 
     yield "blocks", blocks
     yield "post", state

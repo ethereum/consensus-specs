@@ -9,7 +9,7 @@ def parse_config_vars(conf: dict[str, Any]) -> dict[str, Any]:
     """
     Parses a dict of basic str/int/list types into more detailed python types
     """
-    out: dict[str, Any] = dict()
+    out: dict[str, Any] = {}
     for k, v in conf.items():
         if isinstance(v, list):
             # Clean up integer values. YAML parser renders lists of ints as list of str
