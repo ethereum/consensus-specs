@@ -86,14 +86,49 @@ ignore = [
   "PLW0603",  # global-statement
   "PLW2901",  # redefined-loop-name
 ]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["eth_consensus_specs"]
+order-by-type = false
 ```
 
-That is the entire static-analysis policy. There is no
-`[tool.ruff.format]` block (formatter unconfigured), no
-`[tool.ruff.lint.per-file-ignores]`, no `[tool.ruff.lint.mccabe]` cap,
-no pydocstyle convention, no codespell, no vulture. Compare with
-`execution-specs/pyproject.toml:372–500` (next section) to see what a
-spec-comparable repo's policy file looks like.
+That is the static-analysis policy declared in `pyproject.toml`.
+`codespell` is also invoked from `make lint` (`Makefile:280`) but
+runs with defaults — no `[tool.codespell]` block exists. The ruff
+formatter inherits `line-length = 100` from the parent `[tool.ruff]`
+block; no explicit `[tool.ruff.format]` options are set.
+
+Two configurations are absent that would catch existing
+audit-cited findings on their own merit:
+
+- **An `[tool.ruff.lint.mccabe]` cyclomatic-complexity cap** —
+  overlaps with the silenced `PLR0912` (too-many-branches) rule
+  and surfaces the helper-layer's `is_post_<fork>` cascades and
+  `with_state_list` / test-run runner branching that
+  [helper-layer.md](helper-layer.md) enumerates by hand. The
+  mccabe cap automates that detection without the noise of the
+  other PLR09xx rules the team has explicitly silenced.
+- **`vulture` dead-code detection** — surfaces unused functions
+  and classes in files like `helpers/shard_block.py` (91 lines of
+  orphaned phase-1 implementation), which the audit catalogues by
+  hand in [secondary-findings.md](../secondary-findings.md).
+  Configuring vulture moves this class of finding from review-time
+  discovery to automated enforcement.
+
+Three further configurations are conditional or lower-priority: a
+`[tool.codespell]` block would let the project customize `skip`
+patterns and an `ignore-words-list` if the project vocabulary
+clashes with codespell's typo dictionary as it grows;
+`[tool.ruff.format]` options matter mainly for stable formatter
+behaviour across ruff version bumps (lower priority since
+`uv.lock` pins ruff); a pydocstyle convention is lower priority
+for a project whose canonical spec is markdown rather than
+docstrings.
+
+Compare with `execution-specs/pyproject.toml:372–500` (Comparable
+contrast section below) to see how a spec-comparable repo
+configures these same surfaces.
 
 ## Critique / inventory
 
