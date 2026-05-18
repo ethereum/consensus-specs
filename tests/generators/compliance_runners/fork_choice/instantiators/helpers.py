@@ -445,7 +445,7 @@ def advance_state_to_anchor_epoch(spec, state, anchor_epoch, debug) -> ([], Bran
     signed_blocks = []
 
     genesis_tip = BranchTip(
-        state.copy(), [], [*range(0, len(state.validators))], state.current_justified_checkpoint
+        state.copy(), [], [*range(len(state.validators))], state.current_justified_checkpoint
     )
 
     # Advance the state to the anchor_epoch

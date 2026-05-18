@@ -40,7 +40,7 @@ def _blob_to_kzg_commitment_case_valid_blob(index):
     return (the_test, f"test_blob_to_kzg_commitment_case_valid_blob_{index}")
 
 
-for index in range(0, len(VALID_BLOBS)):
+for index in range(len(VALID_BLOBS)):
     _blob_to_kzg_commitment_case_valid_blob(index)
 
 
@@ -73,5 +73,5 @@ def _blob_to_kzg_commitment_case_invalid_blob(index):
     return (the_test, f"test_blob_to_kzg_commitment_case_invalid_blob_{index}")
 
 
-for index in range(0, len(INVALID_BLOBS)):
+for index in range(len(INVALID_BLOBS)):
     _blob_to_kzg_commitment_case_invalid_blob(index)

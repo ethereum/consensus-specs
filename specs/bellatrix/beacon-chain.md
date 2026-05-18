@@ -328,7 +328,6 @@ def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayloa
     """
     Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
-    ...
 ```
 
 #### `is_valid_block_hash`
@@ -338,7 +337,6 @@ def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPaylo
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
-    ...
 ```
 
 #### `verify_and_notify_new_payload`

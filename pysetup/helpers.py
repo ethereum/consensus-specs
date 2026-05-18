@@ -24,10 +24,11 @@ def collect_prev_forks(fork: str) -> list[str]:
 
 def requires_mypy_type_ignore(value: str) -> bool:
     return (
-        value.startswith("Bitlist")
-        or value.startswith("ByteVector")
-        or (value.startswith("List") and not re.match(r"^List\[\w+,\s*\w+\]$", value))
-        or (value.startswith("Vector") and any(k in value for k in ["ceillog2", "floorlog2"]))
+        value.startswith(("Bitlist", "ByteVector"))
+        or value.startswith("List")
+        and not re.match(r"^List\[\w+,\s*\w+\]$", value)
+        or value.startswith("Vector")
+        and any(k in value for k in ["ceillog2", "floorlog2"])
     )
 
 

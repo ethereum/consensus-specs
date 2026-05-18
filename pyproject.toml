@@ -91,6 +91,7 @@ extend-select = [
   "C4",  # https://docs.astral.sh/ruff/rules/#flake8-comprehensions-c4
   "I",   # https://docs.astral.sh/ruff/rules/#isort-i
   "INP", # https://docs.astral.sh/ruff/rules/#flake8-no-pep420-inp
+  "PIE", # https://docs.astral.sh/ruff/rules/#flake8-pie-pie
   "PL",  # https://docs.astral.sh/ruff/rules/#pylint-pl
   "SIM", # https://docs.astral.sh/ruff/rules/#flake8-simplify-sim
   "UP",  # https://docs.astral.sh/ruff/rules/#pyupgrade-up

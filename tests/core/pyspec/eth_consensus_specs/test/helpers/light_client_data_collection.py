@@ -843,7 +843,7 @@ def run_lc_data_collection_test_multi_fork(spec, phases, state, fork_1, fork_2):
             == genesis_bid
         )
     else:
-        for period in range(0, slot_period):
+        for period in range(slot_period):
             assert (
                 get_light_client_update_for_period(test, period).spec is None
             )  # attested period != signature period

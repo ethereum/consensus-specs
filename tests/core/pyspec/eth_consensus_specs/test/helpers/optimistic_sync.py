@@ -223,4 +223,3 @@ def clean_up_store(mega_store):
     Remove invalidated blocks
     """
     # TODO
-    ...

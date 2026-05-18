@@ -104,7 +104,6 @@ def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadRespo
     """
     Return ``GetPayloadResponse`` object.
     """
-    ...
 ```
 
 ## Beacon chain responsibilities

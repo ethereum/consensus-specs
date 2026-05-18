@@ -480,7 +480,7 @@ def derive_effective_seed(seed: int, solution_index: int) -> int:
 
 def get_mutation_group_suffix(nr_mutations: int, group_cases: tuple[MutationGroupCase, ...]) -> str:
     group_case_ids = [group_case.case_id for group_case in group_cases]
-    full_case_ids = list(range(0, nr_mutations + 1))
+    full_case_ids = list(range(nr_mutations + 1))
     if group_case_ids == full_case_ids:
         return ""
     joined_case_ids = ",".join(str(case_id) for case_id in group_case_ids)

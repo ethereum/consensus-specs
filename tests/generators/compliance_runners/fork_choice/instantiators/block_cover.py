@@ -88,7 +88,7 @@ def _generate_filter_block_tree(
         spec, genesis_state, anchor_epoch, debug
     )
 
-    block_tips = [None for _ in range(0, len(block_epochs))]
+    block_tips = [None for _ in range(len(block_epochs))]
     target_signed_block = None
     target_post_state = None
     # Initialize with the anchor block
@@ -157,7 +157,7 @@ def _generate_filter_block_tree(
         suffix_window_len = spec.SLOTS_PER_EPOCH - JUSTIFYING_SLOT
 
         remaining_items = [b for b in current_blocks if b not in justifying_blocks]
-        remaining_items = remaining_items + [-1 for _ in range(0, empty_slot_count)]
+        remaining_items = remaining_items + [-1 for _ in range(empty_slot_count)]
         rnd.shuffle(remaining_items)
 
         suffix_extra_count = suffix_window_len - len(justifying_blocks)
@@ -240,7 +240,7 @@ def _generate_filter_block_tree(
                 block_tips[block] = BranchTip(
                     state,
                     not_included_attestations,
-                    [*range(0, len(state.validators))],
+                    [*range(len(state.validators))],
                     check_up_state.current_justified_checkpoint,
                 )
 

@@ -866,7 +866,7 @@ def test_multi_epoch_consolidation_chain(spec, state):
     consolidation_request_count = 0
     for i in range(spec.SLOTS_PER_EPOCH):
         consolidation_requests = []
-        for j in range(0, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD):
+        for j in range(spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD):
             # Setup the source validator
             k = i * spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD + j
             source_index = spec.get_active_validator_indices(state, current_epoch)[k]
