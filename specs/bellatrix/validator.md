@@ -70,7 +70,7 @@ def get_pow_block_at_terminal_total_difficulty(
 
 ```python
 def get_terminal_pow_block(pow_chain: Dict[Hash32, PowBlock]) -> Optional[PowBlock]:
-    if TERMINAL_BLOCK_HASH != Hash32():
+    if TERMINAL_BLOCK_HASH != EMPTY_BLOCK_HASH:
         # Terminal block hash override takes precedence over terminal total difficulty
         if TERMINAL_BLOCK_HASH in pow_chain:
             return pow_chain[TERMINAL_BLOCK_HASH]
@@ -152,7 +152,7 @@ def prepare_execution_payload(
 ) -> Optional[PayloadId]:
     if not is_merge_transition_complete(state):
         assert pow_chain is not None
-        is_terminal_block_hash_set = TERMINAL_BLOCK_HASH != Hash32()
+        is_terminal_block_hash_set = TERMINAL_BLOCK_HASH != EMPTY_BLOCK_HASH
         is_activation_epoch_reached = (
             get_current_epoch(state) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
         )

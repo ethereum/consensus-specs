@@ -242,7 +242,7 @@ def validate_merge_block(block: BeaconBlock) -> None:
     and a client software MAY delay a call to ``validate_merge_block``
     until the PoW block(s) become available.
     """
-    if TERMINAL_BLOCK_HASH != Hash32():
+    if TERMINAL_BLOCK_HASH != EMPTY_BLOCK_HASH:
         # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
         assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
         assert block.body.execution_payload.parent_hash == TERMINAL_BLOCK_HASH

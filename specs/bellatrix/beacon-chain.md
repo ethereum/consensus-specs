@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+- [Constants](#constants)
 - [Preset](#preset)
   - [Rewards and penalties](#rewards-and-penalties)
   - [Execution](#execution)
@@ -57,6 +58,12 @@ Including:
 | ------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Transaction`      | `ByteList[MAX_BYTES_PER_TRANSACTION]` | Either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction |
 | `ExecutionAddress` | `Bytes20`                             | Address of account on the execution layer                                                                                                         |
+
+## Constants
+
+| Name               | Value      |
+| ------------------ | ---------- |
+| `EMPTY_BLOCK_HASH` | `Hash32()` |
 
 ## Preset
 
