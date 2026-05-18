@@ -602,9 +602,9 @@ for _ in range(offset): start_root = get_block(start_root).parent_root
 The walk is inclusive of the block at `start_root`, in descending slot order.
 The walk stops as soon as one of the following is true:
 
-* the response contains `min(count, MAX_REQUEST_BLOCKS_DENEB)` blocks
-* the slot of a block in the response is <= min_slot
-* the next ancestor falls outside the epoch range that clients are required to
+- the response contains `min(count, MAX_REQUEST_BLOCKS_DENEB)` blocks
+- the slot of a block in the response is <= min_slot
+- the next ancestor falls outside the epoch range that clients are required to
 serve (see below).
 
 `BeaconBlocksByHead` is primarily used to backfill a contiguous range of blocks
