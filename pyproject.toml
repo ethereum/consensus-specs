@@ -47,7 +47,7 @@ lint = [
   "mdformat-toc==0.5.0",
   "mdformat==1.0.0",
   "mypy==2.1.0",
-  "ruff==0.15.12",
+  "ruff==0.15.13",
 ]
 docs = [
   "mdx-truly-sane-lists==1.3",
