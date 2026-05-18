@@ -52,7 +52,7 @@ domain. Some Phase 0 features will be deprecated, but not removed immediately.
 
 ```python
 @dataclass
-class Seen(object):
+class Seen:
     proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
     aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
     aggregate_data_roots: Dict[Root, Set[Tuple[boolean, ...]]]

@@ -264,9 +264,9 @@ def add_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> PolynomialCoe
     """
     a, b = (a, b) if len(a) >= len(b) else (b, a)
     length_a, length_b = len(a), len(b)
-    return PolynomialCoeff(
-        [a[i] + (b[i] if i < length_b else BLSFieldElement(0)) for i in range(length_a)]
-    )
+    return PolynomialCoeff([
+        a[i] + (b[i] if i < length_b else BLSFieldElement(0)) for i in range(length_a)
+    ])
 ```
 
 #### `multiply_polynomialcoeff`
@@ -496,12 +496,10 @@ def verify_cell_kzg_proof_batch_impl(
     rl = bls.add(rl, rlp)
 
     # Step 5: Check pairing (LL, LR) = pairing (RL, [1])
-    return bls.pairing_check(
-        [
-            [ll, lr],
-            [rl, bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[0]))],
-        ]
-    )
+    return bls.pairing_check([
+        [ll, lr],
+        [rl, bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[0]))],
+    ])
 ```
 
 ### Cell cosets
@@ -687,12 +685,10 @@ def construct_vanishing_polynomial(
     roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_EXT_BLOB)
 
     # Compute polynomial that vanishes at all the missing cells (over the small domain)
-    short_zero_poly = vanishing_polynomialcoeff(
-        [
-            roots_of_unity_reduced[reverse_bits(missing_cell_index, CELLS_PER_EXT_BLOB)]
-            for missing_cell_index in missing_cell_indices
-        ]
-    )
+    short_zero_poly = vanishing_polynomialcoeff([
+        roots_of_unity_reduced[reverse_bits(missing_cell_index, CELLS_PER_EXT_BLOB)]
+        for missing_cell_index in missing_cell_indices
+    ])
 
     # Extend vanishing polynomial to full domain using the closed form of the vanishing polynomial over a coset
     zero_poly_coeff = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_EXT_BLOB

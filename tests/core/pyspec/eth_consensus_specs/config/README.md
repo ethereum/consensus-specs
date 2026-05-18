@@ -10,9 +10,10 @@ For compile-time presets, see
 ## Config usage:
 
 ```python
+from pathlib import Path
+
 from eth_consensus_specs.config import config_util
 from eth_consensus_specs.phase0 import mainnet as spec
-from pathlib import Path
 
 # To load the default configurations
 config_util.load_defaults(

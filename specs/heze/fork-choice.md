@@ -92,7 +92,7 @@ def notify_forkchoice_updated(
 
 ```python
 @dataclass
-class PayloadAttributes(object):
+class PayloadAttributes:
     timestamp: uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
@@ -111,7 +111,7 @@ inclusion list constraints.
 
 ```python
 @dataclass
-class Store(object):
+class Store:
     time: uint64
     genesis_time: uint64
     justified_checkpoint: Checkpoint

@@ -288,7 +288,7 @@ def get_validator_activation_churn_limit(state: BeaconState) -> uint64:
 
 ```python
 @dataclass
-class NewPayloadRequest(object):
+class NewPayloadRequest:
     execution_payload: ExecutionPayload
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
