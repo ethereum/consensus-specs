@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from os import path
+from pathlib import Path
 
 import pytest
 
@@ -32,7 +32,7 @@ def pytest_generate_tests(metafunc):
         default_forks=DEFAULT_FORKS,
         default_presets=DEFAULT_PRESETS,
         enumerate_groups=enumerate_test_groups,
-        base_dir=path.dirname(__file__),
+        base_dir=str(Path(__file__).parent),
     )
 
 

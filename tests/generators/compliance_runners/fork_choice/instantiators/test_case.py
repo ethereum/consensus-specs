@@ -2,7 +2,7 @@ import random
 from collections.abc import Iterable
 from dataclasses import dataclass
 from math import ceil
-from os import path
+from pathlib import Path
 from typing import Any
 
 from ruamel.yaml import YAML
@@ -469,7 +469,7 @@ def get_test_kind(test_type, with_attester_slashings, with_invalid_messages):
 
 
 def _load_yaml(path: str):
-    with open(path) as f:
+    with Path(path).open() as f:
         yaml = YAML(typ="safe")
         return yaml.load(f)
 
@@ -529,7 +529,7 @@ def enumerate_mutation_groups(config_dir, test_name, params) -> Iterable[Mutatio
     with_attester_slashings = params.get("with_attester_slashings", False)
     with_invalid_messages = params.get("with_invalid_messages", False)
 
-    solutions = _load_yaml(path.join(config_dir, instances_path))
+    solutions = _load_yaml(str(Path(config_dir) / instances_path))
     test_kind = get_test_kind(test_type, with_attester_slashings, with_invalid_messages)
 
     seeds = [initial_seed]
@@ -579,7 +579,7 @@ def enumerate_test_dnas(
 
 
 def enumerate_test_groups(config_path, forks, presets, debug, initial_seed: int = None):
-    config_dir = path.dirname(config_path)
+    config_dir = str(Path(config_path).parent)
     test_gen_config = _load_yaml(config_path)
 
     seed_generator = random.Random(initial_seed) if initial_seed is not None else None

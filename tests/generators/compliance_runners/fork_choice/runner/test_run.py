@@ -1,7 +1,6 @@
 import contextlib
 from collections import namedtuple
 from collections.abc import Iterable
-from glob import glob
 from pathlib import Path
 
 import pytest
@@ -19,46 +18,47 @@ from tests.generators.compliance_runners.fork_choice.instantiators.helpers impor
 
 
 def read_yaml(fp):
-    with open(fp) as f:
+    with Path(fp).open() as f:
         yaml = YAML(typ="safe")
         return yaml.load(f.read())
 
 
 def read_ssz_snappy(fp):
-    with open(fp, "rb") as f:
+    with Path(fp).open("rb") as f:
         res = uncompress(f.read())
         return res
 
 
 def get_test_case(spec, td):
     def get_prefix(p):
-        return p[p.rindex("/") + 1 : p.rindex(".")]
+        return p.stem
 
+    td_path = Path(td)
     return (
-        read_yaml(f"{td}/meta.yaml"),
-        spec.BeaconBlock.decode_bytes(read_ssz_snappy(f"{td}/anchor_block.ssz_snappy")),
-        spec.BeaconState.decode_bytes(read_ssz_snappy(f"{td}/anchor_state.ssz_snappy")),
+        read_yaml(td_path / "meta.yaml"),
+        spec.BeaconBlock.decode_bytes(read_ssz_snappy(td_path / "anchor_block.ssz_snappy")),
+        spec.BeaconState.decode_bytes(read_ssz_snappy(td_path / "anchor_state.ssz_snappy")),
         {
             get_prefix(b): spec.SignedBeaconBlock.decode_bytes(read_ssz_snappy(b))
-            for b in glob(f"{td}/block_*.ssz_snappy")
+            for b in td_path.glob("block_*.ssz_snappy")
         },
         {
             get_prefix(b): spec.Attestation.decode_bytes(read_ssz_snappy(b))
-            for b in glob(f"{td}/attestation_*.ssz_snappy")
+            for b in td_path.glob("attestation_*.ssz_snappy")
         },
         {
             get_prefix(b): spec.AttesterSlashing.decode_bytes(read_ssz_snappy(b))
-            for b in glob(f"{td}/attester_slashing_*.ssz_snappy")
+            for b in td_path.glob("attester_slashing_*.ssz_snappy")
         },
         {
             get_prefix(e): spec.SignedExecutionPayloadEnvelope.decode_bytes(read_ssz_snappy(e))
-            for e in glob(f"{td}/execution_payload_envelope_*.ssz_snappy")
+            for e in td_path.glob("execution_payload_envelope_*.ssz_snappy")
         },
         {
             get_prefix(b): spec.PayloadAttestationMessage.decode_bytes(read_ssz_snappy(b))
-            for b in glob(f"{td}/payload_attestation_message_*.ssz_snappy")
+            for b in td_path.glob("payload_attestation_message_*.ssz_snappy")
         },
-        read_yaml(f"{td}/steps.yaml"),
+        read_yaml(td_path / "steps.yaml"),
     )
 
 

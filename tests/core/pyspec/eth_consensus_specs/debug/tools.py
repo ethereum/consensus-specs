@@ -32,7 +32,7 @@ def get_ssz_object_from_ssz_encoded(file_path: Path, typ: SSZObject) -> SSZObjec
     Raises:
         ValueError: If the file extension is not .ssz or .ssz_snappy
     """
-    with open(file_path, "rb") as f:
+    with file_path.open("rb") as f:
         data = f.read()
 
     # Determine if snappy-compressed based on file extension
@@ -67,5 +67,5 @@ def output_ssz_to_file(
     encoded = encode(obj, include_hash_tree_roots)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w") as f:
+    with output_path.open("w") as f:
         yaml.dump(encoded, f)

@@ -93,6 +93,7 @@ extend-select = [
   "INP", # https://docs.astral.sh/ruff/rules/#flake8-no-pep420-inp
   "PIE", # https://docs.astral.sh/ruff/rules/#flake8-pie-pie
   "PL",  # https://docs.astral.sh/ruff/rules/#pylint-pl
+  "PTH", # https://docs.astral.sh/ruff/rules/#flake8-use-pathlib-pth
   "Q",   # https://docs.astral.sh/ruff/rules/#flake8-quotes-q
   "RSE", # https://docs.astral.sh/ruff/rules/#flake8-raise-rse
   "SIM", # https://docs.astral.sh/ruff/rules/#flake8-simplify-sim

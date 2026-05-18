@@ -80,7 +80,7 @@ class MarkdownToSpec:
         """
         Parses the markdown file into document elements.
         """
-        with open(file_name) as source_file:
+        with file_name.open() as source_file:
             document = parse_markdown(source_file.read())
             return iter(document.children)
 
@@ -521,7 +521,7 @@ def _load_kzg_trusted_setups(preset_name: str) -> tuple[list[str], list[str], li
         + "/trusted_setups/trusted_setup_4096.json"
     )
 
-    with open(trusted_setups_file_path) as f:
+    with Path(trusted_setups_file_path).open() as f:
         json_data = json.load(f)
         trusted_setup_G1_monomial = json_data["g1_monomial"]
         trusted_setup_G1_lagrange = json_data["g1_lagrange"]
