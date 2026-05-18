@@ -335,20 +335,31 @@ The selection is `F`, `I`, `INP`, `PL`, `UP`. Spelled out:
 
 The families *not* selected, with their cost:
 
-| Family | What it catches | Where it would have fired |
-|---|---|---|
-| `E`, `W` | pycodestyle errors / warnings | Style and indentation in helpers |
-| `B` | flake8-bugbear | Common bug patterns: mutable default args, function calls in default args, useless expressions |
-| `A` | flake8-builtins | Shadowing `id`, `type`, `list` — a common pattern in spec helpers |
-| `N` | pep8-naming | Helper names that don't match Python convention (relevant given the spec uses Python and the markdown both) |
-| `D` | pydocstyle | Docstring presence and shape — the helpers have almost no docstrings |
-| `C4` | flake8-comprehensions | Unnecessary generators, list-of-set comprehensions |
-| `ARG` | flake8-unused-arguments | Pytest fixtures left in helper signatures |
-| `SIM` | flake8-simplify | `if x: return True else: return False` patterns the helpers contain |
-| `RET` | flake8-return | Inconsistent `return` shapes — a recurring helper smell |
-| `TRY` | tryceratops | Exception-handling errors |
-| `RUF` | ruff-native | Various; `RUF005` (concat) is common |
-| `PT` | flake8-pytest-style | Pytest idioms: marker shape, fixture scope, parametrize style — directly relevant |
+| Family | What it catches | Where it would have fired | Errors today |
+|---|---|---|---:|
+| `E` | pycodestyle errors | Style and indentation in helpers | 1,695 |
+| `W` | pycodestyle warnings | Trailing whitespace, no-newline-at-EOF | 0 (handled by ruff format) |
+| `B` | flake8-bugbear | Common bug patterns: mutable default args, function calls in default args, useless expressions | 321 |
+| `A` | flake8-builtins | Shadowing `id`, `type`, `list` — a common pattern in spec helpers | 90 |
+| `N` | pep8-naming | Helper names that don't match Python convention (relevant given the spec uses Python and the markdown both) | 352 |
+| `D` | pydocstyle | Docstring presence and shape — the helpers have almost no docstrings | **17,344** |
+| `C4` | flake8-comprehensions | Unnecessary generators, list-of-set comprehensions | 141 |
+| `ARG` | flake8-unused-arguments | Pytest fixtures left in helper signatures | 156 |
+| `SIM` | flake8-simplify | `if x: return True else: return False` patterns the helpers contain | 423 |
+| `RET` | flake8-return | Inconsistent `return` shapes — a recurring helper smell | 105 |
+| `TRY` | tryceratops | Exception-handling errors | 138 |
+| `RUF` | ruff-native | Various; `RUF005` (concat) is common | 292 |
+| `PT` | flake8-pytest-style | Pytest idioms: marker shape, fixture scope, parametrize style — directly relevant | 33 |
+| **Total** | | | **~21,090** |
+
+Counts produced by running `ruff check --select <FAMILY> --no-fix`
+against the same scope as `make lint` (`tests/`, `pysetup/`,
+`setup.py`). The `D` family alone — essentially every function and
+class lacking a docstring — is impossible to enable in a single PR;
+it requires either a documentation strategy or widespread per-file
+suppressions. Even the smaller families are in the low-hundreds
+each, so adopting the missing rules is a multi-PR transition
+program rather than a config edit.
 
 In particular, `PT` would have caught the unregistered custom markers
 flagged in §9 — `@pytest.mark.<something>`
