@@ -6,6 +6,9 @@
 
 - [Introduction](#introduction)
 - [Modification in Gloas](#modification-in-gloas)
+  - [Preset](#preset)
+    - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
+      - [`MAX_PARTIAL_DATA_COLUMN_SIDECAR_SIZE`](#max_partial_data_column_sidecar_size)
   - [Containers](#containers)
     - [Modified `PartialDataColumnSidecar`](#modified-partialdatacolumnsidecar)
     - [New `PartialDataColumnGroupID`](#new-partialdatacolumngroupid)
@@ -26,6 +29,22 @@ particular, this document builds on the
 and the [Gloas networking specification](../p2p-interface.md).
 
 ## Modification in Gloas
+
+### Preset
+
+#### Type-specific SSZ bounds
+
+| Name                                   | Value                      | Description                                            |
+| -------------------------------------- | -------------------------- | ------------------------------------------------------ |
+| `MAX_PARTIAL_DATA_COLUMN_SIDECAR_SIZE` | `8585741` bytes (= ~8 MiB) | Type-specific SSZ bound for `PartialDataColumnSidecar` |
+
+##### `MAX_PARTIAL_DATA_COLUMN_SIDECAR_SIZE`
+
+| Field                  | Length                                                                                                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cells_present_bitmap` | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../../deneb/beacon-chain.md#blob) bits                                                                                              |
+| `partial_column`       | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../../deneb/beacon-chain.md#blob) `Cell` items (each [`BYTES_PER_CELL`](../../fulu/polynomial-commitments-sampling.md#cells) bytes) |
+| `kzg_proofs`           | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../../deneb/beacon-chain.md#blob) items                                                                                             |
 
 ### Containers
 
