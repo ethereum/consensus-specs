@@ -72,6 +72,18 @@ ignore_missing_imports = true
 line-length = 100
 namespace-packages = ["scripts"]
 src = ["."]
+extend-exclude = [
+  "tests/core/pyspec/eth_consensus_specs/phase0",
+  "tests/core/pyspec/eth_consensus_specs/altair",
+  "tests/core/pyspec/eth_consensus_specs/bellatrix",
+  "tests/core/pyspec/eth_consensus_specs/capella",
+  "tests/core/pyspec/eth_consensus_specs/deneb",
+  "tests/core/pyspec/eth_consensus_specs/electra",
+  "tests/core/pyspec/eth_consensus_specs/fulu",
+  "tests/core/pyspec/eth_consensus_specs/gloas",
+  "tests/core/pyspec/eth_consensus_specs/heze",
+  "tests/core/pyspec/eth_consensus_specs/eip*",
+]
 
 [tool.ruff.lint]
 extend-select = [
