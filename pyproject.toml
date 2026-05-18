@@ -87,6 +87,7 @@ extend-exclude = [
 
 [tool.ruff.lint]
 extend-select = [
+  "ARG", # https://docs.astral.sh/ruff/rules/#flake8-unused-arguments-arg
   "B",   # https://docs.astral.sh/ruff/rules/#flake8-bugbear-b
   "C4",  # https://docs.astral.sh/ruff/rules/#flake8-comprehensions-c4
   "F",   # https://docs.astral.sh/ruff/rules/#pyflakes-f
@@ -123,6 +124,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "**/*.md" = [
   "F821", # https://docs.astral.sh/ruff/rules/undefined-name/
+]
+"!specs/**" = [
+  "ARG", # https://docs.astral.sh/ruff/rules/#flake8-unused-arguments-arg
 ]
 
 [tool.ruff.lint.isort]

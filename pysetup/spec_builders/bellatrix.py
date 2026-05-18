@@ -25,7 +25,6 @@ def get_pow_block(hash: Bytes32) -> Optional[PowBlock]:
 
 
 def validator_is_connected(validator_index: ValidatorIndex) -> bool:
-    # pylint: disable=unused-argument
     return True"""
 
     @classmethod
@@ -44,7 +43,6 @@ class NoopExecutionEngine(ExecutionEngine):
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
-        # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
     def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPayload) -> bool:

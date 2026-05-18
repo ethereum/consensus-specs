@@ -97,7 +97,6 @@ def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadRespo
     """
     Return ExecutionPayload, uint256, BlobsBundle and execution requests (as Sequence[bytes]) objects.
     """
-    # pylint: disable=unused-argument
 ```
 
 ## Block and sidecar proposal

@@ -38,7 +38,6 @@ TPoint = TypeVar('TPoint')  # For generic function. G1 or G2 point.
     def sundry_functions(cls) -> str:
         return """
 def retrieve_blobs_and_proofs(beacon_block_root: Root) -> Tuple[Sequence[Blob], Sequence[KZGProof]]:
-    # pylint: disable=unused-argument
     return [], []
 """
 
@@ -60,7 +59,6 @@ class NoopExecutionEngine(ExecutionEngine):
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
-        # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
     def is_valid_block_hash(self: ExecutionEngine,

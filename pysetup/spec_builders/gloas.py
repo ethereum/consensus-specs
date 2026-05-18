@@ -53,6 +53,5 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
 def retrieve_column_sidecars_and_kzg_commitments(
     beacon_block_root: Root
 ) -> tuple[Sequence[DataColumnSidecar], Sequence[KZGCommitment]]:
-    # pylint: disable=unused-argument
     return [], []
 """

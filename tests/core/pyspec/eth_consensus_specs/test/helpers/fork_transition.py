@@ -180,7 +180,6 @@ def state_transition_across_slots_with_ignoring_proposers(
 
 
 def get_upgrade_fn(spec, fork):
-    # pylint: disable=unused-argument
     # NOTE: `spec` is used for the `eval` call
     assert fork in POST_FORK_OF.values()
     try:

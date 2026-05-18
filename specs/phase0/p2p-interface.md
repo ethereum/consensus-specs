@@ -259,7 +259,7 @@ class Seen:
 #### `compute_fork_version`
 
 ```python
-def compute_fork_version(epoch: Epoch) -> Version:
+def compute_fork_version(epoch: Epoch) -> Version:  # noqa: ARG001
     """
     Return the fork version at the given ``epoch``.
     """

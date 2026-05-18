@@ -99,7 +99,6 @@ def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadRespo
     """
     Return ExecutionPayload, uint256, BlobsBundle objects.
     """
-    # pylint: disable=unused-argument
 ```
 
 ## Beacon chain responsibilities

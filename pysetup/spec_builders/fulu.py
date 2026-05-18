@@ -51,7 +51,6 @@ class CosetEvals(list):
     def sundry_functions(cls) -> str:
         return """
 def retrieve_column_sidecars(beacon_block_root: Root) -> Sequence[DataColumnSidecar]:
-    # pylint: disable=unused-argument
     return []
 """
 
