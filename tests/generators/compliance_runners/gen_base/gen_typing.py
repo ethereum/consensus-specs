@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     Any,
     NewType,
+    TYPE_CHECKING,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
 
 # Elements: name, out_kind, data
 #

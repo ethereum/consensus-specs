@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from eth_consensus_specs.test import context
 
-from .gen_typing import TestGroup
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
+    from .gen_typing import TestGroup
 
 DEFAULT_OUTPUT_DIR = "comptests"
 

@@ -79,7 +79,7 @@ def load_preset(preset_files: Sequence[Path]) -> dict[str, str]:
             raise Exception(f"duplicate config var(s) in preset files: {', '.join(duplicates)}")
         preset.update(fork_preset)
     assert preset != {}
-    return cast(dict[str, str], parse_config_vars(preset))
+    return cast("dict[str, str]", parse_config_vars(preset))
 
 
 @cache

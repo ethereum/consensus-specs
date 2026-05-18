@@ -2,17 +2,19 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, TYPE_CHECKING, TypedDict
 
 import _pytest
 import pytest
 
 from eth_consensus_specs.test import context
 from eth_consensus_specs.test.helpers.constants import TESTGEN_FORKS
-from eth_consensus_specs.test.helpers.typing import SpecForkName
 from tests.infra.dumper import Dumper
 from tests.infra.manifest import Manifest
-from tests.infra.yield_generator import MultiPhaseResult
+
+if TYPE_CHECKING:
+    from eth_consensus_specs.test.helpers.typing import SpecForkName
+    from tests.infra.yield_generator import MultiPhaseResult
 
 
 class RunnerConfig(TypedDict, total=False):

@@ -191,7 +191,7 @@ class MarkdownToSpec:
         """
         Processes a table and updates the spec with its data.
         """
-        for row in cast(list[TableRow], table.children):
+        for row in cast("list[TableRow]", table.children):
             if len(row.children) < 2:
                 continue
 
@@ -272,7 +272,7 @@ class MarkdownToSpec:
         """
         Extracts the name, value, and description fields from a table row element.
         """
-        cells = cast(list[TableCell], row.children)
+        cells = cast("list[TableCell]", row.children)
         name_cell = cells[0]
         name = name_cell.children[0].children
 
@@ -357,7 +357,7 @@ class MarkdownToSpec:
         """
 
         # Save the table header, used for field names (skip last item: description)
-        header_row = cast(TableRow, table.children[0])
+        header_row = cast("TableRow", table.children[0])
         list_of_records_spec_header = [
             re.sub(r"\s+", "_", value.children[0].children.upper())
             for value in header_row.children[:-1]
