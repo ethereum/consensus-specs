@@ -13,23 +13,11 @@ The items are grouped by the area of the codebase they touch.
 
 ## Standalone scripts (`scripts/`)
 
-Six free-standing Python scripts live under `scripts/`. The
-build-orchestration deep-dive notes that each re-implements its own
-argparse and that two are dead. Beyond the per-file smells listed
-below, most of these scripts could be replaced wholesale by
-existing tooling — pre-commit hooks, AST-based validators, or an
-mkdocs plugin entry point. Per-script substitution analysis:
-
-| Script | Replaceable by | Notes |
-|---|---|---|
-| `check_fork_comments.py` | `pre-commit` hook + `markdown-it-py` AST | The regex-against-lines approach with no code-fence awareness is a textbook case for a markdown-AST-based lint rule. |
-| `check_markdown_headings.py` | Same as above | Already shares the heading-parser issue with `pysetup/md_to_spec.py`; both could share an AST walker. |
-| `check_value_annotations.py` | `ast.parse(...)`-based validator | The `eval()` sandbox attempt is well-known not-actually-sandbox; `ast.parse(mode="eval")` plus a `NodeVisitor` is the correct shape. |
-| `fix_trailing_whitespace.py` | `pre-commit` hook (`trailing-whitespace`) | Already noted below — the pre-commit hook handles CRLF correctly, the script doesn't. |
-| `gen_kzg_trusted_setups.py` | Dead per build-orchestration | Just delete. KZG library distributions ship trusted setups directly. |
-| `gen_spec_indices.py` | `mkdocs-gen-files` plugin entry-point | Already uses `mkdocs_gen_files`; could be an `mkdocs.yml` plugin entry rather than a separately-invoked script. |
-
-The file-specific smells inside the scripts themselves follow.
+The build-orchestration deep-dive notes that each script
+re-implements its own argparse and that two are dead, and includes
+a per-script substitution-analysis table — what each script
+*should* be instead. The items below are file-specific smells
+inside the scripts themselves.
 
 ### `check_fork_comments.py` walks the entire repo on no-args invocation
 

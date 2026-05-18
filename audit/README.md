@@ -82,12 +82,14 @@ or chapter where it applies.
 
 ## How to read this guide
 
-The twelve topics below are the high-impact items, grouped by theme.
-Each topic has its own deep-dive at `deep-dives/<topic>.md` covering
-the shape of the problem, line-cited evidence, named anti-patterns,
-contrast with how the comparable repos handle the concern, scope of
-impact, and a fix sketch (with explicit pytest-plugin angles where
-relevant).
+The thirteen topics below are the high-impact items. Twelve are
+grouped into four themes of code-level tech debt; build
+orchestration is treated separately because it's about tooling
+evolution rather than code-level smells. Each topic has its own
+deep-dive at `deep-dives/<topic>.md` covering the shape of the
+problem, line-cited evidence, named anti-patterns, contrast with
+how the comparable repos handle the concern, scope of impact, and
+a fix sketch (with explicit pytest-plugin angles where relevant).
 
 The themes are ordered by *foundational dependence*: items in earlier
 themes are upstream of items in later ones. Within a theme, items are
@@ -263,26 +265,7 @@ footprint.
 
 ---
 
-## Theme 4: Build, CI, and orchestration
-
-### Build orchestration is procedural and fragmented
-
-The project glues its developer pipelines together with a 332-line
-hand-written `Makefile`, six standalone Python scripts, the `pysetup`
-markdown extractor, and seven duplicative GitHub Actions workflows —
-with `uv` underneath all of it but no `[tool.uv]` section in
-`pyproject.toml`. There is no
-`Justfile`, no functioning `tox.ini`, no composite GitHub Action,
-and no declarative recipe layer. The `Makefile`'s `test:` target
-sets fifteen `MAYBE_*` variables before invoking pytest; the
-`lint:` target conflates validation with mutation; `make clean`
-unconditionally runs `git clean -fdx`.
-
-→ [deep-dives/build-orchestration.md](deep-dives/build-orchestration.md)
-
----
-
-## Theme 5: Test infrastructure quality
+## Theme 4: Test infrastructure quality
 
 These are smaller-surface issues but each affects an important part
 of the test pipeline.
@@ -353,6 +336,43 @@ markdown documents while preserving the on-disk vector layout
 clients already consume.
 
 → [deep-dives/vector-formats.md](deep-dives/vector-formats.md)
+
+---
+
+## Build orchestration: an evolution sketch
+
+Not strictly code-level tech debt — a question of tooling maturity
+and how the team's build / CI infrastructure could evolve. Treated
+in its own section because the *recommendation shape* is different
+from the themes above: the deep-dive doesn't say "this is broken,
+fix it"; it says "here are two tracks of evolution, pick the level
+of ambition that fits".
+
+### Build orchestration is procedural and fragmented
+
+The project runs its developer pipelines through a 332-line
+hand-written `Makefile` wrapping standalone Python scripts under
+`scripts/`, the `pysetup` markdown extractor, and seven GitHub
+Actions workflows. `uv` is the runtime underneath most Make
+recipes; its version is pinned for CI via a `vars.UV_VERSION`
+GitHub repo variable, but `pyproject.toml` has no `[tool.uv]`
+section — no `required-version` for a contributor's local
+install to be checked against, no workspace declaration, no
+`[dependency-groups]` (PEP 735). The `setup-python` + `setup-uv`
+bootstrap pair is repeated across five workflow files (kept in
+SHA-sync by Dependabot/Renovate today); two entry points into
+the spec generator coexist by design (the contributor path runs
+`make _pyspec` which installs dev dependencies; the release path
+skips that for a clean build). Adding a check, changing a tool, upgrading a dependency,
+or wiring a new fork into CI touches some combination of
+several layers with no shared convention for which layer owns
+which concern. The deep-dive frames the fix as a two-track
+choice: **Track A** tightens what already exists (no
+orchestrator change); **Track B** replaces the Makefile with a
+Justfile in the shape `execution-specs`
+migrated to. Either is a legitimate stopping point.
+
+→ [deep-dives/build-orchestration.md](deep-dives/build-orchestration.md)
 
 ---
 
