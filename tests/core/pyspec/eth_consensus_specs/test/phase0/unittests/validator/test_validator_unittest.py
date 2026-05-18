@@ -243,7 +243,8 @@ def test_get_eth1_vote_tie(spec, state):
 
     period_start = spec.voting_period_start_time(state)
     votes_length = spec.get_current_epoch(state) % spec.EPOCHS_PER_ETH1_VOTING_PERIOD
-    assert votes_length > 0 and votes_length % 2 == 0
+    assert votes_length > 0
+    assert votes_length % 2 == 0
 
     state.eth1_data_votes = ()
     block_1 = spec.Eth1Block(
@@ -285,7 +286,8 @@ def test_get_eth1_vote_chain_in_past(spec, state):
 
     period_start = spec.voting_period_start_time(state)
     votes_length = spec.get_current_epoch(state) % spec.EPOCHS_PER_ETH1_VOTING_PERIOD
-    assert votes_length > 0 and votes_length % 2 == 0
+    assert votes_length > 0
+    assert votes_length % 2 == 0
 
     state.eth1_data_votes = ()
     block_1 = spec.Eth1Block(

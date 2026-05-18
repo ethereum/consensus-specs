@@ -110,7 +110,8 @@ def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
         validator.withdrawal_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
     )
     is_correct_source_address = validator.withdrawal_credentials[12:] == address
-    assert is_execution_address and is_correct_source_address
+    assert is_execution_address
+    assert is_correct_source_address
 
 
 @with_all_phases_from_to(ELECTRA, GLOAS)
@@ -143,7 +144,8 @@ def test_basic_btec_before_el_withdrawal_request(spec, state):
         validator.withdrawal_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
     )
     is_correct_source_address = validator.withdrawal_credentials[12:] == address
-    assert is_execution_address and is_correct_source_address
+    assert is_execution_address
+    assert is_correct_source_address
 
     # block_2 contains an EL-Exit operation of the given validator
     validator_pubkey = state.validators[validator_index].pubkey

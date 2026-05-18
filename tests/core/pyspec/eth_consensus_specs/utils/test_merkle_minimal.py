@@ -69,7 +69,7 @@ cases = [
 
 
 @pytest.mark.parametrize(
-    "count,limit,value",
+    ("count", "limit", "value"),
     cases,
 )
 def test_merkleize_chunks_and_get_merkle_root(count, limit, value):

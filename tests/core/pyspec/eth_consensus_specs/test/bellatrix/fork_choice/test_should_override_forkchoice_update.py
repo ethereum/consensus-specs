@@ -178,7 +178,9 @@ def test_should_override_forkchoice_update__true(spec, state):
     parent_slot_ok = parent_block.slot + 1 == head_block.slot
     proposing_on_time = spec.is_proposing_on_time(store)
     assert proposing_on_time
-    assert parent_slot_ok and proposal_slot == current_slot and proposing_on_time
+    assert parent_slot_ok
+    assert proposal_slot == current_slot
+    assert proposing_on_time
 
     assert spec.is_head_weak(store, head_root)
     assert spec.is_parent_strong(store, head_root)

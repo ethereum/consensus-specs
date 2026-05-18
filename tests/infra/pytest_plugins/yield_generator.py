@@ -6,7 +6,6 @@ from typing import Any, TypedDict
 
 import _pytest
 import pytest
-from pytest import StashKey, TestReport
 
 from eth_consensus_specs.test import context
 from eth_consensus_specs.test.helpers.constants import TESTGEN_FORKS
@@ -186,7 +185,7 @@ class SpecTestFunction(pytest.Function):
 
 
 class YieldGeneratorPlugin:
-    phase_report_key: StashKey[dict[str, TestReport]] = StashKey()
+    phase_report_key: pytest.StashKey[dict[str, pytest.TestReport]] = pytest.StashKey()
 
     def __init__(self, config):
         self.config = config
