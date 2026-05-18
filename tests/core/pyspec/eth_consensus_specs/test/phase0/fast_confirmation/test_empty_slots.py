@@ -453,7 +453,7 @@ def test_fcr_slot_head_tracking_during_empty_slots(spec, state):
     3. Verify slot head variables update correctly each slot
     """
     fcr = FCRTest(spec, seed=1)
-    store, fcr_store = fcr.initialize(state)
+    _store, fcr_store = fcr.initialize(state)
 
     # Build a few blocks
     fcr.run_slots_with_blocks_and_fast_confirmation(number_of_slots=3, participation_rate=100)

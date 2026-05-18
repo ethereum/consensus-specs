@@ -578,7 +578,7 @@ def enumerate_test_dnas(
         yield case_name, test_dna
 
 
-def enumerate_test_groups(config_path, forks, presets, debug, initial_seed: int = None):
+def enumerate_test_groups(config_path, forks, presets, debug, initial_seed: int | None = None):
     config_dir = str(Path(config_path).parent)
     test_gen_config = _load_yaml(config_path)
 

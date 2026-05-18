@@ -380,7 +380,7 @@ class MarkdownToSpec:
         for record in records:
             lines.append("    frozendict({")
             for key, value in record.items():
-                lines.append(f'        "{str(key)}": {str(value)},')
+                lines.append(f'        "{key!s}": {value!s},')
             lines.append("    }),")
         lines.append(")")
         return "\n".join(lines)

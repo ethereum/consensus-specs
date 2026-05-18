@@ -32,7 +32,7 @@ def encode_hex_list(a):
     return [encode_hex(x) for x in a]
 
 
-def int_to_hex(n: int, byte_length: int = None) -> str:
+def int_to_hex(n: int, byte_length: int | None = None) -> str:
     byte_value = int_to_big_endian(n)
     if byte_length:
         byte_value = byte_value.rjust(byte_length, b"\x00")

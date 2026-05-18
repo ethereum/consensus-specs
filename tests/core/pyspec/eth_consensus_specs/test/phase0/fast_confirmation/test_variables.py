@@ -336,7 +336,7 @@ def test_observed_justified_stalls_under_low_participation(spec, state):
     - previous_epoch_observed stays at genesis
     """
     fcr = FCRTest(spec, seed=1)
-    store, fcr_store = fcr.initialize(state)
+    _store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
     genesis_epoch = fcr_store.current_epoch_observed_justified_checkpoint.epoch
@@ -376,7 +376,7 @@ def test_slot_head_variables_updated_every_slot(spec, state):
         current_slot_head = get_head(store)
     """
     fcr = FCRTest(spec, seed=1)
-    store, fcr_store = fcr.initialize(state)
+    _store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 

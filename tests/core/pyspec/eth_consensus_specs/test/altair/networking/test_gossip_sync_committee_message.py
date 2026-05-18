@@ -13,7 +13,7 @@ def get_sync_committee_member(spec, state):
     for validator_index in range(len(state.validators)):
         subnets = spec.compute_subnets_for_sync_committee(state, validator_index)
         if len(subnets) > 0:
-            return validator_index, list(subnets)[0]
+            return validator_index, next(iter(subnets))
     raise Exception("No sync committee member found")
 
 

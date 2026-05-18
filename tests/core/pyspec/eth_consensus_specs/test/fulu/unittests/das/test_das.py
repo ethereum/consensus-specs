@@ -100,7 +100,7 @@ def test_is_data_available_peerdas(spec, state):
 @spec_state_test
 def test_get_data_column_sidecars(spec, state):
     rng = random.Random(1234)
-    _, blobs, _, signed_block, sidecars, kzg_commitments = get_block_with_blob_and_sidecars(
+    _, blobs, _, signed_block, sidecars, _kzg_commitments = get_block_with_blob_and_sidecars(
         spec, state, rng=rng, blob_count=2
     )
 

@@ -49,15 +49,11 @@ class PayloadStatusV1:
 
 
 class MegaStore:
-    spec = None
-    fc_store = None
-    opt_store = None
-    block_payload_statuses: dict[Bytes32, PayloadStatusV1] = {}
-
     def __init__(self, spec, fc_store, opt_store):
         self.spec = spec
         self.fc_store = fc_store
         self.opt_store = opt_store
+        self.block_payload_statuses: dict[Bytes32, PayloadStatusV1] = {}
 
 
 def get_optimistic_store(spec, anchor_state, anchor_block):

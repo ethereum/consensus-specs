@@ -183,10 +183,10 @@ class FCRTest:
         self,
         parent_root=None,
         release_att_pool=True,
-        graffiti: str = None,
+        graffiti: str | None = None,
         include_atts=True,
         attestations=None,
-        include_att_fn: Callable[[object, object], bool] = None,
+        include_att_fn: Callable[[object, object], bool] | None = None,
     ):
         if parent_root is None:
             parent_root = self.head()
@@ -373,7 +373,10 @@ class FCRTest:
         return set(slot_committee[:participants_count])
 
     def apply_attester_slashing(
-        self, slashing_percentage: int = None, slashing_indices: list[int] = None, slot=None
+        self,
+        slashing_percentage: int | None = None,
+        slashing_indices: list[int] | None = None,
+        slot=None,
     ) -> list[object]:
         if slot is None:
             slot = self.current_slot()
