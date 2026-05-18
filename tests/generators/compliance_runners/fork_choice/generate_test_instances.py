@@ -37,7 +37,7 @@ def check_uniqueness(solutions: Collection[dict]):
             if count >= 1:
                 print(f"{count} solutions: {sol}")
 
-        raise AssertionError()
+        raise AssertionError
 
 
 def solve_sm_links(
@@ -345,7 +345,7 @@ if __name__ == "__main__":
                     else:
                         print("todo", model, mod_params)
                 else:
-                    raise AssertionError()
+                    raise AssertionError
             results = [merge(*sol) for sol in product(*model_solutions)]
             solutions.extend(results)
 

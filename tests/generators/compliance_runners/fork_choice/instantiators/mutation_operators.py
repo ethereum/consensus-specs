@@ -66,7 +66,7 @@ class MutationOps:
         elif op_kind == "multi_route":
             return self.apply_multi_route(tv, *params)
         else:
-            raise AssertionError()
+            raise AssertionError
 
     def rand_shift(self, time: int, rnd: random.Random) -> int:
         assert time >= self.start_time
@@ -125,7 +125,7 @@ class MutationOps:
             evt_time = int(tv[idx][0])
             params = idx, self.rand_multi_route_shifts(evt_time, rnd)
         else:
-            raise AssertionError()
+            raise AssertionError
         return op_kind, *params
 
     def rand_mutations(self, tv, num, rnd: random.Random):

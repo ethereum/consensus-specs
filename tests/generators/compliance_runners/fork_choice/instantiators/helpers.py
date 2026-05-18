@@ -520,7 +520,7 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
         elif event_kind == "payload_attestation":
             return data.data.slot
         else:
-            raise AssertionError()
+            raise AssertionError
 
     messages = (
         [("attestation", m.payload, m.valid) for m in test_data.atts]

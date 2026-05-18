@@ -185,9 +185,9 @@ def run_test(test_info):
                     target_root = spec.Root(decode_hex(value["block_root"]))
                     assert list(getattr(store, check)[target_root]) == value["votes"]
                 else:
-                    raise AssertionError()
+                    raise AssertionError
         else:
-            raise AssertionError()
+            raise AssertionError
 
 
 def gather_tests(tests_dir) -> Iterable[ComplianceTestInfo]:

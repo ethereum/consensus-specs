@@ -94,6 +94,7 @@ extend-select = [
   "PIE", # https://docs.astral.sh/ruff/rules/#flake8-pie-pie
   "PL",  # https://docs.astral.sh/ruff/rules/#pylint-pl
   "Q",   # https://docs.astral.sh/ruff/rules/#flake8-quotes-q
+  "RSE", # https://docs.astral.sh/ruff/rules/#flake8-raise-rse
   "SIM", # https://docs.astral.sh/ruff/rules/#flake8-simplify-sim
   "UP",  # https://docs.astral.sh/ruff/rules/#pyupgrade-up
   "W",   # https://docs.astral.sh/ruff/rules/#pycodestyle-e-w

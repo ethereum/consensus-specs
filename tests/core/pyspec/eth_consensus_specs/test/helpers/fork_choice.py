@@ -381,11 +381,11 @@ def add_block(
                 run_on_block(spec, store, signed_block, valid=True)
             except (AssertionError, BlockNotFoundException) as e:
                 if isinstance(e, BlockNotFoundException) and not block_not_found:
-                    raise AssertionError() from e
+                    raise AssertionError from e
                 _append_step(valid=False)
                 return
             else:
-                raise AssertionError()
+                raise AssertionError
     else:
         run_on_block(spec, store, signed_block, valid=True)
         _append_step()
