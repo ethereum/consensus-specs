@@ -97,7 +97,6 @@ ignore = [
   "D",    # https://docs.astral.sh/ruff/rules/#pydocstyle-d
   "EM",   # https://docs.astral.sh/ruff/rules/#flake8-errmsg-em
   "ERA",  # https://docs.astral.sh/ruff/rules/#eradicate-era
-  "EXE",  # https://docs.astral.sh/ruff/rules/#flake8-executable-exe
   "FBT",  # https://docs.astral.sh/ruff/rules/#flake8-boolean-trap-fbt
   "FIX",  # https://docs.astral.sh/ruff/rules/#flake8-fixme-fix
   "FLY",  # https://docs.astral.sh/ruff/rules/#flynt-fly
