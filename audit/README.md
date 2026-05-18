@@ -389,16 +389,26 @@ code itself**.
 
 Strict typing is named in the principles above as a force
 multiplier, but the typing critique itself is distributed across
-five deep-dives and many secondary findings. The audit finds
-typing-shaped failure modes:
+five deep-dives and many secondary findings. The empirical scale
+of the gap, by the project's own `disallow_untyped_defs = true`
+standard: running mypy across the full Python tree (with
+`--explicit-package-bases` to bypass the package-layout discovery
+issue) surfaces **~877 type errors across ~98 files** — 503 in
+`tests/core/pyspec/.../test/helpers/`, 302 in `tests/infra/`, 59
+in `pysetup/`, 13 in `scripts/`. None reach `make lint` today
+because the Makefile's `MYPY_SCOPE` checks only six generated
+spec files. The audit's typing-shaped failure modes:
 
 - **In the config:**
   [static-analysis-config.md](deep-dives/static-analysis-config.md)
-  — `ignore_missing_imports = true` poisons the four strict
-  directives above it; the directives still fire, but on a typing
-  surface that has been mostly redacted to `Any` upstream by
-  every untyped third-party import. Plus a minimal ruff selection
-  and absent stubs.
+  — the `MYPY_SCOPE` narrowness above is the primary mechanism;
+  `ignore_missing_imports = true` is the secondary one (it
+  weakens the directives within the six-file slice that *is*
+  checked, because those files import heavily from libraries
+  without `py.typed` markers). The self-referential-package-layout
+  blocks mypy from even traversing the helpers without
+  `--explicit-package-bases` as a workaround. Plus a minimal ruff
+  selection and absent stubs.
 
 - **In the helper layer:**
   [helper-layer.md](deep-dives/helper-layer.md) — `SpecForkName =

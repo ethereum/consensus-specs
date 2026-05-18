@@ -107,7 +107,25 @@ Several of the points below show up across other guides as separate symptoms. Th
   name. The same source file becomes two nodes in any such graph;
   cross-references resolve under one name and miss under the other.
   Symbols queried under one dotted name appear to have no callers
-  even when callers exist under the other.
+  even when callers exist under the other. mypy fails outright
+  rather than producing a degraded result — running it on any
+  subtree that contains both reachable names hits:
+
+  ```
+  $ uv run mypy tests/core/pyspec/eth_consensus_specs/test/helpers/
+  tests/core/pyspec/eth_consensus_specs/utils/ssz/ssz_impl.py: error: Source file found twice under different module names: "eth_consensus_specs.test.helpers.churn" and "tests.core.pyspec.eth_consensus_specs.test.helpers.churn"
+  ...
+  Found 1 error in 1 file (errors prevented further checking)
+  ```
+
+  `--explicit-package-bases` is the documented workaround, but
+  the underlying issue is structural: until the package source
+  moves out of `tests/`, any attempt to type-check the helpers
+  needs a flag to tell mypy which of the two dotted names to
+  prefer. The typing-pipeline tax sits on top of every other tax
+  here. See
+  [static-analysis-config.md](static-analysis-config.md) for the
+  ~877-error backlog this blocks from being measured.
 - **Refactoring is doubled.** Renaming a helper requires updating
   callers under both import paths, or accepting that one breaks. The
   conftest dual-mutation is itself a small, ongoing example.
