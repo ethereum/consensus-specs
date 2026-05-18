@@ -357,3 +357,54 @@ def test_process_parent_execution_payload__builder_deposit_after_pending_validat
     assert second.pubkey == deposit_request_2.pubkey
     assert second.withdrawal_credentials == deposit_request_2.withdrawal_credentials
     assert second.amount == deposit_request_2.amount
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_invalid_too_many_deposit_requests(spec, state):
+    requests = spec.ExecutionRequests(
+        deposits=spec.ProgressiveList[spec.DepositRequest](
+            [spec.DepositRequest()] * (spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD + 1)
+        ),
+    )
+    _commit_parent_requests(spec, state, requests)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.parent_execution_requests = requests
+
+    spec.process_slots(state, block.slot)
+    yield from run_parent_execution_payload_processing(spec, state, block, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_invalid_too_many_withdrawal_requests(spec, state):
+    requests = spec.ExecutionRequests(
+        withdrawals=spec.ProgressiveList[spec.WithdrawalRequest](
+            [spec.WithdrawalRequest()] * (spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD + 1)
+        ),
+    )
+    _commit_parent_requests(spec, state, requests)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.parent_execution_requests = requests
+
+    spec.process_slots(state, block.slot)
+    yield from run_parent_execution_payload_processing(spec, state, block, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_invalid_too_many_consolidation_requests(spec, state):
+    requests = spec.ExecutionRequests(
+        consolidations=spec.ProgressiveList[spec.ConsolidationRequest](
+            [spec.ConsolidationRequest()] * (spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD + 1)
+        ),
+    )
+    _commit_parent_requests(spec, state, requests)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.parent_execution_requests = requests
+
+    spec.process_slots(state, block.slot)
+    yield from run_parent_execution_payload_processing(spec, state, block, valid=False)

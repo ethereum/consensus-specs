@@ -262,6 +262,12 @@ And instead the following validations are set in place with the alias
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in the consensus layer -- i.e. validate that
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
+- _[REJECT]_ The counts of `block.body.parent_execution_requests` are within
+  their respective limits -- i.e. validate that
+  `len(block.body.parent_execution_requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD`,
+  `len(block.body.parent_execution_requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`,
+  and
+  `len(block.body.parent_execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`.
 - _[IGNORE]_ The block's parent execution payload (defined by
   `bid.parent_block_hash`) has been seen (via gossip or non-gossip sources) (a
   client MAY queue blocks for processing once the parent payload is retrieved).
@@ -302,6 +308,12 @@ obtained from the `state.latest_execution_payload_bid`)
 - _[REJECT]_ `payload.block_hash == bid.block_hash`
 - _[REJECT]_
   `hash_tree_root(envelope.execution_requests) == bid.execution_requests_root`
+- _[REJECT]_ The counts of `execution_requests` are within their respective
+  limits -- i.e. validate that
+  `len(execution_requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD`,
+  `len(execution_requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`,
+  and
+  `len(execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`.
 - _[REJECT]_ `signed_execution_payload_envelope.signature` is valid as verified
   by `verify_execution_payload_envelope_signature`.
 
