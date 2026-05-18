@@ -80,6 +80,7 @@ extend-select = [
   "PL",  # https://docs.astral.sh/ruff/rules/#pylint-pl
   "SIM", # https://docs.astral.sh/ruff/rules/#flake8-simplify-sim
   "UP",  # https://docs.astral.sh/ruff/rules/#pyupgrade-up
+  "W",   # https://docs.astral.sh/ruff/rules/#pycodestyle-e-w
 ]
 ignore = [
   "E741",    # https://docs.astral.sh/ruff/rules/ambiguous-variable-name/
