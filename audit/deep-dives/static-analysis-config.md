@@ -39,8 +39,7 @@ the test_run runners need redesign. The pytest config has no
 `markers`, no `--strict-markers`, no `addopts`. The dependencies are
 pinned to exact versions in three flat extras groups; there is no
 `[dependency-groups]` (PEP 735) and no `[tool.uv]` block despite the
-project shipping `uv.lock`. Renovate, finally, explicitly disables
-Python upgrades on a Python project (`renovate.json:8–11`).
+project shipping `uv.lock`.
 
 The effect is a configuration file whose stated discipline and
 actual discipline disagree by two orders of magnitude. Fowler calls
@@ -492,7 +491,7 @@ Specific issues:
   miscategorised. (It also appears in `[build-system]` requires at
   line 2, which is correct.)
 
-### `[tool.uv]` and Renovate — absence and contradiction
+### `[tool.uv]` block absent
 
 - **No `[tool.uv]` block.** The repo ships `uv.lock` (visible at the
   repo root in directory listings) but the toml has no `[tool.uv]`,
@@ -503,22 +502,6 @@ Specific issues:
   workspace, git source). consensus-specs has the lockfile but not
   the policy that produces it. A maintainer running a fresh `uv sync`
   has no `required-version` floor and no documented workspace shape.
-- **Renovate disables Python upgrades — `renovate.json:7–10`.**
-
-  ```json
-  {
-    "matchDepNames": ["python"],
-    "enabled": false
-  }
-  ```
-
-  …on a project where `[project.requires-python]` is `>=3.11, <3.15`
-  (line 11) and the dependencies are all `==`-pinned. The two
-  decisions multiply: the toolchain version range is wide, the
-  upgrade machinery for that range is off, and the dependency
-  versions never move because Renovate is the only thing that would
-  move them and it's been told to leave Python alone. Hunt & Thomas
-  Tip 11 (DRY): the policy is split between two files that disagree.
 - **`.gitignore` per-fork ignores —
   `consensus-specs/.gitignore:18–27`.** Tangential to static analysis
   but worth a mention in the same survey: every fork directory is
@@ -840,9 +823,15 @@ the same number. The work splits into orthogonal tracks:
   `setuptools` out of `dependencies`. Replace `==` pinning with
   ranges for runtime dependencies; keep pinning in `lint`/`test`
   groups if developers want it (acceptable there).
-- **uv + Renovate track.** Add `[tool.uv]` with `required-version`.
-  Re-enable Renovate's Python rule and let it propose minor-version
-  bumps; review and accept.
+- **uv track.** Add `[tool.uv]` with `required-version` (so a
+  contributor's local `uv` is constrained the same way CI's is, per
+  the Type-checking section above); declare workspace shape and
+  `[tool.uv.sources]` if any. The Renovate `python` exclusion at
+  `renovate.json:8–11` is intentional (PyO3 dependencies in
+  `eth-utils` and `py-arkworks-bls12381` require per-version
+  rebuilds, so auto-bumping Python would break the build); a brief
+  comment in `renovate.json` explaining the exclusion would help
+  future maintainers.
 
 These tracks are independent. The Mypy track is the largest in
 absolute work; the Ruff track delivers the highest signal density;

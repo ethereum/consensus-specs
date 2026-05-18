@@ -1080,18 +1080,24 @@ items below are project-management concerns.
 
 `pyproject.toml:13–58` pins every version with `==` (e.g.
 `eth-remerkleable==0.1.30`, `setuptools==82.0.1`, `pytest==9.0.3`).
-Combined with `renovate.json:9–10` (which disables Python updates),
-the project has opted out of automated dependency management. Hunt
-& Thomas Tip 38 — the pinning prevents `uv` or `pip` from resolving
-upgrades that would otherwise be safe. Ranges (`>=8,<9`) would let
-resolvers do their job while keeping major versions controlled.
+Hunt & Thomas Tip 38 — the pinning prevents `uv` or `pip` from
+resolving upgrades that would otherwise be safe. Ranges (`>=8,<9`)
+would let resolvers do their job while keeping major versions
+controlled. Renovate (`renovate.json`) actively bumps these pinned
+versions on a weekly schedule, so the pins do move; but every
+downstream consumer of `eth-consensus-specs` inherits the
+tight-pin floor at install time.
 
-### Renovate disables Python dependency updates for a Python project
+### `renovate.json`'s Python-exclusion is undocumented
 
-`renovate.json:9–10` sets `"matchDepNames": ["python"], "enabled":
-false`, opting out of automated Python dependency management. The
-rationale isn't documented; combined with `==` pinning everywhere,
-it leaves the project to hand-bump dependencies indefinitely.
+`renovate.json:8–11` sets `"matchDepNames": ["python"], "enabled":
+false`, opting Python out of Renovate's auto-bumps. The exclusion
+is deliberate — PyO3-based dependencies (`eth-utils`,
+`py-arkworks-bls12381`) require per-version rebuilds, so an
+auto-bumped Python release breaks the build until those packages
+publish matching wheels — but the file itself doesn't say so. A
+two-line comment naming the constraint would save a future
+maintainer the research.
 
 ### `.gitignore` Shotgun Surgery for generated phases
 
@@ -1401,9 +1407,9 @@ Most items above are local cleanups with single-PR scope:
 - **Project metadata** items (`renovate.json`, `==`-pinning,
   dynamic version, `.gitattributes`, `.editorconfig`,
   `.pre-commit-config.yaml`) are dependency-management and
-  repo-hygiene decisions. The `==`-pinning + Renovate disable
-  combination should probably be revisited together rather than
-  separately.
+  repo-hygiene decisions. The `==`-pinning shape is the
+  load-bearing item here; `renovate.json`'s undocumented Python
+  exclusion is a small documentation-comment fix.
 - **Repo governance** items (`labeler.yml`, `release-drafter.yml`,
   `mkdocs.yml`, missing `ISSUE_TEMPLATE/`) are governance hygiene;
   the `labeler.yml` / `release-drafter.yml` mismatch is the most
