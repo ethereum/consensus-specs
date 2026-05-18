@@ -1,0 +1,1111 @@
+import random
+
+from eth_consensus_specs.test.helpers.attester_slashings import (
+    get_valid_attester_slashing_by_indices,
+)
+from eth_consensus_specs.test.helpers.execution_payload import (
+    build_signed_execution_payload_envelope,
+)
+from eth_consensus_specs.test.helpers.fork_choice import (
+    get_genesis_forkchoice_store_and_block,
+)
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
+from eth_consensus_specs.test.helpers.state import (
+    next_slot,
+    transition_to,
+)
+from eth_consensus_specs.utils import bls
+
+from .debug_helpers import (
+    attesters_in_block,
+    print_block_tree,
+    print_epoch,
+)
+from .helpers import (
+    advance_branch_to_next_epoch,
+    advance_state_to_anchor_epoch,
+    attest_to_slot,
+    BranchTip,
+    build_random_payload_attestation_messages,
+    FCTestData,
+    is_attestation_eligible_for_block,
+    produce_block,
+    ProtocolMessage,
+)
+
+MAX_JUSTIFICATION_RATE = 99
+MIN_JUSTIFICATION_RATE = 91
+
+MAX_UNDERJUSTIFICATION_RATE = 65
+MIN_UNDERJUSTIFICATION_RATE = 55
+
+EMPTY_SLOTS_RATE = 3
+MAX_TIPS_TO_ATTEST = 2
+
+OFF_CHAIN_ATTESTATION_RATE = 10
+ON_CHAIN_ATTESTATION_RATE = 20
+ATTEST_TO_PARENT_RATE = 10
+IGNORE_IN_BLOCK_ATTESTATION_RATE = 5
+COPY_IN_BLOCK_ATTESTATION_RATE = 10
+
+MAX_ATTESTER_SLASHINGS = 8
+ATTESTER_SLASHINGS_RATE = 8
+OFF_CHAIN_SLASHING_RATE = 33
+ON_CHAIN_SLASHING_RATE = 33
+
+INVALID_MESSAGES_RATE = 5
+EXECUTION_PAYLOAD_SEND_RATE = 65
+PAYLOAD_ATTESTATION_SEND_RATE = 65
+GLOAS_FULL_ATTESTATION_RATE = 50
+
+
+class SmLink(tuple):
+    @property
+    def source(self):
+        return self[0]
+
+    @property
+    def target(self):
+        return self[1]
+
+
+def _justifying_participation_rate(rnd: random.Random):
+    """
+    Should be high enough to ensure justification happens
+    """
+    return rnd.randint(MIN_JUSTIFICATION_RATE, MAX_JUSTIFICATION_RATE)
+
+
+def _under_justifying_participation_rate(rnd: random.Random):
+    return rnd.randint(MIN_UNDERJUSTIFICATION_RATE, MAX_UNDERJUSTIFICATION_RATE)
+
+
+def _create_new_branch_tip(spec, branch_tips: dict[SmLink:BranchTip], sm_link: SmLink) -> BranchTip:
+    """
+    Initialized a branch tip state for a new branch satisfying the given sm_link.
+    :return: a new branch tip.
+    """
+
+    # Find all forks with justified source
+    tips_with_justified_source = [
+        s for s in branch_tips.values() if s.eventually_justified_checkpoint.epoch == sm_link.source
+    ]
+    assert len(tips_with_justified_source) > 0
+
+    # Find and return the most adanced one
+    most_recent_tip = max(tips_with_justified_source, key=lambda s: s.beacon_state.slot)
+    return BranchTip(
+        most_recent_tip.beacon_state.copy(),
+        most_recent_tip.attestations.copy(),
+        [],
+        most_recent_tip.eventually_justified_checkpoint,
+    )
+
+
+def _sample_validator_partition(spec, state, epoch, participation_rate, rnd):
+    active_validator_indices = spec.get_active_validator_indices(state, epoch)
+    participants_count = len(active_validator_indices) * participation_rate // 100
+    return rnd.sample(active_validator_indices, participants_count)
+
+
+def _compute_validator_partitions(
+    spec, branch_tips, current_links, current_epoch, rnd: random.Random
+) -> dict[SmLink, list[int]]:
+    """
+    Note: O(N) complex (N is a number of validators) and might be inefficient with large validator sets
+
+    Uniformly distributes active validators between active forks specified by a given set of sm_links.
+    Handles two cases:
+        1. Single active fork:
+           Randomly sample a single validator partition taking into account
+           whether the fork should have a justified checkpoint in the current epoch.
+        2. Multiple active forks:
+           i. sample the majority partition if one of the forks is about to justify during the current epoch,
+           ii. run through a set of active validators and randomly select a fork for it,
+               do no consider validators that were sampled into the majority partition.
+
+    Does not take into account validator's effective balance, based on assumption that the EB of every validator
+    is nearly the same.
+
+    :return: [SmLink: participants]
+    """
+
+    justifying_links = [l for l in current_links if l.target == current_epoch]
+
+    # Justifying conflicting checkpoints isn't supported
+    assert len(justifying_links) < 2
+    justifying_link = justifying_links[0] if any(justifying_links) else None
+
+    # Sanity check
+    for sm_link in current_links:
+        assert spec.get_current_epoch(branch_tips[sm_link].beacon_state) == current_epoch
+
+    # Case when there is just one active fork
+    if len(current_links) == 1:
+        the_sm_link = current_links[0]
+
+        if the_sm_link == justifying_link:
+            participation_rate = _justifying_participation_rate(rnd)
+        else:
+            participation_rate = _under_justifying_participation_rate(rnd)
+
+        state = branch_tips[the_sm_link].beacon_state
+        participants = _sample_validator_partition(
+            spec, state, current_epoch, participation_rate, rnd
+        )
+
+        return {the_sm_link: participants}
+
+    # Cases with more than one active fork
+    participants = {l: [] for l in current_links}
+
+    # Move the majority to the branch containing justification target
+    justifying_participants = []
+    if justifying_link is not None:
+        state = branch_tips[justifying_link].beacon_state
+        justifying_participants = _sample_validator_partition(
+            spec,
+            branch_tips[justifying_link].beacon_state,
+            current_epoch,
+            _justifying_participation_rate(rnd),
+            rnd,
+        )
+
+        participants[justifying_link] = justifying_participants
+
+    # Collect a set of active validator indexes across all forks
+    active_validator_per_branch = {}
+    all_active_validators = set()
+    for l in current_links:
+        state = branch_tips[l].beacon_state
+        active_validator_per_branch[l] = spec.get_active_validator_indices(state, current_epoch)
+        all_active_validators.update(active_validator_per_branch[l])
+
+    # Remove validators selected for justifying branch from the pool of active participants
+    all_active_validators = all_active_validators.difference(justifying_participants)
+
+    # For each index:
+    #   1) Collect a set of branches where the validators is in active state (except for justifying branch)
+    #   2) Append the index to the list of participants for a randomly selected branch
+    for index in all_active_validators:
+        active_branches = [
+            l
+            for l in current_links
+            if index in active_validator_per_branch[l] and l not in justifying_links
+        ]
+        participants[tuple(rnd.choice(active_branches))].append(index)
+
+    return participants
+
+
+def _any_change_to_validator_partitions(spec, sm_links, current_epoch, anchor_epoch) -> bool:
+    """
+    Returns ``true`` if validator partitions should be re-shuffled to advance branches in the current epoch:
+        1. The first epoch after the anchor epoch always requires a new shuffling.
+        2. Previous epoch has justified checkpoints.
+           Therefore, new supermajority links may need to be processed during the current epoch,
+           thus new block tree branches with new validator partitions may need to be created.
+        3. Current epoch has justified checkpoint.
+           Therefore, the majority of validators must be moved to the justifying branch.
+    """
+    assert current_epoch > anchor_epoch
+
+    previous_epoch = current_epoch - 1
+
+    if previous_epoch == anchor_epoch:
+        return True
+
+    for l in sm_links:
+        if l.target == current_epoch or l.target == previous_epoch:
+            return True
+
+    return False
+
+
+def _generate_sm_link_tree(
+    spec, genesis_state, sm_links, rnd: random.Random, debug
+) -> ([], BranchTip):
+    """
+    Generates a sequence of blocks satisfying a tree of supermajority links specified in the sm_links list,
+    i.e. a sequence of blocks with attestations required to create given supermajority links.
+
+    The block generation strategy is to run through a span of epochs covered by the supermajority links
+    and for each epoch of the span apply the following steps:
+        1. Obtain a list of supermajority links covering the epoch.
+        2. Create a new block tree branch (fork) for every newly observed supermajority link.
+        3. Randomly sample all active validators between a set of forks that are being advanced in the epoch.
+           Validator partitions are disjoint and are changing only at the epoch boundary.
+           If no new branches are created in the current epoch then partitions from the previous epoch will be used
+           to advahce the state of every fork to the next epoch.
+        4. Advance every fork to the next epoch respecting a validator partition assigned to it in the current epoch.
+           Preserve attestations produced but not yet included on chain for potential inclusion in the next epoch.
+        5. Justify required checkpoints by moving the majority of validators to the justifying fork,
+           this is taken into account by step (3).
+
+    :return: Sequence of signed blocks oredered by a slot number.
+    """
+    assert any(sm_links)
+
+    # Find anchor epoch
+    anchor_epoch = min(sm_links, key=lambda l: l.source).source
+
+    signed_blocks, anchor_tip = advance_state_to_anchor_epoch(
+        spec, genesis_state, anchor_epoch, debug
+    )
+
+    # branch_tips hold the most recent state, validator partition and not included attestations for every fork
+    # Initialize branch tips with the anchor tip
+    anchor_link = SmLink((spec.GENESIS_EPOCH, anchor_epoch))
+    branch_tips = {anchor_link: anchor_tip}
+
+    highest_target_sm_link = max(sm_links, key=lambda l: l.target)
+
+    # Finish at after the highest justified checkpoint
+    for current_epoch in range(anchor_epoch + 1, highest_target_sm_link.target + 1):
+        # Obtain sm links that span over the current epoch
+        current_epoch_sm_links = [l for l in sm_links if l.source < current_epoch <= l.target]
+
+        # Initialize new forks
+        for l in (l for l in current_epoch_sm_links if branch_tips.get(l) is None):
+            new_branch_tip = _create_new_branch_tip(spec, branch_tips, l)
+            # Abort the test if any sm_links constraint appears to be unreachable
+            # because the justification of the source checkpoint hasn't been realized on chain yet
+            if (
+                l.target == current_epoch
+                and new_branch_tip.beacon_state.current_justified_checkpoint.epoch < l.source
+            ):
+                return [], new_branch_tip
+
+            branch_tips[l] = new_branch_tip
+
+        # Reshuffle partitions if needed
+        if _any_change_to_validator_partitions(spec, sm_links, current_epoch, anchor_epoch):
+            partitions = _compute_validator_partitions(
+                spec, branch_tips, current_epoch_sm_links, current_epoch, rnd
+            )
+            for l in partitions.keys():
+                old_tip_state = branch_tips[l]
+                new_tip_state = BranchTip(
+                    old_tip_state.beacon_state,
+                    old_tip_state.attestations,
+                    partitions[l],
+                    old_tip_state.eventually_justified_checkpoint,
+                )
+                branch_tips[l] = new_tip_state
+
+        # Debug checks
+        if debug:
+            print("\nepoch", str(current_epoch) + ":")
+            # Partitions are disjoint
+            for l1 in current_epoch_sm_links:
+                l1_participants = branch_tips[l1].participants
+                for l2 in current_epoch_sm_links:
+                    if l1 != l2:
+                        l2_participants = branch_tips[l2].participants
+                        intersection = set(l1_participants).intersection(l2_participants)
+                        assert len(intersection) == 0, (
+                            str(l1)
+                            + " and "
+                            + str(l2)
+                            + " has common participants: "
+                            + str(intersection)
+                        )
+
+        # Advance every branch taking into account attestations from past epochs and voting partitions
+        for sm_link in current_epoch_sm_links:
+            branch_tip = branch_tips[sm_link]
+            assert spec.get_current_epoch(branch_tip.beacon_state) == current_epoch, (
+                "Unexpected current_epoch(branch_tip.beacon_state): "
+                + str(spec.get_current_epoch(branch_tip.beacon_state))
+                + " != "
+                + str(current_epoch)
+            )
+            new_signed_blocks, new_branch_tip = advance_branch_to_next_epoch(spec, branch_tip)
+
+            # Run sanity checks
+            post_state = new_branch_tip.beacon_state
+            assert spec.get_current_epoch(post_state) == current_epoch + 1, (
+                "Unexpected post_state epoch: "
+                + str(spec.get_current_epoch(post_state))
+                + " != "
+                + str(current_epoch + 1)
+            )
+            if sm_link.target == current_epoch:
+                assert post_state.previous_justified_checkpoint.epoch == sm_link.source, (
+                    "Unexpected previous_justified_checkpoint.epoch: "
+                    + str(post_state.previous_justified_checkpoint.epoch)
+                    + " != "
+                    + str(sm_link.source)
+                )
+                assert new_branch_tip.eventually_justified_checkpoint.epoch == sm_link.target, (
+                    "Unexpected eventually_justified_checkpoint.epoch: "
+                    + str(new_branch_tip.eventually_justified_checkpoint.epoch)
+                    + " != "
+                    + str(sm_link.target)
+                )
+            elif sm_link.source != new_branch_tip.eventually_justified_checkpoint.epoch:
+                # Abort the test as the justification of the source checkpoint can't be realized on chain
+                # because of the lack of the block space
+                return [], new_branch_tip
+
+            # If the fork won't be advanced in the future epochs
+            # ensure 1) all yet not included attestations are included on chain by advancing it to epoch N+1
+            #        2) justification is realized by advancing it to epoch N+2
+            is_fork_advanced_in_future = any(l for l in sm_links if l.source == sm_link.target)
+            if sm_link.target == current_epoch and not is_fork_advanced_in_future:
+                advanced_branch_tip = new_branch_tip
+
+                # Advance to N+1 if state.current_justified_checkpoint.epoch < eventually_justified_checkpoint.epoch
+                current_justified_epoch = (
+                    new_branch_tip.beacon_state.current_justified_checkpoint.epoch
+                )
+                eventually_justified_epoch = new_branch_tip.eventually_justified_checkpoint.epoch
+                if current_justified_epoch < eventually_justified_epoch:
+                    advanced_signed_blocks, advanced_branch_tip = advance_branch_to_next_epoch(
+                        spec, new_branch_tip, enable_attesting=False
+                    )
+                    new_signed_blocks = new_signed_blocks + advanced_signed_blocks
+
+                # Build a block in the next epoch to justify the target on chain
+                state = advanced_branch_tip.beacon_state
+                while spec.get_beacon_proposer_index(state) not in advanced_branch_tip.participants:
+                    next_slot(spec, state)
+
+                tip_block, _, _, _, _ = produce_block(spec, state, [])
+                new_signed_blocks.append(tip_block)
+
+                assert state.current_justified_checkpoint.epoch == sm_link.target, (
+                    "Unexpected state.current_justified_checkpoint: "
+                    + str(state.current_justified_checkpoint.epoch)
+                    + " != "
+                    + str(sm_link.target)
+                )
+
+            # Debug output
+            if debug:
+                print(
+                    "branch" + str(sm_link) + ":",
+                    print_epoch(spec, branch_tips[sm_link].beacon_state, new_signed_blocks),
+                )
+                print(
+                    "              ",
+                    len(branch_tips[sm_link].participants),
+                    "participants:",
+                    new_branch_tip.participants,
+                )
+                print(
+                    "              ",
+                    "state.current_justified_checkpoint:",
+                    "(epoch="
+                    + str(post_state.current_justified_checkpoint.epoch)
+                    + ", root="
+                    + str(post_state.current_justified_checkpoint.root)[:6]
+                    + ")",
+                )
+                print(
+                    "              ",
+                    "eventually_justified_checkpoint:",
+                    "(epoch="
+                    + str(new_branch_tip.eventually_justified_checkpoint.epoch)
+                    + ", root="
+                    + str(new_branch_tip.eventually_justified_checkpoint.root)[:6]
+                    + ")",
+                )
+
+            # Debug checks
+            if debug:
+                # Proposers are aligned with the partition
+                unexpected_proposers = [
+                    b.message.proposer_index
+                    for b in new_signed_blocks
+                    if b.message.proposer_index not in branch_tip.participants
+                ]
+                assert len(unexpected_proposers) == 0, "Unexpected proposer: " + str(
+                    unexpected_proposers[0]
+                )
+
+                # Attesters are aligned with the partition
+                current_epoch_state = branch_tips[sm_link].beacon_state
+                for b in new_signed_blocks:
+                    # Attesting indexes from on chain attestations
+                    attesters = attesters_in_block(spec, current_epoch_state, b, current_epoch)
+                    # Attesting indexes from not yet included attestations
+                    for a in new_branch_tip.attestations:
+                        if a.data.target.epoch == current_epoch:
+                            attesters.update(spec.get_attesting_indices(current_epoch_state, a))
+                    unexpected_attesters = attesters.difference(branch_tip.participants)
+                    assert len(unexpected_attesters) == 0, (
+                        "Unexpected attester: "
+                        + str(unexpected_attesters.pop())
+                        + ", slot "
+                        + str(b.message.slot)
+                    )
+
+            # Store the result
+            branch_tips[sm_link] = new_branch_tip
+            signed_blocks = signed_blocks + new_signed_blocks
+
+    # Sort blocks by a slot
+    signed_block_messages = [ProtocolMessage(b) for b in signed_blocks]
+    return (
+        sorted(signed_block_messages, key=lambda b: b.payload.message.slot),
+        branch_tips[highest_target_sm_link],
+    )
+
+
+def _spoil_block(spec, rnd: random.Random, signed_block):
+    signed_block.message.state_root = spec.Root(rnd.randbytes(32))
+
+
+def _spoil_attester_slashing(spec, rnd: random.Random, attester_slashing):
+    attester_slashing.attestation_2.data = attester_slashing.attestation_1.data
+
+
+def _spoil_attestation(spec, rnd: random.Random, attestation):
+    attestation.data.target.epoch = spec.GENESIS_EPOCH
+
+
+def _spoil_payload_attestation_message(spec, rnd: random.Random, state, ptc_message):
+    ptc = spec.get_ptc(state, ptc_message.data.slot)
+    for validator_index in range(len(state.validators)):
+        if validator_index not in ptc:
+            ptc_message.validator_index = validator_index
+            return
+    ptc_message.validator_index = (ptc_message.validator_index + 1) % len(state.validators)
+
+
+def _spoil_execution_payload_envelope(spec, rnd: random.Random, signed_envelope):
+    signed_envelope.message.payload.parent_hash = spec.Hash32(rnd.randbytes(32))
+
+
+def _get_random_payload_attestation_messages(spec, state, rnd: random.Random):
+    """Build random PayloadAttestationMessage objects with diverse PTC vote values."""
+    attested_slot = state.latest_block_header.slot
+    if attested_slot != state.slot or attested_slot == 0:
+        return []
+
+    parent_header = state.latest_block_header.copy()
+    if parent_header.state_root == spec.Root():
+        parent_header.state_root = spec.hash_tree_root(state)
+    beacon_block_root = spec.hash_tree_root(parent_header)
+    return build_random_payload_attestation_messages(
+        spec, state, beacon_block_root, attested_slot, rnd
+    )
+
+
+def _disseminate(
+    rnd,
+    message,
+    off_chain_list,
+    in_block_list,
+    off_chain_rate,
+    on_chain_rate,
+):
+    """
+    Randomly assigns a valid protocol message to off-chain, on-chain, or both
+    dissemination paths.
+    """
+    choice = rnd.randint(0, 99)
+    if choice < off_chain_rate:
+        off_chain_list.append(ProtocolMessage(message, True))
+    elif choice < off_chain_rate + on_chain_rate:
+        in_block_list.append(message)
+    else:
+        off_chain_list.append(ProtocolMessage(message, True))
+        in_block_list.append(message)
+
+
+class ProtocolState:
+    def __init__(self, spec, anchor_tip: BranchTip):
+        self.spec = spec
+        self.in_block_attestations = anchor_tip.attestations.copy()
+        self.in_block_attester_slashings = []
+        self.in_block_pa_messages = []
+        self.out_of_block_attestation_messages = []
+        self.out_of_block_attester_slashing_messages = []
+        self.out_of_block_pa_messages = []
+        self.signed_block_messages = []
+        self.signed_envelope_messages = []
+
+    def add_signed_block(self, signed_block, valid: bool):
+        self.signed_block_messages.append(ProtocolMessage(signed_block, valid))
+
+    def add_signed_envelope(self, envelope, valid: bool):
+        self.signed_envelope_messages.append(ProtocolMessage(envelope, valid))
+
+    def add_invalid_off_chain_attestation(self, attestation):
+        self.out_of_block_attestation_messages.append(ProtocolMessage(attestation, False))
+
+    def add_invalid_off_chain_payload_attestation(self, ptc_message):
+        self.out_of_block_pa_messages.append(ProtocolMessage(ptc_message, False))
+
+    def add_invalid_off_chain_attester_slashing(self, attester_slashing):
+        self.out_of_block_attester_slashing_messages.append(
+            ProtocolMessage(attester_slashing, False)
+        )
+
+    def maybe_invalidate_attestation(self, rnd, attestation, with_invalid_messages):
+        if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
+            _spoil_attestation(self.spec, rnd, attestation)
+            self.add_invalid_off_chain_attestation(attestation)
+            return True
+        return False
+
+    def maybe_invalidate_payload_attestation(self, rnd, state, ptc_message, with_invalid_messages):
+        if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
+            _spoil_payload_attestation_message(self.spec, rnd, state, ptc_message)
+            self.add_invalid_off_chain_payload_attestation(ptc_message)
+            return True
+        return False
+
+    def maybe_invalidate_attester_slashing(self, rnd, attester_slashing, with_invalid_messages):
+        if with_invalid_messages and rnd.randint(0, 99) < INVALID_MESSAGES_RATE:
+            _spoil_attester_slashing(self.spec, rnd, attester_slashing)
+            self.add_invalid_off_chain_attester_slashing(attester_slashing)
+            return True
+        return False
+
+    def disseminate_attestation(self, rnd, attestation):
+        _disseminate(
+            rnd,
+            attestation,
+            self.out_of_block_attestation_messages,
+            self.in_block_attestations,
+            OFF_CHAIN_ATTESTATION_RATE,
+            ON_CHAIN_ATTESTATION_RATE,
+        )
+
+    def disseminate_payload_attestation(self, rnd, ptc_message):
+        _disseminate(
+            rnd,
+            ptc_message,
+            self.out_of_block_pa_messages,
+            self.in_block_pa_messages,
+            OFF_CHAIN_ATTESTATION_RATE,
+            ON_CHAIN_ATTESTATION_RATE,
+        )
+
+    def disseminate_attester_slashing(self, rnd, attester_slashing):
+        _disseminate(
+            rnd,
+            attester_slashing,
+            self.out_of_block_attester_slashing_messages,
+            self.in_block_attester_slashings,
+            OFF_CHAIN_SLASHING_RATE,
+            ON_CHAIN_SLASHING_RATE,
+        )
+
+
+class RuntimeState:
+    def __init__(self, anchor_tip: BranchTip):
+        self.current_slot = anchor_tip.beacon_state.slot
+        self.post_states = [anchor_tip.beacon_state.copy()]
+        self.block_tree_tips = {0}
+        self.payload_known_block_indices = set()
+
+    def append_post_state(self, post_state):
+        self.post_states.append(post_state)
+
+    def apply_new_block(self, parent_index, block_index, post_state):
+        self.append_post_state(post_state)
+        self.block_tree_tips.discard(parent_index)
+        self.block_tree_tips.add(block_index)
+
+
+class StateCache:
+    def __init__(self, spec, runtime: RuntimeState):
+        self.spec = spec
+        self.runtime = runtime
+        self.cache_key = None
+        self.cached_state = None
+
+    def get_state_by_block_index(self, index):
+        cache_key = (index, self.runtime.current_slot)
+        if self.cache_key == cache_key:
+            return self.cached_state.copy()
+
+        state = self.runtime.post_states[index].copy()
+        transition_to(self.spec, state, self.runtime.current_slot)
+        self.cache_key = cache_key
+        self.cached_state = state
+        return state
+
+
+class CommitteeAssignments:
+    def __init__(self, spec, get_state_by_block_index):
+        self.spec = spec
+        self.get_state_by_block_index = get_state_by_block_index
+        self.slot_assignments = {}
+
+    def assign_voters_to_slots(self, epoch):
+        epoch_start_slot = self.spec.compute_start_slot_at_epoch(epoch)
+        epoch_state = self.get_state_by_block_index(-1)
+        committee_count_per_slot = self.spec.get_committee_count_per_slot(epoch_state, epoch)
+        for slot in range(epoch_start_slot, epoch_start_slot + self.spec.SLOTS_PER_EPOCH):
+            assignments = []
+            for index in range(committee_count_per_slot):
+                committee = self.spec.get_beacon_committee(
+                    epoch_state,
+                    self.spec.Slot(slot),
+                    self.spec.CommitteeIndex(index),
+                )
+                assignments.extend(committee)
+            self.slot_assignments[slot] = assignments
+
+    def ensure_slot_assignments(self, slot):
+        epoch = self.spec.compute_epoch_at_slot(slot)
+        if slot not in self.slot_assignments:
+            self.assign_voters_to_slots(epoch)
+
+    def get_attesting_committee(self, slot):
+        return self.slot_assignments[slot]
+
+
+def _roll(rnd, rate):
+    return rnd.randint(0, 99) < rate
+
+
+def _get_state_block_root(spec, state):
+    block_header = state.latest_block_header.copy()
+    if block_header.state_root == spec.Bytes32():
+        block_header.state_root = spec.hash_tree_root(state)
+    return spec.hash_tree_root(block_header)
+
+
+def _debug_assert_block_tree_shape(spec, anchor_state, block_parents, signed_block_messages):
+    signed_blocks = [message.payload for message in signed_block_messages if message.valid]
+    assert len(signed_blocks) == len(block_parents) - 1, (
+        "Constructed block tree does not match the model size: "
+        f"expected {len(block_parents) - 1} blocks, got {len(signed_blocks)}"
+    )
+
+    block_roots = [_get_state_block_root(spec, anchor_state)]
+    block_roots.extend(block.message.hash_tree_root() for block in signed_blocks)
+
+    for block_index in range(1, len(block_parents)):
+        expected_parent_index = block_parents[block_index]
+        block = signed_blocks[block_index - 1]
+        expected_parent_root = block_roots[expected_parent_index]
+        assert block.message.parent_root == expected_parent_root, (
+            f"Block {block_index} has wrong parent root: "
+            f"expected parent index {expected_parent_index}"
+        )
+
+
+def _debug_print_block_tree(spec, runtime, protocol):
+    print("\nblock_tree:")
+    print(
+        "blocks:       ",
+        print_block_tree(
+            spec, runtime.post_states[0], [b.payload for b in protocol.signed_block_messages]
+        ),
+    )
+    print(
+        "              ",
+        "state.current_justified_checkpoint:",
+        "(epoch="
+        + str(runtime.post_states[len(runtime.post_states) - 1].current_justified_checkpoint.epoch)
+        + ", root="
+        + str(runtime.post_states[len(runtime.post_states) - 1].current_justified_checkpoint.root)[
+            :6
+        ]
+        + ")",
+    )
+
+    print("on_block:")
+    print("              ", "count =", len(protocol.signed_block_messages))
+    print("              ", "valid =", len([b for b in protocol.signed_block_messages if b.valid]))
+    print("on_attestation:")
+    print("              ", "count =", len(protocol.out_of_block_attestation_messages))
+    print(
+        "              ",
+        "valid =",
+        len([a for a in protocol.out_of_block_attestation_messages if a.valid]),
+    )
+    print("on_payload_attestation_message:")
+    print("              ", "count =", len(protocol.out_of_block_pa_messages))
+    print(
+        "              ",
+        "valid =",
+        len([a for a in protocol.out_of_block_pa_messages if a.valid]),
+    )
+    print("on_attester_slashing:")
+    print("              ", "count =", len(protocol.out_of_block_attester_slashing_messages))
+    print(
+        "              ",
+        "valid =",
+        len([s for s in protocol.out_of_block_attester_slashing_messages if s.valid]),
+    )
+
+
+def _debug_run_block_tree_checks(spec, anchor_tip, block_parents, protocol):
+    assert all(message.valid for message in protocol.signed_block_messages), (
+        "Unexpected invalid block in base block-tree scenario"
+    )
+    _debug_assert_block_tree_shape(
+        spec, anchor_tip.beacon_state, block_parents, protocol.signed_block_messages
+    )
+
+
+def _generate_block_tree(
+    spec,
+    anchor_tip: BranchTip,
+    rnd: random.Random,
+    debug,
+    block_parents,
+    with_attester_slashings,
+    with_invalid_messages,
+) -> ([], [], [], [], []):
+    protocol = ProtocolState(spec, anchor_tip)
+    runtime = RuntimeState(anchor_tip)
+    # Tracks every validator selected for a generated attester slashing in this
+    # scenario, so later selections cannot target the same validator again.
+    validators_to_be_slashed = set()
+    block_edges = iter(enumerate(block_parents[1:], start=1))
+    state_cache = StateCache(spec, runtime)
+    committee_assignments = CommitteeAssignments(spec, state_cache.get_state_by_block_index)
+
+    def choose_attested_block_index(tips, block_parents):
+        attesting_block_index = rnd.choice(tips)
+        while attesting_block_index != 0 and _roll(rnd, ATTEST_TO_PARENT_RATE):
+            attesting_block_index = block_parents[attesting_block_index]
+        return attesting_block_index
+
+    def assign_committee_votes(attesting_committee, block_tree_tips, block_parents):
+        tips = sorted(block_tree_tips)
+        block_index_voters = {}
+        for validator_index in attesting_committee:
+            attesting_block_index = choose_attested_block_index(tips, block_parents)
+            block_index_voters.setdefault(attesting_block_index, set()).add(validator_index)
+        return block_index_voters
+
+    def next_block_edge():
+        return next(block_edges, None)
+
+    def _subtract_items_once(source_items, items_to_remove):
+        remaining_items = list(source_items)
+        for item in items_to_remove:
+            if item in remaining_items:
+                remaining_items.remove(item)
+        return remaining_items
+
+    def choose_block_attestation_pool():
+        # Model three in-block attestation behaviors:
+        # ignore: never offered for inclusion and kept in the pool,
+        # move: offered for inclusion and removed if included,
+        # copy: offered for inclusion and kept in the pool even if included.
+        candidate_attestations = []
+        ignored_attestations = []
+        copied_candidate_attestations = []
+
+        for attestation in protocol.in_block_attestations:
+            if _roll(rnd, IGNORE_IN_BLOCK_ATTESTATION_RATE):
+                ignored_attestations.append(attestation)
+                continue
+
+            candidate_attestations.append(attestation)
+            if _roll(rnd, COPY_IN_BLOCK_ATTESTATION_RATE):
+                copied_candidate_attestations.append(attestation)
+
+        return candidate_attestations, ignored_attestations, copied_candidate_attestations
+
+    def produce_invalid_block(parent_state):
+        # Do not include attestations and slashings into invalid block
+        # as clients may opt in to process or not process attestations
+        # contained by invalid block.
+        signed_block, _, _, _, _ = produce_block(spec, parent_state, [], [], [])
+        _spoil_block(spec, rnd, signed_block)
+        protocol.add_signed_block(signed_block, False)
+        runtime.append_post_state(parent_state)
+        return signed_block, parent_state, None
+
+    def produce_valid_block(parent_state, parent_index, block_index):
+        (
+            candidate_attestations,
+            ignored_attestations,
+            copied_candidate_attestations,
+        ) = choose_block_attestation_pool()
+        (
+            signed_block,
+            post_state,
+            not_included_attestations,
+            protocol.in_block_attester_slashings,
+            protocol.in_block_pa_messages,
+        ) = produce_block(
+            spec,
+            parent_state,
+            candidate_attestations,
+            protocol.in_block_attester_slashings,
+            protocol.in_block_pa_messages,
+        )
+
+        copied_included_attestations = _subtract_items_once(
+            copied_candidate_attestations, not_included_attestations
+        )
+        protocol.in_block_attestations = (
+            ignored_attestations + not_included_attestations + copied_included_attestations
+        )
+
+        protocol.add_signed_block(signed_block, True)
+        runtime.apply_new_block(parent_index, block_index, post_state)
+        return signed_block, post_state, block_index
+
+    def maybe_propose_block(block_edge):
+        if _roll(rnd, EMPTY_SLOTS_RATE):
+            return None, None, None
+
+        block_index, parent_index = block_edge
+        parent_state = state_cache.get_state_by_block_index(parent_index)
+
+        protocol.in_block_attestations = [
+            a
+            for a in protocol.in_block_attestations
+            if is_attestation_eligible_for_block(spec, parent_state, a)
+        ]
+
+        proposer = spec.get_beacon_proposer_index(parent_state)
+
+        if parent_state.validators[proposer].slashed or (
+            with_invalid_messages and _roll(rnd, INVALID_MESSAGES_RATE)
+        ):
+            signed_block, post_state, new_block_index = produce_invalid_block(parent_state)
+        else:
+            signed_block, post_state, new_block_index = produce_valid_block(
+                parent_state, parent_index, block_index
+            )
+
+        return signed_block, post_state, new_block_index
+
+    def maybe_send_execution_payload(signed_block, post_state, new_block_index):
+        if not is_post_gloas(spec) or new_block_index is None:
+            return False
+
+        block_root = signed_block.message.hash_tree_root()
+        envelope = build_signed_execution_payload_envelope(
+            spec, post_state, block_root, signed_block
+        )
+        if not _roll(rnd, EXECUTION_PAYLOAD_SEND_RATE):
+            return False
+
+        # TODO: Consider an explicit invalid case for an execution payload
+        # targeting an unknown beacon block root. That should stay out of
+        # the orderly base scenario unless `with_invalid_messages` is enabled.
+        valid = True
+        if with_invalid_messages and _roll(rnd, INVALID_MESSAGES_RATE):
+            _spoil_execution_payload_envelope(spec, rnd, envelope)
+            valid = False
+        protocol.add_signed_envelope(envelope, valid)
+        if valid:
+            runtime.payload_known_block_indices.add(new_block_index)
+        return valid
+
+    def get_attestation_payload_index(
+        attesting_block_index, new_block_index, valid_execution_payload_sent
+    ):
+        payload_index = None
+        att_payload_index_invalid = False
+        if is_post_gloas(spec):
+            if valid_execution_payload_sent and attesting_block_index == new_block_index:
+                if with_invalid_messages and _roll(rnd, INVALID_MESSAGES_RATE):
+                    # payload_index=1 for a same-slot block is GLOAS-invalid:
+                    # spec requires data.index==0 when block_slot==attestation.data.slot
+                    payload_index = 1
+                    att_payload_index_invalid = True
+                else:
+                    payload_index = 0
+            elif (
+                attesting_block_index != new_block_index
+                and attesting_block_index in runtime.payload_known_block_indices
+            ):
+                if _roll(rnd, GLOAS_FULL_ATTESTATION_RATE):
+                    payload_index = 1
+                else:
+                    payload_index = 0
+        return payload_index, att_payload_index_invalid
+
+    def make_slot_attestations(new_block_index, valid_execution_payload_sent):
+        attesting_committee = committee_assignments.get_attesting_committee(runtime.current_slot)
+        block_index_voters = assign_committee_votes(
+            attesting_committee, runtime.block_tree_tips, block_parents
+        )
+
+        for attesting_block_index, attesters in block_index_voters.items():
+            attesting_state = state_cache.get_state_by_block_index(attesting_block_index)
+            payload_index, att_payload_index_invalid = get_attestation_payload_index(
+                attesting_block_index, new_block_index, valid_execution_payload_sent
+            )
+            attestations_in_slot = attest_to_slot(
+                spec,
+                attesting_state,
+                attesting_state.slot,
+                lambda comm: set(comm) & attesters,
+                payload_index=payload_index,
+            )
+
+            for attestation in attestations_in_slot:
+                if att_payload_index_invalid:
+                    protocol.add_invalid_off_chain_attestation(attestation)
+                elif not protocol.maybe_invalidate_attestation(
+                    rnd, attestation, with_invalid_messages
+                ):
+                    protocol.disseminate_attestation(rnd, attestation)
+
+    def maybe_send_payload_attestations(post_state, new_block_index):
+        if not is_post_gloas(spec) or new_block_index is None:
+            return
+        if not _roll(rnd, PAYLOAD_ATTESTATION_SEND_RATE):
+            return
+
+        # TODO: Consider explicit payload-attestation cases without a
+        # newly produced block in this iteration, e.g. delayed votes
+        # for an older known block root or invalid votes for an unknown
+        # root. Those should stay out of the orderly base scenario
+        # unless `with_invalid_messages` is enabled.
+        for ptc_message in _get_random_payload_attestation_messages(spec, post_state, rnd):
+            if not protocol.maybe_invalidate_payload_attestation(
+                rnd, post_state, ptc_message, with_invalid_messages
+            ):
+                protocol.disseminate_payload_attestation(rnd, ptc_message)
+
+    def maybe_create_attester_slashing():
+        if not with_attester_slashings or len(validators_to_be_slashed) >= MAX_ATTESTER_SLASHINGS:
+            return
+        if not _roll(rnd, ATTESTER_SLASHINGS_RATE):
+            return
+
+        state = state_cache.get_state_by_block_index(-1)
+
+        assert len(validators_to_be_slashed) < len(state.validators)
+        while True:
+            validator_to_slash = rnd.randint(0, len(state.validators) - 1)
+            # avoid slashing a validator who might be slashed already
+            if validator_to_slash not in validators_to_be_slashed:
+                break
+
+        indices = [validator_to_slash]
+        attester_slashing = get_valid_attester_slashing_by_indices(
+            spec, state, indices, slot=runtime.current_slot, signed_1=True, signed_2=True
+        )
+
+        if not protocol.maybe_invalidate_attester_slashing(
+            rnd, attester_slashing, with_invalid_messages
+        ):
+            protocol.disseminate_attester_slashing(rnd, attester_slashing)
+
+        validators_to_be_slashed.update(indices)
+
+    block_edge = next_block_edge()
+    while block_edge is not None:
+        committee_assignments.ensure_slot_assignments(runtime.current_slot)
+        signed_block, post_state, new_block_index = maybe_propose_block(block_edge)
+        if signed_block is not None:
+            block_edge = next_block_edge()
+        valid_execution_payload_sent = maybe_send_execution_payload(
+            signed_block, post_state, new_block_index
+        )
+        make_slot_attestations(new_block_index, valid_execution_payload_sent)
+        maybe_send_payload_attestations(post_state, new_block_index)
+        maybe_create_attester_slashing()
+        runtime.current_slot += 1
+
+    if debug:
+        _debug_print_block_tree(spec, runtime, protocol)
+
+        if not with_invalid_messages and not with_attester_slashings:
+            _debug_run_block_tree_checks(spec, anchor_tip, block_parents, protocol)
+
+    return (
+        sorted(protocol.signed_block_messages, key=lambda b: b.payload.message.slot),
+        sorted(protocol.out_of_block_attestation_messages, key=lambda a: a.payload.data.slot),
+        sorted(
+            protocol.out_of_block_attester_slashing_messages,
+            key=lambda a: a.payload.attestation_1.data.slot,
+        ),
+        sorted(
+            protocol.signed_envelope_messages, key=lambda e: e.payload.message.payload.slot_number
+        ),
+        sorted(protocol.out_of_block_pa_messages, key=lambda a: a.payload.data.slot),
+    )
+
+
+def gen_block_tree_test_data(
+    spec,
+    state,
+    debug,
+    seed,
+    sm_links,
+    block_parents,
+    with_attester_slashings,
+    with_invalid_messages,
+) -> FCTestData:
+    assert (1, 2) not in sm_links, "(1, 2) sm link is not supported due to unsatisfiability"
+    sm_links = [SmLink(l) for l in sm_links]
+
+    anchor_state = state
+    _, anchor_block = get_genesis_forkchoice_store_and_block(spec, anchor_state)
+
+    # Find a reachable solution trying with different seeds if needed
+    # sm_links constraints may not have a solution because of the randomization affecting validator partitions
+    signed_block_messages = []
+    highest_tip = BranchTip(state, [], [], state.current_justified_checkpoint)
+    while True:
+        if debug:
+            print("\nseed:", seed)
+            print("sm_links:", sm_links)
+            print("block_parents:", block_parents)
+
+        rnd = random.Random(seed)
+        signed_block_messages, highest_tip = _generate_sm_link_tree(
+            spec, state, sm_links, rnd, debug
+        )
+        if len(signed_block_messages) > 0:
+            break
+
+        new_seed = rnd.randint(1, 10000)
+        if debug:
+            print(
+                "\nUnsatisfiable constraints: sm_links: "
+                + str(sm_links)
+                + ", seed="
+                + str(seed)
+                + ", will retry with seed="
+                + str(new_seed)
+            )
+        seed = new_seed
+
+    # Block tree model
+    (
+        block_tree,
+        attestation_messages,
+        attester_slashing_messages,
+        envelopes,
+        payload_attestation_messages,
+    ) = _generate_block_tree(
+        spec, highest_tip, rnd, debug, block_parents, with_attester_slashings, with_invalid_messages
+    )
+
+    # Merge block_tree and sm_link_tree blocks
+    block_tree_root_slot = block_tree[0].payload.message.slot
+    signed_block_messages = [
+        b for b in signed_block_messages if b.payload.message.slot < block_tree_root_slot
+    ]
+    signed_block_messages = signed_block_messages + block_tree
+
+    # Meta data
+    meta = {
+        "seed": seed,
+        "sm_links": str(sm_links),
+        "block_parents": str(block_parents),
+        "bls_setting": 0 if bls.bls_active else 2,
+    }
+
+    return FCTestData(
+        meta,
+        anchor_block,
+        anchor_state,
+        signed_block_messages,
+        attestation_messages,
+        attester_slashing_messages,
+        envelopes,
+        payload_attestation_messages,
+    )

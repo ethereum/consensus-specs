@@ -1,0 +1,110 @@
+# EIP-8025 -- Proof Engine
+
+*Note*: This document is a work-in-progress for researchers and implementers.
+
+## Table of contents
+
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
+
+- [Table of contents](#table-of-contents)
+- [Introduction](#introduction)
+- [Proof engine](#proof-engine)
+  - [New `verify_execution_proof`](#new-verify_execution_proof)
+  - [New `notify_new_payload`](#new-notify_new_payload)
+  - [New `notify_forkchoice_updated`](#new-notify_forkchoice_updated)
+  - [New `ProofAttributes`](#new-proofattributes)
+  - [New `request_proofs`](#new-request_proofs)
+
+<!-- mdformat-toc end -->
+
+## Introduction
+
+This document contains the Proof Engine specification. The Proof Engine enables
+stateless validation of execution payloads through execution proofs.
+
+## Proof engine
+
+The implementation-dependent `ProofEngine` protocol encapsulates the proof
+sub-system logic via:
+
+- a state object `self.proof_state` of type `ProofState` containing stored
+  proofs
+- a verification function `self.verify_execution_proof` to verify individual
+  proofs
+- a notification function `self.notify_new_payload` to notify the proof engine
+  of the new payload
+- a notification function `self.notify_forkchoice_updated` to notify the proof
+  engine of forkchoice state changes
+- a generation function `self.request_proofs` to initiate asynchronous proof
+  generation
+
+The body of these functions are implementation dependent. The Engine API may be
+used to implement this and similarly defined functions via an external proof
+engine.
+
+### New `verify_execution_proof`
+
+```python
+def verify_execution_proof(
+    self: ProofEngine,
+    execution_proof: ExecutionProof,
+) -> bool:
+    """
+    Verify an execution proof.
+    Return ``True`` if proof is valid.
+    """
+    ...
+```
+
+### New `notify_new_payload`
+
+```python
+def notify_new_payload(
+    self: ProofEngine,
+    new_payload_request: NewPayloadRequest,
+) -> None:
+    """
+    Notify the proof engine of the new payload.
+    """
+    ...
+```
+
+### New `notify_forkchoice_updated`
+
+```python
+def notify_forkchoice_updated(
+    self: ProofEngine,
+    head_block_hash: Hash32,
+    safe_block_hash: Hash32,
+    finalized_block_hash: Hash32,
+) -> None:
+    """
+    Notify the proof engine of a forkchoice state update. Allows the proof
+    engine to track the canonical chain for retention and pruning.
+    """
+    ...
+```
+
+### New `ProofAttributes`
+
+```python
+@dataclass
+class ProofAttributes(object):
+    proof_types: Sequence[ProofType]
+```
+
+### New `request_proofs`
+
+```python
+def request_proofs(
+    self: ProofEngine,
+    new_payload_request: NewPayloadRequest,
+    proof_attributes: ProofAttributes,
+) -> Root:
+    """
+    Request proof generation for a new payload request with specified proof
+    attributes. Returns ``new_payload_request.hash_tree_root()`` to track the
+    generation request.
+    """
+    ...
+```

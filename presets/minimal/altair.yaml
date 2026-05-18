@@ -1,0 +1,24 @@
+# Minimal preset - Altair
+
+# Rewards and penalties
+# ---------------------------------------------------------------
+# 3 * 2**24 (= 50,331,648)
+INACTIVITY_PENALTY_QUOTIENT_ALTAIR: 50331648
+# 2**6 (= 64)
+MIN_SLASHING_PENALTY_QUOTIENT_ALTAIR: 64
+# 2
+PROPORTIONAL_SLASHING_MULTIPLIER_ALTAIR: 2
+
+# Sync committee
+# ---------------------------------------------------------------
+# [customized] 2**5 (= 32) participants
+SYNC_COMMITTEE_SIZE: 32
+# [customized] 2**3 (= 8) epochs
+EPOCHS_PER_SYNC_COMMITTEE_PERIOD: 8
+
+# Sync protocol
+# ---------------------------------------------------------------
+# 2**0 (= 1) participants
+MIN_SYNC_COMMITTEE_PARTICIPANTS: 1
+# [customized] SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD (= 8 * 8) epochs
+UPDATE_TIMEOUT: 64

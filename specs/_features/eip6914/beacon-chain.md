@@ -1,0 +1,62 @@
+# EIP-6914 -- The Beacon Chain
+
+*Note*: This document is a work-in-progress for researchers and implementers.
+
+<!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
+
+- [Introduction](#introduction)
+- [Preset](#preset)
+  - [Time parameters](#time-parameters)
+- [Helpers](#helpers)
+  - [Predicates](#predicates)
+    - [`is_reusable_validator`](#is_reusable_validator)
+- [Beacon chain state transition function](#beacon-chain-state-transition-function)
+  - [Block processing](#block-processing)
+    - [Modified `get_index_for_new_validator`](#modified-get_index_for_new_validator)
+
+<!-- mdformat-toc end -->
+
+## Introduction
+
+These are the beacon-chain specifications to assign new deposits to existing
+validator records. Refers to
+[EIP-6914](https://github.com/ethereum/EIPs/pull/6914).
+
+*Note*: This specification is built upon
+[Capella](../../capella/beacon-chain.md).
+
+## Preset
+
+### Time parameters
+
+| Name                         | Value                      | Unit   |
+| ---------------------------- | -------------------------- | ------ |
+| `SAFE_EPOCHS_TO_REUSE_INDEX` | `uint64(2**16)` (= 65,536) | epochs |
+
+## Helpers
+
+### Predicates
+
+#### `is_reusable_validator`
+
+```python
+def is_reusable_validator(validator: Validator, balance: Gwei, epoch: Epoch) -> bool:
+    """
+    Check if ``validator`` index can be re-assigned to a new deposit.
+    """
+    return epoch > validator.withdrawable_epoch + SAFE_EPOCHS_TO_REUSE_INDEX and balance == 0
+```
+
+## Beacon chain state transition function
+
+### Block processing
+
+#### Modified `get_index_for_new_validator`
+
+```python
+def get_index_for_new_validator(state: BeaconState) -> ValidatorIndex:
+    for index, validator in enumerate(state.validators):
+        if is_reusable_validator(validator, state.balances[index], get_current_epoch(state)):
+            return ValidatorIndex(index)
+    return ValidatorIndex(len(state.validators))
+```
