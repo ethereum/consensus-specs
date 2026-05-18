@@ -330,7 +330,7 @@ As seen by the client at the time of sending the message:
 - `earliest_available_slot`: The slot of earliest available block
   (`SignedBeaconBlock`).
 
-*Note*: According the the definition of `earliest_available_slot`:
+*Note*: According to the definition of `earliest_available_slot`:
 
 - If the node is able to serve all blocks throughout the entire sidecars
   retention period (as defined by both `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
