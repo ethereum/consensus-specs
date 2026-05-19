@@ -327,12 +327,10 @@ class YieldGeneratorPlugin:
 
     def _case_output_dir(self, manifest: Manifest) -> Path:
         """Return the output directory for a complete case manifest."""
-        assert manifest.is_complete(), (
-            f"Manifest must be complete to generate test vector for {manifest}"
-        )
+        assert manifest.is_complete()
         return (
             Path(self.output_dir)
-            / manifest.preset_name  # type: ignore
+            / manifest.preset_name
             / manifest.fork_name
             / manifest.runner_name
             / manifest.handler_name
@@ -359,9 +357,6 @@ class YieldGeneratorPlugin:
         if fork_name not in context.DEFAULT_PYTEST_FORKS:
             return
         manifest = manifest.with_defaults(Manifest(fork_name=fork_name))
-        assert manifest.is_complete(), (
-            f"Manifest must be complete to generate test vector for {manifest}"
-        )
         output_dir = self._case_output_dir(manifest)
 
         outputs: list[tuple[str, Any, Any]] = []
