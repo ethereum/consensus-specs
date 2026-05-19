@@ -1557,7 +1557,7 @@ def add_builder_to_registry(
 
 *Note*: Builder indices are reusable. When a builder exits, its index may later
 be reassigned to a different builder with a new public key. Any deposit sent to
-an exited builder is refunded to the builder’s execution address. Exited
+an exited builder will be withdrawn to the builder’s execution address. Exited
 builders cannot be reactivated, although a newly registered builder’s public key
 may have previously appeared in the builder set. Implementations that rely on
 caching should account for this behavior.
