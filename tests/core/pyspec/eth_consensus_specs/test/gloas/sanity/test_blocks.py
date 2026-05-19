@@ -1,6 +1,6 @@
-from eth_consensus_specs.test.context import (
-    spec_state_test,
-    with_gloas_and_later,
+from eth_consensus_specs.test.context import always_bls, spec_state_test, with_gloas_and_later
+from eth_consensus_specs.test.gloas.block_processing.test_process_payload_attestation import (
+    prepare_signed_payload_attestation,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
@@ -160,6 +160,114 @@ def test_missed_payload_next_block_with_withdrawals_satisfying_payload(spec, sta
 
 @with_gloas_and_later
 @spec_state_test
+def test_missed_payload_recovery_resumes_with_remaining_withdrawals(spec, state):
+    """
+    Block 1: has withdrawal-eligible validators (more than MAX_WITHDRAWALS_PER_PAYLOAD).
+    Payload for Block 1 does not arrive.
+    Block 2: remaining validators are still withdrawal-eligible and must still accept
+    Block 1's stale withdrawals (W_1).
+    Block 3: declares Block 2 as a FULL parent, causing Block 2's payload to be
+    applied during normal block processing. Withdrawals then resume normally and
+    compute a fresh set for the remaining validators.
+    """
+    # Set up MAX + 2 validators. Block 1 processes exactly MAX, leaving 2 remaining.
+    pre_state, signed_block_1, block_1_withdrawals = _setup_missed_payload_with_withdrawals(
+        spec, state, num_withdrawal_validators=spec.MAX_WITHDRAWALS_PER_PAYLOAD + 2
+    )
+
+    # Process Block 2 (parent empty -> process_withdrawals returns early)
+    block_2 = build_empty_block_for_next_slot(spec, state)
+    signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
+
+    # Block 2 must still accept Block 1's stale withdrawals.
+    satisfying = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](block_1_withdrawals)
+    assert _attempt_payload_with_withdrawals(spec, state, satisfying)
+
+    # Build Block 3 so block processing treats Block 2 as a FULL parent.
+    # This triggers process_parent_execution_payload for Block 2 before
+    # process_withdrawals computes Block 3's fresh expected withdrawals.
+    block_3 = build_empty_block_for_next_slot(spec, state)
+    block_3.body.signed_execution_payload_bid.message.parent_block_hash = (
+        state.latest_execution_payload_bid.block_hash
+    )
+    signed_block_3 = state_transition_and_sign_block(spec, state, block_3)
+
+    yield "pre", pre_state
+    yield "blocks", [signed_block_1, signed_block_2, signed_block_3]
+    yield "post", state
+
+    # Block 3 applied Block 2's payload, so the parent is now marked FULL.
+    block_2_hash = signed_block_2.message.body.signed_execution_payload_bid.message.block_hash
+    assert state.latest_block_hash == block_2_hash
+
+    resumed_withdrawals = list(state.payload_expected_withdrawals)
+    assert len(resumed_withdrawals) > 0
+    assert resumed_withdrawals != block_1_withdrawals
+
+    # Exactly two validators remained after Block 1's full payload-sized sweep.
+    assert len(resumed_withdrawals) == 2
+
+    resumed = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](resumed_withdrawals)
+    assert _attempt_payload_with_withdrawals(spec, state, resumed)
+
+    # Once recovery resumes, Block 1's stale withdrawals must be rejected.
+    assert not _attempt_payload_with_withdrawals(spec, state, satisfying)
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_missed_payload_recovery_resumes_without_remaining_withdrawals(spec, state):
+    """
+    Block 1: has withdrawal-eligible validators.
+    Payload for Block 1 does not arrive.
+    Block 2: no new withdrawal-eligible validators and must still accept
+    Block 1's stale withdrawals (W_1).
+    Block 3: declares Block 2 as a FULL parent, causing Block 2's payload to be
+    applied during normal block processing. Withdrawals then resume normally and
+    compute an empty set.
+    """
+    # Set up MAX validators. Block 1 processes exactly MAX, leaving 0 remaining.
+    pre_state, signed_block_1, block_1_withdrawals = _setup_missed_payload_with_withdrawals(
+        spec, state, num_withdrawal_validators=spec.MAX_WITHDRAWALS_PER_PAYLOAD
+    )
+
+    # Process Block 2 (parent empty -> process_withdrawals returns early)
+    block_2 = build_empty_block_for_next_slot(spec, state)
+    signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
+
+    # Block 2 must still accept Block 1's stale withdrawals.
+    satisfying = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](block_1_withdrawals)
+    assert _attempt_payload_with_withdrawals(spec, state, satisfying)
+
+    # Build Block 3 so block processing treats Block 2 as a FULL parent.
+    # This triggers process_parent_execution_payload for Block 2 before
+    # process_withdrawals computes Block 3's fresh expected withdrawals.
+    block_3 = build_empty_block_for_next_slot(spec, state)
+    block_3.body.signed_execution_payload_bid.message.parent_block_hash = (
+        state.latest_execution_payload_bid.block_hash
+    )
+    signed_block_3 = state_transition_and_sign_block(spec, state, block_3)
+
+    yield "pre", pre_state
+    yield "blocks", [signed_block_1, signed_block_2, signed_block_3]
+    yield "post", state
+
+    # Block 3 applied Block 2's payload, so the parent is now marked FULL.
+    block_2_hash = signed_block_2.message.body.signed_execution_payload_bid.message.block_hash
+    assert state.latest_block_hash == block_2_hash
+
+    resumed_withdrawals = list(state.payload_expected_withdrawals)
+    assert resumed_withdrawals == []
+
+    empty_withdrawals = spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD]()
+    assert _attempt_payload_with_withdrawals(spec, state, empty_withdrawals)
+
+    # Once recovery is complete, the stale Block 1 withdrawals must no longer be accepted.
+    assert not _attempt_payload_with_withdrawals(spec, state, satisfying)
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_missed_payload_next_block_with_withdrawals_unsatisfying_payload(spec, state):
     """
     Block 1: has withdrawal-eligible validators (more than MAX_WITHDRAWALS_PER_PAYLOAD).
@@ -248,6 +356,36 @@ def test_missed_payload_next_block_without_withdrawals_unsatisfying_payload(spec
 
 @with_gloas_and_later
 @spec_state_test
+def test_invalid_payload_attestation_wrong_beacon_block_root(spec, state):
+    """
+    Test that payload attestation with wrong beacon_block_root fails.
+    """
+    yield "pre", state
+
+    block = build_empty_block_for_next_slot(spec, state)
+
+    parent_slot = state.latest_block_header.slot
+    ptc = spec.get_ptc(state, parent_slot)
+
+    wrong_root = spec.Root(b"\x42" * 32)
+    payload_attestation = prepare_signed_payload_attestation(
+        spec,
+        state,
+        slot=parent_slot,
+        beacon_block_root=wrong_root,
+        payload_present=True,
+        attesting_indices=ptc,
+    )
+    block.body.payload_attestations = [payload_attestation]
+
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield "blocks", [signed_block]
+    yield "post", None
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_process_parent_execution_payload__wrong_execution_requests_root(spec, state):
     """
     Test that process_parent_execution_payload rejects a block whose
@@ -263,6 +401,78 @@ def test_process_parent_execution_payload__wrong_execution_requests_root(spec, s
     block.body.parent_execution_requests = get_non_empty_execution_requests(spec)
 
     yield "pre", state
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield "blocks", [signed_block]
+    yield "post", None
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_invalid_payload_attestation_too_old_slot(spec, state):
+    """
+    Test that payload attestation for slot too far in past fails.
+    """
+    yield "pre", state
+
+    # Advance state to slot 3
+    spec.process_slots(state, state.slot + 3)
+
+    block = build_empty_block_for_next_slot(spec, state)
+
+    ptc = spec.get_ptc(state, state.slot - 2)
+
+    parent_header = state.latest_block_header.copy()
+    if parent_header.state_root == spec.Root():
+        parent_header.state_root = spec.hash_tree_root(state)
+    beacon_block_root = spec.hash_tree_root(parent_header)
+
+    payload_attestation = prepare_signed_payload_attestation(
+        spec,
+        state,
+        slot=state.slot - 2,  # Too old - should fail
+        beacon_block_root=beacon_block_root,
+        payload_present=True,
+        attesting_indices=ptc,
+    )
+    block.body.payload_attestations = [payload_attestation]
+
+    signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
+
+    yield "blocks", [signed_block]
+    yield "post", None
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
+def test_invalid_payload_attestation_invalid_signature(spec, state):
+    """
+    Test that payload attestation with invalid signature fails.
+    """
+    yield "pre", state
+
+    block = build_empty_block_for_next_slot(spec, state)
+
+    parent_slot = state.latest_block_header.slot
+    ptc = spec.get_ptc(state, parent_slot)
+
+    parent_header = state.latest_block_header.copy()
+    if parent_header.state_root == spec.Root():
+        parent_header.state_root = spec.hash_tree_root(state)
+    beacon_block_root = spec.hash_tree_root(parent_header)
+
+    payload_attestation = prepare_signed_payload_attestation(
+        spec,
+        state,
+        slot=parent_slot,
+        beacon_block_root=beacon_block_root,
+        payload_present=True,
+        attesting_indices=ptc,
+        valid_signature=False,
+    )
+    block.body.payload_attestations = [payload_attestation]
+
     signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
 
     yield "blocks", [signed_block]

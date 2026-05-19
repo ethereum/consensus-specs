@@ -157,7 +157,7 @@ class ForkChoiceNode(object):
 
 ```python
 @dataclass(eq=True, frozen=True)
-class LatestMessage(object):
+class LatestMessage:
     epoch: Epoch
     root: Root
 ```
@@ -183,7 +183,7 @@ algorithm. The important fields being tracked are described below:
 
 ```python
 @dataclass
-class Store(object):
+class Store:
     time: uint64
     genesis_time: uint64
     justified_checkpoint: Checkpoint
@@ -710,18 +710,16 @@ def get_proposer_head(store: Store, head_root: Root, slot: Slot) -> Root:
     # Re-org more aggressively if there is a proposer equivocation in the previous slot.
     proposer_equivocation = is_proposer_equivocation(store, head_root)
 
-    if all(
-        [
-            head_late,
-            shuffling_stable,
-            ffg_competitive,
-            finalization_ok,
-            proposing_on_time,
-            single_slot_reorg,
-            head_weak,
-            parent_strong,
-        ]
-    ):
+    if all([
+        head_late,
+        shuffling_stable,
+        ffg_competitive,
+        finalization_ok,
+        proposing_on_time,
+        single_slot_reorg,
+        head_weak,
+        parent_strong,
+    ]):
         # We can re-org the current head by building upon its parent block.
         return parent_root
     elif all([head_weak, current_time_ok, proposer_equivocation]):

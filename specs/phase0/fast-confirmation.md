@@ -101,7 +101,7 @@ the fast confirmation rule. The fields being tracked are described below:
 
 ```python
 @dataclass
-class FastConfirmationStore(object):
+class FastConfirmationStore:
     store: Store
     confirmed_root: Root
     previous_epoch_observed_justified_checkpoint: Checkpoint

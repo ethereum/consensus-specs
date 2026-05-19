@@ -197,9 +197,9 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 ### Time parameters
 
-| Name                                | Value                 |  Unit  |
-| ----------------------------------- | --------------------- | :----: |
-| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `uint64(2**6)` (= 64) | epochs |
+| Name                                | Value                     |  Unit  |
+| ----------------------------------- | ------------------------- | :----: |
+| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `uint64(2**13)` (= 8,192) | epochs |
 
 ## Containers
 
@@ -447,7 +447,7 @@ class ExecutionPayload(Container):
 
 ```python
 @dataclass
-class ExpectedWithdrawals(object):
+class ExpectedWithdrawals:
     withdrawals: Sequence[Withdrawal]
     # [New in Gloas:EIP7732]
     processed_builder_withdrawals_count: uint64
@@ -536,11 +536,11 @@ def is_valid_indexed_payload_attestation(
 Implementations SHOULD cache verification results to avoid repeated work.
 
 ```python
-def is_pending_validator(state: BeaconState, pubkey: BLSPubkey) -> bool:
+def is_pending_validator(pending_deposits: Sequence[PendingDeposit], pubkey: BLSPubkey) -> bool:
     """
     Check if a pending deposit with a valid signature is in the queue for the given pubkey.
     """
-    for pending_deposit in state.pending_deposits:
+    for pending_deposit in pending_deposits:
         if pending_deposit.pubkey != pubkey:
             continue
         if is_valid_deposit_signature(
@@ -614,7 +614,7 @@ def compute_balance_weighted_selection(
     Return ``size`` indices sampled by effective balance, using ``indices``
     as candidates. If ``shuffle_indices`` is ``True``, candidate indices
     are themselves sampled from ``indices`` by shuffling it, otherwise
-    ``indices`` is traversed in order.
+    ``indices`` is traversed in order. The returned list can contain duplicates.
     """
     MAX_RANDOM_VALUE = 2**16 - 1
     total = uint64(len(indices))
@@ -665,7 +665,7 @@ def compute_proposer_indices(
 ```python
 def compute_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     """
-    Get the payload timeliness committee for the given ``slot``.
+    Get the payload timeliness committee, with possible duplicates, for the given ``slot``.
     """
     epoch = compute_epoch_at_slot(slot)
     seed = hash(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
@@ -1598,7 +1598,7 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     if is_builder or (
         is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
         and not is_validator
-        and not is_pending_validator(state, deposit_request.pubkey)
+        and not is_pending_validator(state.pending_deposits, deposit_request.pubkey)
     ):
         # Apply builder deposits immediately
         apply_deposit_for_builder(

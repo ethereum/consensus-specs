@@ -429,7 +429,7 @@ class BeaconState(Container):
 
 ```python
 @dataclass
-class ExpectedWithdrawals(object):
+class ExpectedWithdrawals:
     withdrawals: Sequence[Withdrawal]
     # [New in Electra:EIP7251]
     processed_partial_withdrawals_count: uint64
@@ -1114,7 +1114,7 @@ def process_effective_balance_updates(state: BeaconState) -> None:
 
 ```python
 @dataclass
-class NewPayloadRequest(object):
+class NewPayloadRequest:
     execution_payload: ExecutionPayload
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root

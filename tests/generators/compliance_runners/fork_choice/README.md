@@ -50,7 +50,7 @@ generated with [`generate_test_instances.py`](generate_test_instances.py), e.g.
 
 ```
 make _pyspec  # Initialize virtual environment
-python -m tests.generators.compliance_runners.fork_choice.generate_test_instances
+uv run python -m tests.generators.compliance_runners.fork_choice.generate_test_instances
 ```
 
 But one normally doesn't need to generate them.

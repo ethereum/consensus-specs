@@ -108,7 +108,7 @@ class LightClientOptimisticUpdate(Container):
 
 ```python
 @dataclass
-class LightClientStore(object):
+class LightClientStore:
     # [Modified in Capella]
     finalized_header: LightClientHeader
     current_sync_committee: SyncCommittee

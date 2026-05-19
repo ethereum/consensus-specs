@@ -15,11 +15,20 @@ from eth_consensus_specs.test.helpers.attestations import (
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
-from eth_consensus_specs.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, MAINNET, PHASE0
+from eth_consensus_specs.test.helpers.constants import (
+    ALTAIR,
+    BELLATRIX,
+    CAPELLA,
+    DENEB,
+    ELECTRA,
+    MAINNET,
+    PHASE0,
+)
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen
+from eth_consensus_specs.test.helpers.forks import is_post_electra
+from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, wrap_genesis_block
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
@@ -34,11 +43,6 @@ def large_validator_balances(spec):
     """
     num_validators = 32 * spec.SLOTS_PER_EPOCH
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
-
-
-def wrap_genesis_block(spec, block):
-    """Wrap an unsigned genesis block in a SignedBeaconBlock with empty signature."""
-    return spec.SignedBeaconBlock(message=block)
 
 
 def create_signed_aggregate_and_proof(spec, state, attestation, aggregator_index=None):
@@ -91,7 +95,7 @@ def run_validate_beacon_aggregate_and_proof_gossip(
         return "reject", str(e)
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__valid(spec, state):
     """
@@ -132,7 +136,7 @@ def test_gossip_beacon_aggregate_and_proof__valid(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_committee_index_out_of_range(spec, state):
     """
@@ -156,7 +160,17 @@ def test_gossip_beacon_aggregate_and_proof__reject_committee_index_out_of_range(
 
     # Modify committee index to be out of range
     committee_count = spec.get_committee_count_per_slot(state, attestation.data.target.epoch)
-    signed_agg.message.aggregate.data.index = committee_count + 10
+    if is_post_electra(spec):
+        # In Electra the committee index moved into ``committee_bits`` and
+        # ``data.index`` must remain zero; encode an OOB index in committee_bits
+        # at the smallest position that is both out-of-range and inside the bitvector.
+        assert committee_count < spec.MAX_COMMITTEES_PER_SLOT
+        oob_index = committee_count
+        signed_agg.message.aggregate.committee_bits = spec.Bitvector[spec.MAX_COMMITTEES_PER_SLOT](
+            *[i == oob_index for i in range(spec.MAX_COMMITTEES_PER_SLOT)]
+        )
+    else:
+        signed_agg.message.aggregate.data.index = committee_count + 10
 
     yield get_filename(signed_agg), signed_agg
 
@@ -234,7 +248,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_slot_not_within_range(spec, s
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__valid_within_clock_disparity(spec, state):
     """
@@ -283,7 +297,7 @@ def test_gossip_beacon_aggregate_and_proof__valid_within_clock_disparity(spec, s
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_epoch_mismatch(spec, state):
     """
@@ -334,7 +348,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_epoch_mismatch(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregate(spec, state):
     """
@@ -388,7 +402,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregate(spec, 
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_superset(spec, state):
     """
@@ -443,14 +457,29 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
     else:
         assert False, "Need at least one additional committee participant for this test"
 
+    if is_post_electra(spec):
+        # Electra ``Attestation`` carries an EIP-7549 aggregation bitlist sized for
+        # ``MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT`` and includes
+        # ``committee_bits``; preserve both from the first aggregate.
+        aggregate_2 = spec.Attestation(
+            aggregation_bits=spec.Bitlist[
+                spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT
+            ](*modified_bits),
+            data=signed_agg_1.message.aggregate.data,
+            committee_bits=signed_agg_1.message.aggregate.committee_bits,
+            signature=signed_agg_1.message.aggregate.signature,
+        )
+    else:
+        aggregate_2 = spec.Attestation(
+            aggregation_bits=spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*modified_bits),
+            data=signed_agg_1.message.aggregate.data,
+            signature=signed_agg_1.message.aggregate.signature,
+        )
+
     signed_agg_2 = spec.SignedAggregateAndProof(
         message=spec.AggregateAndProof(
             aggregator_index=signed_agg_1.message.aggregator_index,
-            aggregate=spec.Attestation(
-                aggregation_bits=spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*modified_bits),
-                data=signed_agg_1.message.aggregate.data,
-                signature=signed_agg_1.message.aggregate.signature,
-            ),
+            aggregate=aggregate_2,
             selection_proof=signed_agg_1.message.selection_proof,
         ),
         signature=signed_agg_1.signature,
@@ -477,7 +506,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec, state):
     """
@@ -561,7 +590,7 @@ def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignore_block_not_seen(spec, state):
     """
@@ -615,7 +644,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_block_not_seen(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_aggregation_bits_size_mismatch(spec, state):
     """
@@ -672,7 +701,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregation_bits_size_mismatc
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_no_participants(spec, state):
     """
@@ -727,7 +756,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_no_participants(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregator(spec, state):
     """
@@ -790,7 +819,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregator(spec,
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @with_presets([MAINNET], reason="minimal preset has committees < 16, so everyone is an aggregator")
 @spec_test
 @with_custom_state(
@@ -879,7 +908,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_not_aggregator(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_aggregator_not_in_committee(spec, state):
     """
@@ -938,7 +967,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_not_in_committee(s
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_aggregator_index_out_of_range(spec, state):
     """
@@ -988,7 +1017,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_index_out_of_range
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 @always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_invalid_selection_proof(spec, state):
@@ -1040,7 +1069,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_selection_proof(spec,
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 @always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregator_signature(spec, state):
@@ -1092,7 +1121,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregator_signature(
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 @always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregate_signature(spec, state):
@@ -1144,7 +1173,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregate_signature(s
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_block_failed_validation(spec, state):
     """
@@ -1208,7 +1237,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_block_failed_validation(spec,
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_target_not_ancestor(spec, state):
     """
@@ -1260,7 +1289,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_target_not_ancestor(spec, sta
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignore_finalized_not_ancestor(spec, state):
     """

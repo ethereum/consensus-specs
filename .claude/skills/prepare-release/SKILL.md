@@ -19,17 +19,16 @@ checks, do not make any modifications to the repository. These steps apply to
 
 ## Check the version
 
-The current version can be found in
-`tests/core/pyspec/eth_consensus_specs/VERSION.txt`. It follows the standard
-`major.minor.patch` format and does not contain a leading `v` letter. The major
-version number is unlikely to change. The minor number corresponds to the
-upgrade sequence. After an upgrade goes live on mainnet, the minor number is
-incremented to reflect that work on the next upgrade has started. The patch
-number is incremented for releases after the stable release for an upgrade is
-made but before the upgrade goes live on mainnet. In the devnet testing phase,
-use the alpha qualifier. In the testnet testing phase, use the beta qualifier.
-Only after the last testnet is upgraded and the upgrade is scheduled can the
-pre-release qualifier be removed.
+The current version can be found in the `[project]` table of `pyproject.toml`.
+It follows the standard `major.minor.patch` format and does not contain a
+leading `v` letter. The major version number is unlikely to change. The minor
+number corresponds to the upgrade sequence. After an upgrade goes live on
+mainnet, the minor number is incremented to reflect that work on the next
+upgrade has started. The patch number is incremented for releases after the
+stable release for an upgrade is made but before the upgrade goes live on
+mainnet. In the devnet testing phase, use the alpha qualifier. In the testnet
+testing phase, use the beta qualifier. Only after the last testnet is upgraded
+and the upgrade is scheduled can the pre-release qualifier be removed.
 
 ## Compare version to last release
 
