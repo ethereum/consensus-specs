@@ -384,6 +384,8 @@ obtained from the `state.latest_execution_payload_bid`)
   `len(execution_requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`,
   and
   `len(execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`.
+- _[REJECT]_ The number of withdrawals is within the limit -- i.e. validate that
+  `len(payload.withdrawals) <= MAX_WITHDRAWALS_PER_PAYLOAD`.
 - _[REJECT]_ `signed_execution_payload_envelope.signature` is valid as verified
   by `verify_execution_payload_envelope_signature`.
 
