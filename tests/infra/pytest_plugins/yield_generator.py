@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, TypedDict
@@ -325,19 +326,6 @@ class YieldGeneratorPlugin:
                 return data
         return default
 
-    def _case_output_dir(self, manifest: Manifest) -> Path:
-        """Return the output directory for a complete case manifest."""
-        assert manifest.is_complete()
-        return (
-            Path(self.output_dir)
-            / manifest.preset_name
-            / manifest.fork_name
-            / manifest.runner_name
-            / manifest.handler_name
-            / manifest.suite_name
-            / manifest.case_name
-        )
-
     def generate_test_vector(self, manifest: Manifest, result: MultiPhaseResult | list) -> None:
         if isinstance(result, dict):
             for fork_name, phase_result in result.items():
@@ -357,7 +345,19 @@ class YieldGeneratorPlugin:
         if fork_name not in context.DEFAULT_PYTEST_FORKS:
             return
         manifest = manifest.with_defaults(Manifest(fork_name=fork_name))
-        output_dir = self._case_output_dir(manifest)
+        assert manifest.is_complete(), (
+            f"Manifest must be complete to generate test vector for {manifest}"
+        )
+
+        output_dir = (
+            Path(self.output_dir)
+            / manifest.preset_name  # type: ignore
+            / manifest.fork_name
+            / manifest.runner_name
+            / manifest.handler_name
+            / manifest.suite_name
+            / manifest.case_name
+        )
 
         outputs: list[tuple[str, Any, Any]] = []
         meta: dict[str, Any] = {}
@@ -371,7 +371,8 @@ class YieldGeneratorPlugin:
                     raise ValueError(f"Unknown kind {kind!r}")
                 outputs.append((name, method, data))
 
-        self.dumper.clear_case_dir(output_dir)
+        if output_dir.exists():
+            shutil.rmtree(output_dir)
 
         for name, method, data in outputs:
             method(output_dir, name, data)
