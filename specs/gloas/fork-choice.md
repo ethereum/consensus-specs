@@ -108,7 +108,7 @@ Where:
 
 ```python
 @dataclass(eq=True, frozen=True)
-class ForkChoiceNode(object):
+class ForkChoiceNode:
     root: Root
     payload_status: PayloadStatus  # One of PAYLOAD_STATUS_* values
 ```

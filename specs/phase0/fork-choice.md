@@ -149,7 +149,7 @@ abstraction is introduced for the purpose of upgradability.
 
 ```python
 @dataclass(eq=True, frozen=True)
-class ForkChoiceNode(object):
+class ForkChoiceNode:
     root: Root
 ```
 
