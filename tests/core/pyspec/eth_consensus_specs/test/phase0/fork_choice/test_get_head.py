@@ -305,7 +305,7 @@ def test_proposer_boost_correct_head(spec, state):
     signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
     rng = random.Random(1001)
     while spec.hash_tree_root(block_1) >= spec.hash_tree_root(block_2):
-        block_2.body.graffiti = spec.Bytes32(hex(rng.getrandbits(8 * 32))[2:].zfill(64))
+        block_2.body.graffiti = spec.Bytes32(f"{rng.getrandbits(8 * 32):064x}")
         signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
     assert spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2)
 
@@ -376,7 +376,7 @@ def test_discard_equivocations_on_attester_slashing(spec, state):
     signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
     rng = random.Random(1001)
     while spec.hash_tree_root(block_1) >= spec.hash_tree_root(block_2):
-        block_2.body.graffiti = spec.Bytes32(hex(rng.getrandbits(8 * 32))[2:].zfill(64))
+        block_2.body.graffiti = spec.Bytes32(f"{rng.getrandbits(8 * 32):064x}")
         signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
     assert spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2)
 

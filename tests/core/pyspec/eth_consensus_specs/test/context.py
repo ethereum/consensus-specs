@@ -658,7 +658,7 @@ def with_phases(phases, other_phases=None):
                         )
                         if isinstance(ret, dict):
                             accumulated.update(ret)
-                    ret = accumulated if accumulated else None
+                    ret = accumulated or None
                 else:
                     ret = None
                     for fork_meta in fork_metas:

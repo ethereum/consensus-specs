@@ -159,8 +159,7 @@ class SpecTestFunction(pytest.Function):
         suite_name = config.get("suite_name", getattr(self.obj, "suite_name", "pyspec_tests"))
 
         case_name = self.originalname or self.name
-        if case_name.startswith("test_"):
-            case_name = case_name[5:]
+        case_name = case_name.removeprefix("test_")
 
         preset = self.callspec.params.get("preset") if hasattr(self, "callspec") else None
 

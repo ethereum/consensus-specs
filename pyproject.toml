@@ -99,7 +99,6 @@ ignore = [
   "ERA",  # https://docs.astral.sh/ruff/rules/#eradicate-era
   "FBT",  # https://docs.astral.sh/ruff/rules/#flake8-boolean-trap-fbt
   "FIX",  # https://docs.astral.sh/ruff/rules/#flake8-fixme-fix
-  "FURB", # https://docs.astral.sh/ruff/rules/#refurb-furb
   "N",    # https://docs.astral.sh/ruff/rules/#pep8-naming-n
   "PERF", # https://docs.astral.sh/ruff/rules/#perflint-perf
   "RET",  # https://docs.astral.sh/ruff/rules/#flake8-return-ret
