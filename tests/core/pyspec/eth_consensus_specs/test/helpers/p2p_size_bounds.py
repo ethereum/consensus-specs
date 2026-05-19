@@ -1,7 +1,7 @@
 from eth_consensus_specs.test.helpers.forks import is_post_heze
 
 
-def _max_attestation(spec):
+def build_max_size_attestation(spec):
     aggregation_bits = spec.AggregationBits(
         [True] * (spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT)
     )
@@ -13,7 +13,7 @@ def _max_attestation(spec):
     )
 
 
-def _max_indexed_attestation(spec):
+def build_max_size_indexed_attestation(spec):
     attesting_indices = spec.AttestingIndices(
         [spec.ValidatorIndex(0)]
         * (spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT)
@@ -25,7 +25,7 @@ def _max_indexed_attestation(spec):
     )
 
 
-def _max_payload_attestation(spec):
+def build_max_size_payload_attestation(spec):
     return spec.PayloadAttestation(
         aggregation_bits=spec.Bitvector[spec.PTC_SIZE]([True] * spec.PTC_SIZE),
         data=spec.PayloadAttestationData(),
@@ -35,15 +35,15 @@ def _max_payload_attestation(spec):
 
 def build_max_size_attester_slashing(spec):
     return spec.AttesterSlashing(
-        attestation_1=_max_indexed_attestation(spec),
-        attestation_2=_max_indexed_attestation(spec),
+        attestation_1=build_max_size_indexed_attestation(spec),
+        attestation_2=build_max_size_indexed_attestation(spec),
     )
 
 
 def build_max_size_signed_aggregate_and_proof(spec):
     aggregate_and_proof = spec.AggregateAndProof(
         aggregator_index=spec.ValidatorIndex(0),
-        aggregate=_max_attestation(spec),
+        aggregate=build_max_size_attestation(spec),
         selection_proof=spec.BLSSignature(),
     )
     return spec.SignedAggregateAndProof(
@@ -115,7 +115,7 @@ def build_max_size_signed_beacon_block(spec):
             [build_max_size_attester_slashing(spec)] * spec.MAX_ATTESTER_SLASHINGS_ELECTRA
         ),
         attestations=spec.ProgressiveList[spec.Attestation](
-            [_max_attestation(spec)] * spec.MAX_ATTESTATIONS_ELECTRA
+            [build_max_size_attestation(spec)] * spec.MAX_ATTESTATIONS_ELECTRA
         ),
         deposits=spec.ProgressiveList[spec.Deposit]([spec.Deposit()] * spec.MAX_DEPOSITS),
         voluntary_exits=spec.ProgressiveList[spec.SignedVoluntaryExit](
@@ -127,7 +127,7 @@ def build_max_size_signed_beacon_block(spec):
         ),
         signed_execution_payload_bid=build_max_size_signed_execution_payload_bid(spec),
         payload_attestations=spec.ProgressiveList[spec.PayloadAttestation](
-            [_max_payload_attestation(spec)] * spec.MAX_PAYLOAD_ATTESTATIONS
+            [build_max_size_payload_attestation(spec)] * spec.MAX_PAYLOAD_ATTESTATIONS
         ),
         parent_execution_requests=build_max_size_execution_requests(spec),
     )
