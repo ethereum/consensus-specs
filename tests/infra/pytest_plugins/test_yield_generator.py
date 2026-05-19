@@ -182,7 +182,7 @@ class TestDumpPhase:
         assert (case_dir / "data.yaml").exists()
         assert (case_dir / "manifest.yaml").exists()
 
-    def test_clear_output_dirs_removes_selected_fork_cases(self, tmp_path):
+    def test_dump_phase_does_not_remove_other_fork_cases(self, tmp_path):
         config = SimpleNamespace(getoption=lambda option: str(tmp_path))
         plugin = YieldGeneratorPlugin(config)
         manifest = Manifest(
@@ -196,15 +196,13 @@ class TestDumpPhase:
         altair_dir = tmp_path / "minimal" / "altair" / "bls" / "verify" / "pyspec_tests" / "valid"
         phase0_dir.mkdir(parents=True)
         altair_dir.mkdir(parents=True)
-        (phase0_dir / "stale.yaml").write_text("old: true\n")
-        (altair_dir / "stale.yaml").write_text("old: true\n")
+        phase0_stale_path = phase0_dir / "stale.yaml"
+        altair_stale_path = altair_dir / "stale.yaml"
+        phase0_stale_path.write_text("old: true\n")
+        altair_stale_path.write_text("old: true\n")
 
-        previous_forks = context.DEFAULT_PYTEST_FORKS
-        try:
-            context.DEFAULT_PYTEST_FORKS = {"phase0", "altair"}
-            plugin._clear_output_dirs(manifest)
-        finally:
-            context.DEFAULT_PYTEST_FORKS = previous_forks
+        plugin._dump_phase(manifest, [("data", "data", {"value": 1})], "phase0")
 
-        assert not phase0_dir.exists()
-        assert not altair_dir.exists()
+        assert not phase0_stale_path.exists()
+        assert (phase0_dir / "data.yaml").exists()
+        assert altair_stale_path.exists()

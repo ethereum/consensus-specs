@@ -279,11 +279,6 @@ class YieldGeneratorPlugin:
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_protocol(self, item, nextitem):
-        if self.reftests_enabled and isinstance(item, SpecTestFunction):
-            manifest = item.get_manifest()
-            if manifest is not None:
-                self._clear_output_dirs(manifest)
-
         yield
 
         if not self._should_generate(item):
@@ -344,19 +339,6 @@ class YieldGeneratorPlugin:
             / manifest.suite_name
             / manifest.case_name
         )
-
-    def _clear_output_dirs(self, manifest: Manifest) -> None:
-        """Remove stale case outputs for the selected reftest forks."""
-        if manifest.fork_name is not None:
-            if manifest.fork_name not in context.DEFAULT_PYTEST_FORKS:
-                return
-            fork_names = [manifest.fork_name]
-        else:
-            fork_names = context.DEFAULT_PYTEST_FORKS
-        for fork_name in fork_names:
-            manifest_with_fork = manifest.with_defaults(Manifest(fork_name=fork_name))
-            if manifest_with_fork.is_complete():
-                self.dumper.clear_case_dir(self._case_output_dir(manifest_with_fork))
 
     def generate_test_vector(self, manifest: Manifest, result: MultiPhaseResult | list) -> None:
         if isinstance(result, dict):
