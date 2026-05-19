@@ -1,7 +1,7 @@
 import contextlib
-from collections import namedtuple
 from collections.abc import Iterable
 from pathlib import Path
+from typing import NamedTuple
 
 import pytest
 from eth_utils import decode_hex
@@ -62,14 +62,10 @@ def get_test_case(spec, td):
     )
 
 
-ComplianceTestInfo = namedtuple(
-    "ComplianceTestInfo",
-    [
-        "preset",
-        "fork",
-        "test_dir",
-    ],
-)
+class ComplianceTestInfo(NamedTuple):
+    preset: str
+    fork: str
+    test_dir: Path
 
 
 def run_test(test_info):

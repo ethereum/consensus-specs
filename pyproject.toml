@@ -102,7 +102,6 @@ ignore = [
   "FURB", # https://docs.astral.sh/ruff/rules/#refurb-furb
   "N",    # https://docs.astral.sh/ruff/rules/#pep8-naming-n
   "PERF", # https://docs.astral.sh/ruff/rules/#perflint-perf
-  "PYI",  # https://docs.astral.sh/ruff/rules/#flake8-pyi-pyi
   "RET",  # https://docs.astral.sh/ruff/rules/#flake8-return-ret
   "S",    # https://docs.astral.sh/ruff/rules/#flake8-bandit-s
   "SLF",  # https://docs.astral.sh/ruff/rules/#flake8-self-slf
