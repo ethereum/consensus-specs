@@ -88,7 +88,7 @@ extend-exclude = [
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-  # Disabled rule families:
+  # Rule families:
   "A",    # https://docs.astral.sh/ruff/rules/#flake8-builtins-a
   "ANN",  # https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
   "BLE",  # https://docs.astral.sh/ruff/rules/#flake8-blind-except-ble
@@ -99,7 +99,6 @@ ignore = [
   "ERA",  # https://docs.astral.sh/ruff/rules/#eradicate-era
   "FBT",  # https://docs.astral.sh/ruff/rules/#flake8-boolean-trap-fbt
   "FIX",  # https://docs.astral.sh/ruff/rules/#flake8-fixme-fix
-  "FLY",  # https://docs.astral.sh/ruff/rules/#flynt-fly
   "FURB", # https://docs.astral.sh/ruff/rules/#refurb-furb
   "N",    # https://docs.astral.sh/ruff/rules/#pep8-naming-n
   "PERF", # https://docs.astral.sh/ruff/rules/#perflint-perf
@@ -112,7 +111,7 @@ ignore = [
   "TD",   # https://docs.astral.sh/ruff/rules/#flake8-todos-td
   "TRY",  # https://docs.astral.sh/ruff/rules/#tryceratops-try
 
-  # Disabled specific rules:
+  # Specific rules:
   "E501",    # https://docs.astral.sh/ruff/rules/line-too-long/
   "E741",    # https://docs.astral.sh/ruff/rules/ambiguous-variable-name/
   "PLR0911", # https://docs.astral.sh/ruff/rules/too-many-return-statements/
