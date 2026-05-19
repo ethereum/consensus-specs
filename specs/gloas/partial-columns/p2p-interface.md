@@ -40,11 +40,11 @@ and the [Gloas networking specification](../p2p-interface.md).
 
 ##### `MAX_PARTIAL_DATA_COLUMN_SIDECAR_SIZE`
 
-| Field                  | Length                                                                                                                                                                 |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cells_present_bitmap` | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../../deneb/beacon-chain.md#blob) bits                                                                                              |
-| `partial_column`       | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../../deneb/beacon-chain.md#blob) `Cell` items (each [`BYTES_PER_CELL`](../../fulu/polynomial-commitments-sampling.md#cells) bytes) |
-| `kzg_proofs`           | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../../deneb/beacon-chain.md#blob) items                                                                                             |
+| Field                  | Length                                                                     |
+| ---------------------- | -------------------------------------------------------------------------- |
+| `cells_present_bitmap` | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../../deneb/beacon-chain.md#blob) bits  |
+| `partial_column`       | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../../deneb/beacon-chain.md#blob) items |
+| `kzg_proofs`           | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../../deneb/beacon-chain.md#blob) items |
 
 ### Containers
 

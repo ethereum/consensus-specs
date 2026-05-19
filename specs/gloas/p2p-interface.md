@@ -87,10 +87,10 @@ libp2p messages.
 
 ##### `MAX_DATA_COLUMN_SIDECAR_SIZE`
 
-| Field        | Length                                                                                                                                                           |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `column`     | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../deneb/beacon-chain.md#blob) `Cell` items (each [`BYTES_PER_CELL`](../fulu/polynomial-commitments-sampling.md#cells) bytes) |
-| `kzg_proofs` | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../deneb/beacon-chain.md#blob) items                                                                                          |
+| Field        | Length                                                                  |
+| ------------ | ----------------------------------------------------------------------- |
+| `column`     | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../deneb/beacon-chain.md#blob) items |
+| `kzg_proofs` | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../deneb/beacon-chain.md#blob) items |
 
 ##### `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE`
 
