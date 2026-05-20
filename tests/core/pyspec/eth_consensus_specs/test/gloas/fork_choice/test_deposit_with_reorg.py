@@ -1,23 +1,20 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_all_phases_from_to,
+    with_gloas_and_later,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
-from eth_consensus_specs.test.helpers.constants import (
-    ELECTRA,
-    GLOAS,
-    MINIMAL,
-)
+from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_deposit_request,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
-    compute_el_block_hash_for_block,
+    build_signed_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
+    add_execution_payload,
     apply_next_slots_with_attestations,
     get_genesis_forkchoice_store_and_block,
     tick_and_add_block,
@@ -28,10 +25,13 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-@with_all_phases_from_to(ELECTRA, GLOAS)
+@with_gloas_and_later
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
+    """
+    Test deposit processing across epochs.
+    """
     # signify the eth1 bridge deprecation
     state.deposit_requests_start_index = state.eth1_deposit_index
 
@@ -46,24 +46,51 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     deposit_request = prepare_deposit_request(
         spec, len(state.validators), spec.MIN_ACTIVATION_BALANCE, signed=True
     )
-    deposit_block = build_empty_block_for_next_slot(spec, state)
-    deposit_block.body.execution_requests.deposits = [deposit_request]
-    deposit_block.body.execution_payload.block_hash = compute_el_block_hash_for_block(
-        spec, deposit_block
+    execution_requests = spec.ExecutionRequests(
+        deposits=spec.List[spec.DepositRequest, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD](
+            [deposit_request]
+        ),
     )
-    signed_deposit_block = state_transition_and_sign_block(spec, state, deposit_block)
 
+    # Build the deposit block
+    deposit_block = build_empty_block_for_next_slot(spec, state)
+    deposit_bid = deposit_block.body.signed_execution_payload_bid.message
+    deposit_bid.execution_requests_root = spec.hash_tree_root(execution_requests)
+    deposit_bid.block_hash = state.latest_block_hash
+    signed_deposit_block = state_transition_and_sign_block(spec, state, deposit_block)
+    deposit_block_root = signed_deposit_block.message.hash_tree_root()
+
+    yield from tick_and_add_block(spec, store, signed_deposit_block, test_steps)
+
+    # Reveal the execution payload envelope carrying the deposit request
+    deposit_envelope = build_signed_execution_payload_envelope(
+        spec,
+        state,
+        deposit_block_root,
+        signed_deposit_block,
+        execution_requests=execution_requests,
+    )
+    yield from add_execution_payload(spec, store, deposit_envelope, test_steps, valid=True)
+
+    # Pre-check that the deposit is not yet in state.pending_deposits
+    assert state.pending_deposits == []
+
+    # Build the child block that carries parent_execution_requests
+    child_block = build_empty_block_for_next_slot(spec, state)
+    child_block.body.parent_execution_requests = execution_requests
+    signed_child_block = state_transition_and_sign_block(spec, state, child_block)
+
+    yield from tick_and_add_block(spec, store, signed_child_block, test_steps)
+
+    # Build the expected pending deposit
     pending_deposit = spec.PendingDeposit(
         pubkey=deposit_request.pubkey,
         withdrawal_credentials=deposit_request.withdrawal_credentials,
         amount=deposit_request.amount,
         signature=deposit_request.signature,
-        slot=deposit_block.slot,
+        slot=child_block.slot,
     )
-
     assert state.pending_deposits == [pending_deposit]
-
-    yield from tick_and_add_block(spec, store, signed_deposit_block, test_steps)
 
     # (2) finalize and process pending deposit on one fork
     slots = 4 * spec.SLOTS_PER_EPOCH - state.slot

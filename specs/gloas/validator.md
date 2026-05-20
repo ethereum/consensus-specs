@@ -128,9 +128,9 @@ A validator MAY broadcast `SignedProposerPreferences` messages to the
 `get_upcoming_proposal_slots(state, validator_index)`. These include any future
 proposal slots within the proposer lookahead, i.e. the current epoch up to
 `MIN_SEED_LOOKAHEAD` epochs ahead. This allows builders to construct execution
-payloads with the validator's preferred `fee_recipient` and `gas_limit`. If a
-validator does not broadcast a `SignedProposerPreferences` message, this implies
-that the validator will not accept any trustless bids for that slot.
+payloads with the validator's preferred `fee_recipient` and `target_gas_limit`.
+If a validator does not broadcast a `SignedProposerPreferences` message, this
+implies that the validator will not accept any trustless bids for that slot.
 
 ```python
 def get_upcoming_proposal_slots(
@@ -162,8 +162,8 @@ To construct each `SignedProposerPreferences`:
 4. Set `preferences.validator_index` to the validator's index.
 5. Set `preferences.fee_recipient` to the execution address where the validator
    wishes to receive the builder payment.
-6. Set `preferences.gas_limit` to the validator's preferred gas limit for this
-   execution payload.
+6. Set `preferences.target_gas_limit` to the validator's preferred gas limit for
+   this execution payload.
 7. Instantiate a new `SignedProposerPreferences` object as `signed_preferences`.
 8. Set `signed_preferences.message` to `preferences`.
 9. Set `signed_preferences.signature` to the result of

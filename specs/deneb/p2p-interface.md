@@ -98,7 +98,7 @@ class BlobIdentifier(Container):
 
 ```python
 @dataclass
-class Seen(object):
+class Seen:
     proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
     aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
     aggregate_data_roots: Dict[Root, Set[Tuple[boolean, ...]]]

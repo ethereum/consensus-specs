@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, TypedDict
@@ -369,6 +370,9 @@ class YieldGeneratorPlugin:
                 if method is None:
                     raise ValueError(f"Unknown kind {kind!r}")
                 outputs.append((name, method, data))
+
+        if output_dir.exists():
+            shutil.rmtree(output_dir)
 
         for name, method, data in outputs:
             method(output_dir, name, data)
