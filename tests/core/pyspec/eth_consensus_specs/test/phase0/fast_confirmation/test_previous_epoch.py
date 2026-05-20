@@ -30,7 +30,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
 
 @dataclass
 class PreviousEpochTestSpecification:
-    prev_head_ancestor: bool  # is_ancestor(store, spec.get_plain_block_root(fcr_store.previous_slot_head), spec.get_plain_block_root((block_root))
+    prev_head_ancestor: bool  # is_ancestor(store, spec.get_block_root_node(fcr_store.previous_slot_head), spec.get_block_root_node((block_root))
     first_slot_call: bool  # is_start_slot_at_epoch(get_current_slot(store))
     is_one_confirmed: bool  # is_one_confirmed(store, get_current_balance_source(store), block_root)
     no_conflicting_chkp: bool  # will_no_conflicting_checkpoint_be_justified(store)

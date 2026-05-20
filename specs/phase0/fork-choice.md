@@ -77,7 +77,7 @@ assumes the
 
 ## Fork choice
 
-The head block root associated with a `store` is defined as `get_head(store)`.
+The head block node associated with a `store` is defined as `get_head(store)`.
 At genesis, let `store = get_forkchoice_store(genesis_state, genesis_block)` and
 update `store` by running:
 
@@ -144,8 +144,8 @@ handlers must not modify `store`.
 
 #### `ForkChoiceNode`
 
-*Note:* Fork choice node and beacon block in Phase0 has one-to-one mapping. This
-abstraction is introduced for the purpose of upgradability.
+*Note:* In Phase0, `ForkChoiceNode` and `BeaconBlock` have a one-to-one mapping.
+This abstraction is introduced to support upgradability.
 
 ```python
 @dataclass(eq=True, frozen=True)
@@ -269,9 +269,8 @@ def compute_slots_since_epoch_start(slot: Slot) -> int:
 is a common ancestor for all fork choice nodes referring to the same beacon
 block. Future protocol versions may introduce new types of nodes, but this
 function assumes that the common ancestor node type will always exist. This
-function is introduced for the future compatibility purpose, it allows the
-specification code that operates over beacon blocks to be agnostic to the
-protocol version.
+function is introduced for future compatibility, it allows the specification
+code that operates over beacon blocks to be agnostic to the protocol version.
 
 ```python
 def get_block_root_node(block_root: Root) -> ForkChoiceNode:

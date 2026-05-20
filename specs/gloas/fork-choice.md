@@ -32,7 +32,6 @@
   - [New `should_extend_payload`](#new-should_extend_payload)
   - [New `get_payload_status_tiebreaker`](#new-get_payload_status_tiebreaker)
   - [New `should_apply_proposer_boost`](#new-should_apply_proposer_boost)
-  - [Modified `get_attestation_score`](#modified-get_attestation_score)
   - [Modified `get_weight`](#modified-get_weight)
   - [Modified `get_node_children`](#modified-get_node_children)
   - [Modified `get_head`](#modified-get_head)
@@ -104,12 +103,11 @@ Where:
 
 ### Modified `ForkChoiceNode`
 
-*Note:* This structure is extended with `payload_status` introduced by EIP-7732.
-
 ```python
 @dataclass(eq=True, frozen=True)
 class ForkChoiceNode:
     root: Root
+    # [New in Gloas:EIP7732]
     payload_status: PayloadStatus  # One of PAYLOAD_STATUS_* values
 ```
 
@@ -338,6 +336,7 @@ all nodes referring to a given `block_root`.
 
 ```python
 def get_block_root_node(block_root: Root) -> ForkChoiceNode:
+    # [Modified in Gloas:EIP7732]
     return ForkChoiceNode(root=block_root, payload_status=PAYLOAD_STATUS_PENDING)
 ```
 
@@ -354,7 +353,8 @@ def get_ancestor(store: Store, node: ForkChoiceNode, slot: Slot) -> ForkChoiceNo
     if block.slot > slot:
         # [Modified in Gloas:EIP7732]
         parent = ForkChoiceNode(
-            root=block.parent_root, payload_status=get_parent_payload_status(store, block)
+            root=block.parent_root,
+            payload_status=get_parent_payload_status(store, block),
         )
         return get_ancestor(store, parent, slot)
     return node
@@ -370,7 +370,6 @@ It handles relation between the same slot nodes based on the payload status of
 def is_ancestor(store: Store, node: ForkChoiceNode, maybe_ancestor: ForkChoiceNode) -> bool:
     ancestor = get_ancestor(store, node, store.blocks[maybe_ancestor.root].slot)
     if ancestor.root != maybe_ancestor.root:
-        # Nodes at the same depth are from different chains
         return False
 
     # [New in Gloas:EIP7732]
@@ -407,7 +406,7 @@ def get_supported_node(store: Store, message: LatestMessage) -> ForkChoiceNode:
     """
     Return a node supported by the ``message``.
     """
-    # [Modified in Gloas:EIP7732]
+    # [New in Gloas:EIP7732]
     block = store.blocks[message.root]
     if block.slot < message.slot:
         if message.payload_present:
@@ -417,6 +416,7 @@ def get_supported_node(store: Store, message: LatestMessage) -> ForkChoiceNode:
     else:
         payload_status = PAYLOAD_STATUS_PENDING
 
+    # [Modified in Gloas:7732]
     return ForkChoiceNode(root=message.root, payload_status=payload_status)
 ```
 
@@ -510,32 +510,6 @@ def should_apply_proposer_boost(store: Store) -> bool:
     return len(equivocations) == 0
 ```
 
-### Modified `get_attestation_score`
-
-*Note*: This function is modified to use modified `is_ancestor` and
-`get_supported_node` functions.
-
-```python
-def get_attestation_score(store: Store, node: ForkChoiceNode, state: BeaconState) -> Gwei:
-    unslashed_and_active_indices = [
-        i
-        for i in get_active_validator_indices(state, get_current_epoch(state))
-        if not state.validators[i].slashed
-    ]
-    return Gwei(
-        sum(
-            state.validators[i].effective_balance
-            for i in unslashed_and_active_indices
-            if (
-                i in store.latest_messages
-                and i not in store.equivocating_indices
-                # [Modified in Gloas:EIP7732]
-                and is_ancestor(store, get_supported_node(store, store.latest_messages[i]), node)
-            )
-        )
-    )
-```
-
 ### Modified `get_weight`
 
 *Note*: This function is modified to use new `should_apply_proposer_boost`
@@ -608,11 +582,11 @@ def get_head(store: Store) -> ForkChoiceNode:
     # Execute the LMD-GHOST fork-choice
     head = ForkChoiceNode(
         root=store.justified_checkpoint.root,
+        # [New in Gloas:EIP7732]
         payload_status=PAYLOAD_STATUS_PENDING,
     )
 
     while True:
-        # [Modified in Gloas:EIP7732]
         children = get_node_children(store, blocks, head)
         if len(children) == 0:
             return head
@@ -620,7 +594,6 @@ def get_head(store: Store) -> ForkChoiceNode:
         head = max(
             children,
             key=lambda child: (
-                # [Modified in Gloas:EIP7732]
                 get_weight(store, child),
                 child.root,
                 # [New in Gloas:EIP7732]
