@@ -533,6 +533,10 @@ def test_invalid_unsorted_att_2(spec, state):
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
 
 
+# Note(jtraglia): On my system, a test under the minimal preset with the maximum
+# number of attesting indices takes ~27 minutes to execute, which is too slow to keep.
+
+
 @with_gloas_and_later
 @with_presets(
     [MINIMAL],
