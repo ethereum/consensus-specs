@@ -126,16 +126,16 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 ## Types
 
-| Name                    | SSZ equivalent                          | Description                                                                                   |
-| ----------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `AggregationBits`       | `ProgressiveBitlist`                    | *[Modified in Gloas:EIP7688]* Combined participation info for all participating subcommittees |
-| `AttestingIndices`      | `ProgressiveList[ValidatorIndex]`       | *[Modified in Gloas:EIP7688]* List of attesting validator indices                             |
-| `Transaction`           | `ProgressiveByteList`                   | *[Modified in Gloas:EIP7688]* Either a typed transaction envelope or a legacy transaction     |
-| `DepositRequests`       | `ProgressiveList[DepositRequest]`       | *[Modified in Gloas:EIP7688]* List of deposit requests pertaining to an execution payload     |
-| `WithdrawalRequests`    | `ProgressiveList[WithdrawalRequest]`    | *[Modified in Gloas:EIP7688]* List of withdrawal requests pertaining to an execution payload  |
-| `ConsolidationRequests` | `ProgressiveList[ConsolidationRequest]` | *[Modified in Gloas:EIP7688]* List of withdrawal requests pertaining to an execution payload  |
-| `BuilderIndex`          | `uint64`                                | Builder registry index                                                                        |
-| `BlockAccessList`       | `ByteList[MAX_BYTES_PER_TRANSACTION]`   | RLP encoded block access list                                                                 |
+| Name                    | SSZ equivalent                          | Description                                                                                     |
+| ----------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `AggregationBits`       | `ProgressiveBitlist`                    | *[Modified in Gloas:EIP7688]* Combined participation info for all participating subcommittees   |
+| `AttestingIndices`      | `ProgressiveList[ValidatorIndex]`       | *[Modified in Gloas:EIP7688]* List of attesting validator indices                               |
+| `Transaction`           | `ProgressiveByteList`                   | *[Modified in Gloas:EIP7688]* Either a typed transaction envelope or a legacy transaction       |
+| `DepositRequests`       | `ProgressiveList[DepositRequest]`       | *[Modified in Gloas:EIP7688]* List of deposit requests pertaining to an execution payload       |
+| `WithdrawalRequests`    | `ProgressiveList[WithdrawalRequest]`    | *[Modified in Gloas:EIP7688]* List of withdrawal requests pertaining to an execution payload    |
+| `ConsolidationRequests` | `ProgressiveList[ConsolidationRequest]` | *[Modified in Gloas:EIP7688]* List of consolidation requests pertaining to an execution payload |
+| `BuilderIndex`          | `uint64`                                | Builder registry index                                                                          |
+| `BlockAccessList`       | `ByteList[MAX_BYTES_PER_TRANSACTION]`   | RLP encoded block access list                                                                   |
 
 ## Constants
 
@@ -522,11 +522,11 @@ def is_valid_indexed_attestation(
     """
     Check if ``indexed_attestation`` is not empty, has sorted and unique indices and has a valid aggregate signature.
     """
-    # [Modified in Gloas:EIP7688]
     # Verify indices are sorted and unique
     indices = indexed_attestation.attesting_indices
     if (
         len(indices) == 0
+        # [New in Gloas:EIP7688]
         or len(indices) > MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT
         or not indices == sorted(set(indices))
     ):
@@ -1198,7 +1198,6 @@ def apply_parent_execution_payload(
     parent_slot = parent_bid.slot
     parent_epoch = compute_epoch_at_slot(parent_slot)
 
-    # [Modified in Gloas:EIP7688]
     assert len(requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD
     assert len(requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
     assert len(requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
@@ -1580,13 +1579,14 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
         for operation in operations:
             fn(state, operation)
 
-    # [Modified in Gloas:EIP7688]
+    # [New in Gloas:EIP7688]
     assert len(body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS
     assert len(body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA
     assert len(body.attestations) <= MAX_ATTESTATIONS_ELECTRA
     assert len(body.voluntary_exits) <= MAX_VOLUNTARY_EXITS
     assert len(body.bls_to_execution_changes) <= MAX_BLS_TO_EXECUTION_CHANGES
     assert len(body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS
+
     # [Modified in Gloas:EIP7732]
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
