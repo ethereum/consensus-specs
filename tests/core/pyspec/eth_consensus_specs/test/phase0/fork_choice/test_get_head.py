@@ -213,7 +213,9 @@ def test_filtered_block_tree(spec, state):
     next_epoch(spec, state)
     next_epoch(spec, state)
     # fill in attestations for entire epoch, justifying the recent epoch
-    prev_state, signed_blocks, state = next_epoch_with_attestations(spec, state, True, False)
+    prev_state, signed_blocks, state = next_epoch_with_attestations(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+    )
     assert state.current_justified_checkpoint.epoch > prev_state.current_justified_checkpoint.epoch
 
     # tick time forward and add blocks and attestations to store
@@ -542,7 +544,7 @@ def test_voting_source_within_two_epoch(spec, state):
     # Fill epoch 1 to 3
     for _ in range(3):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
@@ -554,7 +556,7 @@ def test_voting_source_within_two_epoch(spec, state):
 
     # Fill epoch 4
     state, store, _ = yield from apply_next_epoch_with_attestations(
-        spec, state, store, True, True, test_steps=test_steps
+        spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
     )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
@@ -564,7 +566,9 @@ def test_voting_source_within_two_epoch(spec, state):
     # Create a fork from the earlier saved state
     next_epoch(spec, fork_state)
     assert spec.compute_epoch_at_slot(fork_state.slot) == 5
-    _, signed_blocks, fork_state = next_epoch_with_attestations(spec, fork_state, True, True)
+    _, signed_blocks, fork_state = next_epoch_with_attestations(
+        spec, fork_state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     # Only keep the blocks from epoch 5, so discard the last generated block
     signed_blocks = signed_blocks[:-1]
     last_fork_block = signed_blocks[-1].message
@@ -626,7 +630,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
     # Fill epoch 1 to 3
     for _ in range(3):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
@@ -639,7 +643,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
     # Fill epoch 4 and 5
     for _ in range(2):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 6
@@ -651,7 +655,9 @@ def test_voting_source_beyond_two_epoch(spec, state):
         next_epoch(spec, fork_state)
     assert spec.compute_epoch_at_slot(fork_state.slot) == 6
     assert fork_state.current_justified_checkpoint.epoch == 3
-    _, signed_blocks, fork_state = next_epoch_with_attestations(spec, fork_state, True, True)
+    _, signed_blocks, fork_state = next_epoch_with_attestations(
+        spec, fork_state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     # Only keep the blocks from epoch 6, so discard the last generated block
     signed_blocks = signed_blocks[:-1]
     last_fork_block = signed_blocks[-1].message

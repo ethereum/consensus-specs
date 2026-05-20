@@ -472,8 +472,8 @@ def test_transition_with_no_attestations_until_after_fork(
             post_spec,
             state,
             post_spec.SLOTS_PER_EPOCH,
-            False,
-            True,
+            fill_cur_epoch=False,
+            fill_prev_epoch=True,
         )
         blocks.extend([post_tag(block) for block in blocks_in_epoch])
 

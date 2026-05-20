@@ -92,7 +92,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Make a copy of the state to avoid mutability issues
     state = copy(store.block_states[block.parent_root])
     block_root = hash_tree_root(block)
-    state_transition(state, signed_block, True)
+    state_transition(state, signed_block, validate_result=True)
 
     # Add new block to the store
     store.blocks[block_root] = block

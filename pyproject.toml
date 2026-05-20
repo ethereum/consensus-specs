@@ -97,7 +97,6 @@ ignore = [
   "D",    # https://docs.astral.sh/ruff/rules/#pydocstyle-d
   "EM",   # https://docs.astral.sh/ruff/rules/#flake8-errmsg-em
   "ERA",  # https://docs.astral.sh/ruff/rules/#eradicate-era
-  "FBT",  # https://docs.astral.sh/ruff/rules/#flake8-boolean-trap-fbt
   "FIX",  # https://docs.astral.sh/ruff/rules/#flake8-fixme-fix
   "N",    # https://docs.astral.sh/ruff/rules/#pep8-naming-n
   "PERF", # https://docs.astral.sh/ruff/rules/#perflint-perf
@@ -112,6 +111,8 @@ ignore = [
   # Specific rules:
   "E501",    # https://docs.astral.sh/ruff/rules/line-too-long/
   "E741",    # https://docs.astral.sh/ruff/rules/ambiguous-variable-name/
+  "FBT001",  # https://docs.astral.sh/ruff/rules/boolean-type-hint-positional-argument/
+  "FBT002",  # https://docs.astral.sh/ruff/rules/boolean-default-value-positional-argument/
   "PLR0911", # https://docs.astral.sh/ruff/rules/too-many-return-statements/
   "PLR0912", # https://docs.astral.sh/ruff/rules/too-many-branches/
   "PLR0913", # https://docs.astral.sh/ruff/rules/too-many-arguments/

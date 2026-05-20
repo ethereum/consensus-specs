@@ -49,12 +49,21 @@ def test_finality_no_updates_at_genesis(spec, state):
 
     blocks = []
     for epoch in range(2):
-        prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, True, False)
+        prev_state, new_blocks, state = next_epoch_with_attestations(
+            spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+        )
         blocks += new_blocks
 
         # justification/finalization skipped at GENESIS_EPOCH
         if epoch == 0 or epoch == 1:
-            check_finality(spec, state, prev_state, False, False, False)
+            check_finality(
+                spec,
+                state,
+                prev_state,
+                current_justified_changed=False,
+                previous_justified_changed=False,
+                finalized_changed=False,
+            )
 
     yield "blocks", blocks
     yield "post", state
@@ -71,14 +80,30 @@ def test_finality_rule_4(spec, state):
 
     blocks = []
     for epoch in range(2):
-        prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, True, False)
+        prev_state, new_blocks, state = next_epoch_with_attestations(
+            spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+        )
         blocks += new_blocks
 
         if epoch == 0:
-            check_finality(spec, state, prev_state, True, False, False)
+            check_finality(
+                spec,
+                state,
+                prev_state,
+                current_justified_changed=True,
+                previous_justified_changed=False,
+                finalized_changed=False,
+            )
         elif epoch == 1:
             # rule 4 of finality
-            check_finality(spec, state, prev_state, True, True, True)
+            check_finality(
+                spec,
+                state,
+                prev_state,
+                current_justified_changed=True,
+                previous_justified_changed=True,
+                finalized_changed=True,
+            )
             assert state.finalized_checkpoint == prev_state.current_justified_checkpoint
 
     yield "blocks", blocks
@@ -96,16 +121,39 @@ def test_finality_rule_1(spec, state):
 
     blocks = []
     for epoch in range(3):
-        prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, False, True)
+        prev_state, new_blocks, state = next_epoch_with_attestations(
+            spec, state, fill_cur_epoch=False, fill_prev_epoch=True
+        )
         blocks += new_blocks
 
         if epoch == 0:
-            check_finality(spec, state, prev_state, True, False, False)
+            check_finality(
+                spec,
+                state,
+                prev_state,
+                current_justified_changed=True,
+                previous_justified_changed=False,
+                finalized_changed=False,
+            )
         elif epoch == 1:
-            check_finality(spec, state, prev_state, True, True, False)
+            check_finality(
+                spec,
+                state,
+                prev_state,
+                current_justified_changed=True,
+                previous_justified_changed=True,
+                finalized_changed=False,
+            )
         elif epoch == 2:
             # finalized by rule 1
-            check_finality(spec, state, prev_state, True, True, True)
+            check_finality(
+                spec,
+                state,
+                prev_state,
+                current_justified_changed=True,
+                previous_justified_changed=True,
+                finalized_changed=True,
+            )
             assert state.finalized_checkpoint == prev_state.previous_justified_checkpoint
 
     yield "blocks", blocks
@@ -124,15 +172,42 @@ def test_finality_rule_2(spec, state):
     blocks = []
     for epoch in range(3):
         if epoch == 0:
-            prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, True, False)
-            check_finality(spec, state, prev_state, True, False, False)
+            prev_state, new_blocks, state = next_epoch_with_attestations(
+                spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+            )
+            check_finality(
+                spec,
+                state,
+                prev_state,
+                current_justified_changed=True,
+                previous_justified_changed=False,
+                finalized_changed=False,
+            )
         elif epoch == 1:
-            prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, False, False)
-            check_finality(spec, state, prev_state, False, True, False)
+            prev_state, new_blocks, state = next_epoch_with_attestations(
+                spec, state, fill_cur_epoch=False, fill_prev_epoch=False
+            )
+            check_finality(
+                spec,
+                state,
+                prev_state,
+                current_justified_changed=False,
+                previous_justified_changed=True,
+                finalized_changed=False,
+            )
         elif epoch == 2:
-            prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, False, True)
+            prev_state, new_blocks, state = next_epoch_with_attestations(
+                spec, state, fill_cur_epoch=False, fill_prev_epoch=True
+            )
             # finalized by rule 2
-            check_finality(spec, state, prev_state, True, False, True)
+            check_finality(
+                spec,
+                state,
+                prev_state,
+                current_justified_changed=True,
+                previous_justified_changed=False,
+                finalized_changed=True,
+            )
             assert state.finalized_checkpoint == prev_state.previous_justified_checkpoint
 
         blocks += new_blocks
@@ -155,32 +230,77 @@ def test_finality_rule_3(spec, state):
     yield "pre", state
 
     blocks = []
-    prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, True, False)
+    prev_state, new_blocks, state = next_epoch_with_attestations(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+    )
     blocks += new_blocks
-    check_finality(spec, state, prev_state, True, False, False)
+    check_finality(
+        spec,
+        state,
+        prev_state,
+        current_justified_changed=True,
+        previous_justified_changed=False,
+        finalized_changed=False,
+    )
 
     # In epoch N, JE is set to N, prev JE is set to N-1
-    prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, True, False)
+    prev_state, new_blocks, state = next_epoch_with_attestations(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+    )
     blocks += new_blocks
-    check_finality(spec, state, prev_state, True, True, True)
+    check_finality(
+        spec,
+        state,
+        prev_state,
+        current_justified_changed=True,
+        previous_justified_changed=True,
+        finalized_changed=True,
+    )
 
     # In epoch N+1, JE is N, prev JE is N-1, and not enough messages get in to do anything
-    prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, False, False)
+    prev_state, new_blocks, state = next_epoch_with_attestations(
+        spec, state, fill_cur_epoch=False, fill_prev_epoch=False
+    )
     blocks += new_blocks
-    check_finality(spec, state, prev_state, False, True, False)
+    check_finality(
+        spec,
+        state,
+        prev_state,
+        current_justified_changed=False,
+        previous_justified_changed=True,
+        finalized_changed=False,
+    )
 
     # In epoch N+2, JE is N, prev JE is N, and enough messages from the previous epoch get in to justify N+1.
     # N+1 now becomes the JE. Not enough messages from epoch N+2 itself get in to justify N+2
-    prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, False, True)
+    prev_state, new_blocks, state = next_epoch_with_attestations(
+        spec, state, fill_cur_epoch=False, fill_prev_epoch=True
+    )
     blocks += new_blocks
     # rule 2
-    check_finality(spec, state, prev_state, True, False, True)
+    check_finality(
+        spec,
+        state,
+        prev_state,
+        current_justified_changed=True,
+        previous_justified_changed=False,
+        finalized_changed=True,
+    )
 
     # In epoch N+3, LJE is N+1, prev LJE is N, and enough messages get in to justify epochs N+2 and N+3.
-    prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, True, True)
+    prev_state, new_blocks, state = next_epoch_with_attestations(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     blocks += new_blocks
     # rule 3
-    check_finality(spec, state, prev_state, True, True, True)
+    check_finality(
+        spec,
+        state,
+        prev_state,
+        current_justified_changed=True,
+        previous_justified_changed=True,
+        finalized_changed=True,
+    )
     assert state.finalized_checkpoint == prev_state.current_justified_checkpoint
 
     yield "blocks", blocks

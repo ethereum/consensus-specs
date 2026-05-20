@@ -277,7 +277,11 @@ def transition_across_forks(
             if with_block and (to_slot == state.slot + 1):
                 transition_to(spec, state, to_slot - 1)
                 block = state_transition_with_full_block(
-                    spec, state, True, True, sync_aggregate=sync_aggregate
+                    spec,
+                    state,
+                    fill_cur_epoch=True,
+                    fill_prev_epoch=True,
+                    sync_aggregate=sync_aggregate,
                 )
             else:
                 transition_to(spec, state, to_slot)
