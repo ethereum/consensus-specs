@@ -7,19 +7,27 @@ from ruamel.yaml import YAML
 
 def parse_config_vars(conf: dict[str, Any]) -> dict[str, Any]:
     """
-    Parses a dict of basic str/int/list types into more detailed python types
+    Parses a dict of basic str/int/list/dict types into more detailed python types.
     """
+
+    def parse_value(k: str, v: Any, in_list: bool = False) -> Any:
+        if isinstance(v, list):
+            return [parse_value(k, item, in_list=True) for item in v]
+        if isinstance(v, dict):
+            return {
+                item_key: parse_value(item_key, item_value) for item_key, item_value in v.items()
+            }
+        if isinstance(v, str) and v.startswith("0x"):
+            return bytes.fromhex(v[2:])
+        if k != "PRESET_BASE" and k != "CONFIG_NAME":
+            if in_list and isinstance(v, str) and not v.isdigit():
+                return v
+            return int(v)
+        return v
+
     out: dict[str, Any] = dict()
     for k, v in conf.items():
-        if isinstance(v, list):
-            # Clean up integer values. YAML parser renders lists of ints as list of str
-            out[k] = [int(item) if item.isdigit() else item for item in v]
-        elif isinstance(v, str) and v.startswith("0x"):
-            out[k] = bytes.fromhex(v[2:])
-        elif k != "PRESET_BASE" and k != "CONFIG_NAME":
-            out[k] = int(v)
-        else:
-            out[k] = v
+        out[k] = parse_value(k, v)
     return out
 
 
