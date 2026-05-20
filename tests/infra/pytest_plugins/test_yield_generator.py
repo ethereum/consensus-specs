@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 # When context initiates the chain, the partial module resolution works correctly.
 from eth_consensus_specs.test import context  # noqa: F401
 from tests.infra.manifest import Manifest
-from tests.infra.pytest_plugins.yield_generator import SpecTestFunction
+from tests.infra.pytest_plugins.yield_generator import SpecTestFunction, YieldGeneratorPlugin
 
 
 class TestFindRunner:
@@ -156,3 +156,53 @@ class TestInferManifest:
         )
         SpecTestFunction._infer_manifest(stub2)
         assert stub2.manifest.suite_name == "custom_suite"
+
+
+class TestDumpPhase:
+    """Tests for YieldGeneratorPlugin._dump_phase."""
+
+    def test_removes_stale_case_files_before_dumping(self, tmp_path):
+        config = SimpleNamespace(getoption=lambda option: str(tmp_path))
+        plugin = YieldGeneratorPlugin(config)
+        manifest = Manifest(
+            preset_name="minimal",
+            runner_name="bls",
+            handler_name="verify",
+            suite_name="pyspec_tests",
+            case_name="valid",
+        )
+        case_dir = tmp_path / "minimal" / "phase0" / "bls" / "verify" / "pyspec_tests" / "valid"
+        case_dir.mkdir(parents=True)
+        stale_path = case_dir / "stale.yaml"
+        stale_path.write_text("old: true\n")
+
+        plugin._dump_phase(manifest, [("data", "data", {"value": 1})], "phase0")
+
+        assert not stale_path.exists()
+        assert (case_dir / "data.yaml").exists()
+        assert (case_dir / "manifest.yaml").exists()
+
+    def test_dump_phase_does_not_remove_other_fork_cases(self, tmp_path):
+        config = SimpleNamespace(getoption=lambda option: str(tmp_path))
+        plugin = YieldGeneratorPlugin(config)
+        manifest = Manifest(
+            preset_name="minimal",
+            runner_name="bls",
+            handler_name="verify",
+            suite_name="pyspec_tests",
+            case_name="valid",
+        )
+        phase0_dir = tmp_path / "minimal" / "phase0" / "bls" / "verify" / "pyspec_tests" / "valid"
+        altair_dir = tmp_path / "minimal" / "altair" / "bls" / "verify" / "pyspec_tests" / "valid"
+        phase0_dir.mkdir(parents=True)
+        altair_dir.mkdir(parents=True)
+        phase0_stale_path = phase0_dir / "stale.yaml"
+        altair_stale_path = altair_dir / "stale.yaml"
+        phase0_stale_path.write_text("old: true\n")
+        altair_stale_path.write_text("old: true\n")
+
+        plugin._dump_phase(manifest, [("data", "data", {"value": 1})], "phase0")
+
+        assert not phase0_stale_path.exists()
+        assert (phase0_dir / "data.yaml").exists()
+        assert altair_stale_path.exists()
