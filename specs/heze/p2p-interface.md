@@ -8,7 +8,6 @@
 - [Modifications in Heze](#modifications-in-heze)
   - [Preset](#preset)
     - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
-      - [`MAX_SIGNED_INCLUSION_LIST_SIZE`](#max_signed_inclusion_list_size)
   - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
@@ -40,12 +39,6 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `8344` bytes (= ~8 KiB)     | Type-specific SSZ bound for `SignedInclusionList`       |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `196934` bytes (= ~192 KiB) | Type-specific SSZ bound for `SignedExecutionPayloadBid` |
 | `MAX_SIGNED_BEACON_BLOCK_SIZE_HEZE`          | `4034306` bytes (= ~4 MiB)  | Type-specific SSZ bound for `SignedBeaconBlock`         |
-
-##### `MAX_SIGNED_INCLUSION_LIST_SIZE`
-
-| Field                  | Length                                                                                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `message.transactions` | a single `Transaction` of [`MAX_BYTES_PER_INCLUSION_LIST`](#configuration) - [`BYTES_PER_LENGTH_OFFSET`](../../ssz/simple-serialize.md#constants) bytes |
 
 ### Configuration
 

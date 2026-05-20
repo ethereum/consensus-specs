@@ -8,11 +8,6 @@
 - [Modification in Gloas](#modification-in-gloas)
   - [Preset](#preset)
     - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
-      - [`MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`](#max_signed_aggregate_and_proof_size)
-      - [`MAX_ATTESTER_SLASHING_SIZE`](#max_attester_slashing_size)
-      - [`MAX_DATA_COLUMN_SIDECAR_SIZE`](#max_data_column_sidecar_size)
-      - [`MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE`](#max_signed_execution_payload_bid_size)
-      - [`MAX_SIGNED_BEACON_BLOCK_SIZE`](#max_signed_beacon_block_size)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
@@ -72,49 +67,6 @@ libp2p messages.
 | `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `8585272` bytes (= ~8 MiB)  | Type-specific SSZ bound for `DataColumnSidecar`         |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `196932` bytes (= ~192 KiB) | Type-specific SSZ bound for `SignedExecutionPayloadBid` |
 | `MAX_SIGNED_BEACON_BLOCK_SIZE`          | `4034304` bytes (= ~4 MiB)  | Type-specific SSZ bound for `SignedBeaconBlock`         |
-
-##### `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`
-
-| Field                                | Length                                                                                                                              |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `message.aggregate.aggregation_bits` | [`MAX_VALIDATORS_PER_COMMITTEE`](../phase0/beacon-chain.md#misc) * [`MAX_COMMITTEES_PER_SLOT`](../phase0/beacon-chain.md#misc) bits |
-
-##### `MAX_ATTESTER_SLASHING_SIZE`
-
-| Field                                                                | Length                                                                                                                                    |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `attestation_1.attesting_indices`, `attestation_2.attesting_indices` | [`MAX_VALIDATORS_PER_COMMITTEE`](../phase0/beacon-chain.md#misc) * [`MAX_COMMITTEES_PER_SLOT`](../phase0/beacon-chain.md#misc) items each |
-
-##### `MAX_DATA_COLUMN_SIDECAR_SIZE`
-
-| Field        | Length                                                                  |
-| ------------ | ----------------------------------------------------------------------- |
-| `column`     | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../deneb/beacon-chain.md#blob) items |
-| `kzg_proofs` | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../deneb/beacon-chain.md#blob) items |
-
-##### `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE`
-
-| Field                          | Length                                                                  |
-| ------------------------------ | ----------------------------------------------------------------------- |
-| `message.blob_kzg_commitments` | [`MAX_BLOB_COMMITMENTS_PER_BLOCK`](../deneb/beacon-chain.md#blob) items |
-
-##### `MAX_SIGNED_BEACON_BLOCK_SIZE`
-
-Where `body = message.body`:
-
-| Field                                           | Length                                                                                                                                                                                                                                                       |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `body.proposer_slashings`                       | [`MAX_PROPOSER_SLASHINGS`](../phase0/beacon-chain.md#max-operations-per-block) items                                                                                                                                                                         |
-| `body.attester_slashings`                       | [`MAX_ATTESTER_SLASHINGS_ELECTRA`](../electra/beacon-chain.md#max-operations-per-block) items, each at `MAX_ATTESTER_SLASHING_SIZE`                                                                                                                          |
-| `body.attestations`                             | [`MAX_ATTESTATIONS_ELECTRA`](../electra/beacon-chain.md#max-operations-per-block) items, each with `aggregation_bits` of [`MAX_VALIDATORS_PER_COMMITTEE`](../phase0/beacon-chain.md#misc) * [`MAX_COMMITTEES_PER_SLOT`](../phase0/beacon-chain.md#misc) bits |
-| `body.deposits`                                 | [`MAX_DEPOSITS`](../phase0/beacon-chain.md#max-operations-per-block) items                                                                                                                                                                                   |
-| `body.voluntary_exits`                          | [`MAX_VOLUNTARY_EXITS`](../phase0/beacon-chain.md#max-operations-per-block) items                                                                                                                                                                            |
-| `body.bls_to_execution_changes`                 | [`MAX_BLS_TO_EXECUTION_CHANGES`](../capella/beacon-chain.md#max-operations-per-block) items                                                                                                                                                                  |
-| `body.payload_attestations`                     | [`MAX_PAYLOAD_ATTESTATIONS`](./beacon-chain.md#max-operations-per-block) items                                                                                                                                                                               |
-| `body.signed_execution_payload_bid`             | at `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE`                                                                                                                                                                                                                   |
-| `body.parent_execution_requests.deposits`       | [`MAX_DEPOSIT_REQUESTS_PER_PAYLOAD`](../electra/beacon-chain.md#execution) items                                                                                                                                                                             |
-| `body.parent_execution_requests.withdrawals`    | [`MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`](../electra/beacon-chain.md#execution) items                                                                                                                                                                          |
-| `body.parent_execution_requests.consolidations` | [`MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`](../electra/beacon-chain.md#execution) items                                                                                                                                                                       |
 
 ### Configuration
 
