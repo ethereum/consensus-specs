@@ -126,11 +126,6 @@ def test_get_data_column_sidecars(spec, state):
 @with_fulu_and_later
 @spec_state_test
 def test_get_data_column_sidecars_from_column_sidecar(spec, state):
-    if is_post_gloas(spec):
-        # Skip this test for Gloas as the function hasn't been updated yet
-        # to work without signed_block_header and kzg_commitments_inclusion_proof
-        return
-
     rng = random.Random(1234)
     _, blobs, _, _, sidecars, _ = get_block_with_blob_and_sidecars(
         spec, state, rng=rng, blob_count=2
