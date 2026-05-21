@@ -29,7 +29,8 @@ from eth_consensus_specs.test.helpers.state import (
 @spec_configured_state_test(
     {
         "BLOB_SCHEDULE": (frozendict({"EPOCH": 0, "MAX_BLOBS_PER_BLOCK": 12}),),
-    }
+    },
+    activate_at_genesis=True,
 )
 def test_gossip_beacon_block__valid_at_blob_parameters_limit(spec, state):
     """

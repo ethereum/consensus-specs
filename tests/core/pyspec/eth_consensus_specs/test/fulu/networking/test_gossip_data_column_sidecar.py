@@ -67,7 +67,8 @@ def resign_sidecar_header(spec, state, sidecar):
 @spec_configured_state_test(
     {
         "BLOB_SCHEDULE": (frozendict({"EPOCH": 0, "MAX_BLOBS_PER_BLOCK": 12}),),
-    }
+    },
+    activate_at_genesis=True,
 )
 def test_gossip_data_column_sidecar__valid(spec, state):
     """Test that a valid data column sidecar passes gossip validation."""

@@ -145,7 +145,8 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
 @spec_configured_state_test(
     {
         "BLOB_SCHEDULE": (frozendict({"EPOCH": 0, "MAX_BLOBS_PER_BLOCK": 12}),),
-    }
+    },
+    activate_at_genesis=True,
 )
 def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state):
     """Test that a partial sidecar carrying both header and cells passes gossip validation."""
