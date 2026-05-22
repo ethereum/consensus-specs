@@ -243,7 +243,6 @@ test: _pyspec
 ###############################################################################
 
 DOCS_DIR = ./docs
-FORK_CHOICE_DIR = ./fork_choice
 SPEC_DIR = ./specs
 SSZ_DIR = ./ssz
 SYNC_DIR = ./sync
@@ -251,10 +250,8 @@ SYNC_DIR = ./sync
 # Copy files to the docs directory.
 _copy_docs:
 	@cp -r $(SPEC_DIR) $(DOCS_DIR)
-	@rm -rf $(DOCS_DIR)/specs/_deprecated
 	@cp -r $(SYNC_DIR) $(DOCS_DIR)
 	@cp -r $(SSZ_DIR) $(DOCS_DIR)
-	@cp -r $(FORK_CHOICE_DIR) $(DOCS_DIR)
 	@cp $(CURDIR)/README.md $(DOCS_DIR)/README.md
 
 # Start a local documentation server.
