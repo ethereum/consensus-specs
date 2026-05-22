@@ -10,6 +10,7 @@ from frozendict import frozendict
 from lru import LRU
 
 from eth_consensus_specs.utils import bls
+from eth_consensus_specs.utils.ckzg_utils import apply_ckzg_to_spec
 from tests.infra.yield_generator import MultiPhaseResult, vector_test
 
 from .exceptions import SkippedTest
@@ -30,7 +31,7 @@ from .helpers.constants import (
     PHASE0,
     POST_FORK_OF,
 )
-from .helpers.forks import is_post_electra, is_post_fork
+from .helpers.forks import is_post_electra, is_post_fork, is_post_gloas
 from .helpers.genesis import create_genesis_state
 from .helpers.specs import (
     spec_targets,
@@ -153,6 +154,14 @@ def scaled_churn_balances_equal_activation_churn_limit(spec: Spec):
     Helper method to create enough validators to scale the churn limit.
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_equal_activation_churn_limit, ...)`
     """
+    if is_post_gloas(spec):
+        num_validators = (
+            spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
+            * spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
+            // spec.MIN_ACTIVATION_BALANCE
+        )
+        return [spec.MIN_ACTIVATION_BALANCE] * num_validators
+
     num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (
         spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
     )
@@ -165,6 +174,17 @@ def scaled_churn_balances_exceed_activation_churn_limit(spec: Spec):
     (This is *firmly* over the churn limit -- thus the +2 instead of just +1)
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
+    if is_post_gloas(spec):
+        num_validators = (
+            spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
+            * (
+                spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
+                + 2 * spec.EFFECTIVE_BALANCE_INCREMENT
+            )
+            // spec.MIN_ACTIVATION_BALANCE
+        )
+        return [spec.MIN_ACTIVATION_BALANCE] * num_validators
+
     num_validators = spec.config.CHURN_LIMIT_QUOTIENT * (
         spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT + 2
     )
@@ -177,6 +197,15 @@ def scaled_churn_balances_exceed_activation_exit_churn_limit(spec: Spec):
     (The number of validators is double the amount need for the max activation/exit churn limit)
     Usage: `@with_custom_state(balances_fn=scaled_churn_balances_exceed_activation_churn_limit, ...)`
     """
+    if is_post_gloas(spec):
+        num_validators = (
+            2
+            * spec.config.CHURN_LIMIT_QUOTIENT_GLOAS
+            * spec.config.MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS
+            // spec.MIN_ACTIVATION_BALANCE
+        )
+        return [spec.MIN_ACTIVATION_BALANCE] * num_validators
+
     num_validators = (
         2
         * spec.config.CHURN_LIMIT_QUOTIENT
@@ -323,11 +352,27 @@ def spec_state_test(fn):
     return spec_test(with_state(single_phase(fn)))
 
 
-def spec_configured_state_test(conf):
-    overrides = _with_config_overrides_emit(conf)
+def spec_configured_state_test(conf, *, activate_at_genesis: bool = False):
+    """
+    If ``activate_at_genesis`` is True, set the spec module's own ``*_FORK_EPOCH`` to
+    0 so the emitted ``config.cfg`` resolves the test's fork as the latest scheduled
+    activation. Useful for fixtures consumed by clients that resolve forks via
+    ``getForkName(slot)``. Entries in ``conf`` win on conflict.
+    """
+    if not activate_at_genesis:
+        overrides = _with_config_overrides_emit(conf)
+
+        def decorator(fn):
+            return spec_test(overrides(with_state(single_phase(fn))))
+
+        return decorator
 
     def decorator(fn):
-        return spec_test(overrides(with_state(single_phase(fn))))
+        def wrapper(*args, spec: Spec, **kw):
+            combined = {f"{spec.fork.upper()}_FORK_EPOCH": 0, **conf}
+            return _with_config_overrides_emit(combined)(fn)(*args, spec=spec, **kw)
+
+        return spec_test(with_state(single_phase(wrapper)))
 
     return decorator
 
@@ -714,6 +759,14 @@ def get_copy_of_spec(spec):
 
     # Preserve existing config overrides
     module.config = deepcopy(spec.config)
+
+    # Re-apply ckzg monkey-patches if the source spec had them. Without this,
+    # the freshly-loaded module falls back to the pure-Python KZG impl, which
+    # makes blob-heavy tests (e.g. anything that calls
+    # `compute_cells_and_kzg_proofs`) prohibitively slow.
+    ts = getattr(spec, "_ckzg_trusted_setup", None)
+    if ts is not None:
+        apply_ckzg_to_spec(module, ts)
 
     return module
 

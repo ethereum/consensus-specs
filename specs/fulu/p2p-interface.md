@@ -8,17 +8,13 @@
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [`DataColumnsByRootIdentifier`](#datacolumnsbyrootidentifier)
-    - [`PartialDataColumnSidecar`](#partialdatacolumnsidecar)
-    - [`PartialDataColumnPartsMetadata`](#partialdatacolumnpartsmetadata)
-    - [`PartialDataColumnHeader`](#partialdatacolumnheader)
   - [Helpers](#helpers)
+    - [Modified `Seen`](#modified-seen)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
     - [New `compute_max_request_data_column_sidecars`](#new-compute_max_request_data_column_sidecars)
     - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
     - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
     - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
-    - [`verify_partial_data_column_header_inclusion_proof`](#verify_partial_data_column_header_inclusion_proof)
-    - [`verify_partial_data_column_sidecar_kzg_proofs`](#verify_partial_data_column_sidecar_kzg_proofs)
     - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -29,18 +25,6 @@
         - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
         - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
         - [Distributed blob publishing using blobs retrieved from local execution-layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
-        - [Partial Messages on `data_column_sidecar_{subnet_id}`](#partial-messages-on-data_column_sidecar_subnet_id)
-    - [Partial columns for Cell Dissemination](#partial-columns-for-cell-dissemination)
-      - [Partial message group ID](#partial-message-group-id)
-      - [Parts metadata](#parts-metadata)
-      - [Encoding and decoding responses](#encoding-and-decoding-responses)
-      - [Eager pushing](#eager-pushing)
-      - [Interaction with standard gossipsub](#interaction-with-standard-gossipsub)
-        - [Requesting partial messages](#requesting-partial-messages)
-        - [Mesh](#mesh)
-        - [Fanout](#fanout)
-        - [Scoring](#scoring)
-        - [Forwarding](#forwarding)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [Status v2](#status-v2)
@@ -49,6 +33,7 @@
       - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
       - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
       - [GetMetaData v3](#getmetadata-v3)
+      - [BeaconBlocksByHead v1](#beaconblocksbyhead-v1)
   - [The discovery domain: discv5](#the-discovery-domain-discv5)
     - [ENR structure](#enr-structure)
       - [`eth2` field](#eth2-field)
@@ -93,68 +78,31 @@ class DataColumnsByRootIdentifier(Container):
     columns: List[ColumnIndex, NUMBER_OF_COLUMNS]
 ```
 
-#### `PartialDataColumnSidecar`
-
-The `PartialDataColumnSidecar` is similar to the `DataColumnSidecar` container,
-except that only the cells and proofs identified by the bitmap are present.
-
-*Note*: The column index is inferred from the gossipsub topic subnet.
-
-```python
-class PartialDataColumnSidecar(Container):
-    cells_present_bitmap: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    partial_column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    # Optional header, only sent on eager pushes
-    header: List[PartialDataColumnHeader, 1]
-```
-
-#### `PartialDataColumnPartsMetadata`
-
-Peers communicate the cells available with a bitmap. A set bit (`1`) at index
-`i` means that the peer has the cell at index `i`. Peers explicitly request
-cells with a second request bitmap of the same length that is set to `1` if the
-peer would like to receive or provide this cell.
-
-If a cell is available, its corresponding proof MUST be available.
-
-This is encoded as the following SSZ container:
-
-```python
-class PartialDataColumnPartsMetadata(Container):
-    available: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    requests: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
-```
-
-This means that for each cell there are two bits of state. Where the first bit
-represents the bit from the available bitlist, and the second bit represents the
-bit from the requests bit.
-
-| Bits | Description                                          |
-| :--: | ---------------------------------------------------- |
-|  00  | The peer does not have the cell and does not want it |
-|  01  | The peer does not have the cell and does want it     |
-|  1X  | The peer has the cell and is willing to provide it   |
-
-Having a cell but not willing to provide it is functionally the same as not
-having the cell and not wanting it, so it does not need a separate state.
-
-#### `PartialDataColumnHeader`
-
-The `PartialDataColumnHeader` is the header that is common to all columns for a
-given block. It lets a peer identify which blobs are included in a block, as
-well as validating cells and proofs. This header is only sent on eager pushes
-because a peer can only make a request after having the data in this header.
-This header can be derived from a beacon block or a `DataColumnSidecar`.
-
-```python
-class PartialDataColumnHeader(Container):
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    signed_block_header: SignedBeaconBlockHeader
-    kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
-```
-
 ### Helpers
+
+#### Modified `Seen`
+
+```python
+@dataclass
+class Seen:
+    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
+    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[boolean, ...]]]
+    voluntary_exit_indices: Set[ValidatorIndex]
+    proposer_slashing_indices: Set[ValidatorIndex]
+    attester_slashing_indices: Set[ValidatorIndex]
+    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, uint64]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[boolean, ...]]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, uint64]]
+    bls_to_execution_change_indices: Set[ValidatorIndex]
+    # [Modified in Fulu:EIP7594]
+    # Removed `blob_sidecar_tuples`
+    # [New in Fulu:EIP7594]
+    data_column_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, ColumnIndex]]
+    # [New in Fulu]
+    partial_data_column_headers: Dict[Root, PartialDataColumnHeader]
+```
 
 #### Modified `compute_fork_version`
 
@@ -252,48 +200,6 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
     )
 ```
 
-#### `verify_partial_data_column_header_inclusion_proof`
-
-```python
-def verify_partial_data_column_header_inclusion_proof(header: PartialDataColumnHeader) -> bool:
-    """
-    Verify if the given KZG commitments are included in the given beacon block.
-    """
-    return is_valid_merkle_branch(
-        leaf=hash_tree_root(header.kzg_commitments),
-        branch=header.kzg_commitments_inclusion_proof,
-        depth=KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH,
-        index=get_subtree_index(get_generalized_index(BeaconBlockBody, "blob_kzg_commitments")),
-        root=header.signed_block_header.message.body_root,
-    )
-```
-
-#### `verify_partial_data_column_sidecar_kzg_proofs`
-
-```python
-def verify_partial_data_column_sidecar_kzg_proofs(
-    sidecar: PartialDataColumnSidecar,
-    all_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
-    column_index: ColumnIndex,
-) -> bool:
-    """
-    Verify the KZG proofs.
-    """
-    # Get the blob indices from the bitmap
-    blob_indices = [i for i, b in enumerate(sidecar.cells_present_bitmap) if b]
-
-    # The cell index is the column index for all cells in this column
-    cell_indices = [CellIndex(column_index)] * len(blob_indices)
-
-    # Batch verify that the cells match the corresponding commitments and proofs
-    return verify_cell_kzg_proof_batch(
-        commitments_bytes=[all_commitments[i] for i in blob_indices],
-        cell_indices=cell_indices,
-        cells=sidecar.partial_column,
-        proofs_bytes=sidecar.kzg_proofs,
-    )
-```
-
 #### `compute_subnet_for_data_column_sidecar`
 
 ```python
@@ -332,11 +238,106 @@ Some gossip meshes are upgraded in Fulu to support upgraded types.
 
 ###### `beacon_block`
 
-*Updated validation*
+*Note*: This function is modified per EIP-7892. The block's KZG commitment count
+is bounded by
+`get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`.
 
-- _[REJECT]_ The length of KZG commitments is less than or equal to the
-  limitation defined in the consensus layer -- i.e. validate that
-  `len(signed_beacon_block.message.body.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
+```python
+def validate_beacon_block_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    signed_beacon_block: SignedBeaconBlock,
+    current_time_ms: uint64,
+    block_payload_statuses: Dict[Root, PayloadValidationStatus] = {},
+) -> None:
+    """
+    Validate a SignedBeaconBlock for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    block = signed_beacon_block.message
+    execution_payload = block.body.execution_payload
+
+    # [IGNORE] The block is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if not is_not_from_future_slot(state, block.slot, current_time_ms):
+        raise GossipIgnore("block is from a future slot")
+
+    # [IGNORE] The block is from a slot greater than the latest finalized slot
+    # (MAY choose to validate and store such blocks for additional purposes
+    # -- e.g. slashing detection, archive nodes, etc)
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    if block.slot <= finalized_slot:
+        raise GossipIgnore("block is not from a slot greater than the latest finalized slot")
+
+    # [IGNORE] The block is the first block with valid signature received for the proposer for the slot
+    if (block.proposer_index, block.slot) in seen.proposer_slots:
+        raise GossipIgnore("block is not the first valid block for this proposer and slot")
+
+    # [REJECT] The proposer index is a valid validator index
+    if block.proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer signature is valid
+    proposer = state.validators[block.proposer_index]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
+    signing_root = compute_signing_root(block, domain)
+    if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
+        raise GossipReject("invalid proposer signature")
+
+    # [IGNORE] The block's parent has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until parent is retrieved)
+    if block.parent_root not in store.blocks:
+        raise GossipIgnore("block's parent has not been seen")
+
+    # [REJECT] The block's execution payload timestamp is correct with respect to the slot
+    if execution_payload.timestamp != compute_time_at_slot(state, block.slot):
+        raise GossipReject("incorrect execution payload timestamp")
+
+    parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
+    if block.parent_root in block_payload_statuses:
+        parent_payload_status = block_payload_statuses[block.parent_root]
+
+    if block.parent_root not in store.block_states:
+        if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
+            # [REJECT] The block's parent passes validation
+            raise GossipReject("block's parent is invalid and EL result is unknown")
+
+        # [IGNORE] The block's parent passes validation
+        raise GossipIgnore("block's parent is invalid and EL result is known")
+
+    # [IGNORE] The block's parent's execution payload passes validation
+    if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
+        raise GossipIgnore("block's parent is valid and EL result is invalid")
+
+    # [REJECT] The block is from a higher slot than its parent
+    if block.slot <= store.blocks[block.parent_root].slot:
+        raise GossipReject("block is not from a higher slot than its parent")
+
+    # [REJECT] The current finalized checkpoint is an ancestor of the block
+    checkpoint_block = get_checkpoint_block(
+        store, block.parent_root, store.finalized_checkpoint.epoch
+    )
+    if checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipReject("finalized checkpoint is not an ancestor of block")
+
+    # [Modified in Fulu:EIP7892]
+    # [REJECT] The length of KZG commitments is less than or equal to the limit
+    max_blobs = get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
+    if len(block.body.blob_kzg_commitments) > max_blobs:
+        raise GossipReject("too many blob kzg commitments")
+
+    # [REJECT] The block is proposed by the expected proposer for the slot
+    # (if shuffling is not available, IGNORE instead and MAY be queued for later)
+    parent_state = store.block_states[block.parent_root].copy()
+    process_slots(parent_state, block.slot)
+    expected_proposer = get_beacon_proposer_index(parent_state)
+    if block.proposer_index != expected_proposer:
+        raise GossipReject("block proposer_index does not match expected proposer")
+
+    # Mark this block as seen
+    seen.proposer_slots.add((block.proposer_index, block.slot))
+```
 
 ##### Blob subnets
 
@@ -346,52 +347,99 @@ Some gossip meshes are upgraded in Fulu to support upgraded types.
 
 ###### `data_column_sidecar_{subnet_id}`
 
-This topic is used to propagate column sidecars, where each column maps to some
-`subnet_id`.
+The `data_column_sidecar_{subnet_id}` topics, where each column index maps to
+some `subnet_id`, are used to propagate new data column sidecars to nodes on the
+network. Sidecars are sent in their entirety.
 
-The *type* of the payload of this topic is `DataColumnSidecar`.
+```python
+def validate_data_column_sidecar_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    sidecar: DataColumnSidecar,
+    subnet_id: SubnetID,
+    current_time_ms: uint64,
+) -> None:
+    """
+    Validate a DataColumnSidecar for gossip propagation on a subnet.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    block_header = sidecar.signed_block_header.message
 
-The following validations MUST pass before forwarding the
-`sidecar: DataColumnSidecar` on the network, assuming the alias
-`block_header = sidecar.signed_block_header.message`:
+    # [IGNORE] The sidecar is the first sidecar for the tuple
+    # (block_header.slot, block_header.proposer_index, sidecar.index)
+    sidecar_tuple = (block_header.slot, block_header.proposer_index, sidecar.index)
+    if sidecar_tuple in seen.data_column_sidecar_tuples:
+        raise GossipIgnore("already seen sidecar from this proposer for this slot and index")
 
-- _[REJECT]_ The sidecar is valid as verified by
-  `verify_data_column_sidecar(sidecar)`.
-- _[REJECT]_ The sidecar is for the correct subnet -- i.e.
-  `compute_subnet_for_data_column_sidecar(sidecar.index) == subnet_id`.
-- _[IGNORE]_ The sidecar is not from a future slot (with a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
-  `block_header.slot <= current_slot` (a client MAY queue future sidecars for
-  processing at the appropriate slot).
-- _[IGNORE]_ The sidecar is from a slot greater than the latest finalized slot
-  -- i.e. validate that
-  `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
-- _[REJECT]_ The proposer signature of `sidecar.signed_block_header`, is valid
-  with respect to the `block_header.proposer_index` pubkey.
-- _[IGNORE]_ The sidecar's block's parent (defined by
-  `block_header.parent_root`) has been seen (via gossip or non-gossip sources)
-  (a client MAY queue sidecars for processing once the parent block is
-  retrieved).
-- _[REJECT]_ The sidecar's block's parent (defined by
-  `block_header.parent_root`) passes validation.
-- _[REJECT]_ The sidecar is from a higher slot than the sidecar's block's parent
-  (defined by `block_header.parent_root`).
-- _[REJECT]_ The current finalized_checkpoint is an ancestor of the sidecar's
-  block -- i.e.
-  `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
-- _[REJECT]_ The sidecar's `kzg_commitments` field inclusion proof is valid as
-  verified by `verify_data_column_sidecar_inclusion_proof(sidecar)`.
-- _[REJECT]_ The sidecar's column data is valid as verified by
-  `verify_data_column_sidecar_kzg_proofs(sidecar)`.
-- _[IGNORE]_ The sidecar is the first sidecar for the tuple
-  `(block_header.slot, block_header.proposer_index, sidecar.index)` with valid
-  header signature, sidecar inclusion proof, and kzg proof.
-- _[REJECT]_ The sidecar is proposed by the expected `proposer_index` for the
-  block's slot in the context of the current shuffling (defined by
-  `block_header.parent_root`/`block_header.slot`). If the `proposer_index`
-  cannot immediately be verified against the expected shuffling, the sidecar MAY
-  be queued for later processing while proposers for the block's branch are
-  calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
+    # [REJECT] The sidecar is valid as verified by verify_data_column_sidecar
+    if not verify_data_column_sidecar(sidecar):
+        raise GossipReject("invalid sidecar")
+
+    # [REJECT] The sidecar is for the correct subnet
+    if compute_subnet_for_data_column_sidecar(sidecar.index) != subnet_id:
+        raise GossipReject("sidecar is for wrong subnet")
+
+    # [IGNORE] The sidecar is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if not is_not_from_future_slot(state, block_header.slot, current_time_ms):
+        raise GossipIgnore("sidecar is from a future slot")
+
+    # [IGNORE] The sidecar is from a slot greater than the latest finalized slot
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    if block_header.slot <= finalized_slot:
+        raise GossipIgnore("sidecar is not from a slot greater than the latest finalized slot")
+
+    # [REJECT] The proposer index is a valid validator index
+    if block_header.proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer signature of sidecar.signed_block_header is valid
+    proposer = state.validators[block_header.proposer_index]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block_header.slot))
+    signing_root = compute_signing_root(block_header, domain)
+    if not bls.Verify(proposer.pubkey, signing_root, sidecar.signed_block_header.signature):
+        raise GossipReject("invalid proposer signature on sidecar block header")
+
+    # [IGNORE] The sidecar's block's parent has been seen
+    # (MAY be queued for processing once the parent block is retrieved)
+    if block_header.parent_root not in store.blocks:
+        raise GossipIgnore("sidecar's parent has not been seen")
+
+    # [REJECT] The sidecar's block's parent passes validation
+    if block_header.parent_root not in store.block_states:
+        raise GossipReject("sidecar's parent failed validation")
+
+    # [REJECT] The sidecar is from a higher slot than the sidecar's block's parent
+    if block_header.slot <= store.blocks[block_header.parent_root].slot:
+        raise GossipReject("sidecar is not from a higher slot than its parent")
+
+    # [REJECT] The current finalized_checkpoint is an ancestor of the sidecar's block
+    checkpoint_block = get_checkpoint_block(
+        store, block_header.parent_root, store.finalized_checkpoint.epoch
+    )
+    if checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipReject("finalized checkpoint is not an ancestor of sidecar's block")
+
+    # [REJECT] The sidecar is valid as verified by verify_data_column_sidecar_inclusion_proof
+    if not verify_data_column_sidecar_inclusion_proof(sidecar):
+        raise GossipReject("invalid sidecar inclusion proof")
+
+    # [REJECT] The sidecar is valid as verified by verify_data_column_sidecar_kzg_proofs
+    if not verify_data_column_sidecar_kzg_proofs(sidecar):
+        raise GossipReject("invalid sidecar kzg proofs")
+
+    # [REJECT] The sidecar is proposed by the expected proposer_index
+    # (if shuffling is not available, IGNORE instead and MAY be queued for later)
+    parent_state = store.block_states[block_header.parent_root].copy()
+    process_slots(parent_state, block_header.slot)
+    expected_proposer = get_beacon_proposer_index(parent_state)
+    if block_header.proposer_index != expected_proposer:
+        raise GossipReject("sidecar proposer_index does not match expected proposer")
+
+    # Mark this data column sidecar as seen
+    seen.data_column_sidecar_tuples.add(sidecar_tuple)
+```
 
 *Note*: In the `verify_data_column_sidecar_inclusion_proof(sidecar)` check, for
 all the sidecars of the same block, it verifies against the same set of
@@ -422,170 +470,6 @@ gossip. In particular, clients MUST:
 - Update gossip rule related data structures (i.e. update the anti-equivocation
   cache).
 
-###### Partial Messages on `data_column_sidecar_{subnet_id}`
-
-Validating partial messages happens in two parts. First, the
-`PartialDataColumnHeader` needs to be validated, then the cell and proof data.
-
-Once a `PartialDataColumnHeader` is validated for a corresponding block on any
-subnet (gossipsub topic), it can be used for all subnets.
-
-Due to the nature of partial messages, it is possible to get the
-`PartialDataColumnHeader` with no cells, and get cells in a future response.
-
-For all partial messages:
-
-- _[REJECT]_ A header and/or cells are present in the message (it is not
-  semantically empty).
-- _[REJECT]_ There are the same number of cells and proofs in the message and
-  this number is equal the number of 1s in the cells_present_bitmap.
-
-For verifying the `PartialDataColumnHeader` in a partial message:
-
-- _[REJECT]_ If a valid header was previously received, the received header MUST
-  equal the previously valid header.
-- _[REJECT]_ The hash of the block header in `signed_block_header` MUST be the
-  same one identified by the partial message's group id.
-- _[REJECT]_ The header's `kzg_commitments` list is non-empty.
-- _[IGNORE]_ The header is not from a future slot (with a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
-  `block_header.slot <= current_slot` (a client MAY queue future headers for
-  processing at the appropriate slot).
-- _[IGNORE]_ The header is from a slot greater than the latest finalized slot --
-  i.e. validate that
-  `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`.j
-- _[REJECT]_ The proposer signature of `signed_block_header` is valid with
-  respect to the `block_header.proposer_index` pubkey.
-- _[IGNORE]_ The header's block's parent (defined by `block_header.parent_root`)
-  has been seen (via gossip or non-gossip sources) (a client MAY queue header
-  for processing once the parent block is retrieved).
-- _[REJECT]_ The header's block's parent (defined by `block_header.parent_root`)
-  passes validation.
-- _[REJECT]_ The header is from a higher slot than the header's block's parent
-  (defined by `block_header.parent_root`).
-- _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the header's
-  block -- i.e.
-  `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
-- _[REJECT]_ The header's `kzg_commitments` field inclusion proof is valid as
-  verified by `verify_partial_data_column_header_inclusion_proof`.
-- _[REJECT]_ The header is proposed by the expected `proposer_index` for the
-  block's slot in the context of the current shuffling (defined by
-  `block_header.parent_root`/`block_header.slot`). If the `proposer_index`
-  cannot immediately be verified against the expected shuffling, the header MAY
-  be queued for later processing while proposers for the block's branch are
-  calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
-
-For verifying the cells in a partial message:
-
-- _[IGNORE]_ If the received partial message contains only cell and proof data,
-  the node has seen a valid corresponding `PartialDataColumnHeader`.
-- _[IGNORE]_ The corresponding header is not from a future slot. See related
-  header check above for more details.
-- _[IGNORE]_ The corresponding header is from a slot greater than the latest
-  finalized slot. See related header check above for more details.
-- _[REJECT]_ The cells present bitmap length is equal to the number of KZG
-  commitments in the `PartialDataColumnHeader`.
-- _[REJECT]_ For cells the receiver already has, The sidecar's cell and proof
-  data are equal to the local copy. This an optional check for the receiver, but
-  the sender MUST always send valid cell and proof data.
-- _[REJECT]_ The sidecar's cell and proof data is valid as verified by
-  `verify_partial_data_column_sidecar_kzg_proofs(sidecar, header.kzg_commitments, column_index)`.
-
-#### Partial columns for Cell Dissemination
-
-Gossipsub's
-[Partial Message Extension](https://github.com/libp2p/specs/pull/685) enables
-exchanging selective parts of a message rather than the whole. The specification
-here describes how consensus-layer clients use Partial Messages to disseminate
-cells along with their proofs.
-
-##### Partial message group ID
-
-When sending a partial message, the gossipsub group ID MUST be the block root
-prefixed by a single byte used for versioning. The version byte MUST be zero.
-Other versions may be defined later.
-
-##### Parts metadata
-
-The parts metadata is encoded with the `PartialDataColumnPartsMetadata`
-container.
-
-##### Encoding and decoding responses
-
-All responses MUST be encoded and decoded with the `PartialDataColumnSidecar`
-container.
-
-##### Eager pushing
-
-In contrast to standard gossipsub, a client explicitly requests missing parts
-from a peer. A client can send its request before receiving a peer's parts
-metadata. This registers interest in certain parts, even if the peer does not
-have these parts yet.
-
-This request can introduce extra latency compared to a peer unconditionally
-pushing messages, especially in the first hop of dissemination.
-
-To address this tradeoff, a client MAY choose to eagerly push some (or all) of
-the cells it has. Clients SHOULD only do this when they are reasonably confident
-that a peer does not have the provided cells. For example, a proposer including
-private blobs SHOULD eagerly push the cells corresponding to the private blobs.
-
-Clients, by default, SHOULD NOT eagerly push cells when proposing a block.
-Clients SHOULD expose a flag to opt-in to eagerly pushing all cells when
-proposing a block.
-
-Clients SHOULD eagerly push the `PartialDataColumnHeader` to inform peers as to
-which blobs are included in this block, and therefore which cells they are
-missing. Clients SHOULD NOT send a `PartialDataColumnHeader` to a peer that has
-already sent the client a message, as that peer already has the header (it is a
-prerequisite to sending a message).
-
-Clients MAY choose to not eagerly push the `PartialDataColumnHeader` if it has
-previously sent the header to the peer on another topic.
-
-Clients SHOULD request cells from peers after validating a
-`PartialDataColumnHeader`, even if the corresponding block has not been seen
-yet.
-
-##### Interaction with standard gossipsub
-
-###### Requesting partial messages
-
-A peer requests partial messages for a topic by setting the `partial` field in
-gossipsub's `SubOpts` RPC message to `true`.
-
-###### Mesh
-
-The Partial Message Extension uses the same mesh peers for a given topic as the
-standard gossipsub topics for `DataColumnSidecar`s.
-
-###### Fanout
-
-The Partial Message Extension uses the same fanout peers for a given topic as
-the standard gossipsub topics for `DataColumnSidecar`s.
-
-###### Scoring
-
-On receiving useful novel data from a peer, the client should report to
-gossipsub a positive first message delivery.
-
-Clients SHOULD limit the rate at which a peer gets the first message delivery
-reward to prevent a peer from scoring better by providing cells one at a time
-rather than many cells at once.
-
-On receiving invalid data, the client should report to gossipsub an invalid
-message delivery.
-
-###### Forwarding
-
-Once clients can construct the full `DataColumnSidecar` after receiving missing
-cells, they should forward the full `DataColumnSidecar` over standard gossipsub
-to peers that do not support partial messages. This provides backwards
-compatibility with nodes that do not yet support partial messages.
-
-Avoid forwarding the full `DataColumnSidecar` message to peers that requested
-partial messages for that given topic. It is purely redundant information.
-
 ### The Req/Resp domain
 
 #### Messages
@@ -613,7 +497,7 @@ As seen by the client at the time of sending the message:
 - `earliest_available_slot`: The slot of earliest available block
   (`SignedBeaconBlock`).
 
-*Note*: According the the definition of `earliest_available_slot`:
+*Note*: According to the definition of `earliest_available_slot`:
 
 - If the node is able to serve all blocks throughout the entire sidecars
   retention period (as defined by both `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS`
@@ -847,6 +731,75 @@ Response Content:
 Requests the MetaData of a peer, using the new `MetaData` definition given above
 that is extended from Altair. Other conditions for the `GetMetaData` protocol
 are unchanged from the Altair p2p networking document.
+
+##### BeaconBlocksByHead v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_head/1/`
+
+*[New in Fulu]*
+
+Request Content:
+
+```
+(
+  beacon_root: Root
+  count: uint64
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
+)
+```
+
+Requests beacon blocks along the ancestry of `beacon_root`, inclusive of the
+block at `beacon_root`, in descending slot order. The walk stops as soon as the
+response contains `min(count, MAX_REQUEST_BLOCKS_DENEB)` blocks or the next
+ancestor falls outside the epoch range that clients are required to serve (see
+below).
+
+`BeaconBlocksByHead` is primarily used to backfill a contiguous range of blocks
+relative to a known head.
+
+No more than `MAX_REQUEST_BLOCKS_DENEB` may be requested at a time.
+
+The request MUST be encoded as an SSZ-container.
+
+The response MUST consist of zero or more `response_chunk`. Each successful
+`response_chunk` MUST contain a single `SignedBeaconBlock` payload.
+
+Clients MUST support requesting blocks on the epoch range
+`[current_epoch - compute_min_epochs_for_block_requests(), current_epoch]`. If
+`beacon_root` references a block earlier than this range, peers MAY respond with
+error code `3: ResourceUnavailable` or with no blocks in the response.
+
+Clients MUST respond with at least one block, if they have the block at
+`beacon_root`. Clients MAY limit the number of blocks in the response.
+
+Clients SHOULD include a block in the response as soon as it passes the gossip
+validation rules. Clients SHOULD NOT respond with blocks that fail the
+beacon-chain state transition.
+
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(signed_beacon_block.message.slot)`.
+
+Per `fork_version = compute_fork_version(epoch)`:
+
+<!-- eth_consensus_specs: skip -->
+
+| `fork_version`           | Chunk SSZ type                |
+| ------------------------ | ----------------------------- |
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
+| `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
+| `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
+| `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
+| `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
+| `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 
 ### The discovery domain: discv5
 

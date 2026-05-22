@@ -15,11 +15,21 @@ from eth_consensus_specs.test.helpers.attestations import (
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
-from eth_consensus_specs.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, MAINNET, PHASE0
+from eth_consensus_specs.test.helpers.constants import (
+    ALTAIR,
+    BELLATRIX,
+    CAPELLA,
+    DENEB,
+    ELECTRA,
+    FULU,
+    MAINNET,
+    PHASE0,
+)
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen
+from eth_consensus_specs.test.helpers.forks import is_post_electra
+from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, wrap_genesis_block
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
@@ -34,11 +44,6 @@ def large_validator_balances(spec):
     """
     num_validators = 32 * spec.SLOTS_PER_EPOCH
     return [spec.MAX_EFFECTIVE_BALANCE] * num_validators
-
-
-def wrap_genesis_block(spec, block):
-    """Wrap an unsigned genesis block in a SignedBeaconBlock with empty signature."""
-    return spec.SignedBeaconBlock(message=block)
 
 
 def create_signed_aggregate_and_proof(spec, state, attestation, aggregator_index=None):
@@ -91,13 +96,14 @@ def run_validate_beacon_aggregate_and_proof_gossip(
         return "reject", str(e)
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__valid(spec, state):
     """
     Test that a valid aggregate and proof passes gossip validation.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -108,7 +114,6 @@ def test_gossip_beacon_aggregate_and_proof__valid(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
     signed_agg = create_signed_aggregate_and_proof(spec, state, attestation)
@@ -132,13 +137,14 @@ def test_gossip_beacon_aggregate_and_proof__valid(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_committee_index_out_of_range(spec, state):
     """
     Test that an aggregate with committee index out of range is rejected.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -149,14 +155,23 @@ def test_gossip_beacon_aggregate_and_proof__reject_committee_index_out_of_range(
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
     signed_agg = create_signed_aggregate_and_proof(spec, state, attestation)
 
     # Modify committee index to be out of range
     committee_count = spec.get_committee_count_per_slot(state, attestation.data.target.epoch)
-    signed_agg.message.aggregate.data.index = committee_count + 10
+    if is_post_electra(spec):
+        # In Electra the committee index moved into ``committee_bits`` and
+        # ``data.index`` must remain zero; encode an OOB index in committee_bits
+        # at the smallest position that is both out-of-range and inside the bitvector.
+        assert committee_count < spec.MAX_COMMITTEES_PER_SLOT
+        oob_index = committee_count
+        signed_agg.message.aggregate.committee_bits = spec.Bitvector[spec.MAX_COMMITTEES_PER_SLOT](
+            *[i == oob_index for i in range(spec.MAX_COMMITTEES_PER_SLOT)]
+        )
+    else:
+        signed_agg.message.aggregate.data.index = committee_count + 10
 
     yield get_filename(signed_agg), signed_agg
 
@@ -191,6 +206,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_slot_not_within_range(spec, s
     Test that an aggregate from a slot too far in the future is ignored.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -201,7 +217,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_slot_not_within_range(spec, s
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
     signed_agg = create_signed_aggregate_and_proof(spec, state, attestation)
@@ -234,13 +249,14 @@ def test_gossip_beacon_aggregate_and_proof__ignore_slot_not_within_range(spec, s
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__valid_within_clock_disparity(spec, state):
     """
     Test that an aggregate at exactly the clock disparity boundary is valid.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -251,7 +267,6 @@ def test_gossip_beacon_aggregate_and_proof__valid_within_clock_disparity(spec, s
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
     signed_agg = create_signed_aggregate_and_proof(spec, state, attestation)
@@ -283,13 +298,14 @@ def test_gossip_beacon_aggregate_and_proof__valid_within_clock_disparity(spec, s
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_epoch_mismatch(spec, state):
     """
     Test that an aggregate whose epoch doesn't match target is rejected.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -300,7 +316,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_epoch_mismatch(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
     signed_agg = create_signed_aggregate_and_proof(spec, state, attestation)
@@ -334,13 +349,14 @@ def test_gossip_beacon_aggregate_and_proof__reject_epoch_mismatch(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregate(spec, state):
     """
     Test that a duplicate aggregate data root is ignored.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     messages = []
     seen = get_seen(spec)
@@ -352,7 +368,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregate(spec, 
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
     signed_agg = create_signed_aggregate_and_proof(spec, state, attestation)
@@ -388,7 +403,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregate(spec, 
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_superset(spec, state):
     """
@@ -396,6 +411,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
     a prior aggregate has a non-strict superset of aggregation bits.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     messages = []
     seen = get_seen(spec)
@@ -407,7 +423,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(
         spec,
@@ -443,14 +458,29 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
     else:
         assert False, "Need at least one additional committee participant for this test"
 
+    if is_post_electra(spec):
+        # Electra ``Attestation`` carries an EIP-7549 aggregation bitlist sized for
+        # ``MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT`` and includes
+        # ``committee_bits``; preserve both from the first aggregate.
+        aggregate_2 = spec.Attestation(
+            aggregation_bits=spec.Bitlist[
+                spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT
+            ](*modified_bits),
+            data=signed_agg_1.message.aggregate.data,
+            committee_bits=signed_agg_1.message.aggregate.committee_bits,
+            signature=signed_agg_1.message.aggregate.signature,
+        )
+    else:
+        aggregate_2 = spec.Attestation(
+            aggregation_bits=spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*modified_bits),
+            data=signed_agg_1.message.aggregate.data,
+            signature=signed_agg_1.message.aggregate.signature,
+        )
+
     signed_agg_2 = spec.SignedAggregateAndProof(
         message=spec.AggregateAndProof(
             aggregator_index=signed_agg_1.message.aggregator_index,
-            aggregate=spec.Attestation(
-                aggregation_bits=spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*modified_bits),
-                data=signed_agg_1.message.aggregate.data,
-                signature=signed_agg_1.message.aggregate.signature,
-            ),
+            aggregate=aggregate_2,
             selection_proof=signed_agg_1.message.selection_proof,
         ),
         signature=signed_agg_1.signature,
@@ -477,7 +507,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec, state):
     """
@@ -486,6 +516,7 @@ def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec
     is already in seen.aggregate_data_roots).
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     messages = []
     seen = get_seen(spec)
@@ -497,7 +528,6 @@ def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     # Create two attestations with different single-participant aggregation bits
     # so neither is a superset of the other
@@ -561,13 +591,14 @@ def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignore_block_not_seen(spec, state):
     """
     Test that an aggregate for an unseen block is ignored.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -581,7 +612,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_block_not_seen(spec, state):
     # Build and apply a block (but don't add to store)
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    yield "state", state
 
     # Create an attestation referencing the unseen block
     attestation = get_valid_attestation(
@@ -615,13 +645,14 @@ def test_gossip_beacon_aggregate_and_proof__ignore_block_not_seen(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_aggregation_bits_size_mismatch(spec, state):
     """
     Test that an aggregate with wrong aggregation bits size is rejected.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -632,7 +663,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregation_bits_size_mismatc
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
     signed_agg = create_signed_aggregate_and_proof(spec, state, attestation)
@@ -672,13 +702,14 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregation_bits_size_mismatc
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_no_participants(spec, state):
     """
     Test that an aggregate with no participants is rejected.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -689,7 +720,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_no_participants(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
     signed_agg = create_signed_aggregate_and_proof(spec, state, attestation)
@@ -727,13 +757,14 @@ def test_gossip_beacon_aggregate_and_proof__reject_no_participants(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregator(spec, state):
     """
     Test that a second aggregate from the same aggregator in the same epoch is ignored.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     messages = []
     seen = get_seen(spec)
@@ -745,7 +776,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregator(spec,
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation1 = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
     signed_agg1 = create_signed_aggregate_and_proof(spec, state, attestation1)
@@ -790,7 +820,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregator(spec,
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @with_presets([MAINNET], reason="minimal preset has committees < 16, so everyone is an aggregator")
 @spec_test
 @with_custom_state(
@@ -804,6 +834,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_not_aggregator(spec, state):
     Test that an aggregate from a validator not selected as aggregator is rejected.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -814,7 +845,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_not_aggregator(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     # Search for a non-aggregator at the current slot across all committees
     non_aggregator_index = None
@@ -879,13 +909,14 @@ def test_gossip_beacon_aggregate_and_proof__reject_not_aggregator(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_aggregator_not_in_committee(spec, state):
     """
     Test that an aggregate from a validator not in the committee is rejected.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -896,7 +927,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_not_in_committee(s
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
     signed_agg = create_signed_aggregate_and_proof(spec, state, attestation)
@@ -938,13 +968,14 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_not_in_committee(s
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_aggregator_index_out_of_range(spec, state):
     """
     Test that an aggregate with out-of-range aggregator index is rejected.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -955,7 +986,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_index_out_of_range
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
     signed_agg = create_signed_aggregate_and_proof(spec, state, attestation)
@@ -988,7 +1018,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_index_out_of_range
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 @always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_invalid_selection_proof(spec, state):
@@ -996,6 +1026,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_selection_proof(spec,
     Test that an aggregate with invalid selection proof signature is rejected.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -1006,7 +1037,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_selection_proof(spec,
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
     signed_agg = create_signed_aggregate_and_proof(spec, state, attestation)
@@ -1040,7 +1070,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_selection_proof(spec,
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 @always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregator_signature(spec, state):
@@ -1048,6 +1078,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregator_signature(
     Test that an aggregate with invalid aggregator signature is rejected.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -1058,7 +1089,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregator_signature(
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
     signed_agg = create_signed_aggregate_and_proof(spec, state, attestation)
@@ -1092,7 +1122,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregator_signature(
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 @always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregate_signature(spec, state):
@@ -1100,6 +1130,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregate_signature(s
     Test that an aggregate with invalid aggregate attestation signature is rejected.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -1110,7 +1141,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregate_signature(s
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     # Create an attestation with INVALID signature BEFORE creating the aggregate
     attestation = get_valid_attestation(spec, state, signed=False, beacon_block_root=anchor_root)
@@ -1144,13 +1174,14 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregate_signature(s
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_block_failed_validation(spec, state):
     """
     Test that an aggregate for a block that failed validation is rejected.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -1163,7 +1194,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_block_failed_validation(spec,
     # Build and apply a block
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    yield "state", state
 
     yield get_filename(signed_block), signed_block
 
@@ -1208,13 +1238,14 @@ def test_gossip_beacon_aggregate_and_proof__reject_block_failed_validation(spec,
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__reject_target_not_ancestor(spec, state):
     """
     Test that an aggregate whose target is not an ancestor of the LMD vote block is rejected.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -1225,7 +1256,6 @@ def test_gossip_beacon_aggregate_and_proof__reject_target_not_ancestor(spec, sta
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     # Create an attestation with wrong target root BEFORE signing
     attestation = get_valid_attestation(spec, state, signed=False, beacon_block_root=anchor_root)
@@ -1260,13 +1290,14 @@ def test_gossip_beacon_aggregate_and_proof__reject_target_not_ancestor(spec, sta
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_aggregate_and_proof__ignore_finalized_not_ancestor(spec, state):
     """
     Test that an aggregate for a block not descending from finalized checkpoint is ignored.
     """
     yield "topic", "meta", "beacon_aggregate_and_proof"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -1277,7 +1308,6 @@ def test_gossip_beacon_aggregate_and_proof__ignore_finalized_not_ancestor(spec, 
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
     signed_agg = create_signed_aggregate_and_proof(spec, state, attestation)

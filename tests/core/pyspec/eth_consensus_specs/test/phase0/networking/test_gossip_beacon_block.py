@@ -7,7 +7,15 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block,
 )
-from eth_consensus_specs.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, PHASE0
+from eth_consensus_specs.test.helpers.constants import (
+    ALTAIR,
+    BELLATRIX,
+    CAPELLA,
+    DENEB,
+    ELECTRA,
+    FULU,
+    PHASE0,
+)
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
     build_state_with_incomplete_transition,
@@ -16,39 +24,25 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_bellatrix
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen
+from eth_consensus_specs.test.helpers.gossip import (
+    get_filename,
+    get_seen,
+    run_validate_beacon_block_gossip,
+    wrap_genesis_block,
+)
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
 
 
-def wrap_genesis_block(spec, block):
-    """Wrap an unsigned genesis block in a SignedBeaconBlock with empty signature."""
-    return spec.SignedBeaconBlock(message=block)
-
-
-def run_validate_beacon_block_gossip(spec, seen, store, state, signed_block, current_time_ms):
-    """
-    Run validate_beacon_block_gossip and return the result.
-    Returns: tuple of (result, reason) where result is "valid", "ignore", or "reject"
-             and reason is the exception message (or None for valid).
-    """
-    try:
-        spec.validate_beacon_block_gossip(seen, store, state, signed_block, current_time_ms)
-        return "valid", None
-    except spec.GossipIgnore as e:
-        return "ignore", str(e)
-    except spec.GossipReject as e:
-        return "reject", str(e)
-
-
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__valid_block(spec, state):
     """
     Test that a valid block passes gossip validation.
     """
     yield "topic", "meta", "beacon_block"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -59,7 +53,6 @@ def test_gossip_beacon_block__valid_block(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    yield "state", state
 
     yield get_filename(signed_block), signed_block
 
@@ -80,13 +73,14 @@ def test_gossip_beacon_block__valid_block(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__ignore_future_slot(spec, state):
     """
     Test that a block from a future slot is ignored.
     """
     yield "topic", "meta", "beacon_block"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -97,7 +91,6 @@ def test_gossip_beacon_block__ignore_future_slot(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    yield "state", state
 
     yield get_filename(signed_block), signed_block
 
@@ -126,13 +119,14 @@ def test_gossip_beacon_block__ignore_future_slot(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__valid_within_clock_disparity(spec, state):
     """
     Test that a block from a slightly future slot is valid within clock disparity.
     """
     yield "topic", "meta", "beacon_block"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -143,7 +137,6 @@ def test_gossip_beacon_block__valid_within_clock_disparity(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    yield "state", state
 
     yield get_filename(signed_block), signed_block
 
@@ -165,13 +158,14 @@ def test_gossip_beacon_block__valid_within_clock_disparity(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
     """
     Test that a duplicate block for the same proposer/slot is ignored.
     """
     yield "topic", "meta", "beacon_block"
+    yield "state", state
 
     messages = []
     seen = get_seen(spec)
@@ -183,7 +177,6 @@ def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    yield "state", state
 
     yield get_filename(signed_block), signed_block
 
@@ -217,7 +210,7 @@ def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__ignore_slot_not_greater_than_finalized(spec, state):
     """
@@ -289,13 +282,14 @@ def test_gossip_beacon_block__ignore_slot_not_greater_than_finalized(spec, state
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__ignore_parent_not_seen(spec, state):
     """
     Test that a block whose parent is not in the store is ignored.
     """
     yield "topic", "meta", "beacon_block"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -306,7 +300,6 @@ def test_gossip_beacon_block__ignore_parent_not_seen(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    yield "state", state
 
     # Modify parent_root to something unknown
     signed_block.message.parent_root = b"\x12" * 32
@@ -360,6 +353,8 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
     if is_post_bellatrix(spec):
         state = build_state_with_incomplete_transition(spec, state)
 
+    yield "state", state
+
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
@@ -370,7 +365,6 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
     if is_post_bellatrix(spec):
         block.body.execution_payload = spec.ExecutionPayload()
     signed_block = state_transition_and_sign_block(spec, state, block)
-    yield "state", state
 
     yield get_filename(signed_block), signed_block
 
@@ -432,13 +426,14 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
     """
     Test that a block with slot <= parent slot is rejected.
     """
     yield "topic", "meta", "beacon_block"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -449,7 +444,6 @@ def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
     # First, build and add a valid block at slot 1 to be our parent
     parent_block = build_empty_block_for_next_slot(spec, state)
     signed_parent = state_transition_and_sign_block(spec, state, parent_block)
-    yield "state", state
 
     yield get_filename(signed_parent), signed_parent
 
@@ -506,13 +500,14 @@ def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, state):
     """
     Test that a block whose finalized checkpoint is not an ancestor is rejected.
     """
     yield "topic", "meta", "beacon_block"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -522,7 +517,6 @@ def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, sta
 
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    yield "state", state
 
     yield get_filename(signed_block), signed_block
 
@@ -591,7 +585,7 @@ def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, sta
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 @always_bls
 def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
@@ -599,6 +593,7 @@ def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
     Test that a block with an invalid proposer signature is rejected.
     """
     yield "topic", "meta", "beacon_block"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -609,7 +604,6 @@ def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    yield "state", state
 
     # Corrupt the signature
     signed_block.signature = b"\x00" * 96
@@ -640,13 +634,14 @@ def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__reject_invalid_proposer_index(spec, state):
     """
     Test that a block with an out-of-range proposer_index is rejected.
     """
     yield "topic", "meta", "beacon_block"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -657,7 +652,6 @@ def test_gossip_beacon_block__reject_invalid_proposer_index(spec, state):
 
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    yield "state", state
 
     # Set proposer index to an invalid value.
     signed_block.message.proposer_index = len(state.validators)
@@ -688,7 +682,7 @@ def test_gossip_beacon_block__reject_invalid_proposer_index(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_block__reject_wrong_proposer_index(spec, state):
     """

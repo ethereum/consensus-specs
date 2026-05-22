@@ -5,15 +5,25 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
+    to_single_attestation,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
-from eth_consensus_specs.test.helpers.constants import ALTAIR, BELLATRIX, CAPELLA, PHASE0
+from eth_consensus_specs.test.helpers.constants import (
+    ALTAIR,
+    BELLATRIX,
+    CAPELLA,
+    DENEB,
+    ELECTRA,
+    FULU,
+    PHASE0,
+)
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen
+from eth_consensus_specs.test.helpers.forks import is_post_electra
+from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, wrap_genesis_block
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
@@ -21,16 +31,14 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-def wrap_genesis_block(spec, block):
-    """Wrap an unsigned genesis block in a SignedBeaconBlock with empty signature."""
-    return spec.SignedBeaconBlock(message=block)
-
-
 def get_correct_subnet_for_attestation(spec, state, attestation):
     """Get the correct subnet for an attestation."""
     committees_per_slot = spec.get_committee_count_per_slot(state, attestation.data.target.epoch)
+    committee_index = (
+        attestation.committee_index if is_post_electra(spec) else attestation.data.index
+    )
     return spec.compute_subnet_for_attestation(
-        committees_per_slot, attestation.data.slot, attestation.data.index
+        committees_per_slot, attestation.data.slot, committee_index
     )
 
 
@@ -53,13 +61,14 @@ def run_validate_beacon_attestation_gossip(
         return "reject", str(e)
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__valid(spec, state):
     """
     Test that a valid unaggregated attestation passes gossip validation.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -70,21 +79,23 @@ def test_gossip_beacon_attestation__valid(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     # Create an unaggregated attestation (single validator) referencing anchor block
     attestation = get_valid_attestation(
         spec, state, signed=True, index=0, beacon_block_root=anchor_root
     )
 
-    # Make sure it's unaggregated (exactly one bit set)
-    committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    single_bit = [False] * len(committee)
-    single_bit[0] = True
-    attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
-    attestation.signature = spec.get_attestation_signature(
-        state, attestation.data, privkeys[committee[0]]
-    )
+    if is_post_electra(spec):
+        attestation = to_single_attestation(spec, state, attestation)
+    else:
+        # Make it unaggregated (exactly one bit set)
+        committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+        single_bit = [False] * len(committee)
+        single_bit[0] = True
+        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.signature = spec.get_attestation_signature(
+            state, attestation.data, privkeys[committee[0]]
+        )
 
     yield get_filename(attestation), attestation
 
@@ -113,13 +124,14 @@ def test_gossip_beacon_attestation__valid(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, state):
     """
     Test that an attestation with committee index out of range is rejected.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -130,13 +142,16 @@ def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, st
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
 
     # Set committee index out of range
     committees_per_slot = spec.get_committee_count_per_slot(state, attestation.data.target.epoch)
-    attestation.data.index = committees_per_slot + 10
+    if is_post_electra(spec):
+        attestation = to_single_attestation(spec, state, attestation)
+        attestation.committee_index = committees_per_slot + 10
+    else:
+        attestation.data.index = committees_per_slot + 10
 
     yield get_filename(attestation), attestation
 
@@ -166,13 +181,14 @@ def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, st
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
     """
     Test that an attestation sent to the wrong subnet is rejected.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -183,9 +199,10 @@ def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
+    if is_post_electra(spec):
+        attestation = to_single_attestation(spec, state, attestation)
 
     yield get_filename(attestation), attestation
 
@@ -224,6 +241,7 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     Test that an attestation with slot not in propagation range is ignored.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -234,7 +252,6 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     # Create an unaggregated attestation referencing anchor block
     attestation = get_valid_attestation(spec, state, signed=False, beacon_block_root=anchor_root)
@@ -278,13 +295,14 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     """
     Test that an attestation at exactly the clock disparity boundary is valid.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -295,19 +313,21 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     # Create an unaggregated attestation referencing anchor block
     attestation = get_valid_attestation(spec, state, signed=False, beacon_block_root=anchor_root)
 
-    # Make it unaggregated (exactly one bit set)
-    committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    single_bit = [False] * len(committee)
-    single_bit[0] = True
-    attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
-    attestation.signature = spec.get_attestation_signature(
-        state, attestation.data, privkeys[committee[0]]
-    )
+    if is_post_electra(spec):
+        attestation = to_single_attestation(spec, state, attestation)
+    else:
+        # Make it unaggregated (exactly one bit set)
+        committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+        single_bit = [False] * len(committee)
+        single_bit[0] = True
+        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.signature = spec.get_attestation_signature(
+            state, attestation.data, privkeys[committee[0]]
+        )
 
     yield get_filename(attestation), attestation
 
@@ -345,6 +365,7 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state
     Test that an attestation at exactly the old boundary (expiry + clock disparity) is still valid.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -355,7 +376,6 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     # Create an unaggregated attestation referencing anchor block
     attestation = get_valid_attestation(spec, state, signed=False, beacon_block_root=anchor_root)
@@ -407,6 +427,7 @@ def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
     Test that an attestation that is too old (past propagation range + clock disparity) is ignored.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -417,7 +438,6 @@ def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     # Create an unaggregated attestation referencing anchor block
     attestation = get_valid_attestation(spec, state, signed=False, beacon_block_root=anchor_root)
@@ -463,13 +483,14 @@ def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
     """
     Test that an attestation with mismatched epoch and target is rejected.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -480,12 +501,14 @@ def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
 
     # Modify target epoch to not match slot
     attestation.data.target.epoch = spec.Epoch(100)
+
+    if is_post_electra(spec):
+        attestation = to_single_attestation(spec, state, attestation)
 
     yield get_filename(attestation), attestation
 
@@ -515,13 +538,14 @@ def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
     """
     Test that an aggregated attestation (more than one bit set) is rejected.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -532,7 +556,6 @@ def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     # Create an attestation with multiple bits set (aggregated) referencing anchor block
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
@@ -573,13 +596,14 @@ def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, state):
     """
     Test that an attestation with wrong aggregation bits size is rejected.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -590,7 +614,6 @@ def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, 
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     attestation = get_valid_attestation(spec, state, signed=True, beacon_block_root=anchor_root)
 
@@ -629,13 +652,14 @@ def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, 
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
     """
     Test that a duplicate attestation from same validator/epoch is ignored.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     messages = []
     seen = get_seen(spec)
@@ -647,19 +671,21 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     # Create an unaggregated attestation referencing anchor block
     attestation = get_valid_attestation(spec, state, signed=False, beacon_block_root=anchor_root)
 
-    # Make it unaggregated (exactly one bit set)
-    committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    single_bit = [False] * len(committee)
-    single_bit[0] = True
-    attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
-    attestation.signature = spec.get_attestation_signature(
-        state, attestation.data, privkeys[committee[0]]
-    )
+    if is_post_electra(spec):
+        attestation = to_single_attestation(spec, state, attestation)
+    else:
+        # Make it unaggregated (exactly one bit set)
+        committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+        single_bit = [False] * len(committee)
+        single_bit[0] = True
+        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.signature = spec.get_attestation_signature(
+            state, attestation.data, privkeys[committee[0]]
+        )
 
     yield get_filename(attestation), attestation
 
@@ -702,13 +728,14 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
     """
     Test that an attestation for an unseen block is ignored.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -722,19 +749,21 @@ def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
     # Build and apply a block (but don't add to store)
     block = build_empty_block_for_next_slot(spec, state)
     state_transition_and_sign_block(spec, state, block)
-    yield "state", state
 
     # Create an attestation for the block that's not in store
     attestation = get_valid_attestation(spec, state, signed=False)
 
-    # Make it unaggregated
-    committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    single_bit = [False] * len(committee)
-    single_bit[0] = True
-    attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
-    attestation.signature = spec.get_attestation_signature(
-        state, attestation.data, privkeys[committee[0]]
-    )
+    if is_post_electra(spec):
+        attestation = to_single_attestation(spec, state, attestation)
+    else:
+        # Make it unaggregated (exactly one bit set)
+        committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+        single_bit = [False] * len(committee)
+        single_bit[0] = True
+        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.signature = spec.get_attestation_signature(
+            state, attestation.data, privkeys[committee[0]]
+        )
 
     yield get_filename(attestation), attestation
 
@@ -764,13 +793,14 @@ def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
     """
     Test that an attestation for a block that failed validation is rejected.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -783,7 +813,6 @@ def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
     # Build and apply a block
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    yield "state", state
 
     yield get_filename(signed_block), signed_block
 
@@ -802,14 +831,17 @@ def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
     # Create an attestation
     attestation = get_valid_attestation(spec, state, signed=False)
 
-    # Make it unaggregated
-    committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    single_bit = [False] * len(committee)
-    single_bit[0] = True
-    attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
-    attestation.signature = spec.get_attestation_signature(
-        state, attestation.data, privkeys[committee[0]]
-    )
+    if is_post_electra(spec):
+        attestation = to_single_attestation(spec, state, attestation)
+    else:
+        # Make it unaggregated (exactly one bit set)
+        committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+        single_bit = [False] * len(committee)
+        single_bit[0] = True
+        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.signature = spec.get_attestation_signature(
+            state, attestation.data, privkeys[committee[0]]
+        )
 
     yield get_filename(attestation), attestation
 
@@ -839,7 +871,7 @@ def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 @always_bls
 def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
@@ -847,6 +879,7 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
     Test that an attestation with invalid signature is rejected.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -857,16 +890,18 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     # Create an attestation without signing, referencing anchor block
     attestation = get_valid_attestation(spec, state, signed=False, beacon_block_root=anchor_root)
 
-    # Make it unaggregated
-    committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    single_bit = [False] * len(committee)
-    single_bit[0] = True
-    attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+    if is_post_electra(spec):
+        attestation = to_single_attestation(spec, state, attestation)
+    else:
+        # Make it unaggregated (exactly one bit set)
+        committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+        single_bit = [False] * len(committee)
+        single_bit[0] = True
+        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
     # Invalid signature (zeros)
     attestation.signature = spec.BLSSignature(b"\x00" * 96)
 
@@ -898,13 +933,14 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
     """
     Test that an attestation whose target is not an ancestor of LMD vote is rejected.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -915,21 +951,24 @@ def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     next_slot(spec, state)
-    yield "state", state
 
     # Create an attestation with wrong target root, referencing anchor block
     attestation = get_valid_attestation(spec, state, signed=False, beacon_block_root=anchor_root)
     attestation.data.target.root = spec.Root(b"\xcd" * 32)  # Invalid target root
 
-    # Make it unaggregated
-    committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    single_bit = [False] * len(committee)
-    single_bit[0] = True
-    attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
-    # Sign with the modified data
-    attestation.signature = spec.get_attestation_signature(
-        state, attestation.data, privkeys[committee[0]]
-    )
+    if is_post_electra(spec):
+        # `to_single_attestation` signs with the (now-modified) data.
+        attestation = to_single_attestation(spec, state, attestation)
+    else:
+        # Make it unaggregated (exactly one bit set)
+        committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+        single_bit = [False] * len(committee)
+        single_bit[0] = True
+        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        # Sign with the modified data
+        attestation.signature = spec.get_attestation_signature(
+            state, attestation.data, privkeys[committee[0]]
+        )
 
     yield get_filename(attestation), attestation
 
@@ -959,13 +998,14 @@ def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
     """
     Test that an attestation for a block not descending from finalized checkpoint is ignored.
     """
     yield "topic", "meta", "beacon_attestation"
+    yield "state", state
 
     seen = get_seen(spec)
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -978,7 +1018,6 @@ def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
     # Build and apply a block
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
-    yield "state", state
 
     yield get_filename(signed_block), signed_block
 
@@ -998,14 +1037,17 @@ def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
     # Create an attestation
     attestation = get_valid_attestation(spec, state, signed=False)
 
-    # Make it unaggregated
-    committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    single_bit = [False] * len(committee)
-    single_bit[0] = True
-    attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
-    attestation.signature = spec.get_attestation_signature(
-        state, attestation.data, privkeys[committee[0]]
-    )
+    if is_post_electra(spec):
+        attestation = to_single_attestation(spec, state, attestation)
+    else:
+        # Make it unaggregated (exactly one bit set)
+        committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
+        single_bit = [False] * len(committee)
+        single_bit[0] = True
+        attestation.aggregation_bits = spec.Bitlist[spec.MAX_VALIDATORS_PER_COMMITTEE](*single_bit)
+        attestation.signature = spec.get_attestation_signature(
+            state, attestation.data, privkeys[committee[0]]
+        )
 
     yield get_filename(attestation), attestation
 

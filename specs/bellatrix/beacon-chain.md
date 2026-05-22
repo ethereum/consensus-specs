@@ -294,7 +294,7 @@ def slash_validator(
 
 ```python
 @dataclass
-class NewPayloadRequest(object):
+class NewPayloadRequest:
     execution_payload: ExecutionPayload
 ```
 

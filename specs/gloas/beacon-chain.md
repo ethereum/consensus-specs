@@ -17,6 +17,7 @@
   - [State list lengths](#state-list-lengths)
   - [Withdrawals processing](#withdrawals-processing)
 - [Configuration](#configuration)
+  - [Validator cycle](#validator-cycle)
   - [Time parameters](#time-parameters)
 - [Containers](#containers)
   - [New containers](#new-containers)
@@ -60,6 +61,10 @@
     - [New `get_ptc`](#new-get_ptc)
     - [New `get_indexed_payload_attestation`](#new-get_indexed_payload_attestation)
     - [New `get_builder_payment_quorum_threshold`](#new-get_builder_payment_quorum_threshold)
+    - [New `get_activation_churn_limit`](#new-get_activation_churn_limit)
+    - [New `get_exit_churn_limit`](#new-get_exit_churn_limit)
+    - [Modified `get_consolidation_churn_limit`](#modified-get_consolidation_churn_limit)
+    - [Modified `compute_exit_epoch_and_update_churn`](#modified-compute_exit_epoch_and_update_churn)
   - [Beacon state mutators](#beacon-state-mutators)
     - [New `initiate_builder_exit`](#new-initiate_builder_exit)
     - [New `settle_builder_payment`](#new-settle_builder_payment)
@@ -67,6 +72,7 @@
   - [Modified `process_slot`](#modified-process_slot)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
+    - [Modified `process_pending_deposits`](#modified-process_pending_deposits)
     - [New `process_builder_pending_payments`](#new-process_builder_pending_payments)
     - [New `process_ptc_window`](#new-process_ptc_window)
   - [Block processing](#block-processing)
@@ -112,6 +118,8 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 - [EIP-7732](https://eips.ethereum.org/EIPS/eip-7732): Enshrined
   Proposer-Builder Separation
 - [EIP-7843](https://eips.ethereum.org/EIPS/eip-7843): SLOTNUM opcode
+- [EIP-8061](https://eips.ethereum.org/EIPS/eip-8061): Increase exit and
+  consolidation churn
 
 ## Types
 
@@ -179,11 +187,19 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 ## Configuration
 
+### Validator cycle
+
+| Name                                         | Value                                    |
+| -------------------------------------------- | ---------------------------------------- |
+| `CHURN_LIMIT_QUOTIENT_GLOAS`                 | `uint64(2**15)` (= 32,768)               |
+| `CONSOLIDATION_CHURN_LIMIT_QUOTIENT`         | `uint64(2**16)` (= 65,536)               |
+| `MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS` | `Gwei(2**8 * 10**9)` (= 256,000,000,000) |
+
 ### Time parameters
 
-| Name                                | Value                 |  Unit  |
-| ----------------------------------- | --------------------- | :----: |
-| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `uint64(2**6)` (= 64) | epochs |
+| Name                                | Value                     |  Unit  |
+| ----------------------------------- | ------------------------- | :----: |
+| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `uint64(2**13)` (= 8,192) | epochs |
 
 ## Containers
 
@@ -431,7 +447,7 @@ class ExecutionPayload(Container):
 
 ```python
 @dataclass
-class ExpectedWithdrawals(object):
+class ExpectedWithdrawals:
     withdrawals: Sequence[Withdrawal]
     # [New in Gloas:EIP7732]
     processed_builder_withdrawals_count: uint64
@@ -520,11 +536,11 @@ def is_valid_indexed_payload_attestation(
 Implementations SHOULD cache verification results to avoid repeated work.
 
 ```python
-def is_pending_validator(state: BeaconState, pubkey: BLSPubkey) -> bool:
+def is_pending_validator(pending_deposits: Sequence[PendingDeposit], pubkey: BLSPubkey) -> bool:
     """
     Check if a pending deposit with a valid signature is in the queue for the given pubkey.
     """
-    for pending_deposit in state.pending_deposits:
+    for pending_deposit in pending_deposits:
         if pending_deposit.pubkey != pubkey:
             continue
         if is_valid_deposit_signature(
@@ -598,7 +614,7 @@ def compute_balance_weighted_selection(
     Return ``size`` indices sampled by effective balance, using ``indices``
     as candidates. If ``shuffle_indices`` is ``True``, candidate indices
     are themselves sampled from ``indices`` by shuffling it, otherwise
-    ``indices`` is traversed in order.
+    ``indices`` is traversed in order. The returned list can contain duplicates.
     """
     MAX_RANDOM_VALUE = 2**16 - 1
     total = uint64(len(indices))
@@ -649,7 +665,7 @@ def compute_proposer_indices(
 ```python
 def compute_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     """
-    Get the payload timeliness committee for the given ``slot``.
+    Get the payload timeliness committee, with possible duplicates, for the given ``slot``.
     """
     epoch = compute_epoch_at_slot(slot)
     seed = hash(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
@@ -789,6 +805,85 @@ def get_builder_payment_quorum_threshold(state: BeaconState) -> uint64:
     return uint64(quorum // BUILDER_PAYMENT_THRESHOLD_DENOMINATOR)
 ```
 
+#### New `get_activation_churn_limit`
+
+```python
+def get_activation_churn_limit(state: BeaconState) -> Gwei:
+    """
+    Per-epoch churn limit for activations, rounded to
+    ``EFFECTIVE_BALANCE_INCREMENT``.
+    """
+    churn = max(
+        MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA,
+        get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT_GLOAS,
+    )
+    churn = churn - churn % EFFECTIVE_BALANCE_INCREMENT
+    return min(MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS, churn)
+```
+
+#### New `get_exit_churn_limit`
+
+```python
+def get_exit_churn_limit(state: BeaconState) -> Gwei:
+    """
+    Per-epoch churn limit for exits, rounded to
+    ``EFFECTIVE_BALANCE_INCREMENT``.
+    """
+    churn = max(
+        MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA,
+        get_total_active_balance(state) // CHURN_LIMIT_QUOTIENT_GLOAS,
+    )
+    return churn - churn % EFFECTIVE_BALANCE_INCREMENT
+```
+
+#### Modified `get_consolidation_churn_limit`
+
+*Note*: Consolidation churn is now independently derived from the total active
+balance using `CONSOLIDATION_CHURN_LIMIT_QUOTIENT`.
+
+```python
+def get_consolidation_churn_limit(state: BeaconState) -> Gwei:
+    """
+    Per-epoch churn limit reserved for consolidations (EIP-7521).
+    Derived from total active balance and rounded to
+    ``EFFECTIVE_BALANCE_INCREMENT``.
+    """
+    churn = get_total_active_balance(state) // CONSOLIDATION_CHURN_LIMIT_QUOTIENT
+    return churn - churn % EFFECTIVE_BALANCE_INCREMENT
+```
+
+#### Modified `compute_exit_epoch_and_update_churn`
+
+*Note*: Exit processing now uses the uncapped exit churn, while deposit
+processing remains capped by `get_activation_churn_limit`.
+
+```python
+def compute_exit_epoch_and_update_churn(state: BeaconState, exit_balance: Gwei) -> Epoch:
+    earliest_exit_epoch = max(
+        state.earliest_exit_epoch, compute_activation_exit_epoch(get_current_epoch(state))
+    )
+    # [Modified in Gloas:EIP8061]
+    per_epoch_churn = get_exit_churn_limit(state)
+    # New epoch for exits.
+    if state.earliest_exit_epoch < earliest_exit_epoch:
+        exit_balance_to_consume = per_epoch_churn
+    else:
+        exit_balance_to_consume = state.exit_balance_to_consume
+
+    # Exit doesn't fit in the current earliest epoch.
+    if exit_balance > exit_balance_to_consume:
+        balance_to_process = exit_balance - exit_balance_to_consume
+        additional_epochs = (balance_to_process - 1) // per_epoch_churn + 1
+        earliest_exit_epoch += additional_epochs
+        exit_balance_to_consume += additional_epochs * per_epoch_churn
+
+    # Consume the balance and update state variables.
+    state.exit_balance_to_consume = exit_balance_to_consume - exit_balance
+    state.earliest_exit_epoch = earliest_exit_epoch
+
+    return state.earliest_exit_epoch
+```
+
 ### Beacon state mutators
 
 #### New `initiate_builder_exit`
@@ -868,6 +963,7 @@ def process_epoch(state: BeaconState) -> None:
     process_registry_updates(state)
     process_slashings(state)
     process_eth1_data_reset(state)
+    # [Modified in Gloas:EIP8061]
     process_pending_deposits(state)
     process_pending_consolidations(state)
     # [New in Gloas:EIP7732]
@@ -881,6 +977,76 @@ def process_epoch(state: BeaconState) -> None:
     process_proposer_lookahead(state)
     # [New in Gloas:EIP7732]
     process_ptc_window(state)
+```
+
+#### Modified `process_pending_deposits`
+
+```python
+def process_pending_deposits(state: BeaconState) -> None:
+    next_epoch = Epoch(get_current_epoch(state) + 1)
+    # [Modified in Gloas:EIP8061]
+    # Deposits still consume the activation-only churn budget in Gloas.
+    available_for_processing = state.deposit_balance_to_consume + get_activation_churn_limit(state)
+    processed_amount = 0
+    next_deposit_index = 0
+    deposits_to_postpone = []
+    is_churn_limit_reached = False
+    finalized_slot = compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
+
+    for deposit in state.pending_deposits:
+        # Do not process deposit requests if Eth1 bridge deposits are not yet applied.
+        if (
+            # Is deposit request
+            deposit.slot > GENESIS_SLOT
+            and
+            # There are pending Eth1 bridge deposits
+            state.eth1_deposit_index < state.deposit_requests_start_index
+        ):
+            break
+
+        # Check if deposit has been finalized, otherwise, stop processing.
+        if deposit.slot > finalized_slot:
+            break
+
+        # Check if number of processed deposits has not reached the limit, otherwise, stop processing.
+        if next_deposit_index >= MAX_PENDING_DEPOSITS_PER_EPOCH:
+            break
+
+        # Read validator state
+        is_validator_exited = False
+        is_validator_withdrawn = False
+        validator_pubkeys = [v.pubkey for v in state.validators]
+        if deposit.pubkey in validator_pubkeys:
+            validator = state.validators[ValidatorIndex(validator_pubkeys.index(deposit.pubkey))]
+            is_validator_exited = validator.exit_epoch < FAR_FUTURE_EPOCH
+            is_validator_withdrawn = validator.withdrawable_epoch < next_epoch
+
+        if is_validator_withdrawn:
+            # Deposited balance will never become active. Increase balance but do not consume churn
+            apply_pending_deposit(state, deposit)
+        elif is_validator_exited:
+            # Validator is exiting, postpone the deposit until after withdrawable epoch
+            deposits_to_postpone.append(deposit)
+        else:
+            # Check if deposit fits in the churn, otherwise, do no more deposit processing in this epoch.
+            is_churn_limit_reached = processed_amount + deposit.amount > available_for_processing
+            if is_churn_limit_reached:
+                break
+
+            # Consume churn and apply deposit.
+            processed_amount += deposit.amount
+            apply_pending_deposit(state, deposit)
+
+        # Regardless of how the deposit was handled, we move on in the queue.
+        next_deposit_index += 1
+
+    state.pending_deposits = state.pending_deposits[next_deposit_index:] + deposits_to_postpone
+
+    # Accumulate churn only if the churn limit has been hit.
+    if is_churn_limit_reached:
+        state.deposit_balance_to_consume = available_for_processing - processed_amount
+    else:
+        state.deposit_balance_to_consume = Gwei(0)
 ```
 
 #### New `process_builder_pending_payments`
@@ -1001,9 +1167,7 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
     parent_bid = state.latest_execution_payload_bid
     requests = block.body.parent_execution_requests
 
-    is_genesis_block = parent_bid.block_hash == Hash32()
-    is_parent_block_empty = bid.parent_block_hash != parent_bid.block_hash
-    if is_genesis_block or is_parent_block_empty:
+    if bid.parent_block_hash != parent_bid.block_hash:
         # Parent was EMPTY -- no execution requests expected
         assert requests == ExecutionRequests()
         return
@@ -1212,9 +1376,7 @@ def process_withdrawals(
 ) -> None:
     # [New in Gloas:EIP7732]
     # Return early if the parent block is empty
-    is_genesis_block = state.latest_block_hash == Hash32()
-    is_parent_block_empty = state.latest_block_hash != state.latest_execution_payload_bid.block_hash
-    if is_genesis_block or is_parent_block_empty:
+    if state.latest_block_hash != state.latest_execution_payload_bid.block_hash:
         return
 
     # Get expected withdrawals
@@ -1395,7 +1557,7 @@ def add_builder_to_registry(
 
 *Note*: Builder indices are reusable. When a builder exits, its index may later
 be reassigned to a different builder with a new public key. Any deposit sent to
-an exited builder is refunded to the builder’s execution address. Exited
+an exited builder will be withdrawn to the builder’s execution address. Exited
 builders cannot be reactivated, although a newly registered builder’s public key
 may have previously appeared in the builder set. Implementations that rely on
 caching should account for this behavior.
@@ -1436,7 +1598,7 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     if is_builder or (
         is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
         and not is_validator
-        and not is_pending_validator(state, deposit_request.pubkey)
+        and not is_pending_validator(state.pending_deposits, deposit_request.pubkey)
     ):
         # Apply builder deposits immediately
         apply_deposit_for_builder(

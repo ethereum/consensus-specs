@@ -6,11 +6,17 @@ from eth_consensus_specs.test.helpers.constants import (
     CAPELLA,
     DENEB,
     ELECTRA,
+    GLOAS,
 )
 from eth_consensus_specs.test.helpers.fork_transition import (
     transition_across_forks,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_capella, is_post_deneb, is_post_electra
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_capella,
+    is_post_deneb,
+    is_post_electra,
+    is_post_gloas,
+)
 from eth_consensus_specs.test.helpers.sync_committee import (
     compute_aggregate_sync_committee_signature,
     compute_committee_indices,
@@ -144,6 +150,10 @@ def needs_upgrade_to_electra(spec, new_spec):
     return is_post_electra(new_spec) and not is_post_electra(spec)
 
 
+def needs_upgrade_to_gloas(spec, new_spec):
+    return is_post_gloas(new_spec) and not is_post_gloas(spec)
+
+
 def check_merkle_branch_equal(spec, new_spec, data, upgraded, gindex):
     if is_post_electra(new_spec):
         assert new_spec.normalize_merkle_branch(
@@ -168,15 +178,19 @@ def upgrade_lc_header_to_new_spec(spec, new_spec, data, phases):
 
     if needs_upgrade_to_capella(spec, new_spec):
         upgraded = phases[CAPELLA].upgrade_lc_header_to_capella(upgraded)
-        check_lc_header_equal(spec, new_spec, data, upgraded)
+        check_lc_header_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
         upgraded = phases[DENEB].upgrade_lc_header_to_deneb(upgraded)
-        check_lc_header_equal(spec, new_spec, data, upgraded)
+        check_lc_header_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
         upgraded = phases[ELECTRA].upgrade_lc_header_to_electra(upgraded)
-        check_lc_header_equal(spec, new_spec, data, upgraded)
+        check_lc_header_equal(spec, phases[ELECTRA], data, upgraded)
+
+    if needs_upgrade_to_gloas(spec, new_spec):
+        upgraded = phases[GLOAS].upgrade_lc_header_to_gloas(upgraded)
+        check_lc_header_equal(spec, phases[GLOAS], data, upgraded)
 
     return upgraded
 
@@ -198,15 +212,19 @@ def upgrade_lc_bootstrap_to_new_spec(spec, new_spec, data, phases):
 
     if needs_upgrade_to_capella(spec, new_spec):
         upgraded = phases[CAPELLA].upgrade_lc_bootstrap_to_capella(upgraded)
-        check_lc_bootstrap_equal(spec, new_spec, data, upgraded)
+        check_lc_bootstrap_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
         upgraded = phases[DENEB].upgrade_lc_bootstrap_to_deneb(upgraded)
-        check_lc_bootstrap_equal(spec, new_spec, data, upgraded)
+        check_lc_bootstrap_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
         upgraded = phases[ELECTRA].upgrade_lc_bootstrap_to_electra(upgraded)
-        check_lc_bootstrap_equal(spec, new_spec, data, upgraded)
+        check_lc_bootstrap_equal(spec, phases[ELECTRA], data, upgraded)
+
+    if needs_upgrade_to_gloas(spec, new_spec):
+        upgraded = phases[GLOAS].upgrade_lc_bootstrap_to_gloas(upgraded)
+        check_lc_bootstrap_equal(spec, phases[GLOAS], data, upgraded)
 
     return upgraded
 
@@ -238,15 +256,19 @@ def upgrade_lc_update_to_new_spec(spec, new_spec, data, phases):
 
     if needs_upgrade_to_capella(spec, new_spec):
         upgraded = phases[CAPELLA].upgrade_lc_update_to_capella(upgraded)
-        check_lc_update_equal(spec, new_spec, data, upgraded)
+        check_lc_update_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
         upgraded = phases[DENEB].upgrade_lc_update_to_deneb(upgraded)
-        check_lc_update_equal(spec, new_spec, data, upgraded)
+        check_lc_update_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
         upgraded = phases[ELECTRA].upgrade_lc_update_to_electra(upgraded)
-        check_lc_update_equal(spec, new_spec, data, upgraded)
+        check_lc_update_equal(spec, phases[ELECTRA], data, upgraded)
+
+    if needs_upgrade_to_gloas(spec, new_spec):
+        upgraded = phases[GLOAS].upgrade_lc_update_to_gloas(upgraded)
+        check_lc_update_equal(spec, phases[GLOAS], data, upgraded)
 
     return upgraded
 
@@ -270,15 +292,19 @@ def upgrade_lc_finality_update_to_new_spec(spec, new_spec, data, phases):
 
     if needs_upgrade_to_capella(spec, new_spec):
         upgraded = phases[CAPELLA].upgrade_lc_finality_update_to_capella(upgraded)
-        check_lc_finality_update_equal(spec, new_spec, data, upgraded)
+        check_lc_finality_update_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
         upgraded = phases[DENEB].upgrade_lc_finality_update_to_deneb(upgraded)
-        check_lc_finality_update_equal(spec, new_spec, data, upgraded)
+        check_lc_finality_update_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
         upgraded = phases[ELECTRA].upgrade_lc_finality_update_to_electra(upgraded)
-        check_lc_finality_update_equal(spec, new_spec, data, upgraded)
+        check_lc_finality_update_equal(spec, phases[ELECTRA], data, upgraded)
+
+    if needs_upgrade_to_gloas(spec, new_spec):
+        upgraded = phases[GLOAS].upgrade_lc_finality_update_to_gloas(upgraded)
+        check_lc_finality_update_equal(spec, phases[GLOAS], data, upgraded)
 
     return upgraded
 
@@ -301,14 +327,18 @@ def upgrade_lc_store_to_new_spec(spec, new_spec, data, phases):
 
     if needs_upgrade_to_capella(spec, new_spec):
         upgraded = phases[CAPELLA].upgrade_lc_store_to_capella(upgraded)
-        check_lc_store_equal(spec, new_spec, data, upgraded)
+        check_lc_store_equal(spec, phases[CAPELLA], data, upgraded)
 
     if needs_upgrade_to_deneb(spec, new_spec):
         upgraded = phases[DENEB].upgrade_lc_store_to_deneb(upgraded)
-        check_lc_store_equal(spec, new_spec, data, upgraded)
+        check_lc_store_equal(spec, phases[DENEB], data, upgraded)
 
     if needs_upgrade_to_electra(spec, new_spec):
         upgraded = phases[ELECTRA].upgrade_lc_store_to_electra(upgraded)
-        check_lc_store_equal(spec, new_spec, data, upgraded)
+        check_lc_store_equal(spec, phases[ELECTRA], data, upgraded)
+
+    if needs_upgrade_to_gloas(spec, new_spec):
+        upgraded = phases[GLOAS].upgrade_lc_store_to_gloas(upgraded)
+        check_lc_store_equal(spec, phases[GLOAS], data, upgraded)
 
     return upgraded

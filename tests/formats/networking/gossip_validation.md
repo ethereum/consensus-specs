@@ -19,7 +19,8 @@ validation rules for messages received via gossip topics.
 ### `meta.yaml`
 
 ```yaml
-topic: string                -- The gossip topic name (e.g., "beacon_block", "beacon_attestation").
+topic: string                -- The gossip topic name (e.g., "beacon_block", "blob_sidecar",
+                             -- "data_column_sidecar", "partial_data_column_sidecar").
 blocks: [{                   -- Optional. Blocks to import before validation (oldest to newest).
     block: string,           -- The block file (without extension).
     failed: bool,            -- Optional. If true, block failed validation (for testing descendant rejection).
@@ -32,10 +33,20 @@ finalized_checkpoint:        -- Optional. Custom finalized checkpoint.
   epoch: int                 -- The epoch of the finalized checkpoint.
   root: string               -- Hex-encoded root (use this OR block, not both).
   block: string              -- Block file whose root to use (use this OR root, not both).
+seen_partial_data_column_headers: [{
+                             -- Optional. Preload validated partial
+                             -- data column headers into `seen`.
+    block_root: string,      -- Hex-encoded partial message group root.
+    header: string,          -- `PartialDataColumnHeader` file to cache.
+}]
 current_time_ms: int         -- The base time in milliseconds since genesis.
 messages: [{                 -- List of messages to validate in sequence.
     offset_ms: int,          -- Time offset from current_time_ms when message is received.
-    subnet_id: int,          -- Optional. The subnet ID.
+    subnet_id: int,          -- Optional. The subnet ID for subnet-scoped topics.
+    column_index: int,       -- Optional. The column index for
+                             -- `partial_data_column_sidecar` vectors.
+    block_root: string,      -- Optional. Hex-encoded block/group root for
+                             -- `partial_data_column_sidecar` vectors.
     message: string,         -- The name of the message file (without extension).
     expected: string,        -- Expected result: "valid", "ignore", or "reject".
     reason: string,          -- Optional. The expected reason for ignore/reject.
@@ -55,17 +66,21 @@ An SSZ-snappy encoded `BeaconState`. This state provides:
 Message files are named with a prefix indicating their type and the 32-byte hash
 tree root:
 
-| Topic                                   | File prefix                | SSZ type                     |
-| --------------------------------------- | -------------------------- | ---------------------------- |
-| `beacon_block`                          | `block_`                   | `SignedBeaconBlock`          |
-| `beacon_attestation`                    | `attestation_`             | `Attestation`                |
-| `beacon_aggregate_and_proof`            | `aggregate_`               | `SignedAggregateAndProof`    |
-| `proposer_slashing`                     | `proposer_slashing_`       | `ProposerSlashing`           |
-| `attester_slashing`                     | `attester_slashing_`       | `AttesterSlashing`           |
-| `voluntary_exit`                        | `voluntary_exit_`          | `SignedVoluntaryExit`        |
-| `sync_committee_contribution_and_proof` | `contribution_`            | `SignedContributionAndProof` |
-| `sync_committee`                        | `sync_committee_message_`  | `SyncCommitteeMessage`       |
-| `bls_to_execution_change`               | `bls_to_execution_change_` | `SignedBLSToExecutionChange` |
+| Topic                                   | File prefix                    | SSZ type                     |
+| --------------------------------------- | ------------------------------ | ---------------------------- |
+| `beacon_block`                          | `block_`                       | `SignedBeaconBlock`          |
+| `beacon_attestation`                    | `attestation_`                 | `Attestation`                |
+| `beacon_aggregate_and_proof`            | `aggregate_`                   | `SignedAggregateAndProof`    |
+| `proposer_slashing`                     | `proposer_slashing_`           | `ProposerSlashing`           |
+| `attester_slashing`                     | `attester_slashing_`           | `AttesterSlashing`           |
+| `voluntary_exit`                        | `voluntary_exit_`              | `SignedVoluntaryExit`        |
+| `sync_committee_contribution_and_proof` | `contribution_`                | `SignedContributionAndProof` |
+| `sync_committee`                        | `sync_committee_message_`      | `SyncCommitteeMessage`       |
+| `bls_to_execution_change`               | `bls_to_execution_change_`     | `SignedBLSToExecutionChange` |
+| `blob_sidecar`                          | `blob_sidecar_`                | `BlobSidecar`                |
+| `data_column_sidecar`                   | `data_column_sidecar_`         | `DataColumnSidecar`          |
+| `partial_data_column_header`            | `partial_data_column_header_`  | `PartialDataColumnHeader`    |
+| `partial_data_column_sidecar`           | `partial_data_column_sidecar_` | `PartialDataColumnSidecar`   |
 
 Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
 
@@ -91,11 +106,18 @@ Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
      - For `beacon_block` gossip validation, `NOT_VALIDATED` represents the
        optimistic case where no valid/invalid payload result is yet available
        for the parent block.
+   - If `seen_partial_data_column_headers` is present, preload each referenced
+     `PartialDataColumnHeader` into `seen.partial_data_column_headers` using its
+     `block_root`.
 3. Iterate sequentially through `messages`:
    - Set `current_time_ms` to `meta.current_time_ms + message.offset_ms`.
+     `offset_ms` values are independent and need not be monotonic.
    - Deserialize the message file based on the topic type.
-   - Execute the appropriate validation function (e.g.,
-     `validate_beacon_block_gossip` for the `beacon_block` topic).
+   - Execute the appropriate validation function.
+     - For subnet-scoped topics such as `beacon_attestation`, `blob_sidecar`,
+       and `data_column_sidecar`, pass `message.subnet_id`.
+     - For `partial_data_column_sidecar`, pass `message.block_root` and
+       `message.column_index`.
    - Verify the result matches `expected`.
    - If the result is `valid`, update the store as the validation function would
      (e.g., add to `seen_proposer_slots`, track seen attestations).

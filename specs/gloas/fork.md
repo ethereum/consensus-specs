@@ -57,6 +57,10 @@ def initialize_ptc_window(
 
 ### New `onboard_builders_from_pending_deposits`
 
+*Note*: In the slots leading up to the fork, implementations SHOULD validate
+pending deposit signatures and cache the results. The pending deposit queue
+might be large and verifying many signatures at the fork could be slow.
+
 ```python
 def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
     """
@@ -67,41 +71,35 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
 
     pending_deposits = []
     for deposit in state.pending_deposits:
-        # Deposits for existing validators stay in pending queue
+        # Deposits for existing validators stay in the pending queue
         if deposit.pubkey in validator_pubkeys:
             pending_deposits.append(deposit)
             continue
 
-        # If the pubkey is associated with a builder that was created in a
-        # previous iteration or it is a builder deposit, try to apply the
-        # deposit to the new/existing builder. Note that the function
-        # apply_deposit_for_builder can mutate the state and may add a builder
-        # to the registry. For this reason, the list of builder pubkeys must
-        # be recomputed each iteration.
+        # Note that the function apply_deposit_for_builder can mutate the
+        # state and may add a builder to the registry. For this reason, the
+        # list of builder pubkeys must be recomputed each iteration.
         builder_pubkeys = [b.pubkey for b in state.builders]
-        is_existing_builder = deposit.pubkey in builder_pubkeys
-        has_builder_credentials = is_builder_withdrawal_credential(deposit.withdrawal_credentials)
-        if is_existing_builder or has_builder_credentials:
-            apply_deposit_for_builder(
-                state,
-                deposit.pubkey,
-                deposit.withdrawal_credentials,
-                deposit.amount,
-                deposit.signature,
-                deposit.slot,
-            )
-            continue
 
-        # If there is a pending deposit for a new validator that has a valid
-        # signature, track the pubkey so that subsequent builder deposits for
-        # the same pubkey stay in pending (applied to the validator later)
-        # rather than creating a builder. Deposits with invalid signatures are
-        # dropped here since they would fail in apply_pending_deposit anyway.
-        if is_valid_deposit_signature(
-            deposit.pubkey, deposit.withdrawal_credentials, deposit.amount, deposit.signature
-        ):
-            validator_pubkeys.append(deposit.pubkey)
-            pending_deposits.append(deposit)
+        # Deposits for non-builders stay in the pending queue. If there is a
+        # valid pending deposit for a new validator with this pubkey, keep this
+        # deposit in the pending queue to be applied to that validator later.
+        if deposit.pubkey not in builder_pubkeys:
+            if not is_builder_withdrawal_credential(deposit.withdrawal_credentials):
+                pending_deposits.append(deposit)
+                continue
+            if is_pending_validator(pending_deposits, deposit.pubkey):
+                pending_deposits.append(deposit)
+                continue
+
+        apply_deposit_for_builder(
+            state,
+            deposit.pubkey,
+            deposit.withdrawal_credentials,
+            deposit.amount,
+            deposit.signature,
+            deposit.slot,
+        )
 
     state.pending_deposits = pending_deposits
 ```
@@ -182,6 +180,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         # [New in Gloas:EIP7732]
         latest_execution_payload_bid=ExecutionPayloadBid(
             block_hash=pre.latest_execution_payload_header.block_hash,
+            gas_limit=pre.latest_execution_payload_header.gas_limit,
             execution_requests_root=hash_tree_root(ExecutionRequests()),
         ),
         # [New in Gloas:EIP7732]

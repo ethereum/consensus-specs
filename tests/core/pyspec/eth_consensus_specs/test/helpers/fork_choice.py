@@ -255,11 +255,11 @@ def get_genesis_forkchoice_store_and_block(spec, genesis_state):
         # Match the genesis block body bid to what ``genesis.py`` set on the
         # state's committed bid; this keeps ``genesis_block`` consistent with
         # ``genesis_state.latest_block_header`` (body_root).
-        genesis_block.body.signed_execution_payload_bid.message.block_hash = (
-            genesis_state.latest_execution_payload_bid.block_hash
-        )
-        genesis_block.body.signed_execution_payload_bid.message.execution_requests_root = (
-            genesis_state.latest_execution_payload_bid.execution_requests_root
+        genesis_block.body.signed_execution_payload_bid.message = spec.ExecutionPayloadBid(
+            # The genesis bid's block hash is the empty hash
+            block_hash=spec.Hash32(),
+            parent_block_hash=spec.Hash32(genesis_state.latest_block_hash),
+            execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
         )
     store = spec.get_forkchoice_store(genesis_state, genesis_block)
     return store, genesis_block
@@ -299,7 +299,7 @@ def get_sidecar_file_name(sidecar: DataColumnSidecar) -> str:
 
 
 def get_payload_attestation_message_file_name(ptc_message):
-    return f"payload_attestation_{encode_hex(ptc_message.hash_tree_root())}"
+    return f"payload_attestation_message_{encode_hex(ptc_message.hash_tree_root())}"
 
 
 def on_tick_and_append_step(spec, store, time, test_steps):
@@ -498,13 +498,34 @@ def add_payload_attestation_message(spec, store, ptc_message, test_steps, valid=
     ptc_file_name = get_payload_attestation_message_file_name(ptc_message)
     yield ptc_file_name, ptc_message
 
-    if not valid:
-        expect_assertion_error(lambda: spec.on_payload_attestation_message(store, ptc_message))
-        test_steps.append({"payload_attestation": ptc_file_name, "valid": False})
-        return
+    run_on_payload_attestation_message(spec, store, ptc_message, valid=valid)
+    step = {"payload_attestation_message": ptc_file_name}
 
-    run_on_payload_attestation_message(spec, store, ptc_message)
-    test_steps.append({"payload_attestation": ptc_file_name})
+    if not valid:
+        step["valid"] = False
+    test_steps.append(step)
+
+
+def add_payload_vote_checks(store, block_root, test_steps):
+    timeliness = [None if v is None else bool(v) for v in store.payload_timeliness_vote[block_root]]
+    availability = [
+        None if v is None else bool(v) for v in store.payload_data_availability_vote[block_root]
+    ]
+
+    test_steps.append(
+        {
+            "checks": {
+                "payload_timeliness_vote": {
+                    "block_root": encode_hex(block_root),
+                    "votes": timeliness,
+                },
+                "payload_data_availability_vote": {
+                    "block_root": encode_hex(block_root),
+                    "votes": availability,
+                },
+            }
+        }
+    )
 
 
 def _get_head_root(spec, store):
@@ -556,6 +577,49 @@ def get_basic_store_checks(spec, store, head_root=None):
     }
 
 
+def get_viable_for_head_checks(spec, store):
+    filtered_blocks = spec.get_filtered_block_tree(store)
+
+    if is_post_gloas(spec):
+        root_node = spec.ForkChoiceNode(
+            root=store.justified_checkpoint.root,
+            payload_status=spec.PAYLOAD_STATUS_PENDING,
+        )
+        pending_nodes = [root_node]
+        leaves_viable_for_head = []
+
+        while len(pending_nodes) > 0:
+            node = pending_nodes.pop()
+            children = spec.get_node_children(store, filtered_blocks, node)
+            if len(children) == 0:
+                leaves_viable_for_head.append(node)
+            else:
+                pending_nodes.extend(children)
+
+        return [
+            {
+                "root": encode_hex(node.root),
+                "payload_status": int(node.payload_status),
+                "weight": int(spec.get_weight(store, node)),
+            }
+            for node in leaves_viable_for_head
+        ]
+
+    filtered_block_roots = filtered_blocks.keys()
+    leaves_viable_for_head = [
+        root
+        for root in filtered_block_roots
+        if not any(c for c in filtered_block_roots if store.blocks[c].parent_root == root)
+    ]
+    return [
+        {
+            "root": encode_hex(viable_for_head_root),
+            "weight": int(spec.get_weight(store, viable_for_head_root)),
+        }
+        for viable_for_head_root in leaves_viable_for_head
+    ]
+
+
 def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=False):
     if is_post_gloas(spec):
         head = spec.get_head(store)
@@ -564,22 +628,8 @@ def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=Fa
     else:
         checks = get_basic_store_checks(spec, store)
 
-    if with_viable_for_head_weights and not is_post_gloas(spec):
-        filtered_block_roots = spec.get_filtered_block_tree(store).keys()
-        leaves_viable_for_head = [
-            root
-            for root in filtered_block_roots
-            if not any(c for c in filtered_block_roots if store.blocks[c].parent_root == root)
-        ]
-
-        viable_for_head_roots_and_weights = [
-            {
-                "root": encode_hex(viable_for_head_root),
-                "weight": int(spec.get_weight(store, viable_for_head_root)),
-            }
-            for viable_for_head_root in leaves_viable_for_head
-        ]
-        checks["viable_for_head_roots_and_weights"] = viable_for_head_roots_and_weights
+    if with_viable_for_head_weights:
+        checks["viable_for_head_roots_and_weights"] = get_viable_for_head_checks(spec, store)
 
     test_steps.append({"checks": checks})
 

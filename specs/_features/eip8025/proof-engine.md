@@ -89,7 +89,7 @@ def notify_forkchoice_updated(
 
 ```python
 @dataclass
-class ProofAttributes(object):
+class ProofAttributes:
     proof_types: Sequence[ProofType]
 ```
 

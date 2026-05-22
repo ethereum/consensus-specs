@@ -41,17 +41,24 @@ class CosetEvals(list):
 """
 
     @classmethod
+    def deprecate_containers(cls) -> set[str]:
+        return set(
+            [
+                "BlobIdentifier",
+                "BlobSidecar",
+            ]
+        )
+
+    @classmethod
     def deprecate_functions(cls) -> set[str]:
         return set(
             [
-                "normalize_merkle_branch",
-                "upgrade_lc_bootstrap_to_electra",
-                "upgrade_lc_finality_update_to_electra",
-                "upgrade_lc_header_to_electra",
-                "upgrade_lc_optimistic_update_to_electra",
-                "upgrade_lc_store_to_electra",
-                "upgrade_lc_update_to_electra",
+                "compute_max_request_blob_sidecars",
+                "compute_subnet_for_blob_sidecar",
+                "get_blob_sidecars",
                 "upgrade_to_electra",
+                "validate_blob_sidecar_gossip",
+                "verify_blob_sidecar_inclusion_proof",
             ]
         )
 

@@ -155,7 +155,7 @@ class LightClientOptimisticUpdate(Container):
 
 ```python
 @dataclass
-class LightClientStore(object):
+class LightClientStore:
     # Header that is finalized
     finalized_header: LightClientHeader
     # Sync committees corresponding to the finalized header
