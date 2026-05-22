@@ -101,6 +101,7 @@ help-verbose:
 	@echo "    - mypy: Static type checker for Python"
 	@echo "    - Fork comments validation (scripts/check_fork_comments.py)"
 	@echo "    - Markdown headings validation (scripts/check_markdown_headings.py)"
+	@echo "    - Markdown note style fix (scripts/fix_note_style.py)"
 	@echo "    - Trailing whitespace check"
 	@echo ""
 	@echo "  Example: make lint"
@@ -275,8 +276,9 @@ lint: _pyspec
 	@git diff > $(LINT_DIFF_BEFORE)
 	@uv --quiet lock --check
 	@$(UV_RUN) codespell
-	@$(UV_RUN) python $(CURDIR)/scripts/check_fork_comments.py
+	@$(UV_RUN) python $(CURDIR)/scripts/fix_note_style.py
 	@$(UV_RUN) python $(CURDIR)/scripts/fix_trailing_whitespace.py
+	@$(UV_RUN) python $(CURDIR)/scripts/check_fork_comments.py
 	@$(UV_RUN) python $(CURDIR)/scripts/check_markdown_headings.py
 	@$(UV_RUN) python $(CURDIR)/scripts/check_value_annotations.py
 	@$(UV_RUN) mdformat --number --wrap=80 $(MARKDOWN_FILES)
