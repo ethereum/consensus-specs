@@ -276,8 +276,8 @@ def get_ancestor(store: Store, node: ForkChoiceNode, slot: Slot) -> ForkChoiceNo
 #### `is_ancestor`
 
 ```python
-def is_ancestor(store: Store, node: ForkChoiceNode, maybe_ancestor: ForkChoiceNode) -> bool:
-    return get_ancestor(store, node, store.blocks[maybe_ancestor.root].slot) == maybe_ancestor
+def is_ancestor(store: Store, node: ForkChoiceNode, ancestor: ForkChoiceNode) -> bool:
+    return get_ancestor(store, node, store.blocks[ancestor.root].slot) == ancestor
 ```
 
 #### `calculate_committee_fraction`
@@ -479,7 +479,7 @@ def get_head(store: Store) -> ForkChoiceNode:
             return head
         # Sort by latest attesting balance with ties broken lexicographically
         # Ties broken by favoring block with lexicographically higher root
-        head = max(children, key=lambda node: (get_weight(store, node), node.root))
+        head = max(children, key=lambda child: (get_weight(store, child), child.root))
 ```
 
 #### `update_checkpoints`

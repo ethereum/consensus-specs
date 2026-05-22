@@ -354,18 +354,18 @@ def get_ancestor(store: Store, node: ForkChoiceNode, slot: Slot) -> ForkChoiceNo
 
 *Note*: This function is modified to use an extended `ForkChoiceNode` structure.
 It handles relation between the same slot nodes based on the payload status of
-`maybe_ancestor` and `ancestor`.
+`ancestor` and `node_ancestor`.
 
 ```python
-def is_ancestor(store: Store, node: ForkChoiceNode, maybe_ancestor: ForkChoiceNode) -> bool:
-    ancestor = get_ancestor(store, node, store.blocks[maybe_ancestor.root].slot)
-    if ancestor.root != maybe_ancestor.root:
+def is_ancestor(store: Store, node: ForkChoiceNode, ancestor: ForkChoiceNode) -> bool:
+    node_ancestor = get_ancestor(store, node, store.blocks[ancestor.root].slot)
+    if node_ancestor.root != ancestor.root:
         return False
 
     # [New in Gloas:EIP7732]
     return (
-        ancestor.payload_status == maybe_ancestor.payload_status
-        or maybe_ancestor.payload_status == PAYLOAD_STATUS_PENDING
+        node_ancestor.payload_status == ancestor.payload_status
+        or ancestor.payload_status == PAYLOAD_STATUS_PENDING
     )
 ```
 
