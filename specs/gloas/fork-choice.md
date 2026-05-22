@@ -23,7 +23,6 @@
   - [New `payload_data_availability`](#new-payload_data_availability)
   - [New `get_parent_payload_status`](#new-get_parent_payload_status)
   - [New `is_parent_node_full`](#new-is_parent_node_full)
-  - [Modified `get_block_root_node`](#modified-get_block_root_node)
   - [Modified `get_ancestor`](#modified-get_ancestor)
   - [Modified `is_ancestor`](#modified-is_ancestor)
   - [Modified `get_checkpoint_block`](#modified-get_checkpoint_block)
@@ -329,18 +328,6 @@ def get_parent_payload_status(store: Store, block: BeaconBlock) -> PayloadStatus
 ```python
 def is_parent_node_full(store: Store, block: BeaconBlock) -> bool:
     return get_parent_payload_status(store, block) == PAYLOAD_STATUS_FULL
-```
-
-### Modified `get_block_root_node`
-
-*Note*: This function is modified to return an extended `ForkChoiceNode`
-structure with `PAYLOAD_STATUS_PENDING` payload status as a common ancestor of
-all nodes referring to a given `block_root`.
-
-```python
-def get_block_root_node(block_root: Root) -> ForkChoiceNode:
-    # [Modified in Gloas:EIP7732]
-    return ForkChoiceNode(root=block_root, payload_status=PAYLOAD_STATUS_PENDING)
 ```
 
 ### Modified `get_ancestor`

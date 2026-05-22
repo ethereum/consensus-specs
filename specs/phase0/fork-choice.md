@@ -16,7 +16,6 @@
     - [`get_current_slot`](#get_current_slot)
     - [`get_current_store_epoch`](#get_current_store_epoch)
     - [`compute_slots_since_epoch_start`](#compute_slots_since_epoch_start)
-    - [`get_block_root_node`](#get_block_root_node)
     - [`get_ancestor`](#get_ancestor)
     - [`is_ancestor`](#is_ancestor)
     - [`calculate_committee_fraction`](#calculate_committee_fraction)
@@ -261,20 +260,6 @@ def get_current_store_epoch(store: Store) -> Epoch:
 ```python
 def compute_slots_since_epoch_start(slot: Slot) -> int:
     return slot - compute_start_slot_at_epoch(compute_epoch_at_slot(slot))
-```
-
-#### `get_block_root_node`
-
-*Note*: The semantics of this function is to construct a `ForkChoiceNode` that
-is a common ancestor for all fork choice nodes referring to the same beacon
-block. Future protocol versions may introduce new types of nodes, but this
-function assumes that the common ancestor node type will always exist. This
-function is introduced for future compatibility, it allows the specification
-code that operates over beacon blocks to be agnostic to the protocol version.
-
-```python
-def get_block_root_node(block_root: Root) -> ForkChoiceNode:
-    return ForkChoiceNode(root=block_root)
 ```
 
 #### `get_ancestor`

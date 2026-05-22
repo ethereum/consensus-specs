@@ -20,6 +20,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     add_attestation,
     add_block,
     check_head_against_root,
+    get_fork_choice_node,
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
     tick_and_add_block,
@@ -117,7 +118,7 @@ def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_ro
     block = store.blocks[root]
     proposer_score = 0
     if (
-        spec.get_ancestor(store, spec.get_block_root_node(root), block.slot).root
+        spec.get_ancestor(store, get_fork_choice_node(spec, root), block.slot).root
         == proposer_boost_root
     ):
         num_validators = len(

@@ -29,6 +29,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     apply_next_slots_with_attestations,
     check_head_against_root,
     find_next_justifying_slot,
+    get_fork_choice_node,
     get_genesis_forkchoice_store_and_block,
     is_ready_to_justify,
     on_tick_and_append_step,
@@ -524,7 +525,7 @@ def test_proposer_boost(spec, state):
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
-    node = spec.get_block_root_node(spec.hash_tree_root(block))
+    node = get_fork_choice_node(spec, spec.hash_tree_root(block))
     assert spec.get_weight(store, node) > 0
 
     # Ensure that boost is removed after slot is over
@@ -535,7 +536,7 @@ def test_proposer_boost(spec, state):
     )
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
-    node = spec.get_block_root_node(spec.hash_tree_root(block))
+    node = get_fork_choice_node(spec, spec.hash_tree_root(block))
     assert spec.get_weight(store, node) == 0
 
     next_slots(spec, state, 3)
@@ -547,7 +548,7 @@ def test_proposer_boost(spec, state):
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
-    node = spec.get_block_root_node(spec.hash_tree_root(block))
+    node = get_fork_choice_node(spec, spec.hash_tree_root(block))
     assert spec.get_weight(store, node) > 0
 
     # Ensure that boost is removed after slot is over
@@ -558,7 +559,7 @@ def test_proposer_boost(spec, state):
     )
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
-    node = spec.get_block_root_node(spec.hash_tree_root(block))
+    node = get_fork_choice_node(spec, spec.hash_tree_root(block))
     assert spec.get_weight(store, node) == 0
 
     test_steps.append(
@@ -646,7 +647,7 @@ def test_proposer_boost_is_first_block(spec, state):
     yield from add_block(spec, store, signed_block_a, test_steps)
     # `proposer_boost_root` is now `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
-    node_a = spec.get_block_root_node(spec.hash_tree_root(block_a))
+    node_a = get_fork_choice_node(spec, spec.hash_tree_root(block_a))
     assert spec.get_weight(store, node_a) > 0
     test_steps.append(
         {
@@ -664,7 +665,7 @@ def test_proposer_boost_is_first_block(spec, state):
     yield from add_block(spec, store, signed_block_b, test_steps)
     # `proposer_boost_root` is still `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
-    node_b = spec.get_block_root_node(spec.hash_tree_root(block_b))
+    node_b = get_fork_choice_node(spec, spec.hash_tree_root(block_b))
     assert spec.get_weight(store, node_b) == 0
     test_steps.append(
         {
@@ -1220,7 +1221,7 @@ def test_justified_update_not_realized_finality(spec, state):
     last_block = signed_blocks[-1]
     last_block_root = last_block.message.hash_tree_root()
     ancestor_at_finalized_slot = spec.get_ancestor(
-        store, spec.get_block_root_node(last_block_root), finalized_block.slot
+        store, get_fork_choice_node(spec, last_block_root), finalized_block.slot
     ).root
 
     assert ancestor_at_finalized_slot == store.finalized_checkpoint.root
@@ -1301,7 +1302,7 @@ def test_justified_update_monotonic(spec, state):
     last_block = signed_blocks[-1]
     last_block_root = last_block.message.hash_tree_root()
     ancestor_at_finalized_slot = spec.get_ancestor(
-        store, spec.get_block_root_node(last_block_root), finalized_block.slot
+        store, get_fork_choice_node(spec, last_block_root), finalized_block.slot
     ).root
     assert ancestor_at_finalized_slot == finalized_root
 

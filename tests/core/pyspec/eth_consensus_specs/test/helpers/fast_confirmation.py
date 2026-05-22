@@ -409,7 +409,7 @@ class FCRTest:
 
     def compute_score_and_threshold(self, block_root) -> (int, int):
         balance_source = self.spec.get_current_balance_source(self.fcr_store)
-        node = self.spec.get_block_root_node(block_root)
+        node = self.spec.get_node_for_root(block_root)
         score = self.spec.get_attestation_score(self.store, node, balance_source)
         safety_threshold = self.spec.compute_safety_threshold(
             self.store, block_root, balance_source

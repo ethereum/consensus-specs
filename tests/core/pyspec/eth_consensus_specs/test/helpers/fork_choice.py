@@ -148,6 +148,15 @@ def with_blob_data_gloas(spec, blob_data: BlobData, func):
     assert is_called.value
 
 
+def get_fork_choice_node(spec, root, payload_status=None):
+    if is_post_gloas(spec):
+        if payload_status is None:
+            payload_status = spec.PAYLOAD_STATUS_PENDING
+        return spec.ForkChoiceNode(root=root, payload_status=payload_status)
+    else:
+        return spec.ForkChoiceNode(root=root)
+
+
 def get_anchor_root(spec, state):
     anchor_block_header = state.latest_block_header.copy()
     if anchor_block_header.state_root == spec.Bytes32():
@@ -583,7 +592,7 @@ def get_weighed_node_checks(spec, store, node):
 
 def get_viable_for_head_checks(spec, store):
     filtered_blocks = spec.get_filtered_block_tree(store)
-    root_node = spec.get_block_root_node(store.justified_checkpoint.root)
+    root_node = get_fork_choice_node(spec, store.justified_checkpoint.root)
     pending_nodes = [root_node]
     leaves_viable_for_head = []
 
@@ -689,11 +698,11 @@ def is_ancestor(spec, store, root_or_node, maybe_ancestor_root_or_node) -> bool:
     if hasattr(root_or_node, "root"):
         node = root_or_node
     else:
-        node = spec.get_block_root_node(root_or_node)
+        node = get_fork_choice_node(spec, root_or_node)
 
     if hasattr(maybe_ancestor_root_or_node, "root"):
         maybe_ancestor = maybe_ancestor_root_or_node
     else:
-        maybe_ancestor = spec.get_block_root_node(maybe_ancestor_root_or_node)
+        maybe_ancestor = get_fork_choice_node(spec, maybe_ancestor_root_or_node)
 
     return spec.is_ancestor(store, node, maybe_ancestor)

@@ -10,6 +10,7 @@
     - [`FastConfirmationStore`](#fastconfirmationstore)
     - [`get_fast_confirmation_store`](#get_fast_confirmation_store)
     - [Misc helper functions](#misc-helper-functions)
+    - [`get_node_for_root`](#get_node_for_root)
       - [`get_block_slot`](#get_block_slot)
       - [`get_block_epoch`](#get_block_epoch)
       - [`get_checkpoint_for_block`](#get_checkpoint_for_block)
@@ -135,6 +136,13 @@ def get_fast_confirmation_store(store: Store) -> FastConfirmationStore:
 ```
 
 #### Misc helper functions
+
+#### `get_node_for_root`
+
+```python
+def get_node_for_root(block_root: Root) -> ForkChoiceNode:
+    return ForkChoiceNode(root=block_root)
+```
 
 ##### `get_block_slot`
 
@@ -611,7 +619,7 @@ def is_one_confirmed(store: Store, balance_source: BeaconState, block_root: Root
     """
     Return ``True`` if and only if the block is LMD-GHOST safe.
     """
-    support = get_attestation_score(store, get_block_root_node(block_root), balance_source)
+    support = get_attestation_score(store, get_node_for_root(block_root), balance_source)
     safety_threshold = compute_safety_threshold(store, block_root, balance_source)
     return support > safety_threshold
 ```
@@ -640,8 +648,8 @@ def is_confirmed_chain_safe(fcr_store: FastConfirmationStore, confirmed_root: Ro
     # Check if the confirmed_root is descendant of current_epoch_observed_justified_checkpoint
     if not is_ancestor(
         store,
-        get_block_root_node(confirmed_root),
-        get_block_root_node(fcr_store.current_epoch_observed_justified_checkpoint.root),
+        get_node_for_root(confirmed_root),
+        get_node_for_root(fcr_store.current_epoch_observed_justified_checkpoint.root),
     ):
         return False
 
@@ -655,7 +663,7 @@ def is_confirmed_chain_safe(fcr_store: FastConfirmationStore, confirmed_root: Ro
         # as if it is successful, reconfirmation of the ancestors is implied.
         ancestor_at_previous_epoch_start = get_ancestor(
             store,
-            get_block_root_node(confirmed_root),
+            get_node_for_root(confirmed_root),
             compute_start_slot_at_epoch(Epoch(current_epoch - 1)),
         ).root
         if get_block_epoch(store, ancestor_at_previous_epoch_start) + 1 == current_epoch:
@@ -883,8 +891,8 @@ def find_latest_confirmed_descendant(
             # if it is a descendant of the block that is attempted to be confirmed
             if not is_ancestor(
                 store,
-                get_block_root_node(fcr_store.previous_slot_head),
-                get_block_root_node(block_root),
+                get_node_for_root(fcr_store.previous_slot_head),
+                get_node_for_root(block_root),
             ):
                 break
 
@@ -975,7 +983,7 @@ def get_latest_confirmed(fcr_store: FastConfirmationStore) -> Root:
     head = get_head(store).root
     if (
         get_block_epoch(store, confirmed_root) + 1 < current_epoch
-        or not is_ancestor(store, get_block_root_node(head), get_block_root_node(confirmed_root))
+        or not is_ancestor(store, get_node_for_root(head), get_node_for_root(confirmed_root))
         or (
             is_start_slot_at_epoch(get_current_slot(store))
             and not is_confirmed_chain_safe(fcr_store, confirmed_root)

@@ -67,7 +67,7 @@ def test_is_one_confirmed_passes_with_full_participation(spec, state):
 
     # Inspect the individual terms of the inequality
     current_slot = spec.get_current_slot(store)
-    node_b = spec.get_block_root_node(block_b)
+    node_b = spec.get_node_for_root(block_b)
     support = spec.get_attestation_score(store, node_b, balance_source)
     proposer_score = spec.compute_proposer_score(balance_source)
     total_active_balance = spec.get_total_active_balance(balance_source)
@@ -136,7 +136,7 @@ def test_is_one_confirmed_fails_with_low_participation(spec, state):
 
     # Inspect the individual terms
     current_slot = spec.get_current_slot(store)
-    node_b = spec.get_block_root_node(block_b)
+    node_b = spec.get_node_for_root(block_b)
     support = spec.get_attestation_score(store, node_b, balance_source)
     proposer_score = spec.compute_proposer_score(balance_source)
     total_active_balance = spec.get_total_active_balance(balance_source)
@@ -258,7 +258,7 @@ def test_is_one_confirmed_slashing_non_supporters_helps(spec, state):
 
     balance_source = spec.get_current_balance_source(fcr_store)
 
-    node_b = spec.get_block_root_node(block_b)
+    node_b = spec.get_node_for_root(block_b)
     support_before = spec.get_attestation_score(store, node_b, balance_source)
     adversarial_weight_before = spec.get_adversarial_weight(store, balance_source, block_b)
 
@@ -281,7 +281,7 @@ def test_is_one_confirmed_slashing_non_supporters_helps(spec, state):
     fcr.apply_attester_slashing(slashing_indices=non_supporters, slot=fcr.current_slot())
 
     # Support must be unchanged — we only slashed non-voters for B
-    node_b = spec.get_block_root_node(block_b)
+    node_b = spec.get_node_for_root(block_b)
     support_after = spec.get_attestation_score(store, node_b, balance_source)
     assert support_after == support_before, (
         f"Support changed after slashing non-voters: {support_before} -> {support_after}"
@@ -413,7 +413,7 @@ def test_is_one_confirmed_empty_slot_discount(spec, state):
 
     # Verify the discount is still contributing: without it, would it still pass?
     current_slot = spec.get_current_slot(store)
-    node_b = spec.get_block_root_node(block_b)
+    node_b = spec.get_node_for_root(block_b)
     support_b = int(spec.get_attestation_score(store, node_b, balance_source))
     proposer_b = int(spec.compute_proposer_score(balance_source))
     total_active_balance = spec.get_total_active_balance(balance_source)
@@ -656,8 +656,8 @@ def test_is_one_confirmed_fails_with_competing_branch(spec, state):
     balance_source = spec.get_current_balance_source(fcr_store)
 
     # Both must have some support
-    node_b1 = spec.get_block_root_node(block_b1)
-    node_b2 = spec.get_block_root_node(block_b2)
+    node_b1 = spec.get_node_for_root(block_b1)
+    node_b2 = spec.get_node_for_root(block_b2)
     support_b1 = int(spec.get_attestation_score(store, node_b1, balance_source))
     support_b2 = int(spec.get_attestation_score(store, node_b2, balance_source))
     assert support_b1 > 0, "B1 should have some support"
@@ -864,7 +864,7 @@ def test_is_one_confirmed_epoch_crossing_adversarial_range_matters(spec, state):
         )
     )
 
-    node_b = spec.get_block_root_node(block_b)
+    node_b = spec.get_node_for_root(block_b)
     support = int(spec.get_attestation_score(store, node_b, balance_source))
     max_support = int(
         spec.estimate_committee_weight_between_slots(
