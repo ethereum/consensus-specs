@@ -10,7 +10,7 @@
 
 ## Introduction
 
-This is the modification of the fast confirmation accompanying Gloas.
+This is the modification of the fast confirmation rule specification accompanying Gloas.
 
 ## Safe execution block
 
