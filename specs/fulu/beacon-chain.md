@@ -209,7 +209,7 @@ def get_blob_parameters(epoch: Epoch) -> BlobParameters:
 
 #### Modified `compute_fork_digest`
 
-*Note:* The `compute_fork_digest` helper is updated to account for
+*Note*: The `compute_fork_digest` helper is updated to account for
 Blob-Parameters-Only forks.
 
 ```python
