@@ -17,7 +17,7 @@ accompanying Gloas.
 
 ### Modified `get_safe_execution_block_hash`
 
-*Note:* In Gloas, only the parent payload of a confirmed beacon block is safe.
+*Note*: In Gloas, only the parent payload of a confirmed beacon block is safe.
 
 ```python
 def get_safe_execution_block_hash(fcr_store: FastConfirmationStore) -> Hash32:

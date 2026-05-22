@@ -98,7 +98,7 @@ Where:
 - `finalized_block = store.blocks[store.finalized_checkpoint.root]`,
 - `finalized_block_bid = finalized_block.body.signed_execution_payload_bid.message`.
 
-*Note:* `get_safe_execution_block_hash` is modified in Gloas, see
+*Note*: `get_safe_execution_block_hash` is modified in Gloas, see
 [Fast Confirmation](./fast-confirmation.md#get_safe_execution_block_hash).
 
 ## Helpers
