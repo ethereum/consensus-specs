@@ -40,6 +40,12 @@ Or, to run all tests under a single fork specify `fork=<name>`:
 make test fork=phase0
 ```
 
+To run tests serially, set `threads=1`:
+
+```shell
+make test threads=1
+```
+
 Note: these options can be used together, like:
 
 ```shell
@@ -49,6 +55,12 @@ make test preset=minimal k=test_verify_kzg_proof fork=deneb
 ### How to generate coverage reports
 
 Run `make test coverage=true` to enable coverage tracking and generate reports.
+For coverage analysis or profiling workflows that should avoid pytest-xdist,
+combine coverage with `threads=1`:
+
+```shell
+make test coverage=true threads=1
+```
 
 Reports are saved at:
 

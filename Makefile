@@ -74,6 +74,7 @@ help-verbose:
 	@echo "    verbose=true       Enable verbose pytest output"
 	@echo "    reftests=true      Generate reference test vectors"
 	@echo "    coverage=true      Enable code coverage tracking"
+	@echo "    threads=N          Number of pytest workers to use (threads=1 runs serially)"
 	@echo ""
 	@echo "  Examples:"
 	@echo "    make test"
@@ -88,6 +89,7 @@ help-verbose:
 	@echo "    make test reftests=true preset=mainnet fork=fulu k=invalid_committee_index"
 	@echo "    make test coverage=true k=test_process_attestation"
 	@echo "    make test coverage=true fork=electra"
+	@echo "    make test coverage=true fork=electra threads=1"
 	@echo ""
 	@echo "$(BOLD)CODE QUALITY$(NORM)"
 	@echo "$(BOLD)--------------------------------------------------------------------------------$(NORM)"
@@ -201,8 +203,9 @@ COV_REPORT_DIR = $(PYSPEC_DIR)/.htmlcov
 test: MAYBE_TEST := $(if $(k),-k "$(k)")
 test: MAYBE_FORK := $(if $(filter fw,$(component)),,$(if $(fork),--fork=$(fork)))
 test: PRESET := $(if $(filter fw,$(component)),,$(if $(preset),--preset=$(preset),))
-# Disable parallelism when running a specific test. Makes debugging difficult (print doesn't work).
-test: MAYBE_PARALLEL := $(if $(k),,-n logical --dist=worksteal)
+# Default to parallel execution, but allow explicit worker control. If unset,
+# disable parallelism when running a specific test because print debugging is difficult.
+test: MAYBE_PARALLEL := $(if $(threads),$(if $(filter 1,$(threads)),,-n $(threads) --dist=worksteal),$(if $(k),,-n logical --dist=worksteal))
 test: MAYBE_SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth_consensus_specs)
 test: MAYBE_INFRA := $(if $(filter pyspec,$(component)),,$(CURDIR)/tests/infra)
 #
