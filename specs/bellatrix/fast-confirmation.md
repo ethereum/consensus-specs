@@ -4,13 +4,14 @@
 
 - [Introduction](#introduction)
 - [Safe execution block](#safe-execution-block)
-  - [`get_safe_execution_block_hash`](#get_safe_execution_block_hash)
+  - [New `get_safe_execution_block_hash`](#new-get_safe_execution_block_hash)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This is the modification of the fast confirmation rule specification accompanying Bellatrix.
+This is the modification of the fast confirmation rule specification
+accompanying Bellatrix.
 
 ## Safe execution block
 

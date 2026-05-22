@@ -4,13 +4,14 @@
 
 - [Introduction](#introduction)
 - [Safe execution block](#safe-execution-block)
-  - [`get_safe_execution_block_hash`](#get_safe_execution_block_hash)
+  - [Modified `get_safe_execution_block_hash`](#modified-get_safe_execution_block_hash)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
-This is the modification of the fast confirmation rule specification accompanying Gloas.
+This is the modification of the fast confirmation rule specification
+accompanying Gloas.
 
 ## Safe execution block
 
