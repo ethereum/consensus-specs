@@ -91,12 +91,15 @@ computed as the following. All other semantics of `notify_forkchoice_updated`
 and its invocation are inherited from prior forks.
 
 - `finalized_block_hash = finalized_block_bid.parent_block_hash`,
-- `safe_block_hash = get_safe_execution_block_hash(store)`.
+- `safe_block_hash = get_safe_execution_block_hash(fcr_store)`.
 
 Where:
 
 - `finalized_block = store.blocks[store.finalized_checkpoint.root]`,
-- `finalized_block_bid = finalized_block.body.signed_execution_payload_bid.message`.
+- `finalized_block_bid = finalized_block.body.signed_execution_payload_bid.message`,
+- `get_safe_execution_block_hash(fcr_store: FastConfirmationStore)` is modified
+  in Gloas, see
+  [Fast Confirmation](./fast-confirmation.md#get_safe_execution_block_hash).
 
 ## Helpers
 
