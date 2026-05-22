@@ -10,7 +10,7 @@
     - [`FastConfirmationStore`](#fastconfirmationstore)
     - [`get_fast_confirmation_store`](#get_fast_confirmation_store)
     - [Misc helper functions](#misc-helper-functions)
-    - [`get_node_for_root`](#get_node_for_root)
+      - [`get_node_for_root`](#get_node_for_root)
       - [`get_block_slot`](#get_block_slot)
       - [`get_block_epoch`](#get_block_epoch)
       - [`get_checkpoint_for_block`](#get_checkpoint_for_block)
@@ -137,7 +137,7 @@ def get_fast_confirmation_store(store: Store) -> FastConfirmationStore:
 
 #### Misc helper functions
 
-#### `get_node_for_root`
+##### `get_node_for_root`
 
 ```python
 def get_node_for_root(block_root: Root) -> ForkChoiceNode:
