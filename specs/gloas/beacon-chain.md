@@ -135,7 +135,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 | `WithdrawalRequests`    | `ProgressiveList[WithdrawalRequest]`    | *[Modified in Gloas:EIP7688]* List of withdrawal requests pertaining to an execution payload    |
 | `ConsolidationRequests` | `ProgressiveList[ConsolidationRequest]` | *[Modified in Gloas:EIP7688]* List of consolidation requests pertaining to an execution payload |
 | `BuilderIndex`          | `uint64`                                | Builder registry index                                                                          |
-| `BlockAccessList`       | `ByteList[MAX_BYTES_PER_TRANSACTION]`   | RLP encoded block access list                                                                   |
+| `BlockAccessList`       | `ProgressiveByteList`                   | RLP encoded block access list                                                                   |
 
 ## Constants
 
