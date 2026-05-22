@@ -10,7 +10,7 @@
 
 ## Introduction
 
-This is the modification of the fast confirmation accompanying Bellatrix.
+This is the modification of the fast confirmation accompanying Gloas.
 
 ## Safe execution block
 
