@@ -19,7 +19,7 @@ function is introduced. This function returns the block hash of the payload
 included into the most recent confirmed block. This block hash is communicated
 to ExecutionEngine as a hash of a safe block.
 
-### `get_safe_execution_block_hash`
+### New `get_safe_execution_block_hash`
 
 ```python
 def get_safe_execution_block_hash(fcr_store: FastConfirmationStore) -> Hash32:
