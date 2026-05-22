@@ -49,6 +49,9 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
                 "retrieve_column_sidecars",
                 "upgrade_to_fulu",
                 "verify_partial_data_column_header_inclusion_proof",
+                # TODO(jtraglia): Temporarily deprecate these until we update them for Gloas.
+                "validate_data_column_sidecar_gossip",
+                "validate_partial_data_column_sidecar_gossip",
             ]
         )
 

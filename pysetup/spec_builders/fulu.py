@@ -41,10 +41,24 @@ class CosetEvals(list):
 """
 
     @classmethod
+    def deprecate_containers(cls) -> set[str]:
+        return set(
+            [
+                "BlobIdentifier",
+                "BlobSidecar",
+            ]
+        )
+
+    @classmethod
     def deprecate_functions(cls) -> set[str]:
         return set(
             [
+                "compute_max_request_blob_sidecars",
+                "compute_subnet_for_blob_sidecar",
+                "get_blob_sidecars",
                 "upgrade_to_electra",
+                "validate_blob_sidecar_gossip",
+                "verify_blob_sidecar_inclusion_proof",
             ]
         )
 

@@ -6,7 +6,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
     to_single_attestation,
 )
-from eth_consensus_specs.test.helpers.constants import DENEB, ELECTRA
+from eth_consensus_specs.test.helpers.constants import DENEB, ELECTRA, FULU
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -93,7 +93,7 @@ def build_message(attestation, subnet_id, current_time_ms, offset_ms, expected, 
     return message
 
 
-@with_phases([DENEB, ELECTRA])
+@with_phases([DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_one_millisecond_before_slot_start(spec, state):
     """Test that an attestation is accepted one millisecond before its slot starts."""
@@ -119,7 +119,7 @@ def test_gossip_beacon_attestation__accepts_one_millisecond_before_slot_start(sp
     yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB, ELECTRA])
+@with_phases([DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_at_slot_start(spec, state):
     """Test that an attestation is accepted exactly at its slot start."""
@@ -145,7 +145,7 @@ def test_gossip_beacon_attestation__accepts_at_slot_start(spec, state):
     yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB, ELECTRA])
+@with_phases([DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__ignores_first_slot_before_epoch_window_opens(spec, state):
     """
@@ -181,7 +181,7 @@ def test_gossip_beacon_attestation__ignores_first_slot_before_epoch_window_opens
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_phases([DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_opens(spec, state):
     """Test that a first-slot attestation is accepted when the Deneb epoch window opens."""
@@ -210,7 +210,7 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_opens(s
     yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB, ELECTRA])
+@with_phases([DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_closes(spec, state):
     """Test that a first-slot attestation is accepted at the last valid Deneb epoch time."""
@@ -239,7 +239,7 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_closes(
     yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB, ELECTRA])
+@with_phases([DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__ignores_first_slot_after_epoch_window_closes(spec, state):
     """Test that a first-slot attestation is ignored after the Deneb epoch window closes."""
@@ -272,7 +272,7 @@ def test_gossip_beacon_attestation__ignores_first_slot_after_epoch_window_closes
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_phases([DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_last_slot_one_millisecond_before_slot_start(
     spec, state
@@ -307,7 +307,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_one_millisecond_before_slo
     yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB, ELECTRA])
+@with_phases([DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_last_slot_at_slot_start(spec, state):
     """Test that a last-slot attestation is accepted exactly at its slot start."""
@@ -337,7 +337,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_at_slot_start(spec, state)
     yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB, ELECTRA])
+@with_phases([DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_last_slot_when_epoch_window_closes(spec, state):
     """Test that a last-slot attestation is accepted at the last valid Deneb epoch time."""
@@ -367,7 +367,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_when_epoch_window_closes(s
     yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB, ELECTRA])
+@with_phases([DENEB, ELECTRA, FULU])
 @spec_state_test
 def test_gossip_beacon_attestation__ignores_last_slot_after_epoch_window_closes(spec, state):
     """Test that a last-slot attestation is ignored after the Deneb epoch window closes."""
