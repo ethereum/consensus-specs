@@ -333,7 +333,7 @@ def is_parent_node_full(store: Store, block: BeaconBlock) -> bool:
 
 ### Modified `get_block_root_node`
 
-*Note:* This function is modified to return an extended `ForkChoiceNode`
+*Note*: This function is modified to return an extended `ForkChoiceNode`
 structure with `PAYLOAD_STATUS_PENDING` payload status as a common ancestor of
 all nodes referring to a given `block_root`.
 

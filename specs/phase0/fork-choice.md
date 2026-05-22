@@ -144,7 +144,7 @@ handlers must not modify `store`.
 
 #### `ForkChoiceNode`
 
-*Note:* In Phase0, `ForkChoiceNode` and `BeaconBlock` have a one-to-one mapping.
+*Note*: In Phase0, `ForkChoiceNode` and `BeaconBlock` have a one-to-one mapping.
 This abstraction is introduced to support upgradability.
 
 ```python
@@ -265,7 +265,7 @@ def compute_slots_since_epoch_start(slot: Slot) -> int:
 
 #### `get_block_root_node`
 
-*Note:* The semantics of this function is to construct a `ForkChoiceNode` that
+*Note*: The semantics of this function is to construct a `ForkChoiceNode` that
 is a common ancestor for all fork choice nodes referring to the same beacon
 block. Future protocol versions may introduce new types of nodes, but this
 function assumes that the common ancestor node type will always exist. This
