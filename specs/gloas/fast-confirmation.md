@@ -22,9 +22,6 @@ accompanying Gloas.
 
 #### Modified `get_node_for_root`
 
-*Note*: This function is modified to return an extended `ForkChoiceNode`
-structure with `PAYLOAD_STATUS_PENDING` payload status.
-
 ```python
 def get_node_for_root(block_root: Root) -> ForkChoiceNode:
     # [Modified in Gloas:EIP7732]

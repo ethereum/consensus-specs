@@ -333,9 +333,7 @@ def is_parent_node_full(store: Store, block: BeaconBlock) -> bool:
 ### Modified `get_ancestor`
 
 *Note*: `get_ancestor` is modified to return whether the chain is based on an
-*empty* or *full* block. If a `node.root` is from the same `slot` then the
-`node` is returned as is. For past slots this function returns nodes with either
-`PAYLOAD_STATUS_FULL` or `PAYLOAD_STATUS_EMPTY` payload status.
+*empty* or *full* block.
 
 ```python
 def get_ancestor(store: Store, node: ForkChoiceNode, slot: Slot) -> ForkChoiceNode:
@@ -352,9 +350,8 @@ def get_ancestor(store: Store, node: ForkChoiceNode, slot: Slot) -> ForkChoiceNo
 
 ### Modified `is_ancestor`
 
-*Note*: This function is modified to use an extended `ForkChoiceNode` structure.
-It handles relation between the same slot nodes based on the payload status of
-`ancestor` and `node_ancestor`.
+*Note*: This function is modified to handle relation between *pending*, *empty*
+and *full* fork choice nodes.
 
 ```python
 def is_ancestor(store: Store, node: ForkChoiceNode, ancestor: ForkChoiceNode) -> bool:
@@ -371,9 +368,6 @@ def is_ancestor(store: Store, node: ForkChoiceNode, ancestor: ForkChoiceNode) ->
 
 ### Modified `get_checkpoint_block`
 
-*Note*: `get_checkpoint_block` is modified to use an extended `ForkChoiceNode`
-structure.
-
 ```python
 def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
     """
@@ -387,9 +381,7 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
 
 ### Modified `get_supported_node`
 
-*Note*: `get_supported_node` is modified to use an extended `ForkChoiceNode` and
-`LatestMessage` structures. It sets the `payload_status` according to message
-`block.slot` and `message.payload_present`.
+*Note*: `get_supported_node` is modified to set the `payload_status`.
 
 ```python
 def get_supported_node(store: Store, message: LatestMessage) -> ForkChoiceNode:
@@ -502,9 +494,6 @@ def should_apply_proposer_boost(store: Store) -> bool:
 
 ### Modified `get_weight`
 
-*Note*: This function is modified to use new `should_apply_proposer_boost`
-function and extended `ForkChoiceNode` structure.
-
 ```python
 def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
     if node.payload_status == PAYLOAD_STATUS_PENDING or store.blocks[
@@ -560,10 +549,8 @@ def get_node_children(
 
 ### Modified `get_head`
 
-*Note*: `get_head` is modified to use modified `get_weight`, `get_node_children`
-functions and new `get_payload_status_tiebreaker` function. The latter is used
-to break the ties between *full* and *empty* nodes that have an equal block
-root.
+*Note*: Modified to use `get_payload_status_tiebreaker` to break the ties
+between *full* and *empty* nodes.
 
 ```python
 def get_head(store: Store) -> ForkChoiceNode:
