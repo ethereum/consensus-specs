@@ -4,10 +4,10 @@ from frozendict import frozendict
 
 from eth_consensus_specs.test.context import (
     spec_configured_state_test,
-    with_phases,
+    with_all_phases_from_to,
 )
 from eth_consensus_specs.test.helpers.blob import get_block_with_blob, get_max_blob_count
-from eth_consensus_specs.test.helpers.constants import FULU
+from eth_consensus_specs.test.helpers.constants import FULU, GLOAS
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
 )
@@ -17,7 +17,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
-    run_validate_beacon_block_gossip,
+    run_validate_gossip,
     wrap_genesis_block,
 )
 from eth_consensus_specs.test.helpers.state import (
@@ -25,7 +25,7 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_configured_state_test(
     {
         "BLOB_SCHEDULE": (frozendict({"EPOCH": 0, "MAX_BLOBS_PER_BLOCK": 12}),),
@@ -63,8 +63,8 @@ def test_gossip_beacon_block__valid_at_blob_parameters_limit(spec, state):
     block_time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, signed_block, current_time_ms=block_time_ms + 500
     )
     assert result == "valid"
     assert reason is None

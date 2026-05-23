@@ -1,7 +1,8 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_phases,
+    with_all_phases,
+    with_all_phases_from_to,
 )
 from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
@@ -11,19 +12,20 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    BELLATRIX,
-    CAPELLA,
     DENEB,
     ELECTRA,
-    FULU,
     PHASE0,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_electra
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, wrap_genesis_block
+from eth_consensus_specs.test.helpers.gossip import (
+    get_filename,
+    get_seen,
+    run_validate_gossip,
+    wrap_genesis_block,
+)
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
@@ -42,26 +44,7 @@ def get_correct_subnet_for_attestation(spec, state, attestation):
     )
 
 
-def run_validate_beacon_attestation_gossip(
-    spec, seen, store, state, attestation, subnet_id, current_time_ms
-):
-    """
-    Run validate_beacon_attestation_gossip and return the result.
-    Returns: tuple of (result, reason) where result is "valid", "ignore", or "reject"
-             and reason is the exception message (or None for valid).
-    """
-    try:
-        spec.validate_beacon_attestation_gossip(
-            seen, store, state, attestation, subnet_id, current_time_ms
-        )
-        return "valid", None
-    except spec.GossipIgnore as e:
-        return "ignore", str(e)
-    except spec.GossipReject as e:
-        return "reject", str(e)
-
-
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__valid(spec, state):
     """
@@ -104,8 +87,14 @@ def test_gossip_beacon_attestation__valid(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "valid"
     assert reason is None
@@ -124,7 +113,7 @@ def test_gossip_beacon_attestation__valid(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, state):
     """
@@ -160,8 +149,14 @@ def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, st
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = spec.uint64(0)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "committee index out of range"
@@ -181,7 +176,7 @@ def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, st
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
     """
@@ -213,8 +208,14 @@ def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, wrong_subnet, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=wrong_subnet,
     )
     assert result == "reject"
     assert reason == "attestation is for wrong subnet"
@@ -234,7 +235,7 @@ def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_all_phases_from_to(PHASE0, DENEB)
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     """
@@ -274,8 +275,8 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "ignore"
     assert reason == "attestation slot not within propagation range"
@@ -295,7 +296,7 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     """
@@ -338,8 +339,8 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "valid"
     assert reason is None
@@ -358,7 +359,7 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_all_phases_from_to(PHASE0, DENEB)
 @spec_state_test
 def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state):
     """
@@ -400,8 +401,8 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "valid"
     assert reason is None
@@ -420,7 +421,7 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA])
+@with_all_phases_from_to(PHASE0, DENEB)
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
     """
@@ -462,8 +463,8 @@ def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "ignore"
     assert reason == "attestation slot not within propagation range"
@@ -483,7 +484,7 @@ def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
     """
@@ -517,8 +518,14 @@ def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "attestation epoch does not match target epoch"
@@ -538,7 +545,7 @@ def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB])
+@with_all_phases_from_to(PHASE0, ELECTRA)
 @spec_state_test
 def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
     """
@@ -575,8 +582,14 @@ def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "attestation is not unaggregated"
@@ -596,7 +609,7 @@ def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB])
+@with_all_phases_from_to(PHASE0, ELECTRA)
 @spec_state_test
 def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, state):
     """
@@ -631,8 +644,14 @@ def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, 
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "aggregation bits length does not match committee size"
@@ -652,7 +671,7 @@ def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, 
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
     """
@@ -695,8 +714,14 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
 
     # First validation should pass
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "valid"
     assert reason is None
@@ -710,8 +735,14 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
     )
 
     # Second validation should be ignored
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, block_time_ms + 600
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=block_time_ms + 600,
+        subnet_id=subnet_id,
     )
     assert result == "ignore"
     assert reason == "already seen attestation from this validator for this epoch"
@@ -728,7 +759,7 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
     """
@@ -772,8 +803,14 @@ def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "ignore"
     assert reason == "block being voted for has not been seen"
@@ -793,7 +830,7 @@ def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
     """
@@ -850,8 +887,14 @@ def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "block being voted for failed validation"
@@ -871,7 +914,7 @@ def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
@@ -912,8 +955,14 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "invalid attestation signature"
@@ -933,7 +982,7 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
     """
@@ -977,8 +1026,14 @@ def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "target block is not an ancestor of LMD vote block"
@@ -998,7 +1053,7 @@ def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
     """
@@ -1064,8 +1119,14 @@ def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "ignore"
     assert reason == "finalized checkpoint is not an ancestor of block"

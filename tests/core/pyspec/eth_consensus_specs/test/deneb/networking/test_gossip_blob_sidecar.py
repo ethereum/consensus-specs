@@ -3,18 +3,23 @@ import random
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_phases,
+    with_all_phases_from_to,
 )
 from eth_consensus_specs.test.helpers.blob import get_block_with_blob, get_max_blob_count
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.constants import DENEB, ELECTRA
+from eth_consensus_specs.test.helpers.constants import DENEB, FULU
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, wrap_genesis_block
+from eth_consensus_specs.test.helpers.gossip import (
+    get_filename,
+    get_seen,
+    run_validate_gossip,
+    wrap_genesis_block,
+)
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
@@ -42,20 +47,6 @@ def setup_store_with_anchor(spec, state):
     return store, anchor_block
 
 
-def run_validate_blob_sidecar_gossip(
-    spec, seen, store, state, blob_sidecar, subnet_id, current_time_ms
-):
-    try:
-        spec.validate_blob_sidecar_gossip(
-            seen, store, state, blob_sidecar, subnet_id, current_time_ms
-        )
-        return "valid", None
-    except spec.GossipIgnore as e:
-        return "ignore", str(e)
-    except spec.GossipReject as e:
-        return "reject", str(e)
-
-
 def correct_subnet(spec, blob_sidecar):
     return spec.compute_subnet_for_blob_sidecar(blob_sidecar.index)
 
@@ -73,7 +64,7 @@ def resign_blob_sidecar_header(spec, state, blob_sidecar):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__valid(spec, state):
     """Test that a valid blob sidecar passes gossip validation."""
@@ -99,8 +90,14 @@ def test_gossip_blob_sidecar__valid(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "valid"
     assert reason is None
@@ -119,7 +116,7 @@ def test_gossip_blob_sidecar__valid(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_index_out_of_range(spec, state):
     """Test that a blob sidecar with index >= MAX_BLOBS_PER_BLOCK is rejected."""
@@ -146,8 +143,14 @@ def test_gossip_blob_sidecar__reject_index_out_of_range(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = spec.SubnetID(0)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "blob index out of range"
@@ -167,7 +170,7 @@ def test_gossip_blob_sidecar__reject_index_out_of_range(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_wrong_subnet(spec, state):
     """Test that a blob sidecar on the wrong subnet is rejected."""
@@ -194,8 +197,14 @@ def test_gossip_blob_sidecar__reject_wrong_subnet(spec, state):
 
     expected_subnet = correct_subnet(spec, blob_sidecar)
     wrong_subnet = spec.SubnetID((int(expected_subnet) + 1) % spec.config.BLOB_SIDECAR_SUBNET_COUNT)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, wrong_subnet, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=wrong_subnet,
     )
     assert result == "reject"
     assert reason == "blob sidecar is for wrong subnet"
@@ -215,7 +224,7 @@ def test_gossip_blob_sidecar__reject_wrong_subnet(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 @always_bls
 def test_gossip_blob_sidecar__reject_invalid_proposer_signature(spec, state):
@@ -244,8 +253,14 @@ def test_gossip_blob_sidecar__reject_invalid_proposer_signature(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "invalid proposer signature on blob sidecar block header"
@@ -265,7 +280,7 @@ def test_gossip_blob_sidecar__reject_invalid_proposer_signature(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_invalid_inclusion_proof(spec, state):
     """Test that a blob sidecar with a broken inclusion proof is rejected."""
@@ -295,8 +310,14 @@ def test_gossip_blob_sidecar__reject_invalid_inclusion_proof(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "invalid blob sidecar inclusion proof"
@@ -316,7 +337,7 @@ def test_gossip_blob_sidecar__reject_invalid_inclusion_proof(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_invalid_kzg_proof(spec, state):
     """Test that a blob sidecar with an invalid KZG proof is rejected."""
@@ -344,8 +365,14 @@ def test_gossip_blob_sidecar__reject_invalid_kzg_proof(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "invalid blob kzg proof"
@@ -365,7 +392,7 @@ def test_gossip_blob_sidecar__reject_invalid_kzg_proof(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__ignore_future_slot(spec, state):
     """Test that a blob sidecar from a future slot is ignored."""
@@ -392,8 +419,8 @@ def test_gossip_blob_sidecar__ignore_future_slot(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, blob_sidecar, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "ignore"
     assert reason == "blob sidecar is from a future slot"
@@ -413,7 +440,7 @@ def test_gossip_blob_sidecar__ignore_future_slot(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__valid_slot_within_clock_disparity(spec, state):
     """Test that a blob sidecar at the future-slot boundary is valid."""
@@ -440,8 +467,8 @@ def test_gossip_blob_sidecar__valid_slot_within_clock_disparity(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, blob_sidecar, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "valid"
     assert reason is None
@@ -460,7 +487,7 @@ def test_gossip_blob_sidecar__valid_slot_within_clock_disparity(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__ignore_not_later_than_finalized_slot(spec, state):
     """Test that a blob sidecar at the latest finalized slot is ignored."""
@@ -500,8 +527,14 @@ def test_gossip_blob_sidecar__ignore_not_later_than_finalized_slot(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "ignore"
     assert reason == "blob sidecar is not from a slot greater than the latest finalized slot"
@@ -521,7 +554,7 @@ def test_gossip_blob_sidecar__ignore_not_later_than_finalized_slot(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_proposer_index_out_of_range(spec, state):
     """Test that a blob sidecar with proposer_index out of range is rejected."""
@@ -550,8 +583,14 @@ def test_gossip_blob_sidecar__reject_proposer_index_out_of_range(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "proposer index out of range"
@@ -571,7 +610,7 @@ def test_gossip_blob_sidecar__reject_proposer_index_out_of_range(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__ignore_parent_not_seen(spec, state):
     """Test that a blob sidecar whose parent is unknown to the store is ignored."""
@@ -601,8 +640,14 @@ def test_gossip_blob_sidecar__ignore_parent_not_seen(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "ignore"
     assert reason == "blob sidecar's parent has not been seen"
@@ -622,7 +667,7 @@ def test_gossip_blob_sidecar__ignore_parent_not_seen(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
     """Test that a blob sidecar whose parent failed validation is rejected."""
@@ -669,8 +714,14 @@ def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "blob sidecar's parent failed validation"
@@ -690,9 +741,9 @@ def test_gossip_blob_sidecar__reject_parent_failed_validation(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
-def test_gossip_blob_sidecar__ignore_already_seen_tuple(spec, state):
+def test_gossip_blob_sidecar__ignore_already_seen(spec, state):
     """
     Test that a duplicate blob sidecar for the same
     (slot, proposer_index, index) tuple is ignored.
@@ -722,8 +773,14 @@ def test_gossip_blob_sidecar__ignore_already_seen_tuple(spec, state):
     subnet_id = correct_subnet(spec, blob_sidecar)
 
     # First delivery passes.
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "valid"
     messages.append(
@@ -736,8 +793,14 @@ def test_gossip_blob_sidecar__ignore_already_seen_tuple(spec, state):
     )
 
     # Second delivery of the same sidecar is ignored.
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 600
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 600,
+        subnet_id=subnet_id,
     )
     assert result == "ignore"
     assert reason == "already seen blob sidecar from this proposer for this slot and index"
@@ -754,7 +817,7 @@ def test_gossip_blob_sidecar__ignore_already_seen_tuple(spec, state):
     yield "messages", "meta", messages
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_slot_not_higher_than_parent(spec, state):
     """
@@ -803,8 +866,14 @@ def test_gossip_blob_sidecar__reject_slot_not_higher_than_parent(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "blob sidecar is not from a higher slot than its parent"
@@ -824,7 +893,7 @@ def test_gossip_blob_sidecar__reject_slot_not_higher_than_parent(spec, state):
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_non_ancestor_finalized_checkpoint(spec, state):
     """Test that a blob sidecar is rejected if the finalized checkpoint is not an ancestor."""
@@ -857,8 +926,14 @@ def test_gossip_blob_sidecar__reject_non_ancestor_finalized_checkpoint(spec, sta
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "finalized checkpoint is not an ancestor of blob sidecar's block"
@@ -878,7 +953,7 @@ def test_gossip_blob_sidecar__reject_non_ancestor_finalized_checkpoint(spec, sta
     )
 
 
-@with_phases([DENEB, ELECTRA])
+@with_all_phases_from_to(DENEB, FULU)
 @spec_state_test
 def test_gossip_blob_sidecar__reject_wrong_proposer_index(spec, state):
     """Test that a blob sidecar with the wrong proposer_index is rejected."""
@@ -909,8 +984,14 @@ def test_gossip_blob_sidecar__reject_wrong_proposer_index(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, blob_sidecar)
-    result, reason = run_validate_blob_sidecar_gossip(
-        spec, seen, store, state, blob_sidecar, subnet_id, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        blob_sidecar,
+        current_time_ms=block_time_ms + 500,
+        subnet_id=subnet_id,
     )
     assert result == "reject"
     assert reason == "blob sidecar proposer_index does not match expected proposer"

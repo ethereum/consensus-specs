@@ -6,27 +6,8 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.bls_to_execution_changes import (
     get_signed_address_change as get_signed_bls_to_execution_change,
 )
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen
+from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, run_validate_gossip
 from eth_consensus_specs.test.helpers.keys import pubkeys
-
-
-def run_validate_bls_to_execution_change_gossip(
-    spec, seen, state, signed_bls_to_execution_change, current_time_ms
-):
-    """
-    Run validate_bls_to_execution_change_gossip and return the result.
-    Returns: tuple of (result, reason) where result is "valid", "ignore", or "reject"
-             and reason is the exception message (or None for valid).
-    """
-    try:
-        spec.validate_bls_to_execution_change_gossip(
-            seen, state, signed_bls_to_execution_change, current_time_ms
-        )
-        return "valid", None
-    except spec.GossipIgnore as e:
-        return "ignore", str(e)
-    except spec.GossipReject as e:
-        return "reject", str(e)
 
 
 def get_capella_fork_time_ms(spec, state):
@@ -53,8 +34,8 @@ def test_gossip_bls_to_execution_change__valid(spec, state):
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
 
-    result, reason = run_validate_bls_to_execution_change_gossip(
-        spec, seen, state, signed_bls_to_execution_change, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
     )
     assert result == "valid"
     assert reason is None
@@ -88,8 +69,8 @@ def test_gossip_bls_to_execution_change__ignore_pre_capella(spec, state):
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
 
-    result, reason = run_validate_bls_to_execution_change_gossip(
-        spec, seen, state, signed_bls_to_execution_change, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
     )
     assert result == "ignore"
     assert reason == "current epoch is pre-capella"
@@ -125,8 +106,8 @@ def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
 
-    result, reason = run_validate_bls_to_execution_change_gossip(
-        spec, seen, state, signed_bls_to_execution_change, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
     )
     assert result == "valid"
     assert reason is None
@@ -138,8 +119,8 @@ def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
         }
     )
 
-    result, reason = run_validate_bls_to_execution_change_gossip(
-        spec, seen, state, signed_bls_to_execution_change, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
     )
     assert result == "ignore"
     assert reason == "already seen BLS to execution change for this validator"
@@ -173,8 +154,8 @@ def test_gossip_bls_to_execution_change__reject_validator_index_out_of_range(spe
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
 
-    result, reason = run_validate_bls_to_execution_change_gossip(
-        spec, seen, state, signed_bls_to_execution_change, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
     )
     assert result == "reject"
     assert reason == "validator index out of range"
@@ -214,8 +195,8 @@ def test_gossip_bls_to_execution_change__reject_not_bls_credentials(spec, state)
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
 
-    result, reason = run_validate_bls_to_execution_change_gossip(
-        spec, seen, state, signed_bls_to_execution_change, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
     )
     assert result == "reject"
     assert reason == "validator does not have BLS withdrawal credentials"
@@ -256,8 +237,8 @@ def test_gossip_bls_to_execution_change__reject_pubkey_mismatch(spec, state):
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
 
-    result, reason = run_validate_bls_to_execution_change_gossip(
-        spec, seen, state, signed_bls_to_execution_change, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
     )
     assert result == "reject"
     assert reason == "pubkey does not match validator withdrawal credentials"
@@ -294,8 +275,8 @@ def test_gossip_bls_to_execution_change__reject_bad_signature(spec, state):
     yield get_filename(signed_bls_to_execution_change), signed_bls_to_execution_change
     yield "current_time_ms", "meta", int(current_time_ms)
 
-    result, reason = run_validate_bls_to_execution_change_gossip(
-        spec, seen, state, signed_bls_to_execution_change, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
     )
     assert result == "reject"
     assert reason == "invalid BLS to execution change signature"

@@ -1,17 +1,21 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_phases,
+    with_deneb_and_later,
 )
 from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
     to_single_attestation,
 )
-from eth_consensus_specs.test.helpers.constants import DENEB, ELECTRA, FULU
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_electra
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, wrap_genesis_block
+from eth_consensus_specs.test.helpers.gossip import (
+    get_filename,
+    get_seen,
+    run_validate_gossip,
+    wrap_genesis_block,
+)
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import transition_to
 
@@ -24,20 +28,6 @@ def get_correct_subnet_for_attestation(spec, state, attestation):
     return spec.compute_subnet_for_attestation(
         committees_per_slot, attestation.data.slot, committee_index
     )
-
-
-def run_validate_beacon_attestation_gossip(
-    spec, seen, store, state, attestation, subnet_id, current_time_ms
-):
-    try:
-        spec.validate_beacon_attestation_gossip(
-            seen, store, state, attestation, subnet_id, current_time_ms
-        )
-        return "valid", None
-    except spec.GossipIgnore as e:
-        return "ignore", str(e)
-    except spec.GossipReject as e:
-        return "reject", str(e)
 
 
 def build_unaggregated_attestation(spec, state, beacon_block_root):
@@ -93,7 +83,7 @@ def build_message(attestation, subnet_id, current_time_ms, offset_ms, expected, 
     return message
 
 
-@with_phases([DENEB, ELECTRA, FULU])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_one_millisecond_before_slot_start(spec, state):
     """Test that an attestation is accepted one millisecond before its slot starts."""
@@ -110,8 +100,8 @@ def test_gossip_beacon_attestation__accepts_one_millisecond_before_slot_start(sp
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "valid"
     assert reason is None
@@ -119,7 +109,7 @@ def test_gossip_beacon_attestation__accepts_one_millisecond_before_slot_start(sp
     yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB, ELECTRA, FULU])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_at_slot_start(spec, state):
     """Test that an attestation is accepted exactly at its slot start."""
@@ -136,8 +126,8 @@ def test_gossip_beacon_attestation__accepts_at_slot_start(spec, state):
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "valid"
     assert reason is None
@@ -145,7 +135,7 @@ def test_gossip_beacon_attestation__accepts_at_slot_start(spec, state):
     yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB, ELECTRA, FULU])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_beacon_attestation__ignores_first_slot_before_epoch_window_opens(spec, state):
     """
@@ -168,8 +158,8 @@ def test_gossip_beacon_attestation__ignores_first_slot_before_epoch_window_opens
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "ignore"
     assert reason == "attestation slot is from a future slot"
@@ -181,7 +171,7 @@ def test_gossip_beacon_attestation__ignores_first_slot_before_epoch_window_opens
     )
 
 
-@with_phases([DENEB, ELECTRA, FULU])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_opens(spec, state):
     """Test that a first-slot attestation is accepted when the Deneb epoch window opens."""
@@ -201,8 +191,8 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_opens(s
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "valid"
     assert reason is None
@@ -210,7 +200,7 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_opens(s
     yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB, ELECTRA, FULU])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_closes(spec, state):
     """Test that a first-slot attestation is accepted at the last valid Deneb epoch time."""
@@ -230,8 +220,8 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_closes(
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "valid"
     assert reason is None
@@ -239,7 +229,7 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_closes(
     yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB, ELECTRA, FULU])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_beacon_attestation__ignores_first_slot_after_epoch_window_closes(spec, state):
     """Test that a first-slot attestation is ignored after the Deneb epoch window closes."""
@@ -259,8 +249,8 @@ def test_gossip_beacon_attestation__ignores_first_slot_after_epoch_window_closes
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "ignore"
     assert reason == "attestation epoch is not previous or current epoch"
@@ -272,7 +262,7 @@ def test_gossip_beacon_attestation__ignores_first_slot_after_epoch_window_closes
     )
 
 
-@with_phases([DENEB, ELECTRA, FULU])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_last_slot_one_millisecond_before_slot_start(
     spec, state
@@ -298,8 +288,8 @@ def test_gossip_beacon_attestation__accepts_last_slot_one_millisecond_before_slo
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "valid"
     assert reason is None
@@ -307,7 +297,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_one_millisecond_before_slo
     yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB, ELECTRA, FULU])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_last_slot_at_slot_start(spec, state):
     """Test that a last-slot attestation is accepted exactly at its slot start."""
@@ -328,8 +318,8 @@ def test_gossip_beacon_attestation__accepts_last_slot_at_slot_start(spec, state)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "valid"
     assert reason is None
@@ -337,7 +327,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_at_slot_start(spec, state)
     yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB, ELECTRA, FULU])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_beacon_attestation__accepts_last_slot_when_epoch_window_closes(spec, state):
     """Test that a last-slot attestation is accepted at the last valid Deneb epoch time."""
@@ -358,8 +348,8 @@ def test_gossip_beacon_attestation__accepts_last_slot_when_epoch_window_closes(s
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "valid"
     assert reason is None
@@ -367,7 +357,7 @@ def test_gossip_beacon_attestation__accepts_last_slot_when_epoch_window_closes(s
     yield "messages", "meta", [build_message(attestation, subnet_id, current_time_ms, 0, "valid")]
 
 
-@with_phases([DENEB, ELECTRA, FULU])
+@with_deneb_and_later
 @spec_state_test
 def test_gossip_beacon_attestation__ignores_last_slot_after_epoch_window_closes(spec, state):
     """Test that a last-slot attestation is ignored after the Deneb epoch window closes."""
@@ -388,8 +378,8 @@ def test_gossip_beacon_attestation__ignores_last_slot_after_epoch_window_closes(
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
-    result, reason = run_validate_beacon_attestation_gossip(
-        spec, seen, store, state, attestation, subnet_id, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
     )
     assert result == "ignore"
     assert reason == "attestation epoch is not previous or current epoch"

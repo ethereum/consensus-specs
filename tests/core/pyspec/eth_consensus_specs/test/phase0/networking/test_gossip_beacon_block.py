@@ -1,19 +1,16 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_phases,
+    with_all_phases,
+    with_all_phases_from_to,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block,
 )
 from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    BELLATRIX,
     CAPELLA,
-    DENEB,
-    ELECTRA,
-    FULU,
+    GLOAS,
     PHASE0,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
@@ -27,7 +24,7 @@ from eth_consensus_specs.test.helpers.forks import is_post_bellatrix
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
-    run_validate_beacon_block_gossip,
+    run_validate_gossip,
     wrap_genesis_block,
 )
 from eth_consensus_specs.test.helpers.state import (
@@ -35,7 +32,7 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_block__valid_block(spec, state):
     """
@@ -60,8 +57,8 @@ def test_gossip_beacon_block__valid_block(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, signed_block, current_time_ms=block_time_ms + 500
     )
     assert result == "valid"
     assert reason is None
@@ -73,7 +70,7 @@ def test_gossip_beacon_block__valid_block(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_block__ignore_future_slot(spec, state):
     """
@@ -99,8 +96,8 @@ def test_gossip_beacon_block__ignore_future_slot(spec, state):
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, signed_block, current_time_ms=current_time_ms
     )
     assert result == "ignore"
     assert reason == "block is from a future slot"
@@ -119,7 +116,7 @@ def test_gossip_beacon_block__ignore_future_slot(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_block__valid_within_clock_disparity(spec, state):
     """
@@ -145,8 +142,8 @@ def test_gossip_beacon_block__valid_within_clock_disparity(spec, state):
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, current_time_ms
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, signed_block, current_time_ms=current_time_ms
     )
     assert result == "valid"
     assert reason is None
@@ -158,7 +155,7 @@ def test_gossip_beacon_block__valid_within_clock_disparity(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
     """
@@ -185,16 +182,16 @@ def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     # First block should be valid
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, signed_block, current_time_ms=block_time_ms + 500
     )
     assert result == "valid"
     assert reason is None
     messages.append({"offset_ms": 500, "message": get_filename(signed_block), "expected": "valid"})
 
     # Second block with same proposer/slot should be ignored
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, block_time_ms + 600
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, signed_block, current_time_ms=block_time_ms + 600
     )
     assert result == "ignore"
     assert reason == "block is not the first valid block for this proposer and slot"
@@ -210,7 +207,7 @@ def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
     yield "messages", "meta", messages
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_block__ignore_slot_not_greater_than_finalized(spec, state):
     """
@@ -262,8 +259,8 @@ def test_gossip_beacon_block__ignore_slot_not_greater_than_finalized(spec, state
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, signed_block, current_time_ms=block_time_ms + 500
     )
     assert result == "ignore"
     assert reason == "block is not from a slot greater than the latest finalized slot"
@@ -282,7 +279,7 @@ def test_gossip_beacon_block__ignore_slot_not_greater_than_finalized(spec, state
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_block__ignore_parent_not_seen(spec, state):
     """
@@ -317,8 +314,8 @@ def test_gossip_beacon_block__ignore_parent_not_seen(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, signed_block, current_time_ms=block_time_ms + 500
     )
     assert result == "ignore"
     assert reason == "block's parent has not been seen"
@@ -337,7 +334,7 @@ def test_gossip_beacon_block__ignore_parent_not_seen(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX])
+@with_all_phases_from_to(PHASE0, CAPELLA)
 @spec_state_test
 def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
     """
@@ -403,8 +400,8 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_child, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, signed_child, current_time_ms=block_time_ms + 500
     )
     assert result == "reject"
     if is_post_bellatrix(spec):
@@ -426,7 +423,7 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(PHASE0, GLOAS)
 @spec_state_test
 def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
     """
@@ -480,8 +477,8 @@ def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, signed_block, current_time_ms=block_time_ms + 500
     )
     assert result == "reject"
     assert reason == "block is not from a higher slot than its parent"
@@ -500,7 +497,7 @@ def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(PHASE0, GLOAS)
 @spec_state_test
 def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, state):
     """
@@ -565,8 +562,8 @@ def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, sta
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_child, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, signed_child, current_time_ms=block_time_ms + 500
     )
     assert result == "reject"
     assert reason == "finalized checkpoint is not an ancestor of block"
@@ -585,7 +582,7 @@ def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, sta
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 @always_bls
 def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
@@ -614,8 +611,8 @@ def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, signed_block, current_time_ms=block_time_ms + 500
     )
     assert result == "reject"
     assert reason == "invalid proposer signature"
@@ -634,7 +631,7 @@ def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases
 @spec_state_test
 def test_gossip_beacon_block__reject_invalid_proposer_index(spec, state):
     """
@@ -662,8 +659,8 @@ def test_gossip_beacon_block__reject_invalid_proposer_index(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, signed_block, current_time_ms=block_time_ms + 500
     )
     assert result == "reject"
     assert reason == "proposer index out of range"
@@ -682,7 +679,7 @@ def test_gossip_beacon_block__reject_invalid_proposer_index(spec, state):
     )
 
 
-@with_phases([PHASE0, ALTAIR, BELLATRIX, CAPELLA, DENEB, ELECTRA, FULU])
+@with_all_phases_from_to(PHASE0, GLOAS)
 @spec_state_test
 def test_gossip_beacon_block__reject_wrong_proposer_index(spec, state):
     """
@@ -716,8 +713,8 @@ def test_gossip_beacon_block__reject_wrong_proposer_index(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec, seen, store, state, signed_block, current_time_ms=block_time_ms + 500
     )
     assert result == "reject"
     assert reason == "block proposer_index does not match expected proposer"

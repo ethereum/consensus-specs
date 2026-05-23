@@ -4,14 +4,14 @@ from eth_consensus_specs.test.context import (
     always_bls,
     spec_configured_state_test,
     spec_state_test,
-    with_phases,
+    with_all_phases_from_to,
 )
 from eth_consensus_specs.test.helpers.blob import (
     get_block_with_blob_and_sidecars,
     get_max_blob_count,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.constants import FULU
+from eth_consensus_specs.test.helpers.constants import FULU, GLOAS
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_state_with_complete_transition,
 )
@@ -21,7 +21,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
-    run_validate_partial_data_column_sidecar_gossip,
+    run_validate_gossip,
     wrap_genesis_block,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
@@ -94,7 +94,7 @@ def resign_header(spec, state, header):
     header.signed_block_header.signature = spec.bls.Sign(privkeys[proposer_index], signing_root)
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
     """Test that a header-only partial sidecar passes gossip validation."""
@@ -120,8 +120,15 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "valid"
     assert reason is None
@@ -141,7 +148,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_configured_state_test(
     {
         "BLOB_SCHEDULE": (frozendict({"EPOCH": 0, "MAX_BLOBS_PER_BLOCK": 12}),),
@@ -177,8 +184,15 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "valid"
     assert reason is None
@@ -198,7 +212,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header(spec, state):
     """Test that a cells-only partial sidecar passes when a header was cached previously."""
@@ -231,8 +245,15 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
     column_index = sidecar.index
 
     messages = []
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, header_msg, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        header_msg,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "valid"
     messages.append(
@@ -245,8 +266,15 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
         }
     )
 
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, cells_msg, block_root, column_index, block_time_ms + 600
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        cells_msg,
+        current_time_ms=block_time_ms + 600,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "valid"
     assert reason is None
@@ -263,7 +291,7 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
     yield "messages", "meta", messages
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_semantically_empty(spec, state):
     """Test that a partial sidecar with no header and no cells is rejected."""
@@ -289,8 +317,15 @@ def test_gossip_partial_data_column_sidecar__reject_semantically_empty(spec, sta
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
     assert reason == "partial message is semantically empty"
@@ -311,7 +346,7 @@ def test_gossip_partial_data_column_sidecar__reject_semantically_empty(spec, sta
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, state):
     """Test that a partial sidecar with cell count != set bits is rejected."""
@@ -339,8 +374,15 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
     assert reason == "number of cells does not match number of set bits"
@@ -361,7 +403,7 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, state):
     """Test that a partial sidecar with proof count != set bits is rejected."""
@@ -389,8 +431,15 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
     assert reason == "number of proofs does not match number of set bits"
@@ -411,7 +460,7 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, state):
     """Test that a header differing from a previously cached one is rejected."""
@@ -448,8 +497,15 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
     column_index = sidecar.index
 
     messages = []
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, good, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        good,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "valid"
     messages.append(
@@ -462,8 +518,15 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
         }
     )
 
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, diverging, block_root, column_index, block_time_ms + 600
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        diverging,
+        current_time_ms=block_time_ms + 600,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
     assert reason == "header differs from previously validated header"
@@ -481,7 +544,7 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
     yield "messages", "meta", messages
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, state):
     """Test that a header whose block root differs from the group id is rejected."""
@@ -507,11 +570,18 @@ def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, st
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
-    assert reason == "header's block root does not match partial message group id"
+    assert reason == "header's block root does not match group id's block root"
 
     yield (
         "messages",
@@ -529,7 +599,7 @@ def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, st
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, state):
     """Test that a header with empty kzg_commitments is rejected."""
@@ -556,8 +626,15 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
     assert reason == "header's kzg_commitments is empty"
@@ -578,7 +655,7 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
     """Test that a header from a future slot is ignored."""
@@ -605,8 +682,15 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, current_time_ms
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=current_time_ms,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "ignore"
     assert reason == "header is from a future slot"
@@ -627,7 +711,7 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slot(spec, state):
     """Test that a header at the latest finalized slot is ignored."""
@@ -666,8 +750,15 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "ignore"
     assert reason == "header is not from a slot greater than the latest finalized slot"
@@ -688,7 +779,7 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(spec, state):
     """Test that a header with proposer_index out of range is rejected."""
@@ -717,8 +808,15 @@ def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
     assert reason == "proposer index out of range"
@@ -739,7 +837,7 @@ def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 @always_bls
 def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(spec, state):
@@ -767,8 +865,15 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
     assert reason == "invalid proposer signature on header"
@@ -789,7 +894,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state):
     """Test that a header whose parent is unknown to the store is ignored."""
@@ -817,8 +922,15 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "ignore"
     assert reason == "header's parent has not been seen"
@@ -839,7 +951,7 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spec, state):
     """Test that a header whose parent failed validation is rejected."""
@@ -881,8 +993,15 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
     assert reason == "header's parent failed validation"
@@ -903,7 +1022,7 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(spec, state):
     """Test that a header whose slot is not greater than its parent's is rejected."""
@@ -949,8 +1068,15 @@ def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
     assert reason == "header is not from a higher slot than its parent"
@@ -971,7 +1097,7 @@ def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_checkpoint(spec, state):
     """Test that a header is rejected if the finalized checkpoint is not an ancestor."""
@@ -1004,8 +1130,15 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
     assert reason == "finalized checkpoint is not an ancestor of header's block"
@@ -1026,7 +1159,7 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec, state):
     """Test that a header with a broken inclusion proof is rejected."""
@@ -1055,8 +1188,15 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
     assert reason == "invalid header inclusion proof"
@@ -1077,7 +1217,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, state):
     """Test that a header with the wrong proposer_index is rejected."""
@@ -1108,8 +1248,15 @@ def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, s
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
     assert reason == "header proposer_index does not match expected proposer"
@@ -1130,7 +1277,7 @@ def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, s
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(spec, state):
     """Test that a cells-only partial sidecar is ignored when no header is cached."""
@@ -1156,8 +1303,15 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "ignore"
     assert reason == "valid corresponding header has not been seen"
@@ -1178,7 +1332,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_future_slot(
     spec, state
@@ -1211,14 +1365,28 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
 
     column_index = sidecar.index
 
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, header_msg, block_root, column_index, current_time_ms + 1
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        header_msg,
+        current_time_ms=current_time_ms + 1,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "valid"
     assert reason is None
 
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, cells_msg, block_root, column_index, current_time_ms
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        cells_msg,
+        current_time_ms=current_time_ms,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "ignore"
     assert reason == "corresponding header is from a future slot"
@@ -1246,7 +1414,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not_later_than_finalized_slot(  # noqa: E501
     spec, state
@@ -1304,8 +1472,15 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
     )
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, cells_msg, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        cells_msg,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "ignore"
     assert (
@@ -1328,7 +1503,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
     )
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec, state):
     """
@@ -1366,8 +1541,15 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     column_index = sidecar.index
 
     messages = []
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, header_msg, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        header_msg,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "valid"
     messages.append(
@@ -1380,8 +1562,15 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
         }
     )
 
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, cells_msg, block_root, column_index, block_time_ms + 600
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        cells_msg,
+        current_time_ms=block_time_ms + 600,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
     assert reason == "bitmap length does not match commitments length"
@@ -1399,7 +1588,7 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     yield "messages", "meta", messages
 
 
-@with_phases([FULU])
+@with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
 def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, state):
     """Test that cells with invalid KZG proofs are rejected."""
@@ -1429,8 +1618,15 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
     yield "current_time_ms", "meta", int(block_time_ms)
 
     column_index = sidecar.index
-    result, reason = run_validate_partial_data_column_sidecar_gossip(
-        spec, seen, store, state, partial, block_root, column_index, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        partial,
+        current_time_ms=block_time_ms + 500,
+        group_id=spec.PartialDataColumnGroupID(block_root=block_root),
+        column_index=column_index,
     )
     assert result == "reject"
     assert reason == "invalid sidecar kzg proofs"

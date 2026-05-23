@@ -5,12 +5,11 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Modification in Gloas](#modification-in-gloas)
-  - [Containers](#containers)
-    - [Modified `PartialDataColumnSidecar`](#modified-partialdatacolumnsidecar)
-    - [New `PartialDataColumnGroupID`](#new-partialdatacolumngroupid)
-  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Partial Messages on `data_column_sidecar_{subnet_id}`](#partial-messages-on-data_column_sidecar_subnet_id)
+- [Containers](#containers)
+  - [Modified `PartialDataColumnSidecar`](#modified-partialdatacolumnsidecar)
+  - [Modified `PartialDataColumnGroupID`](#modified-partialdatacolumngroupid)
+- [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+  - [Modified `data_column_sidecar_{subnet_id}` (partial messages)](#modified-data_column_sidecar_subnet_id-partial-messages)
 
 <!-- mdformat-toc end -->
 
@@ -25,11 +24,9 @@ particular, this document builds on the
 [Fulu partial columns networking specification](../../fulu/partial-columns/p2p-interface.md)
 and the [Gloas networking specification](../p2p-interface.md).
 
-## Modification in Gloas
+## Containers
 
-### Containers
-
-#### Modified `PartialDataColumnSidecar`
+### Modified `PartialDataColumnSidecar`
 
 ```python
 class PartialDataColumnSidecar(Container):
@@ -40,84 +37,79 @@ class PartialDataColumnSidecar(Container):
     # Removed `header`
 ```
 
-#### New `PartialDataColumnGroupID`
+### Modified `PartialDataColumnGroupID`
 
 ```python
 class PartialDataColumnGroupID(Container):
-    slot: Slot
     beacon_block_root: Root
+    # [New in Gloas:EIP7732]
+    slot: Slot
 ```
 
-### The gossip domain: gossipsub
+## The gossip domain: gossipsub
 
-#### Partial Messages on `data_column_sidecar_{subnet_id}`
+### Modified `data_column_sidecar_{subnet_id}` (partial messages)
 
-*[Modified in Gloas:EIP7732]*
+*Note*: The KZG commitments needed to verify a partial sidecar are now carried
+by the bid at
+`block.body.signed_execution_payload_bid.message.blob_kzg_commitments`, where
+`block` is the `BeaconBlock` with root `group_id.beacon_block_root`. All
+header-related validations from Fulu are removed; their role is taken over by
+the bid commitments and the corresponding block validation.
 
-*Note*: The Partial Message Group ID is the SSZ encoded
-`PartialDataColumnGroupID` prefixed with the version byte `0x01`.
-Implementations MUST ignore unknown versions.
+```python
+def validate_partial_data_column_sidecar_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    sidecar: PartialDataColumnSidecar,
+    # [Modified in Gloas:EIP7732]
+    # Removed `current_time_ms`
+    group_id: PartialDataColumnGroupID,
+    column_index: ColumnIndex,
+) -> None:
+    """
+    Validate a PartialDataColumnSidecar for gossip propagation on a subnet.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    num_cells_present = sum(1 for b in sidecar.cells_present_bitmap if b)
 
-**Added in Gloas:**
+    # [Modified in Gloas]
+    # [REJECT] The message contains at least one cell
+    if num_cells_present == 0:
+        raise GossipReject("partial message is semantically empty")
 
-*Note*: The added rules are similar to the changes in validation rules for full
-messages on `data_column_sidecar_{subnet_id}` as defined above.
+    # [REJECT] The cell count equals the number of set bits in the bitmap
+    if len(sidecar.partial_column) != num_cells_present:
+        raise GossipReject("number of cells does not match number of set bits")
 
-- _[IGNORE]_ A valid block for the Group ID's `slot` has been seen (via gossip
-  or non-gossip sources). If not yet seen, a client SHOULD queue the sidecar for
-  deferred validation and possible processing once the block is received or
-  retrieved. A client SHOULD queue at least 1 sidecar per peer per subnet.
-- _[REJECT]_ The Group ID's `slot` matches the slot of the block with root
-  `beacon_block_root`. The `beacon_block_root` is also identified by the Group
-  ID.
+    # [REJECT] The proof count equals the number of set bits in the bitmap
+    if len(sidecar.kzg_proofs) != num_cells_present:
+        raise GossipReject("number of proofs does not match number of set bits")
 
-**Modified in Gloas:**
+    # [New in Gloas]
+    # [IGNORE] The group ID's block has been seen (via gossip or non-gossip sources)
+    # (MAY be queued until block is retrieved)
+    # (SHOULD queue at least one sidecar per peer per subnet)
+    if group_id.beacon_block_root not in store.blocks:
+        raise GossipIgnore("group id's beacon block has not been seen")
 
-*Note*: These modifications only replace the mention of the header with the bid,
-as the bid contains the KZG commitments.
+    block = store.blocks[group_id.beacon_block_root]
 
-- _[REJECT]_ The cells present bitmap length is equal to the number of KZG
-  commitments in `bid.blob_kzg_commitments`.
-- _[REJECT]_ The sidecar's cell and proof data is valid as verified by
-  `verify_partial_data_column_sidecar_kzg_proofs(sidecar, bid.blob_kzg_commitments, column_index)`.
+    # [New in Gloas]
+    # [REJECT] The group ID's slot matches the slot of the block
+    if group_id.slot != block.slot:
+        raise GossipReject("group id's slot does not match the block's slot")
 
-**Removed from Fulu:**
+    bid = block.body.signed_execution_payload_bid.message
 
-- _[REJECT]_ If a valid header was previously received, the received header MUST
-  equal the previously valid header.
-- _[REJECT]_ The hash of the block header in `signed_block_header` MUST be the
-  same one identified by the partial message's group id.
-- _[REJECT]_ The header's `kzg_commitments` list is non-empty.
-- _[IGNORE]_ The header is not from a future slot (with a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
-  `block_header.slot <= current_slot` (a client MAY queue future headers for
-  processing at the appropriate slot).
-- _[IGNORE]_ The header is from a slot greater than the latest finalized slot --
-  i.e. validate that
-  `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`
-- _[REJECT]_ The proposer signature of `signed_block_header` is valid with
-  respect to the `block_header.proposer_index` pubkey.
-- _[IGNORE]_ The header's block's parent (defined by `block_header.parent_root`)
-  has been seen (via gossip or non-gossip sources) (a client MAY queue header
-  for processing once the parent block is retrieved).
-- _[REJECT]_ The header's block's parent (defined by `block_header.parent_root`)
-  passes validation.
-- _[REJECT]_ The header is from a higher slot than the header's block's parent
-  (defined by `block_header.parent_root`).
-- _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the header's
-  block -- i.e.
-  `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
-- _[REJECT]_ The header's `kzg_commitments` field inclusion proof is valid as
-  verified by `verify_partial_data_column_header_inclusion_proof`.
-- _[REJECT]_ The header is proposed by the expected `proposer_index` for the
-  block's slot in the context of the current shuffling (defined by
-  `block_header.parent_root`/`block_header.slot`). If the `proposer_index`
-  cannot immediately be verified against the expected shuffling, the header MAY
-  be queued for later processing while proposers for the block's branch are
-  calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
-- _[IGNORE]_ If the received partial message contains only cell and proof data,
-  the node has seen a valid corresponding `PartialDataColumnHeader`.
-- _[IGNORE]_ The corresponding header is not from a future slot. See related
-  header check above for more details.
-- _[IGNORE]_ The corresponding header is from a slot greater than the latest
-  finalized slot. See related header check above for more details.
+    # [REJECT] The cells present bitmap length equals the number of bid commitments
+    if len(sidecar.cells_present_bitmap) != len(bid.blob_kzg_commitments):
+        raise GossipReject("bitmap length does not match the number of bid commitments")
+
+    # [REJECT] The sidecar's cell and proof data passes KZG verification
+    if not verify_partial_data_column_sidecar_kzg_proofs(
+        sidecar, bid.blob_kzg_commitments, column_index
+    ):
+        raise GossipReject("invalid sidecar kzg proofs")
+```
