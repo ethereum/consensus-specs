@@ -334,7 +334,7 @@ create the `payload_attestation_message` and broadcast to the global
 The validator creates `payload_attestation_message` as follows:
 
 - If the validator has not seen any beacon block for the assigned slot, do not
-  submit a payload attestation; it will be ignored anyway.
+  submit a payload attestation; it will be ignored or rejected anyway.
 - Set `data.beacon_block_root` be the hash tree root of the beacon block seen
   for the assigned slot.
 - Set `data.slot` to be the assigned slot.
