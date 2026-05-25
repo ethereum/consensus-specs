@@ -236,6 +236,12 @@ tests/<preset>/<fork>/<runner>/<handler>/<suite>/<case>/
 Having it in a file means test vectors can be moved or distributed without
 losing context.
 
+CI packaging also uses `manifest.yaml` as the reference-test completeness
+marker. Expected generated reference-test directories must contain at least one
+manifest, every output file must live beside a manifest, and packaging fails if
+a downloaded reference-test artifact set contains no manifests. Sparse `general`
+preset fork combinations that have no reference tests are skipped before upload.
+
 ##### `config.yaml`
 
 The runtime-configurables may be different for specific tests. When present,

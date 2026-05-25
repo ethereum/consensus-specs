@@ -13,6 +13,9 @@ inputs:
   source-path:
     description: Directory to download artifacts into and to include in the tarball.
     required: true
+  require-manifest:
+    description: Require downloaded test artifacts to include manifest.yaml files.
+    default: "false"
   github-token:
     description: Token used to delete intermediate artifacts.
     required: true
@@ -27,12 +30,43 @@ runs:
         path: ${{ inputs.source-path }}
         merge-multiple: true
 
+    - name: Validate downloaded test artifacts
+      if: ${{ inputs.require-manifest == 'true' }}
+      shell: bash
+      run: |
+        source_path="${{ inputs.source-path }}"
+
+        if [[ ! -d "$source_path" ]]; then
+          echo "Missing downloaded artifact directory: $source_path" >&2
+          exit 1
+        fi
+
+        manifest="$(find "$source_path" -name manifest.yaml -type f -print -quit)"
+        if [[ -z "$manifest" ]]; then
+          echo "No manifest.yaml files found in downloaded artifacts: $source_path" >&2
+          exit 1
+        fi
+
+        missing_manifest=false
+        while IFS= read -r output_file; do
+          case_dir="$(dirname "$output_file")"
+          if [[ ! -f "$case_dir/manifest.yaml" ]]; then
+            echo "Missing manifest.yaml next to output file: $output_file" >&2
+            missing_manifest=true
+          fi
+        done < <(find "$source_path" -type f)
+
+        if [[ "$missing_manifest" == "true" ]]; then
+          exit 1
+        fi
+
     - name: Archive tests
       shell: bash
       run: |
-        # Ensure source-path exists so tar succeeds even when zero artifacts
-        # were downloaded (e.g. presets with no per-fork reftests).
-        mkdir -p ${{ inputs.source-path }}
+        if [[ "${{ inputs.require-manifest }}" != "true" ]]; then
+          # Some callers intentionally allow empty artifact sets.
+          mkdir -p ${{ inputs.source-path }}
+        fi
         tar --sort=name \
             --owner=0 \
             --group=0 \

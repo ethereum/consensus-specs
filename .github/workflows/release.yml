@@ -77,12 +77,62 @@ jobs:
       - name: Generate tests
         run: make test component=pyspec verbose=true preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true
 
+      - name: Validate generated reference tests
+        id: reftests
+        shell: bash
+        run: |
+          test_dir="reftests/${{ matrix.preset }}/${{ matrix.fork }}"
+          expected_reftests=true
+
+          if [[ "${{ matrix.preset }}" == "general" ]]; then
+            case "${{ matrix.fork }}" in
+              phase0|altair|deneb|fulu)
+                expected_reftests=true
+                ;;
+              *)
+                expected_reftests=false
+                ;;
+            esac
+          fi
+
+          if [[ ! -d "$test_dir" ]]; then
+            if [[ "$expected_reftests" == "true" ]]; then
+              echo "Missing generated reference tests directory: $test_dir" >&2
+              exit 1
+            fi
+            echo "has_reftests=false" >> "$GITHUB_OUTPUT"
+            echo "No reference tests generated for ${{ matrix.preset }}/${{ matrix.fork }}."
+            exit 0
+          fi
+
+          manifest="$(find "$test_dir" -name manifest.yaml -type f -print -quit)"
+          if [[ -z "$manifest" ]]; then
+            echo "No manifest.yaml files found under $test_dir." >&2
+            exit 1
+          fi
+
+          missing_manifest=false
+          while IFS= read -r output_file; do
+            case_dir="$(dirname "$output_file")"
+            if [[ ! -f "$case_dir/manifest.yaml" ]]; then
+              echo "Missing manifest.yaml next to output file: $output_file" >&2
+              missing_manifest=true
+            fi
+          done < <(find "$test_dir" -type f)
+
+          if [[ "$missing_manifest" == "true" ]]; then
+            exit 1
+          fi
+
+          echo "has_reftests=true" >> "$GITHUB_OUTPUT"
+
       - name: Upload reference tests
+        if: steps.reftests.outputs.has_reftests == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: reftests-${{ matrix.preset }}-${{ matrix.fork }}
           path: reftests/${{ matrix.preset }}
-          if-no-files-found: ignore
+          if-no-files-found: error
 
   package:
     needs: [setup, generate]
@@ -106,6 +156,7 @@ jobs:
           name: ${{ matrix.preset }}
           artifact-prefix: reftests
           source-path: tests/${{ matrix.preset }}
+          require-manifest: "true"
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload to release
