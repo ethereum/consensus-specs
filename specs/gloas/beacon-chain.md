@@ -1773,9 +1773,11 @@ def process_payload_attestation(
     assert data.beacon_block_root == state.latest_block_header.parent_root
     # Check that the attestation is for the previous slot
     assert data.slot + 1 == state.slot
-    # Check that the assigned slot was not empty.
+    # Check that the assigned slot was not empty
     if data.slot > 0:
-        assert get_block_root_at_slot(state, Slot(data.slot - 1)) != get_block_root_at_slot(state, data.slot)
+        prev_block_root = get_block_root_at_slot(state, Slot(data.slot - 1))
+        curr_block_root = get_block_root_at_slot(state, data.slot)
+        assert prev_block_root != curr_block_root
     # Verify signature
     indexed_payload_attestation = get_indexed_payload_attestation(state, payload_attestation)
     assert is_valid_indexed_payload_attestation(state, indexed_payload_attestation)
