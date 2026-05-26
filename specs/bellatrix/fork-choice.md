@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [`notify_forkchoice_updated`](#notify_forkchoice_updated)
@@ -15,7 +15,7 @@
   - [`get_pow_block`](#get_pow_block)
   - [`is_valid_terminal_pow_block`](#is_valid_terminal_pow_block)
   - [`validate_merge_block`](#validate_merge_block)
-- [Updated fork-choice handlers](#updated-fork-choice-handlers)
+- [Handlers](#handlers)
   - [`on_block`](#on_block)
 
 <!-- mdformat-toc end -->
@@ -31,7 +31,7 @@ Unless stated explicitly, all prior functionality from
 *Note*: It introduces the process of transition from the last PoW block to the
 first PoS block.
 
-## Custom types
+## Types
 
 | Name        | SSZ equivalent | Description                              |
 | ----------- | -------------- | ---------------------------------------- |
@@ -92,7 +92,7 @@ MUST be set to the hash of a terminal PoW block in this case.
 ##### `safe_block_hash`
 
 The `safe_block_hash` parameter MUST be set to return value of
-[`get_safe_execution_block_hash(store: Store)`](../../fork_choice/safe-block.md#get_safe_execution_block_hash)
+[`get_safe_execution_block_hash(fcr_store)`](./fast-confirmation.md#get_safe_execution_block_hash)
 function.
 
 ##### `should_override_forkchoice_update`
@@ -154,23 +154,21 @@ def should_override_forkchoice_update(store: Store, head_root: Root) -> bool:
     # `store.time` early, or by counting queued attestations during the head block's slot.
     if current_slot > head_block.slot:
         head_weak = is_head_weak(store, head_root)
-        parent_strong = is_parent_strong(store, parent_root)
+        parent_strong = is_parent_strong(store, head_root)
     else:
         head_weak = True
         parent_strong = True
 
-    return all(
-        [
-            head_late,
-            shuffling_stable,
-            ffg_competitive,
-            finalization_ok,
-            proposing_reorg_slot,
-            single_slot_reorg,
-            head_weak,
-            parent_strong,
-        ]
-    )
+    return all([
+        head_late,
+        shuffling_stable,
+        ffg_competitive,
+        finalization_ok,
+        proposing_reorg_slot,
+        single_slot_reorg,
+        head_weak,
+        parent_strong,
+    ])
 ```
 
 *Note*: The ordering of conditions is a suggestion only. Implementations are
@@ -198,7 +196,7 @@ Used to signal to initiate the payload build process via
 
 ```python
 @dataclass
-class PayloadAttributes(object):
+class PayloadAttributes:
     timestamp: uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
@@ -260,7 +258,7 @@ def validate_merge_block(block: BeaconBlock) -> None:
     assert is_valid_terminal_pow_block(pow_block, pow_parent)
 ```
 
-## Updated fork-choice handlers
+## Handlers
 
 ### `on_block`
 
@@ -308,19 +306,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
-    # Add block timeliness to the store
-    seconds_since_genesis = store.time - store.genesis_time
-    time_into_slot_ms = seconds_to_milliseconds(seconds_since_genesis) % SLOT_DURATION_MS
-    epoch = get_current_store_epoch(store)
-    attestation_threshold_ms = get_attestation_due_ms(epoch)
-    is_before_attesting_interval = time_into_slot_ms < attestation_threshold_ms
-    is_timely = get_current_slot(store) == block.slot and is_before_attesting_interval
-    store.block_timeliness[hash_tree_root(block)] = is_timely
-
-    # Add proposer score boost if the block is timely and not conflicting with an existing block
-    is_first_block = store.proposer_boost_root == Root()
-    if is_timely and is_first_block:
-        store.proposer_boost_root = hash_tree_root(block)
+    record_block_timeliness(store, block_root)
+    update_proposer_boost_root(store, block_root)
 
     # Update checkpoints in store if necessary
     update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)

@@ -29,8 +29,8 @@ Warning: this configuration is not definitive.
 
 The fork is triggered at epoch `DENEB_FORK_EPOCH`.
 
-Note that for the pure Deneb networks, we don't apply `upgrade_to_deneb` since
-it starts with Deneb version logic.
+*Note*: For the pure Deneb networks, the `upgrade_to_deneb` function is applied
+to transition the genesis state to this fork.
 
 ### Upgrading the state
 

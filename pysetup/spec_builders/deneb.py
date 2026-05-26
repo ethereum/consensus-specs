@@ -8,14 +8,13 @@ class DenebSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth2spec.capella import {preset_name} as capella
+from eth_consensus_specs.capella import {preset_name} as capella
 """
 
     @classmethod
     def classes(cls):
         return """
-class BLSFieldElement(bls.Scalar):
-    pass
+BLSFieldElement: TypeAlias = bls.Scalar
 
 
 class Polynomial(list):
@@ -77,6 +76,20 @@ class NoopExecutionEngine(ExecutionEngine):
 
 
 EXECUTION_ENGINE = NoopExecutionEngine()"""
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return set(
+            [
+                "upgrade_lc_bootstrap_to_capella",
+                "upgrade_lc_finality_update_to_capella",
+                "upgrade_lc_header_to_capella",
+                "upgrade_lc_optimistic_update_to_capella",
+                "upgrade_lc_store_to_capella",
+                "upgrade_lc_update_to_capella",
+                "upgrade_to_capella",
+            ]
+        )
 
     @classmethod
     def hardcoded_func_dep_presets(cls, spec_object) -> dict[str, str]:

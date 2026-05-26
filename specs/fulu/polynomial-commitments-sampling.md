@@ -1,16 +1,14 @@
 # Fulu -- Polynomial Commitments Sampling
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Public Methods](#public-methods)
-- [Custom types](#custom-types)
+- [Public methods](#public-methods)
+- [Types](#types)
 - [Cryptographic types](#cryptographic-types)
 - [Preset](#preset)
   - [Blob](#blob)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [BLS12-381 helpers](#bls12-381-helpers)
     - [`cell_to_coset_evals`](#cell_to_coset_evals)
     - [`coset_evals_to_cell`](#coset_evals_to_cell)
@@ -52,10 +50,10 @@
 This document extends
 [polynomial-commitments.md](../deneb/polynomial-commitments.md) with the
 functions required for data availability sampling (DAS). It is not part of the
-core Deneb spec but an extension that can be optionally implemented to allow
-nodes to reduce their load using DAS.
+core Deneb specification but an extension that can be optionally implemented to
+allow nodes to reduce their load using DAS.
 
-## Public Methods
+## Public methods
 
 For any KZG library extended to support DAS, functions flagged as "Public
 method" MUST be provided by the underlying KZG library as public functions. All
@@ -70,7 +68,7 @@ The following is a list of the public methods:
 - [`verify_cell_kzg_proof_batch`](#verify_cell_kzg_proof_batch)
 - [`recover_cells_and_kzg_proofs`](#recover_cells_and_kzg_proofs)
 
-## Custom types
+## Types
 
 | Name              | SSZ equivalent                                                  | Description                                                                  |
 | ----------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -102,7 +100,7 @@ cell or line).
 | `CELLS_PER_EXT_BLOB`                     | `FIELD_ELEMENTS_PER_EXT_BLOB // FIELD_ELEMENTS_PER_CELL` | The number of cells in an extended blob                  |
 | `RANDOM_CHALLENGE_KZG_CELL_BATCH_DOMAIN` | `b'RCKZGCBATCH__V1_'`                                    |                                                          |
 
-## Helper functions
+## Helpers
 
 ### BLS12-381 helpers
 
@@ -266,9 +264,9 @@ def add_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> PolynomialCoe
     """
     a, b = (a, b) if len(a) >= len(b) else (b, a)
     length_a, length_b = len(a), len(b)
-    return PolynomialCoeff(
-        [a[i] + (b[i] if i < length_b else BLSFieldElement(0)) for i in range(length_a)]
-    )
+    return PolynomialCoeff([
+        a[i] + (b[i] if i < length_b else BLSFieldElement(0)) for i in range(length_a)
+    ])
 ```
 
 #### `multiply_polynomialcoeff`
@@ -363,8 +361,6 @@ def evaluate_polynomialcoeff(
 ```
 
 ### KZG multiproofs
-
-Extended KZG functions for multiproofs
 
 #### `compute_kzg_proof_multi_impl`
 
@@ -500,12 +496,10 @@ def verify_cell_kzg_proof_batch_impl(
     rl = bls.add(rl, rlp)
 
     # Step 5: Check pairing (LL, LR) = pairing (RL, [1])
-    return bls.pairing_check(
-        [
-            [ll, lr],
-            [rl, bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[0]))],
-        ]
-    )
+    return bls.pairing_check([
+        [ll, lr],
+        [rl, bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[0]))],
+    ])
 ```
 
 ### Cell cosets
@@ -691,12 +685,10 @@ def construct_vanishing_polynomial(
     roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_EXT_BLOB)
 
     # Compute polynomial that vanishes at all the missing cells (over the small domain)
-    short_zero_poly = vanishing_polynomialcoeff(
-        [
-            roots_of_unity_reduced[reverse_bits(missing_cell_index, CELLS_PER_EXT_BLOB)]
-            for missing_cell_index in missing_cell_indices
-        ]
-    )
+    short_zero_poly = vanishing_polynomialcoeff([
+        roots_of_unity_reduced[reverse_bits(missing_cell_index, CELLS_PER_EXT_BLOB)]
+        for missing_cell_index in missing_cell_indices
+    ])
 
     # Extend vanishing polynomial to full domain using the closed form of the vanishing polynomial over a coset
     zero_poly_coeff = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_EXT_BLOB

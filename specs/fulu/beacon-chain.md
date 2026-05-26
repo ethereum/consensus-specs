@@ -1,7 +1,5 @@
 # Fulu -- The Beacon Chain
 
-*Note*: This document is a work-in-progress for researchers and implementers.
-
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
@@ -14,9 +12,9 @@
     - [Operations](#operations)
       - [Modified `process_operations`](#modified-process_operations)
 - [Containers](#containers)
-  - [Extended Containers](#extended-containers)
+  - [Modified containers](#modified-containers)
     - [`BeaconState`](#beaconstate)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Misc](#misc)
     - [New `BlobParameters`](#new-blobparameters)
     - [New `get_blob_parameters`](#new-get_blob_parameters)
@@ -33,7 +31,14 @@
 
 ## Introduction
 
-*Note*: This specification is built upon [Electra](../electra/beacon-chain.md).
+Fulu is a consensus-layer upgrade containing a number of features. Including:
+
+- [EIP-7594](https://eips.ethereum.org/EIPS/eip-7594): PeerDAS - Peer Data
+  Availability Sampling
+- [EIP-7917](https://eips.ethereum.org/EIPS/eip-7917): Deterministic proposer
+  lookahead
+- [EIP-7892](https://eips.ethereum.org/EIPS/eip-7892): Blob Parameter Only
+  Hardforks
 
 ## Configuration
 
@@ -48,12 +53,12 @@ The epoch value in each entry MUST be greater than or equal to
 than or equal to `MAX_BLOB_COMMITMENTS_PER_BLOCK`. The blob schedule entries
 SHOULD be sorted by epoch in ascending order. The blob schedule MAY be empty.
 
-*Note*: The blob schedule is to be determined.
-
 <!-- list-of-records:blob_schedule -->
 
-| Epoch | Max Blobs Per Block | Description |
-| ----- | ------------------- | ----------- |
+|  Epoch | Max Blobs Per Block |                             Date |
+| -----: | ------------------: | -------------------------------: |
+| 412672 |                  15 | December 9, 2025, 02:21:11pm UTC |
+| 419072 |                  21 |  January 7, 2026, 01:01:11am UTC |
 
 ## Beacon chain state transition function
 
@@ -163,7 +168,7 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ## Containers
 
-### Extended Containers
+### Modified containers
 
 #### `BeaconState`
 
@@ -220,7 +225,7 @@ class BeaconState(Container):
     proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
 ```
 
-## Helper functions
+## Helpers
 
 ### Misc
 
@@ -248,7 +253,7 @@ def get_blob_parameters(epoch: Epoch) -> BlobParameters:
 
 #### Modified `compute_fork_digest`
 
-*Note:* The `compute_fork_digest` helper is updated to account for
+*Note*: The `compute_fork_digest` helper is updated to account for
 Blob-Parameters-Only forks.
 
 ```python
@@ -264,6 +269,10 @@ def compute_fork_digest(
     """
     fork_version = compute_fork_version(epoch)
     base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
+
+    # [New in Fulu:EIP7892]
+    if epoch < FULU_FORK_EPOCH:
+        return ForkDigest(base_digest[:4])
 
     # [Modified in Fulu:EIP7892]
     # Bitmask digest with hash of blob parameters
@@ -300,7 +309,7 @@ def compute_proposer_indices(
 #### Modified `get_beacon_proposer_index`
 
 *Note*: The function `get_beacon_proposer_index` is modified to use the
-pre-calculated `current_proposer_lookahead` instead of calculating it on-demand.
+pre-calculated `proposer_lookahead` instead of calculating it on-demand.
 
 ```python
 def get_beacon_proposer_index(state: BeaconState) -> ValidatorIndex:

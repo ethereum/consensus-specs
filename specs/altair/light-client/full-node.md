@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [`compute_merkle_proof`](#compute_merkle_proof)
   - [`block_to_light_client_header`](#block_to_light_client_header)
 - [Deriving light client data](#deriving-light-client-data)
@@ -20,7 +20,7 @@ This document provides helper functions to enable full nodes to serve light
 client data. Full nodes SHOULD implement the described functionality to enable
 light clients to sync with the network.
 
-## Helper functions
+## Helpers
 
 ### `compute_merkle_proof`
 
@@ -80,7 +80,7 @@ def create_light_client_bootstrap(
 
 Full nodes SHOULD provide `LightClientBootstrap` for all finalized epoch
 boundary blocks in the epoch range
-`[max(ALTAIR_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`
+`[max(ALTAIR_FORK_EPOCH, current_epoch - compute_min_epochs_for_block_requests()), current_epoch]`
 where `current_epoch` is defined by the current wall-clock time. Full nodes MAY
 also provide `LightClientBootstrap` for other blocks.
 
@@ -170,7 +170,7 @@ def create_light_client_update(
 
 Full nodes SHOULD provide the best derivable `LightClientUpdate` (according to
 `is_better_update`) for each sync committee period covering any epochs in range
-`[max(ALTAIR_FORK_EPOCH, current_epoch - MIN_EPOCHS_FOR_BLOCK_REQUESTS), current_epoch]`
+`[max(ALTAIR_FORK_EPOCH, current_epoch - compute_min_epochs_for_block_requests()), current_epoch]`
 where `current_epoch` is defined by the current wall-clock time. Full nodes MAY
 also provide `LightClientUpdate` for other sync committee periods.
 

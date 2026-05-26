@@ -31,7 +31,7 @@ is extended to exchange [Capella light client data](./sync-protocol.md).
 
 ###### `light_client_finality_update`
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                                         | Message SSZ type                    |
 | ------------------------------------------------------ | ----------------------------------- |
@@ -41,7 +41,7 @@ is extended to exchange [Capella light client data](./sync-protocol.md).
 
 ###### `light_client_optimistic_update`
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                                         | Message SSZ type                      |
 | ------------------------------------------------------ | ------------------------------------- |
@@ -55,7 +55,7 @@ is extended to exchange [Capella light client data](./sync-protocol.md).
 
 ##### GetLightClientBootstrap
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                                         | Response SSZ type              |
 | ------------------------------------------------------ | ------------------------------ |
@@ -65,7 +65,7 @@ is extended to exchange [Capella light client data](./sync-protocol.md).
 
 ##### LightClientUpdatesByRange
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                                         | Response chunk SSZ type     |
 | ------------------------------------------------------ | --------------------------- |
@@ -75,7 +75,7 @@ is extended to exchange [Capella light client data](./sync-protocol.md).
 
 ##### GetLightClientFinalityUpdate
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                                         | Response SSZ type                   |
 | ------------------------------------------------------ | ----------------------------------- |
@@ -85,7 +85,7 @@ is extended to exchange [Capella light client data](./sync-protocol.md).
 
 ##### GetLightClientOptimisticUpdate
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 | `fork_version`                                         | Response SSZ type                     |
 | ------------------------------------------------------ | ------------------------------------- |

@@ -16,9 +16,13 @@ components of the fork choice.
     - [`on_merge_block` execution step](#on_merge_block-execution-step)
     - [`on_attester_slashing` execution step](#on_attester_slashing-execution-step)
     - [`on_payload_info` execution step](#on_payload_info-execution-step)
+    - [`on_execution_payload_envelope` execution step](#on_execution_payload_envelope-execution-step)
+    - [`on_payload_attestation_message` execution step](#on_payload_attestation_message-execution-step)
     - [Checks step](#checks-step)
   - [`attestation_<32-byte-root>.ssz_snappy`](#attestation_32-byte-rootssz_snappy)
   - [`block_<32-byte-root>.ssz_snappy`](#block_32-byte-rootssz_snappy)
+  - [`execution_payload_envelope_<32-byte-root>.ssz_snappy`](#execution_payload_envelope_32-byte-rootssz_snappy)
+  - [`payload_attestation_message_<32-byte-root>.ssz_snappy`](#payload_attestation_message_32-byte-rootssz_snappy)
 - [Condition](#condition)
 
 <!-- mdformat-toc end -->
@@ -166,7 +170,7 @@ Optional step for optimistic sync tests.
 
 This step sets the
 [`payloadStatus`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#payloadstatusv1)
-value that Execution Layer client mock returns in responses to the following
+value that execution-layer client mock returns in responses to the following
 Engine API calls:
 
 - [`engine_newPayloadV1(payload)`](https://github.com/ethereum/execution-apis/blob/main/src/engine/paris.md#engine_newpayloadv1)
@@ -179,6 +183,44 @@ the corresponding `on_block` execution step.
 
 *Note*: Status of the same payload may be updated for several times throughout
 the test.
+
+#### `on_execution_payload_envelope` execution step
+
+The parameter that is required for executing
+`on_execution_payload_envelope(store, signed_execution_payload_envelope)`.
+
+```yaml
+{
+    execution_payload: string  -- the name of the `execution_payload_envelope_<32-byte-root>.ssz_snappy` file.
+                                  To execute `on_execution_payload_envelope(store, signed_envelope)` with the given envelope.
+    valid: bool                -- optional, default to `true`.
+                                  If it's `false`, this execution step is expected to be invalid.
+}
+```
+
+The file is located in the same folder (see below).
+
+After this step, the `store` object may have been updated.
+
+#### `on_payload_attestation_message` execution step
+
+The parameter that is required for executing
+`on_payload_attestation_message(store, ptc_message)`.
+
+```yaml
+{
+    payload_attestation_message: string  -- the name of the `payload_attestation_message_<32-byte-root>.ssz_snappy` file.
+                                            To execute `on_payload_attestation_message(store, ptc_message)` with the given message.
+    valid: bool                          -- optional, default to `true`.
+                                            If it's `false`, this execution step is expected to be invalid.
+}
+```
+
+The file is located in the same folder (see below).
+
+This execution step is available for Gloas and later forks.
+
+After this step, the `store` object may have been updated.
 
 #### Checks step
 
@@ -209,8 +251,9 @@ finalized_checkpoint: {
 }
 proposer_boost_root: string   -- Encoded 32-byte value from store.proposer_boost_root
 viable_for_head_roots_and_weights: [{
-    root: string,             -- Encoded 32-byte value of filtered_block_tree leaf blocks
-    weight: int               -- Integer value from get_weight(store, viable_block_root)
+    root: string,             -- Encoded 32-byte value of filtered_block_tree leaf blocks/nodes
+    weight: int,              -- Integer value of the weight of the block/node
+    payload_status: int,      -- Gloas and later, the payload_status of the node
 }]
 ```
 
@@ -222,6 +265,15 @@ get_proposer_head: string             -- Encoded 32-byte value from get_proposer
 should_override_forkchoice_update: {  -- [New in Bellatrix]
     validator_is_connected: bool,     -- The mocking result of `validator_is_connected(proposer_index)` in this call
     result: bool,                     -- The result of `should_override_forkchoice_update(store, head_root)`, where head_root is the result value from get_head(store)
+}
+head_payload_status: int              -- The payload_status field from the ForkChoiceNode returned by get_head(store)
+payload_timeliness_vote: {            -- [New in Gloas]
+    block_root: string,               -- Encoded 32-byte beacon block root
+    votes: [bool | null, ...]         -- Votes ordered by PTC positions. Length is `PTC_SIZE`.
+}
+payload_data_availability_vote: {     -- [New in Gloas]
+    block_root: string,               -- Encoded 32-byte beacon block root
+    votes: [bool | null, ...]         -- Votes ordered by PTC positions. Length is `PTC_SIZE`.
 }
 ```
 
@@ -253,14 +305,27 @@ Each file is an SSZ-snappy encoded `Attestation`.
 
 ### `block_<32-byte-root>.ssz_snappy`
 
-`<32-byte-root>` is the hash tree root of the given block.
+`<32-byte-root>` is the hash tree root of the `BeaconBlock` (the `message` field
+of the `SignedBeaconBlock`).
 
 Each file is an SSZ-snappy encoded `SignedBeaconBlock`.
+
+### `execution_payload_envelope_<32-byte-root>.ssz_snappy`
+
+`<32-byte-root>` is the hash tree root of the given signed envelope.
+
+Each file is an SSZ-snappy encoded `SignedExecutionPayloadEnvelope`.
+
+### `payload_attestation_message_<32-byte-root>.ssz_snappy`
+
+`<32-byte-root>` is the hash tree root of the given payload attestation message.
+
+Each file is an SSZ-snappy encoded `PayloadAttestationMessage`.
 
 ## Condition
 
 1. Deserialize `anchor_state.ssz_snappy` and `anchor_block.ssz_snappy` to
-   initialize the local store object by with
+   initialize the local store object with
    `get_forkchoice_store(anchor_state, anchor_block)` helper.
 2. Iterate sequentially through `steps.yaml`
    - For each execution, look up the corresponding ssz_snappy file. Execute the
@@ -268,6 +333,17 @@ Each file is an SSZ-snappy encoded `SignedBeaconBlock`.
      - For the `on_block` execution step: if
        `len(block.message.body.attestations) > 0`, execute each attestation with
        `on_attestation(store, attestation)` after executing
-       `on_block(store, block)`.
+       `on_block(store, block)`. For Gloas and later forks, if
+       `len(block.message.body.payload_attestations) > 0`, expand each
+       `PayloadAttestation` into its constituent `PayloadAttestationMessage`
+       values and execute each one with
+       `on_payload_attestation_message(store, ptc_message, is_from_block=True)`
+       after executing `on_block(store, block)`.
+     - For the `on_execution_payload_envelope` execution step: look up the
+       corresponding `execution_payload_envelope_<root>.ssz_snappy` file and
+       execute `on_execution_payload_envelope(store, signed_envelope)`.
+     - For the `on_payload_attestation_message` execution step: look up the
+       corresponding `payload_attestation_message_<root>.ssz_snappy` file and
+       execute `on_payload_attestation_message(store, ptc_message)`.
    - For each `checks` step, the assertions on the current store must be
      satisfied.

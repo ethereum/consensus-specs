@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction)
 - [Prerequisites](#prerequisites)
-- [Custom Types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
 - [Configuration](#configuration)
 - [Weak Subjectivity Checkpoint](#weak-subjectivity-checkpoint)
@@ -35,11 +35,11 @@ This document uses data structures, constants, functions, and terminology from
 [Phase 0 -- The Beacon Chain](./beacon-chain.md) and
 [Phase 0 -- Beacon Chain Fork Choice](./fork-choice.md).
 
-## Custom Types
+## Types
 
 | Name    | SSZ Equivalent | Description        |
 | ------- | -------------- | ------------------ |
-| `Ether` | `uint64`       | an amount in Ether |
+| `Ether` | `uint64`       | An amount in Ether |
 
 ## Constants
 

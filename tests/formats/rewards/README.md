@@ -21,7 +21,7 @@ description: string    -- Optional description of test case, purely for debuggin
                           Tests should use the directory name of the test case as identifier, not the description.
 ```
 
-_Note_: No signature verification happens within rewards sub-functions. These
+*Note*: No signature verification happens within rewards sub-functions. These
 tests can safely be run with or without BLS enabled.
 
 ### `pre.ssz_snappy`

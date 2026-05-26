@@ -10,7 +10,7 @@ recommend using the
 
 **Please do not file a public ticket** mentioning the vulnerability.
 
-To find out how to disclose a vulnerability in the Ethereum Consensus Layer
+To find out how to disclose a vulnerability in the Ethereum consensus layer
 visit [https://bounty.ethereum.org](https://bounty.ethereum.org) or email
 bounty@ethereum.org. Please read the
 [disclosure page](https://bounty.ethereum.org) for more information about

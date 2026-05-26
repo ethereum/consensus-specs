@@ -1,82 +1,151 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
 
 jobs:
-  release:
-    timeout-minutes: 1440 # 24 hours
-    runs-on: [self-hosted-ghr-custom, size-xl-x64, profile-consensusSpecs]
+  setup:
+    runs-on: ubuntu-latest
     permissions:
       contents: write
-      packages: write
       pull-requests: read
-
+    outputs:
+      tag: ${{ steps.tag.outputs.name }}
     steps:
-      # Clone specs
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          path: "consensus-specs"
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      # Setup python
-      - name: Set up Python
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
-        with:
-          python-version-file: "consensus-specs/pyproject.toml"
+      - name: Create tag
+        id: tag
+        run: |
+          version="v$(yq -p toml '.project.version' pyproject.toml)"
+          if git rev-parse "refs/tags/$version" >/dev/null 2>&1; then
+            echo "Error: Tag $version already exists"
+            exit 1
+          fi
+          git tag "$version"
+          git push origin "$version"
+          echo "Created and pushed tag $version"
+          echo "name=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Install uv ${{ vars.UV_VERSION }}
-        uses: astral-sh/setup-uv@2ddd2b9cb38ad8efd50337e8ab201519a34c9f24 # v7.1.1
+      - name: Create draft release
+        uses: release-drafter/release-drafter@c2e2804cc59f45f57076a99af580d0fedb697927 # v7.3.0
+        with:
+          name: ${{ steps.tag.outputs.name }}
+          tag: ${{ steps.tag.outputs.name }}
+          include-pre-releases: true
+          prerelease: ${{ contains(steps.tag.outputs.name, '-') }}
+          publish: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  generate:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        preset:
+          - general
+          - minimal
+          - mainnet
+        fork:
+          - phase0
+          - altair
+          - bellatrix
+          - capella
+          - deneb
+          - electra
+          - fulu
+          - gloas
+          - heze
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
 
-      # Check the tag matches the version
-      - name: Version check
-        run: |
-          tag="${{ github.ref_name }}"
-          version="v$(cat consensus-specs/tests/core/pyspec/eth2spec/VERSION.txt)"
-          if [ "$tag" != "$version" ]; then
-            echo "Tag ($tag) does not match version ($version)"
-            exit 1
-          fi
+      - name: Generate tests
+        run: make test component=pyspec verbose=true preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true
 
-      # Write reference tests to the spec tests repo
-      - name: Generate reference tests
-        run: |
-          cd consensus-specs
-          make reftests verbose=true
-
-      # Make tarballs
-      - name: Archive configurations
-        run: |
-          cd consensus-spec-tests
-          tar -czvf general.tar.gz tests/general
-          tar -czvf minimal.tar.gz tests/minimal
-          tar -czvf mainnet.tar.gz tests/mainnet
-
-      # Publish the specs release. We use release-drafter to
-      # organize PRs into the appropriate section based on PR labels
-      - name: Publish specs release
-        uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5 # v6.1.0
+      - name: Upload reference tests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ${{ github.ref_name }}
-          tag: ${{ github.ref_name }}
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          publish: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: reftests-${{ matrix.preset }}-${{ matrix.fork }}
+          path: reftests/${{ matrix.preset }}
+          if-no-files-found: ignore
 
-      # Upload spec test tarballs to the specs release
-      - name: Upload spec test tarballs
-        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2.4.1
+  package:
+    needs: [setup, generate]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+    strategy:
+      matrix:
+        preset:
+          - general
+          - minimal
+          - mainnet
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Package reference tests
+        uses: ./.github/actions/package
         with:
-          tag_name: ${{ github.ref_name }}
-          files: |
-            consensus-spec-tests/general.tar.gz
-            consensus-spec-tests/minimal.tar.gz
-            consensus-spec-tests/mainnet.tar.gz
+          name: ${{ matrix.preset }}
+          artifact-prefix: reftests
+          source-path: tests/${{ matrix.preset }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload to release
+        run: gh release upload "${{ needs.setup.outputs.tag }}" ${{ matrix.preset }}.tar.gz
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+
+  publish:
+    needs: [setup, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Publish release
+        run: gh release edit "${{ needs.setup.outputs.tag }}" --draft=false
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install uv ${{ vars.UV_VERSION }}
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          version: ${{ vars.UV_VERSION }}
+
+      - name: Generate specs
+        run: uv run python -m pysetup.generate_specs --all-forks
+
+      - name: Build package
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0

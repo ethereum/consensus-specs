@@ -22,6 +22,7 @@ testing.
     - [Common output formats](#common-output-formats)
     - [Special output parts](#special-output-parts)
       - [`meta.yaml`](#metayaml)
+      - [`manifest.yaml`](#manifestyaml)
       - [`config.yaml`](#configyaml)
 - [Config sourcing](#config-sourcing)
 - [Note for implementers](#note-for-implementers)
@@ -213,6 +214,28 @@ bls_setting: int     -- optional, can have 3 different values:
                             2: known as "BLS ignored"  - if the test validity is strictly dependent on BLS being OFF
 ```
 
+##### `manifest.yaml`
+
+Included in every test case. Contains metadata that identifies the test vector:
+
+```yaml
+preset: minimal      # Preset (mainnet, minimal, general)
+fork: phase0         # Fork/phase name
+runner: bls          # Test runner category
+handler: eth_aggregate_pubkeys  # Specific handler
+suite: bls           # Test suite name
+case: eth_aggregate_pubkeys_valid_0  # Individual test case name
+```
+
+This metadata duplicates what is already encoded in the directory path:
+
+```
+tests/<preset>/<fork>/<runner>/<handler>/<suite>/<case>/
+```
+
+Having it in a file means test vectors can be moved or distributed without
+losing context.
+
 ##### `config.yaml`
 
 The runtime-configurables may be different for specific tests. When present,
@@ -252,7 +275,7 @@ The basic pattern for test-suite loading and running is:
    `operations > deposits`). Again, repeat for each if running all.
 4. Select a test suite. Or repeat for each.
 5. Select a test case. Or repeat for each.
-6. Load the parts of the case. And `meta.yaml` if present.
+6. Load the parts of the case. `manifest.yaml` and `meta.yaml` if present.
 7. Run the test, as defined by the test format.
 
 Step 1 may be a step with compile time selection of a configuration, if desired

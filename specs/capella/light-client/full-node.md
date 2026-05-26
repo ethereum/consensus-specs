@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Modified `block_to_light_client_header`](#modified-block_to_light_client_header)
 
 <!-- mdformat-toc end -->
@@ -13,7 +13,7 @@
 This upgrade adds information about the execution payload to light client data
 as part of the Capella upgrade.
 
-## Helper functions
+## Helpers
 
 ### Modified `block_to_light_client_header`
 

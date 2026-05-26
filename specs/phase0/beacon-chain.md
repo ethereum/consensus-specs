@@ -4,11 +4,11 @@
 
 - [Introduction](#introduction)
 - [Notation](#notation)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
-  - [Domain types](#domain-types)
+  - [Domains](#domains)
 - [Preset](#preset)
   - [Misc](#misc-1)
   - [Gwei values](#gwei-values)
@@ -50,13 +50,12 @@
     - [`SignedVoluntaryExit`](#signedvoluntaryexit)
     - [`SignedBeaconBlock`](#signedbeaconblock)
     - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
-- [Helper functions](#helper-functions)
+- [Helpers](#helpers)
   - [Math](#math)
     - [`integer_squareroot`](#integer_squareroot)
     - [`xor`](#xor)
     - [`uint_to_bytes`](#uint_to_bytes)
     - [`bytes_to_uint64`](#bytes_to_uint64)
-    - [`saturating_sub`](#saturating_sub)
   - [Crypto](#crypto)
     - [`hash`](#hash)
     - [`hash_tree_root`](#hash_tree_root)
@@ -68,8 +67,10 @@
     - [`is_slashable_validator`](#is_slashable_validator)
     - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
     - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
+    - [`compute_merkle_branch_root`](#compute_merkle_branch_root)
     - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
   - [Misc](#misc-2)
+    - [`compute_shuffled_permutation`](#compute_shuffled_permutation)
     - [`compute_shuffled_index`](#compute_shuffled_index)
     - [`compute_proposer_index`](#compute_proposer_index)
     - [`compute_committee`](#compute_committee)
@@ -107,10 +108,10 @@
   - [Genesis block](#genesis-block)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Epoch processing](#epoch-processing)
-    - [Helper functions](#helper-functions-1)
+    - [Helpers](#helpers-1)
     - [Justification and finalization](#justification-and-finalization)
     - [Rewards and penalties](#rewards-and-penalties-1)
-      - [Helpers](#helpers)
+      - [Helpers](#helpers-2)
       - [Components of attestation deltas](#components-of-attestation-deltas)
       - [`get_attestation_deltas`](#get_attestation_deltas)
       - [`process_rewards_and_penalties`](#process_rewards_and_penalties)
@@ -155,25 +156,25 @@ block (in a later upgrade) and proof-of-stake votes for a beacon block (Phase
 
 Code snippets appearing in `this style` are to be interpreted as Python 3 code.
 
-## Custom types
+## Types
 
 We define the following Python custom types for type hinting and readability:
 
 | Name             | SSZ equivalent | Description                       |
 | ---------------- | -------------- | --------------------------------- |
-| `Slot`           | `uint64`       | a slot number                     |
-| `Epoch`          | `uint64`       | an epoch number                   |
-| `CommitteeIndex` | `uint64`       | a committee index at a slot       |
-| `ValidatorIndex` | `uint64`       | a validator registry index        |
-| `Gwei`           | `uint64`       | an amount in Gwei                 |
-| `Root`           | `Bytes32`      | a Merkle root                     |
-| `Hash32`         | `Bytes32`      | a 256-bit hash                    |
-| `Version`        | `Bytes4`       | a fork version number             |
-| `DomainType`     | `Bytes4`       | a domain type                     |
-| `ForkDigest`     | `Bytes4`       | a digest of the current fork data |
-| `Domain`         | `Bytes32`      | a signature domain                |
-| `BLSPubkey`      | `Bytes48`      | a BLS12-381 public key            |
-| `BLSSignature`   | `Bytes96`      | a BLS12-381 signature             |
+| `Slot`           | `uint64`       | A slot number                     |
+| `Epoch`          | `uint64`       | An epoch number                   |
+| `CommitteeIndex` | `uint64`       | A committee index at a slot       |
+| `ValidatorIndex` | `uint64`       | A validator registry index        |
+| `Gwei`           | `uint64`       | An amount in Gwei                 |
+| `Root`           | `Bytes32`      | A Merkle root                     |
+| `Hash32`         | `Bytes32`      | A 256-bit hash                    |
+| `Version`        | `Bytes4`       | A fork version number             |
+| `DomainType`     | `Bytes4`       | A domain type                     |
+| `ForkDigest`     | `Bytes4`       | A digest of the current fork data |
+| `Domain`         | `Bytes32`      | A signature domain                |
+| `BLSPubkey`      | `Bytes48`      | A BLS12-381 public key            |
+| `BLSSignature`   | `Bytes96`      | A BLS12-381 signature             |
 
 ## Constants
 
@@ -201,7 +202,7 @@ specification.
 | `BLS_WITHDRAWAL_PREFIX`          | `Bytes1('0x00')` |
 | `ETH1_ADDRESS_WITHDRAWAL_PREFIX` | `Bytes1('0x01')` |
 
-### Domain types
+### Domains
 
 | Name                         | Value                      |
 | ---------------------------- | -------------------------- |
@@ -218,7 +219,7 @@ specification.
 `DomainType` for application usage. This means for some `DomainType`
 `DOMAIN_SOME_APPLICATION`, `DOMAIN_SOME_APPLICATION & DOMAIN_APPLICATION_MASK`
 **MUST** be non-zero. This expression for any other `DomainType` in the
-consensus specs **MUST** be zero.
+consensus-layer specifications **MUST** be zero.
 
 ## Preset
 
@@ -258,24 +259,24 @@ directory.
 
 ### Time parameters
 
-| Name                               | Value                     |  Unit  |   Duration   |
-| ---------------------------------- | ------------------------- | :----: | :----------: |
-| `MIN_ATTESTATION_INCLUSION_DELAY`  | `uint64(2**0)` (= 1)      | slots  |  12 seconds  |
-| `SLOTS_PER_EPOCH`                  | `uint64(2**5)` (= 32)     | slots  | 6.4 minutes  |
-| `MIN_SEED_LOOKAHEAD`               | `uint64(2**0)` (= 1)      | epochs | 6.4 minutes  |
-| `MAX_SEED_LOOKAHEAD`               | `uint64(2**2)` (= 4)      | epochs | 25.6 minutes |
-| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `uint64(2**2)` (= 4)      | epochs | 25.6 minutes |
-| `EPOCHS_PER_ETH1_VOTING_PERIOD`    | `uint64(2**6)` (= 64)     | epochs |  ~6.8 hours  |
-| `SLOTS_PER_HISTORICAL_ROOT`        | `uint64(2**13)` (= 8,192) | slots  |  ~27 hours   |
+| Name                               | Value                     |  Unit  |
+| ---------------------------------- | ------------------------- | :----: |
+| `MIN_ATTESTATION_INCLUSION_DELAY`  | `uint64(2**0)` (= 1)      | slots  |
+| `SLOTS_PER_EPOCH`                  | `uint64(2**5)` (= 32)     | slots  |
+| `MIN_SEED_LOOKAHEAD`               | `uint64(2**0)` (= 1)      | epochs |
+| `MAX_SEED_LOOKAHEAD`               | `uint64(2**2)` (= 4)      | epochs |
+| `MIN_EPOCHS_TO_INACTIVITY_PENALTY` | `uint64(2**2)` (= 4)      | epochs |
+| `EPOCHS_PER_ETH1_VOTING_PERIOD`    | `uint64(2**6)` (= 64)     | epochs |
+| `SLOTS_PER_HISTORICAL_ROOT`        | `uint64(2**13)` (= 8,192) | slots  |
 
 ### State list lengths
 
-| Name                           | Value                                 |       Unit       |   Duration    |
-| ------------------------------ | ------------------------------------- | :--------------: | :-----------: |
-| `EPOCHS_PER_HISTORICAL_VECTOR` | `uint64(2**16)` (= 65,536)            |      epochs      |  ~0.8 years   |
-| `EPOCHS_PER_SLASHINGS_VECTOR`  | `uint64(2**13)` (= 8,192)             |      epochs      |   ~36 days    |
-| `HISTORICAL_ROOTS_LIMIT`       | `uint64(2**24)` (= 16,777,216)        | historical roots | ~52,262 years |
-| `VALIDATOR_REGISTRY_LIMIT`     | `uint64(2**40)` (= 1,099,511,627,776) |    validators    |               |
+| Name                           | Value                                 |       Unit       |
+| ------------------------------ | ------------------------------------- | :--------------: |
+| `EPOCHS_PER_HISTORICAL_VECTOR` | `uint64(2**16)` (= 65,536)            |      epochs      |
+| `EPOCHS_PER_SLASHINGS_VECTOR`  | `uint64(2**13)` (= 8,192)             |      epochs      |
+| `HISTORICAL_ROOTS_LIMIT`       | `uint64(2**24)` (= 16,777,216)        | historical roots |
+| `VALIDATOR_REGISTRY_LIMIT`     | `uint64(2**40)` (= 1,099,511,627,776) |    validators    |
 
 ### Rewards and penalties
 
@@ -289,11 +290,10 @@ directory.
 | `PROPORTIONAL_SLASHING_MULTIPLIER` | `uint64(1)`                    |
 
 - The `INACTIVITY_PENALTY_QUOTIENT` equals `INVERSE_SQRT_E_DROP_TIME**2` where
-  `INVERSE_SQRT_E_DROP_TIME := 2**13` epochs (about 36 days) is the time it
-  takes the inactivity penalty to reduce the balance of non-participating
-  validators to about `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by
-  offline validators after `n` epochs is about
-  `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after
+  `INVERSE_SQRT_E_DROP_TIME := 2**13` epochs is the time it takes the inactivity
+  penalty to reduce the balance of non-participating validators to about
+  `1/sqrt(e) ~= 60.6%`. Indeed, the balance retained by offline validators after
+  `n` epochs is about `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(n**2/2)`; so after
   `INVERSE_SQRT_E_DROP_TIME` epochs, it is roughly
   `(1 - 1/INACTIVITY_PENALTY_QUOTIENT)**(INACTIVITY_PENALTY_QUOTIENT/2) ~= 1/sqrt(e)`.
   Note this value will be upgraded to `2**24` after Phase 0 mainnet stabilizes
@@ -334,12 +334,11 @@ and other types of chain instances may use a different configuration.
 
 | Name                                  | Value                     |     Unit     |  Duration  |
 | ------------------------------------- | ------------------------- | :----------: | :--------: |
-| `SECONDS_PER_SLOT` *deprecated*       | `uint64(12)`              |   seconds    | 12 seconds |
 | `SLOT_DURATION_MS`                    | `uint64(12000)`           | milliseconds | 12 seconds |
 | `SECONDS_PER_ETH1_BLOCK`              | `uint64(14)`              |   seconds    | 14 seconds |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256)    |    epochs    | ~27 hours  |
-| `SHARD_COMMITTEE_PERIOD`              | `uint64(2**8)` (= 256)    |    epochs    | ~27 hours  |
-| `ETH1_FOLLOW_DISTANCE`                | `uint64(2**11)` (= 2,048) | Eth1 blocks  |  ~8 hours  |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256)    |    epochs    |            |
+| `SHARD_COMMITTEE_PERIOD`              | `uint64(2**8)` (= 256)    |    epochs    |            |
+| `ETH1_FOLLOW_DISTANCE`                | `uint64(2**11)` (= 2,048) | Eth1 blocks  |            |
 
 ### Validator cycle
 
@@ -355,7 +354,7 @@ The following types are [SimpleSerialize (SSZ)](../../ssz/simple-serialize.md)
 containers.
 
 *Note*: The definitions are ordered topologically to facilitate execution of the
-spec.
+specification.
 
 *Note*: Fields missing in container instantiations default to their zero value.
 
@@ -614,7 +613,7 @@ class SignedBeaconBlockHeader(Container):
     signature: BLSSignature
 ```
 
-## Helper functions
+## Helpers
 
 *Note*: The definitions below are for specification purposes and are not
 necessarily optimal implementations.
@@ -664,16 +663,6 @@ def bytes_to_uint64(data: bytes) -> uint64:
     return uint64(int.from_bytes(data, ENDIANNESS))
 ```
 
-#### `saturating_sub`
-
-```python
-def saturating_sub(a: int, b: int) -> int:
-    """
-    Computes a - b, saturating at numeric bounds.
-    """
-    return a - b if a > b else 0
-```
-
 ### Crypto
 
 #### `hash`
@@ -684,7 +673,7 @@ def saturating_sub(a: int, b: int) -> int:
 
 `def hash_tree_root(object: SSZSerializable) -> Root` is a function for hashing
 objects into a single root by utilizing a hash tree structure, as defined in the
-[SSZ spec](../../ssz/simple-serialize.md#merkleization).
+[SSZ specification](../../ssz/simple-serialize.md#merkleization).
 
 #### BLS signatures
 
@@ -790,6 +779,24 @@ def is_valid_indexed_attestation(
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
 ```
 
+#### `compute_merkle_branch_root`
+
+```python
+def compute_merkle_branch_root(
+    leaf: Bytes32, branch: Sequence[Bytes32], depth: uint64, index: uint64
+) -> Root:
+    """
+    Return the Merkle root obtained by hashing ``leaf`` at ``index`` with ``branch``.
+    """
+    value = leaf
+    for i in range(depth):
+        if index // (2**i) % 2:
+            value = hash(branch[i] + value)
+        else:
+            value = hash(value + branch[i])
+    return Root(value)
+```
+
 #### `is_valid_merkle_branch`
 
 ```python
@@ -799,16 +806,41 @@ def is_valid_merkle_branch(
     """
     Check if ``leaf`` at ``index`` verifies against the Merkle ``root`` and ``branch``.
     """
-    value = leaf
-    for i in range(depth):
-        if index // (2**i) % 2:
-            value = hash(branch[i] + value)
-        else:
-            value = hash(value + branch[i])
-    return value == root
+    if depth != len(branch):
+        return False
+    return compute_merkle_branch_root(leaf, branch, depth, index) == root
 ```
 
 ### Misc
+
+#### `compute_shuffled_permutation`
+
+```python
+def compute_shuffled_permutation(index_count: uint64, seed: Bytes32) -> Sequence[uint64]:
+    """
+    Return the full shuffled permutation corresponding to ``seed`` (and ``index_count``).
+    """
+    # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
+    # See the 'generalized domain' algorithm on page 3
+    indices = [uint64(i) for i in range(index_count)]
+    for current_round in range(SHUFFLE_ROUND_COUNT):
+        round_bytes = current_round.to_bytes(1, "little")
+        pivot = int.from_bytes(hash(seed + round_bytes)[0:8], "little") % index_count
+        source_by_bucket: Dict[uint64, Bytes32] = {}
+        for i in range(index_count):
+            flip = (pivot + index_count - indices[i]) % index_count
+            position = max(indices[i], flip)
+            position_bucket = position // 256
+            if position_bucket not in source_by_bucket:
+                source_by_bucket[position_bucket] = hash(
+                    seed + round_bytes + position_bucket.to_bytes(4, "little")
+                )
+            source = source_by_bucket[position_bucket]
+            byte_val = source[(position % 256) // 8]
+            bit = (byte_val >> int(position % 8)) % 2
+            indices[i] = flip if bit else indices[i]
+    return indices
+```
 
 #### `compute_shuffled_index`
 
@@ -818,21 +850,7 @@ def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) ->
     Return the shuffled index corresponding to ``seed`` (and ``index_count``).
     """
     assert index < index_count
-
-    # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
-    # See the 'generalized domain' algorithm on page 3
-    for current_round in range(SHUFFLE_ROUND_COUNT):
-        pivot = bytes_to_uint64(hash(seed + uint_to_bytes(uint8(current_round)))[0:8]) % index_count
-        flip = (pivot + index_count - index) % index_count
-        position = max(index, flip)
-        source = hash(
-            seed + uint_to_bytes(uint8(current_round)) + uint_to_bytes(uint32(position // 256))
-        )
-        byte = uint8(source[(position % 256) // 8])
-        bit = (byte >> (position % 8)) % 2
-        index = flip if bit else index
-
-    return index
+    return compute_shuffled_permutation(index_count, seed)[index]
 ```
 
 #### `compute_proposer_index`
@@ -881,7 +899,7 @@ def compute_committee(
 ```python
 def compute_time_at_slot(state: BeaconState, slot: Slot) -> uint64:
     slots_since_genesis = slot - GENESIS_SLOT
-    return uint64(state.genesis_time + slots_since_genesis * SECONDS_PER_SLOT)
+    return uint64(state.genesis_time + slots_since_genesis * SLOT_DURATION_MS // 1000)
 ```
 
 #### `compute_epoch_at_slot`
@@ -934,7 +952,9 @@ def compute_fork_data_root(current_version: Version, genesis_validators_root: Ro
 
 ```python
 def compute_domain(
-    domain_type: DomainType, fork_version: Version = None, genesis_validators_root: Root = None
+    domain_type: DomainType,
+    fork_version: Optional[Version] = None,
+    genesis_validators_root: Optional[Root] = None,
 ) -> Domain:
     """
     Return the domain for the ``domain_type`` and ``fork_version``.
@@ -1137,7 +1157,9 @@ def get_total_active_balance(state: BeaconState) -> Gwei:
 #### `get_domain`
 
 ```python
-def get_domain(state: BeaconState, domain_type: DomainType, epoch: Epoch = None) -> Domain:
+def get_domain(
+    state: BeaconState, domain_type: DomainType, epoch: Optional[Epoch] = None
+) -> Domain:
     """
     Return the signature domain (fork version concatenated with domain type) of a message.
     """
@@ -1225,7 +1247,9 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
 
 ```python
 def slash_validator(
-    state: BeaconState, slashed_index: ValidatorIndex, whistleblower_index: ValidatorIndex = None
+    state: BeaconState,
+    slashed_index: ValidatorIndex,
+    whistleblower_index: Optional[ValidatorIndex] = None,
 ) -> None:
     """
     Slash the validator with index ``slashed_index``.
@@ -1254,7 +1278,7 @@ def slash_validator(
 
 ## Genesis
 
-Before the Ethereum beacon chain genesis has been triggered, and for every
+Before the Ethereum beacon-chain genesis has been triggered, and for every
 Ethereum proof-of-work block, let
 `candidate_state = initialize_beacon_state_from_eth1(eth1_block_hash, eth1_timestamp, deposits)`
 where:
@@ -1284,7 +1308,7 @@ def initialize_beacon_state_from_eth1(
     state = BeaconState(
         genesis_time=eth1_timestamp + GENESIS_DELAY,
         fork=fork,
-        eth1_data=Eth1Data(block_hash=eth1_block_hash, deposit_count=uint64(len(deposits))),
+        eth1_data=Eth1Data(deposit_count=uint64(len(deposits)), block_hash=eth1_block_hash),
         latest_block_header=BeaconBlockHeader(body_root=hash_tree_root(BeaconBlockBody())),
         randao_mixes=[eth1_block_hash]
         * EPOCHS_PER_HISTORICAL_VECTOR,  # Seed RANDAO with Eth1 entropy
@@ -1408,7 +1432,7 @@ def process_epoch(state: BeaconState) -> None:
     process_participation_record_updates(state)
 ```
 
-#### Helper functions
+#### Helpers
 
 ```python
 def get_matching_source_attestations(
@@ -1988,8 +2012,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     assert len(attestation.aggregation_bits) == len(committee)
 
     pending_attestation = PendingAttestation(
-        data=data,
         aggregation_bits=attestation.aggregation_bits,
+        data=data,
         inclusion_delay=state.slot - data.slot,
         proposer_index=get_beacon_proposer_index(state),
     )
