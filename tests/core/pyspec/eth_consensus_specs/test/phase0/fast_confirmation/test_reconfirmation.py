@@ -179,3 +179,5 @@ def test_reconfirmation_fails_for_block_without_uj_checkpoint_in_chain(spec, sta
     # Run fast confirmation and ensure fall back to finality
     fcr.run_fast_confirmation()
     assert fcr_store.confirmed_root == store.finalized_checkpoint.root
+
+    yield from fcr.get_test_artefacts()
