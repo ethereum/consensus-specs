@@ -88,10 +88,6 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
   `MAX_BYTES_PER_INCLUSION_LIST`.
 - _[IGNORE]_ The slot `message.slot` is equal to the current slot (with a
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `data.slot == current_slot`.
-- _[IGNORE]_ The `inclusion_list_committee` for slot `message.slot` on the
-  current branch corresponds to `message.inclusion_list_committee_root`, as
-  determined by
-  `hash_tree_root(inclusion_list_committee) == message.inclusion_list_committee_root`.
 - _[REJECT]_ The message's validator index is within the inclusion list
   committee in `get_inclusion_list_committee(state, data.slot)`. The `state` is
   the head state corresponding to processing the block up to the current slot as
