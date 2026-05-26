@@ -46,7 +46,7 @@ To run tests serially, set `threads=1`:
 make test threads=1
 ```
 
-Note: these options can be used together, like:
+*Note*: these options can be used together, like:
 
 ```shell
 make test preset=minimal k=test_verify_kzg_proof fork=deneb

@@ -33,5 +33,5 @@ challenge value by hashing together all the inputs according to the Fiat-Shamir
 heuristic. This is an internal helper function, so all inputs are assumed to be
 valid. The computed challenge should match the expected `output`.
 
-Note: This function is not a public method but an internal helper used by
+*Note*: This function is not a public method but an internal helper used by
 `verify_cell_kzg_proof_batch`. It assumes all inputs are already validated.

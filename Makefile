@@ -103,6 +103,7 @@ help-verbose:
 	@echo "    - mypy: Static type checker for Python"
 	@echo "    - Fork comments validation (scripts/check_fork_comments.py)"
 	@echo "    - Markdown headings validation (scripts/check_markdown_headings.py)"
+	@echo "    - Markdown note style fix (scripts/fix_note_style.py)"
 	@echo "    - Trailing whitespace check"
 	@echo ""
 	@echo "  Example: make lint"
@@ -246,7 +247,6 @@ test: _pyspec
 ###############################################################################
 
 DOCS_DIR = ./docs
-FORK_CHOICE_DIR = ./fork_choice
 SPEC_DIR = ./specs
 SSZ_DIR = ./ssz
 SYNC_DIR = ./sync
@@ -254,10 +254,8 @@ SYNC_DIR = ./sync
 # Copy files to the docs directory.
 _copy_docs:
 	@cp -r $(SPEC_DIR) $(DOCS_DIR)
-	@rm -rf $(DOCS_DIR)/specs/_deprecated
 	@cp -r $(SYNC_DIR) $(DOCS_DIR)
 	@cp -r $(SSZ_DIR) $(DOCS_DIR)
-	@cp -r $(FORK_CHOICE_DIR) $(DOCS_DIR)
 	@cp $(CURDIR)/README.md $(DOCS_DIR)/README.md
 
 # Start a local documentation server.
@@ -281,8 +279,9 @@ lint: _pyspec
 	@git diff > $(LINT_DIFF_BEFORE)
 	@uv --quiet lock --check
 	@$(UV_RUN) codespell
-	@$(UV_RUN) python $(CURDIR)/scripts/check_fork_comments.py
+	@$(UV_RUN) python $(CURDIR)/scripts/fix_note_style.py
 	@$(UV_RUN) python $(CURDIR)/scripts/fix_trailing_whitespace.py
+	@$(UV_RUN) python $(CURDIR)/scripts/check_fork_comments.py
 	@$(UV_RUN) python $(CURDIR)/scripts/check_markdown_headings.py
 	@$(UV_RUN) python $(CURDIR)/scripts/check_value_annotations.py
 	@$(UV_RUN) mdformat --number --wrap=80 $(MARKDOWN_FILES)
