@@ -343,7 +343,7 @@ The following validations MUST pass before forwarding the
   gossip or non-gossip sources) (a client MAY queue attestation for processing
   once the block is retrieved. Note a client might want to request payload
   after).
-- _[REJECT]_ The block referenced by `data.beacon_block_root` is at slot
+- _[IGNORE]_ The block referenced by `data.beacon_block_root` is at slot
   `data.slot`, i.e. the block has `block.slot == data.slot`.
 - _[REJECT]_ The message's block `data.beacon_block_root` passes validation.
 - _[REJECT]_ The message's validator index is within the payload committee in
