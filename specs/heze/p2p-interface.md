@@ -84,12 +84,12 @@ This topic is used to propagate signed inclusion list as `SignedInclusionList`.
 The following validations MUST pass before forwarding the `inclusion_list` on
 the network, assuming the alias `message = signed_inclusion_list.message`:
 
+- _[REJECT]_ The size of `message.transactions` is within upperbound
+  `MAX_BYTES_PER_INCLUSION_LIST`.
 - _[IGNORE]_ The slot `message.slot` is equal to the current slot (with a
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `data.slot == current_slot`.
 - _[IGNORE]_ The `message` is either the first or second valid message received
   from the validator with index `message.validator_index`.
-- _[REJECT]_ The size of `message.transactions` is within upperbound
-  `MAX_BYTES_PER_INCLUSION_LIST`.
 - _[REJECT]_ The message's validator index is in
   `get_inclusion_list_committee(state, data.slot)`, where `state` is the head
   state corresponding to processing the block up to the current slot as
