@@ -43,12 +43,10 @@ class CosetEvals(list):
 
     @classmethod
     def deprecate_containers(cls) -> set[str]:
-        return set(
-            [
-                "BlobIdentifier",
-                "BlobSidecar",
-            ]
-        )
+        return {
+            "BlobIdentifier",
+            "BlobSidecar",
+        }
 
     @classmethod
     def deprecate_functions(cls) -> set[str]:

@@ -36,7 +36,7 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
 
     @classmethod
     def deprecate_functions(cls) -> set[str]:
-        return set(
+        return {
             "compute_proposer_index",
             "get_activation_exit_churn_limit",
             "get_balance_churn_limit",

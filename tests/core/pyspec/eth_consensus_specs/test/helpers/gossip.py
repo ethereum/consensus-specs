@@ -130,15 +130,15 @@ def get_seen(spec):
         )
     if is_post_fulu(spec):
         kwargs.update(
-            dict(
-                data_column_sidecar_tuples=set(),
-            )
+            {
+                "data_column_sidecar_tuples": set(),
+            }
         )
         if not is_post_gloas(spec):
             kwargs.update(
-                dict(
-                    partial_data_column_headers={},
-                )
+                {
+                    "partial_data_column_headers": {},
+                }
             )
     return spec.Seen(**kwargs)
 
