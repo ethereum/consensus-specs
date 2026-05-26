@@ -92,9 +92,10 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
   current branch corresponds to `message.inclusion_list_committee_root`, as
   determined by
   `hash_tree_root(inclusion_list_committee) == message.inclusion_list_committee_root`.
-- _[REJECT]_ The validator index `message.validator_index` is within the
-  `inclusion_list_committee` corresponding to
-  `message.inclusion_list_committee_root`.
+- _[REJECT]_ The message's validator index is within the inclusion list
+  committee in `get_inclusion_list_committee(state, data.slot)`. The `state` is
+  the head state corresponding to processing the block up to the current slot as
+  determined by the fork choice.
 - _[IGNORE]_ The `message` is either the first or second valid message received
   from the validator with index `message.validator_index`.
 - _[REJECT]_ The signature of `signed_inclusion_list.signature` is valid with
