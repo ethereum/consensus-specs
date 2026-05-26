@@ -10,6 +10,7 @@ from frozendict import frozendict
 from lru import LRU
 
 from eth_consensus_specs.utils import bls
+from eth_consensus_specs.utils.ckzg_utils import apply_ckzg_to_spec
 from tests.infra.yield_generator import MultiPhaseResult, vector_test
 
 from .exceptions import SkippedTest
@@ -351,11 +352,27 @@ def spec_state_test(fn):
     return spec_test(with_state(single_phase(fn)))
 
 
-def spec_configured_state_test(conf):
-    overrides = _with_config_overrides_emit(conf)
+def spec_configured_state_test(conf, *, activate_at_genesis: bool = False):
+    """
+    If ``activate_at_genesis`` is True, set the spec module's own ``*_FORK_EPOCH`` to
+    0 so the emitted ``config.cfg`` resolves the test's fork as the latest scheduled
+    activation. Useful for fixtures consumed by clients that resolve forks via
+    ``getForkName(slot)``. Entries in ``conf`` win on conflict.
+    """
+    if not activate_at_genesis:
+        overrides = _with_config_overrides_emit(conf)
+
+        def decorator(fn):
+            return spec_test(overrides(with_state(single_phase(fn))))
+
+        return decorator
 
     def decorator(fn):
-        return spec_test(overrides(with_state(single_phase(fn))))
+        def wrapper(*args, spec: Spec, **kw):
+            combined = {f"{spec.fork.upper()}_FORK_EPOCH": 0, **conf}
+            return _with_config_overrides_emit(combined)(fn)(*args, spec=spec, **kw)
+
+        return spec_test(with_state(single_phase(wrapper)))
 
     return decorator
 
@@ -742,6 +759,14 @@ def get_copy_of_spec(spec):
 
     # Preserve existing config overrides
     module.config = deepcopy(spec.config)
+
+    # Re-apply ckzg monkey-patches if the source spec had them. Without this,
+    # the freshly-loaded module falls back to the pure-Python KZG impl, which
+    # makes blob-heavy tests (e.g. anything that calls
+    # `compute_cells_and_kzg_proofs`) prohibitively slow.
+    ts = getattr(spec, "_ckzg_trusted_setup", None)
+    if ts is not None:
+        apply_ckzg_to_spec(module, ts)
 
     return module
 

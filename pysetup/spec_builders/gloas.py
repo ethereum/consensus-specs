@@ -36,7 +36,7 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
 
     @classmethod
     def deprecate_functions(cls) -> set[str]:
-        return {
+        return set(
             "compute_proposer_index",
             "get_activation_exit_churn_limit",
             "get_balance_churn_limit",
@@ -45,6 +45,9 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
             "retrieve_column_sidecars",
             "upgrade_to_fulu",
             "verify_partial_data_column_header_inclusion_proof",
+            # TODO(jtraglia): Temporarily deprecate these until we update them for Gloas.
+            "validate_data_column_sidecar_gossip",
+            "validate_partial_data_column_sidecar_gossip",
         }
 
     @classmethod

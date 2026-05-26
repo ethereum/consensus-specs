@@ -230,7 +230,7 @@ semantics MUST be preserved.
 
 ##### `get_slot_committee`
 
-*Note:* This function returns the committee for a specific slot. It MUST support
+*Note*: This function returns the committee for a specific slot. It MUST support
 committees of epochs starting from `current_epoch - 2`.
 
 ```python
@@ -266,7 +266,7 @@ def get_pulled_up_head_state(store: Store) -> BeaconState:
 
 ##### `get_previous_balance_source`
 
-*Note:* Reconfirmation is the only place where previous balance source is used.
+*Note*: Reconfirmation is the only place where previous balance source is used.
 Implementations MAY switch to the current epoch balance source after they run
 reconfirmation and before the logic to confirm new blocks is called. In this
 case implementations will need to keep only a single balance source around.
@@ -522,7 +522,7 @@ def get_adversarial_weight(store: Store, balance_source: BeaconState, block_root
 
 ##### `compute_empty_slot_support_discount`
 
-*Note:* This function MAY compute parent's block support and adversarial weight
+*Note*: This function MAY compute parent's block support and adversarial weight
 for empty slots belonging to `current_epoch - 2`. It can only happen in
 reconfirmation, in all other cases the earliest possible epoch is
 `current_epoch - 1`.
@@ -684,7 +684,7 @@ def is_confirmed_chain_safe(fcr_store: FastConfirmationStore, confirmed_root: Ro
 
 ##### `get_current_target_score`
 
-*Note:* This function uses LMD-GHOST votes to estimate the FFG support of the
+*Note*: This function uses LMD-GHOST votes to estimate the FFG support of the
 current epoch target. Due to the way the computation happens, it MUST be used no
 later than the end of the current epoch.
 
@@ -763,7 +763,7 @@ def compute_honest_ffg_support_for_current_target(store: Store) -> Gwei:
 
 ##### `will_no_conflicting_checkpoint_be_justified`
 
-*Note:* This function assumes that all honest validators will be voting in
+*Note*: This function assumes that all honest validators will be voting in
 support of the current epoch target starting from the current moment in time.
 
 ```python
@@ -784,7 +784,7 @@ def will_no_conflicting_checkpoint_be_justified(store: Store) -> bool:
 
 ##### `will_current_target_be_justified`
 
-*Note:* This function assumes that all honest validators will be voting in
+*Note*: This function assumes that all honest validators will be voting in
 support of the current epoch target starting from the current moment in time.
 
 ```python
@@ -800,7 +800,7 @@ def will_current_target_be_justified(store: Store) -> bool:
 
 #### `update_fast_confirmation_variables`
 
-*Note:* This function updates variables used by the fast confirmation rule.
+*Note*: This function updates variables used by the fast confirmation rule.
 
 ```python
 def update_fast_confirmation_variables(fcr_store: FastConfirmationStore) -> None:

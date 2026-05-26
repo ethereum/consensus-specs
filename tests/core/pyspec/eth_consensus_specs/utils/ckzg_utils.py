@@ -185,3 +185,7 @@ def apply_ckzg_to_spec(spec, ts):
             )
 
         spec.recover_cells_and_kzg_proofs = recover_cells_and_kzg_proofs
+
+    # Mark the spec module as ckzg-patched and remember its trusted setup so
+    # `get_copy_of_spec` can re-apply the same patches to fresh copies.
+    spec._ckzg_trusted_setup = ts

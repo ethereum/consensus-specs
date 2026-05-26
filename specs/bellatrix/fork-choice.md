@@ -92,7 +92,7 @@ MUST be set to the hash of a terminal PoW block in this case.
 ##### `safe_block_hash`
 
 The `safe_block_hash` parameter MUST be set to return value of
-[`get_safe_execution_block_hash(store: Store)`](../../fork_choice/safe-block.md#get_safe_execution_block_hash)
+[`get_safe_execution_block_hash(fcr_store)`](./fast-confirmation.md#get_safe_execution_block_hash)
 function.
 
 ##### `should_override_forkchoice_update`
