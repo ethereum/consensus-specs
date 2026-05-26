@@ -40,7 +40,7 @@ test = [
 ]
 lint = [
   "codespell==2.4.2",
-  "mdformat-frontmatter==2.0.10",
+  "mdformat-frontmatter==2.1.2",
   "mdformat-gfm-alerts==2.0.0",
   "mdformat-gfm==1.0.0",
   "mdformat-toc==0.5.0",
