@@ -232,7 +232,7 @@ def get_dependent_root(spec, state, slot):
     if epoch <= spec.MIN_SEED_LOOKAHEAD:
         dependent_slot = spec.GENESIS_SLOT
     else:
-        dependent_slot = spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD)
+        dependent_slot = spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD) - 1
 
     if dependent_slot > spec.GENESIS_SLOT:
         return spec.get_block_root_at_slot(state, dependent_slot)
