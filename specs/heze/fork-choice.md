@@ -173,9 +173,9 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 constraints SHOULD NOT be invalidated even if their associated `InclusionList`s
 have subsequently been pruned.
 
-*Note*: Invalid or equivocating `InclusionList`s received on the p2p network
-MUST NOT invalidate a payload that is otherwise valid and satisfies the
-inclusion list constraints.
+*Note*: Whether a payload satisfies the inclusion list constraints MUST NOT
+affect payload validation. A valid payload that fails to satisfy those
+constraints remains valid, but fork choice does not extend it.
 
 ```python
 def record_payload_inclusion_list_satisfaction(
