@@ -1052,6 +1052,63 @@ def test_gossip_execution_payload_bid__ignore_parent_block_unknown(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, state):
+    """A bid whose slot is not greater than its parent block's slot is rejected."""
+    yield "topic", "meta", "execution_payload_bid"
+
+    store, blocks, parent_root = setup_store_with_block(spec, state)
+    activate_builders(spec, state)
+    yield "state", state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    # Parent block is at state.slot. Build a bid for state.slot (same slot)
+    # so bid.slot == parent.slot triggers the new REJECT.
+    assert blocks[-1].message.slot == state.slot
+    builder_index = spec.BuilderIndex(0)
+    signed_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=builder_index,
+        slot=state.slot,
+        parent_block_hash=state.latest_block_hash,
+        parent_block_root=parent_root,
+        value=spec.Gwei(1),
+        valid_signature=False,
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    seen = get_seen(spec)
+    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 100
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
+    )
+    assert result == "reject"
+    assert reason == "bid's slot is not higher than its parent's slot"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_bid),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, state):
     """A bid whose parent_block_hash is not in seen.execution_payloads is ignored."""
     yield "topic", "meta", "execution_payload_bid"

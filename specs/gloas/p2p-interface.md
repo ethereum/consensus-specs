@@ -772,6 +772,10 @@ def validate_execution_payload_bid_gossip(
     if bid.parent_block_root not in store.blocks:
         raise GossipIgnore("bid's parent block root is not a known beacon block")
 
+    # [REJECT] The bid is for a higher slot than its parent block
+    if bid.slot <= store.blocks[bid.parent_block_root].slot:
+        raise GossipReject("bid's slot is not higher than its parent's slot")
+
     # [IGNORE] The bid's parent block hash is the hash of a known execution payload
     if bid.parent_block_hash not in seen.execution_payloads:
         raise GossipIgnore("bid's parent block hash is not a known execution payload")

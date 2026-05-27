@@ -599,7 +599,7 @@ def record_block_timeliness(store: Store, root: Root) -> None:
 ### Modified `update_proposer_boost_root`
 
 ```python
-def update_proposer_boost_root(store: Store, root: Root) -> None:
+def update_proposer_boost_root(store: Store, head: Root, root: Root) -> None:
     is_first_block = store.proposer_boost_root == Root()
     # [Modified in Gloas:EIP7732]
     is_timely = store.block_timeliness[root][ATTESTATION_TIMELINESS_INDEX]
@@ -607,7 +607,7 @@ def update_proposer_boost_root(store: Store, root: Root) -> None:
     # Add proposer score boost if the block is the first timely block
     # for this slot, with the same proposer as the canonical chain.
     if is_timely and is_first_block:
-        head_state = copy(store.block_states[get_head(store).root])
+        head_state = copy(store.block_states[head])
         slot = get_current_slot(store)
         if head_state.slot < slot:
             process_slots(head_state, slot)
@@ -883,6 +883,8 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block_root = hash_tree_root(block)
     state_transition(state, signed_block, validate_result=True)
 
+    # Compute head before applying the block
+    head = get_head(store)
     # Add new block to the store
     store.blocks[block_root] = block
     # Add new state for this block to the store
@@ -895,7 +897,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     notify_ptc_messages(store, state, block.body.payload_attestations)
 
     record_block_timeliness(store, block_root)
-    update_proposer_boost_root(store, block_root)
+    update_proposer_boost_root(store, head.root, block_root)
 
     # Update checkpoints in store if necessary
     update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
