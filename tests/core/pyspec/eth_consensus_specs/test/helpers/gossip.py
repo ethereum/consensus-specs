@@ -1,14 +1,7 @@
 import inspect
+from typing import get_origin, get_type_hints
 
 from eth_utils import encode_hex
-
-from eth_consensus_specs.test.helpers.forks import (
-    is_post_altair,
-    is_post_capella,
-    is_post_deneb,
-    is_post_fulu,
-    is_post_gloas,
-)
 
 PAYLOAD_STATUS_VALID = "VALID"
 PAYLOAD_STATUS_INVALIDATED = "INVALIDATED"
@@ -172,57 +165,5 @@ def run_validate_gossip(spec, seen, store=None, state=None, message=None, **kwar
 
 
 def get_seen(spec):
-    """Create an empty Seen object for gossip validation."""
-    kwargs = {
-        "proposer_slots": set(),
-        "aggregator_epochs": set(),
-        "aggregate_data_roots": {},
-        "voluntary_exit_indices": set(),
-        "proposer_slashing_indices": set(),
-        "attester_slashing_indices": set(),
-        "attestation_validator_epochs": set(),
-    }
-    if is_post_altair(spec):
-        kwargs.update(
-            {
-                "sync_contribution_aggregator_slots": set(),
-                "sync_contribution_data": {},
-                "sync_message_validator_slots": set(),
-            }
-        )
-    if is_post_capella(spec):
-        kwargs.update(
-            {
-                "bls_to_execution_change_indices": set(),
-            }
-        )
-    if is_post_deneb(spec) and not is_post_fulu(spec):
-        kwargs.update(
-            {
-                "blob_sidecar_tuples": set(),
-            }
-        )
-    if is_post_fulu(spec):
-        kwargs.update(
-            {
-                "data_column_sidecar_tuples": set(),
-            }
-        )
-        if not is_post_gloas(spec):
-            kwargs.update(
-                {
-                    "partial_data_column_headers": {},
-                }
-            )
-    if is_post_gloas(spec):
-        kwargs.update(
-            {
-                "execution_payloads": {},
-                "execution_payload_envelopes": set(),
-                "payload_attestation_validators": set(),
-                "execution_payload_bids": set(),
-                "best_execution_payload_bid": {},
-                "proposer_preferences": {},
-            }
-        )
-    return spec.Seen(**kwargs)
+    """Create an empty Seen object by instantiating each annotated field's container type."""
+    return spec.Seen(**{name: get_origin(t)() for name, t in get_type_hints(spec.Seen).items()})
