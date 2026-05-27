@@ -496,29 +496,24 @@ def should_apply_proposer_boost(store: Store) -> bool:
 
 ```python
 def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
-    if node.payload_status == PAYLOAD_STATUS_PENDING or store.blocks[
-        node.root
-    ].slot + 1 != get_current_slot(store):
-        state = store.checkpoint_states[store.justified_checkpoint]
-        attestation_score = get_attestation_score(store, node, state)
-        # [Modified in Gloas:EIP7732]
-        if not should_apply_proposer_boost(store):
-            # Return only attestation score if proposer boost should not apply
-            return attestation_score
-
-        # Calculate proposer score if proposer boost should apply
-        proposer_score = Gwei(0)
-        # [Modified in Gloas:EIP7732]
-        proposer_boost_node = ForkChoiceNode(
-            root=store.proposer_boost_root, payload_status=PAYLOAD_STATUS_PENDING
-        )
-        # Boost is applied if ``node`` is an ancestor of ``proposer_boost_node``
-        if is_ancestor(store, proposer_boost_node, node):
-            proposer_score = get_proposer_score(store)
-
-        return attestation_score + proposer_score
-    else:
-        return Gwei(0)
+    state = store.checkpoint_states[store.justified_checkpoint]
+    attestation_score = get_attestation_score(store, node, state)
+    # [Modified in Gloas:EIP7732]
+    if not should_apply_proposer_boost(store):
+        # Return only attestation score if proposer boost should not apply
+        return attestation_score
+    
+    # Calculate proposer score if proposer boost should apply
+    proposer_score = Gwei(0)
+    # [Modified in Gloas:EIP7732]
+    proposer_boost_node = ForkChoiceNode(
+        root=store.proposer_boost_root, payload_status=PAYLOAD_STATUS_PENDING
+    )
+    # Boost is applied if ``node`` is an ancestor of ``proposer_boost_node``
+    if is_ancestor(store, proposer_boost_node, node):
+        proposer_score = get_proposer_score(store)
+    
+    return attestation_score + proposer_score
 ```
 
 ### Modified `get_node_children`
