@@ -46,9 +46,9 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 
 *Note*: The execution values are not definitive.
 
-| Name             | Value                               |
-| ---------------- | ----------------------------------- |
-| `MAX_PROOF_SIZE` | `1376256` (= 1,344 KiB, 1.3125 MiB) |
+| Name             | Value                          |
+| ---------------- | ------------------------------ |
+| `MAX_PROOF_SIZE` | `4194304` (= 4,096 KiB, 4 MiB) |
 
 ### Domains
 

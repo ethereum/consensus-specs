@@ -82,13 +82,15 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
     fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=75)
 
     # Check the head is confirmed
-    assert fcr_store.confirmed_root == fcr.head()
+    assert fcr_store.confirmed_root == fcr.head_root()
 
     # But if there were no slashings, first block in Epoch 3 couldn't be confirmed at this stage
     epoch_3_first_block = spec.get_ancestor(store, fcr.head(), 3 * S + 1)
     balance_source = spec.get_current_balance_source(fcr_store)
     support = spec.get_attestation_score(store, epoch_3_first_block, balance_source)
-    safety_threshold = spec.compute_safety_threshold(store, epoch_3_first_block, balance_source)
+    safety_threshold = spec.compute_safety_threshold(
+        store, epoch_3_first_block.root, balance_source
+    )
 
     # Compute slashed balance
     # 25% of 2 slots * (len(validators) // SLOTS_PER_EPOCH * effective_balance)
@@ -102,12 +104,12 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
     SlotSequence(end_slot=(4 * S - 1), attesting=Attesting(participation_rate=100)).execute(fcr)
 
     # Check the head was confirmed
-    assert fcr_store.confirmed_root == fcr.head()
+    assert fcr_store.confirmed_root == fcr.head_root()
 
     # Run to the start of Epoch 4 with no block
     fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=100)
 
     # Check reconfirmation passed
-    assert fcr_store.confirmed_root == fcr.head()
+    assert fcr_store.confirmed_root == fcr.head_root()
 
     yield from fcr.get_test_artefacts()

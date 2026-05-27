@@ -60,7 +60,6 @@ def is_inclusion_list_satisfied(
     Return ``True`` if and only if ``execution_payload`` satisfies the inclusion
     list constraints with respect to ``inclusion_list_transactions``.
     """
-    ...
 ```
 
 #### Modified `notify_forkchoice_updated`

@@ -2,6 +2,7 @@ from eth_utils import encode_hex
 
 from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
+    is_post_bellatrix,
     is_post_capella,
     is_post_deneb,
     is_post_fulu,
@@ -20,9 +21,6 @@ def wrap_genesis_block(spec, block):
 
 def get_spec_block_payload_statuses(spec, block_payload_statuses):
     spec_block_payload_statuses = {}
-    if block_payload_statuses is None:
-        return spec_block_payload_statuses
-
     for block_root, payload_status in block_payload_statuses.items():
         if payload_status == PAYLOAD_STATUS_VALID:
             spec_block_payload_statuses[block_root] = spec.PAYLOAD_STATUS_VALID
@@ -44,9 +42,9 @@ def run_validate_beacon_block_gossip(
              and reason is the exception message (or None for valid).
     """
     kwargs = {}
-    if block_payload_statuses is not None:
+    if is_post_bellatrix(spec):
         kwargs["block_payload_statuses"] = get_spec_block_payload_statuses(
-            spec, block_payload_statuses
+            spec, block_payload_statuses or {}
         )
     try:
         spec.validate_beacon_block_gossip(
@@ -69,7 +67,7 @@ def run_validate_data_column_sidecar_gossip(
     """
     try:
         spec.validate_data_column_sidecar_gossip(
-            seen, store, state, sidecar, subnet_id, current_time_ms
+            seen, store, state, sidecar, current_time_ms, subnet_id
         )
         return "valid", None
     except spec.GossipIgnore as e:
@@ -99,46 +97,46 @@ def run_validate_partial_data_column_sidecar_gossip(
 
 def get_seen(spec):
     """Create an empty Seen object for gossip validation."""
-    kwargs = dict(
-        proposer_slots=set(),
-        aggregator_epochs=set(),
-        aggregate_data_roots={},
-        voluntary_exit_indices=set(),
-        proposer_slashing_indices=set(),
-        attester_slashing_indices=set(),
-        attestation_validator_epochs=set(),
-    )
+    kwargs = {
+        "proposer_slots": set(),
+        "aggregator_epochs": set(),
+        "aggregate_data_roots": {},
+        "voluntary_exit_indices": set(),
+        "proposer_slashing_indices": set(),
+        "attester_slashing_indices": set(),
+        "attestation_validator_epochs": set(),
+    }
     if is_post_altair(spec):
         kwargs.update(
-            dict(
-                sync_contribution_aggregator_slots=set(),
-                sync_contribution_data={},
-                sync_message_validator_slots=set(),
-            )
+            {
+                "sync_contribution_aggregator_slots": set(),
+                "sync_contribution_data": {},
+                "sync_message_validator_slots": set(),
+            }
         )
     if is_post_capella(spec):
         kwargs.update(
-            dict(
-                bls_to_execution_change_indices=set(),
-            )
+            {
+                "bls_to_execution_change_indices": set(),
+            }
         )
     if is_post_deneb(spec) and not is_post_fulu(spec):
         kwargs.update(
-            dict(
-                blob_sidecar_tuples=set(),
-            )
+            {
+                "blob_sidecar_tuples": set(),
+            }
         )
     if is_post_fulu(spec):
         kwargs.update(
-            dict(
-                data_column_sidecar_tuples=set(),
-            )
+            {
+                "data_column_sidecar_tuples": set(),
+            }
         )
         if not is_post_gloas(spec):
             kwargs.update(
-                dict(
-                    partial_data_column_headers={},
-                )
+                {
+                    "partial_data_column_headers": {},
+                }
             )
     return spec.Seen(**kwargs)
 

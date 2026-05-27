@@ -47,10 +47,10 @@ def test_should_override_forkchoice_update__false(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
-    assert spec.get_head(store) == signed_block.message.hash_tree_root()
+    assert spec.get_head(store).root == signed_block.message.hash_tree_root()
 
     # Proposer of next slot
-    head_root = spec.get_head(store)
+    head_root = spec.get_head(store).root
 
     # Next slot
     next_slot(spec, state)
@@ -100,7 +100,7 @@ def test_should_override_forkchoice_update__true(spec, state):
     # Fill epoch 1 to 3
     for _ in range(3):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
@@ -114,7 +114,7 @@ def test_should_override_forkchoice_update__true(spec, state):
 
     # Fill a slot (parent)
     state, store, signed_parent_block = yield from apply_next_slots_with_attestations(
-        spec, state, store, 1, True, True, test_steps
+        spec, state, store, 1, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
     )
 
     # Fill a slot with attestations to its parent
@@ -141,7 +141,7 @@ def test_should_override_forkchoice_update__true(spec, state):
     assert spec.get_current_slot(store) == block.slot
 
     # Check conditions
-    head_root = spec.get_head(store)
+    head_root = spec.get_head(store).root
     head_block = store.blocks[head_root]
     parent_root = head_block.parent_root
     assert parent_root == signed_parent_block.message.hash_tree_root()
@@ -178,7 +178,9 @@ def test_should_override_forkchoice_update__true(spec, state):
     parent_slot_ok = parent_block.slot + 1 == head_block.slot
     proposing_on_time = spec.is_proposing_on_time(store)
     assert proposing_on_time
-    assert parent_slot_ok and proposal_slot == current_slot and proposing_on_time
+    assert parent_slot_ok
+    assert proposal_slot == current_slot
+    assert proposing_on_time
 
     assert spec.is_head_weak(store, head_root)
     assert spec.is_parent_strong(store, head_root)

@@ -152,9 +152,9 @@ def randomize_epoch_participation(spec, state, epoch, rng):
             set_flag(spec.TIMELY_HEAD_FLAG_INDEX, is_timely_correct_head)
             if is_timely_correct_head:
                 # If timely head, then must be timely target
-                set_flag(spec.TIMELY_TARGET_FLAG_INDEX, True)
+                set_flag(spec.TIMELY_TARGET_FLAG_INDEX, value=True)
                 # If timely head, then must be timely source
-                set_flag(spec.TIMELY_SOURCE_FLAG_INDEX, True)
+                set_flag(spec.TIMELY_SOURCE_FLAG_INDEX, value=True)
             else:
                 # ~50% of remaining have bad target or not timely enough
                 set_flag(spec.TIMELY_TARGET_FLAG_INDEX, rng.choice([True, False]))

@@ -64,7 +64,9 @@ def run_fork_test(post_spec, pre_state):
         assert not hasattr(post_state, field)
 
     assert len(pre_state.validators) == len(post_state.validators)
-    for pre_validator, post_validator in zip(pre_state.validators, post_state.validators):
+    for pre_validator, post_validator in zip(
+        pre_state.validators, post_state.validators, strict=False
+    ):
         stable_validator_fields = [
             "pubkey",
             "withdrawal_credentials",

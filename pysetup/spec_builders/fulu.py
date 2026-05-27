@@ -1,4 +1,5 @@
-from ..constants import FULU
+from pysetup.constants import FULU
+
 from .base import BaseSpecBuilder
 
 
@@ -42,31 +43,26 @@ class CosetEvals(list):
 
     @classmethod
     def deprecate_containers(cls) -> set[str]:
-        return set(
-            [
-                "BlobIdentifier",
-                "BlobSidecar",
-            ]
-        )
+        return {
+            "BlobIdentifier",
+            "BlobSidecar",
+        }
 
     @classmethod
     def deprecate_functions(cls) -> set[str]:
-        return set(
-            [
-                "compute_max_request_blob_sidecars",
-                "compute_subnet_for_blob_sidecar",
-                "get_blob_sidecars",
-                "upgrade_to_electra",
-                "validate_blob_sidecar_gossip",
-                "verify_blob_sidecar_inclusion_proof",
-            ]
-        )
+        return {
+            "compute_max_request_blob_sidecars",
+            "compute_subnet_for_blob_sidecar",
+            "get_blob_sidecars",
+            "upgrade_to_electra",
+            "validate_blob_sidecar_gossip",
+            "verify_blob_sidecar_inclusion_proof",
+        }
 
     @classmethod
     def sundry_functions(cls) -> str:
         return """
 def retrieve_column_sidecars(beacon_block_root: Root) -> Sequence[DataColumnSidecar]:
-    # pylint: disable=unused-argument
     return []
 """
 
