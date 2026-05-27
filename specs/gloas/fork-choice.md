@@ -911,7 +911,6 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Compute head before applying the block
     head = get_head(store)
-
     # Add new block to the store
     store.blocks[block_root] = block
     # Add new state for this block to the store
