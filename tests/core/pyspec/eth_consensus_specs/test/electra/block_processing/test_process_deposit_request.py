@@ -11,6 +11,7 @@ from eth_consensus_specs.test.helpers.constants import (
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_deposit_request,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from tests.infra.helpers.deposit_requests import (
     assert_process_deposit_request,
     prepare_process_deposit_request,
@@ -268,14 +269,17 @@ def test_process_deposit_request_eth1_credentials(spec, state):
 @spec_state_test
 def test_process_deposit_request_pending_deposit_slot_binding(spec, state):
     """
-    Test that pending_deposit.slot equals state.slot.
+    Test that pending_deposit.slot equals the EL block slot:
+    - state.slot pre-Gloas
+    - state.latest_execution_payload_bid.slot in Gloas+ (deposits are read
+      from the parent block's execution payload)
 
     Input State Configured:
         - State advanced to non-zero slot
         - New validator deposit
 
     Output State Verified:
-        - pending_deposit.slot == state.slot
+        - pending_deposit.slot == expected EL block slot
     """
     amount = spec.MIN_ACTIVATION_BALANCE
 
@@ -284,8 +288,11 @@ def test_process_deposit_request_pending_deposit_slot_binding(spec, state):
         spec, state, amount=amount, signed=True, advance_epochs=2
     )
 
-    expected_slot = state.slot
-    assert expected_slot > 0  # Ensure non-zero slot for meaningful test
+    if is_post_gloas(spec):
+        expected_slot = state.latest_execution_payload_bid.slot
+    else:
+        expected_slot = state.slot
+        assert expected_slot > 0  # Ensure non-zero slot for meaningful test
 
     pre_state = state.copy()
 

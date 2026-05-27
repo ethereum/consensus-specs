@@ -88,7 +88,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
         withdrawal_credentials=deposit_request.withdrawal_credentials,
         amount=deposit_request.amount,
         signature=deposit_request.signature,
-        slot=child_block.slot,
+        slot=deposit_block.slot,
     )
     assert state.pending_deposits == [pending_deposit]
 

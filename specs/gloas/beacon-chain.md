@@ -1591,6 +1591,9 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     validator_pubkeys = [v.pubkey for v in state.validators]
 
     # [New in Gloas:EIP7732]
+    deposit_slot = state.latest_execution_payload_bid.slot
+
+    # [New in Gloas:EIP7732]
     # Regardless of the withdrawal credentials prefix, if a builder/validator
     # already exists with this pubkey, apply the deposit to their balance
     is_builder = deposit_request.pubkey in builder_pubkeys
@@ -1607,7 +1610,7 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
             deposit_request.withdrawal_credentials,
             deposit_request.amount,
             deposit_request.signature,
-            state.slot,
+            deposit_slot,
         )
         return
 
@@ -1618,7 +1621,7 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
             withdrawal_credentials=deposit_request.withdrawal_credentials,
             amount=deposit_request.amount,
             signature=deposit_request.signature,
-            slot=state.slot,
+            slot=deposit_slot,
         )
     )
 ```

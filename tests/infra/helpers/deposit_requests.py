@@ -208,7 +208,9 @@ def assert_process_deposit_request(
     INVARIANT CHECKS FOR VALIDATOR DEPOSITS (always run):
     - pending_deposits increases by exactly 1
     - New pending deposit has correct pubkey, withdrawal_credentials, amount, signature
-    - New pending deposit slot equals state.slot
+    - New pending deposit slot equals state.slot pre-Gloas, or
+      state.latest_execution_payload_bid.slot in Gloas+ (deposits are processed
+      from the parent block's execution payload)
     - deposit_requests_start_index is set only if previously UNSET (Electra/Fulu only)
     - Validator count unchanged (validators created during epoch processing)
     - Balances unchanged (balance applied during epoch processing)
@@ -439,10 +441,18 @@ def assert_process_deposit_request(
             "Pending deposit signature must match deposit request"
         )
 
-        # INVARIANT: New pending deposit slot equals state.slot (at time of processing)
-        assert new_pending_deposit.slot == state.slot, (
-            f"Pending deposit slot must equal state.slot: "
-            f"deposit.slot={new_pending_deposit.slot}, state.slot={state.slot}"
+        # INVARIANT: New pending deposit slot equals the EL block slot:
+        # state.slot pre-Gloas, state.latest_execution_payload_bid.slot in Gloas+
+        # (deposit requests are read from the parent block's execution payload).
+        if is_post_gloas(spec):
+            expected_slot = state.latest_execution_payload_bid.slot
+            slot_field_name = "state.latest_execution_payload_bid.slot"
+        else:
+            expected_slot = state.slot
+            slot_field_name = "state.slot"
+        assert new_pending_deposit.slot == expected_slot, (
+            f"Pending deposit slot must equal {slot_field_name}: "
+            f"deposit.slot={new_pending_deposit.slot}, expected={expected_slot}"
         )
 
         # INVARIANT: deposit_requests_start_index logic (Electra/Fulu only, removed in Gloas)
