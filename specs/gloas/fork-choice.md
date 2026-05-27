@@ -398,7 +398,7 @@ def get_supported_node(store: Store, message: LatestMessage) -> ForkChoiceNode:
     else:
         payload_status = PAYLOAD_STATUS_PENDING
 
-    # [Modified in Gloas:7732]
+    # [Modified in Gloas:EIP7732]
     return ForkChoiceNode(root=message.root, payload_status=payload_status)
 ```
 
@@ -504,10 +504,10 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
         # [Modified in Gloas:EIP7732]
         if not should_apply_proposer_boost(store):
             # Return only attestation score if
-            # proposer boost should not apply
+            # Return only attestation score if proposer boost should not apply
             return attestation_score
 
-        # Calculate proposer score if `proposer_boost_root` is set
+        # Calculate proposer score if proposer boost should apply
         proposer_score = Gwei(0)
         # [Modified in Gloas:EIP7732]
         proposer_boost_node = ForkChoiceNode(
