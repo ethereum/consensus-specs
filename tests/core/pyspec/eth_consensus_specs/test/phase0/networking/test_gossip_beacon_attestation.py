@@ -52,7 +52,7 @@ def run_validate_beacon_attestation_gossip(
     """
     try:
         spec.validate_beacon_attestation_gossip(
-            seen, store, state, attestation, subnet_id, current_time_ms
+            seen, store, state, attestation, current_time_ms, subnet_id
         )
         return "valid", None
     except spec.GossipIgnore as e:
