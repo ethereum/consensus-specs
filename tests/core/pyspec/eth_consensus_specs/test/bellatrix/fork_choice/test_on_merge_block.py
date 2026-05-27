@@ -81,7 +81,7 @@ def test_all_valid(spec, state):
         signed_block = state_transition_and_sign_block(spec, state, block)
         yield from tick_and_add_block(spec, store, signed_block, test_steps, merge_block=True)
         # valid
-        assert spec.get_head(store) == signed_block.message.hash_tree_root()
+        assert spec.get_head(store).root == signed_block.message.hash_tree_root()
 
     yield from with_pow_block_patch(spec, pow_blocks, run_func)
     yield "steps", test_steps

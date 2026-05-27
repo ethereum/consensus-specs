@@ -25,7 +25,6 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     on_tick_and_append_step,
     tick_and_add_block,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
     next_slot,
@@ -86,10 +85,7 @@ def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         check_head_against_root(spec, store, signed_block.message.hash_tree_root())
 
-    if is_post_gloas(spec):
-        head_root = spec.get_head(store).root
-    else:
-        head_root = spec.get_head(store)
+    head_root = spec.get_head(store).root
     state = store.block_states[head_root].copy()
 
     assert state.current_justified_checkpoint.epoch == 3
@@ -221,10 +217,7 @@ def _run_delayed_justification(spec, state, attempted_reorg, is_justifying_previ
     assert spec.compute_epoch_at_slot(justifying_slot) == spec.get_current_epoch(state)
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-    if is_post_gloas(spec):
-        head_root = spec.get_head(store).root
-    else:
-        head_root = spec.get_head(store)
+    head_root = spec.get_head(store).root
     state = store.block_states[head_root].copy()
     if is_justifying_previous_epoch:
         assert state.current_justified_checkpoint.epoch == 2

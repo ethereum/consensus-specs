@@ -71,7 +71,7 @@ def test_on_block_peerdas__ok(spec, state):
 
     yield from tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data)
 
-    assert spec.get_head(store) == signed_block.message.hash_tree_root()
+    assert spec.get_head(store).root == signed_block.message.hash_tree_root()
 
     # On receiving a block of next epoch
     _, _, _, signed_block, sidecars, kzg_commitments = get_block_with_blob_and_sidecars(
@@ -81,7 +81,7 @@ def test_on_block_peerdas__ok(spec, state):
 
     yield from tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data)
 
-    assert spec.get_head(store) == signed_block.message.hash_tree_root()
+    assert spec.get_head(store).root == signed_block.message.hash_tree_root()
 
     yield "steps", test_steps
 
@@ -111,7 +111,7 @@ def run_on_block_peerdas_invalid_test(spec, state, fn):
     yield from tick_and_add_block_with_data(
         spec, store, signed_block, test_steps, blob_data, valid=False
     )
-    assert spec.get_head(store) != signed_block.message.hash_tree_root()
+    assert spec.get_head(store).root != signed_block.message.hash_tree_root()
 
     yield "steps", test_steps
 

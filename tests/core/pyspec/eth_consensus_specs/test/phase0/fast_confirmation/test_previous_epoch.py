@@ -23,11 +23,14 @@ from eth_consensus_specs.test.helpers.fast_confirmation import (
     SlotRun,
     SlotSequence,
 )
+from eth_consensus_specs.test.helpers.fork_choice import (
+    is_ancestor,
+)
 
 
 @dataclass
 class PreviousEpochTestSpecification:
-    prev_head_ancestor: bool  # is_ancestor(store, fcr_store.previous_slot_head, block_root)
+    prev_head_ancestor: bool  # is_ancestor(store, spec.get_node_for_root(fcr_store.previous_slot_head), spec.get_node_for_root((block_root))
     first_slot_call: bool  # is_start_slot_at_epoch(get_current_slot(store))
     is_one_confirmed: bool  # is_one_confirmed(store, get_current_balance_source(store), block_root)
     no_conflicting_chkp: bool  # will_no_conflicting_checkpoint_be_justified(store)
@@ -42,7 +45,7 @@ class PreviousEpochTestSpecification:
 
     def get_prev_epoch_canonical_roots(self, spec, fcr_store):
         store = fcr_store.store
-        head = spec.get_head(store)
+        head = spec.get_head(store).root
         current_epoch = spec.get_current_store_epoch(store)
         canonical_roots = spec.get_ancestor_roots(store, head, fcr_store.confirmed_root)
         return [
@@ -53,7 +56,7 @@ class PreviousEpochTestSpecification:
 
     def verify_preconditions(self, spec, fcr_store):
         store = fcr_store.store
-        head = spec.get_head(store)
+        head = spec.get_head(store).root
         current_epoch = spec.get_current_store_epoch(store)
         current_slot = spec.get_current_slot(store)
         confirmed_epoch = spec.get_block_epoch(store, fcr_store.confirmed_root)
@@ -77,7 +80,7 @@ class PreviousEpochTestSpecification:
             spec.get_voting_source(store, will_be_prev_slot_head).epoch + 2 >= current_epoch
         )
         assert self.prev_head_ancestor == (
-            spec.is_ancestor(store, will_be_prev_slot_head, prev_epoch_canonical_roots[0])
+            is_ancestor(spec, store, will_be_prev_slot_head, prev_epoch_canonical_roots[0])
         )
         assert self.block_vs_fresh == (
             spec.get_voting_source(store, prev_epoch_canonical_roots[0]).epoch + 2 >= current_epoch
@@ -95,7 +98,7 @@ class PreviousEpochTestSpecification:
 
     def get_last_one_confirmed_block(self, spec, fcr_store):
         store = fcr_store.store
-        head = spec.get_head(store)
+        head = spec.get_head(store).root
         canonical_roots = spec.get_ancestor_roots(store, head, fcr_store.confirmed_root)
         balance_source = spec.get_current_balance_source(fcr_store)
         confirmed_root = fcr_store.confirmed_root

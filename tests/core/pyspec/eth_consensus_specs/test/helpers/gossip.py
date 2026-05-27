@@ -67,7 +67,7 @@ def run_validate_data_column_sidecar_gossip(
     """
     try:
         spec.validate_data_column_sidecar_gossip(
-            seen, store, state, sidecar, subnet_id, current_time_ms
+            seen, store, state, sidecar, current_time_ms, subnet_id
         )
         return "valid", None
     except spec.GossipIgnore as e:

@@ -359,8 +359,8 @@ def validate_data_column_sidecar_gossip(
     store: Store,
     state: BeaconState,
     sidecar: DataColumnSidecar,
-    subnet_id: SubnetID,
     current_time_ms: uint64,
+    subnet_id: SubnetID,
 ) -> None:
     """
     Validate a DataColumnSidecar for gossip propagation on a subnet.

@@ -664,9 +664,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
     assert spec.compute_epoch_at_slot(last_fork_block.slot) == 6
 
     # Store the head before adding the fork to the store
-    correct_head = spec.get_head(store)
-    if is_post_gloas(spec):
-        correct_head = correct_head.root
+    correct_head = spec.get_head(store).root
 
     # Now add the fork to the store
     for signed_block in signed_blocks:

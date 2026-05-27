@@ -29,6 +29,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     apply_next_slots_with_attestations,
     check_head_against_root,
     find_next_justifying_slot,
+    get_fork_choice_node,
     get_genesis_forkchoice_store_and_block,
     is_ready_to_justify,
     on_tick_and_append_step,
@@ -536,14 +537,8 @@ def test_proposer_boost(spec, state):
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
-    if is_post_gloas(spec):
-        node = spec.ForkChoiceNode(
-            root=spec.hash_tree_root(block),
-            payload_status=spec.PAYLOAD_STATUS_PENDING,
-        )
-        assert spec.get_weight(store, node) > 0
-    else:
-        assert spec.get_weight(store, spec.hash_tree_root(block)) > 0
+    node = get_fork_choice_node(spec, spec.hash_tree_root(block))
+    assert spec.get_weight(store, node) > 0
 
     # Ensure that boost is removed after slot is over
     time = (
@@ -553,14 +548,8 @@ def test_proposer_boost(spec, state):
     )
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
-    if is_post_gloas(spec):
-        node = spec.ForkChoiceNode(
-            root=spec.hash_tree_root(block),
-            payload_status=spec.PAYLOAD_STATUS_PENDING,
-        )
-        assert spec.get_weight(store, node) == 0
-    else:
-        assert spec.get_weight(store, spec.hash_tree_root(block)) == 0
+    node = get_fork_choice_node(spec, spec.hash_tree_root(block))
+    assert spec.get_weight(store, node) == 0
 
     next_slots(spec, state, 3)
     block = build_empty_block_for_next_slot(spec, state)
@@ -571,14 +560,8 @@ def test_proposer_boost(spec, state):
     on_tick_and_append_step(spec, store, time, test_steps)
     yield from add_block(spec, store, signed_block, test_steps)
     assert store.proposer_boost_root == spec.hash_tree_root(block)
-    if is_post_gloas(spec):
-        node = spec.ForkChoiceNode(
-            root=spec.hash_tree_root(block),
-            payload_status=spec.PAYLOAD_STATUS_PENDING,
-        )
-        assert spec.get_weight(store, node) > 0
-    else:
-        assert spec.get_weight(store, spec.hash_tree_root(block)) > 0
+    node = get_fork_choice_node(spec, spec.hash_tree_root(block))
+    assert spec.get_weight(store, node) > 0
 
     # Ensure that boost is removed after slot is over
     time = (
@@ -588,14 +571,8 @@ def test_proposer_boost(spec, state):
     )
     on_tick_and_append_step(spec, store, time, test_steps)
     assert store.proposer_boost_root == spec.Root()
-    if is_post_gloas(spec):
-        node = spec.ForkChoiceNode(
-            root=spec.hash_tree_root(block),
-            payload_status=spec.PAYLOAD_STATUS_PENDING,
-        )
-        assert spec.get_weight(store, node) == 0
-    else:
-        assert spec.get_weight(store, spec.hash_tree_root(block)) == 0
+    node = get_fork_choice_node(spec, spec.hash_tree_root(block))
+    assert spec.get_weight(store, node) == 0
 
     test_steps.append(
         {
@@ -682,14 +659,8 @@ def test_proposer_boost_is_first_block(spec, state):
     yield from add_block(spec, store, signed_block_a, test_steps)
     # `proposer_boost_root` is now `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
-    if is_post_gloas(spec):
-        node = spec.ForkChoiceNode(
-            root=spec.hash_tree_root(block_a),
-            payload_status=spec.PAYLOAD_STATUS_PENDING,
-        )
-        assert spec.get_weight(store, node) > 0
-    else:
-        assert spec.get_weight(store, spec.hash_tree_root(block_a)) > 0
+    node_a = get_fork_choice_node(spec, spec.hash_tree_root(block_a))
+    assert spec.get_weight(store, node_a) > 0
     test_steps.append(
         {
             "checks": {
@@ -706,14 +677,8 @@ def test_proposer_boost_is_first_block(spec, state):
     yield from add_block(spec, store, signed_block_b, test_steps)
     # `proposer_boost_root` is still `block_a`
     assert store.proposer_boost_root == spec.hash_tree_root(block_a)
-    if is_post_gloas(spec):
-        node = spec.ForkChoiceNode(
-            root=spec.hash_tree_root(block_b),
-            payload_status=spec.PAYLOAD_STATUS_PENDING,
-        )
-        assert spec.get_weight(store, node) == 0
-    else:
-        assert spec.get_weight(store, spec.hash_tree_root(block_b)) == 0
+    node_b = get_fork_choice_node(spec, spec.hash_tree_root(block_b))
+    assert spec.get_weight(store, node_b) == 0
     test_steps.append(
         {
             "checks": {
@@ -1228,10 +1193,7 @@ def test_justified_update_not_realized_finality(spec, state):
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
 
     # We'll make the current head block the finalized block
-    if is_post_gloas(spec):
-        finalized_root = spec.get_head(store).root
-    else:
-        finalized_root = spec.get_head(store)
+    finalized_root = spec.get_head(store).root
     finalized_block = store.blocks[finalized_root]
     assert spec.compute_epoch_at_slot(finalized_block.slot) == 4
     check_head_against_root(spec, store, finalized_root)
@@ -1274,9 +1236,9 @@ def test_justified_update_not_realized_finality(spec, state):
     assert store.finalized_checkpoint.epoch == 4
     last_block = signed_blocks[-1]
     last_block_root = last_block.message.hash_tree_root()
-    ancestor_at_finalized_slot = spec.get_ancestor(store, last_block_root, finalized_block.slot)
-    if is_post_gloas(spec):
-        ancestor_at_finalized_slot = ancestor_at_finalized_slot.root
+    ancestor_at_finalized_slot = spec.get_ancestor(
+        store, get_fork_choice_node(spec, last_block_root), finalized_block.slot
+    ).root
 
     assert ancestor_at_finalized_slot == store.finalized_checkpoint.root
 
@@ -1321,10 +1283,7 @@ def test_justified_update_monotonic(spec, state):
     assert store.finalized_checkpoint.epoch == 2
 
     # We'll eventually make the current head block the finalized block
-    if is_post_gloas(spec):
-        finalized_root = spec.get_head(store).root
-    else:
-        finalized_root = spec.get_head(store)
+    finalized_root = spec.get_head(store).root
     finalized_block = store.blocks[finalized_root]
     assert spec.compute_epoch_at_slot(finalized_block.slot) == 4
     check_head_against_root(spec, store, finalized_root)
@@ -1358,9 +1317,9 @@ def test_justified_update_monotonic(spec, state):
     assert store.finalized_checkpoint.epoch == 2
     last_block = signed_blocks[-1]
     last_block_root = last_block.message.hash_tree_root()
-    ancestor_at_finalized_slot = spec.get_ancestor(store, last_block_root, finalized_block.slot)
-    if is_post_gloas(spec):
-        ancestor_at_finalized_slot = ancestor_at_finalized_slot.root
+    ancestor_at_finalized_slot = spec.get_ancestor(
+        store, get_fork_choice_node(spec, last_block_root), finalized_block.slot
+    ).root
     assert ancestor_at_finalized_slot == finalized_root
 
     # Create a fork with lower justification that also finalizes our chosen block
@@ -1416,10 +1375,7 @@ def test_justified_update_always_if_better(spec, state):
     assert store.finalized_checkpoint.epoch == 2
 
     # We'll eventually make the current head block the finalized block
-    if is_post_gloas(spec):
-        finalized_root = spec.get_head(store).root
-    else:
-        finalized_root = spec.get_head(store)
+    finalized_root = spec.get_head(store).root
     finalized_block = store.blocks[finalized_root]
     assert spec.compute_epoch_at_slot(finalized_block.slot) == 4
     check_head_against_root(spec, store, finalized_root)

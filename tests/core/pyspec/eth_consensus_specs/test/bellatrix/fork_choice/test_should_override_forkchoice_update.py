@@ -47,10 +47,10 @@ def test_should_override_forkchoice_update__false(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
-    assert spec.get_head(store) == signed_block.message.hash_tree_root()
+    assert spec.get_head(store).root == signed_block.message.hash_tree_root()
 
     # Proposer of next slot
-    head_root = spec.get_head(store)
+    head_root = spec.get_head(store).root
 
     # Next slot
     next_slot(spec, state)
@@ -141,7 +141,7 @@ def test_should_override_forkchoice_update__true(spec, state):
     assert spec.get_current_slot(store) == block.slot
 
     # Check conditions
-    head_root = spec.get_head(store)
+    head_root = spec.get_head(store).root
     head_block = store.blocks[head_root]
     parent_root = head_block.parent_root
     assert parent_root == signed_parent_block.message.hash_tree_root()

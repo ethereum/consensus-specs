@@ -47,7 +47,7 @@ def run_validate_blob_sidecar_gossip(
 ):
     try:
         spec.validate_blob_sidecar_gossip(
-            seen, store, state, blob_sidecar, subnet_id, current_time_ms
+            seen, store, state, blob_sidecar, current_time_ms, subnet_id
         )
         return "valid", None
     except spec.GossipIgnore as e:
