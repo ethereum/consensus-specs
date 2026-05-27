@@ -85,9 +85,9 @@ def print_head(spec, store):
 
     return (
         "(slot="
-        + str(store.blocks[head].slot)
+        + str(store.blocks[head.root].slot)
         + ", root="
-        + str(head)[:6]
+        + str(head.root)[:6]
         + ", weight="
         + str(weight * 100 // total_active_balance)
         + "%)"

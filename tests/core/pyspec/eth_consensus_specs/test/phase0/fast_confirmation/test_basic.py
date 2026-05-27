@@ -33,6 +33,6 @@ def test_fast_confirm_an_epoch(spec, state):
     for _ in range(spec.SLOTS_PER_EPOCH):
         fcr_test.next_slot_with_block_and_fast_confirmation()
         # Ensure head is confirmed
-        assert fcr_store.confirmed_root == fcr_test.head()
+        assert fcr_store.confirmed_root == fcr_test.head_root()
 
     yield from fcr_test.get_test_artefacts()

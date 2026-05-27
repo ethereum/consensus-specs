@@ -110,6 +110,9 @@ class FCRTest:
     def head(self):
         return self.spec.get_head(self.store)
 
+    def head_root(self):
+        return self.head().root
+
     def get_parent(self, block_root):
         parent_root = self.store.blocks[block_root].parent_root
         return self.store.blocks[parent_root]
@@ -136,7 +139,7 @@ class FCRTest:
 
     def get_block_root_or_head(self, block_root_id):
         if block_root_id is None:
-            return self.head()
+            return self.head_root()
 
         if isinstance(block_root_id, int):
             # Slot or offset
@@ -191,7 +194,7 @@ class FCRTest:
         include_att_fn: Callable[[object, object], bool] = None,
     ):
         if parent_root is None:
-            parent_root = self.head()
+            parent_root = self.head_root()
         else:
             assert parent_root in self.store.blocks
 
@@ -255,7 +258,7 @@ class FCRTest:
             return []
 
         if block_root is None:
-            block_root = self.head()
+            block_root = self.head_root()
         else:
             assert block_root in self.store.blocks
 
@@ -325,7 +328,9 @@ class FCRTest:
             include_atts=include_atts,
         )
         self.attest(
-            block_root=self.head(), slot=self.current_slot(), participation_rate=participation_rate
+            block_root=self.head_root(),
+            slot=self.current_slot(),
+            participation_rate=participation_rate,
         )
         self.next_slot()
         return block_root
@@ -379,7 +384,7 @@ class FCRTest:
     ) -> list[object]:
         if slot is None:
             slot = self.current_slot()
-        state = self.store.block_states[self.head()].copy()
+        state = self.store.block_states[self.head_root()].copy()
         if slashing_indices is None:
             assert slashing_percentage is not None
             slashing_count = len(state.validators) * slashing_percentage // 100
@@ -404,7 +409,8 @@ class FCRTest:
 
     def compute_score_and_threshold(self, block_root) -> (int, int):
         balance_source = self.spec.get_current_balance_source(self.fcr_store)
-        score = self.spec.get_attestation_score(self.store, block_root, balance_source)
+        node = self.spec.get_node_for_root(block_root)
+        score = self.spec.get_attestation_score(self.store, node, balance_source)
         safety_threshold = self.spec.compute_safety_threshold(
             self.store, block_root, balance_source
         )
@@ -509,7 +515,7 @@ class FCRTest:
             start_slot = spec.GENESIS_SLOT
         else:
             start_slot = spec.compute_start_slot_at_epoch(self.current_epoch() - 1)
-        start_root = spec.get_ancestor(store, self.head(), start_slot)
+        start_root = spec.get_ancestor(store, self.head(), start_slot).root
         self.print_fast_confirmed_block_tree(start_root)
 
         # Print head variables
@@ -520,7 +526,7 @@ class FCRTest:
 
         debug_print(f"\nprev_head [{get_head_info(fcr_store.previous_slot_head)}]")
         debug_print(f"curr_head [{get_head_info(fcr_store.current_slot_head)}]")
-        debug_print(f"head      [{get_head_info(self.head())}]")
+        debug_print(f"head      [{get_head_info(self.head_root())}]")
 
         # Print prev epoch GU and current target
         curr_target = spec.get_current_target(store)
@@ -641,7 +647,7 @@ class Slashing(PhaseRun):
 
         if self.committee_slot_or_offset is not None:
             slot = fcr.resolve_slot_by_offset(self.committee_slot_or_offset)
-            shuffling_source = fcr.store.block_states[fcr.head()]
+            shuffling_source = fcr.store.block_states[fcr.head_root()]
             participants = fcr.sample_fraction_of_participants(
                 shuffling_source, slot, self.percentage
             )
