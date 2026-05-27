@@ -92,7 +92,7 @@ MUST be set to the hash of a terminal PoW block in this case.
 ##### `safe_block_hash`
 
 The `safe_block_hash` parameter MUST be set to return value of
-[`get_safe_execution_block_hash(store: Store)`](../../fork_choice/safe-block.md#get_safe_execution_block_hash)
+[`get_safe_execution_block_hash(fcr_store)`](./fast-confirmation.md#get_safe_execution_block_hash)
 function.
 
 ##### `should_override_forkchoice_update`
@@ -159,18 +159,16 @@ def should_override_forkchoice_update(store: Store, head_root: Root) -> bool:
         head_weak = True
         parent_strong = True
 
-    return all(
-        [
-            head_late,
-            shuffling_stable,
-            ffg_competitive,
-            finalization_ok,
-            proposing_reorg_slot,
-            single_slot_reorg,
-            head_weak,
-            parent_strong,
-        ]
-    )
+    return all([
+        head_late,
+        shuffling_stable,
+        ffg_competitive,
+        finalization_ok,
+        proposing_reorg_slot,
+        single_slot_reorg,
+        head_weak,
+        parent_strong,
+    ])
 ```
 
 *Note*: The ordering of conditions is a suggestion only. Implementations are
@@ -198,7 +196,7 @@ Used to signal to initiate the payload build process via
 
 ```python
 @dataclass
-class PayloadAttributes(object):
+class PayloadAttributes:
     timestamp: uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress

@@ -37,7 +37,7 @@ validator" to implement Heze.
 
 ```python
 @dataclass
-class GetInclusionListResponse(object):
+class GetInclusionListResponse:
     inclusion_list_transactions: Sequence[Transaction]
 ```
 

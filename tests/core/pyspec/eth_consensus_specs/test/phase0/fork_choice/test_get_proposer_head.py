@@ -46,10 +46,8 @@ def test_basic_is_head_root(spec, state):
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
-    assert spec.get_head(store) == signed_block.message.hash_tree_root()
-
-    # Proposer of next slot
-    head_root = spec.get_head(store)
+    head = spec.get_head(store)
+    assert head.root == signed_block.message.hash_tree_root()
 
     # Proposing next slot
     next_slot(spec, state)
@@ -57,8 +55,8 @@ def test_basic_is_head_root(spec, state):
 
     current_time = slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    proposer_head = spec.get_proposer_head(store, head_root, slot)
-    assert proposer_head == head_root
+    proposer_head = spec.get_proposer_head(store, head.root, slot)
+    assert proposer_head == head.root
 
     output_store_checks(spec, store, test_steps)
     test_steps.append(
@@ -135,8 +133,8 @@ def test_basic_is_parent_root(spec, state):
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
 
     # Check conditions
-    head_root = spec.get_head(store)
-    head_block = store.blocks[head_root]
+    head = spec.get_head(store)
+    head_block = store.blocks[head.root]
     parent_root = head_block.parent_root
     assert parent_root == signed_parent_block.message.hash_tree_root()
     parent_block = store.blocks[parent_root]
@@ -156,9 +154,9 @@ def test_basic_is_parent_root(spec, state):
         yield from tick_and_run_on_attestation(spec, store, attestation, test_steps)
 
     # The conditions in `get_proposer_head`
-    assert spec.is_head_late(store, head_root)
+    assert spec.is_head_late(store, head.root)
     assert spec.is_shuffling_stable(slot)
-    assert spec.is_ffg_competitive(store, head_root, parent_root)
+    assert spec.is_ffg_competitive(store, head.root, parent_root)
     assert spec.is_finalization_ok(store, slot)
     assert spec.is_proposing_on_time(store)
 
@@ -167,10 +165,10 @@ def test_basic_is_parent_root(spec, state):
     single_slot_reorg = parent_slot_ok and current_time_ok
     assert single_slot_reorg
 
-    assert spec.is_head_weak(store, head_root)
-    assert spec.is_parent_strong(store, head_root)
+    assert spec.is_head_weak(store, head.root)
+    assert spec.is_parent_strong(store, head.root)
 
-    proposer_head = spec.get_proposer_head(store, head_root, state.slot)
+    proposer_head = spec.get_proposer_head(store, head.root, state.slot)
     assert proposer_head == parent_root
 
     output_store_checks(spec, store, test_steps)

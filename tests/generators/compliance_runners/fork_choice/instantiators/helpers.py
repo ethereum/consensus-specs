@@ -227,19 +227,25 @@ def is_attestation_eligible_for_block(spec, state, attestation) -> bool:
     return state.slot <= attestation.data.slot + spec.SLOTS_PER_EPOCH
 
 
-def _get_eligible_attestations(spec, state, attestations) -> []:
-    def _get_voting_source(target: spec.Checkpoint) -> spec.Checkpoint:
-        if target.epoch == spec.get_current_epoch(state):
-            return state.current_justified_checkpoint
-        else:
-            return state.previous_justified_checkpoint
+def get_dependent_root(spec, state, slot):
+    epoch = spec.compute_epoch_at_slot(slot)
+    if epoch <= spec.MIN_SEED_LOOKAHEAD:
+        dependent_slot = spec.GENESIS_SLOT
+    else:
+        dependent_slot = spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD) - 1
 
-    return [
-        a
-        for a in attestations
-        if is_attestation_eligible_for_block(spec, state, a)
-        and a.data.source == _get_voting_source(a.data.target)
-    ]
+    if dependent_slot > spec.GENESIS_SLOT:
+        return spec.get_block_root_at_slot(state, dependent_slot)
+    else:
+        # Default genesis block value
+        return spec.Root()
+
+
+def get_voting_source(spec, state, target):
+    if target.epoch == spec.get_current_epoch(state):
+        return state.current_justified_checkpoint
+    else:
+        return state.previous_justified_checkpoint
 
 
 def _compute_pseudo_randao_reveal(spec, proposer_index, epoch):
@@ -250,16 +256,18 @@ def _compute_pseudo_randao_reveal(spec, proposer_index, epoch):
 
 
 def produce_block(
-    spec, state, attestations, attester_slashings=[], payload_attestation_messages=[]
+    spec,
+    state,
+    attestations,
+    attester_slashings=[],
+    payload_attestation_messages=[],
+    custom_att_filter_fn=None,
 ):
     """
     Produces a block including as many attestations as it is possible.
     Accepts PayloadAttestationMessage objects and aggregates them into PayloadAttestation for on-chain inclusion.
     :return: Signed block, the post block state, and operations not included into the block.
     """
-
-    # Filter out too old attestations.
-    eligible_attestations = _get_eligible_attestations(spec, state, attestations)
 
     # Create a block with attestations
     block = build_empty_block(spec, state)
@@ -269,7 +277,16 @@ def produce_block(
 
     # Prepare attestations
     limit = type(block.body.attestations).limit()
-    attestation_in_block = eligible_attestations[:limit]
+    attestation_in_block = [
+        a
+        for a in attestations
+        # not too old
+        if is_attestation_eligible_for_block(spec, state, a)
+        # compatible data source
+        and a.data.source == get_voting_source(spec, state, a.data.target)
+        # custom filter passes
+        and (custom_att_filter_fn is None or custom_att_filter_fn(a))
+    ][:limit]
 
     for a in attestation_in_block:
         block.body.attestations.append(a)

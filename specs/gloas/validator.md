@@ -208,7 +208,7 @@ top of a `state` MUST take the following actions in order to construct the
 - Select one bid and set
   `block.body.signed_execution_payload_bid = signed_execution_payload_bid`.
 
-*Note:* The execution address encoded in the `fee_recipient` field in the
+*Note*: The execution address encoded in the `fee_recipient` field in the
 `signed_execution_payload_bid.message` will receive the builder payment.
 
 ##### Payload attestations

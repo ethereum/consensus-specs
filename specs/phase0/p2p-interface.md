@@ -246,7 +246,7 @@ propagation.
 
 ```python
 @dataclass
-class Seen(object):
+class Seen:
     proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
     aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
     aggregate_data_roots: Dict[Root, Set[Tuple[boolean, ...]]]
@@ -931,8 +931,8 @@ def validate_beacon_attestation_gossip(
     store: Store,
     state: BeaconState,
     attestation: Attestation,
-    subnet_id: uint64,
     current_time_ms: uint64,
+    subnet_id: SubnetID,
 ) -> None:
     """
     Validate an Attestation for gossip propagation on a subnet.

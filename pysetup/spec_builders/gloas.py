@@ -49,6 +49,9 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
                 "retrieve_column_sidecars",
                 "upgrade_to_fulu",
                 "verify_partial_data_column_header_inclusion_proof",
+                # TODO(jtraglia): Temporarily deprecate these until we update them for Gloas.
+                "validate_data_column_sidecar_gossip",
+                "validate_partial_data_column_sidecar_gossip",
             ]
         )
 
@@ -60,4 +63,9 @@ def retrieve_column_sidecars_and_kzg_commitments(
 ) -> tuple[Sequence[DataColumnSidecar], Sequence[KZGCommitment]]:
     # pylint: disable=unused-argument
     return [], []
+
+_get_parent_payload_status = get_parent_payload_status
+get_parent_payload_status = cache_this(
+    lambda store, block: block.hash_tree_root(),
+    _get_parent_payload_status, lru_size=1024)
 """

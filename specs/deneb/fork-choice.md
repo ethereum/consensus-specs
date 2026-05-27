@@ -23,7 +23,7 @@ This is the modification of the fork choice accompanying the Deneb upgrade.
 
 ```python
 @dataclass
-class PayloadAttributes(object):
+class PayloadAttributes:
     timestamp: uint64
     prev_randao: Bytes32
     suggested_fee_recipient: ExecutionAddress
