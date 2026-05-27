@@ -16,6 +16,9 @@ from eth_consensus_specs.test.helpers.constants import (
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     FCRTest,
 )
+from eth_consensus_specs.test.helpers.fork_choice import (
+    is_ancestor,
+)
 
 """
 Test on update FCR variables
@@ -49,11 +52,11 @@ def test_fcr_invariants_monotone_and_canonical(spec, state):
     for _ in range(spec.SLOTS_PER_EPOCH + 1):
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
-        head = fcr.head()
+        head = fcr.head_root()
         confirmed = fcr_store.confirmed_root
 
         # Invariant 1: confirmed must be on canonical chain
-        assert spec.is_ancestor(store, head, confirmed)
+        assert is_ancestor(spec, store, head, confirmed)
 
         # Invariant 2: confirmed slot monotonic unless reset to finalized
         confirmed_slot = store.blocks[confirmed].slot
@@ -373,7 +376,7 @@ def test_slot_head_variables_updated_every_slot(spec, state):
     Unlike the observed justified checkpoints (which only update at epoch boundaries),
     the slot head variables update on EVERY call to update_fast_confirmation_variables:
         previous_slot_head = current_slot_head
-        current_slot_head = get_head(store)
+        current_slot_head = get_head(store).root
     """
     fcr = FCRTest(spec, seed=1)
     store, fcr_store = fcr.initialize(state)
@@ -391,7 +394,7 @@ def test_slot_head_variables_updated_every_slot(spec, state):
         expected_previous = curr_slot_head_before
         actual_previous = fcr_store.previous_slot_head
         actual_current = fcr_store.current_slot_head
-        actual_head = fcr.head()
+        actual_head = fcr.head_root()
 
         assert actual_previous == expected_previous, (
             f"Slot {fcr.current_slot()}: previous_slot_head cascade failed"

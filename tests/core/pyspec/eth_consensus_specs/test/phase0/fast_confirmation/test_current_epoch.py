@@ -37,7 +37,7 @@ class CurrentEpochTestSpecification:
 
     def verify_preconditions(self, spec, fcr_store):
         store = fcr_store.store
-        head = spec.get_head(store)
+        head = spec.get_head(store).root
         current_epoch = spec.get_current_store_epoch(store)
         current_slot = spec.get_current_slot(store)
         confirmed_epoch = spec.get_block_epoch(store, fcr_store.confirmed_root)
@@ -61,7 +61,7 @@ class CurrentEpochTestSpecification:
             assert all(is_one_confirmed_list)
         else:
             assert not spec.is_one_confirmed(
-                store, spec.get_current_balance_source(fcr_store), spec.get_head(store)
+                store, spec.get_current_balance_source(fcr_store), spec.get_head(store).root
             )
 
     def get_expected_confirmed_root(self, spec, fcr_store):
@@ -75,7 +75,7 @@ class CurrentEpochTestSpecification:
         if self.head_uj_fresh and self.is_one_confirmed:
             # If any block is supposed to be confirmed
             # the head is always expected to be the most recent confirmed one
-            return spec.get_head(store)
+            return spec.get_head(store).root
         else:
             return fcr_store.confirmed_root
 
