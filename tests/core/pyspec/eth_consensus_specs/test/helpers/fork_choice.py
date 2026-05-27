@@ -88,7 +88,7 @@ def with_blob_data_fulu(spec, blob_data: BlobData, func):
     def retrieve_column_sidecars(_):
         assert blob_data.sidecars is not None, "blob_data.sidecars must be provided"
         if len(blob_data.sidecars) == 0:
-            assert False, "Simulation: not all required columns have been sampled"
+            raise AssertionError("Simulation: not all required columns have been sampled")
         return blob_data.sidecars
 
     retrieve_column_sidecars_backup = spec.retrieve_column_sidecars
@@ -119,7 +119,7 @@ def with_blob_data_gloas(spec, blob_data: BlobData, func):
     def retrieve_column_sidecars_and_kzg_commitments(_):
         assert blob_data.sidecars is not None, "blob_data.sidecars must be provided"
         if len(blob_data.sidecars) == 0:
-            assert False, "Simulation: not all required columns have been sampled"
+            raise AssertionError("Simulation: not all required columns have been sampled")
         assert blob_data.kzg_commitments is not None, (
             "blob_data.kzg_commitments must be provided for Gloas"
         )
@@ -386,11 +386,11 @@ def add_block(
                 run_on_block(spec, store, signed_block, valid=True)
             except (AssertionError, BlockNotFoundException) as e:
                 if isinstance(e, BlockNotFoundException) and not block_not_found:
-                    assert False
+                    raise AssertionError from e
                 _append_step(valid=False)
                 return
             else:
-                assert False
+                raise AssertionError
     else:
         run_on_block(spec, store, signed_block, valid=True)
         _append_step()

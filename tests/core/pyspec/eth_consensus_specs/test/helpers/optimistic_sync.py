@@ -49,15 +49,11 @@ class PayloadStatusV1:
 
 
 class MegaStore:
-    spec = None
-    fc_store = None
-    opt_store = None
-    block_payload_statuses: dict[Bytes32, PayloadStatusV1] = dict()
-
     def __init__(self, spec, fc_store, opt_store):
         self.spec = spec
         self.fc_store = fc_store
         self.opt_store = opt_store
+        self.block_payload_statuses: dict[Bytes32, PayloadStatusV1] = {}
 
 
 def get_optimistic_store(spec, anchor_state, anchor_block):
@@ -75,9 +71,10 @@ def get_optimistic_store(spec, anchor_state, anchor_block):
 
 
 def get_valid_flag_value(status: PayloadStatusV1Status) -> bool:
-    if status == PayloadStatusV1Status.VALID:
-        return True
-    elif status.alias == PayloadStatusV1StatusAlias.NOT_VALIDATED:
+    if (
+        status == PayloadStatusV1Status.VALID
+        or status.alias == PayloadStatusV1StatusAlias.NOT_VALIDATED
+    ):
         return True
     else:
         # status.alias == PayloadStatusV1StatusAlias.INVALIDATED or other cases
@@ -185,7 +182,7 @@ def get_opt_head_block_root(spec, mega_store):
     while True:
         children = [
             root
-            for root in blocks.keys()
+            for root in blocks
             if (
                 blocks[root].parent_root == head
                 and not is_invalidated(mega_store, root)  # For optimistic sync
@@ -225,4 +222,3 @@ def clean_up_store(mega_store):
     Remove invalidated blocks
     """
     # TODO
-    ...

@@ -1,4 +1,5 @@
-from ..constants import CAPELLA
+from pysetup.constants import CAPELLA
+
 from .base import BaseSpecBuilder
 
 
@@ -19,22 +20,18 @@ from eth_consensus_specs.bellatrix import {preset_name} as bellatrix
 
     @classmethod
     def deprecate_containers(cls) -> set[str]:
-        return set(
-            [
-                "HistoricalBatch",
-            ]
-        )
+        return {
+            "HistoricalBatch",
+        }
 
     @classmethod
     def deprecate_functions(cls) -> set[str]:
-        return set(
-            [
-                "get_terminal_pow_block",
-                "is_execution_enabled",
-                "is_merge_transition_block",
-                "is_merge_transition_complete",
-                "process_historical_roots_update",
-                "upgrade_to_bellatrix",
-                "validate_merge_block",
-            ]
-        )
+        return {
+            "get_terminal_pow_block",
+            "is_execution_enabled",
+            "is_merge_transition_block",
+            "is_merge_transition_complete",
+            "process_historical_roots_update",
+            "upgrade_to_bellatrix",
+            "validate_merge_block",
+        }

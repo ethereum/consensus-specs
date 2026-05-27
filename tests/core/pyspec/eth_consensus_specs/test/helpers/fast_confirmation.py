@@ -119,9 +119,7 @@ class FCRTest:
 
     def get_children(self, block_root):
         return [
-            root
-            for root in self.store.blocks.keys()
-            if self.store.blocks[root].parent_root == block_root
+            root for root in self.store.blocks if self.store.blocks[root].parent_root == block_root
         ]
 
     def find_block_root(self, predicate: Callable[[object], bool]) -> object:
@@ -188,10 +186,10 @@ class FCRTest:
         self,
         parent_root=None,
         release_att_pool=True,
-        graffiti: str = None,
+        graffiti: str | None = None,
         include_atts=True,
         attestations=None,
-        include_att_fn: Callable[[object, object], bool] = None,
+        include_att_fn: Callable[[object, object], bool] | None = None,
     ):
         if parent_root is None:
             parent_root = self.head_root()
@@ -364,7 +362,7 @@ class FCRTest:
         committees_count = self.spec.get_committee_count_per_slot(
             shuffling_source, self.spec.compute_epoch_at_slot(slot)
         )
-        committee: list[self.spec.ValidatorIndex] = list()
+        committee: list[self.spec.ValidatorIndex] = []
         for i in range(committees_count):
             committee.extend(
                 self.spec.get_beacon_committee(
@@ -380,7 +378,10 @@ class FCRTest:
         return set(slot_committee[:participants_count])
 
     def apply_attester_slashing(
-        self, slashing_percentage: int = None, slashing_indices: list[int] = None, slot=None
+        self,
+        slashing_percentage: int | None = None,
+        slashing_indices: list[int] | None = None,
+        slot=None,
     ) -> list[object]:
         if slot is None:
             slot = self.current_slot()

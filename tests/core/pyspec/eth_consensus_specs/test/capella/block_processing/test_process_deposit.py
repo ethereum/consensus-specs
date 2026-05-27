@@ -57,6 +57,8 @@ def test_success_top_up_to_withdrawn_validator(spec, state):
         has_non_zero_balance = pending_deposit.amount > 0
         # NOTE: directly compute `is_fully_withdrawable_validator` conditions here
         # to work around how the epoch processing changed balance updates
-        assert has_execution_withdrawal and is_withdrawable and has_non_zero_balance
+        assert has_execution_withdrawal
+        assert is_withdrawable
+        assert has_non_zero_balance
     else:
         assert spec.is_fully_withdrawable_validator(validator, balance, current_epoch)

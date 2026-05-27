@@ -303,7 +303,10 @@ def get_checkpoint_block(store: Store, root: Root, epoch: Epoch) -> Root:
 #### `get_supported_node`
 
 ```python
-def get_supported_node(store: Store, message: LatestMessage) -> ForkChoiceNode:
+def get_supported_node(
+    store: Store,  # noqa: ARG001
+    message: LatestMessage,
+) -> ForkChoiceNode:
     """
     Return a node supported by the ``message``.
     """
@@ -396,9 +399,7 @@ by the recursive logic in this function) MUST set `block_root` to
 ```python
 def filter_block_tree(store: Store, block_root: Root, blocks: Dict[Root, BeaconBlock]) -> bool:
     block = store.blocks[block_root]
-    children = [
-        root for root in store.blocks.keys() if store.blocks[root].parent_root == block_root
-    ]
+    children = [root for root in store.blocks if store.blocks[root].parent_root == block_root]
 
     # If any children branches contain expected finalized/justified checkpoints,
     # add to filtered block-tree and signal viability to parent.
@@ -458,11 +459,11 @@ def get_filtered_block_tree(store: Store) -> Dict[Root, BeaconBlock]:
 
 ```python
 def get_node_children(
-    store: Store, blocks: Dict[Root, BeaconBlock], node: ForkChoiceNode
+    store: Store,  # noqa: ARG001
+    blocks: Dict[Root, BeaconBlock],
+    node: ForkChoiceNode,
 ) -> Sequence[ForkChoiceNode]:
-    return [
-        ForkChoiceNode(root=root) for root in blocks.keys() if blocks[root].parent_root == node.root
-    ]
+    return [ForkChoiceNode(root=root) for root in blocks if blocks[root].parent_root == node.root]
 ```
 
 #### `get_head`
@@ -915,7 +916,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
     block_root = hash_tree_root(block)
-    state_transition(state, signed_block, True)
+    state_transition(state, signed_block, validate_result=True)
 
     # Compute head before applying the block
     head = get_head(store)

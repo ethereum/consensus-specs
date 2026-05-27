@@ -538,7 +538,7 @@ def get_node_children(
     else:
         return [
             ForkChoiceNode(root=root, payload_status=PAYLOAD_STATUS_PENDING)
-            for root in blocks.keys()
+            for root in blocks
             if (
                 blocks[root].parent_root == node.root
                 and node.payload_status == get_parent_payload_status(store, blocks[root])
@@ -881,7 +881,7 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 
     # Check the block is valid and compute the post-state
     block_root = hash_tree_root(block)
-    state_transition(state, signed_block, True)
+    state_transition(state, signed_block, validate_result=True)
 
     # Compute head before applying the block
     head = get_head(store)

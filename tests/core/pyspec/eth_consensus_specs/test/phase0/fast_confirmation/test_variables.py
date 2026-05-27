@@ -339,7 +339,7 @@ def test_observed_justified_stalls_under_low_participation(spec, state):
     - previous_epoch_observed stays at genesis
     """
     fcr = FCRTest(spec, seed=1)
-    store, fcr_store = fcr.initialize(state)
+    _store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
     genesis_epoch = fcr_store.current_epoch_observed_justified_checkpoint.epoch
@@ -379,14 +379,14 @@ def test_slot_head_variables_updated_every_slot(spec, state):
         current_slot_head = get_head(store).root
     """
     fcr = FCRTest(spec, seed=1)
-    store, fcr_store = fcr.initialize(state)
+    _store, fcr_store = fcr.initialize(state)
 
     S = spec.SLOTS_PER_EPOCH
 
     curr_slot_head_before = fcr_store.current_slot_head
 
     # Run several slots and verify the cascade happens each slot
-    for i in range(S + 2):  # Run past one epoch boundary
+    for _i in range(S + 2):  # Run past one epoch boundary
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
         # After each slot, previous should equal what current was before

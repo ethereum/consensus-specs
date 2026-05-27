@@ -96,7 +96,9 @@ def test_from_syncing_to_invalid(spec, state):
         )
         block_hashes[f"chain_b_{i}"] = block.body.execution_payload.block_hash
 
-        signed_block = state_transition_with_full_block(spec, state, True, True, block=block)
+        signed_block = state_transition_with_full_block(
+            spec, state, fill_cur_epoch=True, fill_prev_epoch=True, block=block
+        )
         signed_blocks_b.append(signed_block.copy())
         yield from add_optimistic_block(
             spec, mega_store, signed_block, test_steps, status=PayloadStatusV1Status.SYNCING

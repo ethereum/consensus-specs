@@ -99,8 +99,6 @@ def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadRespo
     """
     Return ExecutionPayload, uint256, BlobsBundle objects.
     """
-    # pylint: disable=unused-argument
-    ...
 ```
 
 ## Beacon chain responsibilities
@@ -192,7 +190,7 @@ cells_and_kzg_proofs = []
 for i, blob in enumerate(blobs_bundle.blobs):
     start = i * CELLS_PER_EXT_BLOB
     end = (i + 1) * CELLS_PER_EXT_BLOB
-    cell_proofs = zip(compute_cells(blob), blobs_bundle.proofs[start:end])
+    cell_proofs = zip(compute_cells(blob), blobs_bundle.proofs[start:end], strict=True)
     cells_and_kzg_proofs.extend(cell_proofs)
 ```
 

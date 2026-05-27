@@ -443,7 +443,9 @@ def validate_light_client_update(
         sync_committee = store.next_sync_committee
     participant_pubkeys = [
         pubkey
-        for (bit, pubkey) in zip(sync_aggregate.sync_committee_bits, sync_committee.pubkeys)
+        for (bit, pubkey) in zip(
+            sync_aggregate.sync_committee_bits, sync_committee.pubkeys, strict=True
+        )
         if bit
     ]
     fork_version_slot = max(update.signature_slot, Slot(1)) - Slot(1)
