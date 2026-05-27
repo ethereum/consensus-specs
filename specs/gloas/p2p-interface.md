@@ -385,6 +385,9 @@ where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
   payload.
 - _[IGNORE]_ `bid.parent_block_root` is the hash tree root of a known beacon
   block in fork choice.
+- _[REJECT]_ The bid is for a higher slot than its parent block -- i.e. validate
+  that `bid.slot` is greater than the slot of the block with root
+  `bid.parent_block_root`.
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
 
