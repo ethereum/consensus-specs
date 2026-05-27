@@ -181,15 +181,14 @@ def state_transition_across_slots_with_ignoring_proposers(
 
 
 def get_upgrade_fn(spec, fork):
-    # pylint: disable=unused-argument
     # NOTE: `spec` is used for the `eval` call
     assert fork in POST_FORK_OF.values()
     try:
         # TODO: make all upgrade_to_* function names consistent?
         fn = eval(f"spec.upgrade_to_{fork}")
         return fn
-    except Exception:
-        raise ValueError(f"Unknown fork: {fork}")
+    except Exception as e:
+        raise ValueError(f"Unknown fork: {fork}") from e
 
 
 def do_fork(
@@ -279,7 +278,11 @@ def transition_across_forks(
             if with_block and (to_slot == state.slot + 1):
                 transition_to(spec, state, to_slot - 1)
                 block = state_transition_with_full_block(
-                    spec, state, True, True, sync_aggregate=sync_aggregate
+                    spec,
+                    state,
+                    fill_cur_epoch=True,
+                    fill_prev_epoch=True,
+                    sync_aggregate=sync_aggregate,
                 )
             else:
                 transition_to(spec, state, to_slot)

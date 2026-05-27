@@ -2,7 +2,7 @@ import random
 from collections.abc import Iterable
 from dataclasses import dataclass
 from math import ceil
-from os import path
+from pathlib import Path
 from typing import Any
 
 from ruamel.yaml import YAML
@@ -268,18 +268,16 @@ def events_to_test_vector(events) -> list[Any]:
         if event_kind == "tick":
             current_time = data
         else:
-            if event_kind == "block":
-                event_id = data
-            elif event_kind == "attestation":
-                event_id = data
-            elif event_kind == "attester_slashing":
-                event_id = data
-            elif event_kind == "execution_payload":
-                event_id = data
-            elif event_kind == "payload_attestation":
+            if (
+                event_kind == "block"
+                or event_kind == "attestation"
+                or event_kind == "attester_slashing"
+                or event_kind == "execution_payload"
+                or event_kind == "payload_attestation"
+            ):
                 event_id = data
             else:
-                assert False, event_kind
+                raise AssertionError(event_kind)
             test_vector.append((current_time, (event_kind, event_id)))
     return test_vector
 
@@ -366,9 +364,9 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                                 }
                             )
                         else:
-                            assert False
+                            raise AssertionError
                 else:
-                    assert False
+                    raise AssertionError
                 if time > store.time:
                     # inside a slot
                     on_tick_and_append_step(spec, store, time, test_steps)
@@ -395,7 +393,7 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                                     yield _attestation_id, event_data
                                 test_steps.append({"attestation": _attestation_id, "valid": True})
                             else:
-                                assert False
+                                raise AssertionError
                                 test_steps.append({"attestation": _attestation_id, "valid": True})
                         elif event_kind == "execution_payload":
                             assert recovery
@@ -413,12 +411,12 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                                 }
                             )
                         else:
-                            assert False
+                            raise AssertionError
                 else:
                     assert len(applied_events) == 0
                     test_steps.append({"block": block_id, "valid": valid})
             else:
-                assert False
+                raise AssertionError
                 test_steps.append({"block": block_id, "valid": valid})
             output_store_checks(spec, store, test_steps)
         elif kind == "attestation":
@@ -471,7 +469,7 @@ def get_test_kind(test_type, with_attester_slashings, with_invalid_messages):
 
 
 def _load_yaml(path: str):
-    with open(path) as f:
+    with Path(path).open() as f:
         yaml = YAML(typ="safe")
         return yaml.load(f)
 
@@ -482,7 +480,7 @@ def derive_effective_seed(seed: int, solution_index: int) -> int:
 
 def get_mutation_group_suffix(nr_mutations: int, group_cases: tuple[MutationGroupCase, ...]) -> str:
     group_case_ids = [group_case.case_id for group_case in group_cases]
-    full_case_ids = list(range(0, nr_mutations + 1))
+    full_case_ids = list(range(nr_mutations + 1))
     if group_case_ids == full_case_ids:
         return ""
     joined_case_ids = ",".join(str(case_id) for case_id in group_case_ids)
@@ -531,7 +529,7 @@ def enumerate_mutation_groups(config_dir, test_name, params) -> Iterable[Mutatio
     with_attester_slashings = params.get("with_attester_slashings", False)
     with_invalid_messages = params.get("with_invalid_messages", False)
 
-    solutions = _load_yaml(path.join(config_dir, instances_path))
+    solutions = _load_yaml(str(Path(config_dir) / instances_path))
     test_kind = get_test_kind(test_type, with_attester_slashings, with_invalid_messages)
 
     seeds = [initial_seed]
@@ -580,8 +578,8 @@ def enumerate_test_dnas(
         yield case_name, test_dna
 
 
-def enumerate_test_groups(config_path, forks, presets, debug, initial_seed: int = None):
-    config_dir = path.dirname(config_path)
+def enumerate_test_groups(config_path, forks, presets, debug, initial_seed: int | None = None):
+    config_dir = str(Path(config_path).parent)
     test_gen_config = _load_yaml(config_path)
 
     seed_generator = random.Random(initial_seed) if initial_seed is not None else None

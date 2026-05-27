@@ -135,7 +135,7 @@ class TestWithConfigOverridesDecorator:
         decorated_fn(spec=spec)
 
         # Original spec should be unchanged
-        assert spec.config.MIN_PER_EPOCH_CHURN_LIMIT == original_value
+        assert original_value == spec.config.MIN_PER_EPOCH_CHURN_LIMIT
 
     def test_with_config_overrides_doesnt_modify_original_phases(self):
         """Test that decorator doesn't modify the original phases."""
@@ -157,7 +157,7 @@ class TestWithConfigOverridesDecorator:
         decorated_fn(spec=spec, phases=phases)
 
         # Original phases should be unchanged
-        assert phases["phase0"].config.MIN_PER_EPOCH_CHURN_LIMIT == original_value
+        assert original_value == phases["phase0"].config.MIN_PER_EPOCH_CHURN_LIMIT
 
     def test_with_config_overrides_works_without_phases(self):
         """Test that decorator works when phases parameter is not provided."""

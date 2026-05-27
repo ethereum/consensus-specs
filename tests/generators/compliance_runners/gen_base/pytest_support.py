@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
-from os import path
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from eth_consensus_specs.test import context
 
-from .gen_typing import TestGroup
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
+    from .gen_typing import TestGroup
 
 DEFAULT_OUTPUT_DIR = "comptests"
 
@@ -92,7 +95,7 @@ def get_config_path(config, base_dir: str) -> str:
 
     config_name = config.getoption("--fc-gen-config")
     if config_name is not None:
-        return path.join(base_dir, config_name, "test_gen.yaml")
+        return str(Path(base_dir) / config_name / "test_gen.yaml")
 
     raise ValueError("Neither fc-gen-config nor fc-gen-config-path specified")
 

@@ -29,7 +29,7 @@ def run_get_custody_columns(spec, peer_count, custody_group_count):
 def test_get_custody_columns_peers_within_number_of_columns(spec):
     peer_count = 10
     custody_group_count = spec.config.CUSTODY_REQUIREMENT
-    assert spec.NUMBER_OF_COLUMNS > peer_count
+    assert peer_count < spec.NUMBER_OF_COLUMNS
     run_get_custody_columns(spec, peer_count, custody_group_count)
 
 
@@ -39,7 +39,7 @@ def test_get_custody_columns_peers_within_number_of_columns(spec):
 def test_get_custody_columns_peers_more_than_number_of_columns(spec):
     peer_count = 200
     custody_group_count = spec.config.CUSTODY_REQUIREMENT
-    assert spec.NUMBER_OF_COLUMNS < peer_count
+    assert peer_count > spec.NUMBER_OF_COLUMNS
     run_get_custody_columns(spec, peer_count, custody_group_count)
 
 

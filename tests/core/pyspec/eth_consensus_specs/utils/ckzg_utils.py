@@ -1,6 +1,6 @@
 import json
-import os
 import tempfile
+from pathlib import Path
 
 import ckzg
 
@@ -14,12 +14,12 @@ def load_trusted_setup(json_path: str, precompute: int = 0) -> object:
     g2_monomial hex arrays) by converting it to the text format that ckzg
     expects, then calling ckzg.load_trusted_setup.
     """
-    abs_path = os.path.abspath(json_path)
+    abs_path = str(Path(json_path).resolve())
     cache_key = (abs_path, precompute)
     if cache_key in _trusted_setup_cache:
         return _trusted_setup_cache[cache_key]
 
-    with open(abs_path) as f:
+    with Path(abs_path).open() as f:
         data = json.load(f)
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
@@ -36,7 +36,7 @@ def load_trusted_setup(json_path: str, precompute: int = 0) -> object:
     try:
         ts = ckzg.load_trusted_setup(txt_path, precompute)
     finally:
-        os.unlink(txt_path)
+        Path(txt_path).unlink()
 
     _trusted_setup_cache[cache_key] = ts
     return ts

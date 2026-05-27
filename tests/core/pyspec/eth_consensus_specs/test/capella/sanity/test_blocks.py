@@ -592,7 +592,9 @@ def _run_activate_and_partial_withdrawal(spec, state, initial_balance):
             state.validators[validator_index], state.balances[validator_index]
         )
 
-    _, new_blocks, state = next_epoch_with_attestations(spec, state, True, True)
+    _, new_blocks, state = next_epoch_with_attestations(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     blocks += new_blocks
 
     yield "blocks", blocks

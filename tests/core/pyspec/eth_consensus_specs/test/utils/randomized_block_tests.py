@@ -192,16 +192,16 @@ def _warn_if_empty_operations(block):
     and already inserted into existing blocks in a given scenario.
     """
     if len(block.body.proposer_slashings) == 0:
-        warnings.warn(f"proposer slashings missing in block at slot {block.slot}")
+        warnings.warn(f"proposer slashings missing in block at slot {block.slot}", stacklevel=2)
 
     if len(block.body.attester_slashings) == 0:
-        warnings.warn(f"attester slashings missing in block at slot {block.slot}")
+        warnings.warn(f"attester slashings missing in block at slot {block.slot}", stacklevel=2)
 
     if len(block.body.attestations) == 0:
-        warnings.warn(f"attestations missing in block at slot {block.slot}")
+        warnings.warn(f"attestations missing in block at slot {block.slot}", stacklevel=2)
 
     if len(block.body.voluntary_exits) == 0:
-        warnings.warn(f"voluntary exits missing in block at slot {block.slot}")
+        warnings.warn(f"voluntary exits missing in block at slot {block.slot}", stacklevel=2)
 
 
 def _pull_deposits_from_scenario_state(spec, scenario_state, existing_block_count):

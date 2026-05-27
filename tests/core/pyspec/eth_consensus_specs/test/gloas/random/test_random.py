@@ -84,7 +84,7 @@ def test_randomized_0(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -156,7 +156,7 @@ def test_randomized_1(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -228,7 +228,7 @@ def test_randomized_2(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -300,7 +300,7 @@ def test_randomized_3(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -372,7 +372,7 @@ def test_randomized_4(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -444,7 +444,7 @@ def test_randomized_5(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -516,7 +516,7 @@ def test_randomized_6(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -588,7 +588,7 @@ def test_randomized_7(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -660,7 +660,7 @@ def test_randomized_8(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -732,7 +732,7 @@ def test_randomized_9(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -804,7 +804,7 @@ def test_randomized_10(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -876,7 +876,7 @@ def test_randomized_11(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -948,7 +948,7 @@ def test_randomized_12(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -1020,7 +1020,7 @@ def test_randomized_13(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -1092,7 +1092,7 @@ def test_randomized_14(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,
@@ -1164,7 +1164,7 @@ def test_randomized_15(spec, state):
             },
         ],
         "state_randomizer": "randomize_state_gloas",
-    }  # noqa: E501
+    }
     yield from run_generated_randomized_test(
         spec,
         state,

@@ -65,9 +65,11 @@ def compute_sync_committee_participant_reward_and_penalty(
 ):
     inclusion_reward = compute_sync_committee_inclusion_reward(spec, state)
 
-    included_indices = [index for index, bit in zip(committee_indices, committee_bits) if bit]
+    included_indices = [
+        index for index, bit in zip(committee_indices, committee_bits, strict=False) if bit
+    ]
     not_included_indices = [
-        index for index, bit in zip(committee_indices, committee_bits) if not bit
+        index for index, bit in zip(committee_indices, committee_bits, strict=False) if not bit
     ]
     included_multiplicities = Counter(included_indices)
     not_included_multiplicities = Counter(not_included_indices)
@@ -163,7 +165,7 @@ def _build_block_for_next_slot_with_sync_participation(
             spec,
             state,
             block.slot - 1,
-            [index for index, bit in zip(committee_indices, committee_bits) if bit],
+            [index for index, bit in zip(committee_indices, committee_bits, strict=False) if bit],
             block_root=block.parent_root,
         ),
     )

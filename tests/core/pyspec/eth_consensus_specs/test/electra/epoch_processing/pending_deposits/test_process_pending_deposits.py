@@ -168,11 +168,11 @@ def test_process_pending_deposits_not_finalized(spec, state):
     # complete eth1 bridge transition
     state.deposit_requests_start_index = 0
     # advance state three epochs into the future
-    for _ in range(0, 3):
+    for _ in range(3):
         next_epoch_with_full_participation(spec, state)
     # create pending deposits
     pre_validator_count = len(state.validators)
-    for index in range(0, 2):
+    for index in range(2):
         state.pending_deposits.append(
             prepare_pending_deposit(
                 spec,

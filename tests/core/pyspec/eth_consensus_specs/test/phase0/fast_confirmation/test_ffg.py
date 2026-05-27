@@ -17,6 +17,9 @@ from eth_consensus_specs.test.helpers.fast_confirmation import (
     Attesting,
     FCRTest,
 )
+from eth_consensus_specs.test.helpers.fork_choice import (
+    is_ancestor,
+)
 
 """
 Test will_no_conflicting_checkpoint_be_justified
@@ -98,9 +101,9 @@ def test_will_no_conflicting_checkpoint_be_justified_fails_at_strictly_one_third
         store, fcr_store.previous_slot_head
     ).epoch + 2 >= spec.get_current_store_epoch(store)
     assert store.unrealized_justifications[
-        spec.get_head(store)
+        spec.get_head(store).root
     ].epoch + 1 >= spec.get_current_store_epoch(store)
-    assert spec.is_ancestor(store, fcr_store.previous_slot_head, target_root)
+    assert is_ancestor(spec, store, fcr_store.previous_slot_head, target_root)
 
     # Check will_no_conflicting_checkpoint_be_justified fails
     assert not spec.will_no_conflicting_checkpoint_be_justified(store)

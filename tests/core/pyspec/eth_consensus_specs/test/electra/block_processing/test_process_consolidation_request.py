@@ -1001,8 +1001,7 @@ def test_incorrect_source_address(spec, state):
 
     # Check the return condition
     assert (
-        not state.validators[source_index].withdrawal_credentials[12:]
-        == consolidation.source_address
+        state.validators[source_index].withdrawal_credentials[12:] != consolidation.source_address
     )
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
@@ -1062,7 +1061,7 @@ def test_incorrect_unknown_source_pubkey(spec, state):
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the return condition
-    assert not state.validators[source_index].pubkey == consolidation.source_pubkey
+    assert state.validators[source_index].pubkey != consolidation.source_pubkey
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
@@ -1093,7 +1092,7 @@ def test_incorrect_unknown_target_pubkey(spec, state):
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the return condition
-    assert not state.validators[target_index].pubkey == consolidation.target_pubkey
+    assert state.validators[target_index].pubkey != consolidation.target_pubkey
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
@@ -1285,8 +1284,7 @@ def test_switch_to_compounding_not_authorized(spec, state):
 
     # Check the return condition
     assert (
-        not state.validators[source_index].withdrawal_credentials[12:]
-        == consolidation.source_address
+        state.validators[source_index].withdrawal_credentials[12:] != consolidation.source_address
     )
 
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=False)
@@ -1308,7 +1306,7 @@ def test_switch_to_compounding_unknown_source_pubkey(spec, state):
     )
 
     # Check the return condition
-    assert not state.validators[source_index].pubkey == consolidation.source_pubkey
+    assert state.validators[source_index].pubkey != consolidation.source_pubkey
 
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=False)
 

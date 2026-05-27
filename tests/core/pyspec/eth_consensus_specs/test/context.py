@@ -628,13 +628,13 @@ def _run_test_case_with_phases(fn, phases, other_phases, kw, args, is_fork_trans
         results: MultiPhaseResult = {}
 
         for phase in run_phases:
-            ret = fn(spec=targets[phase], phases=phase_dir, *args, **kw)
+            ret = fn(*args, spec=targets[phase], phases=phase_dir, **kw)
             results[phase] = ret
 
         return results
 
     for phase in run_phases:
-        ret = fn(spec=targets[phase], phases=phase_dir, *args, **kw)
+        ret = fn(*args, spec=targets[phase], phases=phase_dir, **kw)
 
     return ret
 
@@ -675,7 +675,7 @@ def with_phases(phases, other_phases=None):
                         )
                         if isinstance(ret, dict):
                             accumulated.update(ret)
-                    ret = accumulated if accumulated else None
+                    ret = accumulated or None
                 else:
                     ret = None
                     for fork_meta in fork_metas:
@@ -743,9 +743,9 @@ def _get_basic_value(v: Any) -> Any:
     elif isinstance(v, bytes):
         return bytes(bytearray(v))
     elif isinstance(v, list | tuple):
-        return list(_get_basic_value(v) for v in v)
+        return [_get_basic_value(v) for v in v]
     elif isinstance(v, dict | frozendict):
-        return dict({k: _get_basic_value(v) for k, v in dict(v).items()})
+        return {k: _get_basic_value(v) for k, v in dict(v).items()}
     else:
         return quoted_str(v)
 
