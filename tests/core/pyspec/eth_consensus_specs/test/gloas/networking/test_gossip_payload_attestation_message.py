@@ -84,7 +84,14 @@ def test_gossip_payload_attestation_message__valid(spec, state):
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, message, current_time_ms=time_ms)
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        payload_attestation_message=message,
+        current_time_ms=time_ms,
+    )
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -123,7 +130,14 @@ def test_gossip_payload_attestation_message__ignore_not_current_slot(spec, state
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
-    result, reason = run_validate_gossip(spec, seen, store, state, message, current_time_ms=time_ms)
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        payload_attestation_message=message,
+        current_time_ms=time_ms,
+    )
     assert result == "ignore"
     assert reason == "payload attestation message slot is not the current slot"
     messages.append(
@@ -163,7 +177,14 @@ def test_gossip_payload_attestation_message__ignore_duplicate(spec, state):
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, message, current_time_ms=time_ms)
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        payload_attestation_message=message,
+        current_time_ms=time_ms,
+    )
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -175,7 +196,14 @@ def test_gossip_payload_attestation_message__ignore_duplicate(spec, state):
     )
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, message, current_time_ms=time_ms)
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        payload_attestation_message=message,
+        current_time_ms=time_ms,
+    )
     assert result == "ignore"
     assert reason == "already seen payload attestation message from this validator"
     messages.append(
@@ -216,7 +244,14 @@ def test_gossip_payload_attestation_message__ignore_block_unseen(spec, state):
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, message, current_time_ms=time_ms)
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        payload_attestation_message=message,
+        current_time_ms=time_ms,
+    )
     assert result == "ignore"
     assert reason == "message's block has not been seen"
     messages.append(
@@ -254,7 +289,14 @@ def test_gossip_payload_attestation_message__reject_validator_not_in_ptc(spec, s
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, message, current_time_ms=time_ms)
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        payload_attestation_message=message,
+        current_time_ms=time_ms,
+    )
     assert result == "reject"
     assert reason == "validator is not in the payload timeliness committee"
     messages.append(
@@ -294,7 +336,14 @@ def test_gossip_payload_attestation_message__reject_invalid_signature(spec, stat
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, message, current_time_ms=time_ms)
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        payload_attestation_message=message,
+        current_time_ms=time_ms,
+    )
     assert result == "reject"
     assert reason == "invalid payload attestation message signature"
     messages.append(
@@ -336,7 +385,14 @@ def test_gossip_payload_attestation_message__reject_block_failed_validation(spec
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, message, current_time_ms=time_ms)
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        payload_attestation_message=message,
+        current_time_ms=time_ms,
+    )
     assert result == "reject"
     assert reason == "message's block failed validation"
     messages.append(
@@ -385,7 +441,14 @@ def test_gossip_payload_attestation_message__reject_validator_index_out_of_range
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, message, current_time_ms=time_ms)
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        payload_attestation_message=message,
+        current_time_ms=time_ms,
+    )
     assert result == "reject"
     assert reason == "validator index out of range"
     messages.append(
@@ -430,7 +493,14 @@ def test_gossip_payload_attestation_message__ignore_block_not_at_assigned_slot(s
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, message, current_time_ms=time_ms)
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        payload_attestation_message=message,
+        current_time_ms=time_ms,
+    )
     assert result == "ignore"
     assert reason == "message's block is not at the assigned slot"
     messages.append(

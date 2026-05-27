@@ -59,7 +59,8 @@ the bid commitments and the corresponding block validation.
 
 ```python
 def validate_partial_data_column_sidecar_gossip(
-    seen: Seen,  # noqa: ARG001
+    # [Modified in Gloas:EIP7732]
+    # Removed `seen`
     store: Store,
     # [Modified in Gloas:EIP7732]
     # Removed `state`

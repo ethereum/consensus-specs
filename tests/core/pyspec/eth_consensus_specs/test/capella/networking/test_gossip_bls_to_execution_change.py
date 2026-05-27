@@ -35,7 +35,11 @@ def test_gossip_bls_to_execution_change__valid(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
-        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
+        spec,
+        seen=seen,
+        state=state,
+        signed_bls_to_execution_change=signed_bls_to_execution_change,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
@@ -70,7 +74,11 @@ def test_gossip_bls_to_execution_change__ignore_pre_capella(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
-        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
+        spec,
+        seen=seen,
+        state=state,
+        signed_bls_to_execution_change=signed_bls_to_execution_change,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "current epoch is pre-capella"
@@ -107,7 +115,11 @@ def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
-        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
+        spec,
+        seen=seen,
+        state=state,
+        signed_bls_to_execution_change=signed_bls_to_execution_change,
+        current_time_ms=current_time_ms,
     )
     assert result == "valid"
     assert reason is None
@@ -120,7 +132,11 @@ def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
     )
 
     result, reason = run_validate_gossip(
-        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
+        spec,
+        seen=seen,
+        state=state,
+        signed_bls_to_execution_change=signed_bls_to_execution_change,
+        current_time_ms=current_time_ms,
     )
     assert result == "ignore"
     assert reason == "already seen BLS to execution change for this validator"
@@ -155,7 +171,11 @@ def test_gossip_bls_to_execution_change__reject_validator_index_out_of_range(spe
     yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
-        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
+        spec,
+        seen=seen,
+        state=state,
+        signed_bls_to_execution_change=signed_bls_to_execution_change,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "validator index out of range"
@@ -196,7 +216,11 @@ def test_gossip_bls_to_execution_change__reject_not_bls_credentials(spec, state)
     yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
-        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
+        spec,
+        seen=seen,
+        state=state,
+        signed_bls_to_execution_change=signed_bls_to_execution_change,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "validator does not have BLS withdrawal credentials"
@@ -238,7 +262,11 @@ def test_gossip_bls_to_execution_change__reject_pubkey_mismatch(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
-        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
+        spec,
+        seen=seen,
+        state=state,
+        signed_bls_to_execution_change=signed_bls_to_execution_change,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "pubkey does not match validator withdrawal credentials"
@@ -276,7 +304,11 @@ def test_gossip_bls_to_execution_change__reject_bad_signature(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     result, reason = run_validate_gossip(
-        spec, seen, None, state, signed_bls_to_execution_change, current_time_ms=current_time_ms
+        spec,
+        seen=seen,
+        state=state,
+        signed_bls_to_execution_change=signed_bls_to_execution_change,
+        current_time_ms=current_time_ms,
     )
     assert result == "reject"
     assert reason == "invalid BLS to execution change signature"

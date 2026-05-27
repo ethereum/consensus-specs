@@ -49,7 +49,9 @@ def test_gossip_voluntary_exit__valid(spec, state):
 
     yield get_filename(signed_exit), signed_exit
 
-    result, reason = run_validate_gossip(spec, seen, None, state, signed_exit)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+    )
     assert result == "valid"
     assert reason is None
 
@@ -80,13 +82,17 @@ def test_gossip_voluntary_exit__ignore_already_seen(spec, state):
     yield get_filename(signed_exit), signed_exit
 
     # First validation should pass
-    result, reason = run_validate_gossip(spec, seen, None, state, signed_exit)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+    )
     assert result == "valid"
     assert reason is None
     messages.append({"message": get_filename(signed_exit), "expected": "valid"})
 
     # Second validation should be ignored
-    result, reason = run_validate_gossip(spec, seen, None, state, signed_exit)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+    )
     assert result == "ignore"
     assert reason == "already seen voluntary exit for this validator"
     messages.append({"message": get_filename(signed_exit), "expected": "ignore", "reason": reason})
@@ -119,7 +125,9 @@ def test_gossip_voluntary_exit__reject_validator_index_out_of_range(spec, state)
 
     yield get_filename(signed_exit), signed_exit
 
-    result, reason = run_validate_gossip(spec, seen, None, state, signed_exit)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+    )
     assert result == "reject"
     assert reason == "validator index out of range"
 
@@ -153,7 +161,9 @@ def test_gossip_voluntary_exit__reject_validator_not_active(spec, state):
 
     yield get_filename(signed_exit), signed_exit
 
-    result, reason = run_validate_gossip(spec, seen, None, state, signed_exit)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+    )
     assert result == "reject"
     assert reason == "validator is not active"
 
@@ -187,7 +197,9 @@ def test_gossip_voluntary_exit__reject_already_initiated_exit(spec, state):
 
     yield get_filename(signed_exit), signed_exit
 
-    result, reason = run_validate_gossip(spec, seen, None, state, signed_exit)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+    )
     assert result == "reject"
     assert reason == "validator has already initiated exit"
 
@@ -221,7 +233,9 @@ def test_gossip_voluntary_exit__reject_epoch_in_future(spec, state):
 
     yield get_filename(signed_exit), signed_exit
 
-    result, reason = run_validate_gossip(spec, seen, None, state, signed_exit)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+    )
     assert result == "reject"
     assert reason == "voluntary exit epoch is in the future"
 
@@ -256,7 +270,9 @@ def test_gossip_voluntary_exit__reject_not_active_long_enough(spec, state):
 
     yield get_filename(signed_exit), signed_exit
 
-    result, reason = run_validate_gossip(spec, seen, None, state, signed_exit)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+    )
     assert result == "reject"
     assert reason == "validator has not been active long enough"
 
@@ -296,7 +312,9 @@ def test_gossip_voluntary_exit__reject_invalid_signature(spec, state):
 
     yield get_filename(signed_exit), signed_exit
 
-    result, reason = run_validate_gossip(spec, seen, None, state, signed_exit)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+    )
     assert result == "reject"
     assert reason == "invalid voluntary exit signature"
 

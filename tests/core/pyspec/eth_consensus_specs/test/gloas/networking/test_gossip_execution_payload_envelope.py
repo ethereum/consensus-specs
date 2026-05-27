@@ -51,7 +51,9 @@ def test_gossip_execution_payload_envelope__valid(spec, state):
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -88,7 +90,9 @@ def test_gossip_execution_payload_envelope__ignore_block_unseen(spec, state):
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "ignore"
     assert reason == "envelope's block has not been seen"
     messages.append(
@@ -124,7 +128,9 @@ def test_gossip_execution_payload_envelope__ignore_duplicate(spec, state):
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -136,7 +142,9 @@ def test_gossip_execution_payload_envelope__ignore_duplicate(spec, state):
     )
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "ignore"
     assert reason == "already seen envelope for this block root from this builder"
     messages.append(
@@ -173,7 +181,9 @@ def test_gossip_execution_payload_envelope__reject_slot_mismatch(spec, state):
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "reject"
     assert reason == "block's slot does not match payload's slot number"
     messages.append(
@@ -210,7 +220,9 @@ def test_gossip_execution_payload_envelope__reject_block_hash_mismatch(spec, sta
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "reject"
     assert reason == "payload's block hash does not match the bid's block hash"
     messages.append(
@@ -247,7 +259,9 @@ def test_gossip_execution_payload_envelope__reject_invalid_signature(spec, state
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "reject"
     assert reason == "invalid envelope signature"
     messages.append(
@@ -297,7 +311,9 @@ def test_gossip_execution_payload_envelope__ignore_pre_finalized(spec, state):
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "ignore"
     assert reason == "envelope is from a slot before the latest finalized slot"
     messages.append(
@@ -335,7 +351,9 @@ def test_gossip_execution_payload_envelope__reject_block_failed_validation(spec,
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "reject"
     assert reason == "envelope's block failed validation"
     messages.append(
@@ -376,7 +394,9 @@ def test_gossip_execution_payload_envelope__reject_builder_index_mismatch(spec, 
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "reject"
     assert reason == "envelope's builder index does not match the bid's builder index"
     messages.append(
@@ -421,7 +441,9 @@ def test_gossip_execution_payload_envelope__reject_execution_requests_root_misma
     messages = []
 
     time_ms += 100
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "reject"
     assert reason == "envelope's execution requests root does not match the bid"
     messages.append(

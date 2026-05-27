@@ -8,7 +8,6 @@ from eth_consensus_specs.test.helpers.fork_choice import (
 )
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
-    get_seen,
     run_validate_gossip,
     wrap_genesis_block,
 )
@@ -69,7 +68,6 @@ def test_gossip_partial_data_column_sidecar__valid(spec, state):
     )
     yield get_filename(partial), partial
 
-    seen = get_seen(spec)
     time_ms = spec.compute_time_at_slot_ms(state, group_id.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
@@ -77,10 +75,8 @@ def test_gossip_partial_data_column_sidecar__valid(spec, state):
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        partial,
+        store=store,
+        sidecar=partial,
         group_id=group_id,
         column_index=column_index,
     )
@@ -121,7 +117,6 @@ def test_gossip_partial_data_column_sidecar__reject_empty(spec, state):
     )
     yield get_filename(partial), partial
 
-    seen = get_seen(spec)
     time_ms = spec.compute_time_at_slot_ms(state, group_id.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
@@ -129,10 +124,8 @@ def test_gossip_partial_data_column_sidecar__reject_empty(spec, state):
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        partial,
+        store=store,
+        sidecar=partial,
         group_id=group_id,
         column_index=column_index,
     )
@@ -177,7 +170,6 @@ def test_gossip_partial_data_column_sidecar__reject_slot_mismatch(spec, state):
     )
     yield get_filename(partial), partial
 
-    seen = get_seen(spec)
     time_ms = spec.compute_time_at_slot_ms(state, group_id.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
@@ -185,10 +177,8 @@ def test_gossip_partial_data_column_sidecar__reject_slot_mismatch(spec, state):
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        partial,
+        store=store,
+        sidecar=partial,
         group_id=group_id,
         column_index=column_index,
     )
@@ -234,7 +224,6 @@ def test_gossip_partial_data_column_sidecar__reject_cells_count_mismatch(spec, s
     )
     yield get_filename(partial), partial
 
-    seen = get_seen(spec)
     time_ms = spec.compute_time_at_slot_ms(state, group_id.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
@@ -242,10 +231,8 @@ def test_gossip_partial_data_column_sidecar__reject_cells_count_mismatch(spec, s
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        partial,
+        store=store,
+        sidecar=partial,
         group_id=group_id,
         column_index=column_index,
     )
@@ -291,7 +278,6 @@ def test_gossip_partial_data_column_sidecar__reject_proofs_count_mismatch(spec, 
     )
     yield get_filename(partial), partial
 
-    seen = get_seen(spec)
     time_ms = spec.compute_time_at_slot_ms(state, group_id.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
@@ -299,10 +285,8 @@ def test_gossip_partial_data_column_sidecar__reject_proofs_count_mismatch(spec, 
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        partial,
+        store=store,
+        sidecar=partial,
         group_id=group_id,
         column_index=column_index,
     )
@@ -346,7 +330,6 @@ def test_gossip_partial_data_column_sidecar__ignore_block_unseen(spec, state):
     )
     yield get_filename(partial), partial
 
-    seen = get_seen(spec)
     time_ms = spec.compute_time_at_slot_ms(state, group_id.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
@@ -354,10 +337,8 @@ def test_gossip_partial_data_column_sidecar__ignore_block_unseen(spec, state):
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        partial,
+        store=store,
+        sidecar=partial,
         group_id=group_id,
         column_index=column_index,
     )
@@ -412,7 +393,6 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     )
     yield get_filename(partial), partial
 
-    seen = get_seen(spec)
     time_ms = spec.compute_time_at_slot_ms(state, group_id.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
@@ -420,10 +400,8 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        partial,
+        store=store,
+        sidecar=partial,
         group_id=group_id,
         column_index=column_index,
     )
@@ -487,7 +465,6 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
     )
     yield get_filename(partial), partial
 
-    seen = get_seen(spec)
     time_ms = spec.compute_time_at_slot_ms(state, group_id.slot)
     yield "current_time_ms", "meta", int(time_ms)
     messages = []
@@ -495,10 +472,8 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        partial,
+        store=store,
+        sidecar=partial,
         group_id=group_id,
         column_index=column_index,
     )

@@ -57,10 +57,9 @@ def test_gossip_sync_committee_message__valid(spec, state):
 
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        None,
-        state,
-        message,
+        seen=seen,
+        state=state,
+        sync_committee_message=message,
         current_time_ms=current_time_ms + 500,
         subnet_id=subnet_id,
     )
@@ -103,10 +102,9 @@ def test_gossip_sync_committee_message__ignore_future_slot(spec, state):
 
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        None,
-        state,
-        message,
+        seen=seen,
+        state=state,
+        sync_committee_message=message,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
@@ -154,10 +152,9 @@ def test_gossip_sync_committee_message__ignore_past_slot(spec, state):
 
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        None,
-        state,
-        message,
+        seen=seen,
+        state=state,
+        sync_committee_message=message,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
@@ -201,10 +198,9 @@ def test_gossip_sync_committee_message__reject_wrong_subnet(spec, state):
 
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        None,
-        state,
-        message,
+        seen=seen,
+        state=state,
+        sync_committee_message=message,
         current_time_ms=current_time_ms + 500,
         subnet_id=wrong_subnet_id,
     )
@@ -247,10 +243,9 @@ def test_gossip_sync_committee_message__reject_validator_index_out_of_range(spec
 
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        None,
-        state,
-        message,
+        seen=seen,
+        state=state,
+        sync_committee_message=message,
         current_time_ms=current_time_ms + 500,
         subnet_id=subnet_id,
     )
@@ -293,10 +288,9 @@ def test_gossip_sync_committee_message__ignore_duplicate(spec, state):
     # First validation should pass
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        None,
-        state,
-        message,
+        seen=seen,
+        state=state,
+        sync_committee_message=message,
         current_time_ms=current_time_ms + 500,
         subnet_id=subnet_id,
     )
@@ -314,10 +308,9 @@ def test_gossip_sync_committee_message__ignore_duplicate(spec, state):
     # Second validation should be ignored
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        None,
-        state,
-        message,
+        seen=seen,
+        state=state,
+        sync_committee_message=message,
         current_time_ms=current_time_ms + 600,
         subnet_id=subnet_id,
     )
@@ -371,10 +364,9 @@ def test_gossip_sync_committee_message__reject_invalid_signature(spec, state):
 
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        None,
-        state,
-        message,
+        seen=seen,
+        state=state,
+        sync_committee_message=message,
         current_time_ms=current_time_ms + 500,
         subnet_id=subnet_id,
     )

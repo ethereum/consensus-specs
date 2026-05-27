@@ -62,7 +62,12 @@ def test_gossip_proposer_preferences__valid(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "valid"
     assert reason is None
@@ -114,7 +119,12 @@ def test_gossip_proposer_preferences__ignore_past_lookahead(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "proposal slot is past the proposer lookahead"
@@ -156,7 +166,12 @@ def test_gossip_proposer_preferences__ignore_already_passed(spec, state):
 
     time_ms += 1000
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "proposal slot has already passed"
@@ -199,7 +214,12 @@ def test_gossip_proposer_preferences__ignore_dependent_root_unseen(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "dependent root block has not been seen"
@@ -240,7 +260,12 @@ def test_gossip_proposer_preferences__ignore_duplicate(spec, state):
     # First validation populates seen.
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "valid"
     assert reason is None
@@ -255,7 +280,12 @@ def test_gossip_proposer_preferences__ignore_duplicate(spec, state):
     # Replay should be ignored.
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "already seen preferences for this dependent root and proposal slot"
@@ -302,7 +332,12 @@ def test_gossip_proposer_preferences__reject_wrong_proposer(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "reject"
     assert reason == "validator is not the proposer for the given slot"
@@ -342,7 +377,12 @@ def test_gossip_proposer_preferences__reject_invalid_signature(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "reject"
     assert reason == "invalid proposer preferences signature"
@@ -393,7 +433,12 @@ def test_gossip_proposer_preferences__ignore_before_current_epoch(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "proposal slot is before the current epoch"
@@ -436,7 +481,12 @@ def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(sp
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "dependent root state is unavailable"
@@ -481,7 +531,12 @@ def test_gossip_proposer_preferences__reject_validator_index_out_of_range(spec, 
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "reject"
     assert reason == "validator index out of range"

@@ -105,15 +105,17 @@ def test_gossip_beacon_aggregate_and_proof__accepts_one_millisecond_before_slot_
     yield "current_time_ms", "meta", int(current_time_ms)
 
     seen = get_seen(spec)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=current_time_ms,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -137,15 +139,17 @@ def test_gossip_beacon_aggregate_and_proof__accepts_at_slot_start(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     seen = get_seen(spec)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=current_time_ms,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -177,15 +181,17 @@ def test_gossip_beacon_aggregate_and_proof__ignores_first_slot_before_epoch_wind
     yield "current_time_ms", "meta", int(current_time_ms)
 
     seen = get_seen(spec)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=current_time_ms,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "aggregate slot is from a future slot"
@@ -212,15 +218,17 @@ def test_gossip_beacon_aggregate_and_proof__accepts_first_slot_when_epoch_window
     yield "current_time_ms", "meta", int(current_time_ms)
 
     seen = get_seen(spec)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=current_time_ms,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -249,15 +257,17 @@ def test_gossip_beacon_aggregate_and_proof__accepts_first_slot_when_epoch_window
     yield "current_time_ms", "meta", int(current_time_ms)
 
     seen = get_seen(spec)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=current_time_ms,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -286,15 +296,17 @@ def test_gossip_beacon_aggregate_and_proof__ignores_first_slot_after_epoch_windo
     yield "current_time_ms", "meta", int(current_time_ms)
 
     seen = get_seen(spec)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=current_time_ms,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "aggregate epoch is not previous or current epoch"
@@ -331,15 +343,17 @@ def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_one_millisecond_be
     yield "current_time_ms", "meta", int(current_time_ms)
 
     seen = get_seen(spec)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=current_time_ms,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -369,15 +383,17 @@ def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_at_slot_start(spec
     yield "current_time_ms", "meta", int(current_time_ms)
 
     seen = get_seen(spec)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=current_time_ms,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -407,15 +423,17 @@ def test_gossip_beacon_aggregate_and_proof__accepts_last_slot_when_epoch_window_
     yield "current_time_ms", "meta", int(current_time_ms)
 
     seen = get_seen(spec)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=current_time_ms,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -447,15 +465,17 @@ def test_gossip_beacon_aggregate_and_proof__ignores_last_slot_after_epoch_window
     yield "current_time_ms", "meta", int(current_time_ms)
 
     seen = get_seen(spec)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=current_time_ms,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "aggregate epoch is not previous or current epoch"

@@ -138,7 +138,12 @@ def test_gossip_execution_payload_bid__valid(spec, state):
         target_gas_limit=parent_gas_limit,
     )
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "valid"
     assert reason is None
@@ -155,7 +160,9 @@ def test_gossip_execution_payload_bid__valid(spec, state):
     signed_envelope = build_signed_execution_payload_envelope(
         spec, state, parent_block_root, parent_signed_block
     )
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -183,7 +190,12 @@ def test_gossip_execution_payload_bid__valid(spec, state):
 
     time_ms += 40
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "valid"
     assert reason is None
@@ -229,7 +241,12 @@ def test_gossip_execution_payload_bid__ignore_slot_too_far_future(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "bid slot is not the current or next slot"
@@ -281,7 +298,12 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_lower_disparity(spec,
     messages = []
 
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "bid slot is not the current or next slot"
@@ -333,7 +355,12 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
         target_gas_limit=parent_gas_limit,
     )
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "valid"
     assert reason is None
@@ -351,7 +378,9 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
     signed_envelope = build_signed_execution_payload_envelope(
         spec, state, parent_block_root, parent_signed_block
     )
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "valid"
     assert reason is None
     yield get_filename(signed_envelope), signed_envelope
@@ -382,7 +411,12 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
         - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "valid"
     assert reason is None
@@ -428,7 +462,12 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
         target_gas_limit=parent_gas_limit,
     )
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "valid"
     assert reason is None
@@ -446,7 +485,9 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
     signed_envelope = build_signed_execution_payload_envelope(
         spec, state, parent_block_root, parent_signed_block
     )
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "valid"
     assert reason is None
     yield get_filename(signed_envelope), signed_envelope
@@ -477,7 +518,12 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
         + spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
     )
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "valid"
     assert reason is None
@@ -528,7 +574,12 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_upper_disparity(spec,
     messages = []
 
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "bid slot is not the current or next slot"
@@ -579,7 +630,12 @@ def test_gossip_execution_payload_bid__ignore_duplicate_from_builder(spec, state
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "already seen valid bid from this builder for this slot"
@@ -632,7 +688,12 @@ def test_gossip_execution_payload_bid__ignore_not_highest_value(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "bid is not the highest value bid seen for this slot and parent"
@@ -681,7 +742,12 @@ def test_gossip_execution_payload_bid__reject_builder_index_out_of_range(spec, s
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "reject"
     assert reason == "builder index out of range"
@@ -732,7 +798,12 @@ def test_gossip_execution_payload_bid__ignore_builder_cannot_cover(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "builder cannot cover bid value"
@@ -782,7 +853,12 @@ def test_gossip_execution_payload_bid__reject_execution_payment_nonzero(spec, st
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "reject"
     assert reason == "bid's execution payment must be zero"
@@ -834,7 +910,12 @@ def test_gossip_execution_payload_bid__reject_builder_not_active(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "reject"
     assert reason == "builder is not active"
@@ -892,7 +973,12 @@ def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "reject"
     assert reason == "too many blob kzg commitments"
@@ -943,7 +1029,12 @@ def test_gossip_execution_payload_bid__ignore_parent_block_unknown(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "bid's parent block root is not a known beacon block"
@@ -994,7 +1085,12 @@ def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, st
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "bid's parent block hash is not a known execution payload"
@@ -1048,7 +1144,12 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "bid's parent block state is unavailable"
@@ -1115,7 +1216,12 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
 
     time_ms += 100
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "matching proposer preferences have not been seen"
@@ -1164,7 +1270,12 @@ def test_gossip_execution_payload_bid__reject_fee_recipient_mismatch(spec, state
         target_gas_limit=parent_gas_limit,
     )
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "valid"
     assert reason is None
@@ -1181,7 +1292,9 @@ def test_gossip_execution_payload_bid__reject_fee_recipient_mismatch(spec, state
     signed_envelope = build_signed_execution_payload_envelope(
         spec, state, parent_block_root, parent_signed_block
     )
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -1210,7 +1323,12 @@ def test_gossip_execution_payload_bid__reject_fee_recipient_mismatch(spec, state
 
     time_ms += 40
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "reject"
     assert reason == "bid's fee recipient does not match the proposer's preference"
@@ -1258,7 +1376,12 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
         target_gas_limit=parent_gas_limit,
     )
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "valid"
     assert reason is None
@@ -1275,7 +1398,9 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
     signed_envelope = build_signed_execution_payload_envelope(
         spec, state, parent_block_root, parent_signed_block
     )
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -1306,7 +1431,12 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
 
     time_ms += 40
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "bid gas limit is not compatible with the proposer's target"
@@ -1354,7 +1484,12 @@ def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
         target_gas_limit=parent_gas_limit,
     )
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "valid"
     assert reason is None
@@ -1371,7 +1506,9 @@ def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
     signed_envelope = build_signed_execution_payload_envelope(
         spec, state, parent_block_root, parent_signed_block
     )
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -1400,7 +1537,12 @@ def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
 
     time_ms += 40
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == "reject"
     assert reason == "invalid bid signature"
@@ -1461,7 +1603,12 @@ def _run_bid_gas_limit_scenario(
         target_gas_limit=spec.uint64(target_gas_limit),
     )
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_prefs, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
     )
     assert result == "valid"
     assert reason is None
@@ -1480,7 +1627,9 @@ def _run_bid_gas_limit_scenario(
         spec, state, parent_block_root, parent_signed_block
     )
     assert signed_envelope.message.payload.gas_limit == parent_gas_limit
-    result, reason = run_validate_gossip(spec, seen, store, state, signed_envelope)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
     assert result == "valid"
     assert reason is None
     yield get_filename(signed_envelope), signed_envelope
@@ -1508,7 +1657,12 @@ def _run_bid_gas_limit_scenario(
 
     time_ms += 40
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_bid, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
     )
     assert result == expected_result
     assert reason == expected_reason

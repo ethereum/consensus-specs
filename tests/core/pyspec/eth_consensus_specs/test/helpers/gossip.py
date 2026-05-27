@@ -130,40 +130,19 @@ def get_filename(obj):
     return f"{info['file_prefix']}_{encode_hex(obj.hash_tree_root())}"
 
 
-def _call_validation_fn(spec_func, *args, **kwargs):
-    """Call spec_func with args/kwargs; assert no unexpected kwargs are supplied."""
-    accepted = set(inspect.signature(spec_func).parameters)
-    extras = set(kwargs) - accepted
-    assert not extras, f"unexpected kwargs for {spec_func.__name__}: {sorted(extras)}"
-    return spec_func(*args, **kwargs)
-
-
-def _dispatch_gossip_validation(spec, seen, store, state, message, kwargs):
-    """Dispatch to the appropriate gossip validation function based on message's type."""
-    type_name = type(message).__name__
-    info = _MESSAGE_INFO.get(type_name)
-    func_name = info["validation_fn"] if info else None
+def run_validate_gossip(spec, **kwargs):
+    """Dispatch to the appropriate gossip validation function based on the message's type."""
+    matches = [v for v in kwargs.values() if type(v).__name__ in _MESSAGE_INFO]
+    assert len(matches) == 1, f"expected exactly one gossip message kwarg, got {len(matches)}"
+    func_name = _MESSAGE_INFO[type(matches[0]).__name__]["validation_fn"]
     if func_name is None:
-        raise Exception(f"unsupported gossip message type: {type_name}")
+        raise Exception(f"unsupported gossip message type: {type(matches[0]).__name__}")
     spec_func = getattr(spec, func_name)
-    params = inspect.signature(spec_func).parameters
-    # Some validators don't take store (e.g. voluntary_exit, slashings) or state (e.g. gloas data column sidecar)
-    takes_store = "store" in params
-    takes_state = "state" in params
-    assert takes_store or store is None
-    args = [seen]
-    if takes_store:
-        args.append(store)
-    if takes_state:
-        args.append(state)
-    args.append(message)
-    return _call_validation_fn(spec_func, *args, **kwargs)
+    extras = set(kwargs) - set(inspect.signature(spec_func).parameters)
+    assert not extras, f"unexpected kwargs for {func_name}: {sorted(extras)}"
 
-
-def run_validate_gossip(spec, seen, store=None, state=None, message=None, **kwargs):
-    """Dispatch to the appropriate gossip validation function based on message's type."""
     try:
-        _dispatch_gossip_validation(spec, seen, store, state, message, kwargs)
+        spec_func(**kwargs)
         return "valid", None
     except spec.GossipIgnore as e:
         return "ignore", str(e)

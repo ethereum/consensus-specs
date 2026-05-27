@@ -59,7 +59,12 @@ def test_gossip_beacon_block__reject_bid_parent_root_mismatch(spec, state):
 
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_block, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
+        current_time_ms=time_ms,
     )
     assert result == "reject"
     assert reason == "bid's parent does not equal block's parent"
@@ -106,7 +111,12 @@ def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
 
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_child, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
+        current_time_ms=time_ms,
     )
     assert result == "reject"
     assert reason == "block is not from a higher slot than its parent"
@@ -163,7 +173,12 @@ def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, sta
 
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_child, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
+        current_time_ms=time_ms,
     )
     assert result == "reject"
     assert reason == "finalized checkpoint is not an ancestor of block"
@@ -207,7 +222,12 @@ def test_gossip_beacon_block__reject_too_many_blob_commitments(spec, state):
 
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_block, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
+        current_time_ms=time_ms,
     )
     assert result == "reject"
     assert reason == "too many blob kzg commitments"
@@ -255,7 +275,12 @@ def test_gossip_beacon_block__ignore_parent_state_unavailable(spec, state):
 
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_child, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
+        current_time_ms=time_ms,
     )
     assert result == "ignore"
     assert reason == "block's parent state is unavailable"
@@ -299,7 +324,12 @@ def test_gossip_beacon_block__reject_wrong_proposer(spec, state):
 
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_block, current_time_ms=time_ms
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
+        current_time_ms=time_ms,
     )
     assert result == "reject"
     assert reason == "block proposer does not match the expected proposer"

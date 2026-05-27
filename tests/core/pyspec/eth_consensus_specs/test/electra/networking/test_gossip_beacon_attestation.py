@@ -62,16 +62,18 @@ def test_gossip_beacon_attestation__reject_nonzero_data_index(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "attestation data index is non-zero"
@@ -121,16 +123,18 @@ def test_gossip_beacon_attestation__reject_attester_not_in_committee(spec, state
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "attester is not a member of the committee"

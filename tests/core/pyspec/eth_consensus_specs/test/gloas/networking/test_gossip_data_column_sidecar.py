@@ -51,7 +51,11 @@ def test_gossip_data_column_sidecar__ignore_block_unseen(spec, state):
 
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, sidecar, subnet_id=correct_subnet
+        spec,
+        seen=seen,
+        store=store,
+        sidecar=sidecar,
+        subnet_id=correct_subnet,
     )
     assert result == "ignore"
     assert reason == "block for sidecar's beacon block root has not been seen"
@@ -98,7 +102,11 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
 
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, sidecar, subnet_id=correct_subnet
+        spec,
+        seen=seen,
+        store=store,
+        sidecar=sidecar,
+        subnet_id=correct_subnet,
     )
     assert result == "ignore"
     assert reason == "already seen sidecar for this block root and index"
@@ -146,7 +154,11 @@ def test_gossip_data_column_sidecar__reject_slot_mismatch(spec, state):
 
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, sidecar, subnet_id=correct_subnet
+        spec,
+        seen=seen,
+        store=store,
+        sidecar=sidecar,
+        subnet_id=correct_subnet,
     )
     assert result == "reject"
     assert reason == "sidecar's slot does not match block's slot"
@@ -197,7 +209,11 @@ def test_gossip_data_column_sidecar__reject_invalid_sidecar(spec, state):
 
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, sidecar, subnet_id=correct_subnet
+        spec,
+        seen=seen,
+        store=store,
+        sidecar=sidecar,
+        subnet_id=correct_subnet,
     )
     assert result == "reject"
     assert reason == "invalid sidecar"

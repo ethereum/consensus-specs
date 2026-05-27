@@ -60,15 +60,17 @@ def test_gossip_beacon_block__valid_execution_enabled(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = {} if is_post_gloas(spec) else {"block_payload_statuses": {}}
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -110,10 +112,10 @@ def test_gossip_beacon_block__valid_execution_disabled(spec, state):
 
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
         block_payload_statuses={},
     )
@@ -160,10 +162,10 @@ def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec,
 
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
         block_payload_statuses={},
     )
@@ -247,10 +249,10 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
 
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_child,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
         current_time_ms=block_time_ms + 500,
         block_payload_statuses=get_spec_block_payload_statuses(
             spec,
@@ -338,10 +340,10 @@ def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spe
 
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_child,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
         current_time_ms=block_time_ms + 500,
         block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
@@ -428,10 +430,10 @@ def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, sta
 
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_child,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
         current_time_ms=block_time_ms + 500,
         block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
@@ -517,10 +519,10 @@ def test_gossip_beacon_block__valid_parent_execution_verified_valid(spec, state)
 
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_child,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
         current_time_ms=block_time_ms + 500,
         block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
@@ -599,10 +601,10 @@ def test_gossip_beacon_block__valid_parent_optimistic(spec, state):
 
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_child,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
         current_time_ms=block_time_ms + 500,
         block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )

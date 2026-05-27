@@ -81,10 +81,10 @@ def test_gossip_beacon_aggregate_and_proof__reject_data_index_too_high(spec, sta
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=time_ms,
         block_payload_statuses={},
     )
@@ -183,10 +183,10 @@ def test_gossip_beacon_aggregate_and_proof__reject_same_slot_with_payload(spec, 
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=time_ms,
         block_payload_statuses={},
     )
@@ -233,7 +233,13 @@ def test_gossip_beacon_aggregate_and_proof__ignore_payload_envelope_unseen(spec,
 
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_agg, current_time_ms=time_ms, block_payload_statuses={}
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
+        current_time_ms=time_ms,
+        block_payload_statuses={},
     )
     assert result == "ignore"
     assert reason == "execution payload envelope has not been seen"
@@ -282,10 +288,10 @@ def test_gossip_beacon_aggregate_and_proof__ignore_payload_pending_el_validation
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=time_ms,
         block_payload_statuses=get_spec_block_payload_statuses(
             spec, {block_root: PAYLOAD_STATUS_NOT_VALIDATED}
@@ -338,10 +344,10 @@ def test_gossip_beacon_aggregate_and_proof__reject_payload_failed_el_validation(
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=time_ms,
         block_payload_statuses=get_spec_block_payload_statuses(
             spec, {block_root: PAYLOAD_STATUS_INVALIDATED}
@@ -394,10 +400,10 @@ def test_gossip_beacon_aggregate_and_proof__valid_payload_validated(spec, state)
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=time_ms,
         block_payload_statuses=get_spec_block_payload_statuses(
             spec, {block_root: PAYLOAD_STATUS_VALID}

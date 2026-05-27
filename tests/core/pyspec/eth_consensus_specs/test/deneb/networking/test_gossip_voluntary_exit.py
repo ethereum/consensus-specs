@@ -35,7 +35,9 @@ def test_gossip_voluntary_exit__valid_capella_signature(spec, state):
     signed_exit = create_signed_voluntary_exit(spec, state, validator_index=0)
     yield get_filename(signed_exit), signed_exit
 
-    result, reason = run_validate_gossip(spec, seen, None, state, signed_exit)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+    )
     assert result == "valid"
     assert reason is None
 
@@ -62,7 +64,9 @@ def test_gossip_voluntary_exit__reject_deneb_signature(spec, state):
     )
     yield get_filename(signed_exit), signed_exit
 
-    result, reason = run_validate_gossip(spec, seen, None, state, signed_exit)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, signed_voluntary_exit=signed_exit
+    )
     assert result == "reject"
     assert reason == "invalid voluntary exit signature"
 

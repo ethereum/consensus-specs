@@ -51,15 +51,17 @@ def test_gossip_beacon_block__valid_with_blob_kzg_commitments(spec, state):
     block_time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = {} if is_post_gloas(spec) else {"block_payload_statuses": {}}
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -100,15 +102,17 @@ def test_gossip_beacon_block__reject_too_many_kzg_commitments(spec, state):
     block_time_ms = spec.compute_time_at_slot_ms(state, block.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = {} if is_post_gloas(spec) else {"block_payload_statuses": {}}
+    kwargs = {}
+    if not is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "too many blob kzg commitments"

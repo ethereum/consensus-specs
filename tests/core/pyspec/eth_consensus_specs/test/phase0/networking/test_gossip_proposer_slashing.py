@@ -25,7 +25,9 @@ def test_gossip_proposer_slashing__valid(spec, state):
 
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_gossip(spec, seen, None, state, proposer_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, proposer_slashing=proposer_slashing
+    )
     assert result == "valid"
     assert reason is None
 
@@ -54,13 +56,17 @@ def test_gossip_proposer_slashing__ignore_already_seen(spec, state):
     yield get_filename(proposer_slashing), proposer_slashing
 
     # First validation should pass
-    result, reason = run_validate_gossip(spec, seen, None, state, proposer_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, proposer_slashing=proposer_slashing
+    )
     assert result == "valid"
     assert reason is None
     messages.append({"message": get_filename(proposer_slashing), "expected": "valid"})
 
     # Second validation should be ignored
-    result, reason = run_validate_gossip(spec, seen, None, state, proposer_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, proposer_slashing=proposer_slashing
+    )
     assert result == "ignore"
     assert reason == "already seen proposer slashing for this proposer"
     messages.append(
@@ -95,7 +101,9 @@ def test_gossip_proposer_slashing__reject_slots_not_matching(spec, state):
 
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_gossip(spec, seen, None, state, proposer_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, proposer_slashing=proposer_slashing
+    )
     assert result == "reject"
     assert reason == "header slots do not match"
 
@@ -133,7 +141,9 @@ def test_gossip_proposer_slashing__reject_proposer_indices_not_matching(spec, st
 
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_gossip(spec, seen, None, state, proposer_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, proposer_slashing=proposer_slashing
+    )
     assert result == "reject"
     assert reason == "header proposer indices do not match"
 
@@ -169,7 +179,9 @@ def test_gossip_proposer_slashing__reject_headers_identical(spec, state):
 
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_gossip(spec, seen, None, state, proposer_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, proposer_slashing=proposer_slashing
+    )
     assert result == "reject"
     assert reason == "headers are not different"
 
@@ -207,7 +219,9 @@ def test_gossip_proposer_slashing__reject_proposer_index_out_of_range(spec, stat
 
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_gossip(spec, seen, None, state, proposer_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, proposer_slashing=proposer_slashing
+    )
     assert result == "reject"
     assert reason == "proposer index out of range"
 
@@ -244,7 +258,9 @@ def test_gossip_proposer_slashing__reject_proposer_not_slashable(spec, state):
     yield "state", state
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_gossip(spec, seen, None, state, proposer_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, proposer_slashing=proposer_slashing
+    )
     assert result == "reject"
     assert reason == "proposer is not slashable"
 
@@ -278,7 +294,9 @@ def test_gossip_proposer_slashing__reject_invalid_signature_1(spec, state):
 
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_gossip(spec, seen, None, state, proposer_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, proposer_slashing=proposer_slashing
+    )
     assert result == "reject"
     assert reason == "invalid proposer slashing signature"
 
@@ -312,7 +330,9 @@ def test_gossip_proposer_slashing__reject_invalid_signature_2(spec, state):
 
     yield get_filename(proposer_slashing), proposer_slashing
 
-    result, reason = run_validate_gossip(spec, seen, None, state, proposer_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, proposer_slashing=proposer_slashing
+    )
     assert result == "reject"
     assert reason == "invalid proposer slashing signature"
 

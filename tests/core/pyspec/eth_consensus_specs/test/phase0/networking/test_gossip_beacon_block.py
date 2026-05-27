@@ -57,19 +57,19 @@ def test_gossip_beacon_block__valid_block(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = (
+    kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -107,19 +107,19 @@ def test_gossip_beacon_block__ignore_future_slot(spec, state):
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
-    extra_kwargs = (
+    kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=current_time_ms,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "block is from a future slot"
@@ -164,19 +164,19 @@ def test_gossip_beacon_block__valid_within_clock_disparity(spec, state):
 
     yield "current_time_ms", "meta", int(current_time_ms)
 
-    extra_kwargs = (
+    kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=current_time_ms,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -215,38 +215,38 @@ def test_gossip_beacon_block__ignore_already_seen_proposer_slot(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     # First block should be valid
-    extra_kwargs = (
+    kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
     messages.append({"offset_ms": 500, "message": get_filename(signed_block), "expected": "valid"})
 
     # Second block with same proposer/slot should be ignored
-    extra_kwargs = (
+    kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 600,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "block is not the first valid block for this proposer and slot"
@@ -314,19 +314,19 @@ def test_gossip_beacon_block__ignore_slot_not_greater_than_finalized(spec, state
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = (
+    kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "block is not from a slot greater than the latest finalized slot"
@@ -380,19 +380,19 @@ def test_gossip_beacon_block__ignore_parent_not_seen(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = (
+    kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "block's parent has not been seen"
@@ -477,19 +477,19 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = (
+    kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_child,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     if is_post_bellatrix(spec):
@@ -565,19 +565,19 @@ def test_gossip_beacon_block__reject_slot_not_higher_than_parent(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = (
+    kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "block is not from a higher slot than its parent"
@@ -661,19 +661,19 @@ def test_gossip_beacon_block__reject_finalized_checkpoint_not_ancestor(spec, sta
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = (
+    kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_child,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "finalized checkpoint is not an ancestor of block"
@@ -721,19 +721,19 @@ def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = (
+    kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "invalid proposer signature"
@@ -780,19 +780,19 @@ def test_gossip_beacon_block__reject_invalid_proposer_index(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = (
+    kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "proposer index out of range"
@@ -845,19 +845,19 @@ def test_gossip_beacon_block__reject_wrong_proposer_index(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = (
+    kwargs = (
         {"block_payload_statuses": {}}
         if is_post_bellatrix(spec) and not is_post_gloas(spec)
         else {}
     )
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_block,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "block proposer_index does not match expected proposer"

@@ -109,29 +109,33 @@ def test_gossip_beacon_aggregate_and_proof__accept_same_data_for_disjoint_commit
     block_time_ms = spec.compute_time_at_slot_ms(state, attestation_1.data.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg_1,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg_1,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
     messages.append({"offset_ms": 500, "message": get_filename(signed_agg_1), "expected": "valid"})
 
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg_2,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg_2,
         current_time_ms=block_time_ms + 600,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -163,15 +167,17 @@ def test_gossip_beacon_aggregate_and_proof__reject_nonzero_data_index(spec, stat
     block_time_ms = spec.compute_time_at_slot_ms(state, signed_agg.message.aggregate.data.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "aggregate data index is non-zero"
@@ -213,15 +219,17 @@ def test_gossip_beacon_aggregate_and_proof__reject_zero_committees(spec, state):
     block_time_ms = spec.compute_time_at_slot_ms(state, signed_agg.message.aggregate.data.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "aggregate committee bits must specify exactly one committee"
@@ -269,15 +277,17 @@ def test_gossip_beacon_aggregate_and_proof__reject_multiple_committees(spec, sta
     block_time_ms = spec.compute_time_at_slot_ms(state, signed_agg.message.aggregate.data.slot)
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_agg,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_aggregate_and_proof=signed_agg,
         current_time_ms=block_time_ms + 500,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "aggregate committee bits must specify exactly one committee"

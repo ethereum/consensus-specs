@@ -87,16 +87,18 @@ def test_gossip_beacon_attestation__valid(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -151,16 +153,18 @@ def test_gossip_beacon_attestation__reject_committee_index_out_of_range(spec, st
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = spec.uint64(0)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "committee index out of range"
@@ -212,16 +216,18 @@ def test_gossip_beacon_attestation__reject_wrong_subnet(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=wrong_subnet,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "attestation is for wrong subnet"
@@ -281,16 +287,18 @@ def test_gossip_beacon_attestation__ignore_slot_not_in_range(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "attestation slot not within propagation range"
@@ -353,16 +361,18 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -423,16 +433,18 @@ def test_gossip_beacon_attestation__valid_within_clock_disparity_old(spec, state
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -493,16 +505,18 @@ def test_gossip_beacon_attestation__ignore_slot_too_old(spec, state):
     yield "current_time_ms", "meta", int(current_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=current_time_ms,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "attestation slot not within propagation range"
@@ -556,16 +570,18 @@ def test_gossip_beacon_attestation__reject_epoch_mismatch(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "attestation epoch does not match target epoch"
@@ -622,16 +638,18 @@ def test_gossip_beacon_attestation__reject_not_unaggregated(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "attestation is not unaggregated"
@@ -686,16 +704,18 @@ def test_gossip_beacon_attestation__reject_aggregation_bits_size_mismatch(spec, 
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "aggregation bits length does not match committee size"
@@ -758,16 +778,18 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
 
     # First validation should pass
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -781,16 +803,18 @@ def test_gossip_beacon_attestation__ignore_already_seen(spec, state):
     )
 
     # Second validation should be ignored
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 600,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "already seen attestation from this validator for this epoch"
@@ -851,16 +875,18 @@ def test_gossip_beacon_attestation__ignore_block_not_seen(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "block being voted for has not been seen"
@@ -937,16 +963,18 @@ def test_gossip_beacon_attestation__reject_block_failed_validation(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "block being voted for failed validation"
@@ -1007,16 +1035,18 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "invalid attestation signature"
@@ -1080,16 +1110,18 @@ def test_gossip_beacon_attestation__reject_target_not_ancestor(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "reject"
     assert reason == "target block is not an ancestor of LMD vote block"
@@ -1175,16 +1207,18 @@ def test_gossip_beacon_attestation__ignore_finalized_not_ancestor(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
-    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
+    kwargs = {}
+    if is_post_gloas(spec):
+        kwargs["block_payload_statuses"] = {}
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
-        **extra_kwargs,
+        **kwargs,
     )
     assert result == "ignore"
     assert reason == "finalized checkpoint is not an ancestor of block"

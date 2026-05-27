@@ -64,10 +64,10 @@ def test_gossip_beacon_attestation__reject_data_index_too_high(spec, state):
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=time_ms,
         subnet_id=subnet_id,
         block_payload_statuses={},
@@ -143,10 +143,10 @@ def test_gossip_beacon_attestation__reject_same_slot_with_payload(spec, state):
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=time_ms,
         subnet_id=subnet_id,
         block_payload_statuses={},
@@ -224,10 +224,10 @@ def test_gossip_beacon_attestation__ignore_payload_envelope_unseen(spec, state):
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=time_ms,
         subnet_id=subnet_id,
         block_payload_statuses={},
@@ -280,10 +280,10 @@ def test_gossip_beacon_attestation__ignore_payload_pending_el_validation(spec, s
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=time_ms,
         subnet_id=subnet_id,
         block_payload_statuses=get_spec_block_payload_statuses(
@@ -338,10 +338,10 @@ def test_gossip_beacon_attestation__reject_payload_failed_el_validation(spec, st
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=time_ms,
         subnet_id=subnet_id,
         block_payload_statuses=get_spec_block_payload_statuses(
@@ -396,10 +396,10 @@ def test_gossip_beacon_attestation__valid_payload_validated(spec, state):
     time_ms += 500
     result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        attestation,
+        seen=seen,
+        store=store,
+        state=state,
+        attestation=attestation,
         current_time_ms=time_ms,
         subnet_id=subnet_id,
         block_payload_statuses=get_spec_block_payload_statuses(
