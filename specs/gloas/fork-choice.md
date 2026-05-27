@@ -509,7 +509,7 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
     proposer_boost_node = ForkChoiceNode(
         root=store.proposer_boost_root, payload_status=PAYLOAD_STATUS_PENDING
     )
-    # Boost is applied if ``node`` is an ancestor of ``proposer_boost_node``
+    # Boost is applied if node is an ancestor of proposer_boost_node
     if is_ancestor(store, proposer_boost_node, node):
         proposer_score = get_proposer_score(store)
 
