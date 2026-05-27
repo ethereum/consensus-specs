@@ -9,7 +9,7 @@ from eth_consensus_specs.test.helpers.attestations import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_electra
+from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_gloas
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -100,8 +100,16 @@ def test_gossip_beacon_attestation__accepts_one_millisecond_before_slot_start(sp
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
+    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
     result, reason = run_validate_gossip(
-        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=current_time_ms,
+        subnet_id=subnet_id,
+        **extra_kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -126,8 +134,16 @@ def test_gossip_beacon_attestation__accepts_at_slot_start(spec, state):
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
+    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
     result, reason = run_validate_gossip(
-        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=current_time_ms,
+        subnet_id=subnet_id,
+        **extra_kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -158,8 +174,16 @@ def test_gossip_beacon_attestation__ignores_first_slot_before_epoch_window_opens
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
+    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
     result, reason = run_validate_gossip(
-        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=current_time_ms,
+        subnet_id=subnet_id,
+        **extra_kwargs,
     )
     assert result == "ignore"
     assert reason == "attestation slot is from a future slot"
@@ -191,8 +215,16 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_opens(s
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
+    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
     result, reason = run_validate_gossip(
-        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=current_time_ms,
+        subnet_id=subnet_id,
+        **extra_kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -220,8 +252,16 @@ def test_gossip_beacon_attestation__accepts_first_slot_when_epoch_window_closes(
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
+    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
     result, reason = run_validate_gossip(
-        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=current_time_ms,
+        subnet_id=subnet_id,
+        **extra_kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -249,8 +289,16 @@ def test_gossip_beacon_attestation__ignores_first_slot_after_epoch_window_closes
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
+    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
     result, reason = run_validate_gossip(
-        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=current_time_ms,
+        subnet_id=subnet_id,
+        **extra_kwargs,
     )
     assert result == "ignore"
     assert reason == "attestation epoch is not previous or current epoch"
@@ -288,8 +336,16 @@ def test_gossip_beacon_attestation__accepts_last_slot_one_millisecond_before_slo
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
+    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
     result, reason = run_validate_gossip(
-        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=current_time_ms,
+        subnet_id=subnet_id,
+        **extra_kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -318,8 +374,16 @@ def test_gossip_beacon_attestation__accepts_last_slot_at_slot_start(spec, state)
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
+    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
     result, reason = run_validate_gossip(
-        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=current_time_ms,
+        subnet_id=subnet_id,
+        **extra_kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -348,8 +412,16 @@ def test_gossip_beacon_attestation__accepts_last_slot_when_epoch_window_closes(s
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
+    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
     result, reason = run_validate_gossip(
-        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=current_time_ms,
+        subnet_id=subnet_id,
+        **extra_kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -378,8 +450,16 @@ def test_gossip_beacon_attestation__ignores_last_slot_after_epoch_window_closes(
 
     subnet_id = get_correct_subnet_for_attestation(spec, state, attestation)
     seen = get_seen(spec)
+    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
     result, reason = run_validate_gossip(
-        spec, seen, store, state, attestation, current_time_ms=current_time_ms, subnet_id=subnet_id
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=current_time_ms,
+        subnet_id=subnet_id,
+        **extra_kwargs,
     )
     assert result == "ignore"
     assert reason == "attestation epoch is not previous or current epoch"

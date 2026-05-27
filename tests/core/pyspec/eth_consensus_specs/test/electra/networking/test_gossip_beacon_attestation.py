@@ -11,6 +11,7 @@ from eth_consensus_specs.test.helpers.constants import ELECTRA, GLOAS
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -61,6 +62,7 @@ def test_gossip_beacon_attestation__reject_nonzero_data_index(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet(spec, state, attestation)
+    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
     result, reason = run_validate_gossip(
         spec,
         seen,
@@ -69,6 +71,7 @@ def test_gossip_beacon_attestation__reject_nonzero_data_index(spec, state):
         attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
+        **extra_kwargs,
     )
     assert result == "reject"
     assert reason == "attestation data index is non-zero"
@@ -118,6 +121,7 @@ def test_gossip_beacon_attestation__reject_attester_not_in_committee(spec, state
     yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = get_correct_subnet(spec, state, attestation)
+    extra_kwargs = {"block_payload_statuses": {}} if is_post_gloas(spec) else {}
     result, reason = run_validate_gossip(
         spec,
         seen,
@@ -126,6 +130,7 @@ def test_gossip_beacon_attestation__reject_attester_not_in_committee(spec, state
         attestation,
         current_time_ms=block_time_ms + 500,
         subnet_id=subnet_id,
+        **extra_kwargs,
     )
     assert result == "reject"
     assert reason == "attester is not a member of the committee"

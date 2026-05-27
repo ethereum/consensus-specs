@@ -63,7 +63,14 @@ def test_gossip_beacon_attestation__reject_data_index_too_high(spec, state):
     subnet_id = get_correct_subnet(spec, state, attestation)
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, attestation, current_time_ms=time_ms, subnet_id=subnet_id
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=time_ms,
+        subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "attestation data index must be 0 or 1"
@@ -135,7 +142,14 @@ def test_gossip_beacon_attestation__reject_same_slot_with_payload(spec, state):
 
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, attestation, current_time_ms=time_ms, subnet_id=subnet_id
+        spec,
+        seen,
+        store,
+        state,
+        attestation,
+        current_time_ms=time_ms,
+        subnet_id=subnet_id,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "same-slot attestation must attest with index 0"

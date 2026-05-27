@@ -146,10 +146,17 @@ def _dispatch_gossip_validation(spec, seen, store, state, message, kwargs):
     if func_name is None:
         raise Exception(f"unsupported gossip message type: {type_name}")
     spec_func = getattr(spec, func_name)
-    # Some validators (e.g. voluntary_exit, slashings) don't take store
-    takes_store = "store" in inspect.signature(spec_func).parameters
+    params = inspect.signature(spec_func).parameters
+    # Some validators don't take store (e.g. voluntary_exit, slashings) or state (e.g. gloas data column sidecar)
+    takes_store = "store" in params
+    takes_state = "state" in params
     assert takes_store or store is None
-    args = [seen, store, state, message] if takes_store else [seen, state, message]
+    args = [seen]
+    if takes_store:
+        args.append(store)
+    if takes_state:
+        args.append(state)
+    args.append(message)
     return _call_validation_fn(spec_func, *args, **kwargs)
 
 

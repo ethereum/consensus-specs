@@ -80,7 +80,13 @@ def test_gossip_beacon_aggregate_and_proof__reject_data_index_too_high(spec, sta
 
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_agg, current_time_ms=time_ms
+        spec,
+        seen,
+        store,
+        state,
+        signed_agg,
+        current_time_ms=time_ms,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "aggregate data index must be 0 or 1"
@@ -176,7 +182,13 @@ def test_gossip_beacon_aggregate_and_proof__reject_same_slot_with_payload(spec, 
 
     time_ms += 500
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_agg, current_time_ms=time_ms
+        spec,
+        seen,
+        store,
+        state,
+        signed_agg,
+        current_time_ms=time_ms,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "same-slot aggregate must attest with index 0"
