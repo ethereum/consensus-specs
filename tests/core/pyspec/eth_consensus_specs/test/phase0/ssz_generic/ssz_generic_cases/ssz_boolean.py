@@ -11,8 +11,8 @@ INVALID_BOOL_CASES = [
 
 
 def valid_cases():
-    yield "true", valid_test_case(lambda: boolean(True))
-    yield "false", valid_test_case(lambda: boolean(False))
+    yield "true", valid_test_case(lambda: boolean(True))  # noqa: FBT003
+    yield "false", valid_test_case(lambda: boolean(False))  # noqa: FBT003
 
 
 def invalid_cases():

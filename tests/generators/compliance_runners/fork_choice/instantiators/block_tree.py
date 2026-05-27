@@ -216,11 +216,7 @@ def _any_change_to_validator_partitions(spec, sm_links, current_epoch, anchor_ep
     if previous_epoch == anchor_epoch:
         return True
 
-    for l in sm_links:
-        if l.target == current_epoch or l.target == previous_epoch:
-            return True
-
-    return False
+    return any(l.target == current_epoch or l.target == previous_epoch for l in sm_links)
 
 
 def _generate_sm_link_tree(
@@ -284,7 +280,7 @@ def _generate_sm_link_tree(
             partitions = _compute_validator_partitions(
                 spec, branch_tips, current_epoch_sm_links, current_epoch, rnd
             )
-            for l in partitions.keys():
+            for l in partitions:
                 old_tip_state = branch_tips[l]
                 new_tip_state = BranchTip(
                     old_tip_state.beacon_state,
@@ -508,11 +504,11 @@ def _disseminate(
     """
     choice = rnd.randint(0, 99)
     if choice < off_chain_rate:
-        off_chain_list.append(ProtocolMessage(message, True))
+        off_chain_list.append(ProtocolMessage(message, valid=True))
     elif choice < off_chain_rate + on_chain_rate:
         in_block_list.append(message)
     else:
-        off_chain_list.append(ProtocolMessage(message, True))
+        off_chain_list.append(ProtocolMessage(message, valid=True))
         in_block_list.append(message)
 
 
@@ -535,14 +531,14 @@ class ProtocolState:
         self.signed_envelope_messages.append(ProtocolMessage(envelope, valid))
 
     def add_invalid_off_chain_attestation(self, attestation):
-        self.out_of_block_attestation_messages.append(ProtocolMessage(attestation, False))
+        self.out_of_block_attestation_messages.append(ProtocolMessage(attestation, valid=False))
 
     def add_invalid_off_chain_payload_attestation(self, ptc_message):
-        self.out_of_block_pa_messages.append(ProtocolMessage(ptc_message, False))
+        self.out_of_block_pa_messages.append(ProtocolMessage(ptc_message, valid=False))
 
     def add_invalid_off_chain_attester_slashing(self, attester_slashing):
         self.out_of_block_attester_slashing_messages.append(
-            ProtocolMessage(attester_slashing, False)
+            ProtocolMessage(attester_slashing, valid=False)
         )
 
     def maybe_invalidate_attestation(self, rnd, attestation, with_invalid_messages):
@@ -828,7 +824,7 @@ def _generate_block_tree(
         # contained by invalid block.
         signed_block, _, _, _, _ = produce_block(spec, parent_state, [], [], [])
         _spoil_block(spec, rnd, signed_block)
-        protocol.add_signed_block(signed_block, False)
+        protocol.add_signed_block(signed_block, valid=False)
         runtime.append_post_state(parent_state)
         return signed_block, parent_state, None
 
@@ -867,7 +863,7 @@ def _generate_block_tree(
             ignored_attestations + not_included_attestations + copied_included_attestations
         )
 
-        protocol.add_signed_block(signed_block, True)
+        protocol.add_signed_block(signed_block, valid=True)
         runtime.apply_new_block(parent_index, block_index, post_state)
         return signed_block, post_state, block_index
 
@@ -959,7 +955,7 @@ def _generate_block_tree(
                 spec,
                 attesting_state,
                 attesting_state.slot,
-                lambda comm: set(comm) & attesters,
+                lambda comm, attesters=attesters: set(comm) & attesters,
                 payload_index=payload_index,
             )
             if any(attestations_in_slot):

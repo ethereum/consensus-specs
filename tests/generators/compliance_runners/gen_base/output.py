@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from tests.infra.dumper import Dumper
+from typing import TYPE_CHECKING
 
-from .gen_typing import TestCaseResult
+if TYPE_CHECKING:
+    from tests.infra.dumper import Dumper
+
+    from .gen_typing import TestCaseResult
 
 
 def dump_test_case_result(test_case_result: TestCaseResult, dumper: Dumper) -> None:

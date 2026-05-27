@@ -259,7 +259,7 @@ class Seen:
 #### `compute_fork_version`
 
 ```python
-def compute_fork_version(epoch: Epoch) -> Version:
+def compute_fork_version(epoch: Epoch) -> Version:  # noqa: ARG001
     """
     Return the fork version at the given ``epoch``.
     """
@@ -366,7 +366,7 @@ def is_non_strict_superset(
     """
     for prior_bits in seen_bits_set:
         is_superset = True
-        for prior_bit, new_bit in zip(prior_bits, new_bits):
+        for prior_bit, new_bit in zip(prior_bits, new_bits, strict=True):
             if new_bit and not prior_bit:
                 is_superset = False
                 break

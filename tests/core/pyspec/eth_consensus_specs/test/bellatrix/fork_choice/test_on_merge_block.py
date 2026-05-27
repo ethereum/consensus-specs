@@ -29,7 +29,7 @@ def with_pow_block_patch(spec, blocks, func):
         for block in blocks:
             if block.block_hash == hash:
                 return block
-        raise BlockNotFoundException()
+        raise BlockNotFoundException
 
     get_pow_block_backup = spec.get_pow_block
     spec.get_pow_block = get_pow_block

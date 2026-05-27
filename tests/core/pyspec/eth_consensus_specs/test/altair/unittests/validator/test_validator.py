@@ -151,7 +151,7 @@ def test_get_sync_committee_message(spec, state):
 
 
 def _validator_index_for_pubkey(state, pubkey):
-    return list(map(lambda v: v.pubkey, state.validators)).index(pubkey)
+    return [v.pubkey for v in state.validators].index(pubkey)
 
 
 def _subnet_for_sync_committee_index(spec, i):
@@ -177,14 +177,14 @@ def test_compute_subnets_for_sync_committee(state, spec):
     assert spec.compute_sync_committee_period(
         spec.get_current_epoch(state)
     ) == spec.compute_sync_committee_period(next_slot_epoch)
-    some_sync_committee_members = list(
+    some_sync_committee_members = [
         (
             _subnet_for_sync_committee_index(spec, i),
             pubkey,
         )
         # use current_sync_committee
         for i, pubkey in enumerate(state.current_sync_committee.pubkeys)
-    )
+    ]
     expected_subnets_by_pubkey = _get_expected_subnets_by_pubkey(some_sync_committee_members)
 
     for _, pubkey in some_sync_committee_members:
@@ -205,14 +205,14 @@ def test_compute_subnets_for_sync_committee_slot_period_boundary(state, spec):
     assert spec.compute_sync_committee_period(
         spec.get_current_epoch(state)
     ) != spec.compute_sync_committee_period(next_slot_epoch)
-    some_sync_committee_members = list(
+    some_sync_committee_members = [
         (
             _subnet_for_sync_committee_index(spec, i),
             pubkey,
         )
         # use next_sync_committee
         for i, pubkey in enumerate(state.next_sync_committee.pubkeys)
-    )
+    ]
     expected_subnets_by_pubkey = _get_expected_subnets_by_pubkey(some_sync_committee_members)
 
     for _, pubkey in some_sync_committee_members:

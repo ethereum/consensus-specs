@@ -11,8 +11,9 @@ build/
 output/
 dist/
 
-.pytest_cache
 .mypy_cache
+.pytest_cache
+.ruff_cache
 
 # Dynamically built from Markdown spec
 tests/core/pyspec/eth_consensus_specs/phase0/

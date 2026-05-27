@@ -106,8 +106,8 @@ def test_on_payload_attestation_message_unknown_block_root(spec, state):
     )
 
     # Vote arrays for the known block must remain at their default values
-    assert all(v == None for v in store.payload_timeliness_vote[block_root])
-    assert all(v == None for v in store.payload_data_availability_vote[block_root])
+    assert all(v is None for v in store.payload_timeliness_vote[block_root])
+    assert all(v is None for v in store.payload_data_availability_vote[block_root])
     add_payload_vote_checks(store, block_root, test_steps)
 
     yield "steps", test_steps
@@ -135,8 +135,8 @@ def test_on_payload_attestation_message_slot_mismatch(spec, state):
     yield from add_payload_attestation_message(spec, store, ptc_message, test_steps)
 
     # Vote arrays must remain at their default values
-    assert all(v == None for v in store.payload_timeliness_vote[block_root])
-    assert all(v == None for v in store.payload_data_availability_vote[block_root])
+    assert all(v is None for v in store.payload_timeliness_vote[block_root])
+    assert all(v is None for v in store.payload_data_availability_vote[block_root])
     add_payload_vote_checks(store, block_root, test_steps)
 
     yield "steps", test_steps
@@ -170,8 +170,8 @@ def test_on_payload_attestation_message_not_ptc_member(spec, state):
     )
 
     # Assert rejected message didn't mutate the block vote arrays
-    assert all(v == None for v in store.payload_timeliness_vote[block_root])
-    assert all(v == None for v in store.payload_data_availability_vote[block_root])
+    assert all(v is None for v in store.payload_timeliness_vote[block_root])
+    assert all(v is None for v in store.payload_data_availability_vote[block_root])
     add_payload_vote_checks(store, block_root, test_steps)
 
     yield "steps", test_steps
@@ -203,8 +203,8 @@ def test_on_payload_attestation_message_current_slot_and_signature(spec, state):
     )
 
     # Vote arrays must remain at their default values
-    assert all(v == None for v in store.payload_timeliness_vote[block_root])
-    assert all(v == None for v in store.payload_data_availability_vote[block_root])
+    assert all(v is None for v in store.payload_timeliness_vote[block_root])
+    assert all(v is None for v in store.payload_data_availability_vote[block_root])
     add_payload_vote_checks(store, block_root, test_steps)
 
     # Valid signature, stale slot
@@ -225,8 +225,8 @@ def test_on_payload_attestation_message_current_slot_and_signature(spec, state):
     )
 
     # Rejected message must not partially mutate vote arrays
-    assert all(v == None for v in store.payload_timeliness_vote[block_root])
-    assert all(v == None for v in store.payload_data_availability_vote[block_root])
+    assert all(v is None for v in store.payload_timeliness_vote[block_root])
+    assert all(v is None for v in store.payload_data_availability_vote[block_root])
     add_payload_vote_checks(store, block_root, test_steps)
 
     yield "steps", test_steps
@@ -241,8 +241,8 @@ def test_on_payload_attestation_message_valid(spec, state):
     store, block_root, block_state, ptc, test_steps = yield from _setup_test(spec, state)
 
     # Initial state: no votes recorded for this block
-    assert all(v == None for v in store.payload_timeliness_vote[block_root])
-    assert all(v == None for v in store.payload_data_availability_vote[block_root])
+    assert all(v is None for v in store.payload_timeliness_vote[block_root])
+    assert all(v is None for v in store.payload_data_availability_vote[block_root])
 
     ptc_member = ptc[0]
     voter_positions = [i for i, v in enumerate(ptc) if v == ptc_member]
@@ -260,11 +260,11 @@ def test_on_payload_attestation_message_valid(spec, state):
     yield from add_payload_attestation_message(spec, store, msg_1, test_steps)
 
     for i in voter_positions:
-        assert store.payload_timeliness_vote[block_root][i] == True
-        assert store.payload_data_availability_vote[block_root][i] == True
+        assert store.payload_timeliness_vote[block_root][i] == True  # noqa: E712
+        assert store.payload_data_availability_vote[block_root][i] == True  # noqa: E712
     for i in other_positions:
-        assert store.payload_timeliness_vote[block_root][i] == None
-        assert store.payload_data_availability_vote[block_root][i] == None
+        assert store.payload_timeliness_vote[block_root][i] is None
+        assert store.payload_data_availability_vote[block_root][i] is None
     add_payload_vote_checks(store, block_root, test_steps)
 
     # Re-vote with both fields False
@@ -279,11 +279,11 @@ def test_on_payload_attestation_message_valid(spec, state):
     yield from add_payload_attestation_message(spec, store, msg_2, test_steps)
 
     for i in voter_positions:
-        assert store.payload_timeliness_vote[block_root][i] == False
-        assert store.payload_data_availability_vote[block_root][i] == False
+        assert store.payload_timeliness_vote[block_root][i] == False  # noqa: E712
+        assert store.payload_data_availability_vote[block_root][i] == False  # noqa: E712
     for i in other_positions:
-        assert store.payload_timeliness_vote[block_root][i] == None
-        assert store.payload_data_availability_vote[block_root][i] == None
+        assert store.payload_timeliness_vote[block_root][i] is None
+        assert store.payload_data_availability_vote[block_root][i] is None
     add_payload_vote_checks(store, block_root, test_steps)
 
     yield "steps", test_steps
@@ -337,18 +337,18 @@ def test_on_payload_attestation_message_multiple_ptc_members_vote_independently(
 
     # Validator A's votes landed at every position A occupies
     for i in positions_a:
-        assert timeliness[i] == True
-        assert availability[i] == True
+        assert timeliness[i] == True  # noqa: E712
+        assert availability[i] == True  # noqa: E712
 
     # Validator B's votes landed at every position B occupies
     for i in positions_b:
-        assert timeliness[i] == True
-        assert availability[i] == False
+        assert timeliness[i] == True  # noqa: E712
+        assert availability[i] == False  # noqa: E712
 
     # Other positions stayed at their default values
     for i in other_positions:
-        assert timeliness[i] == None
-        assert availability[i] == None
+        assert timeliness[i] is None
+        assert availability[i] is None
 
     add_payload_vote_checks(store, block_root, test_steps)
 
@@ -408,11 +408,11 @@ def test_on_payload_attestation_message_from_block(spec, state):
     # Votes landed at every PTC position each voter occupies
     for i, validator_index in enumerate(ptc_list):
         if validator_index in voter_set:
-            assert store.payload_timeliness_vote[block_root][i] == True
-            assert store.payload_data_availability_vote[block_root][i] == True
+            assert store.payload_timeliness_vote[block_root][i] == True  # noqa: E712
+            assert store.payload_data_availability_vote[block_root][i] == True  # noqa: E712
         else:
-            assert store.payload_timeliness_vote[block_root][i] == None
-            assert store.payload_data_availability_vote[block_root][i] == None
+            assert store.payload_timeliness_vote[block_root][i] is None
+            assert store.payload_data_availability_vote[block_root][i] is None
 
     add_payload_vote_checks(store, block_root, test_steps)
     yield "steps", test_steps

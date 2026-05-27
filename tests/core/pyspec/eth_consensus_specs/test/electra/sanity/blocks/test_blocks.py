@@ -110,7 +110,8 @@ def test_basic_btec_and_el_withdrawal_request_in_same_block(spec, state):
         validator.withdrawal_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
     )
     is_correct_source_address = validator.withdrawal_credentials[12:] == address
-    assert is_execution_address and is_correct_source_address
+    assert is_execution_address
+    assert is_correct_source_address
 
 
 @with_all_phases_from_to(ELECTRA, GLOAS)
@@ -143,7 +144,8 @@ def test_basic_btec_before_el_withdrawal_request(spec, state):
         validator.withdrawal_credentials[:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX
     )
     is_correct_source_address = validator.withdrawal_credentials[12:] == address
-    assert is_execution_address and is_correct_source_address
+    assert is_execution_address
+    assert is_correct_source_address
 
     # block_2 contains an EL-Exit operation of the given validator
     validator_pubkey = state.validators[validator_index].pubkey
@@ -245,7 +247,9 @@ def test_multiple_el_partial_withdrawal_requests_different_validator(spec, state
     addresses = [bytes([v * 0x11]) * 20 for v in validator_indices]
     balances = [spec.MIN_ACTIVATION_BALANCE + v * 2000000000 for v in validator_indices]
 
-    for validator_index, address, balance in zip(validator_indices, addresses, balances):
+    for validator_index, address, balance in zip(
+        validator_indices, addresses, balances, strict=False
+    ):
         set_compounding_withdrawal_credential_with_balance(
             spec, state, validator_index, balance, balance, address
         )
@@ -255,7 +259,7 @@ def test_multiple_el_partial_withdrawal_requests_different_validator(spec, state
 
     withdrawal_requests = []
 
-    for validator_index, address in zip(validator_indices, addresses):
+    for validator_index, address in zip(validator_indices, addresses, strict=False):
         validator_pubkey = state.validators[validator_index].pubkey
         withdrawal_request = spec.WithdrawalRequest(
             source_address=address,
@@ -864,7 +868,7 @@ def test_multi_epoch_consolidation_chain(spec, state):
     consolidation_request_count = 0
     for i in range(spec.SLOTS_PER_EPOCH):
         consolidation_requests = []
-        for j in range(0, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD):
+        for j in range(spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD):
             # Setup the source validator
             k = i * spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD + j
             source_index = spec.get_active_validator_indices(state, current_epoch)[k]
@@ -911,7 +915,7 @@ def test_multi_epoch_consolidation_chain(spec, state):
         assert state.validators[i].exit_epoch != spec.FAR_FUTURE_EPOCH
 
     # Remove MIN_VALIDATOR_WITHDRAWABILITY_DELAY to speed things up
-    for i, consolidation in enumerate(state.pending_consolidations):
+    for consolidation in state.pending_consolidations:
         state.validators[consolidation.source_index].withdrawable_epoch = (
             state.validators[consolidation.source_index].exit_epoch + 1
         )
