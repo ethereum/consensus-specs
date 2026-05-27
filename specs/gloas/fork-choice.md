@@ -502,7 +502,7 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
     if not should_apply_proposer_boost(store):
         # Return only attestation score if proposer boost should not apply
         return attestation_score
-    
+
     # Calculate proposer score if proposer boost should apply
     proposer_score = Gwei(0)
     # [Modified in Gloas:EIP7732]
@@ -512,7 +512,7 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
     # Boost is applied if ``node`` is an ancestor of ``proposer_boost_node``
     if is_ancestor(store, proposer_boost_node, node):
         proposer_score = get_proposer_score(store)
-    
+
     return attestation_score + proposer_score
 ```
 
