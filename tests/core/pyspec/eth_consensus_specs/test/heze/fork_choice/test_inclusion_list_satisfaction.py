@@ -101,3 +101,41 @@ def test_equivocating_il_member_transactions_excluded(spec, state):
         assert txs == []
 
     run_with_inclusion_list_store(spec, run_func)
+
+
+@with_heze_and_later
+@spec_state_test
+def test_get_inclusion_list_transactions_only_timely_false(spec, state):
+    """
+    When only_timely=False, late IL transactions are included in the result.
+    """
+    def run_func():
+        store, signed_block, block_root, test_steps = yield from _setup_test(spec, state)
+        inclusion_list_committee = spec.get_inclusion_list_committee(state, state.slot)
+
+        signed_il = get_sample_signed_inclusion_list(
+            spec, state, validator_index=inclusion_list_committee[0]
+        )
+
+        # Advance time past inclusion list due deadline
+        inclusion_list_due_ceiling = spec.get_inclusion_list_due_ms() // 1000 + 1
+        store.time += inclusion_list_due_ceiling
+
+        # Submit IL after deadline — marked as not timely
+        spec.on_inclusion_list(store, signed_il)
+
+        inclusion_list_store = spec.get_inclusion_list_store()
+
+        # With only_timely=True (default), late IL is excluded
+        txs_timely = spec.get_inclusion_list_transactions(
+            inclusion_list_store, state, state.slot, only_timely=True
+        )
+        assert txs_timely == []
+
+        # With only_timely=False, late IL is included
+        txs_all = spec.get_inclusion_list_transactions(
+            inclusion_list_store, state, state.slot, only_timely=False
+        )
+        assert set(txs_all) == set(signed_il.message.transactions)
+
+    run_with_inclusion_list_store(spec, run_func)
