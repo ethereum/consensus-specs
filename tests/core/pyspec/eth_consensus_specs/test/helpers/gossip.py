@@ -2,6 +2,7 @@ from eth_utils import encode_hex
 
 from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
+    is_post_bellatrix,
     is_post_capella,
     is_post_deneb,
     is_post_fulu,
@@ -20,9 +21,6 @@ def wrap_genesis_block(spec, block):
 
 def get_spec_block_payload_statuses(spec, block_payload_statuses):
     spec_block_payload_statuses = {}
-    if block_payload_statuses is None:
-        return spec_block_payload_statuses
-
     for block_root, payload_status in block_payload_statuses.items():
         if payload_status == PAYLOAD_STATUS_VALID:
             spec_block_payload_statuses[block_root] = spec.PAYLOAD_STATUS_VALID
@@ -44,9 +42,9 @@ def run_validate_beacon_block_gossip(
              and reason is the exception message (or None for valid).
     """
     kwargs = {}
-    if block_payload_statuses is not None:
+    if is_post_bellatrix(spec):
         kwargs["block_payload_statuses"] = get_spec_block_payload_statuses(
-            spec, block_payload_statuses
+            spec, block_payload_statuses or {}
         )
     try:
         spec.validate_beacon_block_gossip(
