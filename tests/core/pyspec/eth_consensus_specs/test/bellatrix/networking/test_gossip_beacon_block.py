@@ -17,6 +17,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -59,8 +60,15 @@ def test_gossip_beacon_block__valid_execution_enabled(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
+    extra_kwargs = {} if is_post_gloas(spec) else {"block_payload_statuses": {}}
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_block, current_time_ms=block_time_ms + 500
+        spec,
+        seen,
+        store,
+        state,
+        signed_block,
+        current_time_ms=block_time_ms + 500,
+        **extra_kwargs,
     )
     assert result == "valid"
     assert reason is None
@@ -101,7 +109,13 @@ def test_gossip_beacon_block__valid_execution_disabled(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_block, current_time_ms=block_time_ms + 500
+        spec,
+        seen,
+        store,
+        state,
+        signed_block,
+        current_time_ms=block_time_ms + 500,
+        block_payload_statuses={},
     )
     assert result == "valid"
     assert reason is None
@@ -145,7 +159,13 @@ def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec,
     yield "current_time_ms", "meta", int(block_time_ms)
 
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_block, current_time_ms=block_time_ms + 500
+        spec,
+        seen,
+        store,
+        state,
+        signed_block,
+        current_time_ms=block_time_ms + 500,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "incorrect execution payload timestamp"

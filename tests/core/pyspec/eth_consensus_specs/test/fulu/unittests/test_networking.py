@@ -273,7 +273,7 @@ def test_get_validators_custody_requirement__single_validator(spec, state):
 @single_phase
 def test_get_validators_custody_requirement__multiple_validators(spec, state):
     assert len(state.validators) > 10, "Test requires more than 10 validators"
-    assert 10 < spec.config.NUMBER_OF_CUSTODY_GROUPS, (
+    assert spec.config.NUMBER_OF_CUSTODY_GROUPS > 10, (
         "Test requires NUMBER_OF_CUSTODY_GROUPS to be more than 10"
     )
 

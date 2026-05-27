@@ -64,7 +64,13 @@ def test_gossip_beacon_block__valid_at_blob_parameters_limit(spec, state):
     yield "current_time_ms", "meta", int(block_time_ms)
 
     result, reason = run_validate_gossip(
-        spec, seen, store, state, signed_block, current_time_ms=block_time_ms + 500
+        spec,
+        seen,
+        store,
+        state,
+        signed_block,
+        current_time_ms=block_time_ms + 500,
+        block_payload_statuses={},
     )
     assert result == "valid"
     assert reason is None

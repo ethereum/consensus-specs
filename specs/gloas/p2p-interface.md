@@ -332,7 +332,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     signed_aggregate_and_proof: SignedAggregateAndProof,
     current_time_ms: uint64,
     # [New in Gloas:EIP7732]
-    block_payload_statuses: Dict[Root, PayloadValidationStatus] = {},
+    block_payload_statuses: Dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SignedAggregateAndProof for gossip propagation.
@@ -907,7 +907,8 @@ the sidecar.
 def validate_data_column_sidecar_gossip(
     seen: Seen,
     store: Store,
-    state: BeaconState,
+    # [Modified in Gloas:EIP7732]
+    # Removed `state`
     sidecar: DataColumnSidecar,
     # [Modified in Gloas:EIP7732]
     # Removed `current_time_ms`
@@ -971,7 +972,7 @@ def validate_beacon_attestation_gossip(
     current_time_ms: uint64,
     subnet_id: SubnetID,
     # [New in Gloas:EIP7732]
-    block_payload_statuses: Dict[Root, PayloadValidationStatus] = {},
+    block_payload_statuses: Dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SingleAttestation for gossip propagation on a subnet.

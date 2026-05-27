@@ -1,4 +1,5 @@
-from ..constants import GLOAS
+from pysetup.constants import GLOAS
+
 from .base import BaseSpecBuilder
 
 
@@ -21,36 +22,30 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
 
     @classmethod
     def deprecate_presets(cls) -> set[str]:
-        return set(
-            [
-                "KZG_COMMITMENT_INCLUSION_PROOF_DEPTH",
-                "KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH",
-            ]
-        )
+        return {
+            "KZG_COMMITMENT_INCLUSION_PROOF_DEPTH",
+            "KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH",
+        }
 
     @classmethod
     def deprecate_containers(cls) -> set[str]:
-        return set(
-            [
-                "ExecutionPayloadHeader",
-                "PartialDataColumnHeader",
-            ]
-        )
+        return {
+            "ExecutionPayloadHeader",
+            "PartialDataColumnHeader",
+        }
 
     @classmethod
     def deprecate_functions(cls) -> set[str]:
-        return set(
-            [
-                "compute_proposer_index",
-                "get_activation_exit_churn_limit",
-                "get_balance_churn_limit",
-                "initialize_proposer_lookahead",
-                "process_execution_payload",
-                "retrieve_column_sidecars",
-                "upgrade_to_fulu",
-                "verify_partial_data_column_header_inclusion_proof",
-            ]
-        )
+        return {
+            "compute_proposer_index",
+            "get_activation_exit_churn_limit",
+            "get_balance_churn_limit",
+            "initialize_proposer_lookahead",
+            "process_execution_payload",
+            "retrieve_column_sidecars",
+            "upgrade_to_fulu",
+            "verify_partial_data_column_header_inclusion_proof",
+        }
 
     @classmethod
     def sundry_functions(cls) -> str:
@@ -58,6 +53,10 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
 def retrieve_column_sidecars_and_kzg_commitments(
     beacon_block_root: Root
 ) -> tuple[Sequence[DataColumnSidecar], Sequence[KZGCommitment]]:
-    # pylint: disable=unused-argument
     return [], []
+
+_get_parent_payload_status = get_parent_payload_status
+get_parent_payload_status = cache_this(
+    lambda store, block: block.hash_tree_root(),
+    _get_parent_payload_status, lru_size=1024)
 """

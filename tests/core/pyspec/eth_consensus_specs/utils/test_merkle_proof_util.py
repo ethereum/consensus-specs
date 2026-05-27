@@ -28,7 +28,7 @@ power_of_two_ceil_cases = [
 
 
 @pytest.mark.parametrize(
-    "value,expected",
+    ("value", "expected"),
     power_of_two_ceil_cases,
 )
 def test_get_power_of_two_ceil(value, expected):

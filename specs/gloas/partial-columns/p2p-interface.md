@@ -59,9 +59,10 @@ the bid commitments and the corresponding block validation.
 
 ```python
 def validate_partial_data_column_sidecar_gossip(
-    seen: Seen,
+    seen: Seen,  # noqa: ARG001
     store: Store,
-    state: BeaconState,
+    # [Modified in Gloas:EIP7732]
+    # Removed `state`
     sidecar: PartialDataColumnSidecar,
     # [Modified in Gloas:EIP7732]
     # Removed `current_time_ms`

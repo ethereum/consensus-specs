@@ -1416,7 +1416,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
 
 @with_all_phases_from_to(FULU, GLOAS)
 @spec_state_test
-def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not_later_than_finalized_slot(  # noqa: E501
+def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not_later_than_finalized_slot(
     spec, state
 ):
     """Test that a cached-header cells-only sidecar is ignored once finalization advances."""

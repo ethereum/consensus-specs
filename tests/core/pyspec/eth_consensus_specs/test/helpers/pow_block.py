@@ -4,8 +4,6 @@ from eth_consensus_specs.utils.ssz.ssz_typing import uint256
 
 
 class PowChain:
-    blocks = []
-
     def __init__(self, blocks):
         self.blocks = blocks
 

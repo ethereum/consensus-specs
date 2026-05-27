@@ -25,7 +25,6 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     on_tick_and_append_step,
     tick_and_add_block,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
     next_slot,
@@ -72,22 +71,21 @@ def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
     # Fill epoch 1 to 3
     for _ in range(3):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
         )
 
     assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
 
     # create block_a, it needs 2 more full blocks to justify epoch 4
-    signed_blocks, justifying_slot = find_next_justifying_slot(spec, state, True, True)
+    signed_blocks, justifying_slot = find_next_justifying_slot(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     assert spec.compute_epoch_at_slot(justifying_slot) == spec.get_current_epoch(state)
     for signed_block in signed_blocks[:-2]:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         check_head_against_root(spec, store, signed_block.message.hash_tree_root())
 
-    if is_post_gloas(spec):
-        head_root = spec.get_head(store).root
-    else:
-        head_root = spec.get_head(store)
+    head_root = spec.get_head(store).root
     state = store.block_states[head_root].copy()
 
     assert state.current_justified_checkpoint.epoch == 3
@@ -104,7 +102,9 @@ def test_simple_attempted_reorg_without_enough_ffg_votes(spec, state):
     signed_blocks_of_y.append(signed_block_y)
 
     # chain y has some on-chain attestations, but not enough to justify c4
-    signed_block_y = state_transition_with_full_block(spec, state, True, True)
+    signed_block_y = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     assert not is_ready_to_justify(spec, state)
     signed_blocks_of_y.append(signed_block_y)
     assert store.justified_checkpoint.epoch == 3
@@ -189,34 +189,35 @@ def _run_delayed_justification(spec, state, attempted_reorg, is_justifying_previ
     # Fill epoch 1 to 2
     for _ in range(2):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
         )
 
     if is_justifying_previous_epoch:
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, False, False, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=False, fill_prev_epoch=False, test_steps=test_steps
         )
         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 2
     else:
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
         )
         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
 
     if is_justifying_previous_epoch:
         # try to find the block that can justify epoch 3
-        signed_blocks, justifying_slot = find_next_justifying_slot(spec, state, False, True)
+        signed_blocks, justifying_slot = find_next_justifying_slot(
+            spec, state, fill_cur_epoch=False, fill_prev_epoch=True
+        )
     else:
         # try to find the block that can justify epoch 4
-        signed_blocks, justifying_slot = find_next_justifying_slot(spec, state, True, True)
+        signed_blocks, justifying_slot = find_next_justifying_slot(
+            spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+        )
 
     assert spec.compute_epoch_at_slot(justifying_slot) == spec.get_current_epoch(state)
     for signed_block in signed_blocks:
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
-    if is_post_gloas(spec):
-        head_root = spec.get_head(store).root
-    else:
-        head_root = spec.get_head(store)
+    head_root = spec.get_head(store).root
     state = store.block_states[head_root].copy()
     if is_justifying_previous_epoch:
         assert state.current_justified_checkpoint.epoch == 2
@@ -228,9 +229,13 @@ def _run_delayed_justification(spec, state, attempted_reorg, is_justifying_previ
 
     # add chain y
     if is_justifying_previous_epoch:
-        signed_block_y = state_transition_with_full_block(spec, state, False, True)
+        signed_block_y = state_transition_with_full_block(
+            spec, state, fill_cur_epoch=False, fill_prev_epoch=True
+        )
     else:
-        signed_block_y = state_transition_with_full_block(spec, state, True, True)
+        signed_block_y = state_transition_with_full_block(
+            spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+        )
     yield from tick_and_add_block(spec, store, signed_block_y, test_steps)
     check_head_against_root(spec, store, signed_block_y.message.hash_tree_root())
     if is_justifying_previous_epoch:
@@ -319,7 +324,7 @@ def _run_include_votes_of_another_empty_chain(
     # Fill epoch 1 to 2
     for _ in range(2):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
         )
 
     if is_justifying_previous_epoch:
@@ -332,9 +337,11 @@ def _run_include_votes_of_another_empty_chain(
     else:
         # build chain with head in epoch 4 and justified checkpoint in epoch 3
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
         )
-        signed_block_a = state_transition_with_full_block(spec, state, True, True)
+        signed_block_a = state_transition_with_full_block(
+            spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+        )
         yield from tick_and_add_block(spec, store, signed_block_a, test_steps)
         assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
         assert state.current_justified_checkpoint.epoch == store.justified_checkpoint.epoch == 3
@@ -354,11 +361,15 @@ def _run_include_votes_of_another_empty_chain(
 
     if is_justifying_previous_epoch:
         # try to find the block that can justify epoch 3 by including only previous epoch attestations
-        _, justifying_slot = find_next_justifying_slot(spec, state, False, True)
+        _, justifying_slot = find_next_justifying_slot(
+            spec, state, fill_cur_epoch=False, fill_prev_epoch=True
+        )
         assert spec.compute_epoch_at_slot(justifying_slot) == 4
     else:
         # try to find the block that can justify epoch 4 by including current epoch attestations
-        _, justifying_slot = find_next_justifying_slot(spec, state, True, True)
+        _, justifying_slot = find_next_justifying_slot(
+            spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+        )
         assert spec.compute_epoch_at_slot(justifying_slot) == 4
 
     last_slot_of_z = justifying_slot if enough_ffg else justifying_slot - 1

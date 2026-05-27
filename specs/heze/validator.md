@@ -62,7 +62,6 @@ def get_inclusion_list(self: ExecutionEngine) -> GetInclusionListResponse:
     """
     Return ``GetInclusionListResponse`` object.
     """
-    ...
 ```
 
 ## Beacon chain responsibilities

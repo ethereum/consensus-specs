@@ -187,7 +187,7 @@ def test_compute_fork_digest(spec):
 
     for case in test_cases:
         # Override function to return fork version in test case
-        spec.compute_fork_version = lambda _: case["fork_version"]
+        spec.compute_fork_version = lambda _, case=case: case["fork_version"]
         # Compute the fork digest given the inputs from the test case
         fork_digest = spec.compute_fork_digest(case["genesis_validators_root"], case["epoch"])
         # Check that the computed fork digest matches our expected value

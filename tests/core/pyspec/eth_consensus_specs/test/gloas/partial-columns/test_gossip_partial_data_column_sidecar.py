@@ -389,7 +389,8 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     # Pad bitmap, cells, and proofs in lockstep so the earlier count checks
     # pass but the bitmap-vs-bid-commitments check fails.
     partial.cells_present_bitmap = spec.List[spec.boolean, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
-        *partial.cells_present_bitmap, spec.boolean(True)
+        *partial.cells_present_bitmap,
+        spec.boolean(True),  # noqa: FBT003
     )
     partial.partial_column = spec.List[spec.Cell, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK](
         *partial.partial_column, spec.Cell()

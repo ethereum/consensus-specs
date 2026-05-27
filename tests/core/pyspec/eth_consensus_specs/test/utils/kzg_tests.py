@@ -32,7 +32,7 @@ def encode_hex_list(a):
     return [encode_hex(x) for x in a]
 
 
-def int_to_hex(n: int, byte_length: int = None) -> str:
+def int_to_hex(n: int, byte_length: int | None = None) -> str:
     byte_value = int_to_big_endian(n)
     if byte_length:
         byte_value = byte_value.rjust(byte_length, b"\x00")
@@ -130,11 +130,11 @@ G1_INVALID_TOO_FEW_BYTES = G1[:-1]
 G1_INVALID_TOO_MANY_BYTES = G1 + b"\x00"
 G1_INVALID_P1_NOT_IN_G1 = bytes.fromhex(
     "8123456789abcdef0123456789abcdef0123456789abcdef"
-    + "0123456789abcdef0123456789abcdef0123456789abcdef"
+    "0123456789abcdef0123456789abcdef0123456789abcdef"
 )
 G1_INVALID_P1_NOT_ON_CURVE = bytes.fromhex(
     "8123456789abcdef0123456789abcdef0123456789abcdef"
-    + "0123456789abcdef0123456789abcdef0123456789abcde0"
+    "0123456789abcdef0123456789abcdef0123456789abcde0"
 )
 INVALID_G1_POINTS = [
     G1_INVALID_TOO_FEW_BYTES,
