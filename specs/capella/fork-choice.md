@@ -94,13 +94,15 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     block_root = hash_tree_root(block)
     state_transition(state, signed_block, validate_result=True)
 
+    # Compute head before applying the block
+    head = get_head(store)
     # Add new block to the store
     store.blocks[block_root] = block
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
     record_block_timeliness(store, block_root)
-    update_proposer_boost_root(store, block_root)
+    update_proposer_boost_root(store, head.root, block_root)
 
     # Update checkpoints in store if necessary
     update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)
