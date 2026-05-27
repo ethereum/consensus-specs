@@ -503,7 +503,6 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
         attestation_score = get_attestation_score(store, node, state)
         # [Modified in Gloas:EIP7732]
         if not should_apply_proposer_boost(store):
-            # Return only attestation score if
             # Return only attestation score if proposer boost should not apply
             return attestation_score
 
