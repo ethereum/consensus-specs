@@ -46,8 +46,8 @@ def run_validate_sync_committee_message_gossip(
             seen,
             state,
             message,
-            subnet_id,
             current_time_ms,
+            subnet_id,
         )
         return "valid", None
     except spec.GossipIgnore as e:
