@@ -874,14 +874,11 @@ def get_dependent_root(store: Store, root: Root) -> Root:
 def update_proposer_boost_root(store: Store, head: Root, root: Root) -> None:
     is_first_block = store.proposer_boost_root == Root()
     is_timely = store.block_timeliness[root]
+    is_same_dependent_root = get_dependent_root(store, root) == get_dependent_root(store, head)
 
     # Add proposer score boost if the block is timely, not conflicting with an
     # existing block, with the same dependent root as the canonical chain head.
-    if (
-        is_timely
-        and is_first_block
-        and get_dependent_root(store, root) == get_dependent_root(store, head)
-    ):
+    if is_timely and is_first_block and is_same_dependent_root:
         store.proposer_boost_root = root
 ```
 
