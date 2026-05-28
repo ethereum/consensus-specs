@@ -16,7 +16,6 @@ from eth_consensus_specs.test.helpers.attestations import (
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block
 from eth_consensus_specs.test.helpers.constants import FULU, PHASE0
-from eth_consensus_specs.test.helpers.deposits import prepare_state_and_deposit
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
 from eth_consensus_specs.utils import bls
@@ -80,8 +79,7 @@ def test_check_if_validator_active(spec, state):
     assert spec.check_if_validator_active(state, active_validator_index)
     new_validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(spec, state, new_validator_index, amount, signed=True)
-    spec.process_deposit(state, deposit)
+    spec.add_validator_to_registry(state, pubkeys[new_validator_index], b"\x00" * 32, amount)
     assert not spec.check_if_validator_active(state, new_validator_index)
 
 
