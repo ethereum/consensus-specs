@@ -29,10 +29,10 @@ from eth_consensus_specs.test.helpers.fast_confirmation import (
 @single_phase
 def test_fast_confirm_an_epoch(spec, state):
     fcr_test = FCRTest(spec, seed=1)
-    store, fcr_store = fcr_test.initialize(state)
+    _store, fcr_store = fcr_test.initialize(state)
     for _ in range(spec.SLOTS_PER_EPOCH):
         fcr_test.next_slot_with_block_and_fast_confirmation()
         # Ensure head is confirmed
-        assert fcr_store.confirmed_root == fcr_test.head()
+        assert fcr_store.confirmed_root == fcr_test.head_root()
 
     yield from fcr_test.get_test_artefacts()

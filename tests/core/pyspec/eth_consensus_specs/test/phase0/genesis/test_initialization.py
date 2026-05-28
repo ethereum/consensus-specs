@@ -182,7 +182,7 @@ def test_initialize_beacon_state_random_invalid_genesis(spec):
         yield "description", "meta", get_post_altair_description(spec)
 
     # Make a bunch of random deposits
-    deposits, _, deposit_data_list = prepare_random_genesis_deposits(
+    deposits, _, _deposit_data_list = prepare_random_genesis_deposits(
         spec,
         deposit_count=20,
         max_pubkey_index=10,

@@ -154,16 +154,19 @@ class TestAssertProcessProposerSlashing:
         proposer_slashing.signed_header_1.message.proposer_index = slashed_index
 
         # Patch fork detection to return phase0/electra behavior (no altair sync committee, no gloas)
-        with patch(
-            "eth_consensus_specs.test.helpers.proposer_slashings.is_post_altair", return_value=False
-        ):
-            with patch(
+        with (
+            patch(
+                "eth_consensus_specs.test.helpers.proposer_slashings.is_post_altair",
+                return_value=False,
+            ),
+            patch(
                 "eth_consensus_specs.test.helpers.proposer_slashings.is_post_electra",
                 return_value=True,
-            ):
-                with patch(
-                    "eth_consensus_specs.test.helpers.proposer_slashings.is_post_gloas",
-                    return_value=False,
-                ):
-                    # Should not raise - all invariants satisfied
-                    assert_process_proposer_slashing(spec, state, pre_state, proposer_slashing)
+            ),
+            patch(
+                "eth_consensus_specs.test.helpers.proposer_slashings.is_post_gloas",
+                return_value=False,
+            ),
+        ):
+            # Should not raise - all invariants satisfied
+            assert_process_proposer_slashing(spec, state, pre_state, proposer_slashing)

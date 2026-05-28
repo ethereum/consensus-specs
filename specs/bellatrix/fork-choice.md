@@ -242,7 +242,7 @@ def validate_merge_block(block: BeaconBlock) -> None:
     and a client software MAY delay a call to ``validate_merge_block``
     until the PoW block(s) become available.
     """
-    if TERMINAL_BLOCK_HASH != Hash32():
+    if TERMINAL_BLOCK_HASH != EMPTY_BLOCK_HASH:
         # If `TERMINAL_BLOCK_HASH` is used as an override, the activation epoch must be reached.
         assert compute_epoch_at_slot(block.slot) >= TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH
         assert block.body.execution_payload.parent_hash == TERMINAL_BLOCK_HASH
@@ -295,19 +295,21 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
     # Check the block is valid and compute the post-state
     state = pre_state.copy()
     block_root = hash_tree_root(block)
-    state_transition(state, signed_block, True)
+    state_transition(state, signed_block, validate_result=True)
 
     # [New in Bellatrix]
     if is_merge_transition_block(pre_state, block.body):
         validate_merge_block(block)
 
+    # Compute head before applying the block
+    head = get_head(store)
     # Add new block to the store
     store.blocks[block_root] = block
     # Add new state for this block to the store
     store.block_states[block_root] = state
 
     record_block_timeliness(store, block_root)
-    update_proposer_boost_root(store, block_root)
+    update_proposer_boost_root(store, head.root, block_root)
 
     # Update checkpoints in store if necessary
     update_checkpoints(store, state.current_justified_checkpoint, state.finalized_checkpoint)

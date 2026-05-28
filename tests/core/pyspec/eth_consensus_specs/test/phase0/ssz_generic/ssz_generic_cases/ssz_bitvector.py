@@ -8,7 +8,7 @@ from .ssz_test_case import invalid_test_case, valid_test_case
 
 
 def bitvector_case_fn(
-    rng: Random, mode: RandomizationMode, size: int, invalid_making_pos: int = None
+    rng: Random, mode: RandomizationMode, size: int, invalid_making_pos: int | None = None
 ):
     bits = get_random_ssz_object(
         rng,

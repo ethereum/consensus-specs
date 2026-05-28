@@ -2,6 +2,8 @@
 # Test cases for blob_to_kzg_commitment
 ###############################################################################
 
+import contextlib
+
 from eth_utils import encode_hex
 
 from eth_consensus_specs.test.context import only_generator, single_phase, spec_test, with_phases
@@ -38,7 +40,7 @@ def _blob_to_kzg_commitment_case_valid_blob(index):
     return (the_test, f"test_blob_to_kzg_commitment_case_valid_blob_{index}")
 
 
-for index in range(0, len(VALID_BLOBS)):
+for index in range(len(VALID_BLOBS)):
     _blob_to_kzg_commitment_case_valid_blob(index)
 
 
@@ -53,10 +55,8 @@ def _blob_to_kzg_commitment_case_invalid_blob(index):
     @single_phase
     def the_test(spec):
         commitment = None
-        try:
+        with contextlib.suppress(Exception):
             commitment = spec.blob_to_kzg_commitment(blob)
-        except Exception:
-            pass
 
         # exception is thrown
         assert commitment is None
@@ -73,5 +73,5 @@ def _blob_to_kzg_commitment_case_invalid_blob(index):
     return (the_test, f"test_blob_to_kzg_commitment_case_invalid_blob_{index}")
 
 
-for index in range(0, len(INVALID_BLOBS)):
+for index in range(len(INVALID_BLOBS)):
     _blob_to_kzg_commitment_case_invalid_blob(index)
