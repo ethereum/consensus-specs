@@ -150,8 +150,6 @@ former deposit mechanism.
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     # [Modified in Fulu]
     assert len(body.deposits) == 0
-    assert state.deposit_requests_start_index != UNSET_DEPOSIT_REQUESTS_START_INDEX
-    assert state.eth1_data.deposit_count >= state.deposit_requests_start_index
 
     def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
         for operation in operations:

@@ -1474,8 +1474,6 @@ calls to `process_deposit_request`, `process_withdrawal_request`, and
 ```python
 def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
     assert len(body.deposits) == 0
-    assert state.deposit_requests_start_index != UNSET_DEPOSIT_REQUESTS_START_INDEX
-    assert state.eth1_data.deposit_count >= state.deposit_requests_start_index
 
     def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
         for operation in operations:
