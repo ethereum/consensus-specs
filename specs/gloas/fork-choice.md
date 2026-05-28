@@ -606,6 +606,7 @@ def get_dependent_root(store: Store, root: Root) -> Root:
         # Genesis block parent
         return Root()
 
+    # [Modified in Gloas:EIP7732]
     node = ForkChoiceNode(
         root=root,
         payload_status=PAYLOAD_STATUS_PENDING,
