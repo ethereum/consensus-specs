@@ -130,7 +130,7 @@ def get_random_attestations(spec, state, rng):
 
 
 def get_random_deposits(spec, state, rng, num_deposits=None):
-    if not num_deposits:
+    if num_deposits is None:
         num_deposits = rng.randrange(1, spec.MAX_DEPOSITS)
 
     if num_deposits == 0:
@@ -251,12 +251,8 @@ def build_random_block_from_state_for_next_slot(spec, state, rng=None, deposits=
     ]
     block.body.attester_slashings = get_random_attester_slashings(spec, state, rng, slashed_indices)
     block.body.attestations = get_random_attestations(spec, state, rng)
-    # [Modified for Fulu]
-    # Old deposits mechanism is not supported in Fulu and later
-    if deposits and not is_post_fulu(spec):
+    if deposits:
         block.body.deposits = deposits
-    else:
-        block.body.deposits = []
 
     # cannot include to be slashed indices as exits
     slashed_indices = {
@@ -277,10 +273,12 @@ def run_test_full_random_operations(spec, state, rng=None):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
-    # prepare state for deposits before building block (not supported in Fulu and later)
-    deposits = None
-    if not is_post_fulu(spec):
-        deposits = prepare_state_and_get_random_deposits(spec, state, rng)
+    num_deposits = None
+    if is_post_fulu(spec):
+        num_deposits = 0
+
+    # prepare state for deposits before building block
+    deposits = prepare_state_and_get_random_deposits(spec, state, rng, num_deposits=num_deposits)
     block = build_random_block_from_state_for_next_slot(spec, state, rng, deposits=deposits)
 
     yield "pre", state

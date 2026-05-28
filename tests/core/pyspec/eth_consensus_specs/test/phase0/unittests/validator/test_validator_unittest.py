@@ -270,6 +270,7 @@ def test_get_eth1_vote_tie(spec, state):
 
     state.eth1_data_votes = eth1_data_votes
     eth1_data = spec.get_eth1_vote(state, eth1_chain)
+
     # Tiebreak by smallest distance -> eth1_chain[0]
     assert eth1_data.block_hash == eth1_chain[0].hash_tree_root()
 

@@ -396,14 +396,6 @@ def run_transition_with_operation(
             )
             operation_dict = {"attester_slashings": [attester_slashing]}
     elif operation_type == OperationType.DEPOSIT:
-        # [Modified for Fulu]
-        # Old deposits mechanism is not supported in Fulu and later
-        if is_post_fulu(post_spec):
-            yield "pre", state
-            yield "blocks", []
-            yield "post", state
-            return
-
         # create a new deposit
         selected_validator_index = len(state.validators)
         amount = spec.MAX_EFFECTIVE_BALANCE

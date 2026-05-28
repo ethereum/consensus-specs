@@ -51,7 +51,6 @@ def _randomize_deposit_state(spec, state, stats):
     This function randomizes the ``state`` in a way that can signal downstream to
     the block constructors how they should (or should not) make some randomized deposits.
     """
-    # Old deposits mechanism is not supported in Fulu and later
     if is_post_fulu(spec):
         return {"deposits": []}
 
