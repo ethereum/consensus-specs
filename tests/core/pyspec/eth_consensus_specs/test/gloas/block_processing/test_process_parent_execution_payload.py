@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.execution_requests import (
     get_non_empty_execution_requests,
 )
 from eth_consensus_specs.test.helpers.keys import pubkeys
+from tests.infra.helpers.deposit_requests import prepare_process_deposit_request
 from tests.infra.helpers.withdrawals import set_parent_block_full
 
 
@@ -363,3 +364,75 @@ def test_process_parent_execution_payload__builder_deposit_after_pending_validat
     assert second.pubkey == deposit_request_2.pubkey
     assert second.withdrawal_credentials == deposit_request_2.withdrawal_credentials
     assert second.amount == deposit_request_2.amount
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_parent_execution_payload__new_builder_does_not_reuse_topped_up_builder_slot(
+    spec, state
+):
+    """
+    Test that a reusable builder slot is no longer reusable after an earlier
+    positive top-up in the same parent execution requests batch.
+    """
+    existing_builder_pubkey = state.builders[0].pubkey
+    pre_builder_count = len(state.builders)
+    pre_pending_deposits_len = len(state.pending_deposits)
+
+    state.builders[0].withdrawable_epoch = spec.get_current_epoch(state)
+    state.builders[0].balance = spec.Gwei(0)
+    existing_builder_pre_balance = state.builders[0].balance
+
+    top_up_amount = spec.MIN_DEPOSIT_AMOUNT
+    new_builder_amount = spec.MIN_DEPOSIT_AMOUNT
+
+    deposit_request_1 = prepare_process_deposit_request(
+        spec,
+        state,
+        builder_index=0,
+        pubkey=existing_builder_pubkey,
+        amount=top_up_amount,
+        signed=True,
+    )
+    deposit_request_2 = prepare_process_deposit_request(
+        spec,
+        state,
+        for_builder=True,
+        amount=new_builder_amount,
+        signed=True,
+    )
+
+    requests = spec.ExecutionRequests(
+        deposits=spec.List[spec.DepositRequest, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD](
+            [deposit_request_1, deposit_request_2]
+        ),
+        withdrawals=spec.List[spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD](),
+        consolidations=spec.List[
+            spec.ConsolidationRequest, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
+        ](),
+    )
+
+    _commit_parent_requests(spec, state, requests)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.parent_execution_requests = requests
+
+    spec.process_slots(state, block.slot)
+    yield from run_parent_execution_payload_processing(spec, state, block)
+
+    assert len(state.pending_deposits) == pre_pending_deposits_len
+    assert len(state.builders) == pre_builder_count + 1
+
+    topped_up_builder = state.builders[0]
+    assert topped_up_builder.pubkey == existing_builder_pubkey
+    assert topped_up_builder.balance == existing_builder_pre_balance + top_up_amount
+
+    new_builder_index = None
+    for i, builder in enumerate(state.builders):
+        if builder.pubkey == deposit_request_2.pubkey:
+            new_builder_index = i
+            break
+
+    assert new_builder_index is not None
+    assert new_builder_index != 0
+    assert state.builders[new_builder_index].balance == new_builder_amount
