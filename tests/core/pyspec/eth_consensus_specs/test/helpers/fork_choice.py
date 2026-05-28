@@ -536,11 +536,15 @@ def add_payload_vote_checks(store, block_root, test_steps):
 def get_formatted_head_output(spec, store, head=None):
     if head is None:
         head = spec.get_head(store)
-    slot = store.blocks[head.root].slot
-    return {
-        "slot": int(slot),
+    formatted_head = {
+        "slot": int(store.blocks[head.root].slot),
         "root": encode_hex(head.root),
     }
+
+    if is_post_gloas(spec):
+        formatted_head["payload_status"] = int(head.payload_status)
+
+    return formatted_head
 
 
 def output_head_check(spec, store, test_steps):
@@ -555,10 +559,9 @@ def output_head_check(spec, store, test_steps):
 
 
 def get_basic_store_checks(spec, store):
-    head = spec.get_head(store)
-    checks = {
+    return {
         "time": int(store.time),
-        "head": get_formatted_head_output(spec, store, head),
+        "head": get_formatted_head_output(spec, store),
         "justified_checkpoint": {
             "epoch": int(store.justified_checkpoint.epoch),
             "root": encode_hex(store.justified_checkpoint.root),
@@ -569,11 +572,6 @@ def get_basic_store_checks(spec, store):
         },
         "proposer_boost_root": encode_hex(store.proposer_boost_root),
     }
-
-    if is_post_gloas(spec):
-        checks["head_payload_status"] = int(head.payload_status)
-
-    return checks
 
 
 def get_weighed_node_checks(spec, store, node):
