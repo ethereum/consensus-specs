@@ -716,6 +716,25 @@ def validate_payload_attestation_message_gossip(
 
 This topic is used to propagate signed bids as `SignedExecutionPayloadBid`.
 
+*Note*: The `state` passed to `validate_execution_payload_bid_gossip` is the
+post-state of the bid's parent block advanced to `bid.slot` via `process_slots`.
+Advancing the state to the bid's slot is necessary because checks such as
+`is_active_builder` and `can_builder_cover_bid` depend on epoch-sensitive state
+values that may differ from the parent's slot. The following helper returns this
+state.
+
+<!-- eth_consensus_specs: skip -->
+
+```python
+def get_validation_state(store: Store, bid: ExecutionPayloadBid) -> BeaconState:
+    """
+    Return the ``state`` used to validate ``bid`` for gossip propagation.
+    """
+    state = store.block_states[bid.parent_block_root].copy()
+    process_slots(state, bid.slot)
+    return state
+```
+
 ```python
 def validate_execution_payload_bid_gossip(
     seen: Seen,
