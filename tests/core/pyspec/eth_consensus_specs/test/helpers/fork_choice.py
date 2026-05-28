@@ -533,9 +533,8 @@ def add_payload_vote_checks(store, block_root, test_steps):
     )
 
 
-def get_formatted_head_output(spec, store, head=None):
-    if head is None:
-        head = spec.get_head(store)
+def get_formatted_head_output(spec, store):
+    head = spec.get_head(store)
     formatted_head = {
         "slot": int(store.blocks[head.root].slot),
         "root": encode_hex(head.root),
@@ -548,11 +547,10 @@ def get_formatted_head_output(spec, store, head=None):
 
 
 def output_head_check(spec, store, test_steps):
-    head = spec.get_head(store)
     test_steps.append(
         {
             "checks": {
-                "head": get_formatted_head_output(spec, store, head),
+                "head": get_formatted_head_output(spec, store),
             }
         }
     )
