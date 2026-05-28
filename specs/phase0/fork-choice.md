@@ -860,17 +860,20 @@ def update_proposer_boost_root(store: Store, head: Root, root: Root) -> None:
     is_first_block = store.proposer_boost_root == Root()
     is_timely = store.block_timeliness[root]
 
+    def get_depdendent_root(root: Root) -> Root:
+        epoch = get_current_store_epoch(store)
+        if epoch <= MIN_SEED_LOOKAHEAD:
+            # Genesis block parent
+            return Root()
+
+        node = ForkChoiceNode(root=root)
+        dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+        return get_ancestor(store, node, dependent_slot).root
+
     # Add proposer score boost if the block is timely, not conflicting with an
-    # existing block, with the same the proposer as the canonical chain.
-    if is_timely and is_first_block:
-        head_state = copy(store.block_states[head])
-        slot = get_current_slot(store)
-        if head_state.slot < slot:
-            process_slots(head_state, slot)
-        block = store.blocks[root]
-        # Only update if the proposer is the same as on the canonical chain
-        if block.proposer_index == get_beacon_proposer_index(head_state):
-            store.proposer_boost_root = root
+    # existing block, with the same dependent root as the canonical chain head.
+    if is_timely and is_first_block and get_depdendent_root(root) == get_depdendent_root(head):
+        store.proposer_boost_root = root
 ```
 
 ### Handlers
