@@ -182,7 +182,7 @@ def test_is_candidate_block(spec, state):
     )
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_get_eth1_vote_default_vote(spec, state):
     min_new_period_epochs = get_min_new_period_epochs(spec)
@@ -195,7 +195,7 @@ def test_get_eth1_vote_default_vote(spec, state):
     assert eth1_data == state.eth1_data
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_get_eth1_vote_consensus_vote(spec, state):
     min_new_period_epochs = get_min_new_period_epochs(spec)
@@ -234,7 +234,7 @@ def test_get_eth1_vote_consensus_vote(spec, state):
     assert eth1_data.block_hash == block_2.hash_tree_root()
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_get_eth1_vote_tie(spec, state):
     min_new_period_epochs = get_min_new_period_epochs(spec)
@@ -272,12 +272,11 @@ def test_get_eth1_vote_tie(spec, state):
 
     state.eth1_data_votes = eth1_data_votes
     eth1_data = spec.get_eth1_vote(state, eth1_chain)
-
     # Tiebreak by smallest distance -> eth1_chain[0]
     assert eth1_data.block_hash == eth1_chain[0].hash_tree_root()
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_get_eth1_vote_chain_in_past(spec, state):
     min_new_period_epochs = get_min_new_period_epochs(spec)
