@@ -354,10 +354,9 @@ def spec_state_test(fn):
 
 def spec_configured_state_test(conf, *, activate_at_genesis: bool = False):
     """
-    If ``activate_at_genesis`` is True, set the spec module's own ``*_FORK_EPOCH`` to
-    0 so the emitted ``config.cfg`` resolves the test's fork as the latest scheduled
-    activation. Useful for fixtures consumed by clients that resolve forks via
-    ``getForkName(slot)``. Entries in ``conf`` win on conflict.
+    If ``activate_at_genesis`` is True, set every ``*_FORK_EPOCH`` up to and
+    including the spec module's own fork to 0 so the emitted ``config.cfg``
+    matches the state's SSZ shape. Entries in ``conf`` win on conflict.
     """
     if not activate_at_genesis:
         overrides = _with_config_overrides_emit(conf)
@@ -369,7 +368,12 @@ def spec_configured_state_test(conf, *, activate_at_genesis: bool = False):
 
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
-            combined = {f"{spec.fork.upper()}_FORK_EPOCH": 0, **conf}
+            activate_forks = {
+                f"{f.upper()}_FORK_EPOCH": 0
+                for f in ALL_PHASES
+                if f != PHASE0 and is_post_fork(spec.fork, f)
+            }
+            combined = {**activate_forks, **conf}
             return _with_config_overrides_emit(combined)(fn)(*args, spec=spec, **kw)
 
         return spec_test(with_state(single_phase(wrapper)))
