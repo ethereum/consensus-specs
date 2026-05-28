@@ -35,6 +35,7 @@
   - [Modified `get_node_children`](#modified-get_node_children)
   - [Modified `get_head`](#modified-get_head)
   - [Modified `record_block_timeliness`](#modified-record_block_timeliness)
+  - [Modified `get_dependent_root`](#modified-get_dependent_root)
   - [Modified `update_proposer_boost_root`](#modified-update_proposer_boost_root)
   - [Modified `validate_on_attestation`](#modified-validate_on_attestation)
   - [Modified `is_head_late`](#modified-is_head_late)
@@ -596,6 +597,23 @@ def record_block_timeliness(store: Store, root: Root) -> None:
     ]
 ```
 
+### Modified `get_dependent_root`
+
+```python
+def get_dependent_root(store: Store, root: Root) -> Root:
+    epoch = get_current_store_epoch(store)
+    if epoch <= MIN_SEED_LOOKAHEAD:
+        # Genesis block parent
+        return Root()
+
+    node = ForkChoiceNode(
+        root=root,
+        payload_status=PAYLOAD_STATUS_PENDING,
+    )
+    dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+    return get_ancestor(store, node, dependent_slot).root
+```
+
 ### Modified `update_proposer_boost_root`
 
 ```python
@@ -604,22 +622,13 @@ def update_proposer_boost_root(store: Store, head: Root, root: Root) -> None:
     # [Modified in Gloas:EIP7732]
     is_timely = store.block_timeliness[root][ATTESTATION_TIMELINESS_INDEX]
 
-    def get_depdendent_root(root: Root) -> Root:
-        epoch = get_current_store_epoch(store)
-        if epoch <= MIN_SEED_LOOKAHEAD:
-            # Genesis block parent
-            return Root()
-
-        node = ForkChoiceNode(
-            root=root,
-            payload_status=PAYLOAD_STATUS_PENDING,
-        )
-        dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
-        return get_ancestor(store, node, dependent_slot).root
-
     # Add proposer score boost if the block is timely, not conflicting with an
     # existing block, with the same dependent root as the canonical chain head.
-    if is_timely and is_first_block and get_depdendent_root(root) == get_depdendent_root(head):
+    if (
+        is_timely
+        and is_first_block
+        and get_dependent_root(store, root) == get_dependent_root(store, head)
+    ):
         store.proposer_boost_root = root
 ```
 

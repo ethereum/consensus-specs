@@ -59,6 +59,7 @@
       - [`update_latest_messages`](#update_latest_messages)
     - [`on_block` helpers](#on_block-helpers)
       - [`record_block_timeliness`](#record_block_timeliness)
+      - [`get_dependent_root`](#get_dependent_root)
       - [`update_proposer_boost_root`](#update_proposer_boost_root)
   - [Handlers](#handlers)
     - [`on_tick`](#on_tick)
@@ -853,6 +854,20 @@ def record_block_timeliness(store: Store, root: Root) -> None:
     store.block_timeliness[root] = is_timely
 ```
 
+##### `get_dependent_root`
+
+```python
+def get_dependent_root(store: Store, root: Root) -> Root:
+    epoch = get_current_store_epoch(store)
+    if epoch <= MIN_SEED_LOOKAHEAD:
+        # Genesis block parent
+        return Root()
+
+    node = ForkChoiceNode(root=root)
+    dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+    return get_ancestor(store, node, dependent_slot).root
+```
+
 ##### `update_proposer_boost_root`
 
 ```python
@@ -860,19 +875,13 @@ def update_proposer_boost_root(store: Store, head: Root, root: Root) -> None:
     is_first_block = store.proposer_boost_root == Root()
     is_timely = store.block_timeliness[root]
 
-    def get_depdendent_root(root: Root) -> Root:
-        epoch = get_current_store_epoch(store)
-        if epoch <= MIN_SEED_LOOKAHEAD:
-            # Genesis block parent
-            return Root()
-
-        node = ForkChoiceNode(root=root)
-        dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
-        return get_ancestor(store, node, dependent_slot).root
-
     # Add proposer score boost if the block is timely, not conflicting with an
     # existing block, with the same dependent root as the canonical chain head.
-    if is_timely and is_first_block and get_depdendent_root(root) == get_depdendent_root(head):
+    if (
+        is_timely
+        and is_first_block
+        and get_dependent_root(store, root) == get_dependent_root(store, head)
+    ):
         store.proposer_boost_root = root
 ```
 
