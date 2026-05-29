@@ -717,23 +717,9 @@ def validate_payload_attestation_message_gossip(
 This topic is used to propagate signed bids as `SignedExecutionPayloadBid`.
 
 *Note*: The `state` passed to `validate_execution_payload_bid_gossip` is the
-post-state of the bid's parent block advanced to `bid.slot` via `process_slots`.
-Advancing the state to the bid's slot is necessary because checks such as
-`is_active_builder` and `can_builder_cover_bid` depend on epoch-sensitive state
-values that may differ from the parent's slot. The following helper returns this
-state.
-
-<!-- eth_consensus_specs: skip -->
-
-```python
-def get_validation_state(store: Store, bid: ExecutionPayloadBid) -> BeaconState:
-    """
-    Return the ``state`` used to validate ``bid`` for gossip propagation.
-    """
-    state = store.block_states[bid.parent_block_root].copy()
-    process_slots(state, bid.slot)
-    return state
-```
+bid's parent block post-state. The function advances it to the bid's slot so
+that builder checks such as `is_active_builder` and `can_builder_cover_bid` are
+evaluated at the bid's slot rather than at the parent's slot.
 
 ```python
 def validate_execution_payload_bid_gossip(
@@ -764,6 +750,14 @@ def validate_execution_payload_bid_gossip(
     if bid.value <= best_bid_value:
         raise GossipIgnore("bid is not the highest value bid seen for this slot and parent")
 
+    # [REJECT] The bid is for a higher slot than its parent block
+    if bid.slot <= state.slot:
+        raise GossipReject("bid's slot is not higher than its parent's slot")
+
+    # Advance state
+    state = state.copy()
+    process_slots(state, bid.slot)
+
     # [REJECT] The builder index is valid
     if bid.builder_index >= len(state.builders):
         raise GossipReject("builder index out of range")
@@ -790,10 +784,6 @@ def validate_execution_payload_bid_gossip(
     # (MAY be queued until parent is retrieved)
     if bid.parent_block_root not in store.blocks:
         raise GossipIgnore("bid's parent block root is not a known beacon block")
-
-    # [REJECT] The bid is for a higher slot than its parent block
-    if bid.slot <= store.blocks[bid.parent_block_root].slot:
-        raise GossipReject("bid's slot is not higher than its parent's slot")
 
     # [IGNORE] The bid's parent block hash is the hash of a known execution payload
     if bid.parent_block_hash not in seen.execution_payloads:
