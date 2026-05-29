@@ -406,7 +406,7 @@ def test_process_payload_attestation_sampling_not_capped(spec, state):
         ptc_expected, accepted_at = _compute_selection_with_acceptance_iterations(
             spec, state, indices, seed, spec.PTC_SIZE
         )
-        for index, accepted_i in zip(ptc_expected, accepted_at):
+        for index, accepted_i in zip(ptc_expected, accepted_at, strict=False):
             if accepted_i > limit:
                 chosen_slot = slot
                 chosen_index = index

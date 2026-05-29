@@ -354,10 +354,9 @@ def spec_state_test(fn):
 
 def spec_configured_state_test(conf, *, activate_at_genesis: bool = False):
     """
-    If ``activate_at_genesis`` is True, set the spec module's own ``*_FORK_EPOCH`` to
-    0 so the emitted ``config.cfg`` resolves the test's fork as the latest scheduled
-    activation. Useful for fixtures consumed by clients that resolve forks via
-    ``getForkName(slot)``. Entries in ``conf`` win on conflict.
+    If ``activate_at_genesis`` is True, set every ``*_FORK_EPOCH`` up to and
+    including the spec module's own fork to 0 so the emitted ``config.cfg``
+    matches the state's SSZ shape. Entries in ``conf`` win on conflict.
     """
     if not activate_at_genesis:
         overrides = _with_config_overrides_emit(conf)
@@ -369,7 +368,12 @@ def spec_configured_state_test(conf, *, activate_at_genesis: bool = False):
 
     def decorator(fn):
         def wrapper(*args, spec: Spec, **kw):
-            combined = {f"{spec.fork.upper()}_FORK_EPOCH": 0, **conf}
+            activate_forks = {
+                f"{f.upper()}_FORK_EPOCH": 0
+                for f in ALL_PHASES
+                if f != PHASE0 and is_post_fork(spec.fork, f)
+            }
+            combined = {**activate_forks, **conf}
             return _with_config_overrides_emit(combined)(fn)(*args, spec=spec, **kw)
 
         return spec_test(with_state(single_phase(wrapper)))
@@ -628,13 +632,13 @@ def _run_test_case_with_phases(fn, phases, other_phases, kw, args, is_fork_trans
         results: MultiPhaseResult = {}
 
         for phase in run_phases:
-            ret = fn(spec=targets[phase], phases=phase_dir, *args, **kw)
+            ret = fn(*args, spec=targets[phase], phases=phase_dir, **kw)
             results[phase] = ret
 
         return results
 
     for phase in run_phases:
-        ret = fn(spec=targets[phase], phases=phase_dir, *args, **kw)
+        ret = fn(*args, spec=targets[phase], phases=phase_dir, **kw)
 
     return ret
 
@@ -675,7 +679,7 @@ def with_phases(phases, other_phases=None):
                         )
                         if isinstance(ret, dict):
                             accumulated.update(ret)
-                    ret = accumulated if accumulated else None
+                    ret = accumulated or None
                 else:
                     ret = None
                     for fork_meta in fork_metas:
@@ -742,9 +746,9 @@ def _get_basic_value(v: Any) -> Any:
     elif isinstance(v, bytes):
         return bytes(bytearray(v))
     elif isinstance(v, list | tuple):
-        return list(_get_basic_value(v) for v in v)
+        return [_get_basic_value(v) for v in v]
     elif isinstance(v, dict | frozendict):
-        return dict({k: _get_basic_value(v) for k, v in dict(v).items()})
+        return {k: _get_basic_value(v) for k, v in dict(v).items()}
     else:
         return quoted_str(v)
 

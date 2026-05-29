@@ -456,7 +456,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
             modified_bits[i] = True
             break
     else:
-        assert False, "Need at least one additional committee participant for this test"
+        raise AssertionError("Need at least one additional committee participant for this test")
 
     if is_post_electra(spec):
         # Electra ``Attestation`` carries an EIP-7549 aggregation bitlist sized for

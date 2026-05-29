@@ -390,10 +390,10 @@ def compute_subnets_for_sync_committee(
     sync_committee_indices = [
         index for index, pubkey in enumerate(sync_committee.pubkeys) if pubkey == target_pubkey
     ]
-    return set([
+    return {
         SubnetID(index // (SYNC_COMMITTEE_SIZE // SYNC_COMMITTEE_SUBNET_COUNT))
         for index in sync_committee_indices
-    ])
+    }
 ```
 
 *Note*: Subnet assignment does not change during the duration of a validator's

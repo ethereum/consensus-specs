@@ -98,7 +98,7 @@ def test_recover_cells_and_kzg_proofs_case_valid_half_missing_every_other_cell(s
 @single_phase
 def test_recover_cells_and_kzg_proofs_case_valid_half_missing_first_half(spec):
     cells, _ = spec.compute_cells_and_kzg_proofs(VALID_BLOBS[2])
-    cell_indices = list(range(0, spec.CELLS_PER_EXT_BLOB // 2))
+    cell_indices = list(range(spec.CELLS_PER_EXT_BLOB // 2))
     partial_cells = [cells[cell_index] for cell_index in cell_indices]
 
     yield from _run_recover_cells_and_kzg_proofs_test(

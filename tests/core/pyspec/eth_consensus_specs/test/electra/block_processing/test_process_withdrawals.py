@@ -174,7 +174,7 @@ def test_pending_withdrawals_next_epoch(spec, state):
 def test_pending_withdrawals_at_max(spec, state):
     pending_withdrawal_requests = []
     # Create spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP + 1 partial withdrawals
-    for i in range(0, spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP + 1):
+    for i in range(spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP + 1):
         pending_withdrawal = prepare_pending_withdrawal(spec, state, i)
         pending_withdrawal_requests.append(pending_withdrawal)
 
@@ -598,7 +598,7 @@ def test_pending_withdrawals_mixed_with_sweep_and_fully_withdrawable(spec, state
     )
 
     pending_withdrawal_requests = []
-    for index in range(0, len(state.validators)):
+    for index in range(len(state.validators)):
         if len(pending_withdrawal_requests) >= num_pending_withdrawal_requests:
             break
         if index in (fully_withdrawable_indices + partial_withdrawals_indices):
@@ -647,7 +647,7 @@ def test_pending_withdrawals_at_max_mixed_with_sweep_and_fully_withdrawable(spec
     )
 
     pending_withdrawal_requests = []
-    for index in range(0, len(state.validators)):
+    for index in range(len(state.validators)):
         if len(pending_withdrawal_requests) >= num_pending_withdrawal_requests:
             break
         if index in (fully_withdrawable_indices + partial_withdrawals_indices):

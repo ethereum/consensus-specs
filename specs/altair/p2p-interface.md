@@ -336,8 +336,8 @@ def validate_sync_committee_message_gossip(
     seen: Seen,
     state: BeaconState,
     sync_committee_message: SyncCommitteeMessage,
-    subnet_id: uint64,
     current_time_ms: uint64,
+    subnet_id: SubnetID,
 ) -> None:
     """
     Validate a SyncCommitteeMessage for gossip propagation on a subnet.

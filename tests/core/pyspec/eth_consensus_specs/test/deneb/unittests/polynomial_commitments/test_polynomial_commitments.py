@@ -18,11 +18,11 @@ from eth_consensus_specs.utils.bls import BLS_MODULUS
 G1 = bls.G1_to_bytes48(bls.G1())
 P1_NOT_IN_G1 = bytes.fromhex(
     "8123456789abcdef0123456789abcdef0123456789abcdef"
-    + "0123456789abcdef0123456789abcdef0123456789abcdef"
+    "0123456789abcdef0123456789abcdef0123456789abcdef"
 )
 P1_NOT_ON_CURVE = bytes.fromhex(
     "8123456789abcdef0123456789abcdef0123456789abcdef"
-    + "0123456789abcdef0123456789abcdef0123456789abcde0"
+    "0123456789abcdef0123456789abcdef0123456789abcde0"
 )
 
 

@@ -31,7 +31,7 @@ def _yield_generator_post_processing(vector: Iterable) -> Generator:
             yield key, "ssz", serialize(value)
         elif isinstance(value, bytes):
             yield key, "ssz", value
-        elif isinstance(value, list) and all([isinstance(el, View | bytes) for el in value]):
+        elif isinstance(value, list) and all(isinstance(el, View | bytes) for el in value):
             for i, el in enumerate(value):
                 if isinstance(el, View):
                     yield f"{key}_{i}", "ssz", serialize(el)
