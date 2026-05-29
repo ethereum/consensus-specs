@@ -238,6 +238,7 @@ client implementation. The fields include:
 head: {
     slot: int,
     root: string,             -- Encoded 32-byte value from get_head(store).root
+    payload_status: int,      -- Gloas and later, the head's payload_status
 }
 time: int                     -- store.time
 genesis_time: int             -- store.genesis_time
@@ -266,7 +267,6 @@ should_override_forkchoice_update: {  -- [New in Bellatrix]
     validator_is_connected: bool,     -- The mocking result of `validator_is_connected(proposer_index)` in this call
     result: bool,                     -- The result of `should_override_forkchoice_update(store, head_root)`, where head_root is the result value from get_head(store).root
 }
-head_payload_status: int              -- The payload_status field from the ForkChoiceNode returned by get_head(store)
 payload_timeliness_vote: {            -- [New in Gloas]
     block_root: string,               -- Encoded 32-byte beacon block root
     votes: [bool | null, ...]         -- Votes ordered by PTC positions. Length is `PTC_SIZE`.
