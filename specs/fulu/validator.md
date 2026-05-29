@@ -15,7 +15,7 @@
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Validator custody](#validator-custody)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
-    - [Constructing the sidecars](#constructing-the-sidecars)
+    - [Constructing the `DataColumnSidecar`s](#constructing-the-datacolumnsidecars)
       - [`get_data_column_sidecars`](#get_data_column_sidecars)
       - [`get_data_column_sidecars_from_block`](#get_data_column_sidecars_from_block)
       - [`get_data_column_sidecars_from_column_sidecar`](#get_data_column_sidecars_from_column_sidecar)
@@ -61,7 +61,7 @@ KZG proofs.
 
 ```python
 @dataclass
-class BlobsBundle(object):
+class BlobsBundle:
     commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     # [Modified in Fulu:EIP7594]
     proofs: List[KZGProof, FIELD_ELEMENTS_PER_EXT_BLOB * MAX_BLOB_COMMITMENTS_PER_BLOCK]
@@ -77,7 +77,7 @@ object.
 
 ```python
 @dataclass
-class GetPayloadResponse(object):
+class GetPayloadResponse:
     execution_payload: ExecutionPayload
     block_value: uint256
     # [Modified in Fulu:EIP7594]
@@ -99,8 +99,6 @@ def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadRespo
     """
     Return ExecutionPayload, uint256, BlobsBundle objects.
     """
-    # pylint: disable=unused-argument
-    ...
 ```
 
 ## Beacon chain responsibilities
@@ -167,7 +165,7 @@ progressively lower values as the backfill process advances.
 
 ### Block and sidecar proposal
 
-#### Constructing the sidecars
+#### Constructing the `DataColumnSidecar`s
 
 *[New in Fulu:EIP7594]*
 
@@ -185,14 +183,14 @@ then constructing the list of cells and proofs for each blob (as defined in the
 example below) using the blobs bundle in the response, and finally by calling
 `get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)`.
 
-<!-- eth2spec: skip -->
+<!-- eth_consensus_specs: skip -->
 
 ```python
 cells_and_kzg_proofs = []
 for i, blob in enumerate(blobs_bundle.blobs):
     start = i * CELLS_PER_EXT_BLOB
     end = (i + 1) * CELLS_PER_EXT_BLOB
-    cell_proofs = zip(compute_cells(blob), blobs_bundle.proofs[start:end])
+    cell_proofs = zip(compute_cells(blob), blobs_bundle.proofs[start:end], strict=True)
     cells_and_kzg_proofs.extend(cell_proofs)
 ```
 

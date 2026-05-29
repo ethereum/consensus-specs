@@ -12,7 +12,6 @@
 - [Constants](#constants)
   - [Execution](#execution)
   - [Domains](#domains)
-- [Configuration](#configuration)
 - [Containers](#containers)
   - [New `PublicInput`](#new-publicinput)
   - [New `ExecutionProof`](#new-executionproof)
@@ -21,7 +20,6 @@
   - [Block processing](#block-processing)
     - [Modified `process_block`](#modified-process_block)
     - [Execution payload](#execution-payload)
-      - [New `NewPayloadRequestHeader`](#new-newpayloadrequestheader)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
   - [Execution proof](#execution-proof)
     - [New `process_execution_proof`](#new-process_execution_proof)
@@ -48,23 +46,15 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 
 *Note*: The execution values are not definitive.
 
-| Name             | Value               |
-| ---------------- | ------------------- |
-| `MAX_PROOF_SIZE` | `307200` (= 300KiB) |
+| Name             | Value                          |
+| ---------------- | ------------------------------ |
+| `MAX_PROOF_SIZE` | `4194304` (= 4,096 KiB, 4 MiB) |
 
 ### Domains
 
 | Name                     | Value                      |
 | ------------------------ | -------------------------- |
 | `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0D000000')` |
-
-## Configuration
-
-*Note*: The configuration values are not definitive.
-
-| Name                      | Value         |
-| ------------------------- | ------------- |
-| `MAX_WHITELISTED_PROVERS` | `uint64(256)` |
 
 ## Containers
 
@@ -89,7 +79,7 @@ class ExecutionProof(Container):
 ```python
 class SignedExecutionProof(Container):
     message: ExecutionProof
-    prover_pubkey: BLSPubkey
+    validator_index: ValidatorIndex
     signature: BLSSignature
 ```
 
@@ -115,17 +105,6 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 ```
 
 #### Execution payload
-
-##### New `NewPayloadRequestHeader`
-
-```python
-@dataclass
-class NewPayloadRequestHeader(object):
-    execution_payload_header: ExecutionPayloadHeader
-    versioned_hashes: Sequence[VersionedHash]
-    parent_beacon_block_root: Root
-    execution_requests: ExecutionRequests
-```
 
 ##### Modified `process_execution_payload`
 
@@ -169,32 +148,15 @@ def process_execution_payload(
     )
 
     # [New in EIP8025]
-    # Verify via ProofEngine
-    new_payload_request_header = NewPayloadRequestHeader(
-        execution_payload_header=ExecutionPayloadHeader(
-            parent_hash=payload.parent_hash,
-            fee_recipient=payload.fee_recipient,
-            state_root=payload.state_root,
-            receipts_root=payload.receipts_root,
-            logs_bloom=payload.logs_bloom,
-            prev_randao=payload.prev_randao,
-            block_number=payload.block_number,
-            gas_limit=payload.gas_limit,
-            gas_used=payload.gas_used,
-            timestamp=payload.timestamp,
-            extra_data=payload.extra_data,
-            base_fee_per_gas=payload.base_fee_per_gas,
-            block_hash=payload.block_hash,
-            transactions_root=hash_tree_root(payload.transactions),
-            withdrawals_root=hash_tree_root(payload.withdrawals),
-            blob_gas_used=payload.blob_gas_used,
-            excess_blob_gas=payload.excess_blob_gas,
-        ),
-        versioned_hashes=versioned_hashes,
-        parent_beacon_block_root=state.latest_block_header.parent_root,
-        execution_requests=body.execution_requests,
+    # Notify ProofEngine of the new execution payload
+    proof_engine.notify_new_payload(
+        NewPayloadRequest(
+            execution_payload=payload,
+            versioned_hashes=versioned_hashes,
+            parent_beacon_block_root=state.latest_block_header.parent_root,
+            execution_requests=body.execution_requests,
+        )
     )
-    assert proof_engine.verify_new_payload_request_header(new_payload_request_header)
 
     # Cache execution payload header
     state.latest_execution_payload_header = ExecutionPayloadHeader(
@@ -231,17 +193,14 @@ def process_execution_proof(
     proof_engine: ProofEngine,
 ) -> None:
     proof_message = signed_proof.message
-    prover_pubkey = signed_proof.prover_pubkey
 
-    # Verify prover is whitelisted
-    validator_pubkeys = [v.pubkey for v in state.validators]
-    assert prover_pubkey in validator_pubkeys
-    validator_index = ValidatorIndex(validator_pubkeys.index(prover_pubkey))
-    assert is_active_validator(state.validators[validator_index], get_current_epoch(state))
+    # Verify prover is an active validator
+    validator = state.validators[signed_proof.validator_index]
+    assert is_active_validator(validator, get_current_epoch(state))
 
     domain = get_domain(state, DOMAIN_EXECUTION_PROOF, compute_epoch_at_slot(state.slot))
     signing_root = compute_signing_root(proof_message, domain)
-    assert bls.Verify(prover_pubkey, signing_root, signed_proof.signature)
+    assert bls.Verify(validator.pubkey, signing_root, signed_proof.signature)
 
     # Verify the execution proof
     assert proof_engine.verify_execution_proof(proof_message)

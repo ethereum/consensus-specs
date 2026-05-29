@@ -75,9 +75,9 @@ Deneb is a consensus-layer upgrade containing a number of features. Including:
 
 ### Execution
 
-| Name                             | Value                    | Description                                                                     |
-| -------------------------------- | ------------------------ | ------------------------------------------------------------------------------- |
-| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4096) | Upgrade independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` |
+| Name                             | Value                     | Description                                                                     |
+| -------------------------------- | ------------------------- | ------------------------------------------------------------------------------- |
+| `MAX_BLOB_COMMITMENTS_PER_BLOCK` | `uint64(2**12)` (= 4,096) | Upgrade independent fixed theoretical limit same as `TARGET_BLOB_GAS_PER_BLOCK` |
 
 ## Configuration
 
@@ -288,7 +288,7 @@ def get_validator_activation_churn_limit(state: BeaconState) -> uint64:
 
 ```python
 @dataclass
-class NewPayloadRequest(object):
+class NewPayloadRequest:
     execution_payload: ExecutionPayload
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
@@ -308,7 +308,6 @@ def is_valid_block_hash(
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
-    ...
 ```
 
 ##### `is_valid_versioned_hashes`
@@ -321,7 +320,6 @@ def is_valid_versioned_hashes(
     Return ``True`` if and only if the version hashes computed by the blob transactions of
     ``new_payload_request.execution_payload`` matches ``new_payload_request.versioned_hashes``.
     """
-    ...
 ```
 
 ##### Modified `notify_new_payload`
@@ -336,7 +334,6 @@ def notify_new_payload(
     """
     Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
-    ...
 ```
 
 ##### Modified `verify_and_notify_new_payload`

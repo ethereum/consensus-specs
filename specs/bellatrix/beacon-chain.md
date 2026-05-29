@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+- [Constants](#constants)
 - [Preset](#preset)
   - [Rewards and penalties](#rewards-and-penalties)
   - [Execution](#execution)
@@ -57,6 +58,12 @@ Including:
 | ------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Transaction`      | `ByteList[MAX_BYTES_PER_TRANSACTION]` | Either a [typed transaction envelope](https://eips.ethereum.org/EIPS/eip-2718#opaque-byte-array-rather-than-an-rlp-array) or a legacy transaction |
 | `ExecutionAddress` | `Bytes20`                             | Address of account on the execution layer                                                                                                         |
+
+## Constants
+
+| Name               | Value      |
+| ------------------ | ---------- |
+| `EMPTY_BLOCK_HASH` | `Hash32()` |
 
 ## Preset
 
@@ -294,7 +301,7 @@ def slash_validator(
 
 ```python
 @dataclass
-class NewPayloadRequest(object):
+class NewPayloadRequest:
     execution_payload: ExecutionPayload
 ```
 
@@ -321,7 +328,6 @@ def notify_new_payload(self: ExecutionEngine, execution_payload: ExecutionPayloa
     """
     Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
-    ...
 ```
 
 #### `is_valid_block_hash`
@@ -331,7 +337,6 @@ def is_valid_block_hash(self: ExecutionEngine, execution_payload: ExecutionPaylo
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
-    ...
 ```
 
 #### `verify_and_notify_new_payload`

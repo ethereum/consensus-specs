@@ -1,4 +1,5 @@
-from ..constants import ELECTRA
+from pysetup.constants import ELECTRA
+
 from .base import BaseSpecBuilder
 
 
@@ -8,8 +9,8 @@ class ElectraSpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth2spec.deneb import {preset_name} as deneb
-from eth2spec.utils.ssz.ssz_impl import ssz_serialize, ssz_deserialize
+from eth_consensus_specs.deneb import {preset_name} as deneb
+from eth_consensus_specs.utils.ssz.ssz_impl import ssz_serialize, ssz_deserialize
 """
 
     @classmethod
@@ -18,6 +19,19 @@ from eth2spec.utils.ssz.ssz_impl import ssz_serialize, ssz_deserialize
             "FINALIZED_ROOT_GINDEX_ELECTRA": "GeneralizedIndex(169)",
             "CURRENT_SYNC_COMMITTEE_GINDEX_ELECTRA": "GeneralizedIndex(86)",
             "NEXT_SYNC_COMMITTEE_GINDEX_ELECTRA": "GeneralizedIndex(87)",
+        }
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return {
+            "get_validator_activation_churn_limit",
+            "upgrade_lc_bootstrap_to_deneb",
+            "upgrade_lc_finality_update_to_deneb",
+            "upgrade_lc_header_to_deneb",
+            "upgrade_lc_optimistic_update_to_deneb",
+            "upgrade_lc_store_to_deneb",
+            "upgrade_lc_update_to_deneb",
+            "upgrade_to_deneb",
         }
 
     @classmethod
@@ -39,7 +53,6 @@ class NoopExecutionEngine(ExecutionEngine):
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
-        # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
     def is_valid_block_hash(self: ExecutionEngine,

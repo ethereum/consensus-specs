@@ -147,7 +147,7 @@ def compute_matrix(blobs: Sequence[Blob]) -> Sequence[MatrixEntry]:
     matrix = []
     for blob_index, blob in enumerate(blobs):
         cells, proofs = compute_cells_and_kzg_proofs(blob)
-        for cell_index, (cell, proof) in enumerate(zip(cells, proofs)):
+        for cell_index, (cell, proof) in enumerate(zip(cells, proofs, strict=True)):
             matrix.append(
                 MatrixEntry(
                     cell=cell,
@@ -176,7 +176,9 @@ def recover_matrix(
         cell_indices = [e.column_index for e in partial_matrix if e.row_index == blob_index]
         cells = [e.cell for e in partial_matrix if e.row_index == blob_index]
         recovered_cells, recovered_proofs = recover_cells_and_kzg_proofs(cell_indices, cells)
-        for cell_index, (cell, proof) in enumerate(zip(recovered_cells, recovered_proofs)):
+        for cell_index, (cell, proof) in enumerate(
+            zip(recovered_cells, recovered_proofs, strict=True)
+        ):
             matrix.append(
                 MatrixEntry(
                     cell=cell,
@@ -212,7 +214,7 @@ The particular columns/groups that a node custodies are selected pseudo-randomly
 as a function (`get_custody_groups`) of the node-id and custody size --
 importantly this function can be run by any party as the inputs are all public.
 
-*Note*: increasing the `custody_size` parameter for a given `node_id` extends
+*Note*: Increasing the `custody_size` parameter for a given `node_id` extends
 the returned list (rather than being an entirely new shuffle) such that if
 `custody_size` is unknown, the default `CUSTODY_REQUIREMENT` will be correct for
 a subset of the node's custody.

@@ -13,7 +13,7 @@
 - [Protocols](#protocols)
   - [`ExecutionEngine`](#executionengine)
     - [Modified `get_payload`](#modified-get_payload)
-- [Block proposal](#block-proposal)
+- [Block and sidecar proposal](#block-and-sidecar-proposal)
   - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
     - [Attester slashings](#attester-slashings)
     - [Attestations](#attestations)
@@ -51,7 +51,7 @@ specifications before continuing and use them as a reference throughout.
 
 ```python
 @dataclass
-class GetPayloadResponse(object):
+class GetPayloadResponse:
     execution_payload: ExecutionPayload
     block_value: uint256
     blobs_bundle: BlobsBundle
@@ -97,11 +97,9 @@ def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadRespo
     """
     Return ExecutionPayload, uint256, BlobsBundle and execution requests (as Sequence[bytes]) objects.
     """
-    # pylint: disable=unused-argument
-    ...
 ```
 
-## Block proposal
+## Block and sidecar proposal
 
 ### Constructing the `BeaconBlockBody`
 
@@ -135,7 +133,7 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
     signature = bls.Aggregate([a.signature for a in aggregates])
 
     committee_indices = [get_committee_indices(a.committee_bits)[0] for a in aggregates]
-    committee_flags = [(index in committee_indices) for index in range(0, MAX_COMMITTEES_PER_SLOT)]
+    committee_flags = [(index in committee_indices) for index in range(MAX_COMMITTEES_PER_SLOT)]
     committee_bits = Bitvector[MAX_COMMITTEES_PER_SLOT](committee_flags)
 
     return Attestation(

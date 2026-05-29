@@ -1,29 +1,45 @@
+import contextlib
+import random
 from dataclasses import dataclass, field
 
-from eth2spec.test.helpers.attestations import (
+from eth_consensus_specs.test.context import spec_test
+from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
 )
-from eth2spec.test.helpers.block import (
+from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
     sign_block,
 )
-from eth2spec.test.helpers.fork_choice import (
+from eth_consensus_specs.test.helpers.fork_choice import (
     add_attestation,
     add_attester_slashing,
     add_block,
+    add_execution_payload,
+    add_payload_attestation_message,
     get_attestation_file_name,
     get_attester_slashing_file_name,
     get_block_file_name,
+    get_execution_payload_envelope_file_name,
+    get_payload_attestation_message_file_name,
     on_tick_and_append_step,
     output_store_checks,
     run_on_attestation,
     run_on_attester_slashing,
     run_on_block,
+    run_on_execution_payload_envelope,
+    run_on_payload_attestation_message,
 )
-from eth2spec.test.helpers.state import (
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_deneb,
+    is_post_gloas,
+)
+from eth_consensus_specs.test.helpers.keys import (
+    privkeys,
+)
+from eth_consensus_specs.test.helpers.state import (
     next_slot,
 )
-from eth2spec.utils.ssz.ssz_typing import View
+from eth_consensus_specs.utils.ssz.ssz_typing import View
 
 from .debug_helpers import print_epoch, print_head
 
@@ -42,6 +58,8 @@ class FCTestData:
     blocks: list[ProtocolMessage]
     atts: list[ProtocolMessage] = field(default_factory=list)
     slashings: list[ProtocolMessage] = field(default_factory=list)
+    envelopes: list[ProtocolMessage] = field(default_factory=list)
+    payload_atts: list[ProtocolMessage] = field(default_factory=list)
     store_final_time: int = 0
 
 
@@ -61,19 +79,174 @@ class BranchTip:
         )
 
 
-def _get_eligible_attestations(spec, state, attestations) -> []:
-    def _get_voting_source(target: spec.Checkpoint) -> spec.Checkpoint:
-        if target.epoch == spec.get_current_epoch(state):
-            return state.current_justified_checkpoint
-        else:
-            return state.previous_justified_checkpoint
+def payload_attestation_to_messages(spec, state, payload_attestation, signed=False):
+    ptc = spec.get_ptc(state, payload_attestation.data.slot)
+    bits = payload_attestation.aggregation_bits
+    attesting_indices = [index for i, index in enumerate(ptc) if bits[i]]
+    messages = []
+    for validator_index in attesting_indices:
+        if validator_index >= len(privkeys):
+            continue
+        ptc_message = spec.PayloadAttestationMessage(
+            validator_index=validator_index,
+            data=payload_attestation.data,
+            signature=spec.BLSSignature(),
+        )
+        if signed:
+            ptc_message.signature = spec.get_payload_attestation_message_signature(
+                state, ptc_message, privkeys[validator_index]
+            )
+        messages.append(ptc_message)
+    return messages
 
-    return [
-        a
-        for a in attestations
-        if state.slot <= a.data.slot + spec.SLOTS_PER_EPOCH
-        and a.data.source == _get_voting_source(a.data.target)
-    ]
+
+def choose_payload_attestation_vote_count(spec, ptc, rnd: random.Random):
+    threshold = int(spec.PAYLOAD_TIMELY_THRESHOLD)
+    max_voters = len(ptc)
+    mode = rnd.choice(["below_threshold", "edge", "above_threshold"])
+
+    if mode == "below_threshold":
+        max_count = min(max_voters, threshold)
+        return rnd.randint(0, max_count)
+
+    if mode == "edge":
+        candidates = [count for count in (threshold, threshold + 1) if 0 <= count <= max_voters]
+        return rnd.choice(candidates)
+
+    candidates = list(range(threshold + 1, max_voters + 1))
+    if candidates:
+        return rnd.choice(candidates)
+
+    return max_voters
+
+
+def choose_payload_attestation_vote_pattern_mode(ptc, rnd: random.Random):
+    return rnd.choice(
+        [
+            "all_true_true",
+            "all_false_false",
+            "mostly_true_true",
+            "mostly_true_false",
+            "mostly_false_true",
+            "mixed",
+        ]
+    )
+
+
+def sample_payload_attestation_vote_values(mode, rnd: random.Random):
+    if mode == "all_true_true":
+        return True, True
+    if mode == "all_false_false":
+        return False, False
+    if mode == "mostly_true_true":
+        return (False, False) if rnd.randint(0, 99) < 20 else (True, True)
+    if mode == "mostly_true_false":
+        return (False, True) if rnd.randint(0, 99) < 20 else (True, False)
+    if mode == "mostly_false_true":
+        return (True, False) if rnd.randint(0, 99) < 20 else (False, True)
+    return rnd.choice([True, False]), rnd.choice([True, False])
+
+
+def build_random_payload_attestation_messages(
+    spec, state, beacon_block_root, slot, rnd: random.Random
+):
+    ptc = spec.get_ptc(state, slot)
+    if len(ptc) == 0:
+        return []
+
+    num_attesters = choose_payload_attestation_vote_count(spec, ptc, rnd)
+    attesting_indices = rnd.sample(list(ptc), num_attesters) if num_attesters > 0 else []
+    if not attesting_indices:
+        return []
+
+    vote_pattern_mode = choose_payload_attestation_vote_pattern_mode(ptc, rnd)
+    messages = []
+    for validator_index in attesting_indices:
+        if validator_index >= len(privkeys):
+            continue
+
+        payload_present, blob_data_available = sample_payload_attestation_vote_values(
+            vote_pattern_mode, rnd
+        )
+        ptc_message = spec.PayloadAttestationMessage(
+            validator_index=validator_index,
+            data=spec.PayloadAttestationData(
+                beacon_block_root=beacon_block_root,
+                slot=slot,
+                payload_present=payload_present,
+                blob_data_available=blob_data_available,
+            ),
+            signature=spec.BLSSignature(),
+        )
+        ptc_message.signature = spec.get_payload_attestation_message_signature(
+            state, ptc_message, privkeys[validator_index]
+        )
+        messages.append(ptc_message)
+
+    return messages
+
+
+def messages_to_payload_attestations(spec, state, messages):
+    """Aggregates a list of PayloadAttestationMessage objects into PayloadAttestation objects,
+    one per distinct PayloadAttestationData."""
+    if not messages:
+        return []
+
+    # Group messages by data
+    groups = {}
+    for m in messages:
+        key = m.data.hash_tree_root()
+        if key not in groups:
+            groups[key] = (m.data, [])
+        groups[key][1].append(m.validator_index)
+
+    result = []
+    for data, attesting_indices in groups.values():
+        ptc = spec.get_ptc(state, data.slot)
+        index_set = set(attesting_indices)
+        aggregation_bits = spec.Bitvector[spec.PTC_SIZE]()
+        for i, validator_index in enumerate(ptc):
+            if validator_index in index_set:
+                aggregation_bits[i] = True
+        result.append(
+            spec.PayloadAttestation(
+                aggregation_bits=aggregation_bits,
+                data=data,
+                signature=spec.BLSSignature(),
+            )
+        )
+
+    return result
+
+
+def is_attestation_eligible_for_block(spec, state, attestation) -> bool:
+    if is_post_deneb(spec):
+        return spec.compute_epoch_at_slot(attestation.data.slot) + 1 >= spec.compute_epoch_at_slot(
+            state.slot
+        )
+
+    return state.slot <= attestation.data.slot + spec.SLOTS_PER_EPOCH
+
+
+def get_dependent_root(spec, state, slot):
+    epoch = spec.compute_epoch_at_slot(slot)
+    if epoch <= spec.MIN_SEED_LOOKAHEAD:
+        dependent_slot = spec.GENESIS_SLOT
+    else:
+        dependent_slot = spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD) - 1
+
+    if dependent_slot > spec.GENESIS_SLOT:
+        return spec.get_block_root_at_slot(state, dependent_slot)
+    else:
+        # Default genesis block value
+        return spec.Root()
+
+
+def get_voting_source(spec, state, target):
+    if target.epoch == spec.get_current_epoch(state):
+        return state.current_justified_checkpoint
+    else:
+        return state.previous_justified_checkpoint
 
 
 def _compute_pseudo_randao_reveal(spec, proposer_index, epoch):
@@ -83,14 +256,24 @@ def _compute_pseudo_randao_reveal(spec, proposer_index, epoch):
     return spec.BLSSignature(randao_reveal_bytes)
 
 
-def produce_block(spec, state, attestations, attester_slashings=[]):
+def produce_block(
+    spec,
+    state,
+    attestations,
+    attester_slashings=None,
+    payload_attestation_messages=None,
+    custom_att_filter_fn=None,
+):
     """
     Produces a block including as many attestations as it is possible.
-    :return: Signed block, the post block state and attestations that were not included into the block.
+    Accepts PayloadAttestationMessage objects and aggregates them into PayloadAttestation for on-chain inclusion.
+    :return: Signed block, the post block state, and operations not included into the block.
     """
 
-    # Filter out too old attestastions (TODO relax condition for Deneb)
-    eligible_attestations = _get_eligible_attestations(spec, state, attestations)
+    if payload_attestation_messages is None:
+        payload_attestation_messages = []
+    if attester_slashings is None:
+        attester_slashings = []
 
     # Create a block with attestations
     block = build_empty_block(spec, state)
@@ -100,15 +283,35 @@ def produce_block(spec, state, attestations, attester_slashings=[]):
 
     # Prepare attestations
     limit = type(block.body.attestations).limit()
-    attestation_in_block = eligible_attestations[:limit]
+    attestation_in_block = [
+        a
+        for a in attestations
+        # not too old
+        if is_attestation_eligible_for_block(spec, state, a)
+        # compatible data source
+        and a.data.source == get_voting_source(spec, state, a.data.target)
+        # custom filter passes
+        and (custom_att_filter_fn is None or custom_att_filter_fn(a))
+    ][:limit]
 
     for a in attestation_in_block:
         block.body.attestations.append(a)
 
     # Add attester slashings
-    attester_slashings_in_block = attester_slashings[: spec.MAX_ATTESTER_SLASHINGS]
+    limit = type(block.body.attester_slashings).limit()
+    attester_slashings_in_block = attester_slashings[:limit]
     for s in attester_slashings_in_block:
         block.body.attester_slashings.append(s)
+
+    if is_post_gloas(spec):
+        # Aggregate eligible payload attestation messages into PayloadAttestations for on-chain inclusion
+        eligible_pa_messages = [
+            m
+            for m in payload_attestation_messages
+            if m.data.beacon_block_root == block.parent_root and m.data.slot + 1 == block.slot
+        ]
+        for pa in messages_to_payload_attestations(spec, state, eligible_pa_messages):
+            block.body.payload_attestations.append(pa)
 
     # Run state transition and sign off on a block
     post_state = state.copy()
@@ -124,21 +327,35 @@ def produce_block(spec, state, attestations, attester_slashings=[]):
 
     # Filter out operations only if the block is valid
     not_included_attestations = attestations
+    not_included_pa_messages = payload_attestation_messages
     not_included_attester_slashings = attester_slashings
     if valid:
         not_included_attestations = [a for a in attestations if a not in attestation_in_block]
         not_included_attester_slashings = [
             s for s in attester_slashings if s not in attester_slashings_in_block
         ]
+        if is_post_gloas(spec):
+            included_pa_indices = {m.validator_index for m in eligible_pa_messages}
+            not_included_pa_messages = [
+                m
+                for m in payload_attestation_messages
+                if m.validator_index not in included_pa_indices
+            ]
 
     # Return a pre state if the block is invalid
     if not valid:
         post_state = state
 
-    return signed_block, post_state, not_included_attestations, not_included_attester_slashings
+    return (
+        signed_block,
+        post_state,
+        not_included_attestations,
+        not_included_attester_slashings,
+        not_included_pa_messages,
+    )
 
 
-def attest_to_slot(spec, state, slot_to_attest, participants_filter=None) -> []:
+def attest_to_slot(spec, state, slot_to_attest, participants_filter=None, payload_index=None) -> []:
     """
     Creates attestation is a slot respecting participating validators.
     :return: produced attestations
@@ -163,6 +380,7 @@ def attest_to_slot(spec, state, slot_to_attest, participants_filter=None) -> []:
                 state,
                 slot_to_attest,
                 index=index,
+                payload_index=payload_index,
                 signed=True,
                 filter_participant_set=participants_filter,
             )
@@ -213,7 +431,7 @@ def advance_branch_to_next_epoch(spec, branch_tip, enable_attesting=True):
         # Produce block if the proposer is among participanting validators
         proposer = spec.get_beacon_proposer_index(state)
         if state.slot > spec.GENESIS_SLOT and proposer in branch_tip.participants:
-            signed_block, state, attestations, _ = produce_block(spec, state, attestations)
+            signed_block, state, attestations, _, _ = produce_block(spec, state, attestations)
             signed_blocks.append(signed_block)
 
         if enable_attesting:
@@ -245,7 +463,7 @@ def advance_state_to_anchor_epoch(spec, state, anchor_epoch, debug) -> ([], Bran
     signed_blocks = []
 
     genesis_tip = BranchTip(
-        state.copy(), [], [*range(0, len(state.validators))], state.current_justified_checkpoint
+        state.copy(), [], [*range(len(state.validators))], state.current_justified_checkpoint
     )
 
     # Advance the state to the anchor_epoch
@@ -289,13 +507,14 @@ def advance_state_to_anchor_epoch(spec, state, anchor_epoch, debug) -> ([], Bran
 def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
     """
     Makes test events from `test_data`'s blocks, attestations and slashings, sorted by an effective slot.
-    Each event is a triple ('tick'|'block'|'attestation'|'attester_slashing', message, valid).
+    Each event is a triple
+    ('tick'|'block'|'envelope'|'attestation'|'payload_attestation'|'attester_slashing', message, valid).
     """
     genesis_time = test_data.anchor_state.genesis_time
     test_events = []
 
     def slot_to_time(slot):
-        return slot * spec.config.SECONDS_PER_SLOT + genesis_time
+        return slot * spec.config.SLOT_DURATION_MS // 1000 + genesis_time
 
     def add_tick_step(time):
         test_events.append(("tick", time, None))
@@ -314,13 +533,19 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
             return data.data.slot + 1
         elif event_kind == "attester_slashing":
             return max(data.attestation_1.data.slot, data.attestation_1.data.slot) + 1
+        elif event_kind == "execution_payload":
+            return data.message.payload.slot_number
+        elif event_kind == "payload_attestation":
+            return data.data.slot
         else:
-            assert False
+            raise AssertionError
 
     messages = (
         [("attestation", m.payload, m.valid) for m in test_data.atts]
         + [("attester_slashing", m.payload, m.valid) for m in test_data.slashings]
         + [("block", m.payload, m.valid) for m in test_data.blocks]
+        + [("execution_payload", m.payload, m.valid) for m in test_data.envelopes]
+        + [("payload_attestation", m.payload, m.valid) for m in test_data.payload_atts]
     )
 
     for event in sorted(messages, key=get_seffective_slot):
@@ -372,25 +597,31 @@ def _add_block(spec, store, signed_block, test_steps):
     if valid:
         # An on_block step implies receiving block's attestations
         for attestation in signed_block.message.body.attestations:
-            try:
+            # ignore possible faults, if the block is valid
+            with contextlib.suppress(AssertionError):
                 run_on_attestation(spec, store, attestation, is_from_block=True, valid=True)
-            except AssertionError:
-                # ignore possible faults, if the block is valid
-                pass
 
         # An on_block step implies receiving block's attester slashings
         for attester_slashing in signed_block.message.body.attester_slashings:
-            try:
+            # ignore possible faults, if the block is valid
+            with contextlib.suppress(AssertionError):
                 run_on_attester_slashing(spec, store, attester_slashing, valid=True)
-            except AssertionError:
-                # ignore possible faults, if the block is valid
-                pass
+
+        if is_post_gloas(spec):
+            # An on_block step implies receiving block's payload attestations (post GLOAS)
+            st = store.block_states[signed_block.message.hash_tree_root()]
+            for payload_attestation in signed_block.message.body.payload_attestations:
+                for ptc_message in payload_attestation_to_messages(spec, st, payload_attestation):
+                    run_on_payload_attestation_message(
+                        spec, store, ptc_message, is_from_block=True, valid=True
+                    )
 
 
+@spec_test
 @filter_out_duplicate_messages
-def yield_fork_choice_test_events(
-    spec, store, test_data: FCTestData, test_events: list, debug: bool
-):
+def yield_fork_choice_test_events(spec, test_data: FCTestData, test_events: list, debug: bool):
+    store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
+
     # Yield meta
     for k, v in test_data.meta.items():
         yield k, "meta", v
@@ -410,6 +641,14 @@ def yield_fork_choice_test_events(
     for message in test_data.slashings:
         attester_slashing = message.payload
         yield get_attester_slashing_file_name(attester_slashing), attester_slashing.encode_bytes()
+
+    for message in test_data.envelopes:
+        envelope = message.payload
+        yield get_execution_payload_envelope_file_name(envelope), envelope.encode_bytes()
+
+    for message in test_data.payload_atts:
+        ptc_message = message.payload
+        yield get_payload_attestation_message_file_name(ptc_message), ptc_message.encode_bytes()
 
     test_steps = []
 
@@ -441,7 +680,7 @@ def yield_fork_choice_test_events(
                 if valid:
                     assert store.blocks[block_root] == signed_block.message
                 else:
-                    assert block_root not in store.blocks.values()
+                    assert block_root not in store.blocks
             output_store_checks(spec, store, test_steps)
         elif event_kind == "attestation":
             _, attestation, valid = event
@@ -455,6 +694,20 @@ def yield_fork_choice_test_events(
                 valid = try_add_mesage(run_on_attester_slashing, attester_slashing)
             yield from add_attester_slashing(
                 spec, store, attester_slashing, test_steps, valid=valid
+            )
+            output_store_checks(spec, store, test_steps)
+        elif event_kind == "execution_payload":
+            _, signed_envelope, valid = event
+            if valid is None:
+                valid = try_add_mesage(run_on_execution_payload_envelope, signed_envelope)
+            yield from add_execution_payload(spec, store, signed_envelope, test_steps, valid=valid)
+            output_store_checks(spec, store, test_steps)
+        elif event_kind == "payload_attestation":
+            _, ptc_message, valid = event
+            if valid is None:
+                valid = try_add_mesage(run_on_payload_attestation_message, ptc_message)
+            yield from add_payload_attestation_message(
+                spec, store, ptc_message, test_steps, valid=valid
             )
             output_store_checks(spec, store, test_steps)
         else:

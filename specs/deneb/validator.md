@@ -45,7 +45,7 @@ specifications before continuing and use them as a reference throughout.
 
 ```python
 @dataclass
-class BlobsBundle(object):
+class BlobsBundle:
     commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
     blobs: List[Blob, MAX_BLOB_COMMITMENTS_PER_BLOCK]
@@ -55,7 +55,7 @@ class BlobsBundle(object):
 
 ```python
 @dataclass
-class GetPayloadResponse(object):
+class GetPayloadResponse:
     execution_payload: ExecutionPayload
     block_value: uint256
     # [New in Deneb:EIP4844]
@@ -90,8 +90,6 @@ def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadRespo
     """
     Return ExecutionPayload, uint256, BlobsBundle objects.
     """
-    # pylint: disable=unused-argument
-    ...
 ```
 
 ## Beacon chain responsibilities

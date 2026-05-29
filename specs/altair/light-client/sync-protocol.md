@@ -77,10 +77,10 @@ Additional documents describe how the light client sync protocol can be used:
 
 ### Misc
 
-| Name                              | Value                                                | Unit       | Duration    |
-| --------------------------------- | ---------------------------------------------------- | ---------- | ----------- |
-| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1`                                                  | validators |             |
-| `UPDATE_TIMEOUT`                  | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots      | ~27.3 hours |
+| Name                              | Value                                                | Unit       |
+| --------------------------------- | ---------------------------------------------------- | ---------- |
+| `MIN_SYNC_COMMITTEE_PARTICIPANTS` | `1`                                                  | validators |
+| `UPDATE_TIMEOUT`                  | `SLOTS_PER_EPOCH * EPOCHS_PER_SYNC_COMMITTEE_PERIOD` | slots      |
 
 ## Containers
 
@@ -155,7 +155,7 @@ class LightClientOptimisticUpdate(Container):
 
 ```python
 @dataclass
-class LightClientStore(object):
+class LightClientStore:
     # Header that is finalized
     finalized_header: LightClientHeader
     # Sync committees corresponding to the finalized header
@@ -443,7 +443,9 @@ def validate_light_client_update(
         sync_committee = store.next_sync_committee
     participant_pubkeys = [
         pubkey
-        for (bit, pubkey) in zip(sync_aggregate.sync_committee_bits, sync_committee.pubkeys)
+        for (bit, pubkey) in zip(
+            sync_aggregate.sync_committee_bits, sync_committee.pubkeys, strict=True
+        )
         if bit
     ]
     fork_version_slot = max(update.signature_slot, Slot(1)) - Slot(1)

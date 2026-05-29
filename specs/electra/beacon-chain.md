@@ -156,10 +156,10 @@ specification.
 
 ### Gwei values
 
-| Name                            | Value                                      | Description                                           |
-| ------------------------------- | ------------------------------------------ | ----------------------------------------------------- |
-| `MIN_ACTIVATION_BALANCE`        | `Gwei(2**5 * 10**9)` (= 32,000,000,000)    | Minimum balance for a validator to become active      |
-| `MAX_EFFECTIVE_BALANCE_ELECTRA` | `Gwei(2**11 * 10**9)` (= 2048,000,000,000) | Maximum effective balance for a compounding validator |
+| Name                            | Value                                       | Description                                           |
+| ------------------------------- | ------------------------------------------- | ----------------------------------------------------- |
+| `MIN_ACTIVATION_BALANCE`        | `Gwei(2**5 * 10**9)` (= 32,000,000,000)     | Minimum balance for a validator to become active      |
+| `MAX_EFFECTIVE_BALANCE_ELECTRA` | `Gwei(2**11 * 10**9)` (= 2,048,000,000,000) | Maximum effective balance for a compounding validator |
 
 ### Rewards and penalties
 
@@ -429,7 +429,7 @@ class BeaconState(Container):
 
 ```python
 @dataclass
-class ExpectedWithdrawals(object):
+class ExpectedWithdrawals:
     withdrawals: Sequence[Withdrawal]
     # [New in Electra:EIP7251]
     processed_partial_withdrawals_count: uint64
@@ -657,11 +657,11 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
     committee_offset = 0
     for committee_index in committee_indices:
         committee = get_beacon_committee(state, attestation.data.slot, committee_index)
-        committee_attesters = set(
+        committee_attesters = {
             attester_index
             for i, attester_index in enumerate(committee)
             if attestation.aggregation_bits[committee_offset + i]
-        )
+        }
         output = output.union(committee_attesters)
 
         committee_offset += len(committee)
@@ -1114,7 +1114,7 @@ def process_effective_balance_updates(state: BeaconState) -> None:
 
 ```python
 @dataclass
-class NewPayloadRequest(object):
+class NewPayloadRequest:
     execution_payload: ExecutionPayload
     versioned_hashes: Sequence[VersionedHash]
     parent_beacon_block_root: Root
@@ -1139,7 +1139,6 @@ def is_valid_block_hash(
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
-    ...
 ```
 
 ##### Modified `notify_new_payload`
@@ -1158,7 +1157,6 @@ def notify_new_payload(
     Return ``True`` if and only if ``execution_payload`` and ``execution_requests_list``
     are valid with respect to ``self.execution_state``.
     """
-    ...
 ```
 
 ##### Modified `verify_and_notify_new_payload`
@@ -1522,11 +1520,11 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     for committee_index in committee_indices:
         assert committee_index < get_committee_count_per_slot(state, data.target.epoch)
         committee = get_beacon_committee(state, data.slot, committee_index)
-        committee_attesters = set(
+        committee_attesters = {
             attester_index
             for i, attester_index in enumerate(committee)
             if attestation.aggregation_bits[committee_offset + i]
-        )
+        }
         assert len(committee_attesters) > 0
         committee_offset += len(committee)
 

@@ -5,8 +5,8 @@ from collections.abc import Callable
 
 import pytest
 
-from eth2spec.test.helpers.constants import BELLATRIX, CAPELLA, DENEB, PHASE0
-from eth2spec.test.helpers.typing import SpecForkName
+from eth_consensus_specs.test.helpers.constants import BELLATRIX, CAPELLA, DENEB, PHASE0
+from eth_consensus_specs.test.helpers.typing import SpecForkName
 from tests.infra.template_test import (
     template_test,
     template_test_upgrades_from,
@@ -497,13 +497,13 @@ class TestTemplateUpgradeDecorators:
         assert not hasattr(upgrade_test_module, "test_upgrade_altair_to_bellatrix")
 
         # Execute the registered tests to verify they work
-        test_capella_deneb = getattr(upgrade_test_module, "test_upgrade_capella_to_deneb")
+        test_capella_deneb = upgrade_test_module.test_upgrade_capella_to_deneb
         assert test_capella_deneb() == "upgrade_capella_to_deneb"
 
-        test_deneb_electra = getattr(upgrade_test_module, "test_upgrade_deneb_to_electra")
+        test_deneb_electra = upgrade_test_module.test_upgrade_deneb_to_electra
         assert test_deneb_electra() == "upgrade_deneb_to_electra"
 
-        test_electra_fulu = getattr(upgrade_test_module, "test_upgrade_electra_to_fulu")
+        test_electra_fulu = upgrade_test_module.test_upgrade_electra_to_fulu
         assert test_electra_fulu() == "upgrade_electra_to_fulu"
 
     def test_template_test_upgrades_from_to_basic(self, upgrade_test_module, upgrade_mock_utility):
@@ -529,13 +529,13 @@ class TestTemplateUpgradeDecorators:
         assert not hasattr(upgrade_test_module, "test_range_capella_to_deneb")
 
         # Execute the registered tests
-        test_phase0_altair = getattr(upgrade_test_module, "test_range_phase0_to_altair")
+        test_phase0_altair = upgrade_test_module.test_range_phase0_to_altair
         assert test_phase0_altair() == "range_phase0_to_altair"
 
-        test_altair_bellatrix = getattr(upgrade_test_module, "test_range_altair_to_bellatrix")
+        test_altair_bellatrix = upgrade_test_module.test_range_altair_to_bellatrix
         assert test_altair_bellatrix() == "range_altair_to_bellatrix"
 
-        test_bellatrix_capella = getattr(upgrade_test_module, "test_range_bellatrix_to_capella")
+        test_bellatrix_capella = upgrade_test_module.test_range_bellatrix_to_capella
         assert test_bellatrix_capella() == "range_bellatrix_to_capella"
 
     def test_template_test_upgrades_from_to_single_upgrade(
