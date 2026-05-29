@@ -358,13 +358,13 @@ def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
     state = store.checkpoint_states[store.justified_checkpoint]
     attestation_score = get_attestation_score(store, node, state)
     if store.proposer_boost_root == Root():
-        # Return only attestation score if ``proposer_boost_root`` is not set
+        # Return only attestation score if proposer_boost_root is not set
         return attestation_score
 
-    # Calculate proposer score if ``proposer_boost_root`` is set
+    # Calculate proposer score if proposer_boost_root is set
     proposer_score = Gwei(0)
     proposer_boost_node = ForkChoiceNode(root=store.proposer_boost_root)
-    # Boost is applied if ``node`` is an ancestor of ``proposer_boost_node``
+    # Boost is applied if node is an ancestor of proposer_boost_node
     if is_ancestor(store, proposer_boost_node, node):
         proposer_score = get_proposer_score(store)
 
