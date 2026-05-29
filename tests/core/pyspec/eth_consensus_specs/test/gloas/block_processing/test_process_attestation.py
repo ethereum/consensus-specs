@@ -518,7 +518,7 @@ def test_builder_payment_weight_tracking_previous_epoch(spec, state):
 
     yield from run_attestation_processing(spec, state, attestation, valid=True)
 
-    # Assert weight is set for the previous epoch, not current one.
+    # Assert weight is set for the previous epoch, not current one
     expected_weight = state.validators[attester].effective_balance
     assert state.builder_pending_payments[previous_epoch_idx].weight == expected_weight
     assert state.builder_pending_payments[current_epoch_idx].weight == 0
