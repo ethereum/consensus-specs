@@ -32,6 +32,8 @@ def compute_fork_version(epoch: Epoch) -> Version:
     """
     if epoch >= EIP8148_FORK_EPOCH:
         return EIP8148_FORK_VERSION
+    if epoch >= HEZE_FORK_EPOCH:
+        return HEZE_FORK_VERSION
     if epoch >= GLOAS_FORK_EPOCH:
         return GLOAS_FORK_VERSION
     if epoch >= FULU_FORK_EPOCH:

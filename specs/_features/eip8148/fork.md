@@ -33,7 +33,7 @@ The upgrade occurs after the completion of the inner loop of `process_slots`
 that sets `state.slot` equal to `EIP8148_FORK_EPOCH * SLOTS_PER_EPOCH`.
 
 ```python
-def upgrade_to_eip8148(pre: gloas.BeaconState) -> BeaconState:
+def upgrade_to_eip8148(pre: heze.BeaconState) -> BeaconState:
     epoch = get_current_epoch(pre)
     post = BeaconState(
         genesis_time=pre.genesis_time,
@@ -41,6 +41,7 @@ def upgrade_to_eip8148(pre: gloas.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
+            # [New in EIP8148]
             current_version=EIP8148_FORK_VERSION,
             epoch=epoch,
         ),
@@ -64,7 +65,7 @@ def upgrade_to_eip8148(pre: gloas.BeaconState) -> BeaconState:
         inactivity_scores=pre.inactivity_scores,
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
-        latest_execution_payload_bid=pre.latest_execution_payload_bid,
+        latest_block_hash=pre.latest_block_hash,
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         historical_summaries=pre.historical_summaries,
@@ -78,11 +79,14 @@ def upgrade_to_eip8148(pre: gloas.BeaconState) -> BeaconState:
         pending_partial_withdrawals=pre.pending_partial_withdrawals,
         pending_consolidations=pre.pending_consolidations,
         proposer_lookahead=pre.proposer_lookahead,
+        builders=pre.builders,
+        next_withdrawal_builder_index=pre.next_withdrawal_builder_index,
         execution_payload_availability=pre.execution_payload_availability,
         builder_pending_payments=pre.builder_pending_payments,
         builder_pending_withdrawals=pre.builder_pending_withdrawals,
-        latest_block_hash=pre.latest_block_hash,
-        latest_withdrawals_root=pre.latest_withdrawals_root,
+        latest_execution_payload_bid=latest_execution_payload_bid,
+        payload_expected_withdrawals=pre.payload_expected_withdrawals,
+        ptc_window=pre.ptc_window,
         # [New in EIP8148]
         validator_sweep_thresholds=[Gwei(0) for _ in range(len(pre.validators))],
     )
