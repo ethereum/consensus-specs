@@ -2,8 +2,8 @@
 name: commit
 description: >-
   Commit changes and open pull requests. Follow the project's conventions
-  for scope, formatting, and writing style. Use when the user asks to make
-  a commit or pull request.
+  for scope, formatting, and writing style. Always load this skill before
+  committing or opening a pull request.
 compatibility: Requires make, uv, git
 ---
 
