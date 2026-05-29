@@ -182,8 +182,8 @@ def get_proposer_preferences_signature(
 
 #### Constructing the `BeaconBlockBody`
 
-Let `head = get_head(store)`, the parent the proposer is building on, and
-`state` the post-state derived from the block identified by `head`.
+Let `head = get_head(store)` be the parent the proposer is building on, from
+which `state` was derived.
 
 ##### Signed execution payload bid
 
@@ -247,9 +247,10 @@ parent's execution payload. The proposer constructs this field as follows:
 
 ##### ExecutionPayload
 
-*Note*: `prepare_execution_payload` is modified in Gloas to select both the
-withdrawals source and the execution head for the new payload based on
-`should_build_on_full(store, head)`. When building on a full parent,
+*Note*: `prepare_execution_payload` is modified in Gloas to build on either the
+parent's full payload or its empty variant, as decided by
+`should_build_on_full(store, head)`, which determines the withdrawals source and
+the execution head for the new payload. When building on a full parent,
 `apply_parent_execution_payload` is called so that withdrawals are computed
 against the post-processing state.
 
