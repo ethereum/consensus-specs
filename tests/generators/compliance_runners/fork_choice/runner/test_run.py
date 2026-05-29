@@ -12,6 +12,7 @@ from eth_consensus_specs.test.context import expect_assertion_error
 from eth_consensus_specs.test.helpers.fork_choice import get_viable_for_head_checks
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
+from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.fork_choice.instantiators.helpers import (
     payload_attestation_to_messages,
 )
@@ -21,6 +22,10 @@ def read_yaml(fp):
     with Path(fp).open() as f:
         yaml = YAML(typ="safe")
         return yaml.load(f.read())
+
+
+def read_meta(fp):
+    return (read_yaml(fp) or {}) if Path(fp).is_file() else {}
 
 
 def read_ssz_snappy(fp):
@@ -35,7 +40,7 @@ def get_test_case(spec, td):
 
     td_path = Path(td)
     return (
-        read_yaml(td_path / "meta.yaml"),
+        read_meta(td_path / "meta.yaml"),
         spec.BeaconBlock.decode_bytes(read_ssz_snappy(td_path / "anchor_block.ssz_snappy")),
         spec.BeaconState.decode_bytes(read_ssz_snappy(td_path / "anchor_state.ssz_snappy")),
         {
@@ -71,9 +76,10 @@ class ComplianceTestInfo(NamedTuple):
 def run_test(test_info):
     preset, fork, test_dir = test_info
     spec = spec_targets[preset][fork]
-    _, anchor_block, anchor_state, blocks, atts, slashings, envelopes, payload_atts, steps = (
+    meta, anchor_block, anchor_state, blocks, atts, slashings, envelopes, payload_atts, steps = (
         get_test_case(spec, test_dir)
     )
+    bls.bls_active = meta.get("bls_setting", 0) == 1
     store = spec.get_forkchoice_store(anchor_state, anchor_block)
     for step in steps:
         if "tick" in step:
