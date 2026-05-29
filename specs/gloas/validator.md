@@ -202,7 +202,7 @@ top of a `state` MUST take the following actions in order to construct the
   - The `bid.slot` is for the proposal block slot.
   - The `bid.parent_block_hash` equals
     `state.latest_execution_payload_bid.block_hash` if
-    `should_extend_payload(store, block.parent_root)` is true, otherwise
+    `should_build_on_full(store, get_head(store))` is true, otherwise
     `state.latest_execution_payload_bid.parent_block_hash`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
 - Select one bid and set
