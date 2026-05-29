@@ -409,8 +409,7 @@ to build on top of the empty or full parent pending node. This function is
 similar to `should_extend_payload` but takes into consideration the PTC view on
 data availability. As in `get_payload_status_tiebreaker`, this view is only
 consulted for a head from the previous slot. For a head from an earlier slot,
-the *empty* or *full* node has already been resolved by weight in `get_head`, so
-we build on the *full* head.
+the *empty* or *full* node has already been resolved by weight in `get_head`.
 
 ```python
 def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
