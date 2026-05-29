@@ -413,7 +413,7 @@ def test_process_parent_execution_payload__settle_previous_epoch(spec, state):
     assert withdrawal.builder_index == builder_index
     assert withdrawal.fee_recipient == fee_recipient
 
-    # Previous epoch slot cleared and availability bit flipped.
+    # Previous epoch slot cleared and availability bit flipped
     assert state.builder_pending_payments[previous_epoch_idx] == spec.BuilderPendingPayment()
     assert (
         state.execution_payload_availability[parent_bid.slot % spec.SLOTS_PER_HISTORICAL_ROOT]

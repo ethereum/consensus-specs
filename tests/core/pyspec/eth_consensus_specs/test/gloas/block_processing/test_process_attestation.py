@@ -523,7 +523,7 @@ def test_builder_payment_weight_tracking_previous_epoch(spec, state):
     assert state.builder_pending_payments[previous_epoch_idx].weight == expected_weight
     assert state.builder_pending_payments[current_epoch_idx].weight == 0
 
-    # Assert flags are set for the previous epoch, not current one.
+    # Assert flags are set for the previous epoch, not current one
     for flag_index in expected_flag_indices:
         assert spec.has_flag(state.previous_epoch_participation[attester], flag_index)
         assert not spec.has_flag(pre_prev_flags, flag_index)
