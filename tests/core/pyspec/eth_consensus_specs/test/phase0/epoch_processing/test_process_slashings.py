@@ -21,7 +21,7 @@ def run_process_slashings(spec, state):
 
 def slash_validators(spec, state, indices, out_epochs):
     total_slashed_balance = 0
-    for i, out_epoch in zip(indices, out_epochs):
+    for i, out_epoch in zip(indices, out_epochs, strict=False):
         v = state.validators[i]
         v.slashed = True
         spec.initiate_validator_exit(state, i)
@@ -64,8 +64,10 @@ def _compute_expected_correlation_penalty(
         )
 
 
-def _setup_process_slashings_test(spec, state, not_slashable_set=set()):
+def _setup_process_slashings_test(spec, state, not_slashable_set=None):
     # Slashed count to ensure that enough validators are slashed to induce maximum penalties
+    if not_slashable_set is None:
+        not_slashable_set = set()
     slashed_count = min(
         (len(state.validators) // get_slashing_multiplier(spec)) + 1,
         # Can't slash more than validator count!

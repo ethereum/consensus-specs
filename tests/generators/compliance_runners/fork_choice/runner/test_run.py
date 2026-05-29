@@ -1,7 +1,7 @@
-from collections import namedtuple
+import contextlib
 from collections.abc import Iterable
-from glob import glob
 from pathlib import Path
+from typing import NamedTuple
 
 import pytest
 from eth_utils import decode_hex
@@ -12,62 +12,60 @@ from eth_consensus_specs.test.context import expect_assertion_error
 from eth_consensus_specs.test.helpers.fork_choice import get_viable_for_head_checks
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
-
-from ..instantiators.helpers import payload_attestation_to_messages
+from tests.generators.compliance_runners.fork_choice.instantiators.helpers import (
+    payload_attestation_to_messages,
+)
 
 
 def read_yaml(fp):
-    with open(fp) as f:
+    with Path(fp).open() as f:
         yaml = YAML(typ="safe")
         return yaml.load(f.read())
 
 
 def read_ssz_snappy(fp):
-    with open(fp, "rb") as f:
+    with Path(fp).open("rb") as f:
         res = uncompress(f.read())
         return res
 
 
 def get_test_case(spec, td):
     def get_prefix(p):
-        return p[p.rindex("/") + 1 : p.rindex(".")]
+        return p.stem
 
+    td_path = Path(td)
     return (
-        read_yaml(f"{td}/meta.yaml"),
-        spec.BeaconBlock.decode_bytes(read_ssz_snappy(f"{td}/anchor_block.ssz_snappy")),
-        spec.BeaconState.decode_bytes(read_ssz_snappy(f"{td}/anchor_state.ssz_snappy")),
+        read_yaml(td_path / "meta.yaml"),
+        spec.BeaconBlock.decode_bytes(read_ssz_snappy(td_path / "anchor_block.ssz_snappy")),
+        spec.BeaconState.decode_bytes(read_ssz_snappy(td_path / "anchor_state.ssz_snappy")),
         {
             get_prefix(b): spec.SignedBeaconBlock.decode_bytes(read_ssz_snappy(b))
-            for b in glob(f"{td}/block_*.ssz_snappy")
+            for b in td_path.glob("block_*.ssz_snappy")
         },
         {
             get_prefix(b): spec.Attestation.decode_bytes(read_ssz_snappy(b))
-            for b in glob(f"{td}/attestation_*.ssz_snappy")
+            for b in td_path.glob("attestation_*.ssz_snappy")
         },
         {
             get_prefix(b): spec.AttesterSlashing.decode_bytes(read_ssz_snappy(b))
-            for b in glob(f"{td}/attester_slashing_*.ssz_snappy")
+            for b in td_path.glob("attester_slashing_*.ssz_snappy")
         },
         {
             get_prefix(e): spec.SignedExecutionPayloadEnvelope.decode_bytes(read_ssz_snappy(e))
-            for e in glob(f"{td}/execution_payload_envelope_*.ssz_snappy")
+            for e in td_path.glob("execution_payload_envelope_*.ssz_snappy")
         },
         {
             get_prefix(b): spec.PayloadAttestationMessage.decode_bytes(read_ssz_snappy(b))
-            for b in glob(f"{td}/payload_attestation_message_*.ssz_snappy")
+            for b in td_path.glob("payload_attestation_message_*.ssz_snappy")
         },
-        read_yaml(f"{td}/steps.yaml"),
+        read_yaml(td_path / "steps.yaml"),
     )
 
 
-ComplianceTestInfo = namedtuple(
-    "ComplianceTestInfo",
-    [
-        "preset",
-        "fork",
-        "test_dir",
-    ],
-)
+class ComplianceTestInfo(NamedTuple):
+    preset: str
+    fork: str
+    test_dir: Path
 
 
 def run_test(test_info):
@@ -88,29 +86,23 @@ def run_test(test_info):
             if valid:
                 spec.on_block(store, signed_block)
                 for block_att in signed_block.message.body.attestations:
-                    try:
+                    with contextlib.suppress(AssertionError):
                         spec.on_attestation(store, block_att, is_from_block=True)
-                    except AssertionError:
-                        pass
                 for block_att_slashing in signed_block.message.body.attester_slashings:
-                    try:
+                    with contextlib.suppress(AssertionError):
                         spec.on_attester_slashing(store, block_att_slashing)
-                    except AssertionError:
-                        pass
                 if is_post_gloas(spec):
                     state = store.block_states[signed_block.message.hash_tree_root()]
                     for payload_attestation in signed_block.message.body.payload_attestations:
                         for ptc_message in payload_attestation_to_messages(
                             spec, state, payload_attestation
                         ):
-                            try:
+                            with contextlib.suppress(AssertionError):
                                 spec.on_payload_attestation_message(
                                     store, ptc_message, is_from_block=True
                                 )
-                            except AssertionError:
-                                pass
             else:
-                expect_assertion_error(lambda: spec.on_block(store, signed_block))
+                expect_assertion_error(lambda sb=signed_block: spec.on_block(store, sb))
         elif "attestation" in step:
             att_id = step["attestation"]
             valid = step.get("valid", True)
@@ -119,7 +111,7 @@ def run_test(test_info):
                 spec.on_attestation(store, attestation, is_from_block=False)
             else:
                 expect_assertion_error(
-                    lambda: spec.on_attestation(store, attestation, is_from_block=False)
+                    lambda att=attestation: spec.on_attestation(store, att, is_from_block=False)
                 )
         elif "attester_slashing" in step:
             slashing_id = step["attester_slashing"]
@@ -135,7 +127,7 @@ def run_test(test_info):
                 spec.on_execution_payload_envelope(store, signed_envelope)
             else:
                 expect_assertion_error(
-                    lambda: spec.on_execution_payload_envelope(store, signed_envelope)
+                    lambda se=signed_envelope: spec.on_execution_payload_envelope(store, se)
                 )
         elif "payload_attestation_message" in step:
             ptc_message_id = step["payload_attestation_message"]
@@ -145,8 +137,8 @@ def run_test(test_info):
                 spec.on_payload_attestation_message(store, ptc_message, is_from_block=False)
             else:
                 expect_assertion_error(
-                    lambda: spec.on_payload_attestation_message(
-                        store, ptc_message, is_from_block=False
+                    lambda msg=ptc_message: spec.on_payload_attestation_message(
+                        store, msg, is_from_block=False
                     )
                 )
         elif "checks" in step:
@@ -166,9 +158,8 @@ def run_test(test_info):
                     assert store.time == expected_time
                 elif check == "head":
                     head = get_head()
-                    head_root = head.root if hasattr(head, "root") else head
-                    assert store.blocks[head_root].slot == value["slot"]
-                    assert str(head_root) == value["root"]
+                    assert store.blocks[head.root].slot == value["slot"]
+                    assert str(head.root) == value["root"]
                 elif check == "proposer_boost_root":
                     assert str(store.proposer_boost_root) == str(value)
                 elif check == "justified_checkpoint":
@@ -190,9 +181,9 @@ def run_test(test_info):
                     target_root = spec.Root(decode_hex(value["block_root"]))
                     assert list(getattr(store, check)[target_root]) == value["votes"]
                 else:
-                    assert False
+                    raise AssertionError
         else:
-            assert False
+            raise AssertionError
 
 
 def gather_tests(tests_dir) -> Iterable[ComplianceTestInfo]:
@@ -200,9 +191,7 @@ def gather_tests(tests_dir) -> Iterable[ComplianceTestInfo]:
         for fork in [
             f.name for f in (Path(tests_dir) / preset).glob("*") if f.name in spec_targets[preset]
         ]:
-            for test_dir in sorted(
-                [td for td in (Path(tests_dir) / preset / fork).glob("*/*/*/*")]
-            ):
+            for test_dir in sorted((Path(tests_dir) / preset / fork).glob("*/*/*/*")):
                 yield ComplianceTestInfo(preset, fork, test_dir)
 
 

@@ -249,12 +249,14 @@ def validate_beacon_block_gossip(
     state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: uint64,
-    block_payload_statuses: Dict[Root, PayloadValidationStatus] = {},
+    block_payload_statuses: Optional[Dict[Root, PayloadValidationStatus]] = None,
 ) -> None:
     """
     Validate a SignedBeaconBlock for gossip propagation.
     Raises GossipIgnore or GossipReject on validation failure.
     """
+    if block_payload_statuses is None:
+        block_payload_statuses = {}
     block = signed_beacon_block.message
     execution_payload = block.body.execution_payload
 
@@ -357,8 +359,8 @@ def validate_data_column_sidecar_gossip(
     store: Store,
     state: BeaconState,
     sidecar: DataColumnSidecar,
-    subnet_id: SubnetID,
     current_time_ms: uint64,
+    subnet_id: SubnetID,
 ) -> None:
     """
     Validate a DataColumnSidecar for gossip propagation on a subnet.

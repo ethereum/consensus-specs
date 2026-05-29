@@ -18,6 +18,9 @@ from eth_consensus_specs.test.helpers.fast_confirmation import (
     FCRTest,
     Slashing,
 )
+from eth_consensus_specs.test.helpers.fork_choice import (
+    is_ancestor,
+)
 
 """
 Test on restart to GU
@@ -61,7 +64,7 @@ def test_fcr_restarts_to_gu_when_all_conditions_met(spec, state):
     )
 
     # Last slot of epoch 4: build block, attest
-    block_root = fcr.add_and_apply_block(parent_root=fcr.head())
+    block_root = fcr.add_and_apply_block(parent_root=fcr.head_root())
     fcr.attest(block_root=block_root, slot=fcr.current_slot(), participation_rate=100)
 
     # Late slashing arrives during last slot of epoch 4
@@ -157,7 +160,7 @@ def test_fcr_restarts_to_gu_and_confirms_beyond_gu(spec, state):
     )
 
     # Last slot of epoch 4: build block, attest
-    block_root = fcr.add_and_apply_block(parent_root=fcr.head())
+    block_root = fcr.add_and_apply_block(parent_root=fcr.head_root())
     fcr.attest(block_root=block_root, slot=fcr.current_slot(), participation_rate=100)
 
     # Late slashing arrives during last slot of epoch 4 (before crossing into epoch 5)
@@ -245,8 +248,8 @@ def test_fcr_no_restart_to_gu_mid_epoch(spec, state):
         current_confirmed = fcr_store.confirmed_root
 
         # Confirmed should be monotonic (same or descendant), never jump backward
-        assert current_confirmed == prev_confirmed or spec.is_ancestor(
-            store, prev_confirmed, current_confirmed
+        assert current_confirmed == prev_confirmed or is_ancestor(
+            spec, store, prev_confirmed, current_confirmed
         ), "Confirmed should be monotonic mid-epoch, not restart to GU"
 
         prev_confirmed = current_confirmed
@@ -390,7 +393,7 @@ def test_fcr_no_restart_when_gu_block_is_epoch_older(spec, state):
     )
 
     # Last slot of epoch 4: build block, attest
-    block_root = fcr.add_and_apply_block(parent_root=fcr.head())
+    block_root = fcr.add_and_apply_block(parent_root=fcr.head_root())
     fcr.attest(block_root=block_root, slot=fcr.current_slot(), participation_rate=100)
 
     # Late slashing arrives during last slot of epoch 4

@@ -5,7 +5,7 @@ class BaseSpecBuilder(ABC):
     @property
     @abstractmethod
     def fork(self) -> str:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @classmethod
     def imports(cls, preset_name: str) -> str:

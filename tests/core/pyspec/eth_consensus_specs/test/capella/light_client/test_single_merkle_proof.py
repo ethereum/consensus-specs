@@ -16,7 +16,9 @@ from eth_consensus_specs.test.helpers.constants import (
 @with_all_phases_from_to(CAPELLA, GLOAS)
 @spec_state_test
 def test_execution_merkle_proof(spec, state):
-    block = state_transition_with_full_block(spec, state, True, False)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+    )
 
     yield "object", block.message.body
     gindex = spec.EXECUTION_PAYLOAD_GINDEX

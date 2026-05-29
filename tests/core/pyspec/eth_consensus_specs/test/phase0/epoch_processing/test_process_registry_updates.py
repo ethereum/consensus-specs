@@ -114,7 +114,7 @@ def test_activation_queue_sorting(spec, state):
         # NOTE: EIP-7521 changed how activations are gated
         # given the prefix setup here, all validators should be activated
         activation_epochs = [state.validators[i].activation_epoch for i in range(mock_activations)]
-        assert all([epoch != spec.FAR_FUTURE_EPOCH for epoch in activation_epochs])
+        assert all(epoch != spec.FAR_FUTURE_EPOCH for epoch in activation_epochs)
     else:
         # the first got in as second
         assert state.validators[0].activation_epoch != spec.FAR_FUTURE_EPOCH
@@ -227,7 +227,7 @@ def run_test_ejection_past_churn_limit(spec, state):
         def map_index_to_exit_epoch(i):
             balance_so_far = i * spec.config.EJECTION_BALANCE
             offset_epoch = balance_so_far // per_epoch_churn
-            if spec.config.EJECTION_BALANCE > per_epoch_churn - (balance_so_far % per_epoch_churn):
+            if per_epoch_churn - (balance_so_far % per_epoch_churn) < spec.config.EJECTION_BALANCE:
                 offset_epoch += 1
             return expected_ejection_epoch + offset_epoch
 
