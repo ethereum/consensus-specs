@@ -689,8 +689,7 @@ def compute_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SI
 
 *Note*: `get_beacon_proposer_indices` is modified to exclude slashed validators
 from the candidate pool before invoking `compute_proposer_indices`, so the
-pre-computed `proposer_lookahead` (EIP-7917) only contains active and unslashed
-validators.
+`proposer_lookahead` only contains active and unslashed validators.
 
 ```python
 def get_beacon_proposer_indices(
@@ -701,7 +700,9 @@ def get_beacon_proposer_indices(
     """
     # [Modified in Gloas:EIP8045]
     indices = [
-        i for i in get_active_validator_indices(state, epoch) if not state.validators[i].slashed
+        index
+        for index in get_active_validator_indices(state, epoch)
+        if not state.validators[index].slashed
     ]
     seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER)
     return compute_proposer_indices(state, epoch, seed, indices)
