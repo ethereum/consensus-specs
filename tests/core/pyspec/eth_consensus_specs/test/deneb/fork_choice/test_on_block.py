@@ -41,7 +41,7 @@ def test_simple_blob_data(spec, state):
 
     yield from tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data)
 
-    assert spec.get_head(store) == signed_block.message.hash_tree_root()
+    assert spec.get_head(store).root == signed_block.message.hash_tree_root()
 
     # On receiving a block of next epoch
     block, blobs, _, blob_kzg_proofs = get_block_with_blob(spec, state, rng=rng)
@@ -50,7 +50,7 @@ def test_simple_blob_data(spec, state):
 
     yield from tick_and_add_block_with_data(spec, store, signed_block, test_steps, blob_data)
 
-    assert spec.get_head(store) == signed_block.message.hash_tree_root()
+    assert spec.get_head(store).root == signed_block.message.hash_tree_root()
 
     yield "steps", test_steps
 
@@ -80,7 +80,7 @@ def test_invalid_incorrect_proof(spec, state):
         spec, store, signed_block, test_steps, blob_data, valid=False
     )
 
-    assert spec.get_head(store) != signed_block.message.hash_tree_root()
+    assert spec.get_head(store).root != signed_block.message.hash_tree_root()
 
     yield "steps", test_steps
 
@@ -110,7 +110,7 @@ def test_invalid_data_unavailable(spec, state):
         spec, store, signed_block, test_steps, blob_data, valid=False
     )
 
-    assert spec.get_head(store) != signed_block.message.hash_tree_root()
+    assert spec.get_head(store).root != signed_block.message.hash_tree_root()
 
     yield "steps", test_steps
 
@@ -140,7 +140,7 @@ def test_invalid_wrong_proofs_length(spec, state):
         spec, store, signed_block, test_steps, blob_data, valid=False
     )
 
-    assert spec.get_head(store) != signed_block.message.hash_tree_root()
+    assert spec.get_head(store).root != signed_block.message.hash_tree_root()
 
     yield "steps", test_steps
 
@@ -170,6 +170,6 @@ def test_invalid_wrong_blobs_length(spec, state):
         spec, store, signed_block, test_steps, blob_data, valid=False
     )
 
-    assert spec.get_head(store) != signed_block.message.hash_tree_root()
+    assert spec.get_head(store).root != signed_block.message.hash_tree_root()
 
     yield "steps", test_steps

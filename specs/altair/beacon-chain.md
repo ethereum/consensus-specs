@@ -582,7 +582,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
         # More than half participated - subtract non-participant keys.
         # First determine nonparticipating members
         non_participant_pubkeys = [
-            pubkey for pubkey, bit in zip(committee_pubkeys, committee_bits) if not bit
+            pubkey for pubkey, bit in zip(committee_pubkeys, committee_bits, strict=True) if not bit
         ]
         # Compute aggregate of non-participants
         non_participant_aggregate = eth_aggregate_pubkeys(non_participant_pubkeys)
@@ -597,7 +597,9 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
         # Less than half participated - aggregate participant keys
         participant_pubkeys = [
             pubkey
-            for pubkey, bit in zip(committee_pubkeys, sync_aggregate.sync_committee_bits)
+            for pubkey, bit in zip(
+                committee_pubkeys, sync_aggregate.sync_committee_bits, strict=True
+            )
             if bit
         ]
     previous_slot = max(state.slot, Slot(1)) - Slot(1)
@@ -625,7 +627,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
         ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys
     ]
     for participant_index, participation_bit in zip(
-        committee_indices, sync_aggregate.sync_committee_bits
+        committee_indices, sync_aggregate.sync_committee_bits, strict=True
     ):
         if participation_bit:
             increase_balance(state, participant_index, participant_reward)

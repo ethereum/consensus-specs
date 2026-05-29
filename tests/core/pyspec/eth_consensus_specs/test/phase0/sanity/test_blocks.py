@@ -1187,7 +1187,7 @@ def test_eth1_data_votes_consensus(spec, state):
 
     blocks = []
 
-    for i in range(0, voting_period_slots):
+    for i in range(voting_period_slots):
         block = build_empty_block_for_next_slot(spec, state)
         # wait for over 50% for A, then start voting B
         block.body.eth1_data.block_hash = b if i * 2 > voting_period_slots else a
@@ -1229,7 +1229,7 @@ def test_eth1_data_votes_no_consensus(spec, state):
 
     blocks = []
 
-    for i in range(0, voting_period_slots):
+    for i in range(voting_period_slots):
         block = build_empty_block_for_next_slot(spec, state)
         # wait for precisely 50% for A, then start voting B for other 50%
         block.body.eth1_data.block_hash = b if i * 2 >= voting_period_slots else a

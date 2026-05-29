@@ -334,7 +334,7 @@ def test_matching_payload_true_historical_slot(spec, state):
 
     # Get the attesting validator
     attesting_indices = spec.get_attesting_indices(state, attestation)
-    validator_index = list(attesting_indices)[0]
+    validator_index = next(iter(attesting_indices))
 
     assert spec.is_attestation_same_slot(state, attestation.data) is False
 
@@ -378,7 +378,7 @@ def test_matching_payload_false_historical_slot(spec, state):
 
     # Get the attesting validator
     attesting_indices = spec.get_attesting_indices(state, attestation)
-    validator_index = list(attesting_indices)[0]
+    validator_index = next(iter(attesting_indices))
 
     assert spec.is_attestation_same_slot(state, attestation.data) is False
 
@@ -416,7 +416,7 @@ def test_matching_payload_gets_head_flag(spec, state):
 
     # Get the attesting validator
     attesting_indices = spec.get_attesting_indices(state, attestation)
-    validator_index = list(attesting_indices)[0]
+    validator_index = next(iter(attesting_indices))
 
     yield from run_attestation_processing(spec, state, attestation, valid=True)
 
@@ -446,7 +446,7 @@ def test_mismatched_payload_no_head_flag(spec, state):
 
     # Get the attesting validator
     attesting_indices = spec.get_attesting_indices(state, attestation)
-    validator_index = list(attesting_indices)[0]
+    validator_index = next(iter(attesting_indices))
 
     assert spec.is_attestation_same_slot(state, attestation.data) is False
 

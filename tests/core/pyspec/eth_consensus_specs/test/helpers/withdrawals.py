@@ -232,7 +232,7 @@ def run_withdrawals_processing(
     yield "pre", state
 
     if not valid:
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError):  # noqa: PT012
             if is_post_gloas(spec):
                 spec.process_withdrawals(state)
             else:

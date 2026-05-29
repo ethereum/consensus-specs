@@ -113,7 +113,7 @@ def validate_beacon_block_gossip(
     state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: uint64,
-    block_payload_statuses: Dict[Root, PayloadValidationStatus] = {},
+    block_payload_statuses: Dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SignedBeaconBlock for gossip propagation.

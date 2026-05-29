@@ -644,7 +644,7 @@ def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
     """
     Return the exclusive-or of two 32-byte strings.
     """
-    return Bytes32(a ^ b for a, b in zip(bytes_1, bytes_2))
+    return Bytes32(a ^ b for a, b in zip(bytes_1, bytes_2, strict=True))
 ```
 
 #### `uint_to_bytes`
@@ -770,7 +770,7 @@ def is_valid_indexed_attestation(
     """
     # Verify indices are sorted and unique
     indices = indexed_attestation.attesting_indices
-    if len(indices) == 0 or not indices == sorted(set(indices)):
+    if len(indices) == 0 or indices != sorted(set(indices)):
         return False
     # Verify aggregate signature
     pubkeys = [state.validators[i].pubkey for i in indices]
@@ -1194,7 +1194,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
     Return the set of attesting indices corresponding to ``data`` and ``bits``.
     """
     committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    return set(index for i, index in enumerate(committee) if attestation.aggregation_bits[i])
+    return {index for i, index in enumerate(committee) if attestation.aggregation_bits[i]}
 ```
 
 ### Beacon state mutators
@@ -1315,7 +1315,7 @@ def initialize_beacon_state_from_eth1(
     )
 
     # Process deposits
-    leaves = list(map(lambda deposit: deposit.data, deposits))
+    leaves = [deposit.data for deposit in deposits]
     for index, deposit in enumerate(deposits):
         deposit_data_list = List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[: index + 1])
         state.eth1_data.deposit_root = hash_tree_root(deposit_data_list)

@@ -308,7 +308,6 @@ def is_valid_block_hash(
     """
     Return ``True`` if and only if ``execution_payload.block_hash`` is computed correctly.
     """
-    ...
 ```
 
 ##### `is_valid_versioned_hashes`
@@ -321,7 +320,6 @@ def is_valid_versioned_hashes(
     Return ``True`` if and only if the version hashes computed by the blob transactions of
     ``new_payload_request.execution_payload`` matches ``new_payload_request.versioned_hashes``.
     """
-    ...
 ```
 
 ##### Modified `notify_new_payload`
@@ -336,7 +334,6 @@ def notify_new_payload(
     """
     Return ``True`` if and only if ``execution_payload`` is valid with respect to ``self.execution_state``.
     """
-    ...
 ```
 
 ##### Modified `verify_and_notify_new_payload`

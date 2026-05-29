@@ -114,11 +114,11 @@ def test_inclusion_list_store_transaction_uniqueness(spec, state):
             inclusion_list_store, state, state.slot
         )
 
-        assert set(inclusion_list_transactions) == set(
+        assert set(inclusion_list_transactions) == {
             transaction
             for signed_inclusion_list in signed_inclusion_lists
             for transaction in signed_inclusion_list.message.transactions
-        )
+        }
 
     run_with_inclusion_list_store(spec, run_func)
 

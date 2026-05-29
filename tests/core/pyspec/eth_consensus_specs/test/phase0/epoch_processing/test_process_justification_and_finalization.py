@@ -268,55 +268,55 @@ def finalize_on_12(spec, state, epoch, sufficient_support, messed_up_target):
 @with_all_phases
 @spec_state_test
 def test_234_ok_support(spec, state):
-    yield from finalize_on_234(spec, state, 5, True)
+    yield from finalize_on_234(spec, state, 5, sufficient_support=True)
 
 
 @with_all_phases
 @spec_state_test
 def test_234_poor_support(spec, state):
-    yield from finalize_on_234(spec, state, 5, False)
+    yield from finalize_on_234(spec, state, 5, sufficient_support=False)
 
 
 @with_all_phases
 @spec_state_test
 def test_23_ok_support(spec, state):
-    yield from finalize_on_23(spec, state, 4, True)
+    yield from finalize_on_23(spec, state, 4, sufficient_support=True)
 
 
 @with_all_phases
 @spec_state_test
 def test_23_poor_support(spec, state):
-    yield from finalize_on_23(spec, state, 4, False)
+    yield from finalize_on_23(spec, state, 4, sufficient_support=False)
 
 
 @with_all_phases
 @spec_state_test
 def test_123_ok_support(spec, state):
-    yield from finalize_on_123(spec, state, 6, True)
+    yield from finalize_on_123(spec, state, 6, sufficient_support=True)
 
 
 @with_all_phases
 @spec_state_test
 def test_123_poor_support(spec, state):
-    yield from finalize_on_123(spec, state, 6, False)
+    yield from finalize_on_123(spec, state, 6, sufficient_support=False)
 
 
 @with_all_phases
 @spec_state_test
 def test_12_ok_support(spec, state):
-    yield from finalize_on_12(spec, state, 3, True, False)
+    yield from finalize_on_12(spec, state, 3, sufficient_support=True, messed_up_target=False)
 
 
 @with_all_phases
 @spec_state_test
 def test_12_ok_support_messed_target(spec, state):
-    yield from finalize_on_12(spec, state, 3, True, True)
+    yield from finalize_on_12(spec, state, 3, sufficient_support=True, messed_up_target=True)
 
 
 @with_all_phases
 @spec_state_test
 def test_12_poor_support(spec, state):
-    yield from finalize_on_12(spec, state, 3, False, False)
+    yield from finalize_on_12(spec, state, 3, sufficient_support=False, messed_up_target=False)
 
 
 @with_all_phases
