@@ -24,14 +24,14 @@ def _setup_previous_epoch_same_slot_scenario(spec, state):
     apply_empty_block(spec, state, attestation_slot)
 
     committee = spec.get_beacon_committee(state, attestation_slot, 0)
+
+    # Make sure we have only one attester (simple weight calculation)
     attestation = get_valid_attestation(
         spec,
         state,
         slot=attestation_slot,
         index=0,
-        filter_participant_set=lambda _: {
-            committee[0]
-        },  # Make sure we have only one attester (simple weight calculation)
+        filter_participant_set=lambda _: {committee[0]},
         signed=True,
     )
 
@@ -532,9 +532,10 @@ def test_builder_payment_weight_tracking_previous_epoch(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_builder_payment_weight_empty_payment(spec, state):
+def test_builder_payment_weight_no_increment_for_zero_amount(spec, state):
     """
-    Test the empty withdrawal check skips the weight increment.
+    Test that the weight is not incremented when the pending payment's
+    withdrawal amount is zero.
     """
     transition_to_slot_via_block(spec, state, 2)
     attestation_slot = 0

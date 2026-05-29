@@ -456,7 +456,9 @@ def test_process_parent_execution_payload__older_than_previous_epoch(spec, state
     assert withdrawal.fee_recipient == fee_recipient
 
     # Assert no payment slot is modified
-    assert all(post == pre for post, pre in zip(state.builder_pending_payments, pre_payments))
+    assert all(
+        post == pre for post, pre in zip(state.builder_pending_payments, pre_payments, strict=True)
+    )
 
 
 @with_gloas_and_later
