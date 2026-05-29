@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.context import (
+    always_bls,
     spec_state_test,
     with_gloas_and_later,
 )
@@ -8,9 +9,9 @@ from eth_consensus_specs.test.helpers.block import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_payload_attestation_message,
     add_payload_vote_checks,
-    get_genesis_forkchoice_store_and_block,
-    on_tick_and_append_step,
+    setup_one_block_store,
     tick_and_add_block,
+    tick_store_to_slot,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import (
@@ -50,32 +51,11 @@ def _build_signed_payload_attestation_message(
     )
 
 
-def _move_store_to_slot(spec, store, slot, test_steps):
-    slot_time = store.genesis_time + slot * (spec.config.SLOT_DURATION_MS // 1000)
-    if store.time < slot_time:
-        on_tick_and_append_step(spec, store, slot_time, test_steps)
-
-
 def _setup_test(spec, state):
-    test_steps = []
-
-    # Build genesis store
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    # Apply one block at slot 1
-    block = build_empty_block_for_next_slot(spec, state)
-    signed_block = state_transition_and_sign_block(spec, state, block)
-    yield from tick_and_add_block(spec, store, signed_block, test_steps)
-    block_root = signed_block.message.hash_tree_root()
-    block_state = store.block_states[block_root]
+    store, block_root, block_state, _, test_steps = yield from setup_one_block_store(spec, state)
     ptc = spec.get_ptc(block_state, block_state.slot)
     assert len(ptc) > 0
-
-    _move_store_to_slot(spec, store, block_state.slot, test_steps)
+    tick_store_to_slot(spec, store, block_state.slot, test_steps)
     return store, block_root, block_state, ptc, test_steps
 
 
@@ -179,6 +159,7 @@ def test_on_payload_attestation_message_not_ptc_member(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+@always_bls
 def test_on_payload_attestation_message_current_slot_and_signature(spec, state):
     """
     Test that current slot and signature checks reject invalid messages.
@@ -215,7 +196,7 @@ def test_on_payload_attestation_message_current_slot_and_signature(spec, state):
         ptc[0],
         payload_present=True,
     )
-    _move_store_to_slot(spec, store, block_state.slot + 1, test_steps)
+    tick_store_to_slot(spec, store, block_state.slot + 1, test_steps)
     yield from add_payload_attestation_message(
         spec,
         store,
