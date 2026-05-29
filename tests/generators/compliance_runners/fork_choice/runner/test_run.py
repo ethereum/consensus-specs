@@ -143,23 +143,16 @@ def run_test(test_info):
                 )
         elif "checks" in step:
             checks = step["checks"]
-
-            cached_head = None
-
-            def get_head():
-                nonlocal cached_head
-                if cached_head is None:
-                    cached_head = spec.get_head(store)
-                return cached_head
-
             for check, value in checks.items():
                 if check == "time":
                     expected_time = value
                     assert store.time == expected_time
                 elif check == "head":
-                    head = get_head()
+                    head = spec.get_head(store)
                     assert store.blocks[head.root].slot == value["slot"]
                     assert str(head.root) == value["root"]
+                    if is_post_gloas(spec):
+                        assert head.payload_status == value["payload_status"]
                 elif check == "proposer_boost_root":
                     assert str(store.proposer_boost_root) == str(value)
                 elif check == "justified_checkpoint":
@@ -174,9 +167,6 @@ def run_test(test_info):
                     actual = value
                     expected = get_viable_for_head_checks(spec, store)
                     assert {frozenset(e) for e in actual} == {frozenset(e) for e in expected}
-                elif check == "head_payload_status":
-                    head = get_head()
-                    assert head.payload_status == value
                 elif check in ("payload_timeliness_vote", "payload_data_availability_vote"):
                     target_root = spec.Root(decode_hex(value["block_root"]))
                     assert list(getattr(store, check)[target_root]) == value["votes"]
