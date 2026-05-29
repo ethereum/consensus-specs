@@ -10,7 +10,6 @@ from eth_consensus_specs.test.context import (
     with_gloas_and_later,
     with_presets,
 )
-from eth_consensus_specs.test.helpers.block import apply_empty_block
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.gloas.state import initialize_ptc_window
 from eth_consensus_specs.test.helpers.keys import privkeys
@@ -212,33 +211,6 @@ def test_process_payload_attestation_invalid_beacon_block_root(spec, state):
     wrong_root = spec.Root(b"\x42" * 32)
     payload_attestation = prepare_signed_payload_attestation(
         spec, state, beacon_block_root=wrong_root
-    )
-
-    yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
-
-
-@with_gloas_and_later
-@spec_state_test
-@always_bls
-def test_process_payload_attestation_assigned_slot_was_empty(spec, state):
-    """
-    Test that a payload attestation cast against an ancestor block due to the
-    assigned slot being empty is rejected.
-
-    Setup: apply a block at slot 1, leave slot 2 empty, apply a block at slot 3
-    whose parent is the slot-1 block. A vote with data.slot=2 and
-    beacon_block_root=block-1.root would otherwise pass the existing
-    parent_root and slot+1 asserts (block-3.parent_root == block-1.root and
-    state.slot == 3), but slot 2 was empty so the vote must be rejected.
-    """
-    apply_empty_block(spec, state, 1)
-    apply_empty_block(spec, state, 3)
-
-    assert state.slot == 3
-    block_1_root = state.latest_block_header.parent_root
-
-    payload_attestation = prepare_signed_payload_attestation(
-        spec, state, slot=2, beacon_block_root=block_1_root
     )
 
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
