@@ -75,7 +75,7 @@ jobs:
           version: ${{ vars.UV_VERSION }}
 
       - name: Generate tests
-        run: make test component=pyspec verbose=true preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true
+        run: make test component=pyspec preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true
 
       - name: Upload reference tests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
