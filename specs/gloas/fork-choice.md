@@ -421,7 +421,9 @@ def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
         return True
     if payload_data_availability(store, head.root, available=False):
         return False
-    return not payload_timeliness(store, head.root, timely=False)
+    if payload_timeliness(store, head.root, timely=False):
+        return False
+    return True
 ```
 
 ### New `should_extend_payload`
