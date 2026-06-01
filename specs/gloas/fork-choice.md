@@ -469,7 +469,9 @@ def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> uint8:
         # between FULL and EMPTY based on `should_extend_payload`
         if node.payload_status == PAYLOAD_STATUS_EMPTY:
             return 1
-        return 2 if should_extend_payload(store, node.root) else 0
+        if should_extend_payload(store, node.root):
+            return 2
+        return 0
     else:
         return node.payload_status
 ```
