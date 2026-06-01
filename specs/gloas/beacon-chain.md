@@ -688,8 +688,8 @@ def compute_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SI
 #### Modified `get_beacon_proposer_indices`
 
 *Note*: `get_beacon_proposer_indices` is modified to exclude slashed validators
-from the candidate pool before invoking `compute_proposer_indices`, so the
-`proposer_lookahead` only contains active and unslashed validators.
+from the candidate pool before invoking `compute_proposer_indices`, so the newly
+computed proposer indices only contain active and unslashed validators.
 
 ```python
 def get_beacon_proposer_indices(
