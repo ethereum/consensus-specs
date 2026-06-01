@@ -1,14 +1,18 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_bellatrix_and_later,
+    with_all_phases_from_to,
+)
+from eth_consensus_specs.test.helpers.constants import (
+    BELLATRIX,
+    FULU,
 )
 from eth_consensus_specs.test.helpers.deposits import (
     run_deposit_processing_with_specific_fork_version,
 )
 
 
-@with_bellatrix_and_later
+@with_all_phases_from_to(BELLATRIX, FULU)
 @spec_state_test
 @always_bls
 def test_ineffective_deposit_with_previous_fork_version(spec, state):
@@ -25,7 +29,7 @@ def test_ineffective_deposit_with_previous_fork_version(spec, state):
     )
 
 
-@with_bellatrix_and_later
+@with_all_phases_from_to(BELLATRIX, FULU)
 @spec_state_test
 @always_bls
 def test_effective_deposit_with_genesis_fork_version(spec, state):

@@ -12,7 +12,7 @@ from eth_consensus_specs.test.helpers.block import (
 )
 from eth_consensus_specs.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth_consensus_specs.test.helpers.deposits import build_deposit, deposit_from_context
-from eth_consensus_specs.test.helpers.forks import is_post_electra
+from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_fulu
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth_consensus_specs.test.helpers.state import (
@@ -72,7 +72,7 @@ def get_random_proposer_slashings(spec, state, rng):
     return slashings
 
 
-def get_random_attester_slashings(spec, state, rng, slashed_indices=[]):
+def get_random_attester_slashings(spec, state, rng, slashed_indices=None):
     """
     Caller can supply ``slashed_indices`` if they are aware of other indices
     that will be slashed by other operations in the same block as the one that
@@ -80,6 +80,8 @@ def get_random_attester_slashings(spec, state, rng, slashed_indices=[]):
     """
     # ensure at least one attester slashing, the max count
     # is small so not much room for random inclusion
+    if slashed_indices is None:
+        slashed_indices = []
     num_slashings = rng.randrange(1, spec.MAX_ATTESTER_SLASHINGS)
     active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     indices = [
@@ -128,7 +130,7 @@ def get_random_attestations(spec, state, rng):
 
 
 def get_random_deposits(spec, state, rng, num_deposits=None):
-    if not num_deposits:
+    if num_deposits is None:
         num_deposits = rng.randrange(1, spec.MAX_DEPOSITS)
 
     if num_deposits == 0:
@@ -191,7 +193,7 @@ def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
     active_indices = set(
         spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     )
-    indices = set(index for index in active_indices if _eligible_for_exit(spec, state, index))
+    indices = {index for index in active_indices if _eligible_for_exit(spec, state, index)}
     eligible_indices = indices - to_be_slashed_indices
     indices_count = min(num_exits, len(eligible_indices))
     exit_indices = [eligible_indices.pop() for _ in range(indices_count)]
@@ -253,12 +255,10 @@ def build_random_block_from_state_for_next_slot(spec, state, rng=None, deposits=
         block.body.deposits = deposits
 
     # cannot include to be slashed indices as exits
-    slashed_indices = set(
-        [
-            slashing.signed_header_1.message.proposer_index
-            for slashing in block.body.proposer_slashings
-        ]
-    )
+    slashed_indices = {
+        slashing.signed_header_1.message.proposer_index
+        for slashing in block.body.proposer_slashings
+    }
     for attester_slashing in block.body.attester_slashings:
         slashed_indices = slashed_indices.union(attester_slashing.attestation_1.attesting_indices)
         slashed_indices = slashed_indices.union(attester_slashing.attestation_2.attesting_indices)
@@ -273,8 +273,12 @@ def run_test_full_random_operations(spec, state, rng=None):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
+    num_deposits = None
+    if is_post_fulu(spec):
+        num_deposits = 0
+
     # prepare state for deposits before building block
-    deposits = prepare_state_and_get_random_deposits(spec, state, rng)
+    deposits = prepare_state_and_get_random_deposits(spec, state, rng, num_deposits=num_deposits)
     block = build_random_block_from_state_for_next_slot(spec, state, rng, deposits=deposits)
 
     yield "pre", state

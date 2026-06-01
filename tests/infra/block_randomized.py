@@ -28,11 +28,10 @@ from __future__ import annotations
 import argparse
 import itertools
 import sys
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
-from typing import Any, ClassVar
+from typing import Any, ClassVar, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.constants import (
     ALTAIR,
@@ -72,6 +71,9 @@ from eth_consensus_specs.test.utils.randomized_block_tests import (
     transition_with_random_block,
     transition_without_leak,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # Constants
 BLOCK_TRANSITIONS_COUNT: int = 2
@@ -146,7 +148,7 @@ class ScenarioGenerator:
         transitions_generator = (
             itertools.product(prefix, blocks_set) for prefix in randomized_skips
         )
-        block_transitions = zip(*transitions_generator)
+        block_transitions = zip(*transitions_generator, strict=False)
 
         # Combine with leak transitions
         leak_transitions = (

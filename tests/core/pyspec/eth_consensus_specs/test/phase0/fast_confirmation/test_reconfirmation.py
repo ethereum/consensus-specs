@@ -82,13 +82,15 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
     fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=75)
 
     # Check the head is confirmed
-    assert fcr_store.confirmed_root == fcr.head()
+    assert fcr_store.confirmed_root == fcr.head_root()
 
     # But if there were no slashings, first block in Epoch 3 couldn't be confirmed at this stage
     epoch_3_first_block = spec.get_ancestor(store, fcr.head(), 3 * S + 1)
     balance_source = spec.get_current_balance_source(fcr_store)
     support = spec.get_attestation_score(store, epoch_3_first_block, balance_source)
-    safety_threshold = spec.compute_safety_threshold(store, epoch_3_first_block, balance_source)
+    safety_threshold = spec.compute_safety_threshold(
+        store, epoch_3_first_block.root, balance_source
+    )
 
     # Compute slashed balance
     # 25% of 2 slots * (len(validators) // SLOTS_PER_EPOCH * effective_balance)
@@ -102,12 +104,84 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
     SlotSequence(end_slot=(4 * S - 1), attesting=Attesting(participation_rate=100)).execute(fcr)
 
     # Check the head was confirmed
-    assert fcr_store.confirmed_root == fcr.head()
+    assert fcr_store.confirmed_root == fcr.head_root()
 
     # Run to the start of Epoch 4 with no block
     fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=100)
 
     # Check reconfirmation passed
-    assert fcr_store.confirmed_root == fcr.head()
+    assert fcr_store.confirmed_root == fcr.head_root()
+
+    yield from fcr.get_test_artefacts()
+
+
+@only_generator("too slow")
+@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_presets([MINIMAL], reason="too slow")
+@with_custom_state(
+    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
+    threshold_fn=default_activation_threshold,
+)
+@spec_test
+@single_phase
+def test_reconfirmation_fails_for_block_without_uj_checkpoint_in_chain(spec, state):
+    fcr = FCRTest(spec, seed=1)
+    store, fcr_store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+
+    # Run until the last slot of epoch 2
+    fcr.run_slots_with_blocks_and_fast_confirmation(3 * S - 1, participation_rate=100)
+
+    # Pivot at the end of epoch 2
+    pivot_root = fcr.next_slot_with_block_and_fast_confirmation(
+        participation_rate=100, graffiti="pivot"
+    )
+
+    # Run till the penultimate slot of epoch 3
+    fcr.run_slots_with_blocks_and_fast_confirmation(S - 2, participation_rate=100)
+
+    # Create a conflicting block that justifies a checkpoint not in the chain of confirmed block
+    # while the block of that checkpoint is in the chain of confirmed block
+    pivot_attestations = []
+    for s in range(3 * S, fcr.current_slot()):
+        pivot_attestations.extend(
+            fcr.attest(
+                block_root=pivot_root, participation_rate=100, slot=s, pool_and_disseminate=False
+            )
+        )
+    fcr.add_and_apply_block(
+        parent_root=pivot_root,
+        graffiti="conflicting",
+        attestations=pivot_attestations,
+        release_att_pool=False,
+        include_atts=False,
+    )
+
+    # Fast confirm one block
+    fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Create the last confirmed block in an epoch and move to the next slot
+    confirmed_root = fcr.next_slot_with_block(participation_rate=100, graffiti="confirmed")
+
+    # Check preconditions over confirmed_root
+    # From fresh epoch
+    assert spec.get_block_epoch(store, confirmed_root) + 1 >= fcr.current_epoch()
+    # Belongs to canonical chain
+    assert spec.is_ancestor(store, fcr.head(), spec.get_node_for_root(confirmed_root))
+    # Ancestor of the previous_epoch_greatest_unrealized_checkpoint block
+    assert spec.is_ancestor(
+        store,
+        spec.get_node_for_root(confirmed_root),
+        spec.get_node_for_root(fcr_store.previous_epoch_greatest_unrealized_checkpoint.root),
+    )
+    # Does not have a previous_epoch_greatest_unrealized_checkpoint in its chain
+    assert fcr_store.previous_epoch_greatest_unrealized_checkpoint != spec.get_checkpoint_for_block(
+        store, confirmed_root, fcr_store.previous_epoch_greatest_unrealized_checkpoint.epoch
+    )
+
+    # Run fast confirmation and ensure fall back to finality
+    fcr.run_fast_confirmation()
+    assert fcr_store.confirmed_root == store.finalized_checkpoint.root
 
     yield from fcr.get_test_artefacts()

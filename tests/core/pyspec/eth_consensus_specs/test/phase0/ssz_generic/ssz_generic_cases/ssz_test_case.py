@@ -15,11 +15,11 @@ def safe_lambda(fn: Callable):
     return fn
 
 
-def capture_seed(rng: Random = None):
+def capture_seed(rng: Random | None = None):
     return rng.randint(0, 2**32 - 1) if rng is not None else None
 
 
-def valid_test_case(value_fn: Callable[[], View], rng: Random = None):
+def valid_test_case(value_fn: Callable[[], View], rng: Random | None = None):
     seed = capture_seed(rng)
 
     def case_fn():
@@ -36,7 +36,7 @@ def valid_test_case(value_fn: Callable[[], View], rng: Random = None):
     return case_fn
 
 
-def invalid_test_case(typ: type[View], bytez_fn: Callable[[], bytes], rng: Random = None):
+def invalid_test_case(typ: type[View], bytez_fn: Callable[[], bytes], rng: Random | None = None):
     seed = capture_seed(rng)
 
     def case_fn():

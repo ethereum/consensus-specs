@@ -29,7 +29,7 @@ These are the inclusion list specifications to implement Heze.
 
 ```python
 @dataclass
-class InclusionListStore(object):
+class InclusionListStore:
     inclusion_lists: DefaultDict[Tuple[Slot, Root], Dict[Root, InclusionList]] = field(
         default_factory=lambda: defaultdict(dict)
     )
@@ -166,7 +166,7 @@ def is_inclusion_list_bits_inclusive(
     return all(
         inclusion_bit or not local_inclusion_bit
         for inclusion_bit, local_inclusion_bit in zip(
-            inclusion_list_bits, local_inclusion_list_bits
+            inclusion_list_bits, local_inclusion_list_bits, strict=True
         )
     )
 ```

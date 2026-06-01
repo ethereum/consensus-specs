@@ -12,6 +12,7 @@
     - [New `ProposerPreferences`](#new-proposerpreferences)
     - [New `SignedProposerPreferences`](#new-signedproposerpreferences)
   - [Helpers](#helpers)
+    - [Modified `Seen`](#modified-seen)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
     - [Modified `verify_data_column_sidecar_kzg_proofs`](#modified-verify_data_column_sidecar_kzg_proofs)
     - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
@@ -90,7 +91,7 @@ class ProposerPreferences(Container):
     proposal_slot: Slot
     validator_index: ValidatorIndex
     fee_recipient: ExecutionAddress
-    gas_limit: uint64
+    target_gas_limit: uint64
 ```
 
 #### New `SignedProposerPreferences`
@@ -104,6 +105,27 @@ class SignedProposerPreferences(Container):
 ```
 
 ### Helpers
+
+#### Modified `Seen`
+
+```python
+@dataclass
+class Seen:
+    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
+    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[boolean, ...]]]
+    voluntary_exit_indices: Set[ValidatorIndex]
+    proposer_slashing_indices: Set[ValidatorIndex]
+    attester_slashing_indices: Set[ValidatorIndex]
+    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, uint64]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[boolean, ...]]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, uint64]]
+    bls_to_execution_change_indices: Set[ValidatorIndex]
+    data_column_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, ColumnIndex]]
+    # [Modified in Gloas:EIP7732]
+    # Removed `partial_data_column_headers`
+```
 
 #### Modified `compute_fork_version`
 
@@ -321,6 +343,8 @@ The following validations MUST pass before forwarding the
   gossip or non-gossip sources) (a client MAY queue attestation for processing
   once the block is retrieved. Note a client might want to request payload
   after).
+- _[IGNORE]_ The block referenced by `data.beacon_block_root` is at slot
+  `data.slot`, i.e. the block has `block.slot == data.slot`.
 - _[REJECT]_ The message's block `data.beacon_block_root` passes validation.
 - _[REJECT]_ The message's validator index is within the payload committee in
   `get_ptc(state, data.slot)`. The `state` is the head state corresponding to
@@ -347,7 +371,6 @@ where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
   `is_active_builder(state, bid.builder_index)` returns `True`.
 - _[REJECT]_ `bid.execution_payment == 0`.
 - _[REJECT]_ `bid.fee_recipient == proposer_preferences.fee_recipient`.
-- _[REJECT]_ `bid.gas_limit == proposer_preferences.gas_limit`.
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in the consensus layer -- i.e. validate that
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(compute_epoch_at_slot(bid.slot)).max_blobs_per_block`.
@@ -358,11 +381,36 @@ where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
   i.e. `can_builder_cover_bid(state, builder_index, amount)` returns `True`.
 - _[IGNORE]_ `bid.parent_block_hash` is the block hash of a known execution
-  payload in fork choice.
+  payload in fork choice and
+  `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit)`
+  is `True` where `parent_gas_limit` is the `gas_limit` of that execution
+  payload.
 - _[IGNORE]_ `bid.parent_block_root` is the hash tree root of a known beacon
   block in fork choice.
+- _[REJECT]_ The bid is for a higher slot than its parent block -- i.e. validate
+  that `bid.slot` is greater than the slot of the block with root
+  `bid.parent_block_root`.
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
+
+```python
+def is_gas_limit_target_compatible(
+    parent_gas_limit: uint64, gas_limit: uint64, target_gas_limit: uint64
+) -> bool:
+    """
+    Check if ``gas_limit`` is compatible with ``target_gas_limit`` under the
+    EIP-1559 transition rule from ``parent_gas_limit``.
+    """
+    max_gas_limit_difference = max(parent_gas_limit // 1024, 1) - 1
+    min_gas_limit = parent_gas_limit - max_gas_limit_difference
+    max_gas_limit = parent_gas_limit + max_gas_limit_difference
+
+    if target_gas_limit >= min_gas_limit and target_gas_limit <= max_gas_limit:
+        return gas_limit == target_gas_limit
+    if target_gas_limit > max_gas_limit:
+        return gas_limit == max_gas_limit
+    return gas_limit == min_gas_limit
+```
 
 *Note*: Implementations SHOULD include DoS prevention measures to mitigate spam
 from malicious builders submitting numerous bids with minimal value increments.
@@ -376,7 +424,7 @@ bid at regular time intervals.
 
 This topic is used to propagate signed proposer preferences as
 `SignedProposerPreferences`. These messages allow validators to communicate
-their preferred `fee_recipient` and `gas_limit` to builders.
+their preferred `fee_recipient` and `target_gas_limit` to builders.
 
 The following validations MUST pass before forwarding the
 `signed_proposer_preferences` on the network, assuming the alias

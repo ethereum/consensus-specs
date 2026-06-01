@@ -149,6 +149,7 @@ def test_prepare_execution_payload__extend_payload(spec, state):
         safe_block_hash=spec.Hash32(),
         finalized_block_hash=spec.Hash32(),
         suggested_fee_recipient=spec.ExecutionAddress(),
+        target_gas_limit=spec.uint64(60_000_000),
         execution_engine=engine,
     )
 
@@ -187,6 +188,7 @@ def test_prepare_execution_payload__no_payload_verified(spec, state):
         safe_block_hash=spec.Hash32(),
         finalized_block_hash=spec.Hash32(),
         suggested_fee_recipient=spec.ExecutionAddress(),
+        target_gas_limit=spec.uint64(60_000_000),
         execution_engine=engine,
     )
 
@@ -211,6 +213,7 @@ def test_prepare_execution_payload__extend_payload_does_not_mutate_state(spec, s
         safe_block_hash=spec.Hash32(),
         finalized_block_hash=spec.Hash32(),
         suggested_fee_recipient=spec.ExecutionAddress(),
+        target_gas_limit=spec.uint64(60_000_000),
         execution_engine=engine,
     )
 
@@ -231,6 +234,7 @@ def test_prepare_execution_payload__payload_attributes(spec, state):
         safe_block_hash=spec.Hash32(),
         finalized_block_hash=spec.Hash32(),
         suggested_fee_recipient=spec.ExecutionAddress(),
+        target_gas_limit=spec.uint64(60_000_000),
         execution_engine=engine,
     )
 
@@ -242,6 +246,7 @@ def test_prepare_execution_payload__payload_attributes(spec, state):
     assert attrs.parent_beacon_block_root == proposal_state.latest_block_header.hash_tree_root()
     assert attrs.slot_number == proposal_state.slot
     assert attrs.suggested_fee_recipient == spec.ExecutionAddress()
+    assert attrs.target_gas_limit == spec.uint64(60_000_000)
 
 
 @with_phases([GLOAS])
@@ -262,6 +267,7 @@ def test_prepare_execution_payload__block_passes_state_transition(spec, state):
         safe_block_hash=spec.Hash32(),
         finalized_block_hash=spec.Hash32(),
         suggested_fee_recipient=spec.ExecutionAddress(),
+        target_gas_limit=spec.uint64(60_000_000),
         execution_engine=engine,
     )
     prepared_withdrawals = list(engine.payload_attributes.withdrawals)

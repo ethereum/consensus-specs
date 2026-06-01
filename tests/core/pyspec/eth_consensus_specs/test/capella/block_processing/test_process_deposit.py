@@ -4,7 +4,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.constants import (
     CAPELLA,
-    GLOAS,
+    FULU,
 )
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_state_and_deposit,
@@ -15,7 +15,7 @@ from eth_consensus_specs.test.helpers.state import next_epoch_via_block
 from eth_consensus_specs.test.helpers.withdrawals import set_validator_fully_withdrawable
 
 
-@with_all_phases_from_to(CAPELLA, GLOAS)
+@with_all_phases_from_to(CAPELLA, FULU)
 @spec_state_test
 def test_success_top_up_to_withdrawn_validator(spec, state):
     validator_index = 0
@@ -57,6 +57,8 @@ def test_success_top_up_to_withdrawn_validator(spec, state):
         has_non_zero_balance = pending_deposit.amount > 0
         # NOTE: directly compute `is_fully_withdrawable_validator` conditions here
         # to work around how the epoch processing changed balance updates
-        assert has_execution_withdrawal and is_withdrawable and has_non_zero_balance
+        assert has_execution_withdrawal
+        assert is_withdrawable
+        assert has_non_zero_balance
     else:
         assert spec.is_fully_withdrawable_validator(validator, balance, current_epoch)

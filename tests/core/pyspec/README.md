@@ -40,7 +40,7 @@ Or, to run all tests under a single fork specify `fork=<name>`:
 make test fork=phase0
 ```
 
-Note: these options can be used together, like:
+*Note*: these options can be used together, like:
 
 ```shell
 make test preset=minimal k=test_verify_kzg_proof fork=deneb

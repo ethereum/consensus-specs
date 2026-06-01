@@ -253,8 +253,8 @@ def _get_light_client_data(lc_data_store, bid):  # -> CachedLightClientData
     # Data must be cached (`_cache_lc_data`) before calling this function.
     try:
         return lc_data_store.cache.data[bid]
-    except KeyError:
-        raise ValueError("Trying to get light client data that was not cached")
+    except KeyError as e:
+        raise ValueError("Trying to get light client data that was not cached") from e
 
 
 def _cache_lc_data(
@@ -843,7 +843,7 @@ def run_lc_data_collection_test_multi_fork(spec, phases, state, fork_1, fork_2):
             == genesis_bid
         )
     else:
-        for period in range(0, slot_period):
+        for period in range(slot_period):
             assert (
                 get_light_client_update_for_period(test, period).spec is None
             )  # attested period != signature period

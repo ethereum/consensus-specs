@@ -14,6 +14,31 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
+def _setup_previous_epoch_same_slot_scenario(spec, state):
+    """
+    Build a signed same-slot attestation at slot ``SLOTS_PER_EPOCH - 1`` with a
+    single attester. Advance state one epoch so the attestation's target becomes
+    the previous epoch.
+    """
+    attestation_slot = spec.Slot(spec.SLOTS_PER_EPOCH - 1)
+    apply_empty_block(spec, state, attestation_slot)
+
+    committee = spec.get_beacon_committee(state, attestation_slot, 0)
+
+    # Make sure we have only one attester (simple weight calculation)
+    attestation = get_valid_attestation(
+        spec,
+        state,
+        slot=attestation_slot,
+        index=0,
+        filter_participant_set=lambda _: {committee[0]},
+        signed=True,
+    )
+
+    spec.process_slots(state, spec.SLOTS_PER_EPOCH)
+    return attestation, attestation_slot
+
+
 def _setup_missed_slot_scenario(spec, state):
     """
     Creates blocks for slots 1, 2, 3 but skips slot 4 (missed slot).
@@ -334,7 +359,7 @@ def test_matching_payload_true_historical_slot(spec, state):
 
     # Get the attesting validator
     attesting_indices = spec.get_attesting_indices(state, attestation)
-    validator_index = list(attesting_indices)[0]
+    validator_index = next(iter(attesting_indices))
 
     assert spec.is_attestation_same_slot(state, attestation.data) is False
 
@@ -378,7 +403,7 @@ def test_matching_payload_false_historical_slot(spec, state):
 
     # Get the attesting validator
     attesting_indices = spec.get_attesting_indices(state, attestation)
-    validator_index = list(attesting_indices)[0]
+    validator_index = next(iter(attesting_indices))
 
     assert spec.is_attestation_same_slot(state, attestation.data) is False
 
@@ -416,7 +441,7 @@ def test_matching_payload_gets_head_flag(spec, state):
 
     # Get the attesting validator
     attesting_indices = spec.get_attesting_indices(state, attestation)
-    validator_index = list(attesting_indices)[0]
+    validator_index = next(iter(attesting_indices))
 
     yield from run_attestation_processing(spec, state, attestation, valid=True)
 
@@ -446,7 +471,7 @@ def test_mismatched_payload_no_head_flag(spec, state):
 
     # Get the attesting validator
     attesting_indices = spec.get_attesting_indices(state, attestation)
-    validator_index = list(attesting_indices)[0]
+    validator_index = next(iter(attesting_indices))
 
     assert spec.is_attestation_same_slot(state, attestation.data) is False
 
@@ -457,3 +482,87 @@ def test_mismatched_payload_no_head_flag(spec, state):
     final_head_flag = spec.has_flag(final_participation, spec.TIMELY_HEAD_FLAG_INDEX)
 
     assert not final_head_flag, "Should not get head flag when payload doesn't match"
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_payment_weight_tracking_previous_epoch(spec, state):
+    """
+    Test ``process_attestation`` updates the previous epoch payment slot and
+    sets flags in ``previous_epoch_participation`` when the attestation's
+    target is the previous epoch.
+    """
+    attestation, attestation_slot = _setup_previous_epoch_same_slot_scenario(spec, state)
+    previous_epoch_idx = attestation_slot % spec.SLOTS_PER_EPOCH
+    current_epoch_idx = spec.SLOTS_PER_EPOCH + previous_epoch_idx
+
+    # Set the previous epoch pending payments
+    state.builder_pending_payments[previous_epoch_idx] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(b"\xab" * 20),
+            amount=spec.Gwei(1_000_000_000),
+            builder_index=0,
+        ),
+    )
+
+    assert spec.is_attestation_same_slot(state, attestation.data)
+    assert attestation.data.target.epoch == spec.get_previous_epoch(state)
+
+    attester = spec.get_beacon_committee(state, attestation_slot, 0)[0]
+    expected_flag_indices = spec.get_attestation_participation_flag_indices(
+        state, attestation.data, state.slot - attestation.data.slot
+    )
+    pre_prev_flags = state.previous_epoch_participation[attester]
+    pre_curr_flags = state.current_epoch_participation[attester]
+
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+    # Assert weight is set for the previous epoch, not current one
+    expected_weight = state.validators[attester].effective_balance
+    assert state.builder_pending_payments[previous_epoch_idx].weight == expected_weight
+    assert state.builder_pending_payments[current_epoch_idx].weight == 0
+
+    # Assert flags are set for the previous epoch, not current one
+    for flag_index in expected_flag_indices:
+        assert spec.has_flag(state.previous_epoch_participation[attester], flag_index)
+        assert not spec.has_flag(pre_prev_flags, flag_index)
+    assert state.current_epoch_participation[attester] == pre_curr_flags
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_payment_weight_no_increment_for_zero_amount(spec, state):
+    """
+    Test that the weight is not incremented when the pending payment's
+    withdrawal amount is zero.
+    """
+    transition_to_slot_via_block(spec, state, 2)
+    attestation_slot = 0
+
+    committee = spec.get_beacon_committee(state, attestation_slot, 0)
+    attestation = get_valid_attestation(
+        spec,
+        state,
+        slot=attestation_slot,
+        index=0,
+        payload_index=0,
+        filter_participant_set=lambda _: {committee[0]},
+        signed=True,
+    )
+
+    payment_idx = spec.SLOTS_PER_EPOCH + attestation_slot % spec.SLOTS_PER_EPOCH
+    state.builder_pending_payments[payment_idx] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(b"\xab" * 20),
+            amount=spec.Gwei(0),
+            builder_index=0,
+        ),
+    )
+
+    pre_weight = state.builder_pending_payments[payment_idx].weight
+
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+    assert state.builder_pending_payments[payment_idx].weight == pre_weight

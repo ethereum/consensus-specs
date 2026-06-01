@@ -28,6 +28,7 @@ from .helpers import (
     BranchTip,
     build_random_payload_attestation_messages,
     FCTestData,
+    get_dependent_root,
     is_attestation_eligible_for_block,
     produce_block,
     ProtocolMessage,
@@ -215,11 +216,7 @@ def _any_change_to_validator_partitions(spec, sm_links, current_epoch, anchor_ep
     if previous_epoch == anchor_epoch:
         return True
 
-    for l in sm_links:
-        if l.target == current_epoch or l.target == previous_epoch:
-            return True
-
-    return False
+    return any(l.target == current_epoch or l.target == previous_epoch for l in sm_links)
 
 
 def _generate_sm_link_tree(
@@ -283,7 +280,7 @@ def _generate_sm_link_tree(
             partitions = _compute_validator_partitions(
                 spec, branch_tips, current_epoch_sm_links, current_epoch, rnd
             )
-            for l in partitions.keys():
+            for l in partitions:
                 old_tip_state = branch_tips[l]
                 new_tip_state = BranchTip(
                     old_tip_state.beacon_state,
@@ -507,11 +504,11 @@ def _disseminate(
     """
     choice = rnd.randint(0, 99)
     if choice < off_chain_rate:
-        off_chain_list.append(ProtocolMessage(message, True))
+        off_chain_list.append(ProtocolMessage(message, valid=True))
     elif choice < off_chain_rate + on_chain_rate:
         in_block_list.append(message)
     else:
-        off_chain_list.append(ProtocolMessage(message, True))
+        off_chain_list.append(ProtocolMessage(message, valid=True))
         in_block_list.append(message)
 
 
@@ -534,14 +531,14 @@ class ProtocolState:
         self.signed_envelope_messages.append(ProtocolMessage(envelope, valid))
 
     def add_invalid_off_chain_attestation(self, attestation):
-        self.out_of_block_attestation_messages.append(ProtocolMessage(attestation, False))
+        self.out_of_block_attestation_messages.append(ProtocolMessage(attestation, valid=False))
 
     def add_invalid_off_chain_payload_attestation(self, ptc_message):
-        self.out_of_block_pa_messages.append(ProtocolMessage(ptc_message, False))
+        self.out_of_block_pa_messages.append(ProtocolMessage(ptc_message, valid=False))
 
     def add_invalid_off_chain_attester_slashing(self, attester_slashing):
         self.out_of_block_attester_slashing_messages.append(
-            ProtocolMessage(attester_slashing, False)
+            ProtocolMessage(attester_slashing, valid=False)
         )
 
     def maybe_invalidate_attestation(self, rnd, attestation, with_invalid_messages):
@@ -597,11 +594,15 @@ class ProtocolState:
 
 
 class RuntimeState:
-    def __init__(self, anchor_tip: BranchTip):
+    def __init__(self, spec, anchor_tip: BranchTip):
+        self.spec = spec
         self.current_slot = anchor_tip.beacon_state.slot
         self.post_states = [anchor_tip.beacon_state.copy()]
         self.block_tree_tips = {0}
         self.payload_known_block_indices = set()
+        self.att_dependent_roots = {}
+        for att in anchor_tip.attestations:
+            self.apply_att_dependent_root(anchor_tip.beacon_state, att)
 
     def append_post_state(self, post_state):
         self.post_states.append(post_state)
@@ -610,6 +611,12 @@ class RuntimeState:
         self.append_post_state(post_state)
         self.block_tree_tips.discard(parent_index)
         self.block_tree_tips.add(block_index)
+
+    def apply_att_dependent_root(self, state, attestation):
+        data = attestation.data
+        self.att_dependent_roots[(data.beacon_block_root, data.slot)] = get_dependent_root(
+            self.spec, state, data.slot
+        )
 
 
 class StateCache:
@@ -757,7 +764,7 @@ def _generate_block_tree(
     with_invalid_messages,
 ) -> ([], [], [], [], []):
     protocol = ProtocolState(spec, anchor_tip)
-    runtime = RuntimeState(anchor_tip)
+    runtime = RuntimeState(spec, anchor_tip)
     # Tracks every validator selected for a generated attester slashing in this
     # scenario, so later selections cannot target the same validator again.
     validators_to_be_slashed = set()
@@ -817,11 +824,18 @@ def _generate_block_tree(
         # contained by invalid block.
         signed_block, _, _, _, _ = produce_block(spec, parent_state, [], [], [])
         _spoil_block(spec, rnd, signed_block)
-        protocol.add_signed_block(signed_block, False)
+        protocol.add_signed_block(signed_block, valid=False)
         runtime.append_post_state(parent_state)
         return signed_block, parent_state, None
 
     def produce_valid_block(parent_state, parent_index, block_index):
+        def shuffling_compatibility_filter(a):
+            block_dependent_root = get_dependent_root(spec, parent_state, a.data.slot)
+            att_dependent_root = runtime.att_dependent_roots[
+                (a.data.beacon_block_root, a.data.slot)
+            ]
+            return block_dependent_root == att_dependent_root
+
         (
             candidate_attestations,
             ignored_attestations,
@@ -839,6 +853,7 @@ def _generate_block_tree(
             candidate_attestations,
             protocol.in_block_attester_slashings,
             protocol.in_block_pa_messages,
+            custom_att_filter_fn=shuffling_compatibility_filter,
         )
 
         copied_included_attestations = _subtract_items_once(
@@ -848,7 +863,7 @@ def _generate_block_tree(
             ignored_attestations + not_included_attestations + copied_included_attestations
         )
 
-        protocol.add_signed_block(signed_block, True)
+        protocol.add_signed_block(signed_block, valid=True)
         runtime.apply_new_block(parent_index, block_index, post_state)
         return signed_block, post_state, block_index
 
@@ -940,9 +955,11 @@ def _generate_block_tree(
                 spec,
                 attesting_state,
                 attesting_state.slot,
-                lambda comm: set(comm) & attesters,
+                lambda comm, attesters=attesters: set(comm) & attesters,
                 payload_index=payload_index,
             )
+            if any(attestations_in_slot):
+                runtime.apply_att_dependent_root(attesting_state, attestations_in_slot[0])
 
             for attestation in attestations_in_slot:
                 if att_payload_index_invalid:

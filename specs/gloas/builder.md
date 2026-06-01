@@ -123,8 +123,11 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
     `get_proposer_dependent_root(parent_state, compute_epoch_at_slot(bid.slot))`,
     where `parent_state` is the post-state of `bid.parent_block_root`.
 07. Set `bid.gas_limit` to be the gas limit of the constructed payload, which
-    must match the `gas_limit` in the `SignedProposerPreferences` referenced in
-    step 6.
+    **MUST** satisfy
+    `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, target_gas_limit)`,
+    where `parent_gas_limit` is the `gas_limit` of the parent execution payload
+    and `target_gas_limit` is the `target_gas_limit` in the
+    `SignedProposerPreferences` referenced in step 6.
 08. Set `bid.builder_index` to be the index of the builder performing these
     actions.
 09. Set `bid.slot` to be the slot for which this bid is aimed. This slot

@@ -1,4 +1,5 @@
-from ..constants import PHASE0
+from pysetup.constants import PHASE0
+
 from .base import BaseSpecBuilder
 
 

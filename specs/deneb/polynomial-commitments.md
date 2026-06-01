@@ -392,9 +392,10 @@ def verify_kzg_proof_impl(
         bls.multiply(bls.G2(), -z),
     )
     P_minus_y = bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1(), -y))
-    return bls.pairing_check(
-        [[P_minus_y, bls.neg(bls.G2())], [bls.bytes48_to_G1(proof), X_minus_z]]
-    )
+    return bls.pairing_check([
+        [P_minus_y, bls.neg(bls.G2())],
+        [bls.bytes48_to_G1(proof), X_minus_z],
+    ])
 ```
 
 #### `verify_kzg_proof_batch`
@@ -419,7 +420,7 @@ def verify_kzg_proof_batch(
     data = RANDOM_CHALLENGE_KZG_BATCH_DOMAIN + degree_poly + num_commitments
 
     # Append all inputs to the transcript before we hash
-    for commitment, z, y, proof in zip(commitments, zs, ys, proofs):
+    for commitment, z, y, proof in zip(commitments, zs, ys, proofs, strict=True):
         data += commitment + bls_field_to_bytes(z) + bls_field_to_bytes(y) + proof
 
     r = hash_to_bls_field(data)
@@ -428,26 +429,26 @@ def verify_kzg_proof_batch(
     # Verify: e(sum r^i proof_i, [s]) ==
     # e(sum r^i (commitment_i - [y_i]) + sum r^i z_i proof_i, [1])
     proof_lincomb = g1_lincomb(proofs, r_powers)
-    proof_z_lincomb = g1_lincomb(proofs, [z * r_power for z, r_power in zip(zs, r_powers)])
+    proof_z_lincomb = g1_lincomb(
+        proofs, [z * r_power for z, r_power in zip(zs, r_powers, strict=True)]
+    )
     C_minus_ys = [
         bls.add(bls.bytes48_to_G1(commitment), bls.multiply(bls.G1(), -y))
-        for commitment, y in zip(commitments, ys)
+        for commitment, y in zip(commitments, ys, strict=True)
     ]
     C_minus_y_as_KZGCommitments = [KZGCommitment(bls.G1_to_bytes48(x)) for x in C_minus_ys]
     C_minus_y_lincomb = g1_lincomb(C_minus_y_as_KZGCommitments, r_powers)
 
-    return bls.pairing_check(
+    return bls.pairing_check([
         [
-            [
-                bls.bytes48_to_G1(proof_lincomb),
-                bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[1])),
-            ],
-            [
-                bls.add(bls.bytes48_to_G1(C_minus_y_lincomb), bls.bytes48_to_G1(proof_z_lincomb)),
-                bls.G2(),
-            ],
-        ]
-    )
+            bls.bytes48_to_G1(proof_lincomb),
+            bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[1])),
+        ],
+        [
+            bls.add(bls.bytes48_to_G1(C_minus_y_lincomb), bls.bytes48_to_G1(proof_z_lincomb)),
+            bls.G2(),
+        ],
+    ])
 ```
 
 #### `compute_kzg_proof`
@@ -513,7 +514,7 @@ def compute_kzg_proof_impl(
 
     # Compute the quotient polynomial directly in evaluation form
     quotient_polynomial = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_BLOB
-    for i, (a, b) in enumerate(zip(polynomial_shifted, denominator_poly)):
+    for i, (a, b) in enumerate(zip(polynomial_shifted, denominator_poly, strict=True)):
         if b == BLSFieldElement(0):
             # The denominator is zero hence `z` is a root of unity: we must handle it as a special case
             quotient_polynomial[i] = compute_quotient_eval_within_domain(
@@ -587,7 +588,9 @@ def verify_blob_kzg_proof_batch(
     assert len(blobs) == len(commitments_bytes) == len(proofs_bytes)
 
     commitments, evaluation_challenges, ys, proofs = [], [], [], []
-    for blob, commitment_bytes, proof_bytes in zip(blobs, commitments_bytes, proofs_bytes):
+    for blob, commitment_bytes, proof_bytes in zip(
+        blobs, commitments_bytes, proofs_bytes, strict=True
+    ):
         assert len(blob) == BYTES_PER_BLOB
         assert len(commitment_bytes) == BYTES_PER_COMMITMENT
         assert len(proof_bytes) == BYTES_PER_PROOF

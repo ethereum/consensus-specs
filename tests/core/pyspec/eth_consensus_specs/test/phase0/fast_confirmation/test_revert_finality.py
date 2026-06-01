@@ -18,6 +18,9 @@ from eth_consensus_specs.test.helpers.fast_confirmation import (
     FCRTest,
     SlotSequence,
 )
+from eth_consensus_specs.test.helpers.fork_choice import (
+    is_ancestor,
+)
 
 """
 Test on revert to finality
@@ -258,7 +261,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_at_epoch_boundary
 
     # Create fork point R
     r_root = fcr.next_slot_with_block_and_fast_confirmation(
-        parent_root=fcr.head(), graffiti="R", participation_rate=100
+        parent_root=fcr.head_root(), graffiti="R", participation_rate=100
     )
 
     # Create siblings A and M at current slot
@@ -278,12 +281,12 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_at_epoch_boundary
     )
 
     # Verify confirmed is on A-side
-    head = fcr.head()
+    head = fcr.head_root()
     confirmed = fcr_store.confirmed_root
 
-    assert spec.is_ancestor(store, head, confirmed), "Confirmed should be canonical"
+    assert is_ancestor(spec, store, head, confirmed), "Confirmed should be canonical"
     assert confirmed != store.finalized_checkpoint.root, "Confirmed should have advanced"
-    assert spec.is_ancestor(store, confirmed, a_root), "a_root should be ancestor of confirmed"
+    assert is_ancestor(spec, store, confirmed, a_root), "a_root should be ancestor of confirmed"
 
     confirmed_before_reorg = confirmed
 
@@ -299,11 +302,11 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_at_epoch_boundary
     assert spec.is_start_slot_at_epoch(fcr.current_slot())
 
     # Verify head flipped to M-side
-    head = fcr.head()
-    assert spec.is_ancestor(store, head, m_root), "Head should be on M-side"
+    head = fcr.head_root()
+    assert is_ancestor(spec, store, head, m_root), "Head should be on M-side"
 
     # Verify confirmed_before_reorg is now non-canonical
-    assert not spec.is_ancestor(store, head, confirmed_before_reorg), (
+    assert not is_ancestor(spec, store, head, confirmed_before_reorg), (
         "Confirmed before reorg should be non-canonical"
     )
 
@@ -354,7 +357,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
 
     # Build fork parent R at current slot; vote 100% for it; advance + apply + FCR
     r_root = fcr.next_slot_with_block_and_fast_confirmation(
-        parent_root=fcr.head(), participation_rate=100
+        parent_root=fcr.head_root(), participation_rate=100
     )
 
     # Now we are at the fork slot: create siblings A (canonical) and M (competing)
@@ -379,19 +382,19 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
     )
 
     # By now we should have confirmed onto the A side
-    assert spec.is_ancestor(store, fcr_store.confirmed_root, a_root), "Confirmed did not reach A"
+    assert is_ancestor(spec, store, fcr_store.confirmed_root, a_root), "Confirmed did not reach A"
 
     # snapshot what confirmed_root is *before* we start pushing 100%-to-M
     confirmed_before_flip = fcr_store.confirmed_root
     assert confirmed_before_flip != store.finalized_checkpoint.root
-    assert spec.is_ancestor(store, confirmed_before_flip, a_root)
+    assert is_ancestor(spec, store, confirmed_before_flip, a_root)
 
     # Next slot: build C on B; attest 100% to M; advance + apply + FCR
     c_root = fcr.add_and_apply_block(parent_root=b_root)
     fcr.attest_and_next_slot_with_fast_confirmation(block_root=m_root, participation_rate=100)
 
     # Confirmed still on A side
-    assert spec.is_ancestor(store, fcr_store.confirmed_root, a_root)
+    assert is_ancestor(spec, store, fcr_store.confirmed_root, a_root)
 
     # Next slot: build D on C; attest 100% to M again; advance + apply + FCR
     _d_root = fcr.add_and_apply_block(parent_root=c_root)
@@ -399,8 +402,8 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
 
     # Now: head should be on M side, and confirmed should have reset to finalized.
     # (FCR does not move confirmations backwards; it resets to finalized when confirmed becomes non-canonical.)
-    head = fcr.head()
-    assert spec.is_ancestor(store, head, m_root), "Head did not flip to M"
+    head = fcr.head_root()
+    assert is_ancestor(spec, store, head, m_root), "Head did not flip to M"
     assert fcr_store.confirmed_root == store.finalized_checkpoint.root, (
         "Expected reset to finalized mid-epoch"
     )
@@ -447,7 +450,7 @@ def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivo
     assert fcr_store.confirmed_root != store.finalized_checkpoint.root
 
     # Last slot of epoch 2: build block, attest, run FCR (samples GU)
-    block_root = fcr.add_and_apply_block(parent_root=fcr.head())
+    block_root = fcr.add_and_apply_block(parent_root=fcr.head_root())
     fcr.attest(block_root=block_root, slot=fcr.current_slot(), participation_rate=100)
 
     confirmed_before = fcr_store.confirmed_root
@@ -461,11 +464,13 @@ def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivo
     assert confirmed_epoch + 1 >= current_epoch, "Confirmed too old"
 
     # Confirmed on head chain
-    assert spec.is_ancestor(store, fcr.head(), confirmed_before), "Confirmed not on head chain"
+    assert is_ancestor(spec, store, fcr.head_root(), confirmed_before), (
+        "Confirmed not on head chain"
+    )
 
     # Confirmed above reconfirmation anchor
     gu_prev = fcr_store.previous_epoch_observed_justified_checkpoint
-    assert spec.is_ancestor(store, confirmed_before, gu_prev.root), (
+    assert is_ancestor(spec, store, confirmed_before, gu_prev.root), (
         "Confirmed not descendant of GU_prev"
     )
     assert confirmed_before != gu_prev.root, "No segment to reconfirm"
@@ -482,9 +487,11 @@ def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivo
 
     # Post-slashing
 
-    assert spec.is_ancestor(store, fcr.head(), confirmed_before), "Confirmed fell off head chain"
+    assert is_ancestor(spec, store, fcr.head_root(), confirmed_before), (
+        "Confirmed fell off head chain"
+    )
     assert spec.get_block_epoch(store, confirmed_before) + 1 >= current_epoch, "Confirmed too old"
-    assert spec.is_ancestor(store, confirmed_before, gu_prev.root), "Ancestry broke"
+    assert is_ancestor(spec, store, confirmed_before, gu_prev.root), "Ancestry broke"
 
     # Reconfirmation fails
     assert not spec.is_confirmed_chain_safe(fcr_store, confirmed_before), (
@@ -655,7 +662,7 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
     assert fcr.current_slot() == epoch2_start
 
     # Epoch 2: Fork - RED and BLACK branches (empty attestation bodies)
-    fork_point = fcr.head()
+    fork_point = fcr.head_root()
 
     # RED branch: C block
     c_red = fcr.add_and_apply_block(
@@ -747,7 +754,7 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
     assert uj_of_b_prime is not None
     assert uj_of_b_prime.epoch == spec.Epoch(3)
     assert uj_of_b_prime.root == epoch3_black_checkpoint
-    assert spec.is_ancestor(store, uj_of_b_prime.root, c_double_prime)
+    assert is_ancestor(spec, store, uj_of_b_prime.root, c_double_prime)
 
     # GU snapshot should STILL be (C, 2) — releasing b' doesn't change it
     assert fcr_store.previous_epoch_greatest_unrealized_checkpoint.root == c_red
@@ -770,8 +777,8 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
     assert not (confirmed_epoch + 1 < current_epoch), "bcand should NOT be too old"
 
     # bcand IS on the canonical chain (bcand ≼ head)
-    head_before_fcr = fcr.head()
-    assert spec.is_ancestor(store, head_before_fcr, confirmed_before_fcr), (
+    head_before_fcr = fcr.head_root()
+    assert is_ancestor(spec, store, head_before_fcr, confirmed_before_fcr), (
         "bcand should be canonical"
     )
 
@@ -784,7 +791,7 @@ def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, 
     assert gu.epoch == spec.Epoch(2)
 
     # Verify bcand is NOT a descendant of GU — this is what triggers the reset
-    assert not spec.is_ancestor(store, confirmed_before_fcr, gu.root), (
+    assert not is_ancestor(spec, store, confirmed_before_fcr, gu.root), (
         "bcand should NOT be descendant of GU — this triggers the reset"
     )
 

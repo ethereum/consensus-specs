@@ -32,7 +32,7 @@ def _run_verify_blob_kzg_proof_test(
             result = spec.verify_blob_kzg_proof(blob, commitment, proof)
         except Exception:
             result = None
-        assert result == None
+        assert result is None
 
     yield (
         "data",

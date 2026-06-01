@@ -149,72 +149,151 @@ def verify_partial_data_column_sidecar_kzg_proofs(
 
 ### Partial Messages on `data_column_sidecar_{subnet_id}`
 
-Validating partial messages happens in two parts. First, the
+*Note*: Validating partial messages happens in two parts. First, the
 `PartialDataColumnHeader` needs to be validated, then the cell and proof data.
-
 Once a `PartialDataColumnHeader` is validated for a corresponding block on any
-subnet (gossipsub topic), it can be used for all subnets.
+subnet (gossipsub topic), it can be used for all subnets. Due to the nature of
+partial messages, it is possible to get the `PartialDataColumnHeader` with no
+cells, and get cells in a future response.
 
-Due to the nature of partial messages, it is possible to get the
-`PartialDataColumnHeader` with no cells, and get cells in a future response.
+```python
+def validate_partial_data_column_sidecar_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    sidecar: PartialDataColumnSidecar,
+    block_root: Root,
+    column_index: ColumnIndex,
+    current_time_ms: uint64,
+) -> None:
+    """
+    Validate a PartialDataColumnSidecar for gossip propagation on a subnet.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    has_header = len(sidecar.header) == 1
+    num_cells_present = sum(1 for b in sidecar.cells_present_bitmap if b)
+    has_cells = num_cells_present > 0
 
-For all partial messages:
+    # [REJECT] A header and/or cells are present in the message
+    if not (has_header or has_cells):
+        raise GossipReject("partial message is semantically empty")
 
-- _[REJECT]_ A header and/or cells are present in the message (it is not
-  semantically empty).
-- _[REJECT]_ There are the same number of cells and proofs in the message and
-  this number is equal the number of 1s in the cells_present_bitmap.
+    # [REJECT] The cell count equals the number of bits set in cells_present_bitmap
+    if len(sidecar.partial_column) != num_cells_present:
+        raise GossipReject("number of cells does not match number of set bits")
 
-For verifying the `PartialDataColumnHeader` in a partial message:
+    # [REJECT] The proof count equals the number of bits set in cells_present_bitmap
+    if len(sidecar.kzg_proofs) != num_cells_present:
+        raise GossipReject("number of proofs does not match number of set bits")
 
-- _[REJECT]_ If a valid header was previously received, the received header MUST
-  equal the previously valid header.
-- _[REJECT]_ The hash of the block header in `signed_block_header` MUST be the
-  same one identified by the partial message's group id.
-- _[REJECT]_ The header's `kzg_commitments` list is non-empty.
-- _[IGNORE]_ The header is not from a future slot (with a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) -- i.e. validate that
-  `block_header.slot <= current_slot` (a client MAY queue future headers for
-  processing at the appropriate slot).
-- _[IGNORE]_ The header is from a slot greater than the latest finalized slot --
-  i.e. validate that
-  `block_header.slot > compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)`.j
-- _[REJECT]_ The proposer signature of `signed_block_header` is valid with
-  respect to the `block_header.proposer_index` pubkey.
-- _[IGNORE]_ The header's block's parent (defined by `block_header.parent_root`)
-  has been seen (via gossip or non-gossip sources) (a client MAY queue header
-  for processing once the parent block is retrieved).
-- _[REJECT]_ The header's block's parent (defined by `block_header.parent_root`)
-  passes validation.
-- _[REJECT]_ The header is from a higher slot than the header's block's parent
-  (defined by `block_header.parent_root`).
-- _[REJECT]_ The current `finalized_checkpoint` is an ancestor of the header's
-  block -- i.e.
-  `get_checkpoint_block(store, block_header.parent_root, store.finalized_checkpoint.epoch) == store.finalized_checkpoint.root`.
-- _[REJECT]_ The header's `kzg_commitments` field inclusion proof is valid as
-  verified by `verify_partial_data_column_header_inclusion_proof`.
-- _[REJECT]_ The header is proposed by the expected `proposer_index` for the
-  block's slot in the context of the current shuffling (defined by
-  `block_header.parent_root`/`block_header.slot`). If the `proposer_index`
-  cannot immediately be verified against the expected shuffling, the header MAY
-  be queued for later processing while proposers for the block's branch are
-  calculated -- in such a case _do not_ `REJECT`, instead `IGNORE` this message.
+    if has_header:
+        header = sidecar.header[0]
+        block_header = header.signed_block_header.message
 
-For verifying the cells in a partial message:
+        # [REJECT] The received header MUST equal any previously validated header for this block
+        prior_header = seen.partial_data_column_headers.get(block_root)
+        if prior_header is not None and prior_header != header:
+            raise GossipReject("header differs from previously validated header")
 
-- _[IGNORE]_ If the received partial message contains only cell and proof data,
-  the node has seen a valid corresponding `PartialDataColumnHeader`.
-- _[IGNORE]_ The corresponding header is not from a future slot. See related
-  header check above for more details.
-- _[IGNORE]_ The corresponding header is from a slot greater than the latest
-  finalized slot. See related header check above for more details.
-- _[REJECT]_ The cells present bitmap length is equal to the number of KZG
-  commitments in the `PartialDataColumnHeader`.
-- _[REJECT]_ For cells the receiver already has, The sidecar's cell and proof
-  data are equal to the local copy. This an optional check for the receiver, but
-  the sender MUST always send valid cell and proof data.
-- _[REJECT]_ The sidecar's cell and proof data is valid as verified by
-  `verify_partial_data_column_sidecar_kzg_proofs(sidecar, header.kzg_commitments, column_index)`.
+        # [REJECT] The signed_block_header hash matches the partial message's group id
+        if hash_tree_root(block_header) != block_root:
+            raise GossipReject("header's block root does not match partial message group id")
+
+        # [REJECT] The header's kzg_commitments list is non-empty
+        if len(header.kzg_commitments) == 0:
+            raise GossipReject("header's kzg_commitments is empty")
+
+        # [IGNORE] The header is not from a future slot
+        # (MAY be queued for processing at the appropriate slot)
+        if not is_not_from_future_slot(state, block_header.slot, current_time_ms):
+            raise GossipIgnore("header is from a future slot")
+
+        # [IGNORE] The header is from a slot greater than the latest finalized slot
+        finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+        if block_header.slot <= finalized_slot:
+            raise GossipIgnore("header is not from a slot greater than the latest finalized slot")
+
+        # [REJECT] The proposer index is a valid validator index
+        if block_header.proposer_index >= len(state.validators):
+            raise GossipReject("proposer index out of range")
+
+        # [REJECT] The proposer signature of signed_block_header is valid
+        proposer = state.validators[block_header.proposer_index]
+        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block_header.slot))
+        signing_root = compute_signing_root(block_header, domain)
+        if not bls.Verify(proposer.pubkey, signing_root, header.signed_block_header.signature):
+            raise GossipReject("invalid proposer signature on header")
+
+        # [IGNORE] The header's block's parent has been seen
+        # (MAY be queued for processing once the parent block is retrieved)
+        if block_header.parent_root not in store.blocks:
+            raise GossipIgnore("header's parent has not been seen")
+
+        # [REJECT] The header's block's parent passes validation
+        if block_header.parent_root not in store.block_states:
+            raise GossipReject("header's parent failed validation")
+
+        # [REJECT] The header is from a higher slot than the header's block's parent
+        if block_header.slot <= store.blocks[block_header.parent_root].slot:
+            raise GossipReject("header is not from a higher slot than its parent")
+
+        # [REJECT] The current finalized_checkpoint is an ancestor of the header's block
+        checkpoint_block = get_checkpoint_block(
+            store, block_header.parent_root, store.finalized_checkpoint.epoch
+        )
+        if checkpoint_block != store.finalized_checkpoint.root:
+            raise GossipReject("finalized checkpoint is not an ancestor of header's block")
+
+        # [REJECT] The header's kzg_commitments inclusion proof is valid
+        if not verify_partial_data_column_header_inclusion_proof(header):
+            raise GossipReject("invalid header inclusion proof")
+
+        # [REJECT] The header is proposed by the expected proposer_index
+        # (if shuffling is not available, IGNORE instead and MAY be queued for later)
+        parent_state = store.block_states[block_header.parent_root].copy()
+        process_slots(parent_state, block_header.slot)
+        expected_proposer = get_beacon_proposer_index(parent_state)
+        if block_header.proposer_index != expected_proposer:
+            raise GossipReject("header proposer_index does not match expected proposer")
+
+        # Mark this header as seen
+        seen.partial_data_column_headers[block_root] = header
+
+    if has_cells:
+        # [IGNORE] A valid corresponding PartialDataColumnHeader has been seen
+        header = seen.partial_data_column_headers.get(block_root)
+        if header is None:
+            raise GossipIgnore("valid corresponding header has not been seen")
+
+        block_header = header.signed_block_header.message
+
+        # [IGNORE] The corresponding header is not from a future slot
+        # (MAY be queued for processing at the appropriate slot)
+        if not is_not_from_future_slot(state, block_header.slot, current_time_ms):
+            raise GossipIgnore("corresponding header is from a future slot")
+
+        # [IGNORE] The corresponding header is from a slot greater than the latest finalized slot
+        finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+        if block_header.slot <= finalized_slot:
+            raise GossipIgnore(
+                "corresponding header is not from a slot greater than the latest finalized slot"
+            )
+
+        # [REJECT] The cells_present_bitmap length equals the number of header kzg_commitments
+        if len(sidecar.cells_present_bitmap) != len(header.kzg_commitments):
+            raise GossipReject("bitmap length does not match commitments length")
+
+        # [REJECT] The sidecar's cell and proof data is valid
+        if not verify_partial_data_column_sidecar_kzg_proofs(
+            sidecar, header.kzg_commitments, column_index
+        ):
+            raise GossipReject("invalid sidecar kzg proofs")
+```
+
+*Note*: The optional check "for cells the receiver already has, the sidecar's
+cell and proof data are equal to the local copy" is not encoded above. The
+sender MUST always send valid cell and proof data; receivers MAY perform this
+equality check against their local copy as an additional safeguard.
 
 ### Partial columns for Cell Dissemination
 

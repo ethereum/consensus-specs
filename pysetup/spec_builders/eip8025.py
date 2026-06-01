@@ -1,4 +1,5 @@
-from ..constants import EIP8025
+from pysetup.constants import EIP8025
+
 from .base import BaseSpecBuilder
 
 
@@ -30,7 +31,6 @@ class NoopExecutionEngine(ExecutionEngine):
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
-        # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
     def is_valid_block_hash(self: ExecutionEngine,
@@ -69,7 +69,6 @@ class NoopProofEngine(ProofEngine):
     def request_proofs(self: ProofEngine,
                        new_payload_request: NewPayloadRequest,
                        proof_attributes: ProofAttributes) -> Root:
-        # pylint: disable=unused-argument
         raise NotImplementedError("no default proof generation")
 
 

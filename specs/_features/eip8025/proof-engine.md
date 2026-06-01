@@ -53,7 +53,6 @@ def verify_execution_proof(
     Verify an execution proof.
     Return ``True`` if proof is valid.
     """
-    ...
 ```
 
 ### New `notify_new_payload`
@@ -66,7 +65,6 @@ def notify_new_payload(
     """
     Notify the proof engine of the new payload.
     """
-    ...
 ```
 
 ### New `notify_forkchoice_updated`
@@ -82,14 +80,13 @@ def notify_forkchoice_updated(
     Notify the proof engine of a forkchoice state update. Allows the proof
     engine to track the canonical chain for retention and pruning.
     """
-    ...
 ```
 
 ### New `ProofAttributes`
 
 ```python
 @dataclass
-class ProofAttributes(object):
+class ProofAttributes:
     proof_types: Sequence[ProofType]
 ```
 
@@ -106,5 +103,4 @@ def request_proofs(
     attributes. Returns ``new_payload_request.hash_tree_root()`` to track the
     generation request.
     """
-    ...
 ```
