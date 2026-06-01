@@ -35,6 +35,7 @@
   - [Modified `get_node_children`](#modified-get_node_children)
   - [Modified `get_head`](#modified-get_head)
   - [Modified `record_block_timeliness`](#modified-record_block_timeliness)
+  - [Modified `get_dependent_root`](#modified-get_dependent_root)
   - [Modified `update_proposer_boost_root`](#modified-update_proposer_boost_root)
   - [Modified `validate_on_attestation`](#modified-validate_on_attestation)
   - [Modified `is_head_late`](#modified-is_head_late)
@@ -600,6 +601,24 @@ def record_block_timeliness(store: Store, root: Root) -> None:
     ]
 ```
 
+### Modified `get_dependent_root`
+
+```python
+def get_dependent_root(store: Store, root: Root) -> Root:
+    epoch = get_current_store_epoch(store)
+    if epoch <= MIN_SEED_LOOKAHEAD:
+        # Genesis block parent
+        return Root()
+
+    # [Modified in Gloas:EIP7732]
+    node = ForkChoiceNode(
+        root=root,
+        payload_status=PAYLOAD_STATUS_PENDING,
+    )
+    dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+    return get_ancestor(store, node, dependent_slot).root
+```
+
 ### Modified `update_proposer_boost_root`
 
 ```python
@@ -607,18 +626,12 @@ def update_proposer_boost_root(store: Store, head: Root, root: Root) -> None:
     is_first_block = store.proposer_boost_root == Root()
     # [Modified in Gloas:EIP7732]
     is_timely = store.block_timeliness[root][ATTESTATION_TIMELINESS_INDEX]
+    is_same_dependent_root = get_dependent_root(store, root) == get_dependent_root(store, head)
 
-    # Add proposer score boost if the block is the first timely block
-    # for this slot, with the same proposer as the canonical chain.
-    if is_timely and is_first_block:
-        head_state = copy(store.block_states[head])
-        slot = get_current_slot(store)
-        if head_state.slot < slot:
-            process_slots(head_state, slot)
-        block = store.blocks[root]
-        # Only update if the proposer is the same as on the canonical chain
-        if block.proposer_index == get_beacon_proposer_index(head_state):
-            store.proposer_boost_root = root
+    # Add proposer score boost if the block is timely, not conflicting with an
+    # existing block, with the same dependent root as the canonical chain head.
+    if is_timely and is_first_block and is_same_dependent_root:
+        store.proposer_boost_root = root
 ```
 
 ### Modified `validate_on_attestation`
