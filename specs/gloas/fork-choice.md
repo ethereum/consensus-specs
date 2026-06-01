@@ -406,8 +406,9 @@ def get_supported_node(store: Store, message: LatestMessage) -> ForkChoiceNode:
 
 ### New `is_previous_slot_payload_decision`
 
-*Note*: Special case in the Gloas fork choice to decide on the payload from the
-previous slot.
+*Note*: This predicate identifies the case where a block from the previous slot
+has not yet received the attestations that resolve its payload as *empty* or
+*full*, so the choice cannot be made by weight.
 
 ```python
 def is_previous_slot_payload_decision(store: Store, node: ForkChoiceNode) -> bool:
