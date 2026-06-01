@@ -2,8 +2,10 @@ from random import Random
 
 from eth_consensus_specs.test.context import (
     always_bls,
+    GLOAS,
     spec_state_test,
     with_gloas_and_later,
+    with_phases,
 )
 from eth_consensus_specs.test.gloas.block_processing.test_process_payload_attestation import (
     prepare_signed_payload_attestation,
@@ -881,3 +883,46 @@ def test_voluntary_exit_fails_after_parent_payload_withdrawal_request(spec, stat
     signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
     yield "blocks", [signed_block]
     yield "post", None
+
+
+@with_phases([GLOAS])
+@spec_state_test
+def test_proposer_lookahead_excludes_slashed_validators(spec, state):
+    """
+    Test that slashed validators are excluded from the proposer lookahead.
+    """
+    for _ in range(2):
+        next_epoch(spec, state)
+
+    current_epoch = spec.get_current_epoch(state)
+    new_half_epoch = current_epoch + spec.MIN_SEED_LOOKAHEAD + 1
+
+    # Slash some validators
+    for validator_index in range(len(state.validators) // 2):
+        state.validators[validator_index].slashed = True
+
+    # Fulu includes slashed validators
+    proposers_in_fulu = spec.fulu.get_beacon_proposer_indices(state, new_half_epoch)
+    assert any(state.validators[v].slashed for v in proposers_in_fulu)
+
+    # Gloas excludes slashed validators
+    proposers_in_gloas = spec.get_beacon_proposer_indices(state, new_half_epoch)
+    assert not any(state.validators[v].slashed for v in proposers_in_gloas)
+
+    # Cross into the next epoch with a block, picking a slot whose proposer is
+    # not one of the validators we slashed so the block is valid
+    epoch_n1_proposers = list(state.proposer_lookahead[spec.SLOTS_PER_EPOCH :])
+    offset = next(i for i, p in enumerate(epoch_n1_proposers) if not state.validators[p].slashed)
+    block_slot = (current_epoch + 1) * spec.SLOTS_PER_EPOCH + offset
+
+    yield "pre", state
+
+    block = build_empty_block(spec, state, slot=block_slot)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    yield "blocks", [signed_block]
+    yield "post", state
+
+    # The newly appended lookahead epoch matches the Gloas selection
+    last_epoch_start = len(state.proposer_lookahead) - spec.SLOTS_PER_EPOCH
+    assert list(state.proposer_lookahead[last_epoch_start:]) == list(proposers_in_gloas)
