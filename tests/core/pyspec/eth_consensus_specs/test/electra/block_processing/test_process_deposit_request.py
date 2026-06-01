@@ -1,12 +1,8 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_all_phases_from_to,
     with_electra_and_later,
-)
-from eth_consensus_specs.test.helpers.constants import (
-    ELECTRA,
-    GLOAS,
+    with_electra_only,
 )
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_deposit_request,
@@ -177,7 +173,7 @@ def test_process_deposit_request_top_up_invalid_sig(spec, state):
     assert_process_deposit_request(spec, state, pre_state, deposit_request=deposit_request)
 
 
-@with_all_phases_from_to(ELECTRA, GLOAS)
+@with_electra_only
 @spec_state_test
 def test_process_deposit_request_set_start_index(spec, state):
     assert state.deposit_requests_start_index == spec.UNSET_DEPOSIT_REQUESTS_START_INDEX

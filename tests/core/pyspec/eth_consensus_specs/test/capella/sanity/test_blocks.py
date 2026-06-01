@@ -16,6 +16,7 @@ from eth_consensus_specs.test.helpers.block import (
 from eth_consensus_specs.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth_consensus_specs.test.helpers.constants import (
     CAPELLA,
+    FULU,
     GLOAS,
     MINIMAL,
 )
@@ -92,7 +93,7 @@ def test_bls_change(spec, state):
     assert post_credentials[12:] == signed_address_change.message.to_execution_address
 
 
-@with_capella_and_later
+@with_all_phases_from_to(CAPELLA, FULU)
 @spec_state_test
 def test_deposit_and_bls_change(spec, state):
     initial_registry_len = len(state.validators)
@@ -435,7 +436,7 @@ def test_invalid_withdrawal_fail_second_block_payload_isnt_compatible(spec, stat
 #
 
 
-@with_capella_and_later
+@with_all_phases_from_to(CAPELLA, FULU)
 @spec_state_test
 def test_top_up_and_partial_withdrawable_validator(spec, state):
     next_withdrawal_validator_index = 0
@@ -477,7 +478,7 @@ def test_top_up_and_partial_withdrawable_validator(spec, state):
         assert spec.is_partially_withdrawable_validator(validator, balance)
 
 
-@with_capella_and_later
+@with_all_phases_from_to(CAPELLA, FULU)
 @spec_state_test
 def test_top_up_to_fully_withdrawn_validator(spec, state):
     """
