@@ -7,6 +7,7 @@ from eth_consensus_specs.test.context import (
     spec_test,
     with_custom_state,
     with_electra_and_later,
+    with_electra_only,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.churn import get_activation_churn_limit
@@ -93,7 +94,7 @@ def _check_pending_deposits_induced_new_validators(
         assert validator.effective_balance == deposit.amount
 
 
-@with_electra_and_later
+@with_electra_only
 @spec_state_test
 def test_process_pending_deposits_eth1_bridge_transition_pending(spec, state):
     # There are pending Eth1 bridge deposits
@@ -117,7 +118,7 @@ def test_process_pending_deposits_eth1_bridge_transition_pending(spec, state):
     assert state.deposit_balance_to_consume == 0
 
 
-@with_electra_and_later
+@with_electra_only
 @spec_state_test
 def test_process_pending_deposits_eth1_bridge_transition_not_applied(spec, state):
     # There are pending Eth1 bridge deposits

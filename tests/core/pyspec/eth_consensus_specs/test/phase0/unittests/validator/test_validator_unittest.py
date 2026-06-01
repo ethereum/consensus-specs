@@ -16,7 +16,6 @@ from eth_consensus_specs.test.helpers.attestations import (
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block
 from eth_consensus_specs.test.helpers.constants import FULU, PHASE0
-from eth_consensus_specs.test.helpers.deposits import prepare_state_and_deposit
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
 from eth_consensus_specs.utils import bls
@@ -80,8 +79,7 @@ def test_check_if_validator_active(spec, state):
     assert spec.check_if_validator_active(state, active_validator_index)
     new_validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
-    deposit = prepare_state_and_deposit(spec, state, new_validator_index, amount, signed=True)
-    spec.process_deposit(state, deposit)
+    spec.add_validator_to_registry(state, pubkeys[new_validator_index], b"\x00" * 32, amount)
     assert not spec.check_if_validator_active(state, new_validator_index)
 
 
@@ -182,7 +180,7 @@ def test_is_candidate_block(spec, state):
     )
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_get_eth1_vote_default_vote(spec, state):
     min_new_period_epochs = get_min_new_period_epochs(spec)
@@ -195,7 +193,7 @@ def test_get_eth1_vote_default_vote(spec, state):
     assert eth1_data == state.eth1_data
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_get_eth1_vote_consensus_vote(spec, state):
     min_new_period_epochs = get_min_new_period_epochs(spec)
@@ -234,7 +232,7 @@ def test_get_eth1_vote_consensus_vote(spec, state):
     assert eth1_data.block_hash == block_2.hash_tree_root()
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_get_eth1_vote_tie(spec, state):
     min_new_period_epochs = get_min_new_period_epochs(spec)
@@ -277,7 +275,7 @@ def test_get_eth1_vote_tie(spec, state):
     assert eth1_data.block_hash == eth1_chain[0].hash_tree_root()
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_get_eth1_vote_chain_in_past(spec, state):
     min_new_period_epochs = get_min_new_period_epochs(spec)

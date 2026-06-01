@@ -15,7 +15,7 @@ dependencies = [
   "eth-utils==6.0.0",
   "frozendict==2.4.7",
   "lru-dict==1.4.1",
-  "marko==2.2.2",
+  "marko==2.2.3",
   "milagro_bls_binding==1.9.0",
   "py_arkworks_bls12381==0.4.1",
   "py_ecc==8.0.0",
