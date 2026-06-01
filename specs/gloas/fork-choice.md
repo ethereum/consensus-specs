@@ -27,6 +27,7 @@
   - [Modified `is_ancestor`](#modified-is_ancestor)
   - [Modified `get_checkpoint_block`](#modified-get_checkpoint_block)
   - [Modified `get_supported_node`](#modified-get_supported_node)
+  - [New `is_payload_decision`](#new-is_payload_decision)
   - [New `should_build_on_full`](#new-should_build_on_full)
   - [New `should_extend_payload`](#new-should_extend_payload)
   - [New `get_payload_status_tiebreaker`](#new-get_payload_status_tiebreaker)
@@ -402,6 +403,18 @@ def get_supported_node(store: Store, message: LatestMessage) -> ForkChoiceNode:
     return ForkChoiceNode(root=message.root, payload_status=payload_status)
 ```
 
+### New `is_payload_decision`
+
+*Note*: Special case in the Gloas fork choice to decide on the payload from the
+previous slot.
+
+```python
+def is_payload_decision(store: Store, node: ForkChoiceNode) -> bool:
+    return node.payload_status in [PAYLOAD_STATUS_EMPTY, PAYLOAD_STATUS_FULL] and store.blocks[
+        node.root
+    ].slot + 1 == get_current_slot(store)
+```
+
 ### New `should_build_on_full`
 
 *Note*: `should_build_on_full` is called by the proposer before deciding whether
@@ -445,15 +458,14 @@ def should_extend_payload(store: Store, root: Root) -> bool:
 
 ```python
 def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> uint8:
-    if node.payload_status == PAYLOAD_STATUS_PENDING or store.blocks[
-        node.root
-    ].slot + 1 != get_current_slot(store):
+    if is_payload_decision(store, node):
+        # To decide on a payload from the previous slot, choose
+        # between FULL and EMPTY based on `should_extend_payload`
+        if node.payload_status == PAYLOAD_STATUS_EMPTY:
+            return 1
+        return 2 if should_extend_payload(store, node.root) else 0
+    else:
         return node.payload_status
-    # To decide on a payload from the previous slot, choose
-    # between FULL and EMPTY based on `should_extend_payload`
-    if node.payload_status == PAYLOAD_STATUS_EMPTY:
-        return 1
-    return 2 if should_extend_payload(store, node.root) else 0
 ```
 
 ### New `should_apply_proposer_boost`
@@ -496,29 +508,28 @@ def should_apply_proposer_boost(store: Store) -> bool:
 
 ```python
 def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
-    if node.payload_status == PAYLOAD_STATUS_PENDING or store.blocks[
-        node.root
-    ].slot + 1 != get_current_slot(store):
-        state = store.checkpoint_states[store.justified_checkpoint]
-        attestation_score = get_attestation_score(store, node, state)
-        # [Modified in Gloas:EIP7732]
-        if not should_apply_proposer_boost(store):
-            # Return only attestation score if proposer boost should not apply
-            return attestation_score
-
-        # Calculate proposer score if proposer boost should apply
-        proposer_score = Gwei(0)
-        # [Modified in Gloas:EIP7732]
-        proposer_boost_node = ForkChoiceNode(
-            root=store.proposer_boost_root, payload_status=PAYLOAD_STATUS_PENDING
-        )
-        # Boost is applied if ``node`` is an ancestor of ``proposer_boost_node``
-        if is_ancestor(store, proposer_boost_node, node):
-            proposer_score = get_proposer_score(store)
-
-        return attestation_score + proposer_score
-    else:
+    # [New in Gloas:EIP7732]
+    if is_payload_decision(store, node):
         return Gwei(0)
+
+    state = store.checkpoint_states[store.justified_checkpoint]
+    attestation_score = get_attestation_score(store, node, state)
+    # [Modified in Gloas:EIP7732]
+    if not should_apply_proposer_boost(store):
+        # Return only attestation score if proposer boost should not apply
+        return attestation_score
+
+    # Calculate proposer score if proposer boost should apply
+    proposer_score = Gwei(0)
+    # [Modified in Gloas:EIP7732]
+    proposer_boost_node = ForkChoiceNode(
+        root=store.proposer_boost_root, payload_status=PAYLOAD_STATUS_PENDING
+    )
+    # Boost is applied if ``node`` is an ancestor of ``proposer_boost_node``
+    if is_ancestor(store, proposer_boost_node, node):
+        proposer_score = get_proposer_score(store)
+
+    return attestation_score + proposer_score
 ```
 
 ### Modified `get_node_children`
