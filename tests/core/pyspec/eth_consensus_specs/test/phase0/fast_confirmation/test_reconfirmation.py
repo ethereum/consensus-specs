@@ -168,10 +168,12 @@ def test_reconfirmation_fails_for_block_without_uj_checkpoint_in_chain(spec, sta
     # From fresh epoch
     assert spec.get_block_epoch(store, confirmed_root) + 1 >= fcr.current_epoch()
     # Belongs to canonical chain
-    assert spec.is_ancestor(store, fcr.head(), confirmed_root)
+    assert spec.is_ancestor(store, fcr.head(), spec.get_node_for_root(confirmed_root))
     # Ancestor of the previous_epoch_greatest_unrealized_checkpoint block
     assert spec.is_ancestor(
-        store, confirmed_root, fcr_store.previous_epoch_greatest_unrealized_checkpoint.root
+        store,
+        spec.get_node_for_root(confirmed_root),
+        spec.get_node_for_root(fcr_store.previous_epoch_greatest_unrealized_checkpoint.root),
     )
     # Does not have a previous_epoch_greatest_unrealized_checkpoint in its chain
     assert fcr_store.previous_epoch_greatest_unrealized_checkpoint != spec.get_checkpoint_for_block(

@@ -1,4 +1,5 @@
-from eth_consensus_specs.test.context import always_bls, spec_state_test, with_all_phases
+from eth_consensus_specs.test.context import always_bls, spec_state_test, with_all_phases_from_to
+from eth_consensus_specs.test.helpers.constants import FULU, PHASE0
 from eth_consensus_specs.test.helpers.deposits import (
     build_deposit,
     prepare_state_and_deposit,
@@ -10,7 +11,7 @@ from eth_consensus_specs.test.helpers.forks import is_post_electra
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_new_deposit_under_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
@@ -22,7 +23,7 @@ def test_new_deposit_under_max(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_new_deposit_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
@@ -34,7 +35,7 @@ def test_new_deposit_max(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_new_deposit_over_max(spec, state):
     # fresh deposit = next validator index = validator appended to registry
@@ -46,7 +47,7 @@ def test_new_deposit_over_max(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_new_deposit_eth1_withdrawal_credentials(spec, state):
     # fresh deposit = next validator index = validator appended to registry
@@ -69,7 +70,7 @@ def test_new_deposit_eth1_withdrawal_credentials(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
     # fresh deposit = next validator index = validator appended to registry
@@ -90,7 +91,7 @@ def test_new_deposit_non_versioned_withdrawal_credentials(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 @always_bls
 def test_correct_sig_but_forked_state(spec, state):
@@ -102,7 +103,7 @@ def test_correct_sig_but_forked_state(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 @always_bls
 def test_incorrect_sig_new_deposit(spec, state):
@@ -113,7 +114,7 @@ def test_incorrect_sig_new_deposit(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index, effective=False)
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_top_up__max_effective_balance(spec, state):
     validator_index = 0
@@ -130,7 +131,7 @@ def test_top_up__max_effective_balance(spec, state):
         assert state.validators[validator_index].effective_balance == spec.MAX_EFFECTIVE_BALANCE
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_top_up__less_effective_balance(spec, state):
     validator_index = 0
@@ -150,7 +151,7 @@ def test_top_up__less_effective_balance(spec, state):
         assert state.validators[validator_index].effective_balance == initial_effective_balance
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_top_up__zero_balance(spec, state):
     validator_index = 0
@@ -170,7 +171,7 @@ def test_top_up__zero_balance(spec, state):
         assert state.validators[validator_index].effective_balance == initial_effective_balance
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 @always_bls
 def test_incorrect_sig_top_up(spec, state):
@@ -182,7 +183,7 @@ def test_incorrect_sig_top_up(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_incorrect_withdrawal_credentials_top_up(spec, state):
     validator_index = 0
@@ -196,7 +197,7 @@ def test_incorrect_withdrawal_credentials_top_up(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_invalid_wrong_deposit_for_deposit_count(spec, state):
     deposit_data_leaves = [spec.DepositData() for _ in range(len(state.validators))]
@@ -237,7 +238,7 @@ def test_invalid_wrong_deposit_for_deposit_count(spec, state):
     yield from run_deposit_processing(spec, state, deposit_2, index_2, valid=False)
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_invalid_bad_merkle_proof(spec, state):
     validator_index = len(state.validators)
@@ -252,7 +253,7 @@ def test_invalid_bad_merkle_proof(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index, valid=False)
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_key_validate_invalid_subgroup(spec, state):
     validator_index = len(state.validators)
@@ -268,7 +269,7 @@ def test_key_validate_invalid_subgroup(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 def test_key_validate_invalid_decompression(spec, state):
     validator_index = len(state.validators)
@@ -286,7 +287,7 @@ def test_key_validate_invalid_decompression(spec, state):
     yield from run_deposit_processing(spec, state, deposit, validator_index)
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, FULU)
 @spec_state_test
 @always_bls
 def test_ineffective_deposit_with_bad_fork_version(spec, state):
