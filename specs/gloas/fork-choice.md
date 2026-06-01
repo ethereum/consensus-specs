@@ -27,7 +27,7 @@
   - [Modified `is_ancestor`](#modified-is_ancestor)
   - [Modified `get_checkpoint_block`](#modified-get_checkpoint_block)
   - [Modified `get_supported_node`](#modified-get_supported_node)
-  - [New `is_payload_decision`](#new-is_payload_decision)
+  - [New `is_previous_slot_payload_decision`](#new-is_previous_slot_payload_decision)
   - [New `should_build_on_full`](#new-should_build_on_full)
   - [New `should_extend_payload`](#new-should_extend_payload)
   - [New `get_payload_status_tiebreaker`](#new-get_payload_status_tiebreaker)
@@ -403,16 +403,16 @@ def get_supported_node(store: Store, message: LatestMessage) -> ForkChoiceNode:
     return ForkChoiceNode(root=message.root, payload_status=payload_status)
 ```
 
-### New `is_payload_decision`
+### New `is_previous_slot_payload_decision`
 
 *Note*: Special case in the Gloas fork choice to decide on the payload from the
 previous slot.
 
 ```python
-def is_payload_decision(store: Store, node: ForkChoiceNode) -> bool:
-    return node.payload_status in [PAYLOAD_STATUS_EMPTY, PAYLOAD_STATUS_FULL] and store.blocks[
-        node.root
-    ].slot + 1 == get_current_slot(store)
+def is_previous_slot_payload_decision(store: Store, node: ForkChoiceNode) -> bool:
+    is_previous_slot = store.blocks[node.root].slot + 1 == get_current_slot(store)
+    is_payload_decision = node.payload_status in [PAYLOAD_STATUS_EMPTY, PAYLOAD_STATUS_FULL]
+    return is_previous_slot and is_payload_decision
 ```
 
 ### New `should_build_on_full`
@@ -458,7 +458,7 @@ def should_extend_payload(store: Store, root: Root) -> bool:
 
 ```python
 def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> uint8:
-    if is_payload_decision(store, node):
+    if is_previous_slot_payload_decision(store, node):
         # To decide on a payload from the previous slot, choose
         # between FULL and EMPTY based on `should_extend_payload`
         if node.payload_status == PAYLOAD_STATUS_EMPTY:
@@ -509,7 +509,7 @@ def should_apply_proposer_boost(store: Store) -> bool:
 ```python
 def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
     # [New in Gloas:EIP7732]
-    if is_payload_decision(store, node):
+    if is_previous_slot_payload_decision(store, node):
         return Gwei(0)
 
     state = store.checkpoint_states[store.justified_checkpoint]
