@@ -12,7 +12,7 @@ from eth_consensus_specs.test.helpers.block import (
 )
 from eth_consensus_specs.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth_consensus_specs.test.helpers.deposits import build_deposit, deposit_from_context
-from eth_consensus_specs.test.helpers.forks import is_post_electra
+from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_fulu
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth_consensus_specs.test.helpers.state import (
@@ -130,7 +130,7 @@ def get_random_attestations(spec, state, rng):
 
 
 def get_random_deposits(spec, state, rng, num_deposits=None):
-    if not num_deposits:
+    if num_deposits is None:
         num_deposits = rng.randrange(1, spec.MAX_DEPOSITS)
 
     if num_deposits == 0:
@@ -273,8 +273,12 @@ def run_test_full_random_operations(spec, state, rng=None):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
     state.slot += spec.config.SHARD_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
 
+    num_deposits = None
+    if is_post_fulu(spec):
+        num_deposits = 0
+
     # prepare state for deposits before building block
-    deposits = prepare_state_and_get_random_deposits(spec, state, rng)
+    deposits = prepare_state_and_get_random_deposits(spec, state, rng, num_deposits=num_deposits)
     block = build_random_block_from_state_for_next_slot(spec, state, rng, deposits=deposits)
 
     yield "pre", state

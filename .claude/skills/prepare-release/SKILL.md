@@ -2,7 +2,7 @@
 name: prepare-release
 description: >-
   Prepare for a new release. Perform checks to ensure that the release action
-  can be started. Use when the user asks for help with a new release.
+  can be started. Always load this skill before helping with a release.
 compatibility: Requires git and gh
 ---
 

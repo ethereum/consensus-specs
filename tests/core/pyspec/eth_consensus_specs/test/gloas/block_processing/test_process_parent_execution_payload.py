@@ -44,6 +44,22 @@ def _commit_parent_requests(spec, state, requests, value=None, builder_index=Non
         )
 
 
+def _commit_full_parent_with_payment(spec, state, value, builder_index, fee_recipient):
+    """
+    Commit a FULL parent with a builder payment at slot ``SLOTS_PER_EPOCH - 1``.
+    Clear its availability bit.
+    """
+    state.latest_execution_payload_bid.slot = spec.Slot(spec.SLOTS_PER_EPOCH - 1)
+    state.latest_execution_payload_bid.fee_recipient = fee_recipient
+    _commit_parent_requests(
+        spec, state, spec.ExecutionRequests(), value=value, builder_index=builder_index
+    )
+
+    parent_bid = state.latest_execution_payload_bid.copy()
+    state.execution_payload_availability[parent_bid.slot % spec.SLOTS_PER_HISTORICAL_ROOT] = 0b0
+    return parent_bid
+
+
 def run_parent_execution_payload_processing(spec, state, block, valid=True):
     """
     Run ``process_parent_execution_payload`` against a prepared pre-state.
@@ -364,6 +380,85 @@ def test_process_parent_execution_payload__builder_deposit_after_pending_validat
     assert second.pubkey == deposit_request_2.pubkey
     assert second.withdrawal_credentials == deposit_request_2.withdrawal_credentials
     assert second.amount == deposit_request_2.amount
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_parent_execution_payload__settle_previous_epoch(spec, state):
+    """
+    Test ``apply_parent_execution_payload`` settles the previous epoch payment
+    slot when the parent's slot falls in the previous epoch.
+    """
+    builder_index = 0
+    value = spec.Gwei(50_000_000)
+    fee_recipient = spec.ExecutionAddress(b"\xab" * 20)
+    parent_bid = _commit_full_parent_with_payment(spec, state, value, builder_index, fee_recipient)
+    previous_epoch_idx = parent_bid.slot % spec.SLOTS_PER_EPOCH
+
+    # Process one epoch
+    spec.process_slots(state, spec.SLOTS_PER_EPOCH)
+
+    assert spec.compute_epoch_at_slot(parent_bid.slot) == spec.get_previous_epoch(state)
+    assert state.builder_pending_payments[previous_epoch_idx].withdrawal.amount == value
+
+    block = build_empty_block_for_next_slot(spec, state)
+    spec.process_slots(state, block.slot)
+    pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
+
+    yield from run_parent_execution_payload_processing(spec, state, block)
+
+    assert len(state.builder_pending_withdrawals) == pre_pending_withdrawals_len + 1
+    withdrawal = state.builder_pending_withdrawals[pre_pending_withdrawals_len]
+    assert withdrawal.amount == value
+    assert withdrawal.builder_index == builder_index
+    assert withdrawal.fee_recipient == fee_recipient
+
+    # Previous epoch slot cleared and availability bit flipped
+    assert state.builder_pending_payments[previous_epoch_idx] == spec.BuilderPendingPayment()
+    assert (
+        state.execution_payload_availability[parent_bid.slot % spec.SLOTS_PER_HISTORICAL_ROOT]
+        == 0b1
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_parent_execution_payload__older_than_previous_epoch(spec, state):
+    """
+    Test ``apply_parent_execution_payload`` appends the withdrawal directly when
+    the parent's slot is older than the previous epoch.
+    """
+    builder_index = 0
+    value = spec.Gwei(50_000_000)
+    fee_recipient = spec.ExecutionAddress(b"\xab" * 20)
+    parent_bid = _commit_full_parent_with_payment(spec, state, value, builder_index, fee_recipient)
+    previous_epoch_idx = parent_bid.slot % spec.SLOTS_PER_EPOCH
+
+    # Cross two epoch boundaries to evict payments
+    spec.process_slots(state, 2 * spec.SLOTS_PER_EPOCH)
+    block = build_empty_block_for_next_slot(spec, state)
+    spec.process_slots(state, block.slot)
+
+    # Assert payment was evicted from the previous epoch
+    assert spec.compute_epoch_at_slot(parent_bid.slot) < spec.get_previous_epoch(state)
+    assert state.builder_pending_payments[previous_epoch_idx] == spec.BuilderPendingPayment()
+
+    pre_pending_withdrawals_len = len(state.builder_pending_withdrawals)
+    pre_payments = state.builder_pending_payments.copy()
+
+    yield from run_parent_execution_payload_processing(spec, state, block)
+
+    # Check we have a pending withdrawal
+    assert len(state.builder_pending_withdrawals) == pre_pending_withdrawals_len + 1
+    withdrawal = state.builder_pending_withdrawals[pre_pending_withdrawals_len]
+    assert withdrawal.amount == value
+    assert withdrawal.builder_index == builder_index
+    assert withdrawal.fee_recipient == fee_recipient
+
+    # Assert no payment slot is modified
+    assert all(
+        post == pre for post, pre in zip(state.builder_pending_payments, pre_payments, strict=True)
+    )
 
 
 @with_gloas_and_later
