@@ -166,7 +166,7 @@ def is_inclusion_list_bits_inclusive(
     return all(
         inclusion_bit or not local_inclusion_bit
         for inclusion_bit, local_inclusion_bit in zip(
-            inclusion_list_bits, local_inclusion_list_bits
+            inclusion_list_bits, local_inclusion_list_bits, strict=True
         )
     )
 ```

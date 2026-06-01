@@ -2,14 +2,14 @@ import asyncio
 from collections import Counter, OrderedDict
 from collections.abc import Collection, Iterable
 from itertools import product
-from os import path
+from pathlib import Path
 
 from minizinc import Instance, Model, Solver, Status
 from ruamel.yaml import YAML
 from toolz.dicttoolz import merge
 
-base_dir = path.dirname(__file__)
-model_dir = path.join(base_dir, "model")
+base_dir = Path(__file__).parent
+model_dir = base_dir / "model"
 
 
 def to_hashable(obj):
@@ -37,13 +37,13 @@ def check_uniqueness(solutions: Collection[dict]):
             if count >= 1:
                 print(f"{count} solutions: {sol}")
 
-        assert False
+        raise AssertionError
 
 
 def solve_sm_links(
     anchor_epoch: int, number_of_epochs: int, number_of_links: int, number_of_solutions: int
 ):
-    sm_links = Model(path.join(model_dir, "SM_links.mzn"))
+    sm_links = Model(str(model_dir / "SM_links.mzn"))
     solver = Solver.lookup("gecode")
     instance = Instance(solver, sm_links)
     instance["AE"] = anchor_epoch  # anchor epoch
@@ -54,7 +54,9 @@ def solve_sm_links(
     solutions = instance.solve(all_solutions=True)
 
     for i in range(len(solutions)):
-        yield {"sm_links": list(zip(solutions[i, "sources"], solutions[i, "targets"]))}
+        yield {
+            "sm_links": list(zip(solutions[i, "sources"], solutions[i, "targets"], strict=False))
+        }
 
 
 def generate_sm_links(params):
@@ -68,7 +70,7 @@ def generate_sm_links(params):
 def solve_block_tree(
     number_of_blocks: int, max_children: int, number_of_solutions: int
 ) -> Iterable[dict]:
-    model = Model(path.join(model_dir, "Block_tree.mzn"))
+    model = Model(str(model_dir / "Block_tree.mzn"))
     solver = Solver.lookup("gecode")
     instance = Instance(solver, model)
     instance["NB"] = number_of_blocks
@@ -97,7 +99,7 @@ def solve_block_cover(
     block_is_leaf: bool,
     number_of_solutions: int,
 ):
-    block_cover3 = Model(path.join(model_dir, "Block_cover.mzn"))
+    block_cover3 = Model(str(model_dir / "Block_cover.mzn"))
     solver = Solver.lookup("gecode")
     instance = Instance(solver, block_cover3)
     instance["AE"] = anchor_epoch
@@ -323,12 +325,12 @@ if __name__ == "__main__":
 
     for model_name, parameters in gen_params.items():
         print(f"processing {model_name}")
-        out_path = path.join(base_dir, parameters["out_path"])
+        out_path = base_dir / parameters["out_path"]
         models = parameters["models"]
         solutions = []
         for params in parameters["params"]:
             model_solutions = []
-            for model, mod_params in zip(models, params):
+            for model, mod_params in zip(models, params, strict=False):
                 print(f"  model: {model}")
                 print(f"  parameters: {mod_params}")
                 if isinstance(mod_params, list):
@@ -343,10 +345,10 @@ if __name__ == "__main__":
                     else:
                         print("todo", model, mod_params)
                 else:
-                    assert False
+                    raise AssertionError
             results = [merge(*sol) for sol in product(*model_solutions)]
             solutions.extend(results)
 
         check_uniqueness(solutions)
-        with open(out_path, "w") as f:
+        with out_path.open("w") as f:
             yaml.dump(solutions, f)

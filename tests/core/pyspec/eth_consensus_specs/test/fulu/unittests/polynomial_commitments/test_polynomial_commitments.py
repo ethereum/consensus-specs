@@ -164,8 +164,8 @@ def test_verify_cell_kzg_proof_batch(spec):
     # the cells of interest
     commitment_indices = [0, 0, 1, 2, 1]
     cell_indices = [0, 4, 0, 1, 2]
-    cells = [all_cells[i][j] for (i, j) in zip(commitment_indices, cell_indices)]
-    proofs = [all_proofs[i][j] for (i, j) in zip(commitment_indices, cell_indices)]
+    cells = [all_cells[i][j] for (i, j) in zip(commitment_indices, cell_indices, strict=False)]
+    proofs = [all_proofs[i][j] for (i, j) in zip(commitment_indices, cell_indices, strict=False)]
     commitments = [all_commitments[i] for i in commitment_indices]
 
     # do the check
@@ -215,8 +215,8 @@ def test_verify_cell_kzg_proof_batch_invalid(spec):
     # the cells of interest
     commitment_indices = [0, 0, 1, 2, 1]
     cell_indices = [0, 4, 0, 1, 2]
-    cells = [all_cells[i][j] for (i, j) in zip(commitment_indices, cell_indices)]
-    proofs = [all_proofs[i][j] for (i, j) in zip(commitment_indices, cell_indices)]
+    cells = [all_cells[i][j] for (i, j) in zip(commitment_indices, cell_indices, strict=False)]
+    proofs = [all_proofs[i][j] for (i, j) in zip(commitment_indices, cell_indices, strict=False)]
     commitments = [all_commitments[i] for i in commitment_indices]
 
     # let's change one of the cells. Then it should not verify
@@ -254,7 +254,7 @@ def test_recover_cells_and_kzg_proofs(spec):
     recovered_data = [x for xs in recovered_cells for x in xs]
 
     # Check that the original data match the non-extended portion of the recovered data
-    blob_byte_array = [b for b in blob]
+    blob_byte_array = list(blob)
     assert blob_byte_array == recovered_data[: len(recovered_data) // 2]
 
     # Check that the recovered cells/proofs match the original cells/proofs

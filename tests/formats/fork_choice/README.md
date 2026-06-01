@@ -237,7 +237,8 @@ client implementation. The fields include:
 ```yaml
 head: {
     slot: int,
-    root: string,             -- Encoded 32-byte value from get_head(store)
+    root: string,             -- Encoded 32-byte value from get_head(store).root
+    payload_status: int,      -- Gloas and later, the head's payload_status
 }
 time: int                     -- store.time
 genesis_time: int             -- store.genesis_time
@@ -261,7 +262,6 @@ Additionally, these fields if `get_proposer_head` is implemented:
 
 ```yaml
 get_proposer_head: string             -- Encoded 32-byte value from get_proposer_head(store)
-head_payload_status: int              -- The payload_status field from the ForkChoiceNode returned by get_head(store)
 payload_timeliness_vote: {            -- [New in Gloas]
     block_root: string,               -- Encoded 32-byte beacon block root
     votes: [bool | null, ...]         -- Votes ordered by PTC positions. Length is `PTC_SIZE`.

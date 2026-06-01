@@ -11,15 +11,13 @@ from eth_consensus_specs.test.helpers.attestations import (
     next_slots_with_attestations,
     state_transition_with_full_block,
 )
+from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.forks import is_post_fulu, is_post_gloas
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
 def check_head_against_root(spec, store, root):
-    head = spec.get_head(store)
-    if is_post_gloas(spec):
-        assert head.root == root
-    else:
-        assert head == root
+    assert spec.get_head(store).root == root
 
 
 class BlobData(NamedTuple):
@@ -92,7 +90,7 @@ def with_blob_data_fulu(spec, blob_data: BlobData, func):
     def retrieve_column_sidecars(_):
         assert blob_data.sidecars is not None, "blob_data.sidecars must be provided"
         if len(blob_data.sidecars) == 0:
-            assert False, "Simulation: not all required columns have been sampled"
+            raise AssertionError("Simulation: not all required columns have been sampled")
         return blob_data.sidecars
 
     retrieve_column_sidecars_backup = spec.retrieve_column_sidecars
@@ -123,7 +121,7 @@ def with_blob_data_gloas(spec, blob_data: BlobData, func):
     def retrieve_column_sidecars_and_kzg_commitments(_):
         assert blob_data.sidecars is not None, "blob_data.sidecars must be provided"
         if len(blob_data.sidecars) == 0:
-            assert False, "Simulation: not all required columns have been sampled"
+            raise AssertionError("Simulation: not all required columns have been sampled")
         assert blob_data.kzg_commitments is not None, (
             "blob_data.kzg_commitments must be provided for Gloas"
         )
@@ -150,6 +148,15 @@ def with_blob_data_gloas(spec, blob_data: BlobData, func):
             retrieve_column_sidecars_and_kzg_commitments_backup
         )
     assert is_called.value
+
+
+def get_fork_choice_node(spec, root, payload_status=None):
+    if is_post_gloas(spec):
+        if payload_status is None:
+            payload_status = spec.PAYLOAD_STATUS_PENDING
+        return spec.ForkChoiceNode(root=root, payload_status=payload_status)
+    else:
+        return spec.ForkChoiceNode(root=root)
 
 
 def get_anchor_root(spec, state):
@@ -381,11 +388,11 @@ def add_block(
                 run_on_block(spec, store, signed_block, valid=True)
             except (AssertionError, BlockNotFoundException) as e:
                 if isinstance(e, BlockNotFoundException) and not block_not_found:
-                    assert False
+                    raise AssertionError from e
                 _append_step(valid=False)
                 return
             else:
-                assert False
+                raise AssertionError
     else:
         run_on_block(spec, store, signed_block, valid=True)
         _append_step()
@@ -528,24 +535,17 @@ def add_payload_vote_checks(store, block_root, test_steps):
     )
 
 
-def _get_head_root(spec, store):
+def get_formatted_head_output(spec, store):
     head = spec.get_head(store)
-    if is_post_gloas(spec):
-        head_root = head.root
-    else:
-        head_root = head
-    return head_root
-
-
-def get_formatted_head_output(spec, store, head_root=None):
-    if head_root is None:
-        head_root = _get_head_root(spec, store)
-
-    slot = store.blocks[head_root].slot
-    return {
-        "slot": int(slot),
-        "root": encode_hex(head_root),
+    formatted_head = {
+        "slot": int(store.blocks[head.root].slot),
+        "root": encode_hex(head.root),
     }
+
+    if is_post_gloas(spec):
+        formatted_head["payload_status"] = int(head.payload_status)
+
+    return formatted_head
 
 
 def output_head_check(spec, store, test_steps):
@@ -558,13 +558,10 @@ def output_head_check(spec, store, test_steps):
     )
 
 
-def get_basic_store_checks(spec, store, head_root=None):
-    if head_root is None:
-        head_root = _get_head_root(spec, store)
-
+def get_basic_store_checks(spec, store):
     return {
         "time": int(store.time),
-        "head": get_formatted_head_output(spec, store, head_root),
+        "head": get_formatted_head_output(spec, store),
         "justified_checkpoint": {
             "epoch": int(store.justified_checkpoint.epoch),
             "root": encode_hex(store.justified_checkpoint.root),
@@ -577,56 +574,39 @@ def get_basic_store_checks(spec, store, head_root=None):
     }
 
 
+def get_weighed_node_checks(spec, store, node):
+    if is_post_gloas(spec):
+        return {
+            "root": encode_hex(node.root),
+            "weight": int(spec.get_weight(store, node)),
+            "payload_status": int(node.payload_status),
+        }
+    else:
+        return {
+            "root": encode_hex(node.root),
+            "weight": int(spec.get_weight(store, node)),
+        }
+
+
 def get_viable_for_head_checks(spec, store):
     filtered_blocks = spec.get_filtered_block_tree(store)
+    root_node = get_fork_choice_node(spec, store.justified_checkpoint.root)
+    pending_nodes = [root_node]
+    leaves_viable_for_head = []
 
-    if is_post_gloas(spec):
-        root_node = spec.ForkChoiceNode(
-            root=store.justified_checkpoint.root,
-            payload_status=spec.PAYLOAD_STATUS_PENDING,
-        )
-        pending_nodes = [root_node]
-        leaves_viable_for_head = []
+    while len(pending_nodes) > 0:
+        node = pending_nodes.pop()
+        children = spec.get_node_children(store, filtered_blocks, node)
+        if len(children) == 0:
+            leaves_viable_for_head.append(node)
+        else:
+            pending_nodes.extend(children)
 
-        while len(pending_nodes) > 0:
-            node = pending_nodes.pop()
-            children = spec.get_node_children(store, filtered_blocks, node)
-            if len(children) == 0:
-                leaves_viable_for_head.append(node)
-            else:
-                pending_nodes.extend(children)
-
-        return [
-            {
-                "root": encode_hex(node.root),
-                "payload_status": int(node.payload_status),
-                "weight": int(spec.get_weight(store, node)),
-            }
-            for node in leaves_viable_for_head
-        ]
-
-    filtered_block_roots = filtered_blocks.keys()
-    leaves_viable_for_head = [
-        root
-        for root in filtered_block_roots
-        if not any(c for c in filtered_block_roots if store.blocks[c].parent_root == root)
-    ]
-    return [
-        {
-            "root": encode_hex(viable_for_head_root),
-            "weight": int(spec.get_weight(store, viable_for_head_root)),
-        }
-        for viable_for_head_root in leaves_viable_for_head
-    ]
+    return [get_weighed_node_checks(spec, store, node) for node in leaves_viable_for_head]
 
 
 def output_store_checks(spec, store, test_steps, with_viable_for_head_weights=False):
-    if is_post_gloas(spec):
-        head = spec.get_head(store)
-        checks = get_basic_store_checks(spec, store, head.root)
-        checks["head_payload_status"] = int(head.payload_status)
-    else:
-        checks = get_basic_store_checks(spec, store)
+    checks = get_basic_store_checks(spec, store)
 
     if with_viable_for_head_weights:
         checks["viable_for_head_roots_and_weights"] = get_viable_for_head_checks(spec, store)
@@ -710,3 +690,55 @@ def get_pow_block_file_name(pow_block):
 def add_pow_block(spec, store, pow_block, test_steps):
     yield get_pow_block_file_name(pow_block), pow_block
     test_steps.append({"pow_block": get_pow_block_file_name(pow_block)})
+
+
+def is_ancestor(spec, store, root_or_node, maybe_ancestor_root_or_node) -> bool:
+    if hasattr(root_or_node, "root"):
+        node = root_or_node
+    else:
+        node = get_fork_choice_node(spec, root_or_node)
+
+    if hasattr(maybe_ancestor_root_or_node, "root"):
+        maybe_ancestor = maybe_ancestor_root_or_node
+    else:
+        maybe_ancestor = get_fork_choice_node(spec, maybe_ancestor_root_or_node)
+
+    return spec.is_ancestor(store, node, maybe_ancestor)
+
+
+def tick_store_to_slot(spec, store, slot, test_steps):
+    """
+    Tick the store forward to the start of ``slot``.
+    """
+    slot_time = store.genesis_time + slot * spec.config.SLOT_DURATION_MS // 1000
+    if store.time < slot_time:
+        on_tick_and_append_step(spec, store, slot_time, test_steps)
+
+
+def add_signed_empty_block(spec, store, state, test_steps):
+    """
+    Build, sign, and submit an empty block at ``state.slot + 1``.
+    """
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    yield from tick_and_add_block(spec, store, signed_block, test_steps)
+
+    root = signed_block.message.hash_tree_root()
+    return root, store.block_states[root], signed_block
+
+
+def setup_one_block_store(spec, state):
+    """
+    Bootstrap a fork choice store with the genesis anchor plus an empty block at slot 1.
+    """
+    test_steps = []
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+
+    tick_store_to_slot(spec, store, state.slot, test_steps)
+    block_root, block_state, signed_block = yield from add_signed_empty_block(
+        spec, store, state, test_steps
+    )
+    return store, block_root, block_state, signed_block, test_steps

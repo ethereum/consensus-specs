@@ -343,6 +343,8 @@ The following validations MUST pass before forwarding the
   gossip or non-gossip sources) (a client MAY queue attestation for processing
   once the block is retrieved. Note a client might want to request payload
   after).
+- _[IGNORE]_ The block referenced by `data.beacon_block_root` is at slot
+  `data.slot`, i.e. the block has `block.slot == data.slot`.
 - _[REJECT]_ The message's block `data.beacon_block_root` passes validation.
 - _[REJECT]_ The message's validator index is within the payload committee in
   `get_ptc(state, data.slot)`. The `state` is the head state corresponding to
@@ -385,6 +387,9 @@ where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
   payload.
 - _[IGNORE]_ `bid.parent_block_root` is the hash tree root of a known beacon
   block in fork choice.
+- _[REJECT]_ The bid is for a higher slot than its parent block -- i.e. validate
+  that `bid.slot` is greater than the slot of the block with root
+  `bid.parent_block_root`.
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
 

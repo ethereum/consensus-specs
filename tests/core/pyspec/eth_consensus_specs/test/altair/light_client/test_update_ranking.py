@@ -44,24 +44,38 @@ def test_update_ranking(spec, state):
     next_slots(
         spec, state, spec.compute_start_slot_at_epoch(spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD - 3) - 1
     )
-    sig_finalized_block = state_transition_with_full_block(spec, state, True, True)
-    _, _, state = next_slots_with_attestations(spec, state, spec.SLOTS_PER_EPOCH - 1, True, True)
-    att_finalized_block = state_transition_with_full_block(spec, state, True, True)
-    _, _, state = next_slots_with_attestations(
-        spec, state, 2 * spec.SLOTS_PER_EPOCH - 2, True, True
+    sig_finalized_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
     )
-    sig_attested_block = state_transition_with_full_block(spec, state, True, True)
+    _, _, state = next_slots_with_attestations(
+        spec, state, spec.SLOTS_PER_EPOCH - 1, fill_cur_epoch=True, fill_prev_epoch=True
+    )
+    att_finalized_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
+    _, _, state = next_slots_with_attestations(
+        spec, state, 2 * spec.SLOTS_PER_EPOCH - 2, fill_cur_epoch=True, fill_prev_epoch=True
+    )
+    sig_attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     sig_attested_state = state.copy()
-    att_attested_block = state_transition_with_full_block(spec, state, True, True)
+    att_attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     att_attested_state = state.copy()
     fin_finalized_block = att_attested_block
     _, _, state = next_slots_with_attestations(
-        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, True, True
+        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, fill_cur_epoch=True, fill_prev_epoch=True
     )
-    fin_attested_block = state_transition_with_full_block(spec, state, True, True)
+    fin_attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     fin_attested_state = state.copy()
     lat_finalized_block = fin_finalized_block
-    lat_attested_block = state_transition_with_full_block(spec, state, True, True)
+    lat_attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     lat_attested_state = state.copy()
     sig = (sig_attested_state, sig_attested_block, sig_finalized_block)
     att = (att_attested_state, att_attested_block, att_finalized_block)

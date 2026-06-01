@@ -1,3 +1,4 @@
+import contextlib
 import random
 from dataclasses import dataclass, field
 
@@ -112,7 +113,7 @@ def choose_payload_attestation_vote_count(spec, ptc, rnd: random.Random):
         candidates = [count for count in (threshold, threshold + 1) if 0 <= count <= max_voters]
         return rnd.choice(candidates)
 
-    candidates = [count for count in range(threshold + 1, max_voters + 1)]
+    candidates = list(range(threshold + 1, max_voters + 1))
     if candidates:
         return rnd.choice(candidates)
 
@@ -232,7 +233,7 @@ def get_dependent_root(spec, state, slot):
     if epoch <= spec.MIN_SEED_LOOKAHEAD:
         dependent_slot = spec.GENESIS_SLOT
     else:
-        dependent_slot = spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD)
+        dependent_slot = spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD) - 1
 
     if dependent_slot > spec.GENESIS_SLOT:
         return spec.get_block_root_at_slot(state, dependent_slot)
@@ -259,8 +260,8 @@ def produce_block(
     spec,
     state,
     attestations,
-    attester_slashings=[],
-    payload_attestation_messages=[],
+    attester_slashings=None,
+    payload_attestation_messages=None,
     custom_att_filter_fn=None,
 ):
     """
@@ -268,6 +269,11 @@ def produce_block(
     Accepts PayloadAttestationMessage objects and aggregates them into PayloadAttestation for on-chain inclusion.
     :return: Signed block, the post block state, and operations not included into the block.
     """
+
+    if payload_attestation_messages is None:
+        payload_attestation_messages = []
+    if attester_slashings is None:
+        attester_slashings = []
 
     # Create a block with attestations
     block = build_empty_block(spec, state)
@@ -329,7 +335,7 @@ def produce_block(
             s for s in attester_slashings if s not in attester_slashings_in_block
         ]
         if is_post_gloas(spec):
-            included_pa_indices = set(m.validator_index for m in eligible_pa_messages)
+            included_pa_indices = {m.validator_index for m in eligible_pa_messages}
             not_included_pa_messages = [
                 m
                 for m in payload_attestation_messages
@@ -457,7 +463,7 @@ def advance_state_to_anchor_epoch(spec, state, anchor_epoch, debug) -> ([], Bran
     signed_blocks = []
 
     genesis_tip = BranchTip(
-        state.copy(), [], [*range(0, len(state.validators))], state.current_justified_checkpoint
+        state.copy(), [], [*range(len(state.validators))], state.current_justified_checkpoint
     )
 
     # Advance the state to the anchor_epoch
@@ -532,7 +538,7 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
         elif event_kind == "payload_attestation":
             return data.data.slot
         else:
-            assert False
+            raise AssertionError
 
     messages = (
         [("attestation", m.payload, m.valid) for m in test_data.atts]
@@ -591,19 +597,15 @@ def _add_block(spec, store, signed_block, test_steps):
     if valid:
         # An on_block step implies receiving block's attestations
         for attestation in signed_block.message.body.attestations:
-            try:
+            # ignore possible faults, if the block is valid
+            with contextlib.suppress(AssertionError):
                 run_on_attestation(spec, store, attestation, is_from_block=True, valid=True)
-            except AssertionError:
-                # ignore possible faults, if the block is valid
-                pass
 
         # An on_block step implies receiving block's attester slashings
         for attester_slashing in signed_block.message.body.attester_slashings:
-            try:
+            # ignore possible faults, if the block is valid
+            with contextlib.suppress(AssertionError):
                 run_on_attester_slashing(spec, store, attester_slashing, valid=True)
-            except AssertionError:
-                # ignore possible faults, if the block is valid
-                pass
 
         if is_post_gloas(spec):
             # An on_block step implies receiving block's payload attestations (post GLOAS)
@@ -678,7 +680,7 @@ def yield_fork_choice_test_events(spec, test_data: FCTestData, test_events: list
                 if valid:
                     assert store.blocks[block_root] == signed_block.message
                 else:
-                    assert block_root not in store.blocks.values()
+                    assert block_root not in store.blocks
             output_store_checks(spec, store, test_steps)
         elif event_kind == "attestation":
             _, attestation, valid = event

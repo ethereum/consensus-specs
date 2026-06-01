@@ -20,7 +20,7 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-def run_deposit_transition_block(spec, state, block, top_up_keys=[], valid=True):
+def run_deposit_transition_block(spec, state, block, top_up_keys=None, valid=True):
     """
     Run ``process_block``, yielding:
       - pre-state ('pre')
@@ -28,6 +28,8 @@ def run_deposit_transition_block(spec, state, block, top_up_keys=[], valid=True)
       - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
+    if top_up_keys is None:
+        top_up_keys = []
     yield "pre", state
 
     pre_pending_deposits_len = len(state.pending_deposits)
@@ -94,7 +96,7 @@ def prepare_state_and_block(
 
     # Prepare deposits
     deposit_data_list = []
-    for index in range(deposit_cnt):
+    for _ in range(deposit_cnt):
         deposit_data = build_deposit_data(
             spec,
             pubkeys[keypair_index],

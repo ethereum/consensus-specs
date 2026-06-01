@@ -12,7 +12,9 @@ from eth_consensus_specs.test.helpers.attestations import (
 @with_gloas_and_later
 @spec_state_test
 def test_execution_block_hash_merkle_proof(spec, state):
-    block = state_transition_with_full_block(spec, state, True, False)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+    )
 
     yield "object", block.message.body
     gindex = spec.EXECUTION_BLOCK_HASH_GINDEX_GLOAS
