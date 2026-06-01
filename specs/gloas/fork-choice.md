@@ -407,13 +407,17 @@ def get_supported_node(store: Store, message: LatestMessage) -> ForkChoiceNode:
 *Note*: `should_build_on_full` is called by the proposer before deciding whether
 to build on top of the empty or full parent pending node. This function is
 similar to `should_extend_payload` but takes into consideration the PTC view on
-data availability.
+data availability. As in `get_payload_status_tiebreaker`, this view is only
+consulted for a head from the previous slot. For a head from an earlier slot,
+the *empty* or *full* node has already been resolved by weight in `get_head`.
 
 ```python
 def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
     assert head.payload_status != PAYLOAD_STATUS_PENDING
     if head.payload_status == PAYLOAD_STATUS_EMPTY:
         return False
+    if store.blocks[head.root].slot + 1 != get_current_slot(store):
+        return True
     return not payload_data_availability(store, head.root, available=False)
 ```
 
