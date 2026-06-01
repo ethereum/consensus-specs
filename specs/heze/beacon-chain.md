@@ -193,7 +193,7 @@ def get_inclusion_list_committee(
     for i in range(committees_per_slot):
         committee = get_beacon_committee(state, slot, CommitteeIndex(i))
         indices.extend(committee)
-    return Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE](
-        [indices[i % len(indices)] for i in range(INCLUSION_LIST_COMMITTEE_SIZE)]
-    )
+    return Vector[ValidatorIndex, INCLUSION_LIST_COMMITTEE_SIZE]([
+        indices[i % len(indices)] for i in range(INCLUSION_LIST_COMMITTEE_SIZE)
+    ])
 ```

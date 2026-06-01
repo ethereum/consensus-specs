@@ -255,7 +255,7 @@ class BeaconState(Container):
 
 ```python
 @dataclass
-class ExpectedWithdrawals(object):
+class ExpectedWithdrawals:
     withdrawals: Sequence[Withdrawal]
     processed_sweep_withdrawals_count: uint64
 ```

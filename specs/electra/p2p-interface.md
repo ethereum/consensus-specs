@@ -51,7 +51,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ```python
 @dataclass
-class Seen(object):
+class Seen:
     proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
     aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
     # [Modified in Electra:EIP7549]
@@ -133,7 +133,7 @@ def validate_beacon_block_gossip(
     state: BeaconState,
     signed_beacon_block: SignedBeaconBlock,
     current_time_ms: uint64,
-    block_payload_statuses: Dict[Root, PayloadValidationStatus] = {},
+    block_payload_statuses: Dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a SignedBeaconBlock for gossip propagation.
@@ -386,8 +386,8 @@ def validate_blob_sidecar_gossip(
     store: Store,
     state: BeaconState,
     blob_sidecar: BlobSidecar,
-    subnet_id: SubnetID,
     current_time_ms: uint64,
+    subnet_id: SubnetID,
 ) -> None:
     """
     Validate a BlobSidecar for gossip propagation on a subnet.
@@ -489,8 +489,8 @@ def validate_beacon_attestation_gossip(
     state: BeaconState,
     # [Modified in Electra:EIP7549]
     attestation: SingleAttestation,
-    subnet_id: uint64,
     current_time_ms: uint64,
+    subnet_id: SubnetID,
 ) -> None:
     """
     Validate a SingleAttestation for gossip propagation on a subnet.

@@ -268,7 +268,7 @@ def get_valid_attestations_at_slot(
     )
     for index in range(committees_per_slot):
 
-        def participants_filter(comm):
+        def participants_filter(comm, index=index):
             if participation_fn is None:
                 return comm
             else:
@@ -468,7 +468,7 @@ def prepare_state_with_attestations(spec, state, participation_fn=None):
                 spec.get_committee_count_per_slot(state, spec.get_current_epoch(state))
             ):
 
-                def temp_participants_filter(comm):
+                def temp_participants_filter(comm, committee_index=committee_index):
                     if participation_fn is None:
                         return comm
                     else:

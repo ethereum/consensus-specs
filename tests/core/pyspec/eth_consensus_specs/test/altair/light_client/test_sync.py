@@ -62,15 +62,21 @@ def test_light_client_sync(spec, state):
     #                                                            period boundary
     # ```
     next_slots(spec, state, spec.SLOTS_PER_EPOCH - 1)
-    finalized_block = state_transition_with_full_block(spec, state, True, True)
+    finalized_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     finalized_state = state.copy()
     _, _, state = next_slots_with_attestations(
-        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, True, True
+        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, fill_cur_epoch=True, fill_prev_epoch=True
     )
-    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block
     )
@@ -92,15 +98,21 @@ def test_light_client_sync(spec, state):
     # ```
     transition_to(spec, state, compute_start_slot_at_next_sync_committee_period(spec, state))
     next_slots(spec, state, spec.SLOTS_PER_EPOCH - 1)
-    finalized_block = state_transition_with_full_block(spec, state, True, True)
+    finalized_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     finalized_state = state.copy()
     _, _, state = next_slots_with_attestations(
-        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, True, True
+        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, fill_cur_epoch=True, fill_prev_epoch=True
     )
-    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block
     )
@@ -121,16 +133,22 @@ def test_light_client_sync(spec, state):
     #                                           period boundary
     # ```
     next_slots(spec, state, spec.SLOTS_PER_EPOCH - 2)
-    finalized_block = state_transition_with_full_block(spec, state, True, True)
+    finalized_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     finalized_state = state.copy()
     _, _, state = next_slots_with_attestations(
-        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, True, True
+        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, fill_cur_epoch=True, fill_prev_epoch=True
     )
-    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     attested_state = state.copy()
     transition_to(spec, state, compute_start_slot_at_next_sync_committee_period(spec, state))
     sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block
     )
@@ -153,7 +171,9 @@ def test_light_client_sync(spec, state):
     attested_block = block.copy()
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     update = yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block=None
     )
@@ -177,7 +197,9 @@ def test_light_client_sync(spec, state):
     attested_state = state.copy()
     store_state = attested_state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     update = yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block
     )
@@ -218,7 +240,9 @@ def test_light_client_sync(spec, state):
     #                   period boundary                  period boundary
     # ```
     sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     update = yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block=None
     )
@@ -241,7 +265,9 @@ def test_light_client_sync(spec, state):
     attested_block = block.copy()
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     update = yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block
     )
@@ -268,15 +294,21 @@ def test_light_client_sync(spec, state):
     # ```
     transition_to(spec, state, compute_start_slot_at_next_sync_committee_period(spec, state))
     next_slots(spec, state, spec.SLOTS_PER_EPOCH - 1)
-    finalized_block = state_transition_with_full_block(spec, state, True, True)
+    finalized_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     finalized_state = state.copy()
     _, _, state = next_slots_with_attestations(
-        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, True, True
+        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, fill_cur_epoch=True, fill_prev_epoch=True
     )
-    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block
     )
@@ -300,15 +332,21 @@ def test_light_client_sync(spec, state):
 def test_supply_sync_committee_from_past_update(spec, state):
     # Advance the chain, so that a `LightClientUpdate` from the past is available
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2 - 1)
-    finalized_block = state_transition_with_full_block(spec, state, True, True)
+    finalized_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     finalized_state = state.copy()
     _, _, state = next_slots_with_attestations(
-        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, True, True
+        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, fill_cur_epoch=True, fill_prev_epoch=True
     )
-    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     past_state = state.copy()
 
     # Start test
@@ -342,15 +380,21 @@ def test_advance_finality_without_sync_committee(spec, state):
 
     # Initial `LightClientUpdate`, populating `store.next_sync_committee`
     next_slots(spec, state, spec.SLOTS_PER_EPOCH - 1)
-    finalized_block = state_transition_with_full_block(spec, state, True, True)
+    finalized_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     finalized_state = state.copy()
     _, _, state = next_slots_with_attestations(
-        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, True, True
+        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, fill_cur_epoch=True, fill_prev_epoch=True
     )
-    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block
     )
@@ -362,16 +406,28 @@ def test_advance_finality_without_sync_committee(spec, state):
     # Advance finality into next sync committee period, but omit `next_sync_committee`
     transition_to(spec, state, compute_start_slot_at_next_sync_committee_period(spec, state))
     next_slots(spec, state, spec.SLOTS_PER_EPOCH - 1)
-    finalized_block = state_transition_with_full_block(spec, state, True, True)
+    finalized_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     finalized_state = state.copy()
-    _, _, state = next_slots_with_attestations(spec, state, spec.SLOTS_PER_EPOCH - 1, True, True)
-    justified_block = state_transition_with_full_block(spec, state, True, True)
+    _, _, state = next_slots_with_attestations(
+        spec, state, spec.SLOTS_PER_EPOCH - 1, fill_cur_epoch=True, fill_prev_epoch=True
+    )
+    justified_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     justified_state = state.copy()
-    _, _, state = next_slots_with_attestations(spec, state, spec.SLOTS_PER_EPOCH - 1, True, True)
-    attested_block = state_transition_with_full_block(spec, state, True, True)
+    _, _, state = next_slots_with_attestations(
+        spec, state, spec.SLOTS_PER_EPOCH - 1, fill_cur_epoch=True, fill_prev_epoch=True
+    )
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block, with_next=False
     )
@@ -384,11 +440,17 @@ def test_advance_finality_without_sync_committee(spec, state):
     past_state = finalized_state
     finalized_block = justified_block
     finalized_state = justified_state
-    _, _, state = next_slots_with_attestations(spec, state, spec.SLOTS_PER_EPOCH - 2, True, True)
-    attested_block = state_transition_with_full_block(spec, state, True, True)
+    _, _, state = next_slots_with_attestations(
+        spec, state, spec.SLOTS_PER_EPOCH - 2, fill_cur_epoch=True, fill_prev_epoch=True
+    )
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
 
     # Apply `LightClientUpdate` without `finalized_header` nor `next_sync_committee`
     update = yield from emit_update(
@@ -464,15 +526,21 @@ def test_light_client_sync_no_force_update(spec, state):
     test = yield from setup_lc_sync_test(spec, state)
 
     next_slots(spec, state, spec.SLOTS_PER_EPOCH - 1)
-    finalized_block = state_transition_with_full_block(spec, state, True, True)
+    finalized_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     finalized_state = state.copy()
     _, _, state = next_slots_with_attestations(
-        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, True, True
+        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, fill_cur_epoch=True, fill_prev_epoch=True
     )
-    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
 
     # Create initial update to set up store state
     yield from emit_update(
@@ -510,10 +578,14 @@ def run_lc_sync_test_upgraded_store_with_legacy_data(spec, phases, state, fork):
     # Initial `LightClientUpdate` (check that the upgraded store can process it)
     finalized_block = create_signed_genesis_block(spec, state)
     finalized_state = state.copy()
-    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
     )

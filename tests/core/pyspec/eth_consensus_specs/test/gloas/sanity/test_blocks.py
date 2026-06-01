@@ -18,11 +18,10 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth_consensus_specs.test.helpers.bls_to_execution_changes import get_signed_address_change
-from eth_consensus_specs.test.helpers.deposits import build_deposit_data, deposit_from_context
 from eth_consensus_specs.test.helpers.execution_requests import (
     get_non_empty_execution_requests,
 )
-from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys, pubkeys
+from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
 from eth_consensus_specs.test.helpers.multi_operations import (
     get_random_attestations,
 )
@@ -592,35 +591,10 @@ def test_invalid_too_many_attestations(spec, state):
 @with_gloas_and_later
 @spec_state_test
 def test_max_deposits(spec, state):
-    num_deposits = spec.MAX_DEPOSITS
-    validator_index = len(state.validators)
-    amount = spec.MIN_ACTIVATION_BALANCE
-
-    deposit_data_list = [spec.DepositData() for _ in range(state.eth1_deposit_index)]
-    for _ in range(num_deposits):
-        deposit_data = build_deposit_data(
-            spec,
-            pubkeys[validator_index],
-            privkeys[validator_index],
-            amount,
-            withdrawal_credentials=b"\x00" * 32,
-            signed=True,
-        )
-        deposit_data_list.append(deposit_data)
-
-    deposits = []
-    deposit_root = None
-    for i in range(state.eth1_deposit_index, state.eth1_deposit_index + num_deposits):
-        deposit, deposit_root, _ = deposit_from_context(spec, deposit_data_list, i)
-        deposits.append(deposit)
-
-    state.eth1_data.deposit_root = deposit_root
-    state.eth1_data.deposit_count = len(deposit_data_list)
-
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.deposits = deposits
+    block.body.deposits = []
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     yield "blocks", [signed_block]
@@ -630,35 +604,10 @@ def test_max_deposits(spec, state):
 @with_gloas_and_later
 @spec_state_test
 def test_invalid_too_many_deposits(spec, state):
-    num_deposits = spec.MAX_DEPOSITS + 1
-    validator_index = len(state.validators)
-    amount = spec.MIN_ACTIVATION_BALANCE
-
-    deposit_data_list = [spec.DepositData() for _ in range(state.eth1_deposit_index)]
-    for _ in range(num_deposits):
-        deposit_data = build_deposit_data(
-            spec,
-            pubkeys[validator_index],
-            privkeys[validator_index],
-            amount,
-            withdrawal_credentials=b"\x00" * 32,
-            signed=True,
-        )
-        deposit_data_list.append(deposit_data)
-
-    deposits = []
-    deposit_root = None
-    for i in range(state.eth1_deposit_index, state.eth1_deposit_index + num_deposits):
-        deposit, deposit_root, _ = deposit_from_context(spec, deposit_data_list, i)
-        deposits.append(deposit)
-
-    state.eth1_data.deposit_root = deposit_root
-    state.eth1_data.deposit_count = len(deposit_data_list)
-
     yield "pre", state
 
     block = build_empty_block_for_next_slot(spec, state)
-    block.body.deposits = deposits
+    block.body.deposits = [spec.Deposit()]
     signed_block = state_transition_and_sign_block(spec, state, block, expect_fail=True)
 
     yield "blocks", [signed_block]

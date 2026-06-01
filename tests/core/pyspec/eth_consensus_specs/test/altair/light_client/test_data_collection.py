@@ -194,7 +194,7 @@ def test_light_client_data_collection(spec, state):
     assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bid_1_5
 
     # Branch A: fill epoch
-    for i in range(1, spec_a.SLOTS_PER_EPOCH):
+    for _i in range(1, spec_a.SLOTS_PER_EPOCH):
         spec_a, state_a, bid_a = yield from add_new_block(test, spec_a, state_a)
         yield from select_new_head(test, spec_a, bid_a)
         assert get_light_client_bootstrap(test, bid_7.root).spec is None
@@ -236,7 +236,7 @@ def test_light_client_data_collection(spec, state):
     assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bid_3_n
 
     # Branch A: fill epoch
-    for i in range(1, spec_a.SLOTS_PER_EPOCH):
+    for _i in range(1, spec_a.SLOTS_PER_EPOCH):
         spec_a, state_a, bid_a = yield from add_new_block(test, spec_a, state_a)
         yield from select_new_head(test, spec_a, bid_a)
         assert get_light_client_bootstrap(test, bid_7.root).spec is None

@@ -87,4 +87,4 @@ def test_effective_balance_increase_changes_lookahead(spec, state):
             # If the randao_setup_epochs is not the right one to make the test pass,
             # then try again in the next iteration
             pass
-    assert False, "The test should have succeeded with one of the iterations."
+    raise AssertionError("The test should have succeeded with one of the iterations.")

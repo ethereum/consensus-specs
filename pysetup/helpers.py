@@ -24,8 +24,7 @@ def collect_prev_forks(fork: str) -> list[str]:
 
 def requires_mypy_type_ignore(value: str) -> bool:
     return (
-        value.startswith("Bitlist")
-        or value.startswith("ByteVector")
+        value.startswith(("Bitlist", "ByteVector"))
         or (value.startswith("List") and not re.match(r"^List\[\w+,\s*\w+\]$", value))
         or (value.startswith("Vector") and any(k in value for k in ["ceillog2", "floorlog2"]))
     )
@@ -64,7 +63,7 @@ def objects_to_spec(
 
     def format_protocol(protocol_name: str, protocol_def: ProtocolDefinition) -> str:
         abstract_functions = ["verify_and_notify_new_payload"]
-        for key in protocol_def.functions.keys():
+        for key in protocol_def.functions:
             if key in abstract_functions:
                 make_function_abstract(protocol_def, key)
 
@@ -103,7 +102,7 @@ def objects_to_spec(
 
     # Access global dict of config vars for runtime configurables
     # Ignore variable between quotes and doubles quotes
-    for name in spec_object.config_vars.keys():
+    for name in spec_object.config_vars:
         functions_spec = re.sub(rf"(?<!['\"])\b{name}\b(?!['\"])", "config." + name, functions_spec)
         ordered_class_objects_spec = re.sub(
             rf"(?<!['\"])\b{name}\b(?!['\"])", "config." + name, ordered_class_objects_spec
@@ -215,19 +214,14 @@ def objects_to_spec(
         format_constant(k, v) for k, v in spec_object.preset_vars.items()
     )
     ssz_dep_constants = "\n".join(
-        map(lambda x: f"{x} = {hardcoded_ssz_dep_constants[x]}", hardcoded_ssz_dep_constants)
+        f"{x} = {hardcoded_ssz_dep_constants[x]}" for x in hardcoded_ssz_dep_constants
     )
     ssz_dep_constants_verification = "\n".join(
-        map(
-            lambda x: f"assert {x} == {spec_object.ssz_dep_constants[x]}",
-            filtered_ssz_dep_constants,
-        )
+        f"assert {x} == {spec_object.ssz_dep_constants[x]}" for x in filtered_ssz_dep_constants
     )
     func_dep_presets_verification = "\n".join(
-        map(
-            lambda x: f"assert {x} == {spec_object.func_dep_presets[x]}  # noqa: E501",
-            filtered_hardcoded_func_dep_presets,
-        )
+        f"assert {x} == {spec_object.func_dep_presets[x]}  # noqa: E501"
+        for x in filtered_hardcoded_func_dep_presets
     )
     spec_strs = [
         imports,
@@ -433,7 +427,7 @@ def parse_config_vars(conf: dict[str, str]) -> dict[str, str | list[dict[str, st
     """
     Parses a dict of basic str/int/list types into a dict for insertion into the spec code.
     """
-    out: dict[str, str | list[dict[str, str]]] = dict()
+    out: dict[str, str | list[dict[str, str]]] = {}
     for k, v in conf.items():
         if isinstance(v, list):
             # A special case for list of records

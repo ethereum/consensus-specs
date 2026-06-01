@@ -1,4 +1,5 @@
 import ast
+import contextlib
 import json
 import re
 import string
@@ -79,7 +80,7 @@ class MarkdownToSpec:
         """
         Parses the markdown file into document elements.
         """
-        with open(file_name) as source_file:
+        with file_name.open() as source_file:
             document = parse_markdown(source_file.read())
             return iter(document.children)
 
@@ -190,7 +191,7 @@ class MarkdownToSpec:
         """
         Processes a table and updates the spec with its data.
         """
-        for row in cast(list[TableRow], table.children):
+        for row in cast("list[TableRow]", table.children):
             if len(row.children) < 2:
                 continue
 
@@ -272,7 +273,7 @@ class MarkdownToSpec:
         """
         Extracts the name, value, and description fields from a table row element.
         """
-        cells = cast(list[TableCell], row.children)
+        cells = cast("list[TableCell]", row.children)
         name_cell = cells[0]
         name = name_cell.children[0].children
 
@@ -357,7 +358,7 @@ class MarkdownToSpec:
         """
 
         # Save the table header, used for field names (skip last item: description)
-        header_row = cast(TableRow, table.children[0])
+        header_row = cast("TableRow", table.children[0])
         list_of_records_spec_header = [
             re.sub(r"\s+", "_", value.children[0].children.upper())
             for value in header_row.children[:-1]
@@ -380,7 +381,7 @@ class MarkdownToSpec:
         for record in records:
             lines.append("    frozendict({")
             for key, value in record.items():
-                lines.append(f'        "{str(key)}": {str(value)},')
+                lines.append(f'        "{key!s}": {value!s},')
             lines.append("    }),")
         lines.append(")")
         return "\n".join(lines)
@@ -509,7 +510,7 @@ def _is_constant_id(name: str) -> bool:
     """
     if name[0] not in string.ascii_uppercase + "_":
         return False
-    return all(map(lambda c: c in string.ascii_uppercase + "_" + string.digits, name[1:]))
+    return all(c in string.ascii_uppercase + "_" + string.digits for c in name[1:])
 
 
 @cache
@@ -521,7 +522,7 @@ def _load_kzg_trusted_setups(preset_name: str) -> tuple[list[str], list[str], li
         + "/trusted_setups/trusted_setup_4096.json"
     )
 
-    with open(trusted_setups_file_path) as f:
+    with Path(trusted_setups_file_path).open() as f:
         json_data = json.load(f)
         trusted_setup_G1_monomial = json_data["g1_monomial"]
         trusted_setup_G1_lagrange = json_data["g1_lagrange"]
@@ -600,13 +601,11 @@ def check_yaml_matches_spec(
 
             else:
                 raise ValueError(f"Variable {var} should be a string in the yaml file.")
-    try:
+    # NameError is okay; anything more serious will surface elsewhere.
+    with contextlib.suppress(NameError):
         assert yaml[var_name] == repr(eval(updated_value)), (
             f"mismatch for {var_name}: {yaml[var_name]} vs {eval(updated_value)}"
         )
-    except NameError:
-        # Okay it's probably something more serious, let's ignore
-        pass
 
 
 def _has_decorator(decorateable: ast.ClassDef | ast.FunctionDef, name: str) -> bool:

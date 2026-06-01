@@ -14,6 +14,7 @@
     - [New `ProposerPreferences`](#new-proposerpreferences)
     - [New `SignedProposerPreferences`](#new-signedproposerpreferences)
   - [Helpers](#helpers)
+    - [Modified `Seen`](#modified-seen)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
     - [Modified `verify_data_column_sidecar_kzg_proofs`](#modified-verify_data_column_sidecar_kzg_proofs)
     - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
@@ -126,6 +127,27 @@ class SignedProposerPreferences(Container):
 ```
 
 ### Helpers
+
+#### Modified `Seen`
+
+```python
+@dataclass
+class Seen:
+    proposer_slots: Set[Tuple[ValidatorIndex, Slot]]
+    aggregator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    aggregate_data_roots: Dict[Tuple[Root, CommitteeIndex], Set[Tuple[boolean, ...]]]
+    voluntary_exit_indices: Set[ValidatorIndex]
+    proposer_slashing_indices: Set[ValidatorIndex]
+    attester_slashing_indices: Set[ValidatorIndex]
+    attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
+    sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, uint64]]
+    sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[boolean, ...]]]
+    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, uint64]]
+    bls_to_execution_change_indices: Set[ValidatorIndex]
+    data_column_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, ColumnIndex]]
+    # [Modified in Gloas:EIP7732]
+    # Removed `partial_data_column_headers`
+```
 
 #### Modified `compute_fork_version`
 
@@ -290,6 +312,15 @@ And instead the following validations are set in place with the alias
   `len(block.body.parent_execution_requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`,
   and
   `len(block.body.parent_execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`.
+- _[REJECT]_ The counts of the block body operations are within their respective
+  limits -- i.e. validate that
+  `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`,
+  `len(block.body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA`,
+  `len(block.body.attestations) <= MAX_ATTESTATIONS_ELECTRA`,
+  `len(block.body.deposits) == 0`,
+  `len(block.body.voluntary_exits) <= MAX_VOLUNTARY_EXITS`,
+  `len(block.body.bls_to_execution_changes) <= MAX_BLS_TO_EXECUTION_CHANGES`,
+  and `len(block.body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS`.
 - _[IGNORE]_ The block's parent execution payload (defined by
   `bid.parent_block_hash`) has been seen (via gossip or non-gossip sources) (a
   client MAY queue blocks for processing once the parent payload is retrieved).
@@ -358,6 +389,8 @@ The following validations MUST pass before forwarding the
   gossip or non-gossip sources) (a client MAY queue attestation for processing
   once the block is retrieved. Note a client might want to request payload
   after).
+- _[IGNORE]_ The block referenced by `data.beacon_block_root` is at slot
+  `data.slot`, i.e. the block has `block.slot == data.slot`.
 - _[REJECT]_ The message's block `data.beacon_block_root` passes validation.
 - _[REJECT]_ The message's validator index is within the payload committee in
   `get_ptc(state, data.slot)`. The `state` is the head state corresponding to
@@ -400,6 +433,9 @@ where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
   payload.
 - _[IGNORE]_ `bid.parent_block_root` is the hash tree root of a known beacon
   block in fork choice.
+- _[REJECT]_ The bid is for a higher slot than its parent block -- i.e. validate
+  that `bid.slot` is greater than the slot of the block with root
+  `bid.parent_block_root`.
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
 

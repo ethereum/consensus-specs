@@ -1,19 +1,21 @@
 from __future__ import annotations
 
+import shutil
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, TYPE_CHECKING, TypedDict
 
 import _pytest
 import pytest
-from pytest import StashKey, TestReport
 
 from eth_consensus_specs.test import context
 from eth_consensus_specs.test.helpers.constants import TESTGEN_FORKS
-from eth_consensus_specs.test.helpers.typing import SpecForkName
 from tests.infra.dumper import Dumper
 from tests.infra.manifest import Manifest
-from tests.infra.yield_generator import MultiPhaseResult
+
+if TYPE_CHECKING:
+    from eth_consensus_specs.test.helpers.typing import SpecForkName
+    from tests.infra.yield_generator import MultiPhaseResult
 
 
 class RunnerConfig(TypedDict, total=False):
@@ -158,8 +160,7 @@ class SpecTestFunction(pytest.Function):
         suite_name = config.get("suite_name", getattr(self.obj, "suite_name", "pyspec_tests"))
 
         case_name = self.originalname or self.name
-        if case_name.startswith("test_"):
-            case_name = case_name[5:]
+        case_name = case_name.removeprefix("test_")
 
         preset = self.callspec.params.get("preset") if hasattr(self, "callspec") else None
 
@@ -186,7 +187,7 @@ class SpecTestFunction(pytest.Function):
 
 
 class YieldGeneratorPlugin:
-    phase_report_key: StashKey[dict[str, TestReport]] = StashKey()
+    phase_report_key: pytest.StashKey[dict[str, pytest.TestReport]] = pytest.StashKey()
 
     def __init__(self, config):
         self.config = config
@@ -350,7 +351,7 @@ class YieldGeneratorPlugin:
 
         output_dir = (
             Path(self.output_dir)
-            / manifest.preset_name  # type: ignore
+            / manifest.preset_name
             / manifest.fork_name
             / manifest.runner_name
             / manifest.handler_name
@@ -369,6 +370,9 @@ class YieldGeneratorPlugin:
                 if method is None:
                     raise ValueError(f"Unknown kind {kind!r}")
                 outputs.append((name, method, data))
+
+        if output_dir.exists():
+            shutil.rmtree(output_dir)
 
         for name, method, data in outputs:
             method(output_dir, name, data)

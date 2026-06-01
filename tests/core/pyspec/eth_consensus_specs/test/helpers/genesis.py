@@ -196,7 +196,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             eth1_block_hash=eth1_block_hash,
         )
 
-    if is_post_electra(spec):
+    if is_post_fulu(spec):
+        state.deposit_requests_start_index = state.eth1_data.deposit_count
+    elif is_post_electra(spec):
         state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
 
     if is_post_electra(spec):

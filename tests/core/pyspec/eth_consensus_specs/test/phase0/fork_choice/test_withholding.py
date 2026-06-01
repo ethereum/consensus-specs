@@ -53,7 +53,7 @@ def test_withholding_attack(spec, state):
     # Fill epoch 1 to 3
     for _ in range(3):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
@@ -61,7 +61,9 @@ def test_withholding_attack(spec, state):
 
     # Create the attack block that includes justifying attestations for epoch 4
     # This block is withheld & revealed only in epoch 5
-    signed_blocks, justifying_slot = find_next_justifying_slot(spec, state, True, False)
+    signed_blocks, justifying_slot = find_next_justifying_slot(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+    )
     assert spec.compute_epoch_at_slot(justifying_slot) == spec.get_current_epoch(state)
     assert len(signed_blocks) > 1
     signed_attack_block = signed_blocks[-1]
@@ -83,7 +85,9 @@ def test_withholding_attack(spec, state):
     # Create two blocks in the honest chain with full attestations, and add to the store
     honest_state = state.copy()
     for _ in range(2):
-        signed_block = state_transition_with_full_block(spec, honest_state, True, False)
+        signed_block = state_transition_with_full_block(
+            spec, honest_state, fill_cur_epoch=True, fill_prev_epoch=False
+        )
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
     # Create final block in the honest chain that includes the justifying attestations from the attack block
     honest_block = build_empty_block_for_next_slot(spec, honest_state)
@@ -148,7 +152,7 @@ def test_withholding_attack_unviable_honest_chain(spec, state):
     # Fill epoch 1 to 3
     for _ in range(3):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
@@ -159,7 +163,9 @@ def test_withholding_attack_unviable_honest_chain(spec, state):
 
     # Create the attack block that includes justifying attestations for epoch 5
     # This block is withheld & revealed only in epoch 6
-    signed_blocks, justifying_slot = find_next_justifying_slot(spec, state, True, False)
+    signed_blocks, justifying_slot = find_next_justifying_slot(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+    )
     assert spec.compute_epoch_at_slot(justifying_slot) == spec.get_current_epoch(state)
     assert len(signed_blocks) > 1
     signed_attack_block = signed_blocks[-1]
@@ -177,7 +183,9 @@ def test_withholding_attack_unviable_honest_chain(spec, state):
     assert state.current_justified_checkpoint.epoch == 3
     # Create two blocks in the honest chain with full attestations, and add to the store
     for _ in range(2):
-        signed_block = state_transition_with_full_block(spec, state, True, False)
+        signed_block = state_transition_with_full_block(
+            spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+        )
         assert state.current_justified_checkpoint.epoch == 3
         yield from tick_and_add_block(spec, store, signed_block, test_steps)
         check_head_against_root(spec, store, signed_block.message.hash_tree_root())

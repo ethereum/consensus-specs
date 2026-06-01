@@ -192,7 +192,7 @@ def get_random_basic_value(rng: Random, typ) -> BasicView:
 
 def get_min_basic_value(typ) -> BasicView:
     if issubclass(typ, boolean):
-        return typ(False)
+        return typ(False)  # noqa: FBT003
     elif issubclass(typ, uint):
         assert typ.type_byte_length() in UINT_BYTE_SIZES
         return typ(0)
@@ -202,7 +202,7 @@ def get_min_basic_value(typ) -> BasicView:
 
 def get_max_basic_value(typ) -> BasicView:
     if issubclass(typ, boolean):
-        return typ(True)
+        return typ(True)  # noqa: FBT003
     elif issubclass(typ, uint):
         assert typ.type_byte_length() in UINT_BYTE_SIZES
         return typ(256 ** typ.type_byte_length() - 1)

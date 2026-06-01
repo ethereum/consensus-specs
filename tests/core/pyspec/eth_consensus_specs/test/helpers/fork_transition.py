@@ -36,6 +36,7 @@ from eth_consensus_specs.test.helpers.forks import (
     get_previous_fork_version,
     is_post_bellatrix,
     is_post_electra,
+    is_post_fulu,
     is_post_gloas,
 )
 from eth_consensus_specs.test.helpers.proposer_slashings import (
@@ -181,15 +182,14 @@ def state_transition_across_slots_with_ignoring_proposers(
 
 
 def get_upgrade_fn(spec, fork):
-    # pylint: disable=unused-argument
     # NOTE: `spec` is used for the `eval` call
     assert fork in POST_FORK_OF.values()
     try:
         # TODO: make all upgrade_to_* function names consistent?
         fn = eval(f"spec.upgrade_to_{fork}")
         return fn
-    except Exception:
-        raise ValueError(f"Unknown fork: {fork}")
+    except Exception as e:
+        raise ValueError(f"Unknown fork: {fork}") from e
 
 
 def do_fork(
@@ -199,6 +199,14 @@ def do_fork(
 
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
     assert spec.get_current_epoch(state) == fork_epoch
+
+    # The Eth1 bridge transition is complete before the Fulu fork. Tests do not
+    # process real deposit requests in pre-fork blocks, so model that completion here.
+    if (
+        is_post_fulu(post_spec)
+        and state.deposit_requests_start_index == spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
+    ):
+        state.deposit_requests_start_index = state.eth1_data.deposit_count
 
     state = get_upgrade_fn(post_spec, post_spec.fork)(state)
 
@@ -228,6 +236,14 @@ def do_fork_generate(
 
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
     assert spec.get_current_epoch(state) == fork_epoch
+
+    # The Eth1 bridge transition is complete before the Fulu fork. Tests do not
+    # process real deposit requests in pre-fork blocks, so model that completion here.
+    if (
+        is_post_fulu(post_spec)
+        and state.deposit_requests_start_index == spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
+    ):
+        state.deposit_requests_start_index = state.eth1_data.deposit_count
 
     yield "pre", state
 
@@ -279,7 +295,11 @@ def transition_across_forks(
             if with_block and (to_slot == state.slot + 1):
                 transition_to(spec, state, to_slot - 1)
                 block = state_transition_with_full_block(
-                    spec, state, True, True, sync_aggregate=sync_aggregate
+                    spec,
+                    state,
+                    fill_cur_epoch=True,
+                    fill_prev_epoch=True,
+                    sync_aggregate=sync_aggregate,
                 )
             else:
                 transition_to(spec, state, to_slot)

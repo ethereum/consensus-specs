@@ -37,7 +37,7 @@ validator" to implement Heze.
 
 ```python
 @dataclass
-class GetInclusionListResponse(object):
+class GetInclusionListResponse:
     inclusion_list_transactions: Sequence[Transaction]
 ```
 
@@ -62,7 +62,6 @@ def get_inclusion_list(self: ExecutionEngine) -> GetInclusionListResponse:
     """
     Return ``GetInclusionListResponse`` object.
     """
-    ...
 ```
 
 ## Beacon chain responsibilities

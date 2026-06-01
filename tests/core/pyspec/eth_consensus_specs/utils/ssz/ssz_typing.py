@@ -34,5 +34,5 @@ from remerkleable.progressive import (
 )
 from remerkleable.union import Union
 
-Bytes20 = ByteVector[20]  # type: ignore
-Bytes31 = ByteVector[31]  # type: ignore
+Bytes20 = ByteVector[20]
+Bytes31 = ByteVector[31]

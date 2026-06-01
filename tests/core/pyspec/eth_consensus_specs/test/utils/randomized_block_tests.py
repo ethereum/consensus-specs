@@ -14,6 +14,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
     build_randomized_execution_payload,
     compute_el_block_hash_for_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_fulu
 from eth_consensus_specs.test.helpers.genesis import build_mock_builder
 from eth_consensus_specs.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
@@ -50,6 +51,9 @@ def _randomize_deposit_state(spec, state, stats):
     This function randomizes the ``state`` in a way that can signal downstream to
     the block constructors how they should (or should not) make some randomized deposits.
     """
+    if is_post_fulu(spec):
+        return {"deposits": []}
+
     rng = Random(999)
     block_count = stats.get("block_count", 0)
     deposits = []
@@ -187,16 +191,16 @@ def _warn_if_empty_operations(block):
     and already inserted into existing blocks in a given scenario.
     """
     if len(block.body.proposer_slashings) == 0:
-        warnings.warn(f"proposer slashings missing in block at slot {block.slot}")
+        warnings.warn(f"proposer slashings missing in block at slot {block.slot}", stacklevel=2)
 
     if len(block.body.attester_slashings) == 0:
-        warnings.warn(f"attester slashings missing in block at slot {block.slot}")
+        warnings.warn(f"attester slashings missing in block at slot {block.slot}", stacklevel=2)
 
     if len(block.body.attestations) == 0:
-        warnings.warn(f"attestations missing in block at slot {block.slot}")
+        warnings.warn(f"attestations missing in block at slot {block.slot}", stacklevel=2)
 
     if len(block.body.voluntary_exits) == 0:
-        warnings.warn(f"voluntary exits missing in block at slot {block.slot}")
+        warnings.warn(f"voluntary exits missing in block at slot {block.slot}", stacklevel=2)
 
 
 def _pull_deposits_from_scenario_state(spec, scenario_state, existing_block_count):
