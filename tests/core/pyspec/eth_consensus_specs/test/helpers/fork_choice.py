@@ -11,7 +11,9 @@ from eth_consensus_specs.test.helpers.attestations import (
     next_slots_with_attestations,
     state_transition_with_full_block,
 )
+from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.forks import is_post_fulu, is_post_gloas
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
 def check_head_against_root(spec, store, root):
@@ -533,32 +535,33 @@ def add_payload_vote_checks(store, block_root, test_steps):
     )
 
 
-def get_formatted_head_output(spec, store, head=None):
-    if head is None:
-        head = spec.get_head(store)
-    slot = store.blocks[head.root].slot
-    return {
-        "slot": int(slot),
+def get_formatted_head_output(spec, store):
+    head = spec.get_head(store)
+    formatted_head = {
+        "slot": int(store.blocks[head.root].slot),
         "root": encode_hex(head.root),
     }
 
+    if is_post_gloas(spec):
+        formatted_head["payload_status"] = int(head.payload_status)
+
+    return formatted_head
+
 
 def output_head_check(spec, store, test_steps):
-    head = spec.get_head(store)
     test_steps.append(
         {
             "checks": {
-                "head": get_formatted_head_output(spec, store, head),
+                "head": get_formatted_head_output(spec, store),
             }
         }
     )
 
 
 def get_basic_store_checks(spec, store):
-    head = spec.get_head(store)
-    checks = {
+    return {
         "time": int(store.time),
-        "head": get_formatted_head_output(spec, store, head),
+        "head": get_formatted_head_output(spec, store),
         "justified_checkpoint": {
             "epoch": int(store.justified_checkpoint.epoch),
             "root": encode_hex(store.justified_checkpoint.root),
@@ -569,11 +572,6 @@ def get_basic_store_checks(spec, store):
         },
         "proposer_boost_root": encode_hex(store.proposer_boost_root),
     }
-
-    if is_post_gloas(spec):
-        checks["head_payload_status"] = int(head.payload_status)
-
-    return checks
 
 
 def get_weighed_node_checks(spec, store, node):
@@ -706,3 +704,41 @@ def is_ancestor(spec, store, root_or_node, maybe_ancestor_root_or_node) -> bool:
         maybe_ancestor = get_fork_choice_node(spec, maybe_ancestor_root_or_node)
 
     return spec.is_ancestor(store, node, maybe_ancestor)
+
+
+def tick_store_to_slot(spec, store, slot, test_steps):
+    """
+    Tick the store forward to the start of ``slot``.
+    """
+    slot_time = store.genesis_time + slot * spec.config.SLOT_DURATION_MS // 1000
+    if store.time < slot_time:
+        on_tick_and_append_step(spec, store, slot_time, test_steps)
+
+
+def add_signed_empty_block(spec, store, state, test_steps):
+    """
+    Build, sign, and submit an empty block at ``state.slot + 1``.
+    """
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    yield from tick_and_add_block(spec, store, signed_block, test_steps)
+
+    root = signed_block.message.hash_tree_root()
+    return root, store.block_states[root], signed_block
+
+
+def setup_one_block_store(spec, state):
+    """
+    Bootstrap a fork choice store with the genesis anchor plus an empty block at slot 1.
+    """
+    test_steps = []
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+
+    tick_store_to_slot(spec, store, state.slot, test_steps)
+    block_root, block_state, signed_block = yield from add_signed_empty_block(
+        spec, store, state, test_steps
+    )
+    return store, block_root, block_state, signed_block, test_steps

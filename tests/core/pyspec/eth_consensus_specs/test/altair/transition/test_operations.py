@@ -6,11 +6,15 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.constants import (
     ALL_PRE_POST_FORKS,
+    FULU,
     MINIMAL,
 )
 from eth_consensus_specs.test.helpers.fork_transition import (
     OperationType,
     run_transition_with_operation,
+)
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_fork,
 )
 
 #
@@ -132,6 +136,7 @@ def test_transition_with_attester_slashing_right_before_fork(
     [
         ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
         for pre, post in ALL_PRE_POST_FORKS
+        if not is_post_fork(post, FULU)
     ]
 )
 def test_transition_with_deposit_right_after_fork(
@@ -156,6 +161,7 @@ def test_transition_with_deposit_right_after_fork(
     [
         ForkMeta(pre_fork_name=pre, post_fork_name=post, fork_epoch=2)
         for pre, post in ALL_PRE_POST_FORKS
+        if not is_post_fork(post, FULU)
     ]
 )
 def test_transition_with_deposit_right_before_fork(

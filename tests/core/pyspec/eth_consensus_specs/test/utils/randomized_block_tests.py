@@ -14,6 +14,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
     build_randomized_execution_payload,
     compute_el_block_hash_for_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_fulu
 from eth_consensus_specs.test.helpers.genesis import build_mock_builder
 from eth_consensus_specs.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
@@ -50,6 +51,9 @@ def _randomize_deposit_state(spec, state, stats):
     This function randomizes the ``state`` in a way that can signal downstream to
     the block constructors how they should (or should not) make some randomized deposits.
     """
+    if is_post_fulu(spec):
+        return {"deposits": []}
+
     rng = Random(999)
     block_count = stats.get("block_count", 0)
     deposits = []

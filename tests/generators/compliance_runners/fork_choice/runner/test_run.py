@@ -12,6 +12,7 @@ from eth_consensus_specs.test.context import expect_assertion_error
 from eth_consensus_specs.test.helpers.fork_choice import get_viable_for_head_checks
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
+from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.fork_choice.instantiators.helpers import (
     payload_attestation_to_messages,
 )
@@ -21,6 +22,10 @@ def read_yaml(fp):
     with Path(fp).open() as f:
         yaml = YAML(typ="safe")
         return yaml.load(f.read())
+
+
+def read_meta(fp):
+    return (read_yaml(fp) or {}) if Path(fp).is_file() else {}
 
 
 def read_ssz_snappy(fp):
@@ -35,7 +40,7 @@ def get_test_case(spec, td):
 
     td_path = Path(td)
     return (
-        read_yaml(td_path / "meta.yaml"),
+        read_meta(td_path / "meta.yaml"),
         spec.BeaconBlock.decode_bytes(read_ssz_snappy(td_path / "anchor_block.ssz_snappy")),
         spec.BeaconState.decode_bytes(read_ssz_snappy(td_path / "anchor_state.ssz_snappy")),
         {
@@ -71,9 +76,10 @@ class ComplianceTestInfo(NamedTuple):
 def run_test(test_info):
     preset, fork, test_dir = test_info
     spec = spec_targets[preset][fork]
-    _, anchor_block, anchor_state, blocks, atts, slashings, envelopes, payload_atts, steps = (
+    meta, anchor_block, anchor_state, blocks, atts, slashings, envelopes, payload_atts, steps = (
         get_test_case(spec, test_dir)
     )
+    bls.bls_active = meta.get("bls_setting", 0) == 1
     store = spec.get_forkchoice_store(anchor_state, anchor_block)
     for step in steps:
         if "tick" in step:
@@ -143,23 +149,16 @@ def run_test(test_info):
                 )
         elif "checks" in step:
             checks = step["checks"]
-
-            cached_head = None
-
-            def get_head():
-                nonlocal cached_head
-                if cached_head is None:
-                    cached_head = spec.get_head(store)
-                return cached_head
-
             for check, value in checks.items():
                 if check == "time":
                     expected_time = value
                     assert store.time == expected_time
                 elif check == "head":
-                    head = get_head()
+                    head = spec.get_head(store)
                     assert store.blocks[head.root].slot == value["slot"]
                     assert str(head.root) == value["root"]
+                    if is_post_gloas(spec):
+                        assert head.payload_status == value["payload_status"]
                 elif check == "proposer_boost_root":
                     assert str(store.proposer_boost_root) == str(value)
                 elif check == "justified_checkpoint":
@@ -174,9 +173,6 @@ def run_test(test_info):
                     actual = value
                     expected = get_viable_for_head_checks(spec, store)
                     assert {frozenset(e) for e in actual} == {frozenset(e) for e in expected}
-                elif check == "head_payload_status":
-                    head = get_head()
-                    assert head.payload_status == value
                 elif check in ("payload_timeliness_vote", "payload_data_availability_vote"):
                     target_root = spec.Root(decode_hex(value["block_root"]))
                     assert list(getattr(store, check)[target_root]) == value["votes"]
