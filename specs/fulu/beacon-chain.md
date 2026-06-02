@@ -9,6 +9,10 @@
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
       - [Modified `process_execution_payload`](#modified-process_execution_payload)
+    - [Operations](#operations)
+      - [Modified `process_operations`](#modified-process_operations)
+      - [Deposit requests](#deposit-requests)
+        - [Modified `process_deposit_request`](#modified-process_deposit_request)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
     - [`BeaconState`](#beaconstate)
@@ -23,6 +27,7 @@
     - [New `get_beacon_proposer_indices`](#new-get_beacon_proposer_indices)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
+    - [Modified `process_pending_deposits`](#modified-process_pending_deposits)
     - [New `process_proposer_lookahead`](#new-process_proposer_lookahead)
 
 <!-- mdformat-toc end -->
@@ -61,6 +66,18 @@ SHOULD be sorted by epoch in ascending order. The blob schedule MAY be empty.
 ## Beacon chain state transition function
 
 ### Block processing
+
+```python
+def process_block(state: BeaconState, block: BeaconBlock) -> None:
+    process_block_header(state, block)
+    process_withdrawals(state, block.body.execution_payload)
+    process_execution_payload(state, block.body, EXECUTION_ENGINE)
+    process_randao(state, block.body)
+    process_eth1_data(state, block.body)
+    # [Modified in Fulu]
+    process_operations(state, block.body)
+    process_sync_aggregate(state, block.body.sync_aggregate)
+```
 
 #### Execution payload
 
@@ -119,6 +136,54 @@ def process_execution_payload(
         withdrawals_root=hash_tree_root(payload.withdrawals),
         blob_gas_used=payload.blob_gas_used,
         excess_blob_gas=payload.excess_blob_gas,
+    )
+```
+
+#### Operations
+
+##### Modified `process_operations`
+
+*Note*: The function `process_operations` is modified to remove support for the
+former deposit mechanism.
+
+```python
+def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
+    # [Modified in Fulu]
+    assert len(body.deposits) == 0
+
+    def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
+        for operation in operations:
+            fn(state, operation)
+
+    for_ops(body.proposer_slashings, process_proposer_slashing)
+    for_ops(body.attester_slashings, process_attester_slashing)
+    for_ops(body.attestations, process_attestation)
+    # [Modified in Fulu]
+    # Removed `process_deposit`
+    for_ops(body.voluntary_exits, process_voluntary_exit)
+    for_ops(body.bls_to_execution_changes, process_bls_to_execution_change)
+    for_ops(body.execution_requests.deposits, process_deposit_request)
+    for_ops(body.execution_requests.withdrawals, process_withdrawal_request)
+    for_ops(body.execution_requests.consolidations, process_consolidation_request)
+```
+
+##### Deposit requests
+
+###### Modified `process_deposit_request`
+
+*Note*: The function `process_deposit_request` is modified to remove support for
+the former deposit mechanism.
+
+```python
+def process_deposit_request(state: BeaconState, deposit_request: DepositRequest) -> None:
+    state.pending_deposits.append(
+        PendingDeposit(
+            pubkey=deposit_request.pubkey,
+            withdrawal_credentials=deposit_request.withdrawal_credentials,
+            amount=deposit_request.amount,
+            signature=deposit_request.signature,
+            slot=state.slot,
+        )
     )
 ```
 
@@ -209,7 +274,7 @@ def get_blob_parameters(epoch: Epoch) -> BlobParameters:
 
 #### Modified `compute_fork_digest`
 
-*Note:* The `compute_fork_digest` helper is updated to account for
+*Note*: The `compute_fork_digest` helper is updated to account for
 Blob-Parameters-Only forks.
 
 ```python
@@ -225,6 +290,10 @@ def compute_fork_digest(
     """
     fork_version = compute_fork_version(epoch)
     base_digest = compute_fork_data_root(fork_version, genesis_validators_root)
+
+    # [New in Fulu:EIP7892]
+    if epoch < FULU_FORK_EPOCH:
+        return ForkDigest(base_digest[:4])
 
     # [Modified in Fulu:EIP7892]
     # Bitmask digest with hash of blob parameters
@@ -311,6 +380,69 @@ def process_epoch(state: BeaconState) -> None:
     process_sync_committee_updates(state)
     # [New in Fulu:EIP7917]
     process_proposer_lookahead(state)
+```
+
+#### Modified `process_pending_deposits`
+
+*Note*: The function `process_pending_deposits` is modified to remove support
+for the former deposit mechanism.
+
+```python
+def process_pending_deposits(state: BeaconState) -> None:
+    next_epoch = Epoch(get_current_epoch(state) + 1)
+    available_for_processing = state.deposit_balance_to_consume + get_activation_exit_churn_limit(
+        state
+    )
+    processed_amount = 0
+    next_deposit_index = 0
+    deposits_to_postpone = []
+    is_churn_limit_reached = False
+    finalized_slot = compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
+
+    for deposit in state.pending_deposits:
+        # Check if deposit has been finalized, otherwise, stop processing.
+        if deposit.slot > finalized_slot:
+            break
+
+        # Check if number of processed deposits has not reached the limit, otherwise, stop processing.
+        if next_deposit_index >= MAX_PENDING_DEPOSITS_PER_EPOCH:
+            break
+
+        # Read validator state
+        is_validator_exited = False
+        is_validator_withdrawn = False
+        validator_pubkeys = [v.pubkey for v in state.validators]
+        if deposit.pubkey in validator_pubkeys:
+            validator = state.validators[ValidatorIndex(validator_pubkeys.index(deposit.pubkey))]
+            is_validator_exited = validator.exit_epoch < FAR_FUTURE_EPOCH
+            is_validator_withdrawn = validator.withdrawable_epoch < next_epoch
+
+        if is_validator_withdrawn:
+            # Deposited balance will never become active. Increase balance but do not consume churn
+            apply_pending_deposit(state, deposit)
+        elif is_validator_exited:
+            # Validator is exiting, postpone the deposit until after withdrawable epoch
+            deposits_to_postpone.append(deposit)
+        else:
+            # Check if deposit fits in the churn, otherwise, do no more deposit processing in this epoch.
+            is_churn_limit_reached = processed_amount + deposit.amount > available_for_processing
+            if is_churn_limit_reached:
+                break
+
+            # Consume churn and apply deposit.
+            processed_amount += deposit.amount
+            apply_pending_deposit(state, deposit)
+
+        # Regardless of how the deposit was handled, we move on in the queue.
+        next_deposit_index += 1
+
+    state.pending_deposits = state.pending_deposits[next_deposit_index:] + deposits_to_postpone
+
+    # Accumulate churn only if the churn limit has been hit.
+    if is_churn_limit_reached:
+        state.deposit_balance_to_consume = available_for_processing - processed_amount
+    else:
+        state.deposit_balance_to_consume = Gwei(0)
 ```
 
 #### New `process_proposer_lookahead`

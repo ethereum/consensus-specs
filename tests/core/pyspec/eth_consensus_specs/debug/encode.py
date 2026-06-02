@@ -25,15 +25,13 @@ def encode(value, include_hash_tree_roots=False):
         return value == 1
     elif isinstance(value, Bitlist | ProgressiveBitlist | Bitvector):
         return "0x" + serialize(value).hex()
-    elif isinstance(value, list):  # normal python lists
-        return [encode(element, include_hash_tree_roots) for element in value]
-    elif isinstance(value, List | ProgressiveList | Vector):
+    elif isinstance(value, (list, List | ProgressiveList | Vector)):  # normal python lists
         return [encode(element, include_hash_tree_roots) for element in value]
     elif isinstance(value, bytes):  # bytes, ByteList, ByteVector
         return "0x" + value.hex()
     elif isinstance(value, Container | ProgressiveContainer):
         ret = {}
-        for field_name in value.fields().keys():
+        for field_name in value.fields():
             field_value = getattr(value, field_name)
             ret[field_name] = encode(field_value, include_hash_tree_roots)
             if include_hash_tree_roots:

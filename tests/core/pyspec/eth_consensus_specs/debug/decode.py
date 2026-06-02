@@ -20,9 +20,7 @@ def decode(data: Any, typ):
         return typ(data)
     elif issubclass(typ, List | ProgressiveList | Vector):
         return typ(decode(element, typ.element_cls()) for element in data)
-    elif issubclass(typ, ByteVector):
-        return typ(bytes.fromhex(data[2:]))
-    elif issubclass(typ, ByteList):
+    elif issubclass(typ, ByteVector) or issubclass(typ, ByteList):
         return typ(bytes.fromhex(data[2:]))
     elif issubclass(typ, Container):
         temp = {}

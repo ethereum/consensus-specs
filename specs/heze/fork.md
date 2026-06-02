@@ -47,6 +47,7 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         value=pre.latest_execution_payload_bid.value,
         execution_payment=pre.latest_execution_payload_bid.execution_payment,
         blob_kzg_commitments=pre.latest_execution_payload_bid.blob_kzg_commitments,
+        execution_requests_root=pre.latest_execution_payload_bid.execution_requests_root,
         # [New in Heze:EIP7805]
         inclusion_list_bits=Bitvector[INCLUSION_LIST_COMMITTEE_SIZE](),
     )
@@ -81,8 +82,7 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         inactivity_scores=pre.inactivity_scores,
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
-        # [Modified in Heze:EIP7805]
-        latest_execution_payload_bid=latest_execution_payload_bid,
+        latest_block_hash=pre.latest_block_hash,
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         historical_summaries=pre.historical_summaries,
@@ -101,8 +101,10 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         execution_payload_availability=pre.execution_payload_availability,
         builder_pending_payments=pre.builder_pending_payments,
         builder_pending_withdrawals=pre.builder_pending_withdrawals,
-        latest_block_hash=pre.latest_block_hash,
+        # [Modified in Heze:EIP7805]
+        latest_execution_payload_bid=latest_execution_payload_bid,
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
+        ptc_window=pre.ptc_window,
     )
 
     return post

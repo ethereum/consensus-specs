@@ -9,6 +9,7 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.withdrawals import (
     set_compounding_withdrawal_credential,
     set_compounding_withdrawal_credential_with_balance,
@@ -702,6 +703,17 @@ def test_incorrect_not_enough_consolidation_churn_available(spec, state):
 
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
+    if is_post_gloas(spec):
+        # Gloas's CONSOLIDATION_CHURN_LIMIT_QUOTIENT yields a churn that exceeds
+        # MIN_ACTIVATION_BALANCE in default state — zero out other validators' effective
+        # balance so total active balance drops low enough to trigger the spec's
+        # churn-insufficient early return. The target's compounding-balance set above
+        # alone produces enough churn to defeat the precondition, so reset it too.
+        state.validators[target_index].effective_balance = spec.MIN_ACTIVATION_BALANCE
+        for i in range(len(state.validators)):
+            if i not in (source_index, target_index):
+                state.validators[i].effective_balance = 0
+
     # Check the return condition
     assert spec.get_consolidation_churn_limit(state) <= spec.MIN_ACTIVATION_BALANCE
 
@@ -989,8 +1001,7 @@ def test_incorrect_source_address(spec, state):
 
     # Check the return condition
     assert (
-        not state.validators[source_index].withdrawal_credentials[12:]
-        == consolidation.source_address
+        state.validators[source_index].withdrawal_credentials[12:] != consolidation.source_address
     )
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
@@ -1050,7 +1061,7 @@ def test_incorrect_unknown_source_pubkey(spec, state):
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the return condition
-    assert not state.validators[source_index].pubkey == consolidation.source_pubkey
+    assert state.validators[source_index].pubkey != consolidation.source_pubkey
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
@@ -1081,7 +1092,7 @@ def test_incorrect_unknown_target_pubkey(spec, state):
     set_compounding_withdrawal_credential_with_balance(spec, state, target_index)
 
     # Check the return condition
-    assert not state.validators[target_index].pubkey == consolidation.target_pubkey
+    assert state.validators[target_index].pubkey != consolidation.target_pubkey
 
     yield from run_consolidation_processing(spec, state, consolidation, success=False)
 
@@ -1273,8 +1284,7 @@ def test_switch_to_compounding_not_authorized(spec, state):
 
     # Check the return condition
     assert (
-        not state.validators[source_index].withdrawal_credentials[12:]
-        == consolidation.source_address
+        state.validators[source_index].withdrawal_credentials[12:] != consolidation.source_address
     )
 
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=False)
@@ -1296,7 +1306,7 @@ def test_switch_to_compounding_unknown_source_pubkey(spec, state):
     )
 
     # Check the return condition
-    assert not state.validators[source_index].pubkey == consolidation.source_pubkey
+    assert state.validators[source_index].pubkey != consolidation.source_pubkey
 
     yield from run_switch_to_compounding_processing(spec, state, consolidation, success=False)
 

@@ -11,6 +11,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.genesis import create_signed_genesis_block
 from eth_consensus_specs.test.helpers.light_client import (
     create_update,
     sample_blob_schedule,
@@ -21,8 +22,7 @@ from eth_consensus_specs.test.helpers.state import (
 
 
 def setup_test(spec, state):
-    trusted_block = spec.SignedBeaconBlock()
-    trusted_block.message.state_root = state.hash_tree_root()
+    trusted_block = create_signed_genesis_block(spec, state)
     trusted_block_root = trusted_block.message.hash_tree_root()
     bootstrap = spec.create_light_client_bootstrap(state, trusted_block)
     store = spec.initialize_light_client_store(trusted_block_root, bootstrap)
@@ -42,7 +42,9 @@ def test_process_light_client_update_not_timeout(spec, state):
     genesis_block, store = setup_test(spec, state)
 
     # Block at slot 1 doesn't increase sync committee period, so it won't force update store.finalized_header
-    attested_block = state_transition_with_full_block(spec, state, False, False)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=False, fill_prev_epoch=False
+    )
     signature_slot = state.slot + 1
 
     # Ensure that finality checkpoint is genesis
@@ -85,7 +87,9 @@ def test_process_light_client_update_at_period_boundary(spec, state):
     update_period = spec.compute_sync_committee_period_at_slot(state.slot)
     assert store_period == update_period
 
-    attested_block = state_transition_with_full_block(spec, state, False, False)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=False, fill_prev_epoch=False
+    )
     signature_slot = state.slot + 1
 
     update = create_update(
@@ -125,7 +129,9 @@ def test_process_light_client_update_timeout(spec, state):
     update_period = spec.compute_sync_committee_period_at_slot(state.slot)
     assert store_period + 1 == update_period
 
-    attested_block = state_transition_with_full_block(spec, state, False, False)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=False, fill_prev_epoch=False
+    )
     signature_slot = state.slot + 1
 
     update = create_update(
@@ -162,8 +168,10 @@ def test_process_light_client_update_finality_updated(spec, state):
     # Change finality
     blocks = []
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2)
-    for epoch in range(3):
-        prev_state, new_blocks, state = next_epoch_with_attestations(spec, state, True, True)
+    for _epoch in range(3):
+        _prev_state, new_blocks, state = next_epoch_with_attestations(
+            spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+        )
         blocks += new_blocks
     # Ensure that finality checkpoint has changed
     assert state.finalized_checkpoint.epoch == 3

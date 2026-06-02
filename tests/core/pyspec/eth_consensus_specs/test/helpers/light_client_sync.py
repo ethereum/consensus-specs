@@ -15,7 +15,9 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_capella,
     is_post_deneb,
     is_post_electra,
+    is_post_gloas,
 )
+from eth_consensus_specs.test.helpers.genesis import create_signed_genesis_block
 from eth_consensus_specs.test.helpers.light_client import (
     get_sync_aggregate,
     upgrade_lc_bootstrap_to_new_spec,
@@ -35,14 +37,16 @@ class LightClientSyncTest:
     store: Any
 
 
-def _get_store_fork_epoch(s_spec):
+def _get_store_fork_version(s_spec):
+    if is_post_gloas(s_spec):
+        return s_spec.config.GLOAS_FORK_VERSION
     if is_post_electra(s_spec):
-        return s_spec.config.ELECTRA_FORK_EPOCH
+        return s_spec.config.ELECTRA_FORK_VERSION
     if is_post_deneb(s_spec):
-        return s_spec.config.DENEB_FORK_EPOCH
+        return s_spec.config.DENEB_FORK_VERSION
     if is_post_capella(s_spec):
-        return s_spec.config.CAPELLA_FORK_EPOCH
-    return s_spec.config.ALTAIR_FORK_EPOCH
+        return s_spec.config.CAPELLA_FORK_VERSION
+    return s_spec.config.ALTAIR_FORK_VERSION
 
 
 def setup_lc_sync_test(spec, state, s_spec=None, phases=None):
@@ -62,7 +66,9 @@ def setup_lc_sync_test(spec, state, s_spec=None, phases=None):
     test.genesis_validators_root = state.genesis_validators_root
 
     next_slots(spec, state, spec.SLOTS_PER_EPOCH * 2 - 1)
-    trusted_block = state_transition_with_full_block(spec, state, True, True)
+    trusted_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     trusted_block_root = trusted_block.message.hash_tree_root()
     yield "trusted_block_root", "meta", "0x" + trusted_block_root.hex()
 
@@ -75,9 +81,8 @@ def setup_lc_sync_test(spec, state, s_spec=None, phases=None):
 
     upgraded = upgrade_lc_bootstrap_to_new_spec(d_spec, test.s_spec, data, phases)
     test.store = test.s_spec.initialize_light_client_store(trusted_block_root, upgraded)
-    store_epoch = _get_store_fork_epoch(test.s_spec)
-    store_fork_digest = test.s_spec.compute_fork_digest(test.genesis_validators_root, store_epoch)
-    yield "store_fork_digest", "meta", encode_hex(store_fork_digest)
+    store_fork_version = _get_store_fork_version(test.s_spec)
+    yield "store_fork_version", "meta", encode_hex(store_fork_version)
 
     return test
 
@@ -182,18 +187,17 @@ def emit_update(
 
 
 def _emit_upgrade_store(test, new_s_spec, phases=None):
-    old_epoch = _get_store_fork_epoch(test.s_spec)
+    old_fork_version = _get_store_fork_version(test.s_spec)
     test.store = upgrade_lc_store_to_new_spec(test.s_spec, new_s_spec, test.store, phases)
     test.s_spec = new_s_spec
-    store_epoch = _get_store_fork_epoch(test.s_spec)
-    assert store_epoch != old_epoch
-    store_fork_digest = test.s_spec.compute_fork_digest(test.genesis_validators_root, store_epoch)
+    store_fork_version = _get_store_fork_version(test.s_spec)
+    assert store_fork_version != old_fork_version
 
     yield from []  # Consistently enable `yield from` syntax in calling tests
     test.steps.append(
         {
             "upgrade_store": {
-                "store_fork_digest": encode_hex(store_fork_digest),
+                "store_fork_version": encode_hex(store_fork_version),
                 "checks": _get_checks(test.s_spec, test.store),
             }
         }
@@ -205,13 +209,16 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     test = yield from setup_lc_sync_test(spec, state, phases=phases)
 
     # Initial `LightClientUpdate`
-    finalized_block = spec.SignedBeaconBlock()
-    finalized_block.message.state_root = state.hash_tree_root()
+    finalized_block = create_signed_genesis_block(spec, state)
     finalized_state = state.copy()
-    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
     )
@@ -223,10 +230,14 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     # Jump to two slots before fork
     fork_epoch = getattr(phases[fork].config, fork.upper() + "_FORK_EPOCH")
     transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_epoch) - 4)
-    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     update = yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
     )
@@ -243,7 +254,9 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     attested_block = block.copy()
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
     )
@@ -270,7 +283,9 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     attested_block = block.copy()
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
     )
@@ -281,10 +296,14 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
 
     # Jump to next epoch
     transition_to(spec, state, spec.compute_start_slot_at_epoch(fork_epoch + 1) - 2)
-    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
     )
@@ -297,12 +316,16 @@ def run_lc_sync_test_single_fork(spec, phases, state, fork):
     finalized_block = block.copy()
     finalized_state = state.copy()
     _, _, state = next_slots_with_attestations(
-        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, True, True
+        spec, state, 2 * spec.SLOTS_PER_EPOCH - 1, fill_cur_epoch=True, fill_prev_epoch=True
     )
-    attested_block = state_transition_with_full_block(spec, state, True, True)
+    attested_block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     attested_state = state.copy()
     sync_aggregate, _ = get_sync_aggregate(spec, state, phases=phases)
-    block = state_transition_with_full_block(spec, state, True, True, sync_aggregate=sync_aggregate)
+    block = state_transition_with_full_block(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=True, sync_aggregate=sync_aggregate
+    )
     yield from emit_update(
         test, spec, state, block, attested_state, attested_block, finalized_block, phases=phases
     )
@@ -320,8 +343,7 @@ def run_lc_sync_test_multi_fork(spec, phases, state, fork_1, fork_2):
     test = yield from setup_lc_sync_test(spec, state, phases[fork_2], phases)
 
     # Set up so that finalized is from `spec`, ...
-    finalized_block = spec.SignedBeaconBlock()
-    finalized_block.message.state_root = state.hash_tree_root()
+    finalized_block = create_signed_genesis_block(spec, state)
     finalized_state = state.copy()
 
     # ..., attested is from `fork_1`, ...

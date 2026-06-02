@@ -1123,3 +1123,158 @@ def test_process_deposit_request__routing__pending_deposit_builder_credentials(s
         deposit_request=deposit_request,
         is_builder_deposit=False,
     )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_deposit_request__routing__pending_deposit_different_pubkeys(spec, state):
+    """
+    Test is_pending_validator skips non-matching pubkeys before finding matching one.
+
+    Exercises the `continue` branch in is_pending_validator when pending deposits
+    with different pubkeys exist before the matching deposit.
+
+    Input State Configured:
+        - Pending deposits for two unrelated validator pubkeys
+        - Pending deposit for the target pubkey
+        - Builder-credential deposit request for the target pubkey
+
+    Output State Verified:
+        - Deposit routed to validator queue (not builder)
+        - is_pending_validator returns True after skipping non-matching deposits
+    """
+    new_validator_index = len(state.validators)
+    amount = spec.MIN_DEPOSIT_AMOUNT
+
+    # Add pending deposits with different pubkeys (these will be skipped via `continue`)
+    for i in range(2):
+        unrelated_index = new_validator_index + 1 + i
+        unrelated_pending = prepare_pending_deposit(
+            spec,
+            unrelated_index,
+            amount,
+            signed=True,
+        )
+        state.pending_deposits.append(unrelated_pending)
+
+    # Add a pending deposit with the target pubkey (this will match)
+    target_pending = prepare_pending_deposit(
+        spec,
+        new_validator_index,
+        amount,
+        signed=True,
+    )
+    state.pending_deposits.append(target_pending)
+
+    # Create a deposit request with builder credentials for the target pubkey
+    deposit_request = prepare_deposit_request(
+        spec,
+        new_validator_index,
+        amount,
+        index=0,
+        withdrawal_credentials=make_withdrawal_credentials(
+            spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
+        ),
+        signed=True,
+    )
+
+    pre_state = state.copy()
+
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+
+    # Should NOT create a new builder (is_pending_validator finds matching deposit)
+    assert_process_deposit_request(
+        spec,
+        state,
+        pre_state,
+        deposit_request=deposit_request,
+        is_builder_deposit=False,
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_deposit_request__routing__empty_pending_deposits(spec, state):
+    """
+    Test is_pending_validator with empty pending deposit queue.
+
+    When pending_deposits is empty, is_pending_validator returns False
+    immediately and the deposit is routed to the builder path.
+
+    Input State Configured:
+        - Empty pending_deposits queue
+        - Builder-credential deposit request for a new pubkey
+
+    Output State Verified:
+        - Deposit routed to builder path (new builder created)
+    """
+    amount = spec.MIN_DEPOSIT_AMOUNT
+
+    # Ensure pending deposits is empty
+    state.pending_deposits = []
+
+    deposit_request = prepare_process_deposit_request(
+        spec, state, for_builder=True, amount=amount, signed=True
+    )
+    pre_state = state.copy()
+
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+
+    # Should create a new builder (no pending deposits, is_pending_validator returns False)
+    assert_process_deposit_request(
+        spec,
+        state,
+        pre_state,
+        deposit_request=deposit_request,
+        is_builder_deposit=True,
+        expected_builder_balance=amount,
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_deposit_request__routing__pending_deposits_all_different_pubkeys(spec, state):
+    """
+    Test is_pending_validator when all pending deposits have different pubkeys.
+
+    When no pending deposit matches the target pubkey, is_pending_validator
+    hits `continue` for every deposit and returns False.
+
+    Input State Configured:
+        - Pending deposits for two unrelated validator pubkeys
+        - Builder-credential deposit request for a pubkey not in the queue
+
+    Output State Verified:
+        - Deposit routed to builder path (new builder created)
+    """
+    new_validator_index = len(state.validators)
+    amount = spec.MIN_DEPOSIT_AMOUNT
+
+    # Add pending deposits with unrelated pubkeys
+    for i in range(2):
+        unrelated_index = new_validator_index + 1 + i
+        unrelated_pending = prepare_pending_deposit(
+            spec,
+            unrelated_index,
+            amount,
+            signed=True,
+        )
+        state.pending_deposits.append(unrelated_pending)
+
+    # Create a builder deposit request for a pubkey NOT in the pending queue
+    deposit_request = prepare_process_deposit_request(
+        spec, state, for_builder=True, amount=amount, signed=True
+    )
+    pre_state = state.copy()
+
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+
+    # Should create a new builder (no matching pubkey, is_pending_validator returns False)
+    assert_process_deposit_request(
+        spec,
+        state,
+        pre_state,
+        deposit_request=deposit_request,
+        is_builder_deposit=True,
+        expected_builder_balance=amount,
+    )

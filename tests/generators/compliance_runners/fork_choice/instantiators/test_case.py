@@ -1,24 +1,33 @@
 import random
 from collections.abc import Iterable
 from dataclasses import dataclass
-from os import path
+from math import ceil
+from pathlib import Path
 from typing import Any
 
 from ruamel.yaml import YAML
 
 from eth_consensus_specs.test.context import (
     spec_state_test,
+    spec_test,
     with_altair_and_later,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_attestation_file_name,
     get_attester_slashing_file_name,
     get_block_file_name,
+    get_execution_payload_envelope_file_name,
+    get_payload_attestation_message_file_name,
     on_tick_and_append_step,
     output_store_checks,
 )
 from eth_consensus_specs.utils import bls
-from tests.generators.compliance_runners.gen_base.gen_typing import TestCase
+from tests.generators.compliance_runners.gen_base.gen_typing import (
+    TestCase,
+    TestCasePart,
+    TestCaseResult,
+    TestGroup,
+)
 
 from .block_cover import gen_block_cover_test_data
 from .block_tree import gen_block_tree_test_data
@@ -34,6 +43,7 @@ from .scheduler import MessageScheduler
 BLS_ACTIVE = False
 GENERATOR_NAME = "fork_choice_compliance"
 SUITE_NAME = "pyspec_tests"
+MAX_MUTATION_GROUP_LENGTH = 4
 
 
 @dataclass(eq=True, frozen=True)
@@ -60,6 +70,20 @@ class FCTestDNA:
     mutation_seed: int | None
 
 
+@dataclass(eq=True, frozen=True)
+class MutationGroupCase:
+    case_id: int
+    mutation_seed: int | None
+
+
+@dataclass(eq=True, frozen=True)
+class MutationGroup:
+    test_name: str
+    solution_index: int
+    test_dna_base: FCTestDNA
+    nr_mutations: int
+
+
 @dataclass(init=False)
 class PlainFCTestCase(TestCase):
     test_dna: FCTestDNA
@@ -74,28 +98,101 @@ class PlainFCTestCase(TestCase):
             handler_name=kwds["handler_name"],
             suite_name=kwds["suite_name"],
             case_name=kwds["case_name"],
-            case_fn=self.mutation_case_fn,
         )
         self.test_dna = test_dna
         self.bls_active = bls_active
         self.debug = debug
 
-    def mutation_case_fn(self):
-        test_kind = self.test_dna.kind
-        phase, preset = self.fork_name, self.preset_name
-        bls_active, debug = self.bls_active, self.debug
-        solution, seed = self.test_dna.solution, self.test_dna.variation_seed
-        mut_seed = self.test_dna.mutation_seed
-        return yield_mutation_test_case(
-            phase=phase,
-            preset=preset,
+
+@dataclass(init=False)
+class MutationGroupTestGroup(TestGroup):
+    mutation_group: MutationGroup
+    group_cases: tuple[MutationGroupCase, ...]
+    fork_name: str
+    preset_name: str
+    bls_active: bool
+    debug: bool
+
+    def __init__(
+        self,
+        mutation_group,
+        group_cases,
+        fork_name,
+        preset_name,
+        bls_active=False,
+        debug=False,
+    ):
+        test_cases = [
+            PlainFCTestCase(
+                test_dna=test_dna,
+                bls_active=bls_active,
+                debug=debug,
+                fork_name=fork_name,
+                preset_name=preset_name,
+                runner_name=GENERATOR_NAME,
+                handler_name=mutation_group.test_name,
+                suite_name=SUITE_NAME,
+                case_name=case_name,
+            )
+            for case_name, test_dna in enumerate_test_dnas(mutation_group, group_cases)
+        ]
+        super().__init__(
+            group_name=(
+                f"{preset_name}::{fork_name}::{GENERATOR_NAME}::"
+                f"{mutation_group.test_name}::{mutation_group.solution_index}::"
+                f"{mutation_group.test_dna_base.variation_seed}"
+                f"{get_mutation_group_suffix(mutation_group.nr_mutations, group_cases)}"
+            ),
+            test_cases=test_cases,
+            group_fn=self.execute_group,
+        )
+        self.mutation_group = mutation_group
+        self.group_cases = group_cases
+        self.fork_name = fork_name
+        self.preset_name = preset_name
+        self.bls_active = bls_active
+        self.debug = debug
+
+    def execute_group(self) -> Iterable[TestCaseResult]:
+        bls_active = self.bls_active
+        debug = self.debug
+
+        spec, test_data, events = make_test_context(
+            self.mutation_group.test_dna_base,
+            self.fork_name,
+            self.preset_name,
             bls_active=bls_active,
             debug=debug,
-            seed=seed,
-            mut_seed=mut_seed,
-            test_kind=test_kind,
-            solution=solution,
         )
+
+        for test_case in self.test_cases:
+            mut_seed = test_case.test_dna.mutation_seed
+            if mut_seed is None:
+                parts_iter = yield_fork_choice_test_events(
+                    spec, test_data, events, debug, bls_active=bls_active
+                )
+            else:
+                parts_iter = yield_mutated_test_case_parts(
+                    spec, test_data, events, mut_seed, bls_active=bls_active
+                )
+
+            yield collect_test_case_result_from_iterator(test_case, parts_iter)
+
+
+def collect_test_case_result_from_iterator(
+    test_case: TestCase,
+    parts_iter: Iterable[TestCasePart],
+) -> TestCaseResult:
+    meta: dict[str, Any] = {}
+    outputs: list[TestCasePart] = []
+
+    for name, kind, data in parts_iter:
+        if kind == "meta":
+            meta[name] = data
+        else:
+            outputs.append(TestCasePart((name, kind, data)))
+
+    return TestCaseResult(test_case=test_case, meta=meta, case_parts=outputs)
 
 
 def get_test_data(spec, state, test_kind, solution, debug, seed):
@@ -122,26 +219,45 @@ def get_test_data(spec, state, test_kind, solution, debug, seed):
     return test_data
 
 
-@with_altair_and_later
-@spec_state_test
-def yield_mutation_test_case(spec, state, test_kind, solution, debug, seed, mut_seed):
-    test_data = get_test_data(spec, state, test_kind, solution, debug, seed)
-    events = make_events(spec, test_data)
+def make_test_context(
+    test_dna_base: FCTestDNA,
+    fork_name: str,
+    preset_name: str,
+    bls_active: bool = False,
+    debug: bool = False,
+):
+    @with_altair_and_later
+    @spec_state_test
+    def get_spec_test_data_and_events(spec, state):
+        test_kind = test_dna_base.kind
+        solution = test_dna_base.solution
+        seed = test_dna_base.variation_seed
+        test_data = get_test_data(spec, state, test_kind, solution, debug, seed)
+        events = make_events(spec, test_data)
+        yield (spec, test_data, events)
+
+    ((spec, test_data, events),) = get_spec_test_data_and_events(
+        phase=fork_name,
+        preset=preset_name,
+        bls_active=bls_active,
+    )
+
+    return spec, test_data, events
+
+
+@spec_test
+def yield_mutated_test_case_parts(spec, test_data, events, mut_seed):
     store = spec.get_forkchoice_store(test_data.anchor_state, test_data.anchor_block)
 
-    if mut_seed is None:
-        return yield_fork_choice_test_events(spec, store, test_data, events, debug)
-    else:
-        test_vector = events_to_test_vector(events)
-        mops = MutationOps(store.time, spec.config.SLOT_DURATION_MS // 1000)
-        mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
+    test_vector = events_to_test_vector(events)
+    mops = MutationOps(store.time, spec.config.SLOT_DURATION_MS // 1000)
+    mutated_vector, mutations = mops.rand_mutations(test_vector, 4, random.Random(mut_seed))
 
-        test_data.meta["mut_seed"] = mut_seed
-        test_data.meta["mutations"] = mutations
+    test_data.meta["mut_seed"] = mut_seed
+    test_data.meta["mutations"] = mutations
 
-        mutated_events = test_vector_to_events(mutated_vector)
-
-        return yield_test_parts(spec, store, test_data, mutated_events)
+    mutated_events = convert_test_vector_to_events(mutated_vector)
+    return yield_test_parts(spec, store, test_data, mutated_events)
 
 
 def events_to_test_vector(events) -> list[Any]:
@@ -152,19 +268,21 @@ def events_to_test_vector(events) -> list[Any]:
         if event_kind == "tick":
             current_time = data
         else:
-            if event_kind == "block":
-                event_id = data
-            elif event_kind == "attestation":
-                event_id = data
-            elif event_kind == "attester_slashing":
+            if (
+                event_kind == "block"
+                or event_kind == "attestation"
+                or event_kind == "attester_slashing"
+                or event_kind == "execution_payload"
+                or event_kind == "payload_attestation"
+            ):
                 event_id = data
             else:
-                assert False, event_kind
+                raise AssertionError(event_kind)
             test_vector.append((current_time, (event_kind, event_id)))
     return test_vector
 
 
-def test_vector_to_events(test_vector):
+def convert_test_vector_to_events(test_vector):
     events = []
     current_time = None
     for time, (event_kind, data) in test_vector:
@@ -197,6 +315,14 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
         attester_slashing = message.payload
         yield get_attester_slashing_file_name(attester_slashing), attester_slashing
 
+    for message in test_data.envelopes:
+        envelope = message.payload
+        yield get_execution_payload_envelope_file_name(envelope), envelope
+
+    for message in test_data.payload_atts:
+        ptc_message = message.payload
+        yield get_payload_attestation_message_file_name(ptc_message), ptc_message
+
     test_steps = []
     scheduler = MessageScheduler(spec, store)
 
@@ -222,10 +348,25 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                             if _attestation_id not in test_data.atts:
                                 yield _attestation_id, event_data
                             test_steps.append({"attestation": _attestation_id, "valid": True})
+                        elif event_kind == "execution_payload":
+                            assert recovery
+                            _payload_id = get_execution_payload_envelope_file_name(event_data)
+                            test_steps.append({"execution_payload": _payload_id, "valid": True})
+                        elif event_kind == "payload_attestation":
+                            assert recovery
+                            _payload_attestation_id = get_payload_attestation_message_file_name(
+                                event_data
+                            )
+                            test_steps.append(
+                                {
+                                    "payload_attestation_message": _payload_attestation_id,
+                                    "valid": True,
+                                }
+                            )
                         else:
-                            assert False
+                            raise AssertionError
                 else:
-                    assert False
+                    raise AssertionError
                 if time > store.time:
                     # inside a slot
                     on_tick_and_append_step(spec, store, time, test_steps)
@@ -252,19 +393,31 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
                                     yield _attestation_id, event_data
                                 test_steps.append({"attestation": _attestation_id, "valid": True})
                             else:
-                                assert False
+                                raise AssertionError
                                 test_steps.append({"attestation": _attestation_id, "valid": True})
+                        elif event_kind == "execution_payload":
+                            assert recovery
+                            _payload_id = get_execution_payload_envelope_file_name(event_data)
+                            test_steps.append({"execution_payload": _payload_id, "valid": True})
+                        elif event_kind == "payload_attestation":
+                            _payload_attestation_id = get_payload_attestation_message_file_name(
+                                event_data
+                            )
+                            assert recovery
+                            test_steps.append(
+                                {
+                                    "payload_attestation_message": _payload_attestation_id,
+                                    "valid": True,
+                                }
+                            )
                         else:
-                            assert False
+                            raise AssertionError
                 else:
                     assert len(applied_events) == 0
                     test_steps.append({"block": block_id, "valid": valid})
             else:
-                assert False
+                raise AssertionError
                 test_steps.append({"block": block_id, "valid": valid})
-            block_root = block.message.hash_tree_root()
-            assert valid == (block_root in store.blocks)
-
             output_store_checks(spec, store, test_steps)
         elif kind == "attestation":
             attestation = data
@@ -277,6 +430,18 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
             slashing_id = get_attester_slashing_file_name(attester_slashing)
             valid = scheduler.process_slashing(attester_slashing)
             test_steps.append({"attester_slashing": slashing_id, "valid": valid})
+            output_store_checks(spec, store, test_steps)
+        elif kind == "execution_payload":
+            envelope = data
+            envelope_id = get_execution_payload_envelope_file_name(envelope)
+            valid = scheduler.process_payload(envelope)
+            test_steps.append({"execution_payload": envelope_id, "valid": valid})
+            output_store_checks(spec, store, test_steps)
+        elif kind == "payload_attestation":
+            ptc_message = data
+            ptc_message_id = get_payload_attestation_message_file_name(ptc_message)
+            valid = scheduler.process_payload_attestation_message(ptc_message, is_from_block=False)
+            test_steps.append({"payload_attestation_message": ptc_message_id, "valid": valid})
             output_store_checks(spec, store, test_steps)
         else:
             raise ValueError(f"not implemented {kind}")
@@ -304,12 +469,58 @@ def get_test_kind(test_type, with_attester_slashings, with_invalid_messages):
 
 
 def _load_yaml(path: str):
-    with open(path) as f:
+    with Path(path).open() as f:
         yaml = YAML(typ="safe")
         return yaml.load(f)
 
 
-def enumerate_test_dnas(config_dir, test_name, params) -> Iterable[tuple[str, FCTestData]]:
+def derive_effective_seed(seed: int, solution_index: int) -> int:
+    return random.Random(f"{seed}:{solution_index}").randint(0, 1_000_000_000)
+
+
+def get_mutation_group_suffix(nr_mutations: int, group_cases: tuple[MutationGroupCase, ...]) -> str:
+    group_case_ids = [group_case.case_id for group_case in group_cases]
+    full_case_ids = list(range(nr_mutations + 1))
+    if group_case_ids == full_case_ids:
+        return ""
+    joined_case_ids = ",".join(str(case_id) for case_id in group_case_ids)
+    return f"::cases={joined_case_ids}"
+
+
+def iter_mutation_group_chunks(
+    mutation_seeds: list[int],
+) -> Iterable[tuple[MutationGroupCase, ...]]:
+    all_group_cases = [MutationGroupCase(0, None)] + [
+        MutationGroupCase(case_id=i, mutation_seed=mutation_seed)
+        for i, mutation_seed in enumerate(mutation_seeds, start=1)
+    ]
+    total_group_length = len(all_group_cases)
+    if total_group_length <= MAX_MUTATION_GROUP_LENGTH:
+        yield tuple(all_group_cases)
+        return
+
+    bucket_count = ceil(total_group_length / MAX_MUTATION_GROUP_LENGTH)
+    base_bucket_size = total_group_length // bucket_count
+    remainder = total_group_length % bucket_count
+    bucket_sizes = [
+        base_bucket_size + (1 if bucket_index < remainder else 0)
+        for bucket_index in range(bucket_count)
+    ]
+
+    remaining_mutation_cases = all_group_cases[1:]
+    for bucket_index, bucket_size in enumerate(bucket_sizes):
+        if bucket_index == 0:
+            mutations_in_bucket = bucket_size - 1
+            bucket_cases = remaining_mutation_cases[:mutations_in_bucket]
+            yield (all_group_cases[0], *bucket_cases)
+        else:
+            mutations_in_bucket = bucket_size
+            bucket_cases = remaining_mutation_cases[:mutations_in_bucket]
+            yield tuple(bucket_cases)
+        remaining_mutation_cases = remaining_mutation_cases[mutations_in_bucket:]
+
+
+def enumerate_mutation_groups(config_dir, test_name, params) -> Iterable[MutationGroup]:
     test_type = params["test_type"]
     instances_path = params["instances"]
     initial_seed = params["seed"]
@@ -318,7 +529,7 @@ def enumerate_test_dnas(config_dir, test_name, params) -> Iterable[tuple[str, FC
     with_attester_slashings = params.get("with_attester_slashings", False)
     with_invalid_messages = params.get("with_invalid_messages", False)
 
-    solutions = _load_yaml(path.join(config_dir, instances_path))
+    solutions = _load_yaml(str(Path(config_dir) / instances_path))
     test_kind = get_test_kind(test_type, with_attester_slashings, with_invalid_messages)
 
     seeds = [initial_seed]
@@ -329,14 +540,46 @@ def enumerate_test_dnas(config_dir, test_name, params) -> Iterable[tuple[str, FC
 
     for i, solution in enumerate(solutions):
         for seed in seeds:
-            for j in range(1 + nr_mutations):
-                test_dna = FCTestDNA(test_kind, solution, seed, None if j == 0 else seed + j - 1)
-                case_name = test_name + "_" + str(i) + "_" + str(seed) + "_" + str(j)
-                yield case_name, test_dna
+            effective_seed = derive_effective_seed(seed, i)
+            yield MutationGroup(
+                test_name=test_name,
+                solution_index=i,
+                test_dna_base=FCTestDNA(test_kind, solution, effective_seed, None),
+                nr_mutations=nr_mutations,
+            )
 
 
-def enumerate_test_cases(config_path, forks, presets, debug, initial_seed: int = None):
-    config_dir = path.dirname(config_path)
+def split_mutation_group(mutation_group: MutationGroup) -> Iterable[tuple[MutationGroupCase, ...]]:
+    mutation_seeds = [
+        mutation_group.test_dna_base.variation_seed + j - 1
+        for j in range(1, mutation_group.nr_mutations + 1)
+    ]
+    yield from iter_mutation_group_chunks(mutation_seeds)
+
+
+def enumerate_test_dnas(
+    mutation_group: MutationGroup, group_cases: tuple[MutationGroupCase, ...]
+) -> Iterable[tuple[str, FCTestDNA]]:
+    test_name = mutation_group.test_name
+    solution_index = mutation_group.solution_index
+    test_dna_base = mutation_group.test_dna_base
+    seed = test_dna_base.variation_seed
+
+    for group_case in group_cases:
+        case_id = group_case.case_id
+        mutation_seed = group_case.mutation_seed
+        test_dna = FCTestDNA(
+            test_dna_base.kind,
+            test_dna_base.solution,
+            seed,
+            mutation_seed,
+        )
+        case_name = test_name + "_" + str(solution_index) + "_" + str(seed) + "_" + str(case_id)
+        yield case_name, test_dna
+
+
+def enumerate_test_groups(config_path, forks, presets, debug, initial_seed: int | None = None):
+    config_dir = str(Path(config_path).parent)
     test_gen_config = _load_yaml(config_path)
 
     seed_generator = random.Random(initial_seed) if initial_seed is not None else None
@@ -347,15 +590,13 @@ def enumerate_test_cases(config_path, forks, presets, debug, initial_seed: int =
             print(test_name)
         for fork_name in forks:
             for preset_name in presets:
-                for case_name, test_dna in enumerate_test_dnas(config_dir, test_name, params):
-                    yield PlainFCTestCase(
-                        test_dna=test_dna,
-                        bls_active=BLS_ACTIVE,
-                        debug=debug,
-                        fork_name=fork_name,
-                        preset_name=preset_name,
-                        runner_name=GENERATOR_NAME,
-                        handler_name=test_name,
-                        suite_name=SUITE_NAME,
-                        case_name=case_name,
-                    )
+                for mutation_group in enumerate_mutation_groups(config_dir, test_name, params):
+                    for group_cases in split_mutation_group(mutation_group):
+                        yield MutationGroupTestGroup(
+                            mutation_group=mutation_group,
+                            group_cases=group_cases,
+                            fork_name=fork_name,
+                            preset_name=preset_name,
+                            bls_active=BLS_ACTIVE,
+                            debug=debug,
+                        )

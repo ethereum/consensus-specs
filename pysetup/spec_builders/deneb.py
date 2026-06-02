@@ -1,4 +1,5 @@
-from ..constants import DENEB
+from pysetup.constants import DENEB
+
 from .base import BaseSpecBuilder
 
 
@@ -37,7 +38,6 @@ TPoint = TypeVar('TPoint')  # For generic function. G1 or G2 point.
     def sundry_functions(cls) -> str:
         return """
 def retrieve_blobs_and_proofs(beacon_block_root: Root) -> Tuple[Sequence[Blob], Sequence[KZGProof]]:
-    # pylint: disable=unused-argument
     return [], []
 """
 
@@ -59,7 +59,6 @@ class NoopExecutionEngine(ExecutionEngine):
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
-        # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
     def is_valid_block_hash(self: ExecutionEngine,
@@ -76,6 +75,18 @@ class NoopExecutionEngine(ExecutionEngine):
 
 
 EXECUTION_ENGINE = NoopExecutionEngine()"""
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return {
+            "upgrade_lc_bootstrap_to_capella",
+            "upgrade_lc_finality_update_to_capella",
+            "upgrade_lc_header_to_capella",
+            "upgrade_lc_optimistic_update_to_capella",
+            "upgrade_lc_store_to_capella",
+            "upgrade_lc_update_to_capella",
+            "upgrade_to_capella",
+        }
 
     @classmethod
     def hardcoded_func_dep_presets(cls, spec_object) -> dict[str, str]:

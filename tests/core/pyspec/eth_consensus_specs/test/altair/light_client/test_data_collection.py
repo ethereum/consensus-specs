@@ -7,6 +7,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.constants import (
     MINIMAL,
 )
+from eth_consensus_specs.test.helpers.genesis import create_signed_genesis_block
 from eth_consensus_specs.test.helpers.light_client import (
     sample_blob_schedule,
 )
@@ -39,7 +40,7 @@ def test_light_client_data_collection(spec, state):
 
     # Genesis block is post Altair and is finalized, so can be used as bootstrap
     genesis_bid = BlockID(
-        slot=state.slot, root=spec.BeaconBlock(state_root=state.hash_tree_root()).hash_tree_root()
+        slot=state.slot, root=create_signed_genesis_block(spec, state).message.hash_tree_root()
     )
     assert (
         get_lc_bootstrap_block_id(get_light_client_bootstrap(test, genesis_bid.root).data)
@@ -193,7 +194,7 @@ def test_light_client_data_collection(spec, state):
     assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bid_1_5
 
     # Branch A: fill epoch
-    for i in range(1, spec_a.SLOTS_PER_EPOCH):
+    for _i in range(1, spec_a.SLOTS_PER_EPOCH):
         spec_a, state_a, bid_a = yield from add_new_block(test, spec_a, state_a)
         yield from select_new_head(test, spec_a, bid_a)
         assert get_light_client_bootstrap(test, bid_7.root).spec is None
@@ -235,7 +236,7 @@ def test_light_client_data_collection(spec, state):
     assert get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data) == bid_3_n
 
     # Branch A: fill epoch
-    for i in range(1, spec_a.SLOTS_PER_EPOCH):
+    for _i in range(1, spec_a.SLOTS_PER_EPOCH):
         spec_a, state_a, bid_a = yield from add_new_block(test, spec_a, state_a)
         yield from select_new_head(test, spec_a, bid_a)
         assert get_light_client_bootstrap(test, bid_7.root).spec is None

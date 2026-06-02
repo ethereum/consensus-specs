@@ -102,26 +102,32 @@ proposer what it promised whether it submits the payload or not.
 Builders can broadcast a payload bid for the current or the next slot's proposer
 to include. They produce a `SignedExecutionPayloadBid` as follows.
 
-01. Set `bid.parent_block_hash` to the current head of the execution chain (this
-    can be obtained from the beacon state as `state.latest_block_hash`).
-02. Set `bid.parent_block_root` to be the head of the consensus chain; this can
+01. Set `bid.parent_block_hash` to be the parent hash of the constructed
+    payload, that is `payload.parent_hash`.
+02. Set `bid.parent_block_root` to be the head of the consensus chain. This can
     be obtained from the beacon state as
     `hash_tree_root(state.latest_block_header)`. The `parent_block_root` and
     `parent_block_hash` must be compatible, in the sense that they both should
-    come from the same `state` by the method described in this and the previous
-    point.
+    come from the same `state` and `store` by the method described in this and
+    the previous point.
 03. Construct an execution payload. This can be performed with an external
-    execution engine via a call to `engine_getPayloadV5`.
+    execution engine via a call to `engine_getPayloadV6`.
 04. Set `bid.block_hash` to be the block hash of the constructed payload, that
     is `payload.block_hash`.
 05. Set `bid.prev_randao` to be the previous RANDAO of the constructed payload,
     that is `payload.prev_randao`.
 06. Set `bid.fee_recipient` to be an execution address to receive the payment.
-    The proposer's preferred fee recipient can be obtained from the
-    `SignedProposerPreferences` associated with `bid.slot`.
-07. Set `bid.gas_limit` to be the gas limit of the constructed payload. The
-    proposer's preferred gas limit can be obtained from the
-    `SignedProposerPreferences` associated with `bid.slot`.
+    The proposer's preferred fee recipient is obtained from the
+    `SignedProposerPreferences` whose `message.proposal_slot` matches `bid.slot`
+    and whose `message.dependent_root` matches
+    `get_proposer_dependent_root(parent_state, compute_epoch_at_slot(bid.slot))`,
+    where `parent_state` is the post-state of `bid.parent_block_root`.
+07. Set `bid.gas_limit` to be the gas limit of the constructed payload, which
+    **MUST** satisfy
+    `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, target_gas_limit)`,
+    where `parent_gas_limit` is the `gas_limit` of the parent execution payload
+    and `target_gas_limit` is the `target_gas_limit` in the
+    `SignedProposerPreferences` referenced in step 6.
 08. Set `bid.builder_index` to be the index of the builder performing these
     actions.
 09. Set `bid.slot` to be the slot for which this bid is aimed. This slot
@@ -133,7 +139,10 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
     execution-layer payment. Bids with non-zero `execution_payment` **MUST NOT**
     be broadcast to the `execution_payload_bid` gossip topic.
 12. Set `bid.blob_kzg_commitments` to be the `blobsbundle.commitments` field
-    returned by `engine_getPayloadV5`.
+    returned by `engine_getPayloadV6`.
+13. Set `bid.execution_requests_root` to `hash_tree_root(execution_requests)`,
+    where `execution_requests` is the `ExecutionRequests` field returned by
+    `engine_getPayloadV6`.
 
 After building the `bid`, the builder obtains a `signature` of the bid by using:
 
@@ -238,17 +247,9 @@ alias `bid` to be the committed `ExecutionPayloadBid` in
 3. Set `envelope.builder_index` to be the index of the builder performing these
    steps. This field **MUST** be `bid.builder_index`.
 4. Set `envelope.beacon_block_root` to be `hash_tree_root(block)`.
-5. Set `envelope.slot` to be `block.slot`.
+5. Set `envelope.parent_beacon_block_root` to be `block.parent_root`.
 
-After setting these parameters, the builder assembles
-`signed_execution_payload_envelope = SignedExecutionPayloadEnvelope(message=envelope, signature=BLSSignature())`,
-then verify that the envelope is valid with
-`process_execution_payload(state, signed_execution_payload_envelope, execution_engine, verify=False)`.
-This function should not trigger an exception.
-
-7. Set `envelope.state_root` to `hash_tree_root(state)`.
-
-After preparing the `envelope` the builder should sign the envelope using:
+After preparing the `envelope` the builder signs it using:
 
 ```python
 def get_execution_payload_envelope_signature(

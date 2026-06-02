@@ -8,6 +8,7 @@ from tests.infra.helpers.builders import add_builder_to_registry
 from tests.infra.helpers.withdrawals import (
     assert_process_withdrawals,
     prepare_process_withdrawals,
+    set_parent_block_empty,
 )
 
 
@@ -89,8 +90,10 @@ def test_multiple_builder_withdrawals(spec, state):
         spec,
         state,
         builder_indices=builder_indices,
-        builder_withdrawal_amounts={i: withdrawal_amount for i in builder_indices},
-        builder_balances={i: withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT for i in builder_indices},
+        builder_withdrawal_amounts=dict.fromkeys(builder_indices, withdrawal_amount),
+        builder_balances=dict.fromkeys(
+            builder_indices, withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT
+        ),
     )
     pre_state = state.copy()
 
@@ -235,8 +238,10 @@ def test_maximum_withdrawals_per_payload_limit(spec, state):
         spec,
         state,
         builder_indices=builder_indices,
-        builder_withdrawal_amounts={i: withdrawal_amount for i in builder_indices},
-        builder_balances={i: withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT for i in builder_indices},
+        builder_withdrawal_amounts=dict.fromkeys(builder_indices, withdrawal_amount),
+        builder_balances=dict.fromkeys(
+            builder_indices, withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT
+        ),
         pending_partial_indices=pending_indices,
         full_withdrawal_indices=sweep_indices,
     )
@@ -297,7 +302,7 @@ def test_pending_withdrawals_processing(spec, state):
         spec,
         state,
         pending_partial_indices=pending_indices,
-        validator_balances={i: initial_balance for i in pending_indices},
+        validator_balances=dict.fromkeys(pending_indices, initial_balance),
     )
 
     expected_withdrawals = spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
@@ -305,7 +310,7 @@ def test_pending_withdrawals_processing(spec, state):
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
 
-    expected_balances = {i: spec.MAX_EFFECTIVE_BALANCE for i in pending_indices}
+    expected_balances = dict.fromkeys(pending_indices, spec.MAX_EFFECTIVE_BALANCE)
 
     assert_process_withdrawals(
         spec,
@@ -348,7 +353,7 @@ def test_pending_withdrawals_processing_exceeds_limit(spec, state):
         spec,
         state,
         pending_partial_indices=pending_indices,
-        validator_balances={i: initial_balance for i in pending_indices},
+        validator_balances=dict.fromkeys(pending_indices, initial_balance),
     )
 
     expected_processed = spec.MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP
@@ -358,8 +363,8 @@ def test_pending_withdrawals_processing_exceeds_limit(spec, state):
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
 
-    expected_balances = {i: spec.MAX_EFFECTIVE_BALANCE for i in processed_indices}
-    expected_balances.update({i: initial_balance for i in unprocessed_indices})
+    expected_balances = dict.fromkeys(processed_indices, spec.MAX_EFFECTIVE_BALANCE)
+    expected_balances.update(dict.fromkeys(unprocessed_indices, initial_balance))
 
     assert_process_withdrawals(
         spec,
@@ -506,7 +511,7 @@ def test_builder_payments_exceed_limit_blocks_other_withdrawals(spec, state):
         spec,
         state,
         builder_indices=builder_indices,
-        builder_withdrawal_amounts={i: withdrawal_amount for i in builder_indices},
+        builder_withdrawal_amounts=dict.fromkeys(builder_indices, withdrawal_amount),
         builder_balances=builder_balance_values,
         validator_balances=capped_validator_balances,
     )
@@ -571,7 +576,7 @@ def test_no_builders_max_pending_with_sweep_spillover(spec, state):
     remaining_pending = spec.MAX_WITHDRAWALS_PER_PAYLOAD - expected_pending
     assert len(state.pending_partial_withdrawals) == remaining_pending
 
-    sweep_balances = {i: 0 for i in range(sweep_start, sweep_start + expected_sweep)}
+    sweep_balances = dict.fromkeys(range(sweep_start, sweep_start + expected_sweep), 0)
 
     # Expected order: pending partial withdrawals first, then validator sweep
     expected_order = pending_indices[:expected_pending] + sweep_indices
@@ -614,7 +619,7 @@ def test_no_builders_no_pending_max_sweep_withdrawals(spec, state):
     pre_state = state.copy()
     yield from run_gloas_withdrawals_processing(spec, state)
 
-    sweep_balances = {i: 0 for i in range(spec.MAX_WITHDRAWALS_PER_PAYLOAD)}
+    sweep_balances = dict.fromkeys(range(spec.MAX_WITHDRAWALS_PER_PAYLOAD), 0)
 
     assert_process_withdrawals(
         spec,
@@ -790,10 +795,10 @@ def test_builder_and_pending_leave_room_for_sweep(spec, state):
         spec,
         state,
         builder_indices=builder_indices_list,
-        builder_withdrawal_amounts={i: withdrawal_amount for i in builder_indices_list},
-        builder_balances={
-            i: withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT for i in builder_indices_list
-        },
+        builder_withdrawal_amounts=dict.fromkeys(builder_indices_list, withdrawal_amount),
+        builder_balances=dict.fromkeys(
+            builder_indices_list, withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT
+        ),
         pending_partial_indices=pending_indices,
         full_withdrawal_indices=[regular_index],
     )
@@ -875,8 +880,8 @@ def test_all_builder_withdrawals_zero_balance(spec, state):
         spec,
         state,
         builder_indices=builder_indices,
-        builder_withdrawal_amounts={i: withdrawal_amount for i in builder_indices},
-        builder_balances={i: 0 for i in builder_indices},
+        builder_withdrawal_amounts=dict.fromkeys(builder_indices, withdrawal_amount),
+        builder_balances=dict.fromkeys(builder_indices, 0),
         full_withdrawal_indices=[regular_index],
     )
 
@@ -940,10 +945,10 @@ def test_builder_max_minus_one_plus_one_regular(spec, state):
         spec,
         state,
         builder_indices=builder_indices_list,
-        builder_withdrawal_amounts={i: withdrawal_amount for i in builder_indices_list},
-        builder_balances={
-            i: withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT for i in builder_indices_list
-        },
+        builder_withdrawal_amounts=dict.fromkeys(builder_indices_list, withdrawal_amount),
+        builder_balances=dict.fromkeys(
+            builder_indices_list, withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT
+        ),
         full_withdrawal_indices=regular_indices,
         next_withdrawal_validator_index=regular_indices[0],
     )
@@ -1064,6 +1069,10 @@ def test_full_builder_payload_reserves_sweep_slot(spec, state):
         if validator.withdrawal_credentials[0:1] == spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX:
             state.balances[i] = min(state.balances[i], spec.MAX_EFFECTIVE_BALANCE)
 
+    # Setup: Simulate parent being FULL so process_withdrawals runs (deferred
+    # processing otherwise returns early when parent was EMPTY).
+    state.latest_block_hash = state.latest_execution_payload_bid.block_hash
+
     # Verify setup: One slot reserved for sweep, so only MAX - 1 builder withdrawals
     expected_result = spec.get_expected_withdrawals(state)
     expected_builder_withdrawals = spec.MAX_WITHDRAWALS_PER_PAYLOAD - 1
@@ -1105,6 +1114,23 @@ def test_full_builder_payload_reserves_sweep_slot(spec, state):
     # Verify: One builder withdrawal remains unprocessed (slot was reserved for sweep)
     assert len(state.builder_pending_withdrawals) == 1, (
         "One builder withdrawal should remain (slot was reserved for sweep)"
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_zero_hash_genesis_skips_withdrawals(spec, state):
+    """
+    Verify that process_withdrawals does not advance withdrawal indices in genesis.
+    """
+    pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        all_state_unchanged=True,
     )
 
 
@@ -1197,7 +1223,7 @@ def test_multiple_builder_sweep_withdrawals(spec, state):
         state,
         pre_state,
         withdrawal_count=3,
-        builder_balances={i: 0 for i in builder_indices},
+        builder_balances=dict.fromkeys(builder_indices, 0),
         withdrawal_amounts_builders=balances,
     )
 
@@ -1483,3 +1509,51 @@ def test_builder_sweep_index_wrap_around(spec, state):
         pre_state,
         builder_balances={0: 0},  # Builder 0 swept after wrap-around
     )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_empty_parent_preserves_populated_expected_withdrawals(spec, state):
+    """
+    Test early return when parent block is empty after a prior full parent
+    already populated payload_expected_withdrawals.
+
+    Input State Configured:
+        - state.builders[0]: Builder with pending withdrawal (1 ETH)
+        - payload_expected_withdrawals: Populated by a prior full-parent pass
+        - next_withdrawal_index: Advanced by the prior pass
+        - latest_block_hash: != latest_execution_payload_bid.block_hash (parent EMPTY)
+
+    Output State Verified:
+        - All state fields UNCHANGED (early exit triggered):
+          - payload_expected_withdrawals: Unchanged (non-empty)
+          - balances[*]: Unchanged
+          - builder_pending_withdrawals: Unchanged
+          - pending_partial_withdrawals: Unchanged
+          - next_withdrawal_index: Unchanged
+          - next_withdrawal_validator_index: Unchanged
+        - get_expected_withdrawals(state).withdrawals diverges from
+          payload_expected_withdrawals (indices/balances advanced by first pass)
+    """
+    builder_index = 0
+    withdrawal_amount = spec.Gwei(1_000_000_000)
+
+    # Populate payload_expected_withdrawals via a successful full parent pass
+    prepare_process_withdrawals(
+        spec,
+        state,
+        builder_indices=[builder_index],
+        builder_withdrawal_amounts={builder_index: withdrawal_amount},
+        builder_balances={builder_index: withdrawal_amount + spec.MIN_DEPOSIT_AMOUNT},
+    )
+    spec.process_withdrawals(state)
+    populated_withdrawals = list(state.payload_expected_withdrawals)
+    assert len(populated_withdrawals) > 0
+
+    set_parent_block_empty(spec, state)
+    pre_state = state.copy()
+
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    assert_process_withdrawals(spec, state, pre_state, all_state_unchanged=True)
+    assert list(spec.get_expected_withdrawals(state).withdrawals) != populated_withdrawals

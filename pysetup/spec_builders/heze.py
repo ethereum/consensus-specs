@@ -1,4 +1,5 @@
-from ..constants import HEZE
+from pysetup.constants import HEZE
+
 from .base import BaseSpecBuilder
 
 
@@ -15,7 +16,6 @@ from eth_consensus_specs.gloas import {preset_name} as gloas
     def sundry_functions(cls) -> str:
         return """
 def cached_or_new_inclusion_list_store() -> InclusionListStore:
-    # pylint: disable=unused-argument
     return InclusionListStore()
 """
 
@@ -38,7 +38,6 @@ class NoopExecutionEngine(ExecutionEngine):
         pass
 
     def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
-        # pylint: disable=unused-argument
         raise NotImplementedError("no default block production")
 
     def is_valid_block_hash(self: ExecutionEngine,
@@ -55,7 +54,6 @@ class NoopExecutionEngine(ExecutionEngine):
         return True
 
     def get_inclusion_list(self: ExecutionEngine) -> GetInclusionListResponse:
-        # pylint: disable=unused-argument
         raise NotImplementedError("no default inclusion list production")
 
     def is_inclusion_list_satisfied(self: ExecutionEngine,
@@ -65,3 +63,11 @@ class NoopExecutionEngine(ExecutionEngine):
 
 
 EXECUTION_ENGINE = NoopExecutionEngine()"""
+
+    @classmethod
+    def deprecate_functions(cls) -> set[str]:
+        return {
+            "initialize_ptc_window",
+            "onboard_builders_from_pending_deposits",
+            "upgrade_to_gloas",
+        }

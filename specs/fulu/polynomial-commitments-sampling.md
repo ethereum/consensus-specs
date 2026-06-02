@@ -145,7 +145,7 @@ def _fft_field(
     L = _fft_field(vals[::2], roots_of_unity[::2])
     R = _fft_field(vals[1::2], roots_of_unity[::2])
     o = [BLSFieldElement(0) for _ in vals]
-    for i, (x, y) in enumerate(zip(L, R)):
+    for i, (x, y) in enumerate(zip(L, R, strict=True)):
         y_times_root = y * roots_of_unity[i]
         o[i] = x + y_times_root
         o[i + len(L)] = x - y_times_root
@@ -181,7 +181,7 @@ def coset_fft_field(
     This is useful for when one wants to divide by a polynomial which
     vanishes on one or more elements in the domain.
     """
-    vals = [v for v in vals]  # copy
+    vals = list(vals)  # copy
 
     def shift_vals(
         vals: Sequence[BLSFieldElement], factor: BLSFieldElement
@@ -264,9 +264,9 @@ def add_polynomialcoeff(a: PolynomialCoeff, b: PolynomialCoeff) -> PolynomialCoe
     """
     a, b = (a, b) if len(a) >= len(b) else (b, a)
     length_a, length_b = len(a), len(b)
-    return PolynomialCoeff(
-        [a[i] + (b[i] if i < length_b else BLSFieldElement(0)) for i in range(length_a)]
-    )
+    return PolynomialCoeff([
+        a[i] + (b[i] if i < length_b else BLSFieldElement(0)) for i in range(length_a)
+    ])
 ```
 
 #### `multiply_polynomialcoeff`
@@ -496,12 +496,10 @@ def verify_cell_kzg_proof_batch_impl(
     rl = bls.add(rl, rlp)
 
     # Step 5: Check pairing (LL, LR) = pairing (RL, [1])
-    return bls.pairing_check(
-        [
-            [ll, lr],
-            [rl, bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[0]))],
-        ]
-    )
+    return bls.pairing_check([
+        [ll, lr],
+        [rl, bls.neg(bls.bytes96_to_G2(KZG_SETUP_G2_MONOMIAL[0]))],
+    ])
 ```
 
 ### Cell cosets
@@ -687,12 +685,10 @@ def construct_vanishing_polynomial(
     roots_of_unity_reduced = compute_roots_of_unity(CELLS_PER_EXT_BLOB)
 
     # Compute polynomial that vanishes at all the missing cells (over the small domain)
-    short_zero_poly = vanishing_polynomialcoeff(
-        [
-            roots_of_unity_reduced[reverse_bits(missing_cell_index, CELLS_PER_EXT_BLOB)]
-            for missing_cell_index in missing_cell_indices
-        ]
-    )
+    short_zero_poly = vanishing_polynomialcoeff([
+        roots_of_unity_reduced[reverse_bits(missing_cell_index, CELLS_PER_EXT_BLOB)]
+        for missing_cell_index in missing_cell_indices
+    ])
 
     # Extend vanishing polynomial to full domain using the closed form of the vanishing polynomial over a coset
     zero_poly_coeff = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_EXT_BLOB
@@ -719,7 +715,7 @@ def recover_polynomialcoeff(
     # We let E(x) be a polynomial of degree FIELD_ELEMENTS_PER_EXT_BLOB - 1
     # that interpolates the evaluations including the zeros for missing ones.
     extended_evaluation_rbo = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_EXT_BLOB
-    for cell_index, cell in zip(cell_indices, cosets_evals):
+    for cell_index, cell in zip(cell_indices, cosets_evals, strict=True):
         start = cell_index * FIELD_ELEMENTS_PER_CELL
         end = (cell_index + 1) * FIELD_ELEMENTS_PER_CELL
         extended_evaluation_rbo[start:end] = cell
@@ -740,7 +736,9 @@ def recover_polynomialcoeff(
     # Compute (E*Z)(x) = E(x) * Z(x) in evaluation form over the FFT domain
     # Note: over the FFT domain, the polynomials (E*Z)(x) and (P*Z)(x) agree, where
     # P(x) is the polynomial we want to reconstruct (degree FIELD_ELEMENTS_PER_BLOB - 1).
-    extended_evaluation_times_zero = [a * b for a, b in zip(zero_poly_eval, extended_evaluation)]
+    extended_evaluation_times_zero = [
+        a * b for a, b in zip(zero_poly_eval, extended_evaluation, strict=True)
+    ]
 
     # We know that (E*Z)(x) and (P*Z)(x) agree over the FFT domain,
     # and we know that (P*Z)(x) has degree at most FIELD_ELEMENTS_PER_EXT_BLOB - 1.
@@ -763,7 +761,7 @@ def recover_polynomialcoeff(
 
     # Compute P(x) = (P*Z)(x) / Z(x) in evaluation form over a coset of the FFT domain
     reconstructed_poly_over_coset = [
-        a / b for a, b in zip(extended_evaluations_over_coset, zero_poly_over_coset)
+        a / b for a, b in zip(extended_evaluations_over_coset, zero_poly_over_coset, strict=True)
     ]
 
     # Convert P(x) to coefficient form

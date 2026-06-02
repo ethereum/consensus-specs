@@ -14,7 +14,12 @@ from eth_consensus_specs.test.helpers.constants import (
     BELLATRIX,
     PHASE0,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_fork
+from eth_consensus_specs.test.helpers.forks import (
+    get_fork_epoch,
+    get_fork_version,
+    has_explicit_fork_version,
+    is_post_fork,
+)
 
 
 @with_phases([ALTAIR])
@@ -27,9 +32,9 @@ from eth_consensus_specs.test.helpers.forks import is_post_fork
 )
 def test_config_override(spec, state):
     assert spec.config.ALTAIR_FORK_EPOCH == 4
-    assert spec.config.GENESIS_FORK_VERSION != spec.Version("0x00000000")
-    assert spec.config.GENESIS_FORK_VERSION == spec.Version("0x12345678")
-    assert spec.config.ALTAIR_FORK_VERSION == spec.Version("0x11111111")
+    assert spec.Version("0x00000000") != spec.config.GENESIS_FORK_VERSION
+    assert spec.Version("0x12345678") == spec.config.GENESIS_FORK_VERSION
+    assert spec.Version("0x11111111") == spec.config.ALTAIR_FORK_VERSION
     assert state.fork.current_version == spec.Version("0x11111111")
     # TODO: it would be nice if the create_genesis_state actually outputs a state
     #  for the fork with a slot that matches at least the fork boundary.
@@ -49,11 +54,9 @@ def test_config_override_matching_fork_epochs(spec, state):
     # Identify state fork
     state_fork = None
     for fork in [fork for fork in ALL_PHASES if is_post_fork(spec.fork, fork)]:
-        if fork == PHASE0:
-            fork_version_field = "GENESIS_FORK_VERSION"
-        else:
-            fork_version_field = fork.upper() + "_FORK_VERSION"
-        if state.fork.current_version == getattr(spec.config, fork_version_field):
+        if not has_explicit_fork_version(spec, fork):
+            continue
+        if state.fork.current_version == get_fork_version(spec, fork):
             state_fork = fork
             break
     assert state_fork is not None
@@ -62,8 +65,10 @@ def test_config_override_matching_fork_epochs(spec, state):
     for fork in [fork for fork in ALL_PHASES if is_post_fork(state_fork, fork)]:
         if fork == PHASE0:
             continue
-        fork_epoch_field = fork.upper() + "_FORK_EPOCH"
-        assert getattr(spec.config, fork_epoch_field) <= epoch
+        fork_epoch = get_fork_epoch(spec, fork)
+        if fork_epoch is None:
+            continue
+        assert fork_epoch <= epoch
 
 
 @with_phases(phases=[ALTAIR], other_phases=[BELLATRIX])
@@ -79,14 +84,14 @@ def test_config_override_matching_fork_epochs(spec, state):
 def test_config_override_across_phases(spec, phases, state):
     assert state.fork.current_version == spec.config.ALTAIR_FORK_VERSION
 
-    assert spec.config.ALTAIR_FORK_VERSION == spec.Version("0x11111111")
+    assert spec.Version("0x11111111") == spec.config.ALTAIR_FORK_VERSION
     assert spec.config.ALTAIR_FORK_EPOCH == 0
     assert not hasattr(spec.config, "BELLATRIX_FORK_EPOCH")
 
-    assert phases[ALTAIR].config.ALTAIR_FORK_VERSION == spec.Version("0x11111111")
+    assert spec.Version("0x11111111") == phases[ALTAIR].config.ALTAIR_FORK_VERSION
     assert phases[ALTAIR].config.ALTAIR_FORK_EPOCH == 0
     assert not hasattr(phases[ALTAIR].config, "BELLATRIX_FORK_EPOCH")
 
-    assert phases[ALTAIR].config.ALTAIR_FORK_VERSION == spec.Version("0x11111111")
+    assert spec.Version("0x11111111") == phases[ALTAIR].config.ALTAIR_FORK_VERSION
     assert phases[BELLATRIX].config.ALTAIR_FORK_EPOCH == 0
     assert phases[BELLATRIX].config.BELLATRIX_FORK_EPOCH == 4

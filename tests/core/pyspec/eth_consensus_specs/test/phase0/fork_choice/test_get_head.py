@@ -58,21 +58,13 @@ def test_genesis(spec, state):
 
     if is_post_gloas(spec):
         # Verify Gloas store fields
-        assert hasattr(store, "payload_states")
+        assert hasattr(store, "payloads")
         assert hasattr(store, "payload_timeliness_vote")
-        assert anchor_root in store.payload_states
-        assert anchor_root in store.payload_timeliness_vote
-
-        # Check PTC vote initialization
-        ptc_vote = store.payload_timeliness_vote[anchor_root]
-        assert len(ptc_vote) == spec.PTC_SIZE
-        assert all(ptc_vote)
-
-        # Check data availability vote initialization
-        assert anchor_root in store.payload_data_availability_vote
-        da_vote = store.payload_data_availability_vote[anchor_root]
-        assert len(da_vote) == spec.PTC_SIZE
-        assert all(da_vote)
+        assert hasattr(store, "payload_data_availability_vote")
+        # Anchor has no observed payload envelope or PTC votes
+        assert anchor_root not in store.payloads
+        assert anchor_root not in store.payload_timeliness_vote
+        assert anchor_root not in store.payload_data_availability_vote
 
         # get_head returns ForkChoiceNode
         head = spec.get_head(store)
@@ -221,7 +213,9 @@ def test_filtered_block_tree(spec, state):
     next_epoch(spec, state)
     next_epoch(spec, state)
     # fill in attestations for entire epoch, justifying the recent epoch
-    prev_state, signed_blocks, state = next_epoch_with_attestations(spec, state, True, False)
+    prev_state, signed_blocks, state = next_epoch_with_attestations(
+        spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+    )
     assert state.current_justified_checkpoint.epoch > prev_state.current_justified_checkpoint.epoch
 
     # tick time forward and add blocks and attestations to store
@@ -313,7 +307,7 @@ def test_proposer_boost_correct_head(spec, state):
     signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
     rng = random.Random(1001)
     while spec.hash_tree_root(block_1) >= spec.hash_tree_root(block_2):
-        block_2.body.graffiti = spec.Bytes32(hex(rng.getrandbits(8 * 32))[2:].zfill(64))
+        block_2.body.graffiti = spec.Bytes32(f"{rng.getrandbits(8 * 32):064x}")
         signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
     assert spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2)
 
@@ -384,7 +378,7 @@ def test_discard_equivocations_on_attester_slashing(spec, state):
     signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
     rng = random.Random(1001)
     while spec.hash_tree_root(block_1) >= spec.hash_tree_root(block_2):
-        block_2.body.graffiti = spec.Bytes32(hex(rng.getrandbits(8 * 32))[2:].zfill(64))
+        block_2.body.graffiti = spec.Bytes32(f"{rng.getrandbits(8 * 32):064x}")
         signed_block_2 = state_transition_and_sign_block(spec, state_2.copy(), block_2)
     assert spec.hash_tree_root(block_1) < spec.hash_tree_root(block_2)
 
@@ -451,8 +445,8 @@ def test_discard_equivocations_slashed_validator_censoring(spec, state):
     # Generate an anchor block with correct state root
     anchor_block = spec.BeaconBlock(state_root=anchor_state.hash_tree_root())
     if is_post_gloas(spec):
-        anchor_block.body.signed_execution_payload_bid.message.block_hash = (
-            anchor_state.latest_block_hash
+        anchor_block.body.signed_execution_payload_bid.message = (
+            anchor_state.latest_execution_payload_bid
         )
     yield "anchor_state", anchor_state
     yield "anchor_block", anchor_block
@@ -550,7 +544,7 @@ def test_voting_source_within_two_epoch(spec, state):
     # Fill epoch 1 to 3
     for _ in range(3):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
@@ -562,7 +556,7 @@ def test_voting_source_within_two_epoch(spec, state):
 
     # Fill epoch 4
     state, store, _ = yield from apply_next_epoch_with_attestations(
-        spec, state, store, True, True, test_steps=test_steps
+        spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
     )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 5
@@ -572,7 +566,9 @@ def test_voting_source_within_two_epoch(spec, state):
     # Create a fork from the earlier saved state
     next_epoch(spec, fork_state)
     assert spec.compute_epoch_at_slot(fork_state.slot) == 5
-    _, signed_blocks, fork_state = next_epoch_with_attestations(spec, fork_state, True, True)
+    _, signed_blocks, fork_state = next_epoch_with_attestations(
+        spec, fork_state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     # Only keep the blocks from epoch 5, so discard the last generated block
     signed_blocks = signed_blocks[:-1]
     last_fork_block = signed_blocks[-1].message
@@ -634,7 +630,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
     # Fill epoch 1 to 3
     for _ in range(3):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 4
@@ -647,7 +643,7 @@ def test_voting_source_beyond_two_epoch(spec, state):
     # Fill epoch 4 and 5
     for _ in range(2):
         state, store, _ = yield from apply_next_epoch_with_attestations(
-            spec, state, store, True, True, test_steps=test_steps
+            spec, state, store, fill_cur_epoch=True, fill_prev_epoch=True, test_steps=test_steps
         )
 
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == 6
@@ -659,16 +655,16 @@ def test_voting_source_beyond_two_epoch(spec, state):
         next_epoch(spec, fork_state)
     assert spec.compute_epoch_at_slot(fork_state.slot) == 6
     assert fork_state.current_justified_checkpoint.epoch == 3
-    _, signed_blocks, fork_state = next_epoch_with_attestations(spec, fork_state, True, True)
+    _, signed_blocks, fork_state = next_epoch_with_attestations(
+        spec, fork_state, fill_cur_epoch=True, fill_prev_epoch=True
+    )
     # Only keep the blocks from epoch 6, so discard the last generated block
     signed_blocks = signed_blocks[:-1]
     last_fork_block = signed_blocks[-1].message
     assert spec.compute_epoch_at_slot(last_fork_block.slot) == 6
 
     # Store the head before adding the fork to the store
-    correct_head = spec.get_head(store)
-    if is_post_gloas(spec):
-        correct_head = correct_head.root
+    correct_head = spec.get_head(store).root
 
     # Now add the fork to the store
     for signed_block in signed_blocks:

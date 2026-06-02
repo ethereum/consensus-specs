@@ -97,7 +97,7 @@ def test_on_attestation_past_epoch(spec, state):
     assert attestation.data.target.epoch == spec.GENESIS_EPOCH
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == spec.GENESIS_EPOCH + 2
 
-    run_on_attestation(spec, state, store, attestation, False)
+    run_on_attestation(spec, state, store, attestation, valid=False)
 
 
 @with_all_phases
@@ -120,7 +120,7 @@ def test_on_attestation_mismatched_target_and_slot(spec, state):
     assert spec.compute_epoch_at_slot(attestation.data.slot) == spec.GENESIS_EPOCH
     assert spec.compute_epoch_at_slot(spec.get_current_slot(store)) == spec.GENESIS_EPOCH + 1
 
-    run_on_attestation(spec, state, store, attestation, False)
+    run_on_attestation(spec, state, store, attestation, valid=False)
 
 
 @with_all_phases
@@ -162,7 +162,7 @@ def test_on_attestation_inconsistent_target_and_head(spec, state):
     assert spec.compute_epoch_at_slot(attestation.data.slot) == spec.GENESIS_EPOCH + 1
     assert spec.get_block_root(target_state_1, epoch) != attestation.data.target.root
 
-    run_on_attestation(spec, state, store, attestation, False)
+    run_on_attestation(spec, state, store, attestation, valid=False)
 
 
 @with_all_phases
@@ -184,7 +184,7 @@ def test_on_attestation_target_block_not_in_store(spec, state):
     attestation = get_valid_attestation(spec, state, slot=target_block.slot, signed=True)
     assert attestation.data.target.root == target_block.hash_tree_root()
 
-    run_on_attestation(spec, state, store, attestation, False)
+    run_on_attestation(spec, state, store, attestation, valid=False)
 
 
 @with_all_phases
@@ -265,7 +265,7 @@ def test_on_attestation_beacon_block_not_in_store(spec, state):
     assert attestation.data.target.root == target_block.hash_tree_root()
     assert attestation.data.beacon_block_root == head_block.hash_tree_root()
 
-    run_on_attestation(spec, state, store, attestation, False)
+    run_on_attestation(spec, state, store, attestation, valid=False)
 
 
 @with_all_phases
@@ -285,7 +285,7 @@ def test_on_attestation_future_epoch(spec, state):
     next_epoch(spec, state)
 
     attestation = get_valid_attestation(spec, state, slot=state.slot, signed=True)
-    run_on_attestation(spec, state, store, attestation, False)
+    run_on_attestation(spec, state, store, attestation, valid=False)
 
 
 @with_all_phases
@@ -305,7 +305,7 @@ def test_on_attestation_future_block(spec, state):
     attestation.data.beacon_block_root = block.hash_tree_root()
     sign_attestation(spec, state, attestation)
 
-    run_on_attestation(spec, state, store, attestation, False)
+    run_on_attestation(spec, state, store, attestation, valid=False)
 
 
 @with_all_phases
@@ -321,7 +321,7 @@ def test_on_attestation_same_slot(spec, state):
     spec.on_block(store, signed_block)
 
     attestation = get_valid_attestation(spec, state, slot=block.slot, signed=True)
-    run_on_attestation(spec, state, store, attestation, False)
+    run_on_attestation(spec, state, store, attestation, valid=False)
 
 
 @with_all_phases
@@ -343,4 +343,4 @@ def test_on_attestation_invalid_attestation(spec, state):
     else:
         attestation.data.index = spec.MAX_COMMITTEES_PER_SLOT * spec.SLOTS_PER_EPOCH
 
-    run_on_attestation(spec, state, store, attestation, False)
+    run_on_attestation(spec, state, store, attestation, valid=False)

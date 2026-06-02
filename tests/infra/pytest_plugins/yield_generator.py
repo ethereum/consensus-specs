@@ -1,19 +1,21 @@
 from __future__ import annotations
 
+import shutil
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, TYPE_CHECKING, TypedDict
 
 import _pytest
 import pytest
-from pytest import StashKey, TestReport
 
 from eth_consensus_specs.test import context
 from eth_consensus_specs.test.helpers.constants import TESTGEN_FORKS
-from eth_consensus_specs.test.helpers.typing import SpecForkName
 from tests.infra.dumper import Dumper
 from tests.infra.manifest import Manifest
-from tests.infra.yield_generator import MultiPhaseResult
+
+if TYPE_CHECKING:
+    from eth_consensus_specs.test.helpers.typing import SpecForkName
+    from tests.infra.yield_generator import MultiPhaseResult
 
 
 class RunnerConfig(TypedDict, total=False):
@@ -29,6 +31,7 @@ RUNNERS: dict[str, RunnerConfig] = {
     "bls": {},
     "finality": {},
     "fork_choice": {},
+    "fast_confirmation": {},
     "genesis": {},
     "kzg": {},
     "merkle_proof": {},
@@ -57,6 +60,7 @@ RUNNERS: dict[str, RunnerConfig] = {
     "sanity": {
         "handler_name_map": {
             "test_deposit_transition": "blocks",
+            "test_epoch_boundary": "blocks",
             "test_lookahead": "blocks",
             "test_lookahead_slots": "slots",
         },
@@ -156,8 +160,7 @@ class SpecTestFunction(pytest.Function):
         suite_name = config.get("suite_name", getattr(self.obj, "suite_name", "pyspec_tests"))
 
         case_name = self.originalname or self.name
-        if case_name.startswith("test_"):
-            case_name = case_name[5:]
+        case_name = case_name.removeprefix("test_")
 
         preset = self.callspec.params.get("preset") if hasattr(self, "callspec") else None
 
@@ -184,7 +187,7 @@ class SpecTestFunction(pytest.Function):
 
 
 class YieldGeneratorPlugin:
-    phase_report_key: StashKey[dict[str, TestReport]] = StashKey()
+    phase_report_key: pytest.StashKey[dict[str, pytest.TestReport]] = pytest.StashKey()
 
     def __init__(self, config):
         self.config = config
@@ -303,7 +306,7 @@ class YieldGeneratorPlugin:
         if self.reftests_enabled:
             context.is_pytest = True
             context.is_generator = True
-            # Limit to TESTGEN_FORKS so experimental forks (eip7928, eip8025)
+            # Limit to TESTGEN_FORKS so experimental forks (eip8025)
             # don't produce output that the old generator wouldn't produce.
             context.DEFAULT_PYTEST_FORKS = set(TESTGEN_FORKS)
 
@@ -336,6 +339,11 @@ class YieldGeneratorPlugin:
 
     def _dump_phase(self, manifest: Manifest, phase_result: list, fork_name: SpecForkName) -> None:
         """Write a single phase's test vector to disk."""
+        # Skip output whose resolved fork isn't in the selected --fork set.
+        # Fork/transition tests run on the pre-fork but emit under the post-fork;
+        # this keeps vectors under the directory matching the selected fork.
+        if fork_name not in context.DEFAULT_PYTEST_FORKS:
+            return
         manifest = manifest.with_defaults(Manifest(fork_name=fork_name))
         assert manifest.is_complete(), (
             f"Manifest must be complete to generate test vector for {manifest}"
@@ -343,7 +351,7 @@ class YieldGeneratorPlugin:
 
         output_dir = (
             Path(self.output_dir)
-            / manifest.preset_name  # type: ignore
+            / manifest.preset_name
             / manifest.fork_name
             / manifest.runner_name
             / manifest.handler_name
@@ -362,6 +370,9 @@ class YieldGeneratorPlugin:
                 if method is None:
                     raise ValueError(f"Unknown kind {kind!r}")
                 outputs.append((name, method, data))
+
+        if output_dir.exists():
+            shutil.rmtree(output_dir)
 
         for name, method, data in outputs:
             method(output_dir, name, data)

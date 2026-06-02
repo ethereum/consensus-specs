@@ -56,7 +56,6 @@
     - [`xor`](#xor)
     - [`uint_to_bytes`](#uint_to_bytes)
     - [`bytes_to_uint64`](#bytes_to_uint64)
-    - [`saturating_sub`](#saturating_sub)
   - [Crypto](#crypto)
     - [`hash`](#hash)
     - [`hash_tree_root`](#hash_tree_root)
@@ -68,8 +67,10 @@
     - [`is_slashable_validator`](#is_slashable_validator)
     - [`is_slashable_attestation_data`](#is_slashable_attestation_data)
     - [`is_valid_indexed_attestation`](#is_valid_indexed_attestation)
+    - [`compute_merkle_branch_root`](#compute_merkle_branch_root)
     - [`is_valid_merkle_branch`](#is_valid_merkle_branch)
   - [Misc](#misc-2)
+    - [`compute_shuffled_permutation`](#compute_shuffled_permutation)
     - [`compute_shuffled_index`](#compute_shuffled_index)
     - [`compute_proposer_index`](#compute_proposer_index)
     - [`compute_committee`](#compute_committee)
@@ -643,7 +644,7 @@ def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
     """
     Return the exclusive-or of two 32-byte strings.
     """
-    return Bytes32(a ^ b for a, b in zip(bytes_1, bytes_2))
+    return Bytes32(a ^ b for a, b in zip(bytes_1, bytes_2, strict=True))
 ```
 
 #### `uint_to_bytes`
@@ -660,16 +661,6 @@ def bytes_to_uint64(data: bytes) -> uint64:
     Return the integer deserialization of ``data`` interpreted as ``ENDIANNESS``-endian.
     """
     return uint64(int.from_bytes(data, ENDIANNESS))
-```
-
-#### `saturating_sub`
-
-```python
-def saturating_sub(a: int, b: int) -> int:
-    """
-    Computes a - b, saturating at numeric bounds.
-    """
-    return a - b if a > b else 0
 ```
 
 ### Crypto
@@ -779,13 +770,31 @@ def is_valid_indexed_attestation(
     """
     # Verify indices are sorted and unique
     indices = indexed_attestation.attesting_indices
-    if len(indices) == 0 or not indices == sorted(set(indices)):
+    if len(indices) == 0 or indices != sorted(set(indices)):
         return False
     # Verify aggregate signature
     pubkeys = [state.validators[i].pubkey for i in indices]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
+```
+
+#### `compute_merkle_branch_root`
+
+```python
+def compute_merkle_branch_root(
+    leaf: Bytes32, branch: Sequence[Bytes32], depth: uint64, index: uint64
+) -> Root:
+    """
+    Return the Merkle root obtained by hashing ``leaf`` at ``index`` with ``branch``.
+    """
+    value = leaf
+    for i in range(depth):
+        if index // (2**i) % 2:
+            value = hash(branch[i] + value)
+        else:
+            value = hash(value + branch[i])
+    return Root(value)
 ```
 
 #### `is_valid_merkle_branch`
@@ -797,16 +806,41 @@ def is_valid_merkle_branch(
     """
     Check if ``leaf`` at ``index`` verifies against the Merkle ``root`` and ``branch``.
     """
-    value = leaf
-    for i in range(depth):
-        if index // (2**i) % 2:
-            value = hash(branch[i] + value)
-        else:
-            value = hash(value + branch[i])
-    return value == root
+    if depth != len(branch):
+        return False
+    return compute_merkle_branch_root(leaf, branch, depth, index) == root
 ```
 
 ### Misc
+
+#### `compute_shuffled_permutation`
+
+```python
+def compute_shuffled_permutation(index_count: uint64, seed: Bytes32) -> Sequence[uint64]:
+    """
+    Return the full shuffled permutation corresponding to ``seed`` (and ``index_count``).
+    """
+    # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
+    # See the 'generalized domain' algorithm on page 3
+    indices = [uint64(i) for i in range(index_count)]
+    for current_round in range(SHUFFLE_ROUND_COUNT):
+        round_bytes = current_round.to_bytes(1, "little")
+        pivot = int.from_bytes(hash(seed + round_bytes)[0:8], "little") % index_count
+        source_by_bucket: Dict[uint64, Bytes32] = {}
+        for i in range(index_count):
+            flip = (pivot + index_count - indices[i]) % index_count
+            position = max(indices[i], flip)
+            position_bucket = position // 256
+            if position_bucket not in source_by_bucket:
+                source_by_bucket[position_bucket] = hash(
+                    seed + round_bytes + position_bucket.to_bytes(4, "little")
+                )
+            source = source_by_bucket[position_bucket]
+            byte_val = source[(position % 256) // 8]
+            bit = (byte_val >> int(position % 8)) % 2
+            indices[i] = flip if bit else indices[i]
+    return indices
+```
 
 #### `compute_shuffled_index`
 
@@ -816,21 +850,7 @@ def compute_shuffled_index(index: uint64, index_count: uint64, seed: Bytes32) ->
     Return the shuffled index corresponding to ``seed`` (and ``index_count``).
     """
     assert index < index_count
-
-    # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
-    # See the 'generalized domain' algorithm on page 3
-    for current_round in range(SHUFFLE_ROUND_COUNT):
-        pivot = bytes_to_uint64(hash(seed + uint_to_bytes(uint8(current_round)))[0:8]) % index_count
-        flip = (pivot + index_count - index) % index_count
-        position = max(index, flip)
-        source = hash(
-            seed + uint_to_bytes(uint8(current_round)) + uint_to_bytes(uint32(position // 256))
-        )
-        byte = uint8(source[(position % 256) // 8])
-        bit = (byte >> (position % 8)) % 2
-        index = flip if bit else index
-
-    return index
+    return compute_shuffled_permutation(index_count, seed)[index]
 ```
 
 #### `compute_proposer_index`
@@ -1174,7 +1194,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> Set[V
     Return the set of attesting indices corresponding to ``data`` and ``bits``.
     """
     committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    return set(index for i, index in enumerate(committee) if attestation.aggregation_bits[i])
+    return {index for i, index in enumerate(committee) if attestation.aggregation_bits[i]}
 ```
 
 ### Beacon state mutators
@@ -1295,7 +1315,7 @@ def initialize_beacon_state_from_eth1(
     )
 
     # Process deposits
-    leaves = list(map(lambda deposit: deposit.data, deposits))
+    leaves = [deposit.data for deposit in deposits]
     for index, deposit in enumerate(deposits):
         deposit_data_list = List[DepositData, 2**DEPOSIT_CONTRACT_TREE_DEPTH](*leaves[: index + 1])
         state.eth1_data.deposit_root = hash_tree_root(deposit_data_list)
