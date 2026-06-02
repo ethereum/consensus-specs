@@ -88,8 +88,14 @@ def upgrade_to_eip8148(pre: heze.BeaconState) -> BeaconState:
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
         # [New in EIP8148]
-        validator_sweep_thresholds=[Gwei(0) for _ in range(len(pre.validators))],
+        validator_sweep_thresholds=[],
     )
+
+    for index, validator in enumerate(post.validators):
+        if has_compounding_withdrawal_credential(validator):
+            validator_sweep_thresholds.append(MAX_EFFECTIVE_BALANCE_ELECTRA)
+        else:
+            validator_sweep_thresholds.append(Gwei(0))
 
     return post
 ```

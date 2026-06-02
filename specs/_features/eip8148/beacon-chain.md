@@ -210,7 +210,7 @@ def add_validator_to_registry(
     set_or_append_list(state.validators, index, validator)
     set_or_append_list(state.balances, index, amount)
     # [New in EIP8148]
-    set_or_append_list(state.validator_sweep_thresholds, index, Gwei(0))
+    set_or_append_list(state.validator_sweep_thresholds, index, MAX_EFFECTIVE_BALANCE_ELECTRA if has_compounding_withdrawal_credential(validator) else Gwei(0))
     set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.inactivity_scores, index, uint64(0))
@@ -334,9 +334,8 @@ def process_set_sweep_threshold_request(
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
 
-    if threshold == 0 or threshold == MAX_EFFECTIVE_BALANCE_ELECTRA:
-        # Remove custom sweep threshold
-        state.validator_sweep_thresholds[index] = 0
+    if state.validator_sweep_thresholds[index] == threshold:
+        # No change to the current threshold, ignore
         return
 
     # Prevent validators from gaming the sweep cycle by setting thresholds below current balance.
@@ -350,7 +349,7 @@ def process_set_sweep_threshold_request(
     if threshold % EFFECTIVE_BALANCE_INCREMENT != 0:
         return
 
-    if MIN_SWEEP_THRESHOLD <= threshold < MAX_EFFECTIVE_BALANCE_ELECTRA:
+    if MIN_SWEEP_THRESHOLD <= threshold <= MAX_EFFECTIVE_BALANCE_ELECTRA:
         # Set custom sweep threshold
         state.validator_sweep_thresholds[index] = threshold
 ```
