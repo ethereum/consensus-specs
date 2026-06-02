@@ -31,8 +31,8 @@
       - [Modified `get_validators_sweep_withdrawals`](#modified-get_validators_sweep_withdrawals)
     - [Operations](#operations)
       - [New `process_set_sweep_threshold_request`](#new-process_set_sweep_threshold_request)
-  - [Parent execution payload](#parent-execution-payload)
-    - [Modified `apply_parent_execution_payload`](#modified-apply_parent_execution_payload)
+    - [Parent execution payload](#parent-execution-payload)
+      - [Modified `apply_parent_execution_payload`](#modified-apply_parent_execution_payload)
 
 <!-- mdformat-toc end -->
 

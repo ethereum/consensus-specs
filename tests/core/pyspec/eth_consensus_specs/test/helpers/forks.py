@@ -66,6 +66,10 @@ def is_post_eip8025(spec):
     return is_post_fork(spec.fork, EIP8025)
 
 
+def is_post_eip8148(spec):
+    return is_post_fork(spec.fork, EIP8148)
+
+
 def has_explicit_fork_version(spec, fork) -> bool:
     if fork == PHASE0:
         return True

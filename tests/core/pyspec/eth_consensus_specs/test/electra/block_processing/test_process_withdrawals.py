@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.state import (
     next_slot,
 )
 from eth_consensus_specs.test.helpers.withdrawals import (
+    check_is_partially_withdrawable_validator,
     prepare_expected_withdrawals,
     prepare_pending_withdrawal,
     run_withdrawals_processing,

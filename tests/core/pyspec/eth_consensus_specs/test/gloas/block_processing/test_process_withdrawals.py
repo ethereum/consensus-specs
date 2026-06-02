@@ -4,7 +4,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
-from eth2spec.test.helpers.withdrawals import (
+from eth_consensus_specs.test.helpers.withdrawals import (
     check_is_partially_withdrawable_validator,
 )
 from tests.infra.helpers.builders import add_builder_to_registry

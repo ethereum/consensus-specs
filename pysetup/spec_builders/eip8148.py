@@ -1,4 +1,5 @@
-from ..constants import EIP8148
+from pysetup.constants import EIP8148
+
 from .base import BaseSpecBuilder
 
 
@@ -8,5 +9,5 @@ class EIP8148SpecBuilder(BaseSpecBuilder):
     @classmethod
     def imports(cls, preset_name: str):
         return f"""
-from eth2spec.gloas import {preset_name} as gloas
+from eth_consensus_specs.heze import {preset_name} as heze
 """

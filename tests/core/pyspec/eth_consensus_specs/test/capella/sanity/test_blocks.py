@@ -23,7 +23,7 @@ from eth_consensus_specs.test.helpers.constants import (
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_state_and_deposit,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_gloas
+from eth_consensus_specs.test.helpers.forks import is_post_eip8148, is_post_electra, is_post_gloas
 from eth_consensus_specs.test.helpers.keys import pubkeys
 from eth_consensus_specs.test.helpers.state import (
     next_epoch_via_block,
@@ -33,6 +33,7 @@ from eth_consensus_specs.test.helpers.state import (
 )
 from eth_consensus_specs.test.helpers.voluntary_exits import prepare_signed_exits
 from eth_consensus_specs.test.helpers.withdrawals import (
+    check_is_partially_withdrawable_validator,
     get_expected_withdrawals,
     prepare_expected_withdrawals,
     prepare_pending_withdrawal,

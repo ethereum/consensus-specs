@@ -1,6 +1,11 @@
 import pytest
 
-from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_fulu, is_post_gloas
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_eip8148,
+    is_post_electra,
+    is_post_fulu,
+    is_post_gloas,
+)
 from tests.infra.helpers.withdrawals import (
     assert_process_withdrawals_pre_gloas,
     get_expected_withdrawals,

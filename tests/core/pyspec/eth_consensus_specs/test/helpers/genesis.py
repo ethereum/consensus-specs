@@ -13,6 +13,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_bellatrix,
     is_post_capella,
     is_post_deneb,
+    is_post_eip8148,
     is_post_electra,
     is_post_fulu,
     is_post_gloas,
