@@ -96,7 +96,14 @@ def upgrade_to_fulu(pre: electra.BeaconState) -> BeaconState:
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         historical_summaries=pre.historical_summaries,
-        deposit_requests_start_index=pre.deposit_requests_start_index,
+        # [Modified in Fulu]
+        # The Eth1 deposit bridge was deprecated before the Fulu upgrade.
+        # If this field is still unset, set it to the current deposit count.
+        deposit_requests_start_index=(
+            pre.eth1_data.deposit_count
+            if pre.deposit_requests_start_index == UNSET_DEPOSIT_REQUESTS_START_INDEX
+            else pre.deposit_requests_start_index
+        ),
         deposit_balance_to_consume=pre.deposit_balance_to_consume,
         exit_balance_to_consume=pre.exit_balance_to_consume,
         earliest_exit_epoch=pre.earliest_exit_epoch,

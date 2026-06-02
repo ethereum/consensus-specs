@@ -41,7 +41,6 @@ def run_fork_test(post_spec, pre_state):
         "next_withdrawal_index",
         "next_withdrawal_validator_index",
         "historical_summaries",
-        "deposit_requests_start_index",
         "deposit_balance_to_consume",
         "exit_balance_to_consume",
         "earliest_exit_epoch",
@@ -77,6 +76,11 @@ def run_fork_test(post_spec, pre_state):
     assert pre_state.fork.current_version == post_state.fork.previous_version
     assert post_state.fork.current_version == post_spec.config.FULU_FORK_VERSION
     assert post_state.fork.epoch == post_spec.get_current_epoch(post_state)
+
+    if pre_state.deposit_requests_start_index == post_spec.UNSET_DEPOSIT_REQUESTS_START_INDEX:
+        assert post_state.deposit_requests_start_index == pre_state.eth1_data.deposit_count
+    else:
+        assert post_state.deposit_requests_start_index == pre_state.deposit_requests_start_index
 
     yield "post", post_state
 
