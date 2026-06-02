@@ -210,7 +210,13 @@ def add_validator_to_registry(
     set_or_append_list(state.validators, index, validator)
     set_or_append_list(state.balances, index, amount)
     # [New in EIP8148]
-    set_or_append_list(state.validator_sweep_thresholds, index, MAX_EFFECTIVE_BALANCE_ELECTRA if has_compounding_withdrawal_credential(validator) else Gwei(0))
+    set_or_append_list(
+        state.validator_sweep_thresholds,
+        index,
+        MAX_EFFECTIVE_BALANCE_ELECTRA
+        if has_compounding_withdrawal_credential(validator)
+        else Gwei(0),
+    )
     set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.inactivity_scores, index, uint64(0))

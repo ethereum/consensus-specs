@@ -91,7 +91,7 @@ def upgrade_to_eip8148(pre: heze.BeaconState) -> BeaconState:
         validator_sweep_thresholds=[],
     )
 
-    for index, validator in enumerate(post.validators):
+    for validator in post.validators:
         if has_compounding_withdrawal_credential(validator):
             validator_sweep_thresholds.append(MAX_EFFECTIVE_BALANCE_ELECTRA)
         else:
