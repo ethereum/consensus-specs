@@ -109,10 +109,10 @@ def main():
         # Check specific files passed as arguments
         files_to_check = sys.argv[1:]
     else:
-        # Check all markdown and yaml files in the repository
+        # Check all markdown and yaml files in the specs directory
         files_to_check = []
         for ext in ["*.md", "*.yaml", "*.yml"]:
-            files_to_check.extend(Path(".").rglob(ext))
+            files_to_check.extend(Path("specs").rglob(ext))
 
     all_violations = []
 
