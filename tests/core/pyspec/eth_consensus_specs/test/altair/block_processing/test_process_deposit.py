@@ -1,11 +1,12 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_altair_and_later,
+    with_all_phases_from_to,
     with_phases,
 )
 from eth_consensus_specs.test.helpers.constants import (
     ALTAIR,
+    FULU,
 )
 from eth_consensus_specs.test.helpers.deposits import (
     run_deposit_processing_with_specific_fork_version,
@@ -27,7 +28,7 @@ def test_effective_deposit_with_previous_fork_version(spec, state):
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_to(ALTAIR, FULU)
 @spec_state_test
 @always_bls
 def test_ineffective_deposit_with_current_fork_version(spec, state):

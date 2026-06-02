@@ -575,7 +575,7 @@ wheels = [
 
 [[package]]
 name = "eth-consensus-specs"
-version = "1.7.0a9"
+version = "1.7.0a10"
 source = { editable = "." }
 dependencies = [
     { name = "eth-remerkleable" },
@@ -633,7 +633,7 @@ requires-dist = [
     { name = "eth-utils", specifier = "==6.0.0" },
     { name = "frozendict", specifier = "==2.4.7" },
     { name = "lru-dict", specifier = "==1.4.1" },
-    { name = "marko", specifier = "==2.2.2" },
+    { name = "marko", specifier = "==2.2.3" },
     { name = "mdformat", marker = "extra == 'lint'", specifier = "==1.0.0" },
     { name = "mdformat-frontmatter", marker = "extra == 'lint'", specifier = "==2.1.2" },
     { name = "mdformat-gfm", marker = "extra == 'lint'", specifier = "==1.0.0" },
@@ -955,11 +955,11 @@ wheels = [
 
 [[package]]
 name = "marko"
-version = "2.2.2"
+version = "2.2.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e3/2f/050b6d485f052ddf17d76a41f9334d6fb2a8a85df35347a12d97ed3bc5c1/marko-2.2.2.tar.gz", hash = "sha256:6940308e655f63733ca518c47a68ec9510279dbb916c83616e4c4b5829f052e8", size = 143641, upload-time = "2026-01-05T11:04:41.935Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/cc/01b80dc58e4d44fe039403ef1ac0008bcb9375364ccd246a4b8bfec29b46/marko-2.2.3.tar.gz", hash = "sha256:e31ec2875383bc62f9093d16babed5a2c2cde601c00d834ea935a2222120ec19", size = 144531, upload-time = "2026-05-28T02:07:39.479Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/f8/36d79bac5701e6786f9880c61bbe57574760a13c1af84ab71e5ed21faecc/marko-2.2.2-py3-none-any.whl", hash = "sha256:f064ae8c10416285ad1d96048dc11e98ef04e662d3342ae416f662b70aa7959e", size = 42701, upload-time = "2026-01-05T11:04:40.75Z" },
+    { url = "https://files.pythonhosted.org/packages/97/50/0a8fab45fa374820c27cc4c3178c4914c60902ba9d6404a692a979e20dbc/marko-2.2.3-py3-none-any.whl", hash = "sha256:8e1d7a0387281e59dfbc52a381b58c570156970e36b2bbe047f8a3a2f368cacc", size = 42951, upload-time = "2026-05-28T02:07:38.373Z" },
 ]
 
 [[package]]

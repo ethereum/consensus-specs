@@ -44,7 +44,7 @@ jobs:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
       - name: Run framework tests
-        run: make test component=fw verbose=true
+        run: make test component=fw
       - name: Prepare test results for upload
         if: always()
         run: cp -r ./tests/core/pyspec/test-reports ./tests/core/pyspec/test-results-framework-${{ github.run_number }}
@@ -126,6 +126,7 @@ jobs:
           - gloas
           - heze
           - eip8025
+          - eip8148
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -139,7 +140,7 @@ jobs:
           enable-cache: true
           version: ${{ vars.UV_VERSION }}
       - name: Run pyspec tests for ${{ matrix.fork }}
-        run: make test component=pyspec verbose=true preset=minimal fork=${{ matrix.fork }}
+        run: make test component=pyspec preset=minimal fork=${{ matrix.fork }}
       - name: Prepare test results for upload
         if: always()
         run: cp -r ./tests/core/pyspec/test-reports ./tests/core/pyspec/test-results-minimal-${{ matrix.fork }}-${{ github.run_number }}

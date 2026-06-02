@@ -13,6 +13,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_bellatrix,
     is_post_capella,
     is_post_deneb,
+    is_post_eip8148,
     is_post_electra,
     is_post_fulu,
     is_post_gloas,
@@ -196,7 +197,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
             eth1_block_hash=eth1_block_hash,
         )
 
-    if is_post_electra(spec):
+    if is_post_fulu(spec):
+        state.deposit_requests_start_index = state.eth1_data.deposit_count
+    elif is_post_electra(spec):
         state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
 
     if is_post_electra(spec):
@@ -222,6 +225,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold):
         ]
         state.builder_pending_withdrawals = []
         state.ptc_window = initialize_ptc_window(spec, state)
+
+    if is_post_eip8148(spec):
+        state.validator_sweep_thresholds = [spec.Gwei(0)] * len(validator_balances)
 
     if is_post_fulu(spec):
         # Initialize proposer lookahead list
