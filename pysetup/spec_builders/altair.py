@@ -72,5 +72,6 @@ def compute_merkle_proof(object: SSZObject,
             "get_source_deltas",
             "get_target_deltas",
             "get_unslashed_attesting_indices",
+            "initialize_beacon_state_from_eth1",
             "process_participation_record_updates",
         }

@@ -57,7 +57,7 @@ The research paper for this rule can be found
 [here](https://arxiv.org/abs/2405.00549).
 
 A shorter explainer is available
-[here](https://www.overleaf.com/project/691b4629fb781aeb8efdb20f).
+[here](https://www.overleaf.com/read/cvfzznvcwffh#057762).
 
 This rule makes the following network synchrony assumption: starting from the
 current slot, attestations created by honest validators in any slot are received

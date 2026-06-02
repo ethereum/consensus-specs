@@ -27,6 +27,7 @@
   - [Modified `is_ancestor`](#modified-is_ancestor)
   - [Modified `get_checkpoint_block`](#modified-get_checkpoint_block)
   - [Modified `get_supported_node`](#modified-get_supported_node)
+  - [New `is_previous_slot_payload_decision`](#new-is_previous_slot_payload_decision)
   - [New `should_build_on_full`](#new-should_build_on_full)
   - [New `should_extend_payload`](#new-should_extend_payload)
   - [New `get_payload_status_tiebreaker`](#new-get_payload_status_tiebreaker)
@@ -35,6 +36,7 @@
   - [Modified `get_node_children`](#modified-get_node_children)
   - [Modified `get_head`](#modified-get_head)
   - [Modified `record_block_timeliness`](#modified-record_block_timeliness)
+  - [Modified `get_dependent_root`](#modified-get_dependent_root)
   - [Modified `update_proposer_boost_root`](#modified-update_proposer_boost_root)
   - [Modified `validate_on_attestation`](#modified-validate_on_attestation)
   - [Modified `is_head_late`](#modified-is_head_late)
@@ -402,19 +404,41 @@ def get_supported_node(store: Store, message: LatestMessage) -> ForkChoiceNode:
     return ForkChoiceNode(root=message.root, payload_status=payload_status)
 ```
 
+### New `is_previous_slot_payload_decision`
+
+*Note*: This predicate identifies the case where a block from the previous slot
+has not yet received the attestations that resolve its payload as *empty* or
+*full*, so the choice cannot be made by weight.
+
+```python
+def is_previous_slot_payload_decision(store: Store, node: ForkChoiceNode) -> bool:
+    is_previous_slot = store.blocks[node.root].slot + 1 == get_current_slot(store)
+    is_payload_decision = node.payload_status in [PAYLOAD_STATUS_EMPTY, PAYLOAD_STATUS_FULL]
+    return is_previous_slot and is_payload_decision
+```
+
 ### New `should_build_on_full`
 
 *Note*: `should_build_on_full` is called by the proposer before deciding whether
 to build on top of the empty or full parent pending node. This function is
 similar to `should_extend_payload` but takes into consideration the PTC view on
-data availability.
+both data availability and payload timeliness. As in
+`get_payload_status_tiebreaker`, this view is only consulted for a head from the
+previous slot. For a head from an earlier slot, the *empty* or *full* node has
+already been resolved by weight in `get_head`.
 
 ```python
 def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
     assert head.payload_status != PAYLOAD_STATUS_PENDING
     if head.payload_status == PAYLOAD_STATUS_EMPTY:
         return False
-    return not payload_data_availability(store, head.root, available=False)
+    if store.blocks[head.root].slot + 1 != get_current_slot(store):
+        return True
+    if payload_data_availability(store, head.root, available=False):
+        return False
+    if payload_timeliness(store, head.root, timely=False):
+        return False
+    return True
 ```
 
 ### New `should_extend_payload`
@@ -445,15 +469,16 @@ def should_extend_payload(store: Store, root: Root) -> bool:
 
 ```python
 def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> uint8:
-    if node.payload_status == PAYLOAD_STATUS_PENDING or store.blocks[
-        node.root
-    ].slot + 1 != get_current_slot(store):
+    if is_previous_slot_payload_decision(store, node):
+        # To decide on a payload from the previous slot, choose
+        # between FULL and EMPTY based on `should_extend_payload`
+        if node.payload_status == PAYLOAD_STATUS_EMPTY:
+            return 1
+        if should_extend_payload(store, node.root):
+            return 2
+        return 0
+    else:
         return node.payload_status
-    # To decide on a payload from the previous slot, choose
-    # between FULL and EMPTY based on `should_extend_payload`
-    if node.payload_status == PAYLOAD_STATUS_EMPTY:
-        return 1
-    return 2 if should_extend_payload(store, node.root) else 0
 ```
 
 ### New `should_apply_proposer_boost`
@@ -496,29 +521,28 @@ def should_apply_proposer_boost(store: Store) -> bool:
 
 ```python
 def get_weight(store: Store, node: ForkChoiceNode) -> Gwei:
-    if node.payload_status == PAYLOAD_STATUS_PENDING or store.blocks[
-        node.root
-    ].slot + 1 != get_current_slot(store):
-        state = store.checkpoint_states[store.justified_checkpoint]
-        attestation_score = get_attestation_score(store, node, state)
-        # [Modified in Gloas:EIP7732]
-        if not should_apply_proposer_boost(store):
-            # Return only attestation score if proposer boost should not apply
-            return attestation_score
-
-        # Calculate proposer score if proposer boost should apply
-        proposer_score = Gwei(0)
-        # [Modified in Gloas:EIP7732]
-        proposer_boost_node = ForkChoiceNode(
-            root=store.proposer_boost_root, payload_status=PAYLOAD_STATUS_PENDING
-        )
-        # Boost is applied if ``node`` is an ancestor of ``proposer_boost_node``
-        if is_ancestor(store, proposer_boost_node, node):
-            proposer_score = get_proposer_score(store)
-
-        return attestation_score + proposer_score
-    else:
+    # [New in Gloas:EIP7732]
+    if is_previous_slot_payload_decision(store, node):
         return Gwei(0)
+
+    state = store.checkpoint_states[store.justified_checkpoint]
+    attestation_score = get_attestation_score(store, node, state)
+    # [Modified in Gloas:EIP7732]
+    if not should_apply_proposer_boost(store):
+        # Return only attestation score if proposer boost should not apply
+        return attestation_score
+
+    # Calculate proposer score if proposer boost should apply
+    proposer_score = Gwei(0)
+    # [Modified in Gloas:EIP7732]
+    proposer_boost_node = ForkChoiceNode(
+        root=store.proposer_boost_root, payload_status=PAYLOAD_STATUS_PENDING
+    )
+    # Boost is applied if ``node`` is an ancestor of ``proposer_boost_node``
+    if is_ancestor(store, proposer_boost_node, node):
+        proposer_score = get_proposer_score(store)
+
+    return attestation_score + proposer_score
 ```
 
 ### Modified `get_node_children`
@@ -596,6 +620,24 @@ def record_block_timeliness(store: Store, root: Root) -> None:
     ]
 ```
 
+### Modified `get_dependent_root`
+
+```python
+def get_dependent_root(store: Store, root: Root) -> Root:
+    epoch = get_current_store_epoch(store)
+    if epoch <= MIN_SEED_LOOKAHEAD:
+        # Genesis block parent
+        return Root()
+
+    # [Modified in Gloas:EIP7732]
+    node = ForkChoiceNode(
+        root=root,
+        payload_status=PAYLOAD_STATUS_PENDING,
+    )
+    dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+    return get_ancestor(store, node, dependent_slot).root
+```
+
 ### Modified `update_proposer_boost_root`
 
 ```python
@@ -603,18 +645,12 @@ def update_proposer_boost_root(store: Store, head: Root, root: Root) -> None:
     is_first_block = store.proposer_boost_root == Root()
     # [Modified in Gloas:EIP7732]
     is_timely = store.block_timeliness[root][ATTESTATION_TIMELINESS_INDEX]
+    is_same_dependent_root = get_dependent_root(store, root) == get_dependent_root(store, head)
 
-    # Add proposer score boost if the block is the first timely block
-    # for this slot, with the same proposer as the canonical chain.
-    if is_timely and is_first_block:
-        head_state = copy(store.block_states[head])
-        slot = get_current_slot(store)
-        if head_state.slot < slot:
-            process_slots(head_state, slot)
-        block = store.blocks[root]
-        # Only update if the proposer is the same as on the canonical chain
-        if block.proposer_index == get_beacon_proposer_index(head_state):
-            store.proposer_boost_root = root
+    # Add proposer score boost if the block is timely, not conflicting with an
+    # existing block, with the same dependent root as the canonical chain head.
+    if is_timely and is_first_block and is_same_dependent_root:
+        store.proposer_boost_root = root
 ```
 
 ### Modified `validate_on_attestation`

@@ -3,6 +3,7 @@ from .bellatrix import BellatrixSpecBuilder
 from .capella import CapellaSpecBuilder
 from .deneb import DenebSpecBuilder
 from .eip8025 import EIP8025SpecBuilder
+from .eip8148 import EIP8148SpecBuilder
 from .electra import ElectraSpecBuilder
 from .fulu import FuluSpecBuilder
 from .gloas import GloasSpecBuilder
@@ -22,5 +23,6 @@ spec_builders = {
         GloasSpecBuilder,
         HezeSpecBuilder,
         EIP8025SpecBuilder,
+        EIP8148SpecBuilder,
     )
 }

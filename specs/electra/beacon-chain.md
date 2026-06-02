@@ -1809,7 +1809,6 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
     if state.deposit_requests_start_index == UNSET_DEPOSIT_REQUESTS_START_INDEX:
         state.deposit_requests_start_index = deposit_request.index
 
-    # Create pending deposit
     state.pending_deposits.append(
         PendingDeposit(
             pubkey=deposit_request.pubkey,
