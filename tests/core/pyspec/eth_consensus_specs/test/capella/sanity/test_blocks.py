@@ -23,7 +23,7 @@ from eth_consensus_specs.test.helpers.constants import (
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_state_and_deposit,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_gloas
+from eth_consensus_specs.test.helpers.forks import is_post_eip8148, is_post_electra, is_post_gloas
 from eth_consensus_specs.test.helpers.keys import pubkeys
 from eth_consensus_specs.test.helpers.state import (
     next_epoch_via_block,
@@ -33,6 +33,7 @@ from eth_consensus_specs.test.helpers.state import (
 )
 from eth_consensus_specs.test.helpers.voluntary_exits import prepare_signed_exits
 from eth_consensus_specs.test.helpers.withdrawals import (
+    check_is_partially_withdrawable_validator,
     get_expected_withdrawals,
     prepare_expected_withdrawals,
     prepare_pending_withdrawal,
@@ -445,9 +446,7 @@ def test_top_up_and_partial_withdrawable_validator(spec, state):
     set_eth1_withdrawal_credential_with_balance(
         spec, state, validator_index, balance=spec.MAX_EFFECTIVE_BALANCE
     )
-    validator = state.validators[validator_index]
-    balance = state.balances[validator_index]
-    assert not spec.is_partially_withdrawable_validator(validator, balance)
+    assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 
     # Make a top-up balance to validator
     amount = spec.MAX_EFFECTIVE_BALANCE // 4
@@ -473,9 +472,7 @@ def test_top_up_and_partial_withdrawable_validator(spec, state):
         assert state.pending_deposits[0].slot == spec.GENESIS_SLOT
     else:
         # Since withdrawals happen before deposits, it becomes partially withdrawable after state transition.
-        validator = state.validators[validator_index]
-        balance = state.balances[validator_index]
-        assert spec.is_partially_withdrawable_validator(validator, balance)
+        assert check_is_partially_withdrawable_validator(spec, state, validator_index)
 
 
 @with_all_phases_from_to(CAPELLA, FULU)
@@ -555,6 +552,8 @@ def _insert_validator(spec, state, balance):
     )
     state.validators.append(validator)
     state.balances.append(balance)
+    if is_post_eip8148(spec):
+        state.validator_sweep_thresholds.append(spec.Gwei(0))
     state.previous_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
     state.current_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
     state.inactivity_scores.append(0)
@@ -584,13 +583,9 @@ def _run_activate_and_partial_withdrawal(spec, state, initial_balance):
     )
 
     if initial_balance > spec.MAX_EFFECTIVE_BALANCE:
-        assert spec.is_partially_withdrawable_validator(
-            state.validators[validator_index], state.balances[validator_index]
-        )
+        assert check_is_partially_withdrawable_validator(spec, state, validator_index)
     else:
-        assert not spec.is_partially_withdrawable_validator(
-            state.validators[validator_index], state.balances[validator_index]
-        )
+        assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 
     _, new_blocks, state = next_epoch_with_attestations(
         spec, state, fill_cur_epoch=True, fill_prev_epoch=True
