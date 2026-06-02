@@ -312,52 +312,41 @@ def get_validators_sweep_withdrawals(
 
 ##### New `process_set_sweep_threshold_request`
 
+*Note*: A request is rejected if its threshold is below the validator's current
+balance. This prevents validators from gaming the sweep cycle to bypass the
+partial withdrawal queue and perform immediate withdrawals. To lower a
+threshold, validators must first request a partial withdrawal, wait for
+processing, then set the desired threshold.
+
 ```python
 def process_set_sweep_threshold_request(
-    state: BeaconState, set_sweep_threshold_request: SetSweepThresholdRequest
+    state: BeaconState, request: SetSweepThresholdRequest
 ) -> None:
-    threshold = set_sweep_threshold_request.threshold
-
     validator_pubkeys = [v.pubkey for v in state.validators]
-    # Verify pubkey exists
-    request_pubkey = set_sweep_threshold_request.validator_pubkey
-    if request_pubkey not in validator_pubkeys:
+    if request.validator_pubkey not in validator_pubkeys:
         return
-    index = ValidatorIndex(validator_pubkeys.index(request_pubkey))
+
+    index = ValidatorIndex(validator_pubkeys.index(request.validator_pubkey))
     validator = state.validators[index]
 
-    # Verify withdrawal credentials
-    # Only allow setting sweep threshold with compounding withdrawal credentials
-    has_correct_credential = has_compounding_withdrawal_credential(validator)
-    # Ensure that the source address matches the withdrawal credentials
-    is_correct_source_address = (
-        validator.withdrawal_credentials[12:] == set_sweep_threshold_request.source_address
-    )
-    if not (has_correct_credential and is_correct_source_address):
+    if not has_compounding_withdrawal_credential(validator):
         return
-
-    # Verify exit has not been initiated
+    if validator.withdrawal_credentials[12:] != request.source_address:
+        return
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
-
-    if state.validator_sweep_thresholds[index] == threshold:
-        # No change to the current threshold, ignore
+    if state.validator_sweep_thresholds[index] == request.threshold:
+        return
+    if request.threshold < state.balances[index]:
+        return
+    if request.threshold % EFFECTIVE_BALANCE_INCREMENT != 0:
+        return
+    if request.threshold < MIN_SWEEP_THRESHOLD:
+        return
+    if request.threshold > MAX_EFFECTIVE_BALANCE_ELECTRA:
         return
 
-    # Prevent validators from gaming the sweep cycle by setting thresholds below current balance.
-    # This ensures validators cannot bypass the partial withdrawal queue to perform immediate withdrawals.
-    # To lower a threshold, validators must first request a partial withdrawal, wait for processing,
-    # then set the desired threshold.
-    if threshold < state.balances[index]:
-        return
-
-    # Ensure threshold is a multiple of the EFFECTIVE_BALANCE_INCREMENT
-    if threshold % EFFECTIVE_BALANCE_INCREMENT != 0:
-        return
-
-    if MIN_SWEEP_THRESHOLD <= threshold <= MAX_EFFECTIVE_BALANCE_ELECTRA:
-        # Set custom sweep threshold
-        state.validator_sweep_thresholds[index] = threshold
+    state.validator_sweep_thresholds[index] = request.threshold
 ```
 
 #### Parent execution payload
