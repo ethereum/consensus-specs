@@ -59,7 +59,7 @@ PREVIOUS_FORK_OF = {
     HEZE: GLOAS,
     # Experimental patches
     EIP8025: FULU,
-    EIP8148: GLOAS,
+    EIP8148: HEZE,
 }
 
 # For fork transition tests

@@ -23,7 +23,7 @@ Warning: this configuration is not definitive.
 | `EIP8148_FORK_VERSION` | `Version('0xe8148000')`               |
 | `EIP8148_FORK_EPOCH`   | `Epoch(18446744073709551615)` **TBD** |
 
-## Fork to eip8148
+## Fork to EIP-8148
 
 If `state.slot % SLOTS_PER_EPOCH == 0` and
 `compute_epoch_at_slot(state.slot) == EIP8148_FORK_EPOCH`, an irregular state
