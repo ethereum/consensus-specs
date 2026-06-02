@@ -18,6 +18,7 @@
   - [New `record_payload_inclusion_list_satisfaction`](#new-record_payload_inclusion_list_satisfaction)
   - [New `is_payload_inclusion_list_satisfied`](#new-is_payload_inclusion_list_satisfied)
   - [Modified `should_extend_payload`](#modified-should_extend_payload)
+  - [Modified `should_build_on_full`](#modified-should_build_on_full)
   - [New `get_inclusion_list_due_ms`](#new-get_inclusion_list_due_ms)
 - [Handlers](#handlers)
   - [New `on_inclusion_list`](#new-on_inclusion_list)
@@ -233,6 +234,29 @@ def should_extend_payload(store: Store, root: Root) -> bool:
         or store.blocks[proposer_root].parent_root != root
         or is_parent_node_full(store, store.blocks[proposer_root])
     )
+```
+
+### Modified `should_build_on_full`
+
+*Note*: `should_build_on_full` is modified to not build on top of a parent
+payload that does not satisfy the inclusion list constraints, forcing the
+proposer to reorg such payloads out.
+
+```python
+def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
+    assert head.payload_status != PAYLOAD_STATUS_PENDING
+    if head.payload_status == PAYLOAD_STATUS_EMPTY:
+        return False
+    if store.blocks[head.root].slot + 1 != get_current_slot(store):
+        return True
+    if payload_data_availability(store, head.root, available=False):
+        return False
+    if payload_timeliness(store, head.root, timely=False):
+        return False
+    # [New in Heze:EIP7805]
+    if not is_payload_inclusion_list_satisfied(store, head.root):
+        return False
+    return True
 ```
 
 ### New `get_inclusion_list_due_ms`
