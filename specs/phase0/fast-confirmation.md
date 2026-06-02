@@ -57,7 +57,7 @@ The research paper for this rule can be found
 [here](https://arxiv.org/abs/2405.00549).
 
 A shorter explainer is available
-[here](https://www.overleaf.com/project/691b4629fb781aeb8efdb20f).
+[here](https://www.overleaf.com/read/cvfzznvcwffh#057762).
 
 This rule makes the following network synchrony assumption: starting from the
 current slot, attestations created by honest validators in any slot are received
@@ -645,11 +645,9 @@ def is_confirmed_chain_safe(fcr_store: FastConfirmationStore, confirmed_root: Ro
     starting from current_epoch_observed_justified_checkpoint are LMD-GHOST safe.
     """
     store = fcr_store.store
-    # Check if the confirmed_root is descendant of current_epoch_observed_justified_checkpoint
-    if not is_ancestor(
-        store,
-        get_node_for_root(confirmed_root),
-        get_node_for_root(fcr_store.current_epoch_observed_justified_checkpoint.root),
+    # Check if the confirmed_root has current_epoch_observed_justified_checkpoint in its chain
+    if fcr_store.current_epoch_observed_justified_checkpoint != get_checkpoint_for_block(
+        store, confirmed_root, fcr_store.current_epoch_observed_justified_checkpoint.epoch
     ):
         return False
 

@@ -1,8 +1,8 @@
 ---
 name: run-tests
 description: >-
-  Run tests and generate reference tests. Use when the user asks to run tests,
-  verify changes, check a fix, or regenerate reference tests.
+  Run tests and generate reference tests. All testing goes through `make test`,
+  never `pytest` directly. Always load this skill before running tests.
 compatibility: Requires make and uv
 ---
 
