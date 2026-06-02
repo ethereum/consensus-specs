@@ -6,7 +6,7 @@
 
 - [Introduction](#introduction)
 - [Configuration](#configuration)
-- [Fork to eip8148](#fork-to-eip8148)
+- [Fork to EIP-8148](#fork-to-eip-8148)
 
 <!-- mdformat-toc end -->
 
