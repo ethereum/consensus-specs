@@ -58,7 +58,7 @@ PREVIOUS_FORK_OF = {
     GLOAS: FULU,
     HEZE: GLOAS,
     # Experimental patches
-    EIP8025: FULU,
+    EIP8025: GLOAS,
     EIP8148: HEZE,
 }
 
