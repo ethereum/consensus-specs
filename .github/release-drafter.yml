@@ -33,6 +33,8 @@ categories:
     label: eip6914
   - title: EIP-8025
     label: eip8025
+  - title: EIP-8148
+    label: eip8148
 
   # Testing
   - title: Testing
