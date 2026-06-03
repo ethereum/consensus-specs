@@ -10,7 +10,6 @@
 - [Introduction](#introduction)
 - [Beacon chain proof guest](#beacon-chain-proof-guest)
   - [New `extend_chain`](#new-extend_chain)
-- [Binding the beacon header to the execution proof](#binding-the-beacon-header-to-the-execution-proof)
 - [Updating the weak-subjectivity checkpoint](#updating-the-weak-subjectivity-checkpoint)
   - [New `is_checkpoint_in_beacon_chain_proof_range`](#new-is_checkpoint_in_beacon_chain_proof_range)
   - [New `update_checkpoint`](#new-update_checkpoint)
@@ -22,8 +21,8 @@
 This document contains the proof-sync specifications for EIP-8025. Proof sync
 allows a node that starts from a weak-subjectivity checkpoint to verify
 execution validity for a beacon chain without downloading all historical
-execution payloads. This is achieved by composing recursive proofs over the beacon
-chain.
+execution payloads. This is achieved by composing recursive proofs over the
+beacon chain.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md),
 imports execution proof types from [beacon-chain.md](./beacon-chain.md), and
@@ -39,8 +38,9 @@ beacon chain proof verifies:
 
 ## Beacon chain proof guest
 
-The beacon chain proof guest is the zkvm program that produces the beacon chain proofs.
-It consists of two methods:
+The beacon chain proof guest is the zkvm program that produces the beacon chain
+proofs. It consists of two methods:
+
 - `extend_chain` for extending the beacon chain proof by one block; and
 - `update_checkpoint` for moving the weak-subjectivity checkpoint forward.
 
