@@ -199,14 +199,6 @@ def do_fork(
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
     assert spec.get_current_epoch(state) == fork_epoch
 
-    # The Eth1 bridge transition is complete before the Fulu fork. Tests do not
-    # process real deposit requests in pre-fork blocks, so model that completion here.
-    if (
-        is_post_fulu(post_spec)
-        and state.deposit_requests_start_index == spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
-    ):
-        state.deposit_requests_start_index = state.eth1_data.deposit_count
-
     state = get_upgrade_fn(post_spec, post_spec.fork)(state)
 
     assert state.fork.epoch == fork_epoch
@@ -235,14 +227,6 @@ def do_fork_generate(
 
     assert state.slot % spec.SLOTS_PER_EPOCH == 0
     assert spec.get_current_epoch(state) == fork_epoch
-
-    # The Eth1 bridge transition is complete before the Fulu fork. Tests do not
-    # process real deposit requests in pre-fork blocks, so model that completion here.
-    if (
-        is_post_fulu(post_spec)
-        and state.deposit_requests_start_index == spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
-    ):
-        state.deposit_requests_start_index = state.eth1_data.deposit_count
 
     yield "pre", state
 
