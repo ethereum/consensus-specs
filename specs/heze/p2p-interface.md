@@ -94,6 +94,8 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
   `get_inclusion_list_committee(state, data.slot)`, where `state` is the head
   state corresponding to processing the block up to the current slot as
   determined by the fork choice.
+- _[REJECT]_ The `message.inclusion_list_committee_root` is equal to
+  `hash_tree_root(get_inclusion_list_committee(state, data.slot))`.
 - _[REJECT]_ The signature of `signed_inclusion_list.signature` is valid with
   respect to the validator's public key.
 
