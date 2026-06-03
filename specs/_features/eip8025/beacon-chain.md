@@ -13,9 +13,14 @@
   - [Execution](#execution)
   - [Domains](#domains)
 - [Containers](#containers)
+  - [New `ExecutionPayloadHeader`](#new-executionpayloadheader)
+  - [New `BeaconBlockExecutionBinding`](#new-beaconblockexecutionbinding)
+  - [New `NewPayloadRequestHeader`](#new-newpayloadrequestheader)
   - [New `PublicInput`](#new-publicinput)
   - [New `ExecutionProof`](#new-executionproof)
   - [New `SignedExecutionProof`](#new-signedexecutionproof)
+  - [New `BeaconChainProofPublicInput`](#new-beaconchainproofpublicinput)
+  - [New `BeaconChainProof`](#new-beaconchainproof)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Execution proof](#execution-proof)
     - [New `process_execution_proof`](#new-process_execution_proof)
@@ -54,6 +59,64 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 
 ## Containers
 
+### New `ExecutionPayloadHeader`
+
+```python
+class ExecutionPayloadHeader(Container):
+    parent_hash: Hash32
+    fee_recipient: ExecutionAddress
+    state_root: Bytes32
+    receipts_root: Bytes32
+    logs_bloom: ByteVector[BYTES_PER_LOGS_BLOOM]
+    prev_randao: Bytes32
+    block_number: uint64
+    gas_limit: uint64
+    gas_used: uint64
+    timestamp: uint64
+    extra_data: ByteList[MAX_EXTRA_DATA_BYTES]
+    base_fee_per_gas: uint256
+    block_hash: Hash32
+    transactions_root: Root
+    withdrawals_root: Root
+    blob_gas_used: uint64
+    excess_blob_gas: uint64
+    block_access_list_root: Root
+    slot_number: uint64
+```
+
+`ExecutionPayloadHeader` is the execution payload header committed by a
+`NewPayloadRequestHeader`. It contains `transactions_root` rather than the
+transaction list, allowing proof sync to bind the execution payload without
+opening transaction data in the recursive guest.
+
+### New `BeaconBlockExecutionBinding`
+
+```python
+class BeaconBlockExecutionBinding(Container):
+    beacon_header: BeaconBlockHeader
+    execution_payload_header: ExecutionPayloadHeader
+    signed_execution_payload_bid: SignedExecutionPayloadBid
+```
+
+`BeaconBlockExecutionBinding` is the compact proof-sync projection used to bind
+a beacon block to execution proof inputs. It contains the canonical
+`BeaconBlockHeader`, the execution-payload header, and the signed payload bid
+without opening the full beacon block body.
+
+### New `NewPayloadRequestHeader`
+
+```python
+class NewPayloadRequestHeader(Container):
+    execution_payload_header: ExecutionPayloadHeader
+    versioned_hashes: List[VersionedHash, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    parent_beacon_block_root: Root
+    execution_requests_root: Root
+```
+
+`NewPayloadRequestHeader` is the public commitment used by execution proofs. It
+commits to the header of a `NewPayloadRequest` without requiring callers to
+expose the full execution payload or execution requests.
+
 ### New `PublicInput`
 
 ```python
@@ -78,6 +141,28 @@ class SignedExecutionProof(Container):
     validator_index: ValidatorIndex
     signature: BLSSignature
 ```
+
+### New `BeaconChainProofPublicInput`
+
+```python
+class BeaconChainProofPublicInput(Container):
+    ws_checkpoint_root: Root
+    ws_checkpoint_slot: Slot
+    head_root: Root
+    head_slot: Slot
+```
+
+### New `BeaconChainProof`
+
+```python
+class BeaconChainProof(Container):
+    proof_data: ByteList[MAX_PROOF_SIZE]
+    proof_type: ProofType
+    public_input: BeaconChainProofPublicInput
+```
+
+Each `BeaconChainProof` is for a single `proof_type`. Clients that require
+multiple proof types verify one `BeaconChainProof` per required type.
 
 ## Beacon chain state transition function
 
