@@ -35,7 +35,6 @@ from eth_consensus_specs.test.helpers.forks import (
     get_previous_fork_version,
     is_post_bellatrix,
     is_post_electra,
-    is_post_fulu,
     is_post_gloas,
 )
 from eth_consensus_specs.test.helpers.proposer_slashings import (
