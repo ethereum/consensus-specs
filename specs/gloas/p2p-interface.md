@@ -882,11 +882,16 @@ def validate_proposer_preferences_gossip(
     if preferences.dependent_root not in store.block_states:
         raise GossipIgnore("dependent root state is unavailable")
 
+    # [REJECT] The dependent root is a valid dependent block for the proposal slot
+    lookahead_epoch = Epoch(proposal_epoch - MIN_SEED_LOOKAHEAD)
+    lookahead_epoch_start_slot = compute_start_slot_at_epoch(lookahead_epoch)
+    lookahead_state = store.block_states[preferences.dependent_root].copy()
+    if lookahead_state.slot >= lookahead_epoch_start_slot:
+        raise GossipReject("dependent root is not before the proposer lookahead epoch")
+
     # [REJECT] The validator is the proposer for the given slot in the proposer lookahead
-    checkpoint_state = store.block_states[preferences.dependent_root].copy()
-    checkpoint_epoch = Epoch(proposal_epoch - MIN_SEED_LOOKAHEAD)
-    process_slots(checkpoint_state, compute_start_slot_at_epoch(checkpoint_epoch))
-    if not is_valid_proposal_slot(checkpoint_state, preferences):
+    process_slots(lookahead_state, lookahead_epoch_start_slot)
+    if not is_valid_proposal_slot(lookahead_state, preferences):
         raise GossipReject("validator is not the proposer for the given slot")
 
     # [REJECT] The validator index is valid

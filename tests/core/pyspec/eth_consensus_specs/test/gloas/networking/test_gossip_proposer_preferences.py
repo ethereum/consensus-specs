@@ -504,6 +504,78 @@ def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(sp
 
 @with_gloas_and_later
 @spec_state_test
+def test_gossip_proposer_preferences__reject_dependent_root_at_lookahead_epoch_start(spec, state):
+    """
+    Preferences whose dependent_root points to a block at the proposal slot's
+    proposer lookahead epoch are rejected, not crashed. Such a
+    dependent_root cannot be the proposer-lookahead dependent block, and
+    advancing its post-state would otherwise trip process_slots.
+    """
+    yield "topic", "meta", "proposer_preferences"
+
+    target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
+    store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
+    yield "state", state
+
+    seen = get_seen(spec)
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
+    proposal_epoch = spec.compute_epoch_at_slot(proposal_slot)
+    lookahead_epoch = spec.Epoch(proposal_epoch - spec.MIN_SEED_LOOKAHEAD)
+    lookahead_epoch_start_slot = spec.compute_start_slot_at_epoch(lookahead_epoch)
+
+    boundary_block = next(
+        signed_block
+        for signed_block in blocks
+        if signed_block.message.slot == lookahead_epoch_start_slot
+    )
+    dependent_root = boundary_block.message.hash_tree_root()
+    assert store.block_states[dependent_root].slot == lookahead_epoch_start_slot
+
+    # Sign valid preferences for the upcoming slot's true proposer, but point
+    # dependent_root at the first block whose stored state is exactly at the
+    # proposal slot's proposer lookahead epoch.
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=proposal_slot,
+        validator_index=validator_index,
+        dependent_root=dependent_root,
+    )
+    yield get_filename(signed_prefs), signed_prefs
+
+    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 100
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "reject"
+    assert reason == "dependent root is not before the proposer lookahead epoch"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_gossip_proposer_preferences__reject_validator_index_out_of_range(spec, state):
     """Preferences whose validator index is past the validator registry are rejected."""
     yield "topic", "meta", "proposer_preferences"
