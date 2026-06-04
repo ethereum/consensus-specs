@@ -26,8 +26,8 @@ stateless validation during the optional proof phase.
 builders will be required to produce and gossip execution proofs as part of
 their block production duties, and the prover role will be deprecated.
 
-*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md) and
-imports proof types from [proof-engine.md](./proof-engine.md).
+*Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md)
+and imports proof types from [proof-engine.md](./proof-engine.md).
 
 ## Helpers
 
@@ -47,15 +47,16 @@ def get_execution_proof_signature(
 ### Constructing the `SignedExecutionProof`
 
 An honest prover who is an active validator and wants to generate execution
-proofs for a `BeaconBlock` performs the following steps:
+proofs for a `SignedExecutionPayloadEnvelope` performs the following steps:
 
 1. At startup, subscribe to:
-   - `Block` events from the beacon node via SSE.
+   - `execution_payload` events from the beacon node via SSE.
    - Proof completion events from the proof engine via SSE. The concrete SSE
      event shape is defined by the proof engine API specification.
-2. Upon receiving a `Block` event:
-   - Fetch the full `BeaconBlock` via RPC.
-   - Construct `NewPayloadRequest` from the block.
+2. Upon receiving an `execution_payload` event:
+   - Fetch the full `SignedExecutionPayloadEnvelope` and the corresponding
+     committed `ExecutionPayloadBid` via RPC.
+   - Construct `NewPayloadRequest` from the envelope and the committed bid.
    - Create `ProofAttributes` with desired proof types.
    - Call
      `new_payload_request_root = proof_engine.request_proofs(new_payload_request, proof_attributes)`

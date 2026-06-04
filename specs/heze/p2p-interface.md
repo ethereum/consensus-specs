@@ -87,13 +87,16 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
 - _[REJECT]_ The size of `message.transactions` is within upperbound
   `MAX_BYTES_PER_INCLUSION_LIST`.
 - _[IGNORE]_ The slot `message.slot` is equal to the current slot (with a
-  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e. `data.slot == current_slot`.
+  `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance), i.e.
+  `message.slot == current_slot`.
 - _[IGNORE]_ The `message` is either the first or second valid message received
   from the validator with index `message.validator_index`.
 - _[REJECT]_ The message's validator index is in
-  `get_inclusion_list_committee(state, data.slot)`, where `state` is the head
+  `get_inclusion_list_committee(state, message.slot)`, where `state` is the head
   state corresponding to processing the block up to the current slot as
   determined by the fork choice.
+- _[REJECT]_ The `message.inclusion_list_committee_root` is equal to
+  `hash_tree_root(get_inclusion_list_committee(state, message.slot))`.
 - _[REJECT]_ The signature of `signed_inclusion_list.signature` is valid with
   respect to the validator's public key.
 
