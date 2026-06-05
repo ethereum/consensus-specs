@@ -419,39 +419,37 @@ def is_previous_slot_payload_decision(store: Store, node: ForkChoiceNode) -> boo
 
 ### New `should_build_on_full`
 
-*Note*: `should_build_on_full` is called by the proposer before deciding whether
-to build on top of the empty or full parent pending node. This function is
-similar to `should_extend_payload` but takes into consideration the PTC view on
-both data availability and payload timeliness. As in
-`get_payload_status_tiebreaker`, this view is only consulted for a head from the
-previous slot. For a head from an earlier slot, the *empty* or *full* node has
-already been resolved by weight in `get_head`.
+*Note*: This function is called by the proposer to decide whether to build on
+top of the *empty* or *full* parent node. For a node from an earlier slot, it
+follows the payload status resolved by `get_head`. For a *full* node from the
+previous slot, it considers the PTC view on both payload timeliness and data
+availability.
 
 ```python
 def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
     assert head.payload_status != PAYLOAD_STATUS_PENDING
+    if store.blocks[head.root].slot + 1 != get_current_slot(store):
+        return head.payload_status == PAYLOAD_STATUS_FULL
     if head.payload_status == PAYLOAD_STATUS_EMPTY:
         return False
-    if store.blocks[head.root].slot + 1 != get_current_slot(store):
-        return True
-    if payload_data_availability(store, head.root, available=False):
-        return False
     if payload_timeliness(store, head.root, timely=False):
+        return False
+    if payload_data_availability(store, head.root, available=False):
         return False
     return True
 ```
 
 ### New `should_extend_payload`
 
-*Note*: `should_extend_payload` decides whether to extend an available payload
-from the previous slot, corresponding to the beacon block `root`. If the blob
-data is not available, we do not extend it. We extend it if a majority of the
-PTC has voted for it. If not, we also extend it if the proposer boost root is
-not set, set to something conflicting with the given root, or to something
-extending the payload.
+*Note*: This function decides whether to extend an available payload
+corresponding to the beacon block `root` from the previous slot. It extends the
+payload when the PTC view supports both payload timeliness and data
+availability. Otherwise, it still extends unless the proposer boost block builds
+on the beacon block `root` and chooses *empty*.
 
 ```python
 def should_extend_payload(store: Store, root: Root) -> bool:
+    assert store.blocks[root].slot + 1 == get_current_slot(store)
     if not is_payload_verified(store, root):
         return False
     proposer_root = store.proposer_boost_root
