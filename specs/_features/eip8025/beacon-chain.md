@@ -17,10 +17,6 @@
   - [New `ExecutionProof`](#new-executionproof)
   - [New `SignedExecutionProof`](#new-signedexecutionproof)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
-  - [Block processing](#block-processing)
-    - [Modified `process_block`](#modified-process_block)
-    - [Execution payload](#execution-payload)
-      - [Modified `process_execution_payload`](#modified-process_execution_payload)
   - [Execution proof](#execution-proof)
     - [New `process_execution_proof`](#new-process_execution_proof)
 
@@ -31,8 +27,8 @@
 These are the beacon-chain specifications to add EIP-8025, enabling stateless
 validation of execution payloads through execution proofs.
 
-*Note*: This specification is built upon [Fulu](../../fulu/beacon-chain.md) and
-imports proof types from [proof-engine.md](./proof-engine.md).
+*Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md)
+and imports proof types from [proof-engine.md](./proof-engine.md).
 
 ## Types
 
@@ -54,7 +50,7 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 
 | Name                     | Value                      |
 | ------------------------ | -------------------------- |
-| `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0D000000')` |
+| `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0E000000')` |
 
 ## Containers
 
@@ -69,7 +65,7 @@ class PublicInput(Container):
 
 ```python
 class ExecutionProof(Container):
-    proof_data: ByteList[MAX_PROOF_SIZE]
+    proof_data: ProgressiveByteList
     proof_type: ProofType
     public_input: PublicInput
 ```
@@ -85,101 +81,6 @@ class SignedExecutionProof(Container):
 
 ## Beacon chain state transition function
 
-### Block processing
-
-#### Modified `process_block`
-
-*Note*: `process_block` is modified in EIP-8025 to pass `PROOF_ENGINE` to
-`process_execution_payload`.
-
-```python
-def process_block(state: BeaconState, block: BeaconBlock) -> None:
-    process_block_header(state, block)
-    process_withdrawals(state, block.body.execution_payload)
-    # [Modified in EIP8025]
-    process_execution_payload(state, block.body, EXECUTION_ENGINE, PROOF_ENGINE)
-    process_randao(state, block.body)
-    process_eth1_data(state, block.body)
-    process_operations(state, block.body)
-    process_sync_aggregate(state, block.body.sync_aggregate)
-```
-
-#### Execution payload
-
-##### Modified `process_execution_payload`
-
-*Note*: `process_execution_payload` is modified in EIP-8025 to require both
-`ExecutionEngine` and `ProofEngine` for validation.
-
-```python
-def process_execution_payload(
-    state: BeaconState,
-    body: BeaconBlockBody,
-    execution_engine: ExecutionEngine,
-    proof_engine: ProofEngine,
-) -> None:
-    payload = body.execution_payload
-
-    # Verify consistency of the parent hash with respect to the previous execution payload header
-    assert payload.parent_hash == state.latest_execution_payload_header.block_hash
-    # Verify prev_randao
-    assert payload.prev_randao == get_randao_mix(state, get_current_epoch(state))
-    # Verify timestamp
-    assert payload.timestamp == compute_time_at_slot(state, state.slot)
-    # Verify commitments are under limit
-    assert (
-        len(body.blob_kzg_commitments)
-        <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block
-    )
-
-    # Compute list of versioned hashes
-    versioned_hashes = [
-        kzg_commitment_to_versioned_hash(commitment) for commitment in body.blob_kzg_commitments
-    ]
-
-    # Verify the execution payload is valid via ExecutionEngine
-    assert execution_engine.verify_and_notify_new_payload(
-        NewPayloadRequest(
-            execution_payload=payload,
-            versioned_hashes=versioned_hashes,
-            parent_beacon_block_root=state.latest_block_header.parent_root,
-            execution_requests=body.execution_requests,
-        )
-    )
-
-    # [New in EIP8025]
-    # Notify ProofEngine of the new execution payload
-    proof_engine.notify_new_payload(
-        NewPayloadRequest(
-            execution_payload=payload,
-            versioned_hashes=versioned_hashes,
-            parent_beacon_block_root=state.latest_block_header.parent_root,
-            execution_requests=body.execution_requests,
-        )
-    )
-
-    # Cache execution payload header
-    state.latest_execution_payload_header = ExecutionPayloadHeader(
-        parent_hash=payload.parent_hash,
-        fee_recipient=payload.fee_recipient,
-        state_root=payload.state_root,
-        receipts_root=payload.receipts_root,
-        logs_bloom=payload.logs_bloom,
-        prev_randao=payload.prev_randao,
-        block_number=payload.block_number,
-        gas_limit=payload.gas_limit,
-        gas_used=payload.gas_used,
-        timestamp=payload.timestamp,
-        extra_data=payload.extra_data,
-        base_fee_per_gas=payload.base_fee_per_gas,
-        block_hash=payload.block_hash,
-        transactions_root=hash_tree_root(payload.transactions),
-        withdrawals_root=hash_tree_root(payload.withdrawals),
-        blob_gas_used=payload.blob_gas_used,
-        excess_blob_gas=payload.excess_blob_gas,
-    )
-```
-
 ### Execution proof
 
 *Note*: Proof storage is implementation-dependent, managed by the `ProofEngine`.
@@ -193,6 +94,7 @@ def process_execution_proof(
     proof_engine: ProofEngine,
 ) -> None:
     proof_message = signed_proof.message
+    assert len(proof_message.proof_data) <= MAX_PROOF_SIZE
 
     # Verify prover is an active validator
     validator = state.validators[signed_proof.validator_index]

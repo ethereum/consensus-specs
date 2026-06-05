@@ -89,9 +89,11 @@ longer required in Gloas. The KZG commitments are now located at
 ```python
 class DataColumnSidecar(Container):
     index: ColumnIndex
+    # [Modified in Gloas:EIP7688]
     column: ProgressiveList[Cell]
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments`
+    # [Modified in Gloas:EIP7688]
     kzg_proofs: ProgressiveList[KZGProof]
     # [Modified in Gloas:EIP7732]
     # Removed `signed_block_header`

@@ -2,8 +2,8 @@
 
 This document contains the networking specifications for EIP-8025.
 
-*Note*: This specification is built upon [Fulu](../../fulu/p2p-interface.md) and
-imports proof types from [proof-engine.md](./proof-engine.md).
+*Note*: This specification is built upon [Gloas](../../gloas/p2p-interface.md)
+and imports proof types from [proof-engine.md](./proof-engine.md).
 
 ## Table of contents
 
@@ -12,6 +12,7 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 - [Table of contents](#table-of-contents)
 - [Constants](#constants)
   - [Execution](#execution)
+  - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
 - [Containers](#containers)
   - [`ProofByRootIdentifier`](#proofbyrootidentifier)
 - [Helpers](#helpers)
@@ -40,6 +41,12 @@ imports proof types from [proof-engine.md](./proof-engine.md).
 | Name                               | Value       |
 | ---------------------------------- | ----------- |
 | `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)` |
+
+### Type-specific SSZ bounds
+
+| Name                              | Value                | Description                                        |
+| --------------------------------- | -------------------- | -------------------------------------------------- |
+| `MAX_SIGNED_EXECUTION_PROOF_SIZE` | `4194449` (= ~4 MiB) | Type-specific SSZ bound for `SignedExecutionProof` |
 
 ## Containers
 

@@ -141,9 +141,10 @@ def _attempt_payload_with_withdrawals(spec, state, withdrawals):
     )
 
     engine = spec.NoopExecutionEngine()
+    extra_engines = (spec.NoopProofEngine(),) if hasattr(spec, "NoopProofEngine") else ()
 
     try:
-        spec.verify_execution_payload_envelope(test_state, signed_envelope, engine)
+        spec.verify_execution_payload_envelope(test_state, signed_envelope, engine, *extra_engines)
         return True
     except AssertionError:
         return False

@@ -1,0 +1,11 @@
+# Mainnet preset - EIP8148
+
+# Execution
+# ---------------------------------------------------------------
+# 2**4 (= 16)
+MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD: 16
+
+# Type-specific SSZ bounds
+# ---------------------------------------------------------------
+# 4,035,526 bytes, ~4 MiB
+MAX_SIGNED_BEACON_BLOCK_SIZE_EIP8148: 4035526

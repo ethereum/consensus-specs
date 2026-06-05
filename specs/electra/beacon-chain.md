@@ -3,7 +3,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Custom types](#custom-types)
+- [Types](#types)
 - [Constants](#constants)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
@@ -127,7 +127,7 @@ Electra is a consensus-layer upgrade containing a number of features. Including:
   outside Attestation
 - [EIP-7691](https://eips.ethereum.org/EIPS/eip-7691): Blob throughput increase
 
-## Custom types
+## Types
 
 | Name                    | SSZ equivalent                                                                 | Description                                                       |
 | ----------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
