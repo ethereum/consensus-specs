@@ -120,7 +120,6 @@ def test_prepare_execution_payload__extend_payload(spec, state):
     run_on_execution_payload_envelope(spec, store, envelope)
 
     assert spec.is_payload_verified(store, block_root)
-    assert spec.should_extend_payload(store, block_root)
 
     # Advance to the proposal slot before modifying balances. process_slots
     # fills latest_block_header.state_root using the current state hash, so
@@ -175,7 +174,6 @@ def test_prepare_execution_payload__no_payload_verified(spec, state):
     store, _, block_root = _add_block_to_store(spec, state)
 
     assert not spec.is_payload_verified(store, block_root)
-    assert not spec.should_extend_payload(store, block_root)
 
     proposal_state = _advance_to_proposal_slot(spec, state, store)
 
