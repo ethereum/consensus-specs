@@ -451,6 +451,7 @@ on the beacon block `root` and chooses *empty*.
 
 ```python
 def should_extend_payload(store: Store, root: Root) -> bool:
+    assert store.blocks[root].slot + 1 == get_current_slot(store)
     if not is_payload_verified(store, root):
         return False
     proposer_root = store.proposer_boost_root
