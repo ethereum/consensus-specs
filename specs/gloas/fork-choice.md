@@ -434,7 +434,7 @@ def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
         return False
     is_payload_untimely = payload_timeliness(store, head.root, timely=False)
     is_payload_data_unavailable = payload_data_availability(store, head.root, available=False)
-    return not (is_payload_untimely or is_payload_data_unavailable)
+    return not is_payload_untimely and not is_payload_data_unavailable
 ```
 
 ### New `should_extend_payload`
