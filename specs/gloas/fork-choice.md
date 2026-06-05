@@ -443,12 +443,11 @@ def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
 
 ### New `should_extend_payload`
 
-*Note*: `should_extend_payload` decides whether to extend an available payload
-from the previous slot, corresponding to the beacon block `root`. If the blob
-data is not available, we do not extend it. We extend it if a majority of the
-PTC has voted for it. If not, we also extend it if the proposer boost root is
-not set, set to something conflicting with the given root, or to something
-extending the payload.
+*Note*: This function decides whether to extend an available payload
+corresponding to the beacon block `root` from the previous slot. It extends the
+payload when the PTC view supports both payload timeliness and data
+availability. Otherwise, it still extends unless the proposer boost block builds
+on the beacon block `root` and chooses *empty*.
 
 ```python
 def should_extend_payload(store: Store, root: Root) -> bool:
