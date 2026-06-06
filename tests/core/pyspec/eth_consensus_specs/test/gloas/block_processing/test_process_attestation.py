@@ -319,9 +319,7 @@ def test_same_slot_attestation_ignores_payload_availability(spec, state):
     attestation_slot = spec.Slot(0)
 
     # Availability disagrees with data.index so a bad client comparison would fail payload_matches.
-    state.execution_payload_availability[
-        attestation_slot % spec.SLOTS_PER_HISTORICAL_ROOT
-    ] = 1
+    state.execution_payload_availability[attestation_slot % spec.SLOTS_PER_HISTORICAL_ROOT] = 1
 
     committee = spec.get_beacon_committee(state, attestation_slot, 0)
     attestation = get_valid_attestation(
