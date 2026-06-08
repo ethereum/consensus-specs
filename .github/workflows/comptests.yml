@@ -1,6 +1,11 @@
 name: Compliance Tests
 
-run-name: ${{ inputs.release_tag && format('{0}-compliance', inputs.release_tag) || 'Compliance Tests' }}
+run-name: >-
+  ${{
+    inputs.release_tag
+    && format('Compliance Tests for {0}', inputs.release_tag)
+    || 'Compliance Tests'
+  }}
 
 permissions:
   contents: read
@@ -15,24 +20,24 @@ on:
         description: Commit, branch, or tag
         type: string
       release_tag:
-        description: Release tag used for archive names and release upload
+        description: Release tag
         default: ""
         type: string
       altair:
         description: Generate altair fork
-        default: false
+        default: true
         type: boolean
       bellatrix:
         description: Generate bellatrix fork
-        default: false
+        default: true
         type: boolean
       capella:
         description: Generate capella fork
-        default: false
+        default: true
         type: boolean
       deneb:
         description: Generate deneb fork
-        default: false
+        default: true
         type: boolean
       electra:
         description: Generate electra fork
@@ -40,19 +45,19 @@ on:
         type: boolean
       fulu:
         description: Generate fulu fork
-        default: false
+        default: true
         type: boolean
       gloas:
         description: Generate gloas fork
-        default: false
+        default: true
         type: boolean
       tiny:
         description: Generate tiny config
-        default: true
+        default: false
         type: boolean
       small:
         description: Generate small config
-        default: false
+        default: true
         type: boolean
       standard:
         description: Generate standard config
@@ -283,22 +288,21 @@ jobs:
         id: archive
         run: |
           archive="${{ matrix.config }}.tar.gz"
-          artifact="${{ matrix.config }}"
-          release_tag="${{ needs.config.outputs.release_tag }}"
 
+          # Release archives are named comptests.tar.gz
+          release_tag="${{ needs.config.outputs.release_tag }}"
           if [[ -n "$release_tag" ]]; then
-            artifact="${release_tag}-compliance-${{ matrix.config }}"
-            mv "$archive" "$artifact.tar.gz"
-            archive="$artifact.tar.gz"
+            renamed="comptests.tar.gz"
+            mv "$archive" "$renamed"
+            archive="$renamed"
           fi
 
           echo "archive=$archive" >> "$GITHUB_OUTPUT"
-          echo "artifact=$artifact" >> "$GITHUB_OUTPUT"
 
       - name: Upload ${{ steps.archive.outputs.archive }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ${{ steps.archive.outputs.artifact }}
+          name: ${{ steps.archive.outputs.archive }}
           path: ${{ steps.archive.outputs.archive }}
           archive: false
 
