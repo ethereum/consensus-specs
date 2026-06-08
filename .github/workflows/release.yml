@@ -162,7 +162,7 @@ jobs:
             --ref "${{ needs.setup.outputs.tag }}" \
             --field repo="${{ github.repository }}" \
             --field ref="${{ needs.setup.outputs.tag }}" \
-            --field release_tag="${{ needs.setup.outputs.tag }}"
+            --field release="${{ needs.setup.outputs.tag }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}

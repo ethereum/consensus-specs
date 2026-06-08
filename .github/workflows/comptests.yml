@@ -2,8 +2,8 @@ name: Compliance Tests
 
 run-name: >-
   ${{
-    inputs.release_tag
-    && format('Compliance Tests for {0}', inputs.release_tag)
+    inputs.release
+    && format('Compliance Tests for {0}', inputs.release)
     || 'Compliance Tests'
   }}
 
@@ -19,8 +19,8 @@ on:
       ref:
         description: Commit, branch, or tag
         type: string
-      release_tag:
-        description: Release tag
+      release:
+        description: Release (leave empty)
         default: ""
         type: string
       altair:
@@ -78,7 +78,7 @@ jobs:
     outputs:
       repo: ${{ steps.config.outputs.repo }}
       ref: ${{ steps.config.outputs.ref }}
-      release_tag: ${{ steps.config.outputs.release_tag }}
+      release: ${{ steps.config.outputs.release }}
       configs: ${{ steps.config.outputs.configs }}
       seed: ${{ steps.config.outputs.seed }}
       matrix: ${{ steps.config.outputs.matrix }}
@@ -97,17 +97,17 @@ jobs:
           fi
 
           # Release tag
-          release_tag="${{ inputs.release_tag }}"
-          if [[ -n "$release_tag" ]]; then
+          release="${{ inputs.release }}"
+          if [[ -n "$release" ]]; then
             if [[ "$repo" != "${{ github.repository }}" ]]; then
               echo "Release-tagged compliance runs must use ${{ github.repository }} as the repository." >&2
               exit 1
             fi
-            if [[ "$ref" != "$release_tag" ]]; then
+            if [[ "$ref" != "$release" ]]; then
               echo "Release-tagged compliance runs must use the release tag as the ref." >&2
               exit 1
             fi
-            echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+            echo "release=$release" >> "$GITHUB_OUTPUT"
           fi
 
           # Presets
@@ -202,7 +202,7 @@ jobs:
           echo "Configuration:"
           echo "  repo:    $repo"
           echo "  ref:     ${ref:-<default>}"
-          echo "  release: ${release_tag:-<none>}"
+          echo "  release: ${release:-<none>}"
           echo "  presets: $presets"
           echo "  forks:   $forks"
           echo "  configs: $configs"
@@ -290,8 +290,8 @@ jobs:
           archive="${{ matrix.config }}.tar.gz"
 
           # Release archives are named comptests.tar.gz
-          release_tag="${{ needs.config.outputs.release_tag }}"
-          if [[ -n "$release_tag" ]]; then
+          release="${{ needs.config.outputs.release }}"
+          if [[ -n "$release" ]]; then
             renamed="comptests.tar.gz"
             mv "$archive" "$renamed"
             archive="$renamed"
@@ -307,8 +307,8 @@ jobs:
           archive: false
 
       - name: Upload to release
-        if: ${{ needs.config.outputs.release_tag != '' }}
-        run: gh release upload "${{ needs.config.outputs.release_tag }}" "${{ steps.archive.outputs.archive }}"
+        if: ${{ needs.config.outputs.release != '' }}
+        run: gh release upload "${{ needs.config.outputs.release }}" "${{ steps.archive.outputs.archive }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
