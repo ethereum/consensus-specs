@@ -417,9 +417,8 @@ def is_previous_slot_payload_decision(store: Store, node: ForkChoiceNode) -> boo
 
 *Note*: This function is called by the proposer to decide whether to build on
 top of the *empty* or *full* parent node. For a node from an earlier slot, it
-follows the payload status resolved by `get_head`. For a *full* node from the
-previous slot, it considers the PTC view on both payload timeliness and data
-availability.
+follows the node's payload status. For a *full* node from the previous slot, it
+considers the PTC view on both payload timeliness and data availability.
 
 ```python
 def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
