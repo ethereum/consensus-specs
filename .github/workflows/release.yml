@@ -149,3 +149,20 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+
+  trigger-comptests:
+    needs: [setup, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Trigger compliance test generation
+        run: |
+          gh workflow run comptests.yml \
+            --ref "${{ needs.setup.outputs.tag }}" \
+            --field repo="${{ github.repository }}" \
+            --field ref="${{ needs.setup.outputs.tag }}" \
+            --field release="${{ needs.setup.outputs.tag }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
