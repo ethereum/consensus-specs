@@ -7,7 +7,7 @@
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
   - [New `is_data_available`](#new-is_data_available)
 - [Handlers](#handlers)
-  - [`on_block`](#on_block)
+  - [Modified `on_block`](#modified-on_block)
 
 <!-- mdformat-toc end -->
 
@@ -65,7 +65,7 @@ def is_data_available(
 
 ## Handlers
 
-### `on_block`
+### Modified `on_block`
 
 *Note*: The only modification is the addition of the blob data availability
 check.
