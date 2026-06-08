@@ -5,9 +5,9 @@
 - [Introduction](#introduction)
 - [Helpers](#helpers)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
-  - [`is_data_available`](#is_data_available)
+  - [New `is_data_available`](#new-is_data_available)
 - [Handlers](#handlers)
-  - [`on_block`](#on_block)
+  - [Modified `on_block`](#modified-on_block)
 
 <!-- mdformat-toc end -->
 
@@ -32,7 +32,7 @@ class PayloadAttributes:
     parent_beacon_block_root: Root
 ```
 
-### `is_data_available`
+### New `is_data_available`
 
 *[New in Deneb:EIP4844]*
 
@@ -65,7 +65,7 @@ def is_data_available(
 
 ## Handlers
 
-### `on_block`
+### Modified `on_block`
 
 *Note*: The only modification is the addition of the blob data availability
 check.
