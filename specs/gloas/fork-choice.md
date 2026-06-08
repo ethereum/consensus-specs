@@ -762,13 +762,16 @@ def is_head_weak(store: Store, head_root: Root) -> bool:
 
 #### Modified `is_parent_strong`
 
+*Note*: This function is modified to measure support for the parent beacon block
+root regardless of its payload status.
+
 ```python
 def is_parent_strong(store: Store, root: Root) -> bool:
     justified_state = store.checkpoint_states[store.justified_checkpoint]
     parent_threshold = calculate_committee_fraction(justified_state, REORG_PARENT_WEIGHT_THRESHOLD)
-    block = store.blocks[root]
-    parent_payload_status = get_parent_payload_status(store, block)
-    parent_node = ForkChoiceNode(root=block.parent_root, payload_status=parent_payload_status)
+    parent_root = store.blocks[root].parent_root
+    # [Modified in Gloas:EIP7732]
+    parent_node = ForkChoiceNode(root=parent_root, payload_status=PAYLOAD_STATUS_PENDING)
     parent_weight = get_attestation_score(store, parent_node, justified_state)
     return parent_weight > parent_threshold
 ```
