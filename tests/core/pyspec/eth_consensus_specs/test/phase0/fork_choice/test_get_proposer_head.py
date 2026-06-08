@@ -55,14 +55,14 @@ def test_basic_is_head_root(spec, state):
 
     current_time = slot * spec.config.SLOT_DURATION_MS // 1000 + store.genesis_time
     on_tick_and_append_step(spec, store, current_time, test_steps)
-    proposer_head = spec.get_proposer_head(store, head.root, slot)
-    assert proposer_head == head.root
+    proposer_head = spec.get_proposer_head(store, head, slot)
+    assert proposer_head.root == head.root
 
     output_store_checks(spec, store, test_steps)
     test_steps.append(
         {
             "checks": {
-                "get_proposer_head": encode_hex(proposer_head),
+                "get_proposer_head": encode_hex(proposer_head.root),
             }
         }
     )
@@ -168,14 +168,14 @@ def test_basic_is_parent_root(spec, state):
     assert spec.is_head_weak(store, head.root)
     assert spec.is_parent_strong(store, head.root)
 
-    proposer_head = spec.get_proposer_head(store, head.root, state.slot)
-    assert proposer_head == parent_root
+    proposer_head = spec.get_proposer_head(store, head, state.slot)
+    assert proposer_head.root == parent_root
 
     output_store_checks(spec, store, test_steps)
     test_steps.append(
         {
             "checks": {
-                "get_proposer_head": encode_hex(proposer_head),
+                "get_proposer_head": encode_hex(proposer_head.root),
             }
         }
     )
