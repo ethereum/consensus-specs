@@ -19,11 +19,10 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version-file: "pyproject.toml"
-      - name: Install uv ${{ vars.UV_VERSION }}
+      - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
-          version: ${{ vars.UV_VERSION }}
       - name: Run linter for pyspec
         run: |
           make lint
@@ -38,11 +37,10 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version-file: "pyproject.toml"
-      - name: Install uv ${{ vars.UV_VERSION }}
+      - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
-          version: ${{ vars.UV_VERSION }}
       - name: Run framework tests
         run: make test component=fw
       - name: Prepare test results for upload
@@ -134,11 +132,10 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version-file: "pyproject.toml"
-      - name: Install uv ${{ vars.UV_VERSION }}
+      - name: Install uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
-          version: ${{ vars.UV_VERSION }}
       - name: Run pyspec tests for ${{ matrix.fork }}
         run: make test component=pyspec preset=minimal fork=${{ matrix.fork }}
       - name: Prepare test results for upload
