@@ -5,7 +5,7 @@
 - [Introduction](#introduction)
 - [Helpers](#helpers)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
-  - [`is_data_available`](#is_data_available)
+  - [New `is_data_available`](#new-is_data_available)
 - [Handlers](#handlers)
   - [`on_block`](#on_block)
 
@@ -32,7 +32,7 @@ class PayloadAttributes:
     parent_beacon_block_root: Root
 ```
 
-### `is_data_available`
+### New `is_data_available`
 
 *[New in Deneb:EIP4844]*
 
