@@ -40,7 +40,14 @@ def get_capella_fork_time_ms(spec, state):
 
 
 @with_capella_and_later
-@spec_configured_state_test({"CAPELLA_FORK_EPOCH": 0}, activate_at_genesis=True)
+@spec_configured_state_test(
+    {
+        "ALTAIR_FORK_EPOCH": 0,
+        "BELLATRIX_FORK_EPOCH": 0,
+        "CAPELLA_FORK_EPOCH": 0,
+    },
+    activate_at_genesis=True,
+)
 def test_gossip_bls_to_execution_change__valid(spec, state):
     """
     Test that a valid `bls_to_execution_change` passes gossip validation.
@@ -75,7 +82,13 @@ def test_gossip_bls_to_execution_change__valid(spec, state):
 
 
 @with_phases([CAPELLA])
-@spec_configured_state_test({"CAPELLA_FORK_EPOCH": 1})
+@spec_configured_state_test(
+    {
+        "ALTAIR_FORK_EPOCH": 0,
+        "BELLATRIX_FORK_EPOCH": 0,
+        "CAPELLA_FORK_EPOCH": 1,
+    }
+)
 def test_gossip_bls_to_execution_change__ignore_pre_capella(spec, state):
     """
     Test that a `bls_to_execution_change` before the Capella fork is ignored.
@@ -111,7 +124,14 @@ def test_gossip_bls_to_execution_change__ignore_pre_capella(spec, state):
 
 
 @with_capella_and_later
-@spec_configured_state_test({"CAPELLA_FORK_EPOCH": 0}, activate_at_genesis=True)
+@spec_configured_state_test(
+    {
+        "ALTAIR_FORK_EPOCH": 0,
+        "BELLATRIX_FORK_EPOCH": 0,
+        "CAPELLA_FORK_EPOCH": 0,
+    },
+    activate_at_genesis=True,
+)
 def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
     """
     Test that a duplicate `bls_to_execution_change` is ignored.
@@ -158,7 +178,14 @@ def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
 
 
 @with_capella_and_later
-@spec_configured_state_test({"CAPELLA_FORK_EPOCH": 0}, activate_at_genesis=True)
+@spec_configured_state_test(
+    {
+        "ALTAIR_FORK_EPOCH": 0,
+        "BELLATRIX_FORK_EPOCH": 0,
+        "CAPELLA_FORK_EPOCH": 0,
+    },
+    activate_at_genesis=True,
+)
 def test_gossip_bls_to_execution_change__reject_validator_index_out_of_range(spec, state):
     """
     Test that a `bls_to_execution_change` with validator index out of range is rejected.
@@ -196,7 +223,14 @@ def test_gossip_bls_to_execution_change__reject_validator_index_out_of_range(spe
 
 
 @with_capella_and_later
-@spec_configured_state_test({"CAPELLA_FORK_EPOCH": 0}, activate_at_genesis=True)
+@spec_configured_state_test(
+    {
+        "ALTAIR_FORK_EPOCH": 0,
+        "BELLATRIX_FORK_EPOCH": 0,
+        "CAPELLA_FORK_EPOCH": 0,
+    },
+    activate_at_genesis=True,
+)
 def test_gossip_bls_to_execution_change__reject_not_bls_credentials(spec, state):
     """
     Test that a `bls_to_execution_change` for a validator without BLS credentials is rejected.
@@ -237,7 +271,14 @@ def test_gossip_bls_to_execution_change__reject_not_bls_credentials(spec, state)
 
 
 @with_capella_and_later
-@spec_configured_state_test({"CAPELLA_FORK_EPOCH": 0}, activate_at_genesis=True)
+@spec_configured_state_test(
+    {
+        "ALTAIR_FORK_EPOCH": 0,
+        "BELLATRIX_FORK_EPOCH": 0,
+        "CAPELLA_FORK_EPOCH": 0,
+    },
+    activate_at_genesis=True,
+)
 def test_gossip_bls_to_execution_change__reject_pubkey_mismatch(spec, state):
     """
     Test that a `bls_to_execution_change` with the wrong withdrawal pubkey is rejected.
@@ -279,7 +320,14 @@ def test_gossip_bls_to_execution_change__reject_pubkey_mismatch(spec, state):
 
 
 @with_capella_and_later
-@spec_configured_state_test({"CAPELLA_FORK_EPOCH": 0}, activate_at_genesis=True)
+@spec_configured_state_test(
+    {
+        "ALTAIR_FORK_EPOCH": 0,
+        "BELLATRIX_FORK_EPOCH": 0,
+        "CAPELLA_FORK_EPOCH": 0,
+    },
+    activate_at_genesis=True,
+)
 @always_bls
 def test_gossip_bls_to_execution_change__reject_bad_signature(spec, state):
     """
