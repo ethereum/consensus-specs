@@ -11,12 +11,9 @@ depending on ``payload_present``:
 
 The reference spec recomputes ``get_attestation_score`` from scratch via
 ``sum(...)`` over ``store.latest_messages`` each time, so it does not maintain
-running per-node weights. Production clients (Teku ``ProtoArray``, Grandine
-``fork_choice_store``, ...) keep incremental running weights and must apply
-add/subtract operations as ``LatestMessage`` entries change. That class of
-optimisation is the surface where weight-accounting bugs (uint64 underflow,
-"attesting balance should never go below zero") have been observed on Gloas
-devnets.
+running per-node weights. Implementations that keep incremental running
+weights must apply add/subtract operations as ``LatestMessage`` entries
+change across the two payload variants.
 
 This module exercises a minimal trace where both payload variants of the same
 root receive non-zero LMD weight in the same store, which an incremental
