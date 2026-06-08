@@ -638,7 +638,8 @@ def is_parent_strong(store: Store, root: Root) -> bool:
     justified_state = store.checkpoint_states[store.justified_checkpoint]
     parent_threshold = calculate_committee_fraction(justified_state, REORG_PARENT_WEIGHT_THRESHOLD)
     parent_root = store.blocks[root].parent_root
-    parent_weight = get_weight(store, ForkChoiceNode(root=parent_root))
+    parent_node = ForkChoiceNode(root=parent_root)
+    parent_weight = get_weight(store, parent_node)
     return parent_weight > parent_threshold
 ```
 
