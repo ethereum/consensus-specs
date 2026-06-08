@@ -9,7 +9,7 @@
 - [Helpers](#helpers)
   - [Modified `PayloadAttributes`](#modified-payloadattributes)
 - [Handlers](#handlers)
-  - [`on_block`](#on_block)
+  - [Modified `on_block`](#modified-on_block)
 
 <!-- mdformat-toc end -->
 
@@ -61,7 +61,7 @@ class PayloadAttributes:
 
 ## Handlers
 
-### `on_block`
+### Modified `on_block`
 
 *Note*: The only modification is the deletion of the verification of merge
 transition block conditions.
