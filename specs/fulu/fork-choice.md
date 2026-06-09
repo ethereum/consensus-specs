@@ -5,6 +5,8 @@
 - [Introduction](#introduction)
 - [Helpers](#helpers)
   - [Modified `is_data_available`](#modified-is_data_available)
+  - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
+    - [Modified `get_proposer_head`](#modified-get_proposer_head)
 - [Handlers](#handlers)
   - [Modified `on_block`](#modified-on_block)
 
@@ -31,6 +33,63 @@ def is_data_available(beacon_block_root: Root) -> bool:
         and verify_data_column_sidecar_kzg_proofs(column_sidecar)
         for column_sidecar in column_sidecars
     )
+```
+
+### Proposer head and reorg helpers
+
+#### Modified `get_proposer_head`
+
+```python
+def get_proposer_head(store: Store, head_node: ForkChoiceNode, slot: Slot) -> ForkChoiceNode:
+    head_block = store.blocks[head_node.root]
+    parent_root = head_block.parent_root
+    parent_block = store.blocks[parent_root]
+    parent_node = ForkChoiceNode(root=parent_root)
+
+    # Only re-org the head block if it arrived later than the attestation deadline.
+    head_late = is_head_late(store, head_node.root)
+
+    # Ensure that the FFG information of the new head will be competitive with the current head.
+    ffg_competitive = is_ffg_competitive(store, head_node.root, parent_root)
+
+    # Do not re-org if the chain is not finalizing with acceptable frequency.
+    finalization_ok = is_finalization_ok(store, slot)
+
+    # Only re-org if we are proposing on-time.
+    proposing_on_time = is_proposing_on_time(store)
+
+    # Only re-org a single slot at most.
+    parent_slot_ok = parent_block.slot + 1 == head_block.slot
+    current_time_ok = head_block.slot + 1 == slot
+    single_slot_reorg = parent_slot_ok and current_time_ok
+
+    # Check that the head has few enough votes to be overpowered by our proposer boost.
+    assert store.proposer_boost_root != head_node.root  # ensure boost has worn off
+    head_weak = is_head_weak(store, head_node.root)
+
+    # Check that the missing votes are assigned to the parent and not being hoarded.
+    parent_strong = is_parent_strong(store, head_node.root)
+
+    # Re-org more aggressively if there is a proposer equivocation in the previous slot.
+    proposer_equivocation = is_proposer_equivocation(store, head_node.root)
+
+    if all([
+        head_late,
+        # [Modified in Fulu:EIP7917]
+        # Removed `shuffling_stable`
+        ffg_competitive,
+        finalization_ok,
+        proposing_on_time,
+        single_slot_reorg,
+        head_weak,
+        parent_strong,
+    ]):
+        # We can re-org the current head by building upon its parent node.
+        return parent_node
+    elif all([head_weak, current_time_ok, proposer_equivocation]):
+        return parent_node
+    else:
+        return head_node
 ```
 
 ## Handlers

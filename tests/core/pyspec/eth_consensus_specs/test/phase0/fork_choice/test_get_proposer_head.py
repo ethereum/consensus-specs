@@ -23,6 +23,9 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     tick_and_add_block,
     tick_and_run_on_attestation,
 )
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_fulu,
+)
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
     next_slot,
@@ -155,7 +158,8 @@ def test_basic_is_parent_root(spec, state):
 
     # The conditions in `get_proposer_head`
     assert spec.is_head_late(store, head.root)
-    assert spec.is_shuffling_stable(slot)
+    if not is_post_fulu(spec):
+        assert spec.is_shuffling_stable(slot)
     assert spec.is_ffg_competitive(store, head.root, parent_root)
     assert spec.is_finalization_ok(store, slot)
     assert spec.is_proposing_on_time(store)

@@ -57,6 +57,7 @@ class CosetEvals(list):
             "get_blob_sidecars",
             "get_eth1_pending_deposit_count",
             "get_eth1_vote",
+            "is_shuffling_stable",
             "process_deposit",
             "upgrade_to_electra",
             "validate_blob_sidecar_gossip",
