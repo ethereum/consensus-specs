@@ -42,6 +42,7 @@ def prepare_signed_payload_attestation(
     slot=None,
     beacon_block_root=None,
     payload_present=True,
+    blob_data_available=False,
     attesting_indices=None,
     valid_signature=True,
     domain_epoch=None,
@@ -82,6 +83,7 @@ def prepare_signed_payload_attestation(
         beacon_block_root=beacon_block_root,
         slot=slot,
         payload_present=payload_present,
+        blob_data_available=blob_data_available,
     )
 
     # Create payload attestation

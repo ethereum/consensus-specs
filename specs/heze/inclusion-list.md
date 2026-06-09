@@ -30,11 +30,11 @@ These are the inclusion list specifications to implement Heze.
 ```python
 @dataclass
 class InclusionListStore:
-    inclusion_lists: DefaultDict[Tuple[Slot, Root], Dict[Root, InclusionList]] = field(
+    inclusion_lists: DefaultDict[Root, Dict[Root, InclusionList]] = field(
         default_factory=lambda: defaultdict(dict)
     )
     inclusion_list_timeliness: Dict[Root, boolean] = field(default_factory=dict)
-    equivocators: DefaultDict[Tuple[Slot, Root], Set[ValidatorIndex]] = field(
+    equivocators: DefaultDict[Root, Set[ValidatorIndex]] = field(
         default_factory=lambda: defaultdict(set)
     )
 ```
@@ -61,7 +61,7 @@ def process_inclusion_list(
     inclusion_list: InclusionList,
     is_timely: bool,
 ) -> None:
-    key = (inclusion_list.slot, inclusion_list.inclusion_list_committee_root)
+    key = inclusion_list.inclusion_list_committee_root
 
     # Ignore `inclusion_list` from equivocators.
     if inclusion_list.validator_index in store.equivocators[key]:
@@ -98,8 +98,7 @@ def get_inclusion_list_transactions(
     store: InclusionListStore, state: BeaconState, slot: Slot, only_timely: bool = True
 ) -> Sequence[Transaction]:
     committee = get_inclusion_list_committee(state, slot)
-    committee_root = hash_tree_root(committee)
-    key = (slot, committee_root)
+    key = hash_tree_root(committee)
 
     inclusion_lists = store.inclusion_lists[key]
     equivocators = store.equivocators[key]
@@ -128,8 +127,7 @@ def get_inclusion_list_bits(
     for valid and non-equivocating inclusion list submissions for the given ``slot``.
     """
     committee = get_inclusion_list_committee(state, slot)
-    committee_root = hash_tree_root(committee)
-    key = (slot, committee_root)
+    key = hash_tree_root(committee)
 
     inclusion_lists = store.inclusion_lists[key]
     equivocators = store.equivocators[key]

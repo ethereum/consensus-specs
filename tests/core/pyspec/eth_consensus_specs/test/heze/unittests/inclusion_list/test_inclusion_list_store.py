@@ -253,7 +253,7 @@ def test_inclusion_list_store_equivocation(spec, state):
 @with_heze_and_later
 @spec_test
 @with_custom_state(
-    balances_fn=lambda spec: [spec.MAX_EFFECTIVE_BALANCE] * spec.SLOTS_PER_EPOCH,
+    balances_fn=lambda spec: [spec.MAX_EFFECTIVE_BALANCE] * spec.SLOTS_PER_EPOCH * 2,
     threshold_fn=default_activation_threshold,
 )
 @single_phase
@@ -262,6 +262,7 @@ def test_inclusion_list_store_equivocation_scope(spec, state):
         forkchoice_store = get_genesis_forkchoice_store(spec, state)
         inclusion_list_store = spec.get_inclusion_list_store()
         inclusion_list_committee = spec.get_inclusion_list_committee(state, state.slot)
+        inclusion_list_committee_root = spec.hash_tree_root(inclusion_list_committee)
         validator_index = inclusion_list_committee[0]
 
         signed_inclusion_list_1 = get_sample_signed_inclusion_list(
@@ -281,13 +282,16 @@ def test_inclusion_list_store_equivocation_scope(spec, state):
 
         assert inclusion_list_transactions == []
 
-        # Find the next slot where the equivocator is in the IL committee.
+        # Find a later slot where the equivocator rejoins under a different committee root.
+        found_different_committee = False
         for _ in range(spec.SLOTS_PER_EPOCH * 2):
             spec.process_slots(state, state.slot + 1)
-            inclusion_list_committee = spec.get_inclusion_list_committee(state, state.slot)
-            if validator_index in inclusion_list_committee:
+            committee = spec.get_inclusion_list_committee(state, state.slot)
+            committee_root = spec.hash_tree_root(committee)
+            if validator_index in committee and inclusion_list_committee_root != committee_root:
+                found_different_committee = True
                 break
-        assert validator_index in inclusion_list_committee
+        assert found_different_committee
 
         # After the equivocated slot, the IL committee member should be able to participate successfully.
         signed_inclusion_list_3 = get_sample_signed_inclusion_list(
