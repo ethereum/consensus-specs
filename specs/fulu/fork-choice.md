@@ -4,6 +4,7 @@
 
 - [Introduction](#introduction)
 - [Helpers](#helpers)
+  - [Modified `get_dependent_root`](#modified-get_dependent_root)
   - [Modified `is_data_available`](#modified-is_data_available)
 - [Handlers](#handlers)
   - [Modified `on_block`](#modified-on_block)
@@ -15,6 +16,21 @@
 This is the modification of the fork choice accompanying Fulu.
 
 ## Helpers
+
+### Modified `get_dependent_root`
+
+```python
+def get_dependent_root(store: Store, root: Root) -> Root:
+    epoch = get_current_store_epoch(store)
+    if epoch <= MIN_SEED_LOOKAHEAD:
+        # Genesis block parent
+        return Root()
+
+    node = ForkChoiceNode(root=root)
+    # [Modified in Fulu]
+    dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+    return get_ancestor(store, node, dependent_slot).root
+```
 
 ### Modified `is_data_available`
 

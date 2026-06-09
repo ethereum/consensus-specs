@@ -864,7 +864,7 @@ def get_dependent_root(store: Store, root: Root) -> Root:
         return Root()
 
     node = ForkChoiceNode(root=root)
-    dependent_slot = Slot(compute_start_slot_at_epoch(epoch - MIN_SEED_LOOKAHEAD) - 1)
+    dependent_slot = Slot(compute_start_slot_at_epoch(epoch) - 1)
     return get_ancestor(store, node, dependent_slot).root
 ```
 
