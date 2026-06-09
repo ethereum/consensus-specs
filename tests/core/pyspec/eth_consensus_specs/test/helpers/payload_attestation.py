@@ -103,3 +103,4 @@ def vote_via_child_block(
     child_block.body.payload_attestations.append(aggregate)
     signed_child = state_transition_and_sign_block(spec, child_state, child_block)
     yield from tick_and_add_block(spec, store, signed_child, test_steps)
+    return signed_child.message.hash_tree_root()
