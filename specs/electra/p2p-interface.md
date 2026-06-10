@@ -15,6 +15,7 @@
         - [Modified `beacon_block`](#modified-beacon_block)
         - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
         - [Modified `attester_slashing`](#modified-attester_slashing)
+      - [Blob subnets](#blob-subnets)
         - [Modified `blob_sidecar_{subnet_id}`](#modified-blob_sidecar_subnet_id)
       - [Attestation subnets](#attestation-subnets)
         - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
@@ -374,6 +375,8 @@ def validate_beacon_aggregate_and_proof_gossip(
 wraps an `IndexedAttestation` payload sized for
 `MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT` attesting indices; the
 validation logic is otherwise unchanged.
+
+##### Blob subnets
 
 ###### Modified `blob_sidecar_{subnet_id}`
 

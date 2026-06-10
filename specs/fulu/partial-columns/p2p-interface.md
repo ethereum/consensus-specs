@@ -11,7 +11,8 @@
   - [`verify_partial_data_column_header_inclusion_proof`](#verify_partial_data_column_header_inclusion_proof)
   - [`verify_partial_data_column_sidecar_kzg_proofs`](#verify_partial_data_column_sidecar_kzg_proofs)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-  - [New `data_column_sidecar_{subnet_id}` (partial messages)](#new-data_column_sidecar_subnet_id-partial-messages)
+  - [Blob subnets](#blob-subnets)
+    - [New `data_column_sidecar_{subnet_id}` (partial messages)](#new-data_column_sidecar_subnet_id-partial-messages)
   - [Partial columns for Cell Dissemination](#partial-columns-for-cell-dissemination)
     - [Partial message group ID](#partial-message-group-id)
     - [Parts metadata](#parts-metadata)
@@ -147,7 +148,9 @@ def verify_partial_data_column_sidecar_kzg_proofs(
 
 ## The gossip domain: gossipsub
 
-### New `data_column_sidecar_{subnet_id}` (partial messages)
+### Blob subnets
+
+#### New `data_column_sidecar_{subnet_id}` (partial messages)
 
 *Note*: Validating partial messages happens in two parts. First, the
 `PartialDataColumnHeader` needs to be validated, then the cell and proof data.
