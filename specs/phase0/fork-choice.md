@@ -862,7 +862,7 @@ def get_dependent_root(store: Store, root: Root) -> Root:
     Return the dependent root for the proposer
     """
     epoch = get_current_store_epoch(store)
-    if epoch == 0:
+    if epoch == GENESIS_EPOCH:
         # Genesis block parent
         return Root()
 
