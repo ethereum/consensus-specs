@@ -65,7 +65,7 @@ class Seen:
     # [New in Altair]
     sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[boolean, ...]]]
     # [New in Altair]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, uint64]]
+    sync_message_validator_slots: Dict[Tuple[Slot, ValidatorIndex, uint64], Root]
 ```
 
 #### Modified `compute_fork_version`
@@ -217,6 +217,7 @@ be included in future blocks. The `state` parameter is the head state.
 ```python
 def validate_sync_committee_contribution_and_proof_gossip(
     seen: Seen,
+    store: Store,
     state: BeaconState,
     signed_contribution_and_proof: SignedContributionAndProof,
     current_time_ms: uint64,
@@ -254,6 +255,15 @@ def validate_sync_committee_contribution_and_proof_gossip(
     subcommittee_pubkeys = get_sync_subcommittee_pubkeys(state, contribution.subcommittee_index)
     if aggregator_pubkey not in subcommittee_pubkeys:
         raise GossipReject("aggregator not in subcommittee")
+
+    # [IGNORE] The block being signed (contribution.beacon_block_root) has been seen
+    # (via gossip or non-gossip sources) (a client MAY queue contributions until block is received)
+    if contribution.beacon_block_root not in store.blocks:
+        raise GossipIgnore("block being signed has not been seen")
+
+    # [REJECT] The block being signed (contribution.beacon_block_root) passes validation
+    if contribution.beacon_block_root not in store.block_states:
+        raise GossipReject("block being signed failed validation")
 
     # [IGNORE] A valid sync committee contribution with equal slot, beacon_block_root
     # and subcommittee_index whose aggregation_bits is non-strict superset
@@ -334,6 +344,7 @@ gossiped to the global `sync_committee_contribution_and_proof` topic. The
 ```python
 def validate_sync_committee_message_gossip(
     seen: Seen,
+    store: Store,
     state: BeaconState,
     sync_committee_message: SyncCommitteeMessage,
     current_time_ms: uint64,
@@ -360,13 +371,29 @@ def validate_sync_committee_message_gossip(
     if subnet_id not in valid_subnets:
         raise GossipReject("subnet_id is not valid for the validator")
 
+    # [IGNORE] The block being signed (sync_committee_message.beacon_block_root) has been seen
+    # (via gossip or non-gossip sources) (a client MAY queue messages until block is retrieved)
+    if sync_committee_message.beacon_block_root not in store.blocks:
+        raise GossipIgnore("block being signed has not been seen")
+
+    # [REJECT] The block being signed (sync_committee_message.beacon_block_root) passes validation
+    if sync_committee_message.beacon_block_root not in store.block_states:
+        raise GossipReject("block being signed failed validation")
+
     # [IGNORE] There has been no other valid sync committee message for the declared slot
-    # for the validator referenced by sync_committee_message.validator_index
-    # (this validation is per topic so that for a given slot, multiple messages could be
-    # forwarded with the same validator_index as long as the subnet_ids are distinct)
+    # for the validator referenced by sync_committee_message.validator_index, unless the block
+    # being signed matches the local head and the earlier message does not (the signature does
+    # not cover the slot, so stale messages could otherwise be replayed to suppress newer ones).
+    # This validation is per topic so that for a given slot, multiple messages could be forwarded
+    # with the same validator_index as long as the subnet_ids are distinct.
     message_key = (sync_committee_message.slot, sync_committee_message.validator_index, subnet_id)
-    if message_key in seen.sync_message_validator_slots:
-        raise GossipIgnore("already seen message from this validator for this slot and subnet")
+    seen_block_root = seen.sync_message_validator_slots.get(message_key)
+    if seen_block_root is not None:
+        head_root = get_head(store).root
+        if not (
+            sync_committee_message.beacon_block_root == head_root and seen_block_root != head_root
+        ):
+            raise GossipIgnore("already seen message from this validator for this slot and subnet")
 
     # [REJECT] The signature is valid for the message beacon_block_root
     # for the validator referenced by validator_index
@@ -379,7 +406,7 @@ def validate_sync_committee_message_gossip(
         raise GossipReject("invalid sync committee message signature")
 
     # Mark this message as seen
-    seen.sync_message_validator_slots.add(message_key)
+    seen.sync_message_validator_slots[message_key] = sync_committee_message.beacon_block_root
 ```
 
 ##### Sync committees and aggregation

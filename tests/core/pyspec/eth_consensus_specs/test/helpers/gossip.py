@@ -111,7 +111,7 @@ def get_seen(spec):
             {
                 "sync_contribution_aggregator_slots": set(),
                 "sync_contribution_data": {},
-                "sync_message_validator_slots": set(),
+                "sync_message_validator_slots": {},
             }
         )
     if is_post_capella(spec):

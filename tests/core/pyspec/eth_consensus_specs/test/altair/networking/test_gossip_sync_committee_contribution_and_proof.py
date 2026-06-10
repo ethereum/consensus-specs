@@ -4,10 +4,22 @@ from eth_consensus_specs.test.context import (
     with_altair_and_later,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.constants import MAINNET
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen
+from eth_consensus_specs.test.helpers.fork_choice import (
+    get_genesis_forkchoice_store,
+    get_genesis_forkchoice_store_and_block,
+)
+from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, wrap_genesis_block
 from eth_consensus_specs.test.helpers.keys import privkeys
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 from eth_consensus_specs.utils import bls
+
+
+def setup_store_with_anchor(spec, state):
+    """Return a store seeded with the genesis anchor block."""
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    return store, anchor_block
 
 
 def get_sync_committee_aggregator(spec, state):
@@ -120,12 +132,13 @@ def create_valid_signed_contribution_and_proof(
 
 
 def run_validate_contribution_gossip(
-    spec, seen, state, signed_contribution_and_proof, current_time_ms
+    spec, seen, store, state, signed_contribution_and_proof, current_time_ms
 ):
     """Run validate_sync_committee_contribution_and_proof_gossip and return the result."""
     try:
         spec.validate_sync_committee_contribution_and_proof_gossip(
             seen,
+            store,
             state,
             signed_contribution_and_proof,
             current_time_ms,
@@ -146,6 +159,11 @@ def test_gossip_sync_committee_contribution_and_proof__valid(spec, state):
     yield "state", state
 
     seen = get_seen(spec)
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    anchor_root = spec.Root(anchor_block.hash_tree_root())
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     aggregator_index, subcommittee_index, subcommittee_pubkeys = get_sync_committee_aggregator(
         spec, state
     )
@@ -156,6 +174,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid(spec, state):
         aggregator_index,
         subcommittee_index,
         subcommittee_pubkeys,
+        block_root=anchor_root,
     )
 
     yield get_filename(signed_cap), signed_cap
@@ -167,6 +186,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid(spec, state):
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_cap,
         current_time_ms + 500,
@@ -189,6 +209,12 @@ def test_gossip_sync_committee_contribution_and_proof__valid_at_period_boundary(
     exercising the next_sync_committee path in get_sync_subcommittee_pubkeys."""
     yield "topic", "meta", "sync_committee_contribution_and_proof"
 
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    anchor_root = spec.Root(anchor_block.hash_tree_root())
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
     # Advance to the last slot of the first sync committee period
     period_length = spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD * spec.SLOTS_PER_EPOCH
     state.slot = period_length - 1
@@ -206,6 +232,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid_at_period_boundary(
         aggregator_index,
         subcommittee_index,
         subcommittee_pubkeys,
+        block_root=anchor_root,
     )
 
     yield get_filename(signed_cap), signed_cap
@@ -217,6 +244,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid_at_period_boundary(
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_cap,
         current_time_ms + 500,
@@ -239,6 +267,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_future_slot(spec, 
     yield "state", state
 
     seen = get_seen(spec)
+    store = get_genesis_forkchoice_store(spec, state)
     aggregator_index, subcommittee_index, subcommittee_pubkeys = get_sync_committee_aggregator(
         spec, state
     )
@@ -262,6 +291,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_future_slot(spec, 
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_cap,
         current_time_ms,
@@ -290,6 +320,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_past_slot(spec, st
     yield "topic", "meta", "sync_committee_contribution_and_proof"
 
     seen = get_seen(spec)
+    store = get_genesis_forkchoice_store(spec, state)
     aggregator_index, subcommittee_index, subcommittee_pubkeys = get_sync_committee_aggregator(
         spec, state
     )
@@ -318,6 +349,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_past_slot(spec, st
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_cap,
         current_time_ms,
@@ -349,6 +381,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_subcommitt
     yield "state", state
 
     seen = get_seen(spec)
+    store = get_genesis_forkchoice_store(spec, state)
     aggregator_index, subcommittee_index, subcommittee_pubkeys = get_sync_committee_aggregator(
         spec, state
     )
@@ -373,6 +406,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_subcommitt
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_cap,
         current_time_ms + 500,
@@ -402,6 +436,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_no_participants(sp
     yield "state", state
 
     seen = get_seen(spec)
+    store = get_genesis_forkchoice_store(spec, state)
     aggregator_index, subcommittee_index, subcommittee_pubkeys = get_sync_committee_aggregator(
         spec, state
     )
@@ -427,6 +462,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_no_participants(sp
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_cap,
         current_time_ms + 500,
@@ -457,6 +493,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_not_aggregator(spe
     yield "state", state
 
     seen = get_seen(spec)
+    store = get_genesis_forkchoice_store(spec, state)
 
     # Find a validator in the sync committee that is NOT an aggregator
     non_aggregator_index = None
@@ -498,6 +535,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_not_aggregator(spe
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_cap,
         current_time_ms + 500,
@@ -529,6 +567,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_not_in_
     yield "state", state
 
     seen = get_seen(spec)
+    store = get_genesis_forkchoice_store(spec, state)
     aggregator_index, subcommittee_index, subcommittee_pubkeys = get_sync_committee_aggregator(
         spec, state
     )
@@ -556,6 +595,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_not_in_
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_cap,
         current_time_ms + 500,
@@ -587,6 +627,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_index_o
     yield "state", state
 
     seen = get_seen(spec)
+    store = get_genesis_forkchoice_store(spec, state)
     aggregator_index, subcommittee_index, subcommittee_pubkeys = get_sync_committee_aggregator(
         spec, state
     )
@@ -610,6 +651,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_index_o
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_cap,
         current_time_ms + 500,
@@ -642,11 +684,16 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_superset_contribut
 
     messages = []
     seen = get_seen(spec)
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    anchor_root = spec.Root(anchor_block.hash_tree_root())
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     aggregator_index, subcommittee_index, subcommittee_pubkeys = get_sync_committee_aggregator(
         spec, state
     )
 
-    block_root = spec.Root()
+    block_root = anchor_root
     epoch = spec.compute_epoch_at_slot(state.slot)
     subcommittee_size = spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT
 
@@ -712,6 +759,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_superset_contribut
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_superset,
         current_time_ms + 500,
@@ -737,6 +785,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_superset_contribut
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_subset,
         current_time_ms + 600,
@@ -766,11 +815,16 @@ def test_gossip_sync_committee_contribution_and_proof__valid_non_superset_contri
 
     messages = []
     seen = get_seen(spec)
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    anchor_root = spec.Root(anchor_block.hash_tree_root())
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     aggregator_index, subcommittee_index, subcommittee_pubkeys = get_sync_committee_aggregator(
         spec, state
     )
 
-    block_root = spec.Root()
+    block_root = anchor_root
     epoch = spec.compute_epoch_at_slot(state.slot)
     subcommittee_size = spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT
 
@@ -809,6 +863,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid_non_superset_contri
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_subset,
         current_time_ms + 500,
@@ -861,6 +916,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid_non_superset_contri
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_superset,
         current_time_ms + 600,
@@ -879,23 +935,29 @@ def test_gossip_sync_committee_contribution_and_proof__valid_non_superset_contri
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__ignore_duplicate_aggregator(spec, state):
     """Test that a second contribution from the same aggregator/slot/subcommittee is ignored,
-    even with a different beacon_block_root (bypassing the superset check)."""
+    even with non-subset aggregation bits (bypassing the superset check)."""
     yield "topic", "meta", "sync_committee_contribution_and_proof"
     yield "state", state
 
     messages = []
     seen = get_seen(spec)
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    anchor_root = spec.Root(anchor_block.hash_tree_root())
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     aggregator_index, subcommittee_index, subcommittee_pubkeys = get_sync_committee_aggregator(
         spec, state
     )
 
-    # First contribution with default block_root
+    # First contribution: a single aggregation bit for the aggregator
     signed_cap1 = create_valid_signed_contribution_and_proof(
         spec,
         state,
         aggregator_index,
         subcommittee_index,
         subcommittee_pubkeys,
+        block_root=anchor_root,
     )
 
     yield get_filename(signed_cap1), signed_cap1
@@ -908,6 +970,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_duplicate_aggregat
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_cap1,
         current_time_ms + 500,
@@ -916,16 +979,48 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_duplicate_aggregat
     assert reason is None
     messages.append({"offset_ms": 500, "message": get_filename(signed_cap1), "expected": "valid"})
 
-    # Second contribution with a different beacon_block_root
-    # (different root means the superset check won't match, so we hit the aggregator dedup)
-    different_root = spec.Root(b"\x01" * 32)
-    signed_cap2 = create_valid_signed_contribution_and_proof(
-        spec,
-        state,
-        aggregator_index,
-        subcommittee_index,
-        subcommittee_pubkeys,
-        block_root=different_root,
+    # Second contribution from the same aggregator with an extra aggregation bit
+    # (not a subset, so the superset check won't match and we hit the aggregator dedup)
+    subcommittee_size = spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT
+    aggregator_bit = next(
+        i
+        for i, pubkey in enumerate(subcommittee_pubkeys)
+        if pubkey == state.validators[aggregator_index].pubkey
+    )
+    bit2 = (aggregator_bit + 1) % subcommittee_size
+    validator_index2 = next(
+        vi for vi, v in enumerate(state.validators) if v.pubkey == subcommittee_pubkeys[bit2]
+    )
+
+    epoch = spec.compute_epoch_at_slot(state.slot)
+    domain = spec.get_domain(state, spec.DOMAIN_SYNC_COMMITTEE, epoch)
+    signing_root = spec.compute_signing_root(anchor_root, domain)
+    superset_bits = [False] * subcommittee_size
+    superset_bits[aggregator_bit] = True
+    superset_bits[bit2] = True
+    contribution2 = spec.SyncCommitteeContribution(
+        slot=state.slot,
+        beacon_block_root=anchor_root,
+        subcommittee_index=subcommittee_index,
+        aggregation_bits=superset_bits,
+        signature=bls.Aggregate(
+            [
+                bls.Sign(privkeys[aggregator_index], signing_root),
+                bls.Sign(privkeys[validator_index2], signing_root),
+            ]
+        ),
+    )
+    cap2 = spec.ContributionAndProof(
+        aggregator_index=aggregator_index,
+        contribution=contribution2,
+        selection_proof=spec.get_sync_committee_selection_proof(
+            state, state.slot, subcommittee_index, privkeys[aggregator_index]
+        ),
+    )
+    cap_domain = spec.get_domain(state, spec.DOMAIN_CONTRIBUTION_AND_PROOF, epoch)
+    signed_cap2 = spec.SignedContributionAndProof(
+        message=cap2,
+        signature=bls.Sign(privkeys[aggregator_index], spec.compute_signing_root(cap2, cap_domain)),
     )
 
     yield get_filename(signed_cap2), signed_cap2
@@ -933,6 +1028,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_duplicate_aggregat
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_cap2,
         current_time_ms + 600,
@@ -960,6 +1056,11 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_selection_
     yield "state", state
 
     seen = get_seen(spec)
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    anchor_root = spec.Root(anchor_block.hash_tree_root())
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     aggregator_index, subcommittee_index, subcommittee_pubkeys = get_sync_committee_aggregator(
         spec, state
     )
@@ -970,6 +1071,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_selection_
         aggregator_index,
         subcommittee_index,
         subcommittee_pubkeys,
+        block_root=anchor_root,
     )
 
     # Replace selection proof with a valid aggregator proof from another validator in the
@@ -991,6 +1093,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_selection_
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_cap,
         current_time_ms + 500,
@@ -1023,6 +1126,11 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregator
     yield "state", state
 
     seen = get_seen(spec)
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    anchor_root = spec.Root(anchor_block.hash_tree_root())
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     aggregator_index, subcommittee_index, subcommittee_pubkeys = get_sync_committee_aggregator(
         spec, state
     )
@@ -1033,6 +1141,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregator
         aggregator_index,
         subcommittee_index,
         subcommittee_pubkeys,
+        block_root=anchor_root,
     )
 
     # Replace the outer signature with one signed by a different key
@@ -1051,6 +1160,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregator
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_cap,
         current_time_ms + 500,
@@ -1083,6 +1193,11 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregate_
     yield "state", state
 
     seen = get_seen(spec)
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    anchor_root = spec.Root(anchor_block.hash_tree_root())
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     aggregator_index, subcommittee_index, subcommittee_pubkeys = get_sync_committee_aggregator(
         spec, state
     )
@@ -1093,6 +1208,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregate_
         aggregator_index,
         subcommittee_index,
         subcommittee_pubkeys,
+        block_root=anchor_root,
     )
 
     # Replace the aggregate signature with one signed by a different key
@@ -1118,6 +1234,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregate_
     result, reason = run_validate_contribution_gossip(
         spec,
         seen,
+        store,
         state,
         signed_cap,
         current_time_ms + 500,
@@ -1133,6 +1250,68 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregate_
                 "offset_ms": 500,
                 "message": get_filename(signed_cap),
                 "expected": "reject",
+                "reason": reason,
+            }
+        ],
+    )
+
+
+@with_altair_and_later
+@spec_state_test
+def test_gossip_sync_committee_contribution_and_proof__ignore_block_not_seen(spec, state):
+    """Test that a contribution for an unseen block is ignored."""
+    yield "topic", "meta", "sync_committee_contribution_and_proof"
+    yield "state", state
+
+    seen = get_seen(spec)
+    store, anchor_block = setup_store_with_anchor(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    # Build and apply a block (but don't add to store)
+    block = build_empty_block_for_next_slot(spec, state)
+    signed_block = state_transition_and_sign_block(spec, state, block)
+
+    # Create a contribution referencing the unseen block
+    aggregator_index, subcommittee_index, subcommittee_pubkeys = get_sync_committee_aggregator(
+        spec, state
+    )
+    signed_cap = create_valid_signed_contribution_and_proof(
+        spec,
+        state,
+        aggregator_index,
+        subcommittee_index,
+        subcommittee_pubkeys,
+        block_root=spec.Root(signed_block.message.hash_tree_root()),
+    )
+
+    yield get_filename(signed_cap), signed_cap
+
+    current_time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+
+    yield "current_time_ms", "meta", int(current_time_ms)
+
+    result, reason = run_validate_contribution_gossip(
+        spec,
+        seen,
+        store,
+        state,
+        signed_cap,
+        current_time_ms + 500,
+    )
+    assert result == "ignore"
+    assert reason == "block being signed has not been seen"
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "offset_ms": 500,
+                "message": get_filename(signed_cap),
+                "expected": "ignore",
                 "reason": reason,
             }
         ],

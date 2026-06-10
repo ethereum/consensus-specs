@@ -108,7 +108,7 @@ class Seen:
     attestation_validator_epochs: Set[Tuple[ValidatorIndex, Epoch]]
     sync_contribution_aggregator_slots: Set[Tuple[ValidatorIndex, Slot, uint64]]
     sync_contribution_data: Dict[Tuple[Slot, Root, uint64], Set[Tuple[boolean, ...]]]
-    sync_message_validator_slots: Set[Tuple[Slot, ValidatorIndex, uint64]]
+    sync_message_validator_slots: Dict[Tuple[Slot, ValidatorIndex, uint64], Root]
     bls_to_execution_change_indices: Set[ValidatorIndex]
     # [New in Deneb]
     blob_sidecar_tuples: Set[Tuple[Slot, ValidatorIndex, BlobIndex]]
