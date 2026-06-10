@@ -12,12 +12,12 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
-        - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
-        - [`attester_slashing`](#attester_slashing)
-        - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
+        - [Modified `beacon_block`](#modified-beacon_block)
+        - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
+        - [Modified `attester_slashing`](#modified-attester_slashing)
+        - [Modified `blob_sidecar_{subnet_id}`](#modified-blob_sidecar_subnet_id)
       - [Attestation subnets](#attestation-subnets)
-        - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
+        - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
@@ -121,7 +121,7 @@ The derivation of the `message-id` remains stable.
 
 ##### Global topics
 
-###### `beacon_block`
+###### Modified `beacon_block`
 
 *Note*: This function is modified per EIP-7691. The block's KZG commitment count
 is bounded by `MAX_BLOBS_PER_BLOCK_ELECTRA`.
@@ -222,7 +222,7 @@ def validate_beacon_block_gossip(
     seen.proposer_slots.add((block.proposer_index, block.slot))
 ```
 
-###### `beacon_aggregate_and_proof`
+###### Modified `beacon_aggregate_and_proof`
 
 *Note*: This function is modified per EIP-7549. The committee index is now
 encoded in `aggregate.committee_bits`, `aggregate.data.index` MUST be zero, and
@@ -368,14 +368,14 @@ def validate_beacon_aggregate_and_proof_gossip(
     seen.aggregate_data_roots[aggregate_cache_key].add(aggregate_bits)
 ```
 
-###### `attester_slashing`
+###### Modified `attester_slashing`
 
 *Note*: This function is modified per EIP-7549. The new `AttesterSlashing` type
 wraps an `IndexedAttestation` payload sized for
 `MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT` attesting indices; the
 validation logic is otherwise unchanged.
 
-###### `blob_sidecar_{subnet_id}`
+###### Modified `blob_sidecar_{subnet_id}`
 
 *Note*: This function is modified per EIP-7691. The sidecar's index is bounded
 by `MAX_BLOBS_PER_BLOCK_ELECTRA`.
@@ -475,7 +475,7 @@ def validate_blob_sidecar_gossip(
 
 ##### Attestation subnets
 
-###### `beacon_attestation_{subnet_id}`
+###### Modified `beacon_attestation_{subnet_id}`
 
 *Note*: This function is modified per EIP-7549. The topic now propagates
 `SingleAttestation` objects: the attesting validator's index is carried directly

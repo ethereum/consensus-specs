@@ -20,10 +20,10 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
+        - [Modified `beacon_block`](#modified-beacon_block)
       - [Blob subnets](#blob-subnets)
         - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
-        - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
+        - [New `data_column_sidecar_{subnet_id}`](#new-data_column_sidecar_subnet_id)
         - [Distributed blob publishing using blobs retrieved from local execution-layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
@@ -236,7 +236,7 @@ Some gossip meshes are upgraded in Fulu to support upgraded types.
 
 ##### Global topics
 
-###### `beacon_block`
+###### Modified `beacon_block`
 
 *Note*: This function is modified per EIP-7892. The block's KZG commitment count
 is bounded by
@@ -347,7 +347,7 @@ def validate_beacon_block_gossip(
 
 `blob_sidecar_{subnet_id}` is deprecated.
 
-###### `data_column_sidecar_{subnet_id}`
+###### New `data_column_sidecar_{subnet_id}`
 
 The `data_column_sidecar_{subnet_id}` topics, where each column index maps to
 some `subnet_id`, are used to propagate new data column sidecars to nodes on the

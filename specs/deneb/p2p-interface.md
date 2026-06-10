@@ -17,14 +17,14 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
-        - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
-        - [`voluntary_exit`](#voluntary_exit)
+        - [Modified `beacon_block`](#modified-beacon_block)
+        - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
+        - [Modified `voluntary_exit`](#modified-voluntary_exit)
       - [Blob subnets](#blob-subnets)
-        - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
+        - [New `blob_sidecar_{subnet_id}`](#new-blob_sidecar_subnet_id)
         - [Blob retrieval via local execution-layer client](#blob-retrieval-via-local-execution-layer-client)
       - [Attestation subnets](#attestation-subnets)
-        - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
+        - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
     - [Transitioning the gossip](#transitioning-the-gossip)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
@@ -191,7 +191,7 @@ are given in this table:
 
 ##### Global topics
 
-###### `beacon_block`
+###### Modified `beacon_block`
 
 *Note*: This function is modified to validate the number of blob kzg commitments
 included in the beacon block body.
@@ -292,7 +292,7 @@ def validate_beacon_block_gossip(
     seen.proposer_slots.add((block.proposer_index, block.slot))
 ```
 
-###### `beacon_aggregate_and_proof`
+###### Modified `beacon_aggregate_and_proof`
 
 *Note*: This function is modified to ignore aggregate attestations from future
 slots and ignore aggregate attestations whose epoch is not the current or
@@ -426,7 +426,7 @@ def validate_beacon_aggregate_and_proof_gossip(
     seen.aggregate_data_roots[aggregate_data_root].add(aggregate_bits)
 ```
 
-###### `voluntary_exit`
+###### Modified `voluntary_exit`
 
 *Note*: This function is modified to use `CAPELLA_FORK_VERSION` in the signature
 domain computation so that voluntary exits remain valid across fork boundaries.
@@ -486,7 +486,7 @@ def validate_voluntary_exit_gossip(
 
 ##### Blob subnets
 
-###### `blob_sidecar_{subnet_id}`
+###### New `blob_sidecar_{subnet_id}`
 
 The `blob_sidecar_{subnet_id}` topics, where each blob index maps to some
 `subnet_id`, are used solely for propagating new blob sidecars to all nodes on
@@ -614,7 +614,7 @@ particular they MUST:
 
 ##### Attestation subnets
 
-###### `beacon_attestation_{subnet_id}`
+###### Modified `beacon_attestation_{subnet_id}`
 
 *[Modified in Deneb:EIP7045]* Attestations from the previous epoch are now
 propagated through the entire current epoch rather than only the next
