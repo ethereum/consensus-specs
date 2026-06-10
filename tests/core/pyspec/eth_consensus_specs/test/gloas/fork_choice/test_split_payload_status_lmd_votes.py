@@ -27,9 +27,6 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
 )
-from eth_consensus_specs.test.helpers.block import (
-    build_empty_block_for_next_slot,
-)
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
 )
@@ -37,22 +34,31 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     add_attestation,
     add_execution_payload,
     check_head_against_root,
-    get_genesis_forkchoice_store_and_block,
-    on_tick_and_append_step,
     output_store_checks,
-    tick_and_add_block,
+    setup_one_block_store,
+    tick_store_to_slot,
 )
 from eth_consensus_specs.test.helpers.state import (
     next_slots,
-    state_transition_and_sign_block,
 )
 
 
-def _advance_store_to_slot(spec, store, slot, test_steps):
-    """Tick the store forward to the start of ``slot`` and record the step."""
-    slot_time = store.genesis_time + slot * (spec.config.SLOT_DURATION_MS // 1000)
-    if store.time < slot_time:
-        on_tick_and_append_step(spec, store, slot_time, test_steps)
+def _expected_score(spec, state, store, target_node):
+    """Reference computation of ``get_attestation_score`` for ``target_node``."""
+    current_epoch = spec.get_current_epoch(state)
+    active_indices = spec.get_active_validator_indices(state, current_epoch)
+    total = 0
+    for i in active_indices:
+        if state.validators[i].slashed:
+            continue
+        if i not in store.latest_messages:
+            continue
+        if i in store.equivocating_indices:
+            continue
+        supported = spec.get_supported_node(store, store.latest_messages[i])
+        if spec.is_ancestor(store, supported, target_node):
+            total += state.validators[i].effective_balance
+    return spec.Gwei(total)
 
 
 @with_gloas_and_later
@@ -78,22 +84,12 @@ def test_lmd_vote_split_across_payload_status_variants(spec, state):
     fork-choice implementations must independently maintain a running weight
     for ``(block_1, FULL)`` and ``(block_1, EMPTY)`` from this same trace.
     """
-    test_steps = []
-
     # --- Initialisation -----------------------------------------------------
-    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-    yield "anchor_state", state
-    yield "anchor_block", anchor_block
+    store, block_1_root, _, signed_block_1, test_steps = yield from setup_one_block_store(
+        spec, state
+    )
 
-    current_time = state.slot * (spec.config.SLOT_DURATION_MS // 1000) + store.genesis_time
-    on_tick_and_append_step(spec, store, current_time, test_steps)
-
-    # --- Apply block_1 at slot 1 with a verified execution payload ---------
-    block_1 = build_empty_block_for_next_slot(spec, state)
-    signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
-    yield from tick_and_add_block(spec, store, signed_block_1, test_steps)
-    block_1_root = signed_block_1.message.hash_tree_root()
-
+    # --- Reveal block_1's execution payload --------------------------------
     envelope = build_signed_execution_payload_envelope(spec, state, block_1_root, signed_block_1)
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=True)
 
@@ -106,7 +102,7 @@ def test_lmd_vote_split_across_payload_status_variants(spec, state):
     # --- Slot 2: a committee credits (block_1, FULL) -----------------------
     state_slot_2 = state.copy()
     next_slots(spec, state_slot_2, spec.Slot(2) - state_slot_2.slot)
-    _advance_store_to_slot(spec, store, state_slot_2.slot + 1, test_steps)
+    tick_store_to_slot(spec, store, state_slot_2.slot + 1, test_steps)
 
     full_attestation = get_valid_attestation(
         spec,
@@ -131,7 +127,7 @@ def test_lmd_vote_split_across_payload_status_variants(spec, state):
     # --- Slot 3: a different committee credits (block_1, EMPTY) ------------
     state_slot_3 = state_slot_2.copy()
     next_slots(spec, state_slot_3, 1)
-    _advance_store_to_slot(spec, store, state_slot_3.slot + 1, test_steps)
+    tick_store_to_slot(spec, store, state_slot_3.slot + 1, test_steps)
 
     empty_attestation = get_valid_attestation(
         spec,
@@ -167,15 +163,21 @@ def test_lmd_vote_split_across_payload_status_variants(spec, state):
     full_score = spec.get_attestation_score(store, full_node, justified_state)
     empty_score = spec.get_attestation_score(store, empty_node, justified_state)
 
-    # EMPTY definitely has weight; FULL only retains weight from voters that
-    # did not re-attest in slot 3.
-    assert empty_score > 0
+    # Pre-calculate the expected per-variant weights directly from the LMD
+    # state: each variant's score is the sum of effective balances of the
+    # validators whose LatestMessage resolves to that variant.
+    expected_full_score = _expected_score(spec, justified_state, store, full_node)
+    expected_empty_score = _expected_score(spec, justified_state, store, empty_node)
+
+    assert full_score == expected_full_score
+    assert empty_score == expected_empty_score
+    assert expected_empty_score > 0
     if full_minus_empty:
-        assert full_score > 0
+        assert expected_full_score > 0
     else:
         # If every FULL voter also appeared in the slot-3 committee they have
         # all moved to EMPTY and FULL ends up empty. Still a valid trace.
-        assert full_score == 0
+        assert expected_full_score == 0
 
     # The total weight in flight is the union of voters; never more.
     union_balance = sum(
