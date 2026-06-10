@@ -546,6 +546,7 @@ def validate_beacon_block_gossip(
     if block.parent_root not in store.blocks:
         raise GossipIgnore("block's parent has not been seen")
 
+    # [New in Gloas:EIP7732]
     # [IGNORE] If the parent block is full, the parent payload is valid
     # (MAY be queued until the parent payload is verified)
     if is_parent_node_full(store, block):
