@@ -862,6 +862,10 @@ def get_dependent_root(store: Store, root: Root) -> Root:
     Return the dependent root for the proposer
     """
     epoch = get_current_store_epoch(store)
+    if epoch == 0:
+        # Genesis block parent
+        return Root()
+
     node = ForkChoiceNode(root=root)
     dependent_slot = Slot(compute_start_slot_at_epoch(epoch) - 1)
     return get_ancestor(store, node, dependent_slot).root
