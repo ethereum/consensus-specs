@@ -546,6 +546,12 @@ def validate_beacon_block_gossip(
     if block.parent_root not in store.blocks:
         raise GossipIgnore("block's parent has not been seen")
 
+    # [IGNORE] If the parent block is full, the parent payload is valid
+    # (MAY be queued until the parent payload is verified)
+    if is_parent_node_full(store, block):
+        if not is_payload_verified(store, block.parent_root):
+            raise GossipIgnore("parent payload is not verified")
+
     # [REJECT] The block is from a higher slot than its parent
     if block.slot <= store.blocks[block.parent_root].slot:
         raise GossipReject("block is not from a higher slot than its parent")
@@ -568,11 +574,9 @@ def validate_beacon_block_gossip(
     if bid.parent_block_root != block.parent_root:
         raise GossipReject("bid's parent does not equal block's parent")
 
-    # [New in Gloas:EIP7732]
-    # [IGNORE] The block's parent state is available
-    # (MAY be queued until state transition is complete)
+    # [REJECT] The block's parent passes validation
     if block.parent_root not in store.block_states:
-        raise GossipIgnore("block's parent state is unavailable")
+        raise GossipReject("block's parent is invalid")
 
     # [REJECT] The block is proposed by the expected proposer for the slot
     parent_state = store.block_states[block.parent_root].copy()

@@ -28,6 +28,9 @@ blocks: [{                   -- Optional. Blocks to import before validation (ol
                              -- "VALID" | "INVALIDATED" | "NOT_VALIDATED".
                              -- Maps to the corresponding `PAYLOAD_STATUS_*` value
                              -- in the relevant specification.
+    payload: string,         -- Optional. `SignedExecutionPayloadEnvelope` file for
+                             -- this block. The envelope has been received and
+                             -- verified, as recorded by `on_execution_payload_envelope`.
 }]
 finalized_checkpoint:        -- Optional. Custom finalized checkpoint.
   epoch: int                 -- The epoch of the finalized checkpoint.
@@ -97,6 +100,9 @@ Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
      specified).
    - Import each entry in `blocks` into the store. If `failed: true`, track the
      block as having failed validation (for testing descendant rejection).
+   - If `payload` is present, record the referenced envelope's message for that
+     block as `on_execution_payload_envelope` would (e.g. add it to
+     `store.payloads`).
    - If `payload_status` is present, track the execution payload status for that
      block.
      - `VALID`: the block's execution payload is known valid.

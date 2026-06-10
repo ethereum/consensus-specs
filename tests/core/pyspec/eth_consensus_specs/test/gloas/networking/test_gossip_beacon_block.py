@@ -7,6 +7,9 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block,
 )
+from eth_consensus_specs.test.helpers.execution_payload import (
+    build_signed_execution_payload_envelope,
+)
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -36,8 +39,8 @@ def setup_store_with_anchor_and_parent(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_gossip_beacon_block__reject_bid_parent_root_mismatch(spec, state):
-    """A block whose bid parent_block_root does not match its parent_root is rejected."""
+def test_gossip_beacon_block__valid_parent_empty(spec, state):
+    """A block building on an empty parent (to execution payload)."""
     yield "topic", "meta", "beacon_block"
 
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -48,8 +51,11 @@ def test_gossip_beacon_block__reject_bid_parent_root_mismatch(spec, state):
 
     seen = get_seen(spec)
     block = build_empty_block_for_next_slot(spec, state)
-    # Corrupt the bid's parent_block_root.
-    block.body.signed_execution_payload_bid.message.parent_block_root = spec.Root(b"\xab" * 32)
+    # Claim the parent is empty by building on the pre-payload block hash,
+    # which does not match the parent bid's block_hash. The parent payload
+    # check does not apply, so no envelope is needed for the block to be valid.
+    block.body.signed_execution_payload_bid.message.parent_block_hash = state.latest_block_hash
+    assert not spec.is_parent_node_full(store, block)
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
@@ -66,8 +72,122 @@ def test_gossip_beacon_block__reject_bid_parent_root_mismatch(spec, state):
         signed_beacon_block=signed_block,
         current_time_ms=time_ms,
     )
-    assert result == "reject"
-    assert reason == "bid's parent does not equal block's parent"
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_block),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_beacon_block__valid_parent_full(spec, state):
+    """A block building on a full parent (with an execution payload)."""
+    yield "topic", "meta", "beacon_block"
+
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    anchor_root = anchor_block.hash_tree_root()
+    yield "state", state
+    yield get_filename(signed_anchor), signed_anchor
+
+    # The parent's payload has been received and verified, recorded in the
+    # store as `on_execution_payload_envelope` would.
+    signed_envelope = build_signed_execution_payload_envelope(
+        spec, state, anchor_root, signed_anchor
+    )
+    store.payloads[anchor_root] = signed_envelope.message
+    yield get_filename(signed_envelope), signed_envelope
+    yield (
+        "blocks",
+        "meta",
+        [
+            {
+                "block": get_filename(signed_anchor),
+                "payload": get_filename(signed_envelope),
+            }
+        ],
+    )
+
+    seen = get_seen(spec)
+    block = build_empty_block_for_next_slot(spec, state)
+    # Claim the parent is full by matching the bid's parent_block_hash to the
+    # parent bid's block_hash.
+    parent_bid = anchor_block.body.signed_execution_payload_bid.message
+    block.body.signed_execution_payload_bid.message.parent_block_hash = parent_bid.block_hash
+    assert spec.is_parent_node_full(store, block)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    yield get_filename(signed_block), signed_block
+
+    time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_block),
+            "expected": result,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_beacon_block__ignore_parent_payload_not_verified(spec, state):
+    """A block building on a full parent whose payload is not verified is ignored."""
+    yield "topic", "meta", "beacon_block"
+
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    yield "state", state
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    seen = get_seen(spec)
+    block = build_empty_block_for_next_slot(spec, state)
+    # Claim the parent is full by matching the bid's parent_block_hash to the
+    # parent bid's block_hash. The parent's payload has not been verified
+    # (there is no envelope in the store), so the block must be ignored.
+    parent_bid = anchor_block.body.signed_execution_payload_bid.message
+    block.body.signed_execution_payload_bid.message.parent_block_hash = parent_bid.block_hash
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    yield get_filename(signed_block), signed_block
+
+    time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
+        current_time_ms=time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "parent payload is not verified"
     messages.append(
         {
             "current_time_ms": int(time_ms),
@@ -245,8 +365,54 @@ def test_gossip_beacon_block__reject_too_many_blob_commitments(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_gossip_beacon_block__ignore_parent_state_unavailable(spec, state):
-    """A block whose parent state is missing from the store is ignored."""
+def test_gossip_beacon_block__reject_bid_parent_root_mismatch(spec, state):
+    """A block whose bid parent_block_root does not match its parent_root is rejected."""
+    yield "topic", "meta", "beacon_block"
+
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    yield "state", state
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    seen = get_seen(spec)
+    block = build_empty_block_for_next_slot(spec, state)
+    # Corrupt the bid's parent_block_root.
+    block.body.signed_execution_payload_bid.message.parent_block_root = spec.Root(b"\xab" * 32)
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    yield get_filename(signed_block), signed_block
+
+    time_ms = spec.compute_time_at_slot_ms(state, signed_block.message.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
+        current_time_ms=time_ms,
+    )
+    assert result == "reject"
+    assert reason == "bid's parent does not equal block's parent"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_block),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
+    """A block whose parent state is missing from the store is rejected."""
     yield "topic", "meta", "beacon_block"
 
     store, signed_anchor, signed_parent = setup_store_with_anchor_and_parent(spec, state)
@@ -282,8 +448,8 @@ def test_gossip_beacon_block__ignore_parent_state_unavailable(spec, state):
         signed_beacon_block=signed_child,
         current_time_ms=time_ms,
     )
-    assert result == "ignore"
-    assert reason == "block's parent state is unavailable"
+    assert result == "reject"
+    assert reason == "block's parent is invalid"
     messages.append(
         {
             "current_time_ms": int(time_ms),
