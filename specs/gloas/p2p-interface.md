@@ -246,9 +246,11 @@ The following validations are added:
 - _[REJECT]_ If `aggregate.data.index == 1` (payload present for a past block)
   the corresponding execution payload for `block` passes validation.
 - _[IGNORE]_ When `aggregate.data.index == 1` (payload present for a past
-  block), the corresponding execution payload for `block` has been seen (a
-  client MAY queue attestations for processing once the payload is retrieved and
-  SHOULD request the payload envelope via `ExecutionPayloadEnvelopesByRoot`
+  block), the corresponding execution payload for `block` has been fully
+  imported, including its data -- i.e.
+  `is_payload_verified(store, aggregate.data.beacon_block_root)` returns `True`
+  (a client MAY queue attestations for processing until the payload is imported
+  and SHOULD request the payload envelope via `ExecutionPayloadEnvelopesByRoot`
   using `aggregate.data.beacon_block_root`).
 
 The following validations are removed:
@@ -525,10 +527,12 @@ The following validations are added:
 - _[REJECT]_ If `attestation.data.index == 1` (payload present for a past
   block), the execution payload for `block` passes validation.
 - _[IGNORE]_ When `attestation.data.index == 1` (payload present for a past
-  block), the execution payload for `block` has been seen (a client MAY queue
-  attestations for processing once the payload is retrieved and SHOULD request
-  the payload envelope via `ExecutionPayloadEnvelopesByRoot` using
-  `attestation.data.beacon_block_root`).
+  block), the execution payload for `block` has been fully imported, including
+  its data -- i.e.
+  `is_payload_verified(store, attestation.data.beacon_block_root)` returns
+  `True` (a client MAY queue attestations for processing until the payload is
+  imported and SHOULD request the payload envelope via
+  `ExecutionPayloadEnvelopesByRoot` using `attestation.data.beacon_block_root`).
 
 The following validations are removed:
 
