@@ -18,10 +18,11 @@ from eth_consensus_specs.test.helpers.fork_choice import (
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
+    get_spec_block_payload_statuses,
     PAYLOAD_STATUS_INVALIDATED,
     PAYLOAD_STATUS_NOT_VALIDATED,
     PAYLOAD_STATUS_VALID,
-    run_validate_beacon_block_gossip,
+    run_validate_gossip,
     wrap_genesis_block,
 )
 from eth_consensus_specs.test.helpers.state import (
@@ -56,8 +57,14 @@ def test_gossip_beacon_block__valid_execution_enabled(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
+        current_time_ms=block_time_ms + 500,
+        block_payload_statuses={},
     )
     assert result == "valid"
     assert reason is None
@@ -97,8 +104,14 @@ def test_gossip_beacon_block__valid_execution_disabled(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
+        current_time_ms=block_time_ms + 500,
+        block_payload_statuses={},
     )
     assert result == "valid"
     assert reason is None
@@ -141,8 +154,14 @@ def test_gossip_beacon_block__reject_incorrect_execution_payload_timestamp(spec,
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
-        spec, seen, store, state, signed_block, block_time_ms + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_block,
+        current_time_ms=block_time_ms + 500,
+        block_payload_statuses={},
     )
     assert result == "reject"
     assert reason == "incorrect execution payload timestamp"
@@ -222,16 +241,17 @@ def test_gossip_beacon_block__reject_parent_consensus_failed_execution_not_verif
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
+    result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_child,
-        block_time_ms + 500,
-        block_payload_statuses={
-            signed_block.message.hash_tree_root(): PAYLOAD_STATUS_NOT_VALIDATED,
-        },
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
+        current_time_ms=block_time_ms + 500,
+        block_payload_statuses=get_spec_block_payload_statuses(
+            spec,
+            {signed_block.message.hash_tree_root(): PAYLOAD_STATUS_NOT_VALIDATED},
+        ),
     )
     assert result == "reject"
     assert reason == "block's parent is invalid and EL result is unknown"
@@ -312,14 +332,14 @@ def test_gossip_beacon_block__ignore_parent_consensus_failed_execution_known(spe
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
+    result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_child,
-        block_time_ms + 500,
-        block_payload_statuses=block_payload_statuses,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
+        current_time_ms=block_time_ms + 500,
+        block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
     assert result == "ignore"
     assert reason == "block's parent is invalid and EL result is known"
@@ -402,14 +422,14 @@ def test_gossip_beacon_block__ignore_parent_execution_verified_invalid(spec, sta
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
+    result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_child,
-        block_time_ms + 500,
-        block_payload_statuses=block_payload_statuses,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
+        current_time_ms=block_time_ms + 500,
+        block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
     assert result == "ignore"
     assert reason == "block's parent is valid and EL result is invalid"
@@ -491,14 +511,14 @@ def test_gossip_beacon_block__valid_parent_execution_verified_valid(spec, state)
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
+    result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_child,
-        block_time_ms + 500,
-        block_payload_statuses=block_payload_statuses,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
+        current_time_ms=block_time_ms + 500,
+        block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
     assert result == "valid"
     assert reason is None
@@ -573,14 +593,14 @@ def test_gossip_beacon_block__valid_parent_optimistic(spec, state):
 
     yield "current_time_ms", "meta", int(block_time_ms)
 
-    result, reason = run_validate_beacon_block_gossip(
+    result, reason = run_validate_gossip(
         spec,
-        seen,
-        store,
-        state,
-        signed_child,
-        block_time_ms + 500,
-        block_payload_statuses=block_payload_statuses,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_beacon_block=signed_child,
+        current_time_ms=block_time_ms + 500,
+        block_payload_statuses=get_spec_block_payload_statuses(spec, block_payload_statuses),
     )
     assert result == "valid"
     assert reason is None
