@@ -25,10 +25,10 @@
         - [New `payload_attestation_message`](#new-payload_attestation_message)
         - [New `execution_payload_bid`](#new-execution_payload_bid)
         - [New `proposer_preferences`](#new-proposer_preferences)
-      - [Blob subnets](#blob-subnets)
-        - [Modified `data_column_sidecar_{subnet_id}`](#modified-data_column_sidecar_subnet_id)
       - [Attestation subnets](#attestation-subnets)
         - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
+      - [Blob subnets](#blob-subnets)
+        - [Modified `data_column_sidecar_{subnet_id}`](#modified-data_column_sidecar_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
@@ -480,6 +480,30 @@ def get_proposer_dependent_root(state: BeaconState, epoch: Epoch) -> Root:
 activation. Proposers SHOULD broadcast their preferences in the epoch before the
 fork.
 
+##### Attestation subnets
+
+###### Modified `beacon_attestation_{subnet_id}`
+
+Let `block` be the beacon block corresponding to
+`attestation.data.beacon_block_root`.
+
+The following validations are added:
+
+- _[REJECT]_ `attestation.data.index < 2`.
+- _[REJECT]_ `attestation.data.index == 0` if
+  `block.slot == attestation.data.slot`.
+- _[REJECT]_ If `attestation.data.index == 1` (payload present for a past
+  block), the execution payload for `block` passes validation.
+- _[IGNORE]_ When `attestation.data.index == 1` (payload present for a past
+  block), the execution payload for `block` has been seen (a client MAY queue
+  attestations for processing once the payload is retrieved and SHOULD request
+  the payload envelope via `ExecutionPayloadEnvelopesByRoot` using
+  `attestation.data.beacon_block_root`).
+
+The following validations are removed:
+
+- _[REJECT]_ `attestation.data.index == 0`.
+
 ##### Blob subnets
 
 ###### Modified `data_column_sidecar_{subnet_id}`
@@ -509,30 +533,6 @@ The following validations MUST pass before forwarding the
 *Note*: If the sidecar fails deferred validation, its forwarding peers MUST be
 downscored retroactively. If validation succeeds, the client MUST re-broadcast
 the sidecar.
-
-##### Attestation subnets
-
-###### Modified `beacon_attestation_{subnet_id}`
-
-Let `block` be the beacon block corresponding to
-`attestation.data.beacon_block_root`.
-
-The following validations are added:
-
-- _[REJECT]_ `attestation.data.index < 2`.
-- _[REJECT]_ `attestation.data.index == 0` if
-  `block.slot == attestation.data.slot`.
-- _[REJECT]_ If `attestation.data.index == 1` (payload present for a past
-  block), the execution payload for `block` passes validation.
-- _[IGNORE]_ When `attestation.data.index == 1` (payload present for a past
-  block), the execution payload for `block` has been seen (a client MAY queue
-  attestations for processing once the payload is retrieved and SHOULD request
-  the payload envelope via `ExecutionPayloadEnvelopesByRoot` using
-  `attestation.data.beacon_block_root`).
-
-The following validations are removed:
-
-- _[REJECT]_ `attestation.data.index == 0`.
 
 ### The Req/Resp domain
 
