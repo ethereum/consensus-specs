@@ -19,6 +19,9 @@ This is the modification of the fork choice accompanying Fulu.
 
 ### Modified `get_dependent_root`
 
+*Note*: This function `get_dependent_root` now calculates the attestation
+dependent root as well as the proposer dependent root.
+
 ```python
 def get_dependent_root(store: Store, root: Root) -> Root:
     epoch = get_current_store_epoch(store)
