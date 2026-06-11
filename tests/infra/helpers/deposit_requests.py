@@ -1,6 +1,9 @@
 import pytest
 
-from eth_consensus_specs.test.helpers.deposits import build_deposit_data
+from eth_consensus_specs.test.helpers.deposits import (
+    build_deposit_data,
+    sign_builder_deposit_request,
+)
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.keys import (
     builder_pubkey_to_privkey,
@@ -33,6 +36,20 @@ def run_deposit_request_processing(spec, state, deposit_request, valid=True):
         yield "post", None
 
 
+def run_builder_deposit_request_processing(spec, state, builder_deposit_request):
+    """
+    Run process_builder_deposit_request, yielding pre/post states for test vectors.
+
+    The function never raises. Requests that fail a precondition are consumed
+    without changing the state.
+    """
+    yield "pre", state
+    yield "builder_deposit_request", builder_deposit_request
+
+    spec.process_builder_deposit_request(state, builder_deposit_request)
+    yield "post", state
+
+
 def prepare_process_deposit_request(
     spec,
     state,
@@ -55,9 +72,10 @@ def prepare_process_deposit_request(
 
     The process_deposit_request function behavior varies by fork:
     - Electra/Fulu: Sets deposit_requests_start_index if UNSET, appends PendingDeposit
-    - Gloas+: For builder deposits (0x03 prefix or existing builder pubkey), applies
-      deposit immediately via apply_deposit_for_builder. For validator deposits,
-      appends PendingDeposit (does NOT set deposit_requests_start_index).
+    - Gloas+: Drops deposits with builder withdrawal credentials (0x03 prefix).
+      Builders are created and topped up only via BuilderDepositRequest. For
+      validator deposits, appends PendingDeposit (does NOT set
+      deposit_requests_start_index).
 
     Args:
         spec: The spec object.
@@ -167,19 +185,76 @@ def prepare_process_deposit_request(
     return deposit_request
 
 
-def _is_builder_deposit(spec, pre_state, deposit_request):
-    """Check if request routes to builder path under Gloas+ deposit routing rules."""
-    if not is_post_gloas(spec):
-        return False
-    builder_pubkeys = {builder.pubkey for builder in pre_state.builders}
-    validator_pubkeys = {v.pubkey for v in pre_state.validators}
-    is_builder = deposit_request.pubkey in builder_pubkeys
-    is_validator = deposit_request.pubkey in validator_pubkeys
-    return is_builder or (
-        spec.is_builder_withdrawal_credential(deposit_request.withdrawal_credentials)
-        and not is_validator
-        and not spec.is_pending_validator(pre_state.pending_deposits, deposit_request.pubkey)
+def prepare_process_builder_deposit_request(
+    spec,
+    state,
+    advance_epochs=None,
+    builder_index=None,
+    pubkey=None,
+    version=None,
+    execution_address=None,
+    amount=None,
+    signed=False,
+    builders=None,
+    builder_modifications=None,
+):
+    """
+    Prepare a builder deposit request operation with configurable parameters.
+
+    This helper creates a BuilderDepositRequest object and optionally modifies
+    state fields related to builder deposit request processing. The parameters
+    behave as in prepare_process_deposit_request, except that the request is
+    identified by version and execution_address instead of withdrawal
+    credentials, and the signature is over the BuilderDepositMessage.
+    """
+    # Phase 1: Advance epochs if requested (before setup)
+    if advance_epochs is not None:
+        for _ in range(advance_epochs):
+            next_epoch(spec, state)
+
+    # Phase 2: Derive effective values
+    index = builder_index if builder_index is not None else len(state.builders)
+    effective_pubkey = pubkey if pubkey is not None else builder_pubkeys[index]
+    effective_privkey = builder_pubkey_to_privkey[effective_pubkey]
+    effective_amount = amount if amount is not None else spec.MIN_ACTIVATION_BALANCE
+    effective_version = version if version is not None else spec.uint8(0)
+    if execution_address is not None:
+        effective_execution_address = execution_address
+    else:
+        # A 20-byte eth1 address derived from the pubkey
+        effective_execution_address = spec.ExecutionAddress(spec.hash(effective_pubkey)[12:])
+
+    # Phase 3: Apply state overrides (before creating request)
+    if builders is not None:
+        state.builders = builders
+
+    if builder_modifications is not None:
+        current_epoch = spec.get_current_epoch(state)
+        for idx, mods in builder_modifications.items():
+            if "withdrawable_epoch" in mods:
+                epoch_value = mods["withdrawable_epoch"]
+                # Support special string values for relative epochs
+                if epoch_value == "current_epoch":
+                    epoch_value = current_epoch
+                elif epoch_value == "current_epoch-1":
+                    epoch_value = current_epoch - 1
+                elif epoch_value == "current_epoch+1":
+                    epoch_value = current_epoch + 1
+                state.builders[idx].withdrawable_epoch = epoch_value
+            if "balance" in mods:
+                state.builders[idx].balance = spec.Gwei(mods["balance"])
+
+    # Phase 4: Build the request and optionally sign
+    request = spec.BuilderDepositRequest(
+        pubkey=effective_pubkey,
+        version=effective_version,
+        execution_address=effective_execution_address,
+        amount=effective_amount,
     )
+    if signed:
+        request.signature = sign_builder_deposit_request(spec, request, effective_privkey)
+
+    return request
 
 
 def assert_process_deposit_request(
@@ -213,7 +288,8 @@ def assert_process_deposit_request(
     - Validator count unchanged (validators created during epoch processing)
     - Balances unchanged (balance applied during epoch processing)
 
-    INVARIANT CHECKS FOR BUILDER DEPOSITS (Gloas+):
+    INVARIANT CHECKS FOR BUILDER DEPOSIT REQUESTS (Gloas+, pass
+    is_builder_deposit=True and a BuilderDepositRequest):
     - pending_deposits unchanged (builder deposits applied immediately)
     - Builder balance increases by deposit amount
     - New builder created if pubkey didn't exist
@@ -236,7 +312,7 @@ def assert_process_deposit_request(
         pre_state: State before deposit request was processed
         deposit_request: The deposit request that was processed (required for invariant checks)
         state_unchanged: If True, asserts state equals pre_state (for rejected requests)
-        is_builder_deposit: If True, use builder deposit assertions. Auto-detected if None.
+        is_builder_deposit: If True, use builder deposit request assertions. Defaults to False.
         expected_deposit_requests_start_index: Expected value of deposit_requests_start_index
         expected_pending_deposit_pubkey: Expected pubkey of new pending deposit
         expected_pending_deposit_amount: Expected amount of new pending deposit
@@ -258,9 +334,10 @@ def assert_process_deposit_request(
     # Invariant checks require deposit_request
     assert deposit_request is not None, "deposit_request required when state_unchanged=False"
 
-    # Auto-detect builder deposit if not specified
+    # Deposit requests never route to builders. Builder deposit assertions are
+    # used only when a BuilderDepositRequest is asserted explicitly.
     if is_builder_deposit is None:
-        is_builder_deposit = _is_builder_deposit(spec, pre_state, deposit_request)
+        is_builder_deposit = False
 
     if is_builder_deposit and is_post_gloas(spec):
         # BUILDER DEPOSIT ASSERTIONS (Gloas+)

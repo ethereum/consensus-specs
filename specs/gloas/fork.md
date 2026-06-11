@@ -5,9 +5,13 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Constants](#constants)
+  - [Withdrawal prefixes](#withdrawal-prefixes)
 - [Configuration](#configuration)
 - [Helpers](#helpers)
   - [New `initialize_ptc_window`](#new-initialize_ptc_window)
+  - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
+  - [New `is_pending_validator`](#new-is_pending_validator)
   - [New `onboard_builders_from_pending_deposits`](#new-onboard_builders_from_pending_deposits)
 - [Fork to Gloas](#fork-to-gloas)
   - [Fork trigger](#fork-trigger)
@@ -18,6 +22,18 @@
 ## Introduction
 
 This document describes the process of the Gloas upgrade.
+
+## Constants
+
+### Withdrawal prefixes
+
+*Note*: `BUILDER_WITHDRAWAL_PREFIX` is a temporary constant which is only used
+to onboard builders at the fork. It will be deprecated after the upgrade and a
+future validator withdrawal prefix may reuse this value.
+
+| Name                        | Value            | Description                                |
+| --------------------------- | ---------------- | ------------------------------------------ |
+| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` | Withdrawal credential prefix for a builder |
 
 ## Configuration
 
@@ -55,11 +71,49 @@ def initialize_ptc_window(
     return empty_previous_epoch + ptcs
 ```
 
+### New `is_builder_withdrawal_credential`
+
+```python
+def is_builder_withdrawal_credential(withdrawal_credentials: Bytes32) -> bool:
+    return withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX
+```
+
+### New `is_pending_validator`
+
+*Note*: This function naively revalidates deposit signatures on every call.
+Implementations SHOULD cache verification results to avoid repeated work.
+
+```python
+def is_pending_validator(pending_deposits: Sequence[PendingDeposit], pubkey: BLSPubkey) -> bool:
+    """
+    Check if a pending deposit with a valid signature is in the queue for the given pubkey.
+    """
+    for pending_deposit in pending_deposits:
+        if pending_deposit.pubkey != pubkey:
+            continue
+        if is_valid_deposit_signature(
+            pending_deposit.pubkey,
+            pending_deposit.withdrawal_credentials,
+            pending_deposit.amount,
+            pending_deposit.signature,
+        ):
+            return True
+    return False
+```
+
 ### New `onboard_builders_from_pending_deposits`
+
+*Note*: This one-time onboarding is the only path through the validator deposit
+contract that creates builders. From the fork onward, builders are created and
+topped up only via `BuilderDepositRequest`.
 
 *Note*: In the slots leading up to the fork, implementations SHOULD validate
 pending deposit signatures and cache the results. The pending deposit queue
 might be large and verifying many signatures at the fork could be slow.
+
+*Note*: Builders onboarded at the fork are registered with a `version` of
+`0x00`, rather than the `BUILDER_WITHDRAWAL_PREFIX` from their deposit's
+withdrawal credentials.
 
 ```python
 def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
@@ -76,9 +130,8 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
             pending_deposits.append(deposit)
             continue
 
-        # Note that the function apply_deposit_for_builder can mutate the
-        # state and may add a builder to the registry. For this reason, the
-        # list of builder pubkeys must be recomputed each iteration.
+        # Since deposits may add builders to the registry, the list of
+        # builder pubkeys must be recomputed each iteration.
         builder_pubkeys = [b.pubkey for b in state.builders]
 
         # Deposits for non-builders stay in the pending queue. If there is a
@@ -91,15 +144,26 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
             if is_pending_validator(pending_deposits, deposit.pubkey):
                 pending_deposits.append(deposit)
                 continue
+            if not is_valid_deposit_signature(
+                deposit.pubkey,
+                deposit.withdrawal_credentials,
+                deposit.amount,
+                deposit.signature,
+            ):
+                continue
 
-        apply_deposit_for_builder(
-            state,
-            deposit.pubkey,
-            deposit.withdrawal_credentials,
-            deposit.amount,
-            deposit.signature,
-            deposit.slot,
-        )
+            add_builder_to_registry(
+                state,
+                deposit.pubkey,
+                uint8(0x00),
+                ExecutionAddress(deposit.withdrawal_credentials[12:]),
+                deposit.amount,
+                deposit.slot,
+            )
+        else:
+            # Increase balance by deposit amount
+            builder_index = builder_pubkeys.index(deposit.pubkey)
+            state.builders[builder_index].balance += deposit.amount
 
     state.pending_deposits = pending_deposits
 ```

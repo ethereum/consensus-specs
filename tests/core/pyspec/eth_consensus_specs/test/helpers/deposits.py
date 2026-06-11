@@ -236,16 +236,33 @@ def prepare_deposit_request(
     )
 
 
+def sign_builder_deposit_request(spec, request, privkey):
+    """
+    Sign the ``BuilderDepositMessage`` corresponding to the given request.
+    """
+    deposit_message = spec.BuilderDepositMessage(
+        pubkey=request.pubkey,
+        version=request.version,
+        execution_address=request.execution_address,
+        amount=request.amount,
+    )
+    domain = spec.compute_domain(spec.DOMAIN_DEPOSIT)
+    signing_root = spec.compute_signing_root(deposit_message, domain)
+    return bls.Sign(privkey, signing_root)
+
+
 def prepare_builder_deposit_request(
     spec,
     state,
     amount,
     pubkey=None,
-    withdrawal_credentials=None,
+    privkey=None,
+    version=None,
+    execution_address=None,
     signed=False,
 ):
     """
-    Create a deposit request for a builder, depositing the given amount.
+    Create a builder deposit request, depositing the given amount.
 
     If pubkey is None, finds an unused keypair from builder_pubkeys for a new builder.
     If pubkey is provided, creates a top-up deposit for an existing builder.
@@ -260,27 +277,26 @@ def prepare_builder_deposit_request(
         if pubkey is None:
             raise ValueError("No unused builder pubkeys available")
 
-    # Look up privkey from the pubkey->privkey map
-    privkey = builder_pubkey_to_privkey[pubkey]
+    if privkey is None:
+        # Look up privkey from the pubkey->privkey map
+        privkey = builder_pubkey_to_privkey[pubkey]
 
-    # Use builder withdrawal prefix (0x03)
-    if withdrawal_credentials is None:
-        withdrawal_credentials = (
-            spec.BUILDER_WITHDRAWAL_PREFIX
-            + b"\x00" * 11
-            + spec.hash(pubkey)[12:]  # a 20-byte eth1 address derived from pubkey
-        )
+    if version is None:
+        version = spec.uint8(0)
 
-    deposit_data = build_deposit_data(
-        spec, pubkey, privkey, amount, withdrawal_credentials, signed=signed
+    if execution_address is None:
+        # A 20-byte eth1 address derived from the pubkey
+        execution_address = spec.ExecutionAddress(spec.hash(pubkey)[12:])
+
+    request = spec.BuilderDepositRequest(
+        pubkey=pubkey,
+        version=version,
+        execution_address=execution_address,
+        amount=amount,
     )
-    return spec.DepositRequest(
-        pubkey=deposit_data.pubkey,
-        withdrawal_credentials=deposit_data.withdrawal_credentials,
-        amount=deposit_data.amount,
-        signature=deposit_data.signature,
-        index=spec.uint64(0),
-    )
+    if signed:
+        request.signature = sign_builder_deposit_request(spec, request, privkey)
+    return request
 
 
 def prepare_pending_deposit(

@@ -6,7 +6,6 @@
 
 - [Introduction](#introduction)
 - [Becoming a builder](#becoming-a-builder)
-  - [Builder withdrawal credentials](#builder-withdrawal-credentials)
   - [Submit deposit](#submit-deposit)
   - [Process deposit](#process-deposit)
   - [Builder index](#builder-index)
@@ -35,37 +34,30 @@ builders.
 
 ## Becoming a builder
 
-### Builder withdrawal credentials
-
-When submitting a deposit to the deposit contract, the `withdrawal_credentials`
-field determines whether the staked actor will be a validator or a builder. To
-be recognized as a builder, the `withdrawal_credentials` must use the
-`BUILDER_WITHDRAWAL_PREFIX`.
-
-The `withdrawal_credentials` field must be:
-
-- `withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX` (`0x03`)
-- `withdrawal_credentials[1:12] == b'\x00' * 11`
-- `withdrawal_credentials[12:] == builder_execution_address`
-
-Where `builder_execution_address` is an execution-layer address that will
-receive withdrawals.
-
 ### Submit deposit
 
-Builders follow the same deposit process as validators, but with the
-builder-specific withdrawal credentials. The deposit must include:
+Builders are created by submitting a builder deposit request to the builder
+deposit contract on the execution layer, as defined in
+[EIP-8282](https://eips.ethereum.org/EIPS/eip-8282). The request must include:
 
 - `pubkey`: The builder's BLS public key.
-- `withdrawal_credentials`: With the `BUILDER_WITHDRAWAL_PREFIX` (`0x03`)
-  prefix.
+- `version`: The builder version, `0x00`.
+- `execution_address`: The execution-layer address that will receive
+  withdrawals.
 - `amount`: At least `MIN_DEPOSIT_AMOUNT` gwei.
-- `signature`: BLS signature over the deposit data.
+- `signature`: BLS proof of possession over the corresponding
+  `BuilderDepositMessage` under `DOMAIN_DEPOSIT`.
+
+*Note*: Builders may be onboarded at the fork by submitting a deposit to the
+validator deposit contract with a 0x03 withdrawal credential. This must be done
+late enough that the deposit is still pending at the fork. Such a deposit signs
+over `DepositMessage` under `DOMAIN_DEPOSIT`, with withdrawal credentials of the
+form `BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + execution_address`.
 
 ### Process deposit
 
-The beacon chain processes builder deposits identically to validator deposits,
-with the withdrawal credentials using `BUILDER_WITHDRAWAL_PREFIX`.
+A builder deposit request for a new pubkey registers a builder. A request for an
+existing builder's pubkey tops up its balance.
 
 ### Builder index
 
