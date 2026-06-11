@@ -77,7 +77,7 @@ def run_validate_data_column_sidecar_gossip(
 
 
 def run_validate_partial_data_column_sidecar_gossip(
-    spec, seen, store, state, sidecar, block_root, column_index, current_time_ms
+    spec, seen, store, state, sidecar, group_id, column_index, current_time_ms
 ):
     """
     Run validate_partial_data_column_sidecar_gossip and return the result.
@@ -86,7 +86,7 @@ def run_validate_partial_data_column_sidecar_gossip(
     """
     try:
         spec.validate_partial_data_column_sidecar_gossip(
-            seen, store, state, sidecar, block_root, column_index, current_time_ms
+            seen, store, state, sidecar, current_time_ms, group_id, column_index
         )
         return "valid", None
     except spec.GossipIgnore as e:
