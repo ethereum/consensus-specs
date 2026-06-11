@@ -120,8 +120,8 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
     The proposer's preferred fee recipient is obtained from the
     `SignedProposerPreferences` whose `message.proposal_slot` matches `bid.slot`
     and whose `message.dependent_root` matches
-    `get_proposer_dependent_root(parent_state, compute_epoch_at_slot(bid.slot))`,
-    where `parent_state` is the post-state of `bid.parent_block_root`.
+    `get_proposer_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot))`,
+    where `store` is the fork choice store.
 07. Set `bid.gas_limit` to be the gas limit of the constructed payload, which
     **MUST** satisfy
     `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, target_gas_limit)`,
