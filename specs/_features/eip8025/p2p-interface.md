@@ -13,7 +13,7 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 - [Constants](#constants)
   - [Execution](#execution)
 - [Containers](#containers)
-  - [`ProofByRootIdentifier`](#proofbyrootidentifier)
+  - [New `ProofByRootIdentifier`](#new-proofbyrootidentifier)
 - [Helpers](#helpers)
   - [New `compute_max_request_execution_proofs`](#new-compute_max_request_execution_proofs)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -43,7 +43,7 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 
 ## Containers
 
-### `ProofByRootIdentifier`
+### New `ProofByRootIdentifier`
 
 ```python
 class ProofByRootIdentifier(Container):

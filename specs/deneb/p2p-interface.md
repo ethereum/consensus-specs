@@ -13,7 +13,7 @@
     - [Modified `Seen`](#modified-seen)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
     - [New `compute_max_request_blob_sidecars`](#new-compute_max_request_blob_sidecars)
-    - [`verify_blob_sidecar_inclusion_proof`](#verify_blob_sidecar_inclusion_proof)
+    - [New `verify_blob_sidecar_inclusion_proof`](#new-verify_blob_sidecar_inclusion_proof)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
@@ -142,7 +142,7 @@ def compute_max_request_blob_sidecars() -> uint64:
     return uint64(MAX_REQUEST_BLOCKS_DENEB * MAX_BLOBS_PER_BLOCK)
 ```
 
-#### `verify_blob_sidecar_inclusion_proof`
+#### New `verify_blob_sidecar_inclusion_proof`
 
 ```python
 def verify_blob_sidecar_inclusion_proof(blob_sidecar: BlobSidecar) -> bool:
