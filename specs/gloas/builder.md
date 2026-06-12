@@ -46,7 +46,7 @@ deposit contract on the execution layer, as defined in
   will receive withdrawals.
 - `amount`: At least `MIN_DEPOSIT_AMOUNT` gwei.
 - `signature`: BLS proof of possession over the corresponding `DepositMessage`
-  under `DOMAIN_DEPOSIT`.
+  under `DOMAIN_BUILDER_DEPOSIT`.
 
 *Note*: Builders may be onboarded at the fork by submitting a deposit to the
 validator deposit contract with a 0x03 withdrawal credential. This must be done

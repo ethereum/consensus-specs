@@ -50,7 +50,7 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 
 | Name                     | Value                      |
 | ------------------------ | -------------------------- |
-| `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0E000000')` |
+| `DOMAIN_EXECUTION_PROOF` | `DomainType('0x0F000000')` |
 
 ## Containers
 

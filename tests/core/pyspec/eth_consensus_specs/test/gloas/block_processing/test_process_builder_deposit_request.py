@@ -1,6 +1,7 @@
 from eth_consensus_specs.test.context import always_bls, spec_state_test, with_gloas_and_later
 from eth_consensus_specs.test.helpers.deposits import prepare_builder_deposit_request
-from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
+from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, privkeys, pubkeys
+from eth_consensus_specs.utils import bls
 from tests.infra.helpers.deposit_requests import (
     assert_process_deposit_request,
     prepare_process_builder_deposit_request,
@@ -463,6 +464,37 @@ def test_process_builder_deposit_request__new_builder_invalid_sig(spec, state):
     amount = spec.MIN_DEPOSIT_AMOUNT
     # Don't sign the deposit
     builder_deposit_request = prepare_builder_deposit_request(spec, state, amount, signed=False)
+
+    yield from run_builder_deposit_processing(
+        spec, state, builder_deposit_request, is_new_builder=True, valid=False
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
+def test_process_builder_deposit_request__new_builder_replayed_validator_sig(spec, state):
+    """
+    Test that a builder deposit signed under DOMAIN_DEPOSIT is dropped.
+
+    A signature over the same DepositMessage under DOMAIN_DEPOSIT is a valid
+    validator deposit signature. It must not be accepted here, otherwise any
+    validator deposit could be replayed to the builder deposit contract to
+    register its pubkey as a builder.
+    """
+    amount = spec.MIN_DEPOSIT_AMOUNT
+    builder_deposit_request = prepare_builder_deposit_request(spec, state, amount, signed=False)
+
+    # Sign over the validator deposit domain instead of DOMAIN_BUILDER_DEPOSIT
+    deposit_message = spec.DepositMessage(
+        pubkey=builder_deposit_request.pubkey,
+        withdrawal_credentials=builder_deposit_request.withdrawal_credentials,
+        amount=builder_deposit_request.amount,
+    )
+    domain = spec.compute_domain(spec.DOMAIN_DEPOSIT)
+    signing_root = spec.compute_signing_root(deposit_message, domain)
+    privkey = builder_pubkey_to_privkey[builder_deposit_request.pubkey]
+    builder_deposit_request.signature = bls.Sign(privkey, signing_root)
 
     yield from run_builder_deposit_processing(
         spec, state, builder_deposit_request, is_new_builder=True, valid=False

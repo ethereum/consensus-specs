@@ -245,7 +245,7 @@ def sign_builder_deposit_request(spec, request, privkey):
         withdrawal_credentials=request.withdrawal_credentials,
         amount=request.amount,
     )
-    domain = spec.compute_domain(spec.DOMAIN_DEPOSIT)
+    domain = spec.compute_domain(spec.DOMAIN_BUILDER_DEPOSIT)
     signing_root = spec.compute_signing_root(deposit_message, domain)
     return bls.Sign(privkey, signing_root)
 

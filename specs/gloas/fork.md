@@ -126,9 +126,9 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
             pending_deposits.append(deposit)
             continue
 
-        # Note that the function apply_deposit_for_builder can mutate the
-        # state and may add a builder to the registry. For this reason, the
-        # list of builder pubkeys must be recomputed each iteration.
+        # Note that applying a deposit below can mutate the state and
+        # may add a builder to the registry. For this reason, the list
+        # of builder pubkeys must be recomputed each iteration.
         builder_pubkeys = [b.pubkey for b in state.builders]
 
         # Deposits for non-builders stay in the pending queue. If there is a
@@ -141,15 +141,24 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
             if is_pending_validator(pending_deposits, deposit.pubkey):
                 pending_deposits.append(deposit)
                 continue
+            if not is_valid_deposit_signature(
+                deposit.pubkey,
+                deposit.withdrawal_credentials,
+                deposit.amount,
+                deposit.signature,
+            ):
+                continue
 
-        apply_deposit_for_builder(
-            state,
-            deposit.pubkey,
-            deposit.withdrawal_credentials,
-            deposit.amount,
-            deposit.signature,
-            deposit.slot,
-        )
+            add_builder_to_registry(
+                state,
+                deposit.pubkey,
+                deposit.withdrawal_credentials,
+                deposit.amount,
+                deposit.slot,
+            )
+        else:
+            builder_index = builder_pubkeys.index(deposit.pubkey)
+            state.builders[builder_index].balance += deposit.amount
 
     state.pending_deposits = pending_deposits
 ```

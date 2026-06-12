@@ -100,9 +100,9 @@
     - [Operations](#operations)
       - [Modified `process_operations`](#modified-process_operations)
       - [Builder deposit requests](#builder-deposit-requests)
+        - [New `is_valid_builder_deposit_signature`](#new-is_valid_builder_deposit_signature)
         - [New `get_index_for_new_builder`](#new-get_index_for_new_builder)
         - [New `add_builder_to_registry`](#new-add_builder_to_registry)
-        - [New `apply_deposit_for_builder`](#new-apply_deposit_for_builder)
         - [New `process_builder_deposit_request`](#new-process_builder_deposit_request)
       - [Builder exit requests](#builder-exit-requests)
         - [New `process_builder_exit_request`](#new-process_builder_exit_request)
@@ -151,6 +151,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 | `DOMAIN_BEACON_BUILDER`       | `DomainType('0x0B000000')` |
 | `DOMAIN_PTC_ATTESTER`         | `DomainType('0x0C000000')` |
 | `DOMAIN_PROPOSER_PREFERENCES` | `DomainType('0x0D000000')` |
+| `DOMAIN_BUILDER_DEPOSIT`      | `DomainType('0x0E000000')` |
 
 ### Misc
 
@@ -1563,6 +1564,25 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ##### Builder deposit requests
 
+###### New `is_valid_builder_deposit_signature`
+
+*Note*: Builder deposits are signed over the `DepositMessage` under
+`DOMAIN_BUILDER_DEPOSIT`. The dedicated domain ensures that validator deposit
+signatures and builder deposit signatures cannot be replayed against the other
+deposit contract.
+
+```python
+def is_valid_builder_deposit_signature(request: BuilderDepositRequest) -> bool:
+    deposit_message = DepositMessage(
+        pubkey=request.pubkey,
+        withdrawal_credentials=request.withdrawal_credentials,
+        amount=request.amount,
+    )
+    domain = compute_domain(DOMAIN_BUILDER_DEPOSIT)
+    signing_root = compute_signing_root(deposit_message, domain)
+    return bls.Verify(request.pubkey, signing_root, request.signature)
+```
+
 ###### New `get_index_for_new_builder`
 
 ```python
@@ -1597,7 +1617,7 @@ def add_builder_to_registry(
     )
 ```
 
-###### New `apply_deposit_for_builder`
+###### New `process_builder_deposit_request`
 
 *Note*: Builder indices are reusable. When a builder exits, its index may later
 be reassigned to a different builder with a new public key. Any deposit sent to
@@ -1607,37 +1627,20 @@ may have previously appeared in the builder set. Implementations that rely on
 caching should account for this behavior.
 
 ```python
-def apply_deposit_for_builder(
-    state: BeaconState,
-    pubkey: BLSPubkey,
-    withdrawal_credentials: Bytes32,
-    amount: uint64,
-    signature: BLSSignature,
-    slot: Slot,
-) -> None:
-    builder_pubkeys = [b.pubkey for b in state.builders]
-    if pubkey not in builder_pubkeys:
-        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
-        if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
-            add_builder_to_registry(state, pubkey, withdrawal_credentials, amount, slot)
-    else:
-        # Increase balance by deposit amount
-        builder_index = builder_pubkeys.index(pubkey)
-        state.builders[builder_index].balance += amount
-```
-
-###### New `process_builder_deposit_request`
-
-```python
 def process_builder_deposit_request(state: BeaconState, request: BuilderDepositRequest) -> None:
-    apply_deposit_for_builder(
-        state,
-        request.pubkey,
-        request.withdrawal_credentials,
-        request.amount,
-        request.signature,
-        state.slot,
-    )
+    builder_pubkeys = [b.pubkey for b in state.builders]
+    if request.pubkey not in builder_pubkeys:
+        if is_valid_builder_deposit_signature(request):
+            add_builder_to_registry(
+                state,
+                request.pubkey,
+                request.withdrawal_credentials,
+                request.amount,
+                state.slot,
+            )
+    else:
+        builder_index = builder_pubkeys.index(request.pubkey)
+        state.builders[builder_index].balance += request.amount
 ```
 
 ##### Builder exit requests
