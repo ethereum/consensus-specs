@@ -12,7 +12,7 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`inclusion_list`](#inclusion_list)
+        - [New `inclusion_list`](#new-inclusion_list)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [InclusionListByCommitteeIndices v1](#inclusionlistbycommitteeindices-v1)
@@ -78,7 +78,7 @@ are given in this table:
 
 Heze introduces a new global topic for inclusion lists.
 
-###### `inclusion_list`
+###### New `inclusion_list`
 
 This topic is used to propagate signed inclusion list as `SignedInclusionList`.
 The following validations MUST pass before forwarding the `inclusion_list` on
