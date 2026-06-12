@@ -9,7 +9,8 @@
   - [Modified `PartialDataColumnSidecar`](#modified-partialdatacolumnsidecar)
   - [Modified `PartialDataColumnGroupID`](#modified-partialdatacolumngroupid)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-  - [Modified `data_column_sidecar_{subnet_id}` (partial messages)](#modified-data_column_sidecar_subnet_id-partial-messages)
+  - [Blob subnets](#blob-subnets)
+    - [Modified `data_column_sidecar_{subnet_id}` (partial messages)](#modified-data_column_sidecar_subnet_id-partial-messages)
 
 <!-- mdformat-toc end -->
 
@@ -48,7 +49,9 @@ class PartialDataColumnGroupID(Container):
 
 ## The gossip domain: gossipsub
 
-### Modified `data_column_sidecar_{subnet_id}` (partial messages)
+### Blob subnets
+
+#### Modified `data_column_sidecar_{subnet_id}` (partial messages)
 
 *Note*: The KZG commitments needed to verify a partial sidecar are now carried
 by the bid at
