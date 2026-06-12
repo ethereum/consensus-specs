@@ -10,6 +10,7 @@
   - [Index flags](#index-flags)
   - [Domains](#domains)
   - [Misc](#misc)
+  - [Withdrawal prefixes](#withdrawal-prefixes)
   - [Execution-layer triggered requests](#execution-layer-triggered-requests)
 - [Preset](#preset)
   - [Misc](#misc-1)
@@ -160,6 +161,16 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 | `BUILDER_INDEX_SELF_BUILD`              | `BuilderIndex(UINT64_MAX)` | Value which indicates the proposer built the payload |
 | `BUILDER_PAYMENT_THRESHOLD_NUMERATOR`   | `uint64(6)`                |                                                      |
 | `BUILDER_PAYMENT_THRESHOLD_DENOMINATOR` | `uint64(10)`               |                                                      |
+
+### Withdrawal prefixes
+
+*Note*: `BUILDER_WITHDRAWAL_PREFIX` is a temporary constant which is only used
+to onboard builders at the fork. It will be deprecated after the upgrade and a
+future validator withdrawal prefix may reuse this value.
+
+| Name                        | Value            | Description                                |
+| --------------------------- | ---------------- | ------------------------------------------ |
+| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` | Withdrawal credential prefix for a builder |
 
 ### Execution-layer triggered requests
 

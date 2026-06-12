@@ -5,8 +5,6 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Constants](#constants)
-  - [Withdrawal prefixes](#withdrawal-prefixes)
 - [Configuration](#configuration)
 - [Helpers](#helpers)
   - [New `initialize_ptc_window`](#new-initialize_ptc_window)
@@ -22,18 +20,6 @@
 ## Introduction
 
 This document describes the process of the Gloas upgrade.
-
-## Constants
-
-### Withdrawal prefixes
-
-*Note*: `BUILDER_WITHDRAWAL_PREFIX` is a temporary constant which is only used
-to onboard builders at the fork. It will be deprecated after the upgrade and a
-future validator withdrawal prefix may reuse this value.
-
-| Name                        | Value            | Description                                |
-| --------------------------- | ---------------- | ------------------------------------------ |
-| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` | Withdrawal credential prefix for a builder |
 
 ## Configuration
 
