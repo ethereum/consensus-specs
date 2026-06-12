@@ -4,15 +4,16 @@
 
 - [Introduction](#introduction)
 - [Containers](#containers)
-  - [`PartialDataColumnSidecar`](#partialdatacolumnsidecar)
-  - [`PartialDataColumnPartsMetadata`](#partialdatacolumnpartsmetadata)
-  - [`PartialDataColumnHeader`](#partialdatacolumnheader)
-  - [`PartialDataColumnGroupID`](#partialdatacolumngroupid)
+  - [New `PartialDataColumnSidecar`](#new-partialdatacolumnsidecar)
+  - [New `PartialDataColumnPartsMetadata`](#new-partialdatacolumnpartsmetadata)
+  - [New `PartialDataColumnHeader`](#new-partialdatacolumnheader)
+  - [New `PartialDataColumnGroupID`](#new-partialdatacolumngroupid)
 - [Helpers](#helpers)
-  - [`verify_partial_data_column_header_inclusion_proof`](#verify_partial_data_column_header_inclusion_proof)
-  - [`verify_partial_data_column_sidecar_kzg_proofs`](#verify_partial_data_column_sidecar_kzg_proofs)
+  - [New `verify_partial_data_column_header_inclusion_proof`](#new-verify_partial_data_column_header_inclusion_proof)
+  - [New `verify_partial_data_column_sidecar_kzg_proofs`](#new-verify_partial_data_column_sidecar_kzg_proofs)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-  - [Partial Messages on `data_column_sidecar_{subnet_id}`](#partial-messages-on-data_column_sidecar_subnet_id)
+  - [Blob subnets](#blob-subnets)
+    - [New `data_column_sidecar_{subnet_id}` (partial messages)](#new-data_column_sidecar_subnet_id-partial-messages)
   - [Partial columns for Cell Dissemination](#partial-columns-for-cell-dissemination)
     - [Partial message group ID](#partial-message-group-id)
     - [Parts metadata](#parts-metadata)
@@ -41,7 +42,7 @@ particular, this document builds on the
 
 ## Containers
 
-### `PartialDataColumnSidecar`
+### New `PartialDataColumnSidecar`
 
 The `PartialDataColumnSidecar` is similar to the `DataColumnSidecar` container,
 except that only the cells and proofs identified by the bitmap are present.
@@ -57,7 +58,7 @@ class PartialDataColumnSidecar(Container):
     header: List[PartialDataColumnHeader, 1]
 ```
 
-### `PartialDataColumnPartsMetadata`
+### New `PartialDataColumnPartsMetadata`
 
 Peers communicate the cells available with a bitmap. A set bit (`1`) at index
 `i` means that the peer has the cell at index `i`. Peers explicitly request
@@ -87,7 +88,7 @@ bit from the requests bit.
 Having a cell but not willing to provide it is functionally the same as not
 having the cell and not wanting it, so it does not need a separate state.
 
-### `PartialDataColumnHeader`
+### New `PartialDataColumnHeader`
 
 The `PartialDataColumnHeader` is the header that is common to all columns for a
 given block. It lets a peer identify which blobs are included in a block, as
@@ -102,7 +103,7 @@ class PartialDataColumnHeader(Container):
     kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
 ```
 
-### `PartialDataColumnGroupID`
+### New `PartialDataColumnGroupID`
 
 ```python
 class PartialDataColumnGroupID(Container):
@@ -111,7 +112,7 @@ class PartialDataColumnGroupID(Container):
 
 ## Helpers
 
-### `verify_partial_data_column_header_inclusion_proof`
+### New `verify_partial_data_column_header_inclusion_proof`
 
 ```python
 def verify_partial_data_column_header_inclusion_proof(header: PartialDataColumnHeader) -> bool:
@@ -127,7 +128,7 @@ def verify_partial_data_column_header_inclusion_proof(header: PartialDataColumnH
     )
 ```
 
-### `verify_partial_data_column_sidecar_kzg_proofs`
+### New `verify_partial_data_column_sidecar_kzg_proofs`
 
 ```python
 def verify_partial_data_column_sidecar_kzg_proofs(
@@ -155,7 +156,9 @@ def verify_partial_data_column_sidecar_kzg_proofs(
 
 ## The gossip domain: gossipsub
 
-### Partial Messages on `data_column_sidecar_{subnet_id}`
+### Blob subnets
+
+#### New `data_column_sidecar_{subnet_id}` (partial messages)
 
 *Note*: Validating partial messages happens in two parts. First, the
 `PartialDataColumnHeader` needs to be validated, then the cell and proof data.
