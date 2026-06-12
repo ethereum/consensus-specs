@@ -17,6 +17,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
     run_validate_gossip,
+    setup_store_with_failed_block,
     wrap_genesis_block,
 )
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
@@ -412,12 +413,11 @@ def test_gossip_beacon_block__reject_bid_parent_root_mismatch(spec, state):
 @with_gloas_and_later
 @spec_state_test
 def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
-    """A block whose parent state is missing from the store is rejected."""
+    """A block whose parent failed validation is rejected."""
     yield "topic", "meta", "beacon_block"
 
-    store, signed_anchor, signed_parent = setup_store_with_anchor_and_parent(spec, state)
-    # Drop the parent's state (but keep the parent block) so the parent-state check fires.
-    del store.block_states[signed_parent.message.hash_tree_root()]
+    store, signed_anchor, signed_parent = setup_store_with_failed_block(spec, state)
+    parent_root = signed_parent.message.hash_tree_root()
     yield "state", state
     yield get_filename(signed_anchor), signed_anchor
     yield get_filename(signed_parent), signed_parent
@@ -426,11 +426,15 @@ def test_gossip_beacon_block__reject_parent_failed_validation(spec, state):
         "meta",
         [
             {"block": get_filename(signed_anchor)},
-            {"block": get_filename(signed_parent)},
+            {"block": get_filename(signed_parent), "failed": True},
         ],
     )
 
+    # Build the child on the valid version of the parent, then re-point it at
+    # the failed parent.
     child = build_empty_block_for_next_slot(spec, state)
+    child.parent_root = parent_root
+    child.body.signed_execution_payload_bid.message.parent_block_root = parent_root
     signed_child = sign_block(spec, state, child, proposer_index=child.proposer_index)
     yield get_filename(signed_child), signed_child
 

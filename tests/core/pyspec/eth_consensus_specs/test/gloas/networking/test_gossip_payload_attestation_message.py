@@ -10,6 +10,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
     run_validate_gossip,
+    setup_store_with_failed_block,
     wrap_genesis_block,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
@@ -361,16 +362,22 @@ def test_gossip_payload_attestation_message__reject_invalid_signature(spec, stat
 @with_gloas_and_later
 @spec_state_test
 def test_gossip_payload_attestation_message__reject_block_failed_validation(spec, state):
-    """A message whose block is in store.blocks but not in store.block_states is rejected."""
+    """A message whose block failed validation is rejected."""
     yield "topic", "meta", "payload_attestation_message"
 
-    store, blocks, block_root = setup_store_with_one_block(spec, state)
-    # Drop the block's state so the post-validation check fires.
-    del store.block_states[block_root]
+    store, signed_anchor, signed_block = setup_store_with_failed_block(spec, state)
+    block_root = signed_block.message.hash_tree_root()
     yield "state", state
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+    yield get_filename(signed_anchor), signed_anchor
+    yield get_filename(signed_block), signed_block
+    yield (
+        "blocks",
+        "meta",
+        [
+            {"block": get_filename(signed_anchor)},
+            {"block": get_filename(signed_block), "failed": True},
+        ],
+    )
 
     seen = get_seen(spec)
     ptc = spec.get_ptc(state, state.slot)

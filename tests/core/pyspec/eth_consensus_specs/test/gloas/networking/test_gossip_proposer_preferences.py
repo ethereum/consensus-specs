@@ -11,12 +11,27 @@ from eth_consensus_specs.test.helpers.gloas.proposer_preferences import (
     find_upcoming_proposal_slot,
 )
 from eth_consensus_specs.test.helpers.gossip import (
+    add_pending_block_to_store,
     get_filename,
     get_seen,
     run_validate_gossip,
     wrap_genesis_block,
 )
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
+
+
+def advance_state_with_blocks(spec, state, target_slot):
+    """
+    Advance ``state`` slot-by-slot to ``target_slot`` with empty blocks.
+    Returns the signed blocks and their post-states.
+    """
+    signed_blocks = []
+    post_states = []
+    while state.slot < target_slot:
+        block = build_empty_block_for_next_slot(spec, state)
+        signed_blocks.append(state_transition_and_sign_block(spec, state, block))
+        post_states.append(state.copy())
+    return signed_blocks, post_states
 
 
 def setup_store_with_advanced_state(spec, state, target_slot):
@@ -28,12 +43,11 @@ def setup_store_with_advanced_state(spec, state, target_slot):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     blocks = [signed_anchor]
-    while state.slot < target_slot:
-        block = build_empty_block_for_next_slot(spec, state)
-        signed_block = state_transition_and_sign_block(spec, state, block)
+    signed_blocks, post_states = advance_state_with_blocks(spec, state, target_slot)
+    for signed_block, post_state in zip(signed_blocks, post_states, strict=True):
         block_root = signed_block.message.hash_tree_root()
         store.blocks[block_root] = signed_block.message
-        store.block_states[block_root] = state.copy()
+        store.block_states[block_root] = post_state
         blocks.append(signed_block)
     return store, blocks
 
@@ -461,18 +475,32 @@ def test_gossip_proposer_preferences__ignore_dependent_root_state_unavailable(sp
     yield "topic", "meta", "proposer_preferences"
 
     target_slot = spec.compute_start_slot_at_epoch(spec.Epoch(spec.MIN_SEED_LOOKAHEAD + 1))
-    store, blocks = setup_store_with_advanced_state(spec, state, target_slot)
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    signed_blocks, post_states = advance_state_with_blocks(spec, state, target_slot)
     yield "state", state
 
-    seen = get_seen(spec)
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
-
     signed_prefs = build_signed_proposer_preferences(spec, state)
-    # Drop the dependent_root's state but keep the block, so the state-availability
-    # check fires.
-    del store.block_states[signed_prefs.message.dependent_root]
+    dependent_root = signed_prefs.message.dependent_root
+    assert dependent_root in [b.message.hash_tree_root() for b in signed_blocks]
+
+    # Import every block normally, except the dependent block: it has been
+    # seen but not yet imported, so its post-state is unavailable.
+    seen = get_seen(spec)
+    yield get_filename(signed_anchor), signed_anchor
+    blocks_meta = [{"block": get_filename(signed_anchor)}]
+    for signed_block, post_state in zip(signed_blocks, post_states, strict=True):
+        block_root = signed_block.message.hash_tree_root()
+        yield get_filename(signed_block), signed_block
+        if block_root == dependent_root:
+            add_pending_block_to_store(store, signed_block)
+            blocks_meta.append({"block": get_filename(signed_block), "pending": True})
+        else:
+            store.blocks[block_root] = signed_block.message
+            store.block_states[block_root] = post_state
+            blocks_meta.append({"block": get_filename(signed_block)})
+    yield "blocks", "meta", blocks_meta
+
     yield get_filename(signed_prefs), signed_prefs
 
     time_ms = spec.compute_time_at_slot_ms(state, state.slot)

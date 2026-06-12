@@ -23,7 +23,12 @@ topic: string                -- The gossip topic name (e.g., "beacon_block", "bl
                              -- "data_column_sidecar", "partial_data_column_sidecar").
 blocks: [{                   -- Optional. Blocks to import before validation (oldest to newest).
     block: string,           -- The block file (without extension).
-    failed: bool,            -- Optional. If true, block failed validation (for testing descendant rejection).
+    failed: bool,            -- Optional. If true, the block fails state transition.
+                             -- Track it as seen but invalid, with no post-state
+                             -- (for testing descendant rejection).
+    pending: bool,           -- Optional. If true, the block has been seen but not
+                             -- yet imported, e.g. it is queued for processing.
+                             -- Track it as seen, with no post-state.
     payload_status: string,  -- Optional. Execution payload status for this block:
                              -- "VALID" | "INVALIDATED" | "NOT_VALIDATED".
                              -- Maps to the corresponding `PAYLOAD_STATUS_*` value
@@ -98,8 +103,12 @@ Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
    - `genesis_time` from the state.
    - `finalized_checkpoint` from the state (or `meta.finalized_checkpoint` if
      specified).
-   - Import each entry in `blocks` into the store. If `failed: true`, track the
-     block as having failed validation (for testing descendant rejection).
+   - Import each entry in `blocks` into the store.
+     - If `failed: true`, the block fails state transition. Track it as seen but
+       invalid: the block is known, but no post-state is available (for testing
+       descendant rejection).
+     - If `pending: true`, do not import the block. Track it as seen with no
+       post-state available, as if it were queued for processing.
    - If `payload` is present, record the referenced envelope's message for that
      block as `on_execution_payload_envelope` would (e.g. add it to
      `store.payloads`).

@@ -14,17 +14,19 @@ from eth_consensus_specs.test.helpers.gossip import (
 )
 
 
-def setup_gloas_sidecar(spec, state):
+def setup_gloas_sidecar(spec, state, block_in_store=True):
     """
     Build a signed block carrying one blob, advance the state, and return
-    (store, signed_anchor, signed_block, sidecar) ready for validation.
+    (store, signed_anchor, signed_block, sidecar) ready for validation. With
+    ``block_in_store=False``, the block is left out of the store entirely.
     """
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     _, _, _, signed_block, sidecars, _ = get_block_with_blob_and_sidecars(spec, state, blob_count=1)
-    block_root = signed_block.message.hash_tree_root()
-    store.blocks[block_root] = signed_block.message
-    store.block_states[block_root] = state.copy()
+    if block_in_store:
+        block_root = signed_block.message.hash_tree_root()
+        store.blocks[block_root] = signed_block.message
+        store.block_states[block_root] = state.copy()
     return store, signed_anchor, signed_block, sidecars[0]
 
 
@@ -34,11 +36,10 @@ def test_gossip_data_column_sidecar__ignore_block_unseen(spec, state):
     """A sidecar whose beacon_block_root has no corresponding block in the store is ignored."""
     yield "topic", "meta", "data_column_sidecar"
 
-    store, signed_anchor, signed_block, sidecar = setup_gloas_sidecar(spec, state)
-    # Forget the block so the sidecar's beacon_block_root is unknown.
-    del store.blocks[signed_block.message.hash_tree_root()]
+    store, signed_anchor, _, sidecar = setup_gloas_sidecar(spec, state, block_in_store=False)
     yield "state", state
     yield get_filename(signed_anchor), signed_anchor
+    # The signed_block from setup_gloas_sidecar is not added here
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
     yield get_filename(sidecar), sidecar
 

@@ -25,15 +25,20 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-def setup_store_with_block(spec, state):
-    """Build the genesis store and apply one block. Returns (store, blocks, parent_block_root)."""
+def setup_store_with_block(spec, state, pending=False):
+    """
+    Build the genesis store and apply one block. With ``pending=True`` the
+    block is recorded as seen but not yet imported, so it has no post-state.
+    Returns (store, blocks, parent_block_root).
+    """
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
     block_root = signed_block.message.hash_tree_root()
     store.blocks[block_root] = signed_block.message
-    store.block_states[block_root] = state.copy()
+    if not pending:
+        store.block_states[block_root] = state.copy()
     return store, [signed_anchor, signed_block], block_root
 
 
@@ -1191,17 +1196,25 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
     """A bid whose parent block's state is missing from the store is ignored."""
     yield "topic", "meta", "execution_payload_bid"
 
-    store, blocks, parent_root = setup_store_with_block(spec, state)
+    # The parent block has been seen but not yet imported, so it has no
+    # post-state in the store.
+    store, blocks, parent_root = setup_store_with_block(spec, state, pending=True)
     activate_builders(spec, state)
     yield "state", state
     for signed in blocks:
         yield get_filename(signed), signed
-    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+    yield (
+        "blocks",
+        "meta",
+        [
+            {"block": get_filename(blocks[0])},
+            {"block": get_filename(blocks[1]), "pending": True},
+        ],
+    )
 
     seen = get_seen(spec)
-    # Mark the parent block's payload as known but drop its state.
+    # Mark the parent block's payload as known.
     seen.execution_payloads[state.latest_block_hash] = state.latest_execution_payload_bid
-    del store.block_states[parent_root]
 
     next_slot_value = spec.Slot(state.slot + 1)
     builder_index = spec.BuilderIndex(0)
