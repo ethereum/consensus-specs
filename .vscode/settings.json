@@ -7,5 +7,8 @@
     "workbench.editor.limit.excludeDirty": true,
     "workbench.editor.limit.perEditorGroup": true,
     "workbench.editor.limit.value": 10000000000,
-    "githubPullRequests.pullRequestDescription": "commit"
+    "githubPullRequests.pullRequestDescription": "commit",
+    "editor.formatOnSave": true,
+    "files.autoSave": "onFocusChange",
+    "editor.defaultFormatter": null
 }
