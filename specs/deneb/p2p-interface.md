@@ -7,8 +7,8 @@
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
-    - [`BlobSidecar`](#blobsidecar)
-    - [`BlobIdentifier`](#blobidentifier)
+    - [New `BlobSidecar`](#new-blobsidecar)
+    - [New `BlobIdentifier`](#new-blobidentifier)
   - [Helpers](#helpers)
     - [Modified `Seen`](#modified-seen)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
@@ -66,7 +66,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Containers
 
-#### `BlobSidecar`
+#### New `BlobSidecar`
 
 *[New in Deneb:EIP4844]*
 
@@ -82,7 +82,7 @@ class BlobSidecar(Container):
     kzg_commitment_inclusion_proof: Vector[Bytes32, KZG_COMMITMENT_INCLUSION_PROOF_DEPTH]
 ```
 
-#### `BlobIdentifier`
+#### New `BlobIdentifier`
 
 *[New in Deneb:EIP4844]*
 
