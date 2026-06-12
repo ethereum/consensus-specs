@@ -172,7 +172,7 @@ cells, and get cells in a future response.
 Implementations MUST ignore unknown versions.
 
 *Note*: The optional check "for cells the receiver already has, the sidecar's
-cell and proof data are equal to the local copy" is not encoded above. The
+cell and proof data are equal to the local copy" is not encoded below. The
 sender MUST always send valid cell and proof data; receivers MAY perform this
 equality check against their local copy as an additional safeguard.
 
