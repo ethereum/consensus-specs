@@ -7,23 +7,23 @@
   - [Preset](#preset)
   - [Configuration](#configuration)
   - [Containers](#containers)
-    - [`DataColumnsByRootIdentifier`](#datacolumnsbyrootidentifier)
+    - [New `DataColumnsByRootIdentifier`](#new-datacolumnsbyrootidentifier)
   - [Helpers](#helpers)
     - [Modified `Seen`](#modified-seen)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
     - [New `compute_max_request_data_column_sidecars`](#new-compute_max_request_data_column_sidecars)
-    - [`verify_data_column_sidecar`](#verify_data_column_sidecar)
-    - [`verify_data_column_sidecar_kzg_proofs`](#verify_data_column_sidecar_kzg_proofs)
-    - [`verify_data_column_sidecar_inclusion_proof`](#verify_data_column_sidecar_inclusion_proof)
-    - [`compute_subnet_for_data_column_sidecar`](#compute_subnet_for_data_column_sidecar)
+    - [New `verify_data_column_sidecar`](#new-verify_data_column_sidecar)
+    - [New `verify_data_column_sidecar_kzg_proofs`](#new-verify_data_column_sidecar_kzg_proofs)
+    - [New `verify_data_column_sidecar_inclusion_proof`](#new-verify_data_column_sidecar_inclusion_proof)
+    - [New `compute_subnet_for_data_column_sidecar`](#new-compute_subnet_for_data_column_sidecar)
   - [MetaData](#metadata)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
+        - [Modified `beacon_block`](#modified-beacon_block)
       - [Blob subnets](#blob-subnets)
         - [Deprecated `blob_sidecar_{subnet_id}`](#deprecated-blob_sidecar_subnet_id)
-        - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
+        - [New `data_column_sidecar_{subnet_id}`](#new-data_column_sidecar_subnet_id)
         - [Distributed blob publishing using blobs retrieved from local execution-layer client](#distributed-blob-publishing-using-blobs-retrieved-from-local-execution-layer-client)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
@@ -70,7 +70,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Containers
 
-#### `DataColumnsByRootIdentifier`
+#### New `DataColumnsByRootIdentifier`
 
 ```python
 class DataColumnsByRootIdentifier(Container):
@@ -136,7 +136,7 @@ def compute_max_request_data_column_sidecars() -> uint64:
     return uint64(MAX_REQUEST_BLOCKS_DENEB * NUMBER_OF_COLUMNS)
 ```
 
-#### `verify_data_column_sidecar`
+#### New `verify_data_column_sidecar`
 
 ```python
 def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
@@ -165,7 +165,7 @@ def verify_data_column_sidecar(sidecar: DataColumnSidecar) -> bool:
     return True
 ```
 
-#### `verify_data_column_sidecar_kzg_proofs`
+#### New `verify_data_column_sidecar_kzg_proofs`
 
 ```python
 def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
@@ -184,7 +184,7 @@ def verify_data_column_sidecar_kzg_proofs(sidecar: DataColumnSidecar) -> bool:
     )
 ```
 
-#### `verify_data_column_sidecar_inclusion_proof`
+#### New `verify_data_column_sidecar_inclusion_proof`
 
 ```python
 def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bool:
@@ -200,7 +200,7 @@ def verify_data_column_sidecar_inclusion_proof(sidecar: DataColumnSidecar) -> bo
     )
 ```
 
-#### `compute_subnet_for_data_column_sidecar`
+#### New `compute_subnet_for_data_column_sidecar`
 
 ```python
 def compute_subnet_for_data_column_sidecar(column_index: ColumnIndex) -> SubnetID:
@@ -236,7 +236,7 @@ Some gossip meshes are upgraded in Fulu to support upgraded types.
 
 ##### Global topics
 
-###### `beacon_block`
+###### Modified `beacon_block`
 
 *Note*: This function is modified per EIP-7892. The block's KZG commitment count
 is bounded by
@@ -347,7 +347,7 @@ def validate_beacon_block_gossip(
 
 `blob_sidecar_{subnet_id}` is deprecated.
 
-###### `data_column_sidecar_{subnet_id}`
+###### New `data_column_sidecar_{subnet_id}`
 
 The `data_column_sidecar_{subnet_id}` topics, where each column index maps to
 some `subnet_id`, are used to propagate new data column sidecars to nodes on the

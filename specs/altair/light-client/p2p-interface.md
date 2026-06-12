@@ -7,8 +7,8 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`light_client_finality_update`](#light_client_finality_update)
-        - [`light_client_optimistic_update`](#light_client_optimistic_update)
+        - [New `light_client_finality_update`](#new-light_client_finality_update)
+        - [New `light_client_optimistic_update`](#new-light_client_optimistic_update)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [GetLightClientBootstrap](#getlightclientbootstrap)
@@ -49,7 +49,7 @@ New global topics are added to provide light clients with the latest updates.
 
 ##### Global topics
 
-###### `light_client_finality_update`
+###### New `light_client_finality_update`
 
 This topic is used to propagate the latest `LightClientFinalityUpdate` to light
 clients, allowing them to keep track of the latest `finalized_header`.
@@ -99,7 +99,7 @@ Per `fork_version = compute_fork_version(epoch)`:
 | `GENESIS_FORK_VERSION`          | n/a                                |
 | `ALTAIR_FORK_VERSION` and later | `altair.LightClientFinalityUpdate` |
 
-###### `light_client_optimistic_update`
+###### New `light_client_optimistic_update`
 
 This topic is used to propagate the latest `LightClientOptimisticUpdate` to
 light clients, allowing them to keep track of the latest `optimistic_header`.
@@ -324,8 +324,8 @@ Per `fork_version = compute_fork_version(epoch)`:
 ## Light clients
 
 Light clients using libp2p to stay in sync with the network SHOULD subscribe to
-the [`light_client_finality_update`](#light_client_finality_update) and
-[`light_client_optimistic_update`](#light_client_optimistic_update) pubsub
+the [`light_client_finality_update`](#new-light_client_finality_update) and
+[`light_client_optimistic_update`](#new-light_client_optimistic_update) pubsub
 topics and validate all received messages while the
 [light client sync process](./light-client.md#light-client-sync-process)
 supports processing `LightClientFinalityUpdate` and
@@ -350,8 +350,8 @@ additional responsibilities to enable light clients to sync with the network.
 ### Beacon chain responsibilities
 
 All full nodes SHOULD subscribe to and provide stability on the
-[`light_client_finality_update`](#light_client_finality_update) and
-[`light_client_optimistic_update`](#light_client_optimistic_update) pubsub
+[`light_client_finality_update`](#new-light_client_finality_update) and
+[`light_client_optimistic_update`](#new-light_client_optimistic_update) pubsub
 topics by validating all received messages.
 
 ### Sync committee
