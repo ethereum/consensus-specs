@@ -1,0 +1,11 @@
+{
+    "workbench.editor.enablePreviewFromCodeNavigation": true,
+    "workbench.editor.enablePreviewFromQuickOpen": true,
+    "workbench.editor.highlightModifiedTabs": true,
+    "workbench.editor.labelFormat": "long",
+    "workbench.editor.limit.enabled": true,
+    "workbench.editor.limit.excludeDirty": true,
+    "workbench.editor.limit.perEditorGroup": true,
+    "workbench.editor.limit.value": 10000000000,
+    "githubPullRequests.pullRequestDescription": "commit"
+}
