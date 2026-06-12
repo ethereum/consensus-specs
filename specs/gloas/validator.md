@@ -195,19 +195,26 @@ top of a `state` MUST take the following actions in order to construct the
   `signed_execution_payload_bid` from a builder. The block proposer MAY obtain
   these signed messages by other off-protocol means.
 - The `signed_execution_payload_bid` MUST satisfy the verification conditions
-  found in `process_execution_payload_bid` with the alias
-  `bid = signed_execution_payload_bid.message`, that is:
+  found in
+  [`process_execution_payload_bid`](./beacon-chain.md#new-process_execution_payload_bid)
+  with the alias `bid = signed_execution_payload_bid.message`, that is:
   - For external builders, the signature MUST be valid.
+  - For external builders, `bid.builder_index` MUST be a valid/active builder
+    index -- i.e. `is_active_builder(state, bid.builder_index)` returns `True`.
   - For self-builds, set `bid.builder_index` to `BUILDER_INDEX_SELF_BUILD`.
   - For self-builds, the signature MUST be `bls.G2_POINT_AT_INFINITY` and the
     `bid.value` MUST be zero.
   - The builder balance can cover the `bid.value`.
+  - The length of `bid.blob_kzg_commitments` is less than or equal to
+    `get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`.
   - The `bid.slot` is for the proposal block slot.
   - The `bid.parent_block_hash` equals
     `state.latest_execution_payload_bid.block_hash` if
     `should_build_on_full(store, head)` is true, otherwise
     `state.latest_execution_payload_bid.parent_block_hash`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
+  - The `bid.prev_randao` equals
+    `get_randao_mix(state, get_current_epoch(state))`.
 - Select one bid and set
   `block.body.signed_execution_payload_bid = signed_execution_payload_bid`.
 

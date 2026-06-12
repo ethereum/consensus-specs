@@ -115,7 +115,9 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
 04. Set `bid.block_hash` to be the block hash of the constructed payload, that
     is `payload.block_hash`.
 05. Set `bid.prev_randao` to be the previous RANDAO of the constructed payload,
-    that is `payload.prev_randao`.
+    that is `payload.prev_randao`. This value **MUST** equal
+    `get_randao_mix(parent_state, get_current_epoch(parent_state))`, where
+    `parent_state` is the post-state of `bid.parent_block_root`.
 06. Set `bid.fee_recipient` to be an execution address to receive the payment.
     The proposer's preferred fee recipient is obtained from the
     `SignedProposerPreferences` whose `message.proposal_slot` matches `bid.slot`
