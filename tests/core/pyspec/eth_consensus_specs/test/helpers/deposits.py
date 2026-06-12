@@ -238,12 +238,11 @@ def prepare_deposit_request(
 
 def sign_builder_deposit_request(spec, request, privkey):
     """
-    Sign the ``BuilderDepositMessage`` corresponding to the given request.
+    Sign the ``DepositMessage`` corresponding to the given request.
     """
-    deposit_message = spec.BuilderDepositMessage(
+    deposit_message = spec.DepositMessage(
         pubkey=request.pubkey,
-        version=request.version,
-        execution_address=request.execution_address,
+        withdrawal_credentials=request.withdrawal_credentials,
         amount=request.amount,
     )
     domain = spec.compute_domain(spec.DOMAIN_DEPOSIT)
@@ -257,8 +256,7 @@ def prepare_builder_deposit_request(
     amount,
     pubkey=None,
     privkey=None,
-    version=None,
-    execution_address=None,
+    withdrawal_credentials=None,
     signed=False,
 ):
     """
@@ -281,17 +279,13 @@ def prepare_builder_deposit_request(
         # Look up privkey from the pubkey->privkey map
         privkey = builder_pubkey_to_privkey[pubkey]
 
-    if version is None:
-        version = spec.uint8(0)
-
-    if execution_address is None:
-        # A 20-byte eth1 address derived from the pubkey
-        execution_address = spec.ExecutionAddress(spec.hash(pubkey)[12:])
+    if withdrawal_credentials is None:
+        # Version zero followed by an eth1 address derived from the pubkey
+        withdrawal_credentials = b"\x00" * 12 + spec.hash(pubkey)[12:]
 
     request = spec.BuilderDepositRequest(
         pubkey=pubkey,
-        version=version,
-        execution_address=execution_address,
+        withdrawal_credentials=withdrawal_credentials,
         amount=amount,
     )
     if signed:

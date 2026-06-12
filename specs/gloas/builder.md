@@ -41,12 +41,12 @@ deposit contract on the execution layer, as defined in
 [EIP-8282](https://eips.ethereum.org/EIPS/eip-8282). The request must include:
 
 - `pubkey`: The builder's BLS public key.
-- `version`: The builder version, `0x00`.
-- `execution_address`: The execution-layer address that will receive
-  withdrawals.
+- `withdrawal_credentials`: The withdrawal credentials, where the first byte is
+  the builder version and the last 20 bytes are the execution-layer address that
+  will receive withdrawals.
 - `amount`: At least `MIN_DEPOSIT_AMOUNT` gwei.
-- `signature`: BLS proof of possession over the corresponding
-  `BuilderDepositMessage` under `DOMAIN_DEPOSIT`.
+- `signature`: BLS proof of possession over the corresponding `DepositMessage`
+  under `DOMAIN_DEPOSIT`.
 
 *Note*: Builders may be onboarded at the fork by submitting a deposit to the
 validator deposit contract with a 0x03 withdrawal credential. This must be done

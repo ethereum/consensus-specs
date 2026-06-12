@@ -45,7 +45,9 @@ def run_builder_deposit_processing(
             deposit_request=builder_deposit_request,
             is_builder_deposit=True,
             expected_builder_balance=builder_deposit_request.amount,
-            expected_execution_address=builder_deposit_request.execution_address,
+            expected_execution_address=spec.ExecutionAddress(
+                builder_deposit_request.withdrawal_credentials[12:]
+            ),
             expected_builder_withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
         )
     else:
@@ -82,13 +84,15 @@ def test_process_builder_deposit_request__new_builder_nonzero_version(spec, stat
     """
     Test fresh builder deposit with a non-zero version.
 
-    The version is not constrained: it is recorded on the builder verbatim and
-    is committed to by the proof of possession.
+    The version (the first byte of the withdrawal credentials) is not
+    constrained: it is recorded on the builder verbatim and is committed to by
+    the proof of possession.
     """
     amount = spec.MIN_DEPOSIT_AMOUNT
     version = spec.uint8(7)
+    withdrawal_credentials = bytes([version]) + b"\x00" * 11 + b"\x42" * 20
     builder_deposit_request = prepare_builder_deposit_request(
-        spec, state, amount, version=version, signed=True
+        spec, state, amount, withdrawal_credentials=withdrawal_credentials, signed=True
     )
     pre_state = state.copy()
 
@@ -101,7 +105,9 @@ def test_process_builder_deposit_request__new_builder_nonzero_version(spec, stat
         deposit_request=builder_deposit_request,
         is_builder_deposit=True,
         expected_builder_balance=amount,
-        expected_execution_address=builder_deposit_request.execution_address,
+        expected_execution_address=spec.ExecutionAddress(
+            builder_deposit_request.withdrawal_credentials[12:]
+        ),
         expected_builder_withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
     )
 
@@ -405,27 +411,25 @@ def test_process_builder_deposit_request__top_up_last_index(spec, state):
 @spec_state_test
 def test_process_builder_deposit_request__top_up_ignores_request_fields(spec, state):
     """
-    Test that a top-up for an existing builder ignores the supplied version
-    and execution address. The existing registration is unchanged.
+    Test that a top-up for an existing builder ignores the supplied withdrawal
+    credentials. The existing registration is unchanged.
     """
     builder_pubkey = state.builders[0].pubkey
     amount = spec.MIN_DEPOSIT_AMOUNT
     pre_balance = state.builders[0].balance
     pre_builder_count = len(state.builders)
 
-    # Use a version and execution address that differ from the registration
-    version = spec.uint8(7)
-    execution_address = spec.ExecutionAddress(b"\x42" * 20)
-    assert state.builders[0].version != version
-    assert state.builders[0].execution_address != execution_address
+    # Use withdrawal credentials that differ from the registration
+    withdrawal_credentials = b"\x07" + b"\x00" * 11 + b"\x42" * 20
+    assert state.builders[0].version != spec.uint8(withdrawal_credentials[0])
+    assert state.builders[0].execution_address != spec.ExecutionAddress(withdrawal_credentials[12:])
 
     builder_deposit_request = prepare_builder_deposit_request(
         spec,
         state,
         amount,
         pubkey=builder_pubkey,
-        version=version,
-        execution_address=execution_address,
+        withdrawal_credentials=withdrawal_credentials,
         signed=True,
     )
     pre_state = state.copy()

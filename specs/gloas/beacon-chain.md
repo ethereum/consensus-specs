@@ -25,7 +25,6 @@
     - [`Builder`](#builder)
     - [`BuilderPendingPayment`](#builderpendingpayment)
     - [`BuilderPendingWithdrawal`](#builderpendingwithdrawal)
-    - [`BuilderDepositMessage`](#builderdepositmessage)
     - [`BuilderDepositRequest`](#builderdepositrequest)
     - [`BuilderExitRequest`](#builderexitrequest)
     - [`PayloadAttestationData`](#payloadattestationdata)
@@ -101,9 +100,9 @@
     - [Operations](#operations)
       - [Modified `process_operations`](#modified-process_operations)
       - [Builder deposit requests](#builder-deposit-requests)
-        - [New `is_valid_builder_deposit_signature`](#new-is_valid_builder_deposit_signature)
         - [New `get_index_for_new_builder`](#new-get_index_for_new_builder)
         - [New `add_builder_to_registry`](#new-add_builder_to_registry)
+        - [New `apply_deposit_for_builder`](#new-apply_deposit_for_builder)
         - [New `process_builder_deposit_request`](#new-process_builder_deposit_request)
       - [Builder exit requests](#builder-exit-requests)
         - [New `process_builder_exit_request`](#new-process_builder_exit_request)
@@ -251,23 +250,12 @@ class BuilderPendingWithdrawal(Container):
     builder_index: BuilderIndex
 ```
 
-#### `BuilderDepositMessage`
-
-```python
-class BuilderDepositMessage(Container):
-    pubkey: BLSPubkey
-    version: uint8
-    execution_address: ExecutionAddress
-    amount: Gwei
-```
-
 #### `BuilderDepositRequest`
 
 ```python
 class BuilderDepositRequest(Container):
     pubkey: BLSPubkey
-    version: uint8
-    execution_address: ExecutionAddress
+    withdrawal_credentials: Bytes32
     amount: Gwei
     signature: BLSSignature
 ```
@@ -1575,21 +1563,6 @@ def process_operations(state: BeaconState, body: BeaconBlockBody) -> None:
 
 ##### Builder deposit requests
 
-###### New `is_valid_builder_deposit_signature`
-
-```python
-def is_valid_builder_deposit_signature(request: BuilderDepositRequest) -> bool:
-    deposit_message = BuilderDepositMessage(
-        pubkey=request.pubkey,
-        version=request.version,
-        execution_address=request.execution_address,
-        amount=request.amount,
-    )
-    domain = compute_domain(DOMAIN_DEPOSIT)
-    signing_root = compute_signing_root(deposit_message, domain)
-    return bls.Verify(request.pubkey, signing_root, request.signature)
-```
-
 ###### New `get_index_for_new_builder`
 
 ```python
@@ -1606,8 +1579,7 @@ def get_index_for_new_builder(state: BeaconState) -> BuilderIndex:
 def add_builder_to_registry(
     state: BeaconState,
     pubkey: BLSPubkey,
-    version: uint8,
-    execution_address: ExecutionAddress,
+    withdrawal_credentials: Bytes32,
     amount: uint64,
     slot: Slot,
 ) -> None:
@@ -1616,8 +1588,8 @@ def add_builder_to_registry(
         get_index_for_new_builder(state),
         Builder(
             pubkey=pubkey,
-            version=version,
-            execution_address=execution_address,
+            version=uint8(withdrawal_credentials[0]),
+            execution_address=ExecutionAddress(withdrawal_credentials[12:]),
             balance=amount,
             deposit_epoch=compute_epoch_at_slot(slot),
             withdrawable_epoch=FAR_FUTURE_EPOCH,
@@ -1625,7 +1597,7 @@ def add_builder_to_registry(
     )
 ```
 
-###### New `process_builder_deposit_request`
+###### New `apply_deposit_for_builder`
 
 *Note*: Builder indices are reusable. When a builder exits, its index may later
 be reassigned to a different builder with a new public key. Any deposit sent to
@@ -1635,21 +1607,37 @@ may have previously appeared in the builder set. Implementations that rely on
 caching should account for this behavior.
 
 ```python
-def process_builder_deposit_request(state: BeaconState, request: BuilderDepositRequest) -> None:
+def apply_deposit_for_builder(
+    state: BeaconState,
+    pubkey: BLSPubkey,
+    withdrawal_credentials: Bytes32,
+    amount: uint64,
+    signature: BLSSignature,
+    slot: Slot,
+) -> None:
     builder_pubkeys = [b.pubkey for b in state.builders]
-    if request.pubkey not in builder_pubkeys:
-        if is_valid_builder_deposit_signature(request):
-            add_builder_to_registry(
-                state,
-                request.pubkey,
-                request.version,
-                request.execution_address,
-                request.amount,
-                state.slot,
-            )
+    if pubkey not in builder_pubkeys:
+        # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
+        if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
+            add_builder_to_registry(state, pubkey, withdrawal_credentials, amount, slot)
     else:
-        builder_index = builder_pubkeys.index(request.pubkey)
-        state.builders[builder_index].balance += request.amount
+        # Increase balance by deposit amount
+        builder_index = builder_pubkeys.index(pubkey)
+        state.builders[builder_index].balance += amount
+```
+
+###### New `process_builder_deposit_request`
+
+```python
+def process_builder_deposit_request(state: BeaconState, request: BuilderDepositRequest) -> None:
+    apply_deposit_for_builder(
+        state,
+        request.pubkey,
+        request.withdrawal_credentials,
+        request.amount,
+        request.signature,
+        state.slot,
+    )
 ```
 
 ##### Builder exit requests

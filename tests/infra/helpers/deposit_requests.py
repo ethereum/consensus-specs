@@ -191,8 +191,7 @@ def prepare_process_builder_deposit_request(
     advance_epochs=None,
     builder_index=None,
     pubkey=None,
-    version=None,
-    execution_address=None,
+    withdrawal_credentials=None,
     amount=None,
     signed=False,
     builders=None,
@@ -203,9 +202,7 @@ def prepare_process_builder_deposit_request(
 
     This helper creates a BuilderDepositRequest object and optionally modifies
     state fields related to builder deposit request processing. The parameters
-    behave as in prepare_process_deposit_request, except that the request is
-    identified by version and execution_address instead of withdrawal
-    credentials, and the signature is over the BuilderDepositMessage.
+    behave as in prepare_process_deposit_request.
     """
     # Phase 1: Advance epochs if requested (before setup)
     if advance_epochs is not None:
@@ -217,12 +214,11 @@ def prepare_process_builder_deposit_request(
     effective_pubkey = pubkey if pubkey is not None else builder_pubkeys[index]
     effective_privkey = builder_pubkey_to_privkey[effective_pubkey]
     effective_amount = amount if amount is not None else spec.MIN_ACTIVATION_BALANCE
-    effective_version = version if version is not None else spec.uint8(0)
-    if execution_address is not None:
-        effective_execution_address = execution_address
+    if withdrawal_credentials is not None:
+        effective_withdrawal_credentials = withdrawal_credentials
     else:
-        # A 20-byte eth1 address derived from the pubkey
-        effective_execution_address = spec.ExecutionAddress(spec.hash(effective_pubkey)[12:])
+        # Version zero followed by an eth1 address derived from the pubkey
+        effective_withdrawal_credentials = b"\x00" * 12 + spec.hash(effective_pubkey)[12:]
 
     # Phase 3: Apply state overrides (before creating request)
     if builders is not None:
@@ -247,8 +243,7 @@ def prepare_process_builder_deposit_request(
     # Phase 4: Build the request and optionally sign
     request = spec.BuilderDepositRequest(
         pubkey=effective_pubkey,
-        version=effective_version,
-        execution_address=effective_execution_address,
+        withdrawal_credentials=effective_withdrawal_credentials,
         amount=effective_amount,
     )
     if signed:

@@ -111,10 +111,6 @@ topped up only via `BuilderDepositRequest`.
 pending deposit signatures and cache the results. The pending deposit queue
 might be large and verifying many signatures at the fork could be slow.
 
-*Note*: Builders onboarded at the fork are registered with a `version` of
-`0x00`, rather than the `BUILDER_WITHDRAWAL_PREFIX` from their deposit's
-withdrawal credentials.
-
 ```python
 def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
     """
@@ -130,8 +126,9 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
             pending_deposits.append(deposit)
             continue
 
-        # Since deposits may add builders to the registry, the list of
-        # builder pubkeys must be recomputed each iteration.
+        # Note that the function apply_deposit_for_builder can mutate the
+        # state and may add a builder to the registry. For this reason, the
+        # list of builder pubkeys must be recomputed each iteration.
         builder_pubkeys = [b.pubkey for b in state.builders]
 
         # Deposits for non-builders stay in the pending queue. If there is a
@@ -144,26 +141,15 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
             if is_pending_validator(pending_deposits, deposit.pubkey):
                 pending_deposits.append(deposit)
                 continue
-            if not is_valid_deposit_signature(
-                deposit.pubkey,
-                deposit.withdrawal_credentials,
-                deposit.amount,
-                deposit.signature,
-            ):
-                continue
 
-            add_builder_to_registry(
-                state,
-                deposit.pubkey,
-                uint8(0x00),
-                ExecutionAddress(deposit.withdrawal_credentials[12:]),
-                deposit.amount,
-                deposit.slot,
-            )
-        else:
-            # Increase balance by deposit amount
-            builder_index = builder_pubkeys.index(deposit.pubkey)
-            state.builders[builder_index].balance += deposit.amount
+        apply_deposit_for_builder(
+            state,
+            deposit.pubkey,
+            deposit.withdrawal_credentials,
+            deposit.amount,
+            deposit.signature,
+            deposit.slot,
+        )
 
     state.pending_deposits = pending_deposits
 ```
