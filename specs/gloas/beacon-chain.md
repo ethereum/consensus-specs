@@ -48,8 +48,10 @@
   - [Predicates](#predicates)
     - [New `is_builder_index`](#new-is_builder_index)
     - [New `is_active_builder`](#new-is_active_builder)
+    - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
     - [New `is_attestation_same_slot`](#new-is_attestation_same_slot)
     - [New `is_valid_indexed_payload_attestation`](#new-is_valid_indexed_payload_attestation)
+    - [New `is_pending_validator`](#new-is_pending_validator)
   - [Misc](#misc-2)
     - [New `convert_builder_index_to_validator_index`](#new-convert_builder_index_to_validator_index)
     - [New `convert_validator_index_to_builder_index`](#new-convert_validator_index_to_builder_index)
@@ -543,6 +545,13 @@ def is_active_builder(state: BeaconState, builder_index: BuilderIndex) -> bool:
     )
 ```
 
+#### New `is_builder_withdrawal_credential`
+
+```python
+def is_builder_withdrawal_credential(withdrawal_credentials: Bytes32) -> bool:
+    return withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX
+```
+
 #### New `is_attestation_same_slot`
 
 ```python
@@ -580,6 +589,29 @@ def is_valid_indexed_payload_attestation(
     domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(attestation.data.slot))
     signing_root = compute_signing_root(attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, attestation.signature)
+```
+
+#### New `is_pending_validator`
+
+*Note*: This function naively revalidates deposit signatures on every call.
+Implementations SHOULD cache verification results to avoid repeated work.
+
+```python
+def is_pending_validator(pending_deposits: Sequence[PendingDeposit], pubkey: BLSPubkey) -> bool:
+    """
+    Check if a pending deposit with a valid signature is in the queue for the given pubkey.
+    """
+    for pending_deposit in pending_deposits:
+        if pending_deposit.pubkey != pubkey:
+            continue
+        if is_valid_deposit_signature(
+            pending_deposit.pubkey,
+            pending_deposit.withdrawal_credentials,
+            pending_deposit.amount,
+            pending_deposit.signature,
+        ):
+            return True
+    return False
 ```
 
 ### Misc

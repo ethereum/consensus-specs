@@ -8,8 +8,6 @@
 - [Configuration](#configuration)
 - [Helpers](#helpers)
   - [New `initialize_ptc_window`](#new-initialize_ptc_window)
-  - [New `is_builder_withdrawal_credential`](#new-is_builder_withdrawal_credential)
-  - [New `is_pending_validator`](#new-is_pending_validator)
   - [New `onboard_builders_from_pending_deposits`](#new-onboard_builders_from_pending_deposits)
 - [Fork to Gloas](#fork-to-gloas)
   - [Fork trigger](#fork-trigger)
@@ -55,36 +53,6 @@ def initialize_ptc_window(
         ptcs += [compute_ptc(state, Slot(start_slot + i)) for i in range(SLOTS_PER_EPOCH)]
 
     return empty_previous_epoch + ptcs
-```
-
-### New `is_builder_withdrawal_credential`
-
-```python
-def is_builder_withdrawal_credential(withdrawal_credentials: Bytes32) -> bool:
-    return withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX
-```
-
-### New `is_pending_validator`
-
-*Note*: This function naively revalidates deposit signatures on every call.
-Implementations SHOULD cache verification results to avoid repeated work.
-
-```python
-def is_pending_validator(pending_deposits: Sequence[PendingDeposit], pubkey: BLSPubkey) -> bool:
-    """
-    Check if a pending deposit with a valid signature is in the queue for the given pubkey.
-    """
-    for pending_deposit in pending_deposits:
-        if pending_deposit.pubkey != pubkey:
-            continue
-        if is_valid_deposit_signature(
-            pending_deposit.pubkey,
-            pending_deposit.withdrawal_credentials,
-            pending_deposit.amount,
-            pending_deposit.signature,
-        ):
-            return True
-    return False
 ```
 
 ### New `onboard_builders_from_pending_deposits`
