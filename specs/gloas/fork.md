@@ -65,10 +65,6 @@ topped up only via `BuilderDepositRequest`.
 pending deposit signatures and cache the results. The pending deposit queue
 might be large and verifying many signatures at the fork could be slow.
 
-*Note*: Builders onboarded at the fork are registered with a `version` of zero,
-rather than the `BUILDER_WITHDRAWAL_PREFIX` from their deposit's withdrawal
-credentials.
-
 ```python
 def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
     """
@@ -110,7 +106,7 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
             add_builder_to_registry(
                 state,
                 deposit.pubkey,
-                uint8(0),  # The version is hardcoded to zero
+                uint8(deposit.withdrawal_credentials[0]),
                 ExecutionAddress(deposit.withdrawal_credentials[12:]),
                 deposit.amount,
                 deposit.slot,
