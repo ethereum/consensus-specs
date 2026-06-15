@@ -417,8 +417,8 @@ def is_gas_limit_target_compatible(
 *Note*: Implementations SHOULD include DoS prevention measures to mitigate spam
 from malicious builders submitting numerous bids with minimal value increments.
 Possible strategies include: (1) only forwarding bids that exceed the current
-highest bid passing all validations by a minimum threshold, or (2) forwarding
-only the highest such bid at regular time intervals.
+highest bid by a minimum threshold, or (2) forwarding only the highest observed
+bid at regular time intervals.
 
 ###### `proposer_preferences`
 
