@@ -602,9 +602,10 @@ def test_process_execution_payload_bid_wrong_slot(spec, state):
         spec,
         state,
         builder_index=spec.BUILDER_INDEX_SELF_BUILD,
-        slot=block.slot + 1,  # Wrong slot
+        slot=block.slot,
         parent_block_root=block.parent_root,
     )
+    signed_bid.message.slot = signed_bid.message.slot + 1  # Wrong slot
 
     block.body.signed_execution_payload_bid = signed_bid
 
