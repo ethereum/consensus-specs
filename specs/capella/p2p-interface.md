@@ -10,8 +10,8 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
-        - [`bls_to_execution_change`](#bls_to_execution_change)
+        - [Modified `beacon_block`](#modified-beacon_block)
+        - [New `bls_to_execution_change`](#new-bls_to_execution_change)
     - [Transitioning the gossip](#transitioning-the-gossip)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
@@ -95,7 +95,7 @@ Capella changes the type of the global beacon block topic and adds one global
 topic to propagate withdrawal credential change messages to all potential
 proposers of beacon blocks.
 
-###### `beacon_block`
+###### Modified `beacon_block`
 
 The *type* of the payload of this topic changes to the (modified)
 `SignedBeaconBlock` found in Capella. Specifically, this type changes with the
@@ -197,7 +197,7 @@ def validate_beacon_block_gossip(
     seen.proposer_slots.add((block.proposer_index, block.slot))
 ```
 
-###### `bls_to_execution_change`
+###### New `bls_to_execution_change`
 
 The `bls_to_execution_change` topic is used solely for propagating signed BLS to
 execution change messages on the network. Signed messages are sent in their

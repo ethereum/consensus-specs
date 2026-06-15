@@ -6,22 +6,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.attester_slashings import (
     get_valid_attester_slashing,
 )
-from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen
-
-
-def run_validate_attester_slashing_gossip(spec, seen, state, attester_slashing):
-    """
-    Run validate_attester_slashing_gossip and return the result.
-    Returns: tuple of (result, reason) where result is "valid", "ignore", or "reject"
-             and reason is the exception message (or None for valid).
-    """
-    try:
-        spec.validate_attester_slashing_gossip(seen, state, attester_slashing)
-        return "valid", None
-    except spec.GossipIgnore as e:
-        return "ignore", str(e)
-    except spec.GossipReject as e:
-        return "reject", str(e)
+from eth_consensus_specs.test.helpers.gossip import get_filename, get_seen, run_validate_gossip
 
 
 @with_all_phases
@@ -40,7 +25,9 @@ def test_gossip_attester_slashing__valid(spec, state):
 
     yield get_filename(attester_slashing), attester_slashing
 
-    result, reason = run_validate_attester_slashing_gossip(spec, seen, state, attester_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, attester_slashing=attester_slashing
+    )
     assert result == "valid"
     assert reason is None
 
@@ -69,13 +56,17 @@ def test_gossip_attester_slashing__ignore_already_seen(spec, state):
     yield get_filename(attester_slashing), attester_slashing
 
     # First validation should pass
-    result, reason = run_validate_attester_slashing_gossip(spec, seen, state, attester_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, attester_slashing=attester_slashing
+    )
     assert result == "valid"
     assert reason is None
     messages.append({"message": get_filename(attester_slashing), "expected": "valid"})
 
     # Second validation should be ignored (all indices already seen)
-    result, reason = run_validate_attester_slashing_gossip(spec, seen, state, attester_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, attester_slashing=attester_slashing
+    )
     assert result == "ignore"
     assert reason == "all attester slashing indices already seen"
     messages.append(
@@ -108,7 +99,9 @@ def test_gossip_attester_slashing__reject_not_slashable_data(spec, state):
 
     yield get_filename(attester_slashing), attester_slashing
 
-    result, reason = run_validate_attester_slashing_gossip(spec, seen, state, attester_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, attester_slashing=attester_slashing
+    )
     assert result == "reject"
     assert reason == "attestation data is not slashable"
 
@@ -142,7 +135,9 @@ def test_gossip_attester_slashing__reject_invalid_attestation_1(spec, state):
 
     yield get_filename(attester_slashing), attester_slashing
 
-    result, reason = run_validate_attester_slashing_gossip(spec, seen, state, attester_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, attester_slashing=attester_slashing
+    )
     assert result == "reject"
     assert reason == "invalid indexed attestation 1"
 
@@ -176,7 +171,9 @@ def test_gossip_attester_slashing__reject_invalid_attestation_2(spec, state):
 
     yield get_filename(attester_slashing), attester_slashing
 
-    result, reason = run_validate_attester_slashing_gossip(spec, seen, state, attester_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, attester_slashing=attester_slashing
+    )
     assert result == "reject"
     assert reason == "invalid indexed attestation 2"
 
@@ -212,7 +209,9 @@ def test_gossip_attester_slashing__reject_attesting_index_out_of_range_1(spec, s
 
     yield get_filename(attester_slashing), attester_slashing
 
-    result, reason = run_validate_attester_slashing_gossip(spec, seen, state, attester_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, attester_slashing=attester_slashing
+    )
     assert result == "reject"
     assert reason == "validator index out of range in indexed attestation 1"
 
@@ -248,7 +247,9 @@ def test_gossip_attester_slashing__reject_attesting_index_out_of_range_2(spec, s
 
     yield get_filename(attester_slashing), attester_slashing
 
-    result, reason = run_validate_attester_slashing_gossip(spec, seen, state, attester_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, attester_slashing=attester_slashing
+    )
     assert result == "reject"
     assert reason == "validator index out of range in indexed attestation 2"
 
@@ -281,7 +282,9 @@ def test_gossip_attester_slashing__ignore_empty_attesting_indices_1(spec, state)
 
     yield get_filename(attester_slashing), attester_slashing
 
-    result, reason = run_validate_attester_slashing_gossip(spec, seen, state, attester_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, attester_slashing=attester_slashing
+    )
     assert result == "ignore"
     assert reason == "all attester slashing indices already seen"
 
@@ -314,7 +317,9 @@ def test_gossip_attester_slashing__ignore_empty_attesting_indices_2(spec, state)
 
     yield get_filename(attester_slashing), attester_slashing
 
-    result, reason = run_validate_attester_slashing_gossip(spec, seen, state, attester_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, attester_slashing=attester_slashing
+    )
     assert result == "ignore"
     assert reason == "all attester slashing indices already seen"
 
@@ -355,7 +360,9 @@ def test_gossip_attester_slashing__reject_unsorted_indices_1(spec, state):
 
     yield get_filename(attester_slashing), attester_slashing
 
-    result, reason = run_validate_attester_slashing_gossip(spec, seen, state, attester_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, attester_slashing=attester_slashing
+    )
     assert result == "reject"
     assert reason == "invalid indexed attestation 1"
 
@@ -391,7 +398,9 @@ def test_gossip_attester_slashing__reject_unsorted_indices_2(spec, state):
 
     yield get_filename(attester_slashing), attester_slashing
 
-    result, reason = run_validate_attester_slashing_gossip(spec, seen, state, attester_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, attester_slashing=attester_slashing
+    )
     assert result == "reject"
     assert reason == "invalid indexed attestation 2"
 
@@ -431,7 +440,9 @@ def test_gossip_attester_slashing__reject_no_slashable_validators(spec, state):
     yield "state", state
     yield get_filename(attester_slashing), attester_slashing
 
-    result, reason = run_validate_attester_slashing_gossip(spec, seen, state, attester_slashing)
+    result, reason = run_validate_gossip(
+        spec, seen=seen, state=state, attester_slashing=attester_slashing
+    )
     assert result == "reject"
     assert reason == "no slashable validators in intersection"
 
