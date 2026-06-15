@@ -155,7 +155,7 @@ def test_basic_is_parent_root(spec, state):
 
     # The conditions in `get_proposer_head`
     assert spec.is_head_late(store, head.root)
-    assert spec.is_shuffling_stable(slot)
+    assert spec.is_epoch_boundary(slot)
     assert spec.is_ffg_competitive(store, head.root, parent_root)
     assert spec.is_finalization_ok(store, slot)
     assert spec.is_proposing_on_time(store)

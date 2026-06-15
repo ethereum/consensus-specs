@@ -794,7 +794,7 @@ def get_proposer_head(store: Store, head_node: ForkChoiceNode, slot: Slot) -> Fo
     head_late = is_head_late(store, head_node.root)
 
     # Do not re-org on an epoch boundary where the proposer shuffling could change.
-    shuffling_stable = is_shuffling_stable(slot)
+    epoch_boundary = is_epoch_boundary(slot)
 
     # Ensure that the FFG information of the new head will be competitive with the current head.
     ffg_competitive = is_ffg_competitive(store, head_node.root, parent_root)
@@ -822,7 +822,7 @@ def get_proposer_head(store: Store, head_node: ForkChoiceNode, slot: Slot) -> Fo
 
     if all([
         head_late,
-        shuffling_stable,
+        epoch_boundary,
         ffg_competitive,
         finalization_ok,
         proposing_on_time,
