@@ -390,6 +390,8 @@ where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
 - _[REJECT]_ The bid is for a higher slot than its parent block -- i.e. validate
   that `bid.slot` is greater than the slot of the block with root
   `bid.parent_block_root`.
+- _[REJECT]_ `bid.prev_randao` is the correct RANDAO mix -- i.e. validate that
+  `bid.prev_randao == get_randao_mix(parent_state, get_current_epoch(parent_state))`.
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
 
