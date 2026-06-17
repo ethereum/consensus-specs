@@ -67,6 +67,7 @@ def prepare_process_proposer_slashing(
     builder_payment_fee_recipient=None,  # Fee recipient address (20 bytes)
     builder_payment_weight=None,  # Weight for the pending payment (default: 0)
     builder_payment_builder_index=None,  # Builder index for the payment (default: last builder)
+    builder_payment_proposer_index=None,  # Proposer recorded on the payment (default: slashed proposer)
 ):
     """
     Prepare a proposer slashing operation with configurable headers and state.
@@ -203,9 +204,16 @@ def prepare_process_proposer_slashing(
                 builder_index=builder_index,
             )
 
+            payment_proposer_index = (
+                spec.ValidatorIndex(builder_payment_proposer_index)
+                if builder_payment_proposer_index is not None
+                else effective_proposer_1
+            )
+
             pending_payment = spec.BuilderPendingPayment(
                 weight=spec.Gwei(weight),
                 withdrawal=pending_withdrawal,
+                proposer_index=payment_proposer_index,
             )
 
             state.builder_pending_payments[payment_index] = pending_payment
