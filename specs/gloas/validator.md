@@ -210,6 +210,8 @@ top of a `state` MUST take the following actions in order to construct the
     `should_build_on_full(store, head)` is true, otherwise
     `state.latest_execution_payload_bid.parent_block_hash`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
+  - The `bid.prev_randao` equals
+    `get_randao_mix(state, get_current_epoch(state))`.
 - Select one bid and set
   `block.body.signed_execution_payload_bid = signed_execution_payload_bid`.
 
