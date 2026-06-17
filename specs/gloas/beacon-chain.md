@@ -1483,7 +1483,7 @@ def process_execution_payload_bid(
                 amount=amount,
                 builder_index=builder_index,
             ),
-            proposer_index=block.proposer_index,
+            proposer_index=get_beacon_proposer_index(state),
         )
         state.builder_pending_payments[SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH] = (
             pending_payment
