@@ -1111,7 +1111,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     # [Modified in Gloas:EIP7732]
     # Removed `process_execution_payload`
     # [New in Gloas:EIP7732]
-    process_execution_payload_bid(state, block)
+    process_execution_payload_bid(state, block.body.signed_execution_payload_bid)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     # [Modified in Gloas:EIP7732]
@@ -1440,8 +1440,9 @@ def verify_execution_payload_bid_signature(
 ##### New `process_execution_payload_bid`
 
 ```python
-def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> None:
-    signed_bid = block.body.signed_execution_payload_bid
+def process_execution_payload_bid(
+    state: BeaconState, signed_bid: SignedExecutionPayloadBid
+) -> None:
     bid = signed_bid.message
     builder_index = bid.builder_index
     amount = bid.value
@@ -1465,10 +1466,11 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
     )
 
     # Verify that the bid is for the current slot
-    assert bid.slot == block.slot
+    assert bid.slot == state.slot
+    assert state.slot > GENESIS_SLOT
     # Verify that the bid is for the right parent block
     assert bid.parent_block_hash == state.latest_block_hash
-    assert bid.parent_block_root == block.parent_root
+    assert bid.parent_block_root == get_block_root_at_slot(state, Slot(state.slot - 1))
     assert bid.prev_randao == get_randao_mix(state, get_current_epoch(state))
 
     # Record the pending payment if there is some payment
