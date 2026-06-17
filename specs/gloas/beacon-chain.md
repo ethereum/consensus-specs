@@ -226,6 +226,7 @@ class Builder(Container):
 class BuilderPendingPayment(Container):
     weight: Gwei
     withdrawal: BuilderPendingWithdrawal
+    proposer_index: ValidatorIndex
 ```
 
 #### `BuilderPendingWithdrawal`
@@ -1482,6 +1483,7 @@ def process_execution_payload_bid(
                 amount=amount,
                 builder_index=builder_index,
             ),
+            proposer_index=block.proposer_index,
         )
         state.builder_pending_payments[SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH] = (
             pending_payment
@@ -1813,16 +1815,22 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
 
     # [New in Gloas:EIP7732]
-    # Remove the BuilderPendingPayment corresponding to
-    # this proposal if it is still in the 2-epoch window.
+    # Remove the BuilderPendingPayment corresponding to this proposal if it is
+    # still in the 2-epoch window. Only clear it when the slashed validator is
+    # the proposer associated with the payment; otherwise an unrelated same-slot
+    # equivocation could grief an honest proposer's payment.
     slot = header_1.slot
     proposal_epoch = compute_epoch_at_slot(slot)
     if proposal_epoch == get_current_epoch(state):
         payment_index = SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH
-        state.builder_pending_payments[payment_index] = BuilderPendingPayment()
+        payment = state.builder_pending_payments[payment_index]
+        if payment.proposer_index == header_1.proposer_index:
+            state.builder_pending_payments[payment_index] = BuilderPendingPayment()
     elif proposal_epoch == get_previous_epoch(state):
         payment_index = slot % SLOTS_PER_EPOCH
-        state.builder_pending_payments[payment_index] = BuilderPendingPayment()
+        payment = state.builder_pending_payments[payment_index]
+        if payment.proposer_index == header_1.proposer_index:
+            state.builder_pending_payments[payment_index] = BuilderPendingPayment()
 
     slash_validator(state, header_1.proposer_index)
 ```
