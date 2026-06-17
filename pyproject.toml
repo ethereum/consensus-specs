@@ -3,7 +3,7 @@ requires = ["setuptools==82.0.1"]
 
 [project]
 name = "eth-consensus-specs"
-version = "1.7.0-alpha.10"
+version = "1.7.0-alpha.11"
 authors = [{ name = "ethereum" }]
 description = "Ethereum consensus layer specifications package"
 license = "CC0-1.0"
@@ -16,7 +16,7 @@ dependencies = [
   "frozendict==2.4.7",
   "lru-dict==1.4.1",
   "marko==2.2.3",
-  "milagro_bls_binding==1.9.0",
+  "milagro_bls_binding==1.9.1",
   "py_arkworks_bls12381==0.4.1",
   "py_ecc==8.0.0",
   "ruamel.yaml==0.19.1",
@@ -34,7 +34,7 @@ test = [
   "pytest-html==4.2.0",
   "pytest-sugar==1.1.1",
   "pytest-xdist==3.8.0",
-  "pytest==9.0.3",
+  "pytest==9.1.0",
   "python-snappy==0.7.3",
   "trie==3.1.0",
 ]
