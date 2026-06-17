@@ -375,13 +375,13 @@ To propose, the validator selects a `BeaconBlock`, `parent` using this process:
 
 1. Compute fork choice's view of the head at the start of `slot`, after running
    `on_tick` and applying any queued attestations from `slot - 1`. Set
-   `head_root = get_head(store).root`.
+   `head_node = get_head(store)`.
 2. Compute the _proposer head_, which is the head upon which the proposer SHOULD
    build in order to incentivise timely block propagation by other validators.
-   Set `parent_root = get_proposer_head(store, head_root, slot)`. A proposer may
-   set `parent_root == head_root` if proposer re-orgs are not implemented or
+   Set `parent_node = get_proposer_head(store, head_node, slot)`. A proposer may
+   set `parent_node == head_node` if proposer re-orgs are not implemented or
    have been disabled.
-3. Let `parent` be the block with `parent_root`.
+3. Let `parent` be the block with `parent_node.root`.
 
 The validator creates, signs, and broadcasts a `block` that is a child of
 `parent` and satisfies a valid
