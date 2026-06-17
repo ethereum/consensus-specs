@@ -182,8 +182,10 @@ def get_proposer_preferences_signature(
 
 #### Constructing the `BeaconBlockBody`
 
-Let `head = get_head(store)` be the parent block the proposer is building on,
-from which `state` was derived.
+Let `head = get_head(store)`. A proposer may set
+`head = get_proposer_head(store, head, slot)` if proposer re-orgs are
+implemented and enabled. Let `head` be the parent node the proposer builds on,
+from which `state` is derived.
 
 ##### Signed execution payload bid
 
