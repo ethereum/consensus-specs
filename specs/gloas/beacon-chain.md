@@ -1815,7 +1815,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
     # [New in Gloas:EIP7732]
     # Remove the BuilderPendingPayment corresponding to this proposal if it is
     # still in the 2-epoch window. Only clear it when the slashed validator is
-    # the proposer that armed the payment; otherwise an unrelated same-slot
+    # the proposer associated with the payment; otherwise an unrelated same-slot
     # equivocation could grief an honest proposer's payment.
     slot = header_1.slot
     proposal_epoch = compute_epoch_at_slot(slot)
