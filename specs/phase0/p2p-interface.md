@@ -168,8 +168,7 @@ inbound traffic on the announced public listening endpoint.
 
 ### Encryption and identification
 
-The QUIC transport is natively secured using TLS 1.3, so no separate libp2p
-secure channel handshake is layered on top of it.
+The QUIC transport is secured using TLS 1.3, configured according to the [libp2p TLS specification](https://github.com/libp2p/specs/blob/master/tls/tls.md).
 
 For the TCP fallback transport, the
 [Libp2p-noise](https://github.com/libp2p/specs/tree/master/noise) secure channel
