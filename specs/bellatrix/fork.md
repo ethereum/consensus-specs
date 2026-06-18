@@ -59,7 +59,7 @@ def upgrade_to_bellatrix(pre: altair.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            # [New in Bellatrix]
+            # [Modified in Bellatrix]
             current_version=BELLATRIX_FORK_VERSION,
             epoch=epoch,
         ),
