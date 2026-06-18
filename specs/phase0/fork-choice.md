@@ -859,8 +859,7 @@ def record_block_timeliness(store: Store, root: Root) -> None:
 ##### `get_shuffling_dependent_root`
 
 ```python
-def get_shuffling_dependent_root(store: Store, root: Root) -> Root:
-    epoch = get_current_store_epoch(store)
+def get_shuffling_dependent_root(store: Store, root: Root, epoch: Epoch) -> Root:
     if epoch <= MIN_SEED_LOOKAHEAD:
         # Genesis block parent
         return Root()
@@ -876,9 +875,10 @@ def get_shuffling_dependent_root(store: Store, root: Root) -> Root:
 def update_proposer_boost_root(store: Store, head: Root, root: Root) -> None:
     is_first_block = store.proposer_boost_root == Root()
     is_timely = store.block_timeliness[root]
-    is_same_dependent_root = get_shuffling_dependent_root(
-        store, root
-    ) == get_shuffling_dependent_root(store, head)
+    epoch = get_current_store_epoch(store)
+    head_dependent_root = get_shuffling_dependent_root(store, head, epoch)
+    block_dependent_root = get_shuffling_dependent_root(store, root, epoch)
+    is_same_dependent_root = head_dependent_root == block_dependent_root
 
     # Add proposer score boost if the block is timely, not conflicting with an
     # existing block, with the same dependent root as the canonical chain head.
