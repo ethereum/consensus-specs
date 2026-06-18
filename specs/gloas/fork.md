@@ -112,7 +112,7 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
                 deposit.slot,
             )
         else:
-            builder_index = builder_pubkeys.index(deposit.pubkey)
+            builder_index = BuilderIndex(builder_pubkeys.index(deposit.pubkey))
             state.builders[builder_index].balance += deposit.amount
 
     state.pending_deposits = pending_deposits
