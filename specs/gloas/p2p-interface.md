@@ -361,8 +361,8 @@ The following validations MUST pass before forwarding the
 `bid = signed_execution_payload_bid.message`, the alias
 `signed_proposer_preferences` for the validated `SignedProposerPreferences`
 whose `message.proposal_slot` is `bid.slot` and `message.dependent_root` is
-`get_proposer_dependent_root(parent_state, compute_epoch_at_slot(bid.slot))`,
-where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
+`get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot))`,
+where `store` is the fork choice store, and the alias
 `proposer_preferences = signed_proposer_preferences.message`:
 
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
@@ -466,16 +466,6 @@ def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences)
     index = (proposal_epoch - current_epoch) * SLOTS_PER_EPOCH
     index += preferences.proposal_slot % SLOTS_PER_EPOCH
     return state.proposer_lookahead[index] == preferences.validator_index
-```
-
-```python
-def get_proposer_dependent_root(state: BeaconState, epoch: Epoch) -> Root:
-    """
-    Return the dependent root for the proposer lookahead at ``epoch``.
-    """
-    return get_block_root_at_slot(
-        state, Slot(compute_start_slot_at_epoch(Epoch(epoch - MIN_SEED_LOOKAHEAD)) - 1)
-    )
 ```
 
 *Note*: Nodes SHOULD subscribe to this topic at least one epoch before the fork
