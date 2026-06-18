@@ -1688,8 +1688,16 @@ def process_builder_deposit_request(state: BeaconState, request: BuilderDepositR
                 state.slot,
             )
     else:
-        builder_index = builder_pubkeys.index(request.pubkey)
-        state.builders[builder_index].balance += request.amount
+        builder_index = BuilderIndex(builder_pubkeys.index(request.pubkey))
+        builder = state.builders[builder_index]
+
+        # Increase balance by deposit amount
+        builder.balance += request.amount
+
+        # If exited, reset the withdrawable epoch
+        if builder.withdrawable_epoch != FAR_FUTURE_EPOCH:
+            epoch = get_current_epoch(state)
+            builder.withdrawable_epoch = epoch + MIN_BUILDER_WITHDRAWABILITY_DELAY
 ```
 
 ##### Builder exit requests
