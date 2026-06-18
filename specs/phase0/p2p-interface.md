@@ -145,16 +145,12 @@ Even though libp2p is a multi-transport stack (designed to listen on multiple
 simultaneous transports and endpoints transparently), we hereby define a profile
 for basic interoperability.
 
-All implementations MUST support the QUIC (UDP) libp2p transport and SHOULD
-support the TCP libp2p transport as a fallback. Any supported transport MUST be
+All implementations MUST support the QUIC (UDP) libp2p transport and the TCP libp2p transport. Any supported transport MUST be
 enabled for both dialing and listening (i.e. outbound and inbound connections).
 The libp2p QUIC (UDP) and TCP transports support listening on IPv4 and IPv6
 addresses (and on multiple simultaneously).
 
-QUIC is the primary transport. When a peer is reachable over more than one
-transport (for example, it advertises both `quic` and `tcp` endpoints in its
-ENR), clients SHOULD attempt to dial it over QUIC first and fall back to TCP
-only if a QUIC connection cannot be established.
+QUIC is the primary transport. When a peer is reachable over both TCP and QUIC, clients SHOULD prioritise peer's QUIC addresses.
 
 Clients must support listening on at least one of IPv4 or IPv6. Clients that do
 _not_ have support for listening on IPv4 SHOULD be cognizant of the potential
@@ -1803,17 +1799,15 @@ that powers much of the Internet as we know it today. HTTP/1.1 and HTTP/2 run
 atop TCP.
 
 QUIC is a UDP-based transport standardized by the IETF in
-[RFC 9000](https://www.rfc-editor.org/rfc/rfc9000), having emerged from Google’s
-SPDY experiment. It’s reliable, ordered, multiplexed, natively secure (TLS 1.3),
-reduces latency vs. TCP, and offers stream-level and connection-level congestion
-control (thus removing head-of-line blocking), 0-RTT connection establishment,
+[RFC 9000](https://www.rfc-editor.org/rfc/rfc9000). It’s reliable, ordered, multiplexed, natively secure (TLS 1.3),
+reduces connection establishmen latency vs. TCP, offers stream-level flow control(thus removing head-of-line blocking), 0-RTT connection establishment,
 and endpoint migration, amongst other features. UDP also has better NAT
 traversal properties than TCP—something we desperately pursue in peer-to-peer
 networks. These characteristics are why QUIC is the primary transport for the
 consensus-layer network.
 
 QUIC is also the underlying protocol for HTTP/3. This has the potential to award
-us censorship resistance via deep packet inspection for free. Provided that we
+us censorship resistance against deep packet inspection for free. Provided that we
 use the same port numbers and encryption mechanisms as HTTP/3, our traffic may
 be indistinguishable from standard web traffic, and we may only become subject
 to standard IP-based firewall filtering—something we can counteract via other
