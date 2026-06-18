@@ -253,6 +253,7 @@ class Builder(Container):
 class BuilderPendingPayment(Container):
     weight: Gwei
     withdrawal: BuilderPendingWithdrawal
+    proposer_index: ValidatorIndex
 ```
 
 #### `BuilderPendingWithdrawal`
@@ -1169,7 +1170,7 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
     # [Modified in Gloas:EIP7732]
     # Removed `process_execution_payload`
     # [New in Gloas:EIP7732]
-    process_execution_payload_bid(state, block)
+    process_execution_payload_bid(state, block.body.signed_execution_payload_bid)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
     # [Modified in Gloas:EIP7732]
@@ -1523,8 +1524,9 @@ def verify_execution_payload_bid_signature(
 ##### New `process_execution_payload_bid`
 
 ```python
-def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> None:
-    signed_bid = block.body.signed_execution_payload_bid
+def process_execution_payload_bid(
+    state: BeaconState, signed_bid: SignedExecutionPayloadBid
+) -> None:
     bid = signed_bid.message
     builder_index = bid.builder_index
     amount = bid.value
@@ -1548,10 +1550,11 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
     )
 
     # Verify that the bid is for the current slot
-    assert bid.slot == block.slot
+    assert bid.slot == state.slot
+    assert state.slot > GENESIS_SLOT
     # Verify that the bid is for the right parent block
     assert bid.parent_block_hash == state.latest_block_hash
-    assert bid.parent_block_root == block.parent_root
+    assert bid.parent_block_root == get_block_root_at_slot(state, Slot(state.slot - 1))
     assert bid.prev_randao == get_randao_mix(state, get_current_epoch(state))
 
     # Record the pending payment if there is some payment
@@ -1563,6 +1566,7 @@ def process_execution_payload_bid(state: BeaconState, block: BeaconBlock) -> Non
                 amount=amount,
                 builder_index=builder_index,
             ),
+            proposer_index=get_beacon_proposer_index(state),
         )
         state.builder_pending_payments[SLOTS_PER_EPOCH + bid.slot % SLOTS_PER_EPOCH] = (
             pending_payment
@@ -1849,16 +1853,22 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         assert bls.Verify(proposer.pubkey, signing_root, signed_header.signature)
 
     # [New in Gloas:EIP7732]
-    # Remove the BuilderPendingPayment corresponding to
-    # this proposal if it is still in the 2-epoch window.
+    # Remove the BuilderPendingPayment corresponding to this proposal if it is
+    # still in the 2-epoch window. Only clear it when the slashed validator is
+    # the proposer associated with the payment; otherwise an unrelated same-slot
+    # equivocation could grief an honest proposer's payment.
     slot = header_1.slot
     proposal_epoch = compute_epoch_at_slot(slot)
     if proposal_epoch == get_current_epoch(state):
         payment_index = SLOTS_PER_EPOCH + slot % SLOTS_PER_EPOCH
-        state.builder_pending_payments[payment_index] = BuilderPendingPayment()
+        payment = state.builder_pending_payments[payment_index]
+        if payment.proposer_index == header_1.proposer_index:
+            state.builder_pending_payments[payment_index] = BuilderPendingPayment()
     elif proposal_epoch == get_previous_epoch(state):
         payment_index = slot % SLOTS_PER_EPOCH
-        state.builder_pending_payments[payment_index] = BuilderPendingPayment()
+        payment = state.builder_pending_payments[payment_index]
+        if payment.proposer_index == header_1.proposer_index:
+            state.builder_pending_payments[payment_index] = BuilderPendingPayment()
 
     slash_validator(state, header_1.proposer_index)
 ```

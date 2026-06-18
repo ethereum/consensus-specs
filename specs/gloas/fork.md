@@ -140,7 +140,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            # [Modified in Gloas:EIP7732]
+            # [Modified in Gloas]
             current_version=GLOAS_FORK_VERSION,
             epoch=epoch,
         ),

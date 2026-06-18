@@ -49,7 +49,7 @@ Operations:
 | `deposit_request`          | `DepositRequest`             | `deposit_request`       | `process_deposit_request(state, deposit_request)` (new in Electra)             |
 | `withdrawal_request`       | `WithdrawalRequest`          | `withdrawal_request`    | `process_withdrawal_request(state, withdrawal_request)` (new in Electra)       |
 | `consolidation_request`    | `ConsolidationRequest`       | `consolidation_request` | `process_consolidation_request(state, consolidation_request)` (new in Electra) |
-| `execution_payload_bid`    | `BeaconBlock`                | **`block`**             | `process_execution_payload_bid(state, block)` (new in Gloas)                   |
+| `execution_payload_bid`    | `SignedExecutionPayloadBid`  | `execution_payload_bid` | `process_execution_payload_bid(state, execution_payload_bid)` (new in Gloas)   |
 | `parent_execution_payload` | `BeaconBlock`                | **`block`**             | `process_parent_execution_payload(state, block)` (new in Gloas)                |
 | `payload_attestation`      | `PayloadAttestation`         | `payload_attestation`   | `process_payload_attestation(state, payload_attestation)` (new in Gloas)       |
 

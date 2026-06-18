@@ -183,8 +183,10 @@ def get_proposer_preferences_signature(
 
 #### Constructing the `BeaconBlockBody`
 
-Let `head = get_head(store)` be the parent block the proposer is building on,
-from which `state` was derived.
+Let `head = get_head(store)`. A proposer may set
+`head = get_proposer_head(store, head, slot)` if proposer re-orgs are
+implemented and enabled. Let `head` be the parent node the proposer builds on,
+from which `state` is derived.
 
 ##### Signed execution payload bid
 
@@ -209,6 +211,8 @@ top of a `state` MUST take the following actions in order to construct the
     `should_build_on_full(store, head)` is true, otherwise
     `state.latest_execution_payload_bid.parent_block_hash`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
+  - The `bid.prev_randao` equals
+    `get_randao_mix(state, get_current_epoch(state))`.
 - Select one bid and set
   `block.body.signed_execution_payload_bid = signed_execution_payload_bid`.
 

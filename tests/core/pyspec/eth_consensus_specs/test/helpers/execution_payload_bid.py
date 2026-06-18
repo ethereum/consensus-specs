@@ -7,19 +7,20 @@ def run_execution_payload_bid_processing(spec, state, block, valid=True):
     """
     Run ``process_execution_payload_bid``, yielding:
     - pre-state ('pre')
-    - block ('block')
+    - execution payload bid ('execution_payload_bid')
     - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
+    signed_bid = block.body.signed_execution_payload_bid
     yield "pre", state
-    yield "block", block
+    yield "execution_payload_bid", signed_bid
 
     if not valid:
-        expect_assertion_error(lambda: spec.process_execution_payload_bid(state, block))
+        expect_assertion_error(lambda: spec.process_execution_payload_bid(state, signed_bid))
         yield "post", None
         return
 
-    spec.process_execution_payload_bid(state, block)
+    spec.process_execution_payload_bid(state, signed_bid)
     yield "post", state
 
 
