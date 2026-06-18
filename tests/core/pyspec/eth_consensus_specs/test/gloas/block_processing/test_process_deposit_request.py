@@ -205,6 +205,56 @@ def test_process_deposit_request__builder_top_up_large(spec, state):
     )
 
 
+@with_gloas_and_later
+@spec_state_test
+def test_process_deposit_request__exited_builder_top_up_resets_withdrawable_epoch(spec, state):
+    """
+    Test top-up to an exited builder resets its withdrawable epoch.
+
+    Input State Configured:
+        - Existing builder at index 0 that has exited (withdrawable_epoch in the past)
+
+    Output State Verified:
+        - Builder balance increased (top-up)
+        - withdrawable_epoch reset to current_epoch + MIN_BUILDER_WITHDRAWABILITY_DELAY
+    """
+    builder_pubkey = state.builders[0].pubkey
+    amount = spec.MIN_DEPOSIT_AMOUNT
+    pre_builder_count = len(state.builders)
+
+    # Advance an epoch and mark builder 0 as exited (withdrawable_epoch in the past)
+    deposit_request = prepare_process_deposit_request(
+        spec,
+        state,
+        for_builder=True,
+        pubkey=builder_pubkey,
+        amount=amount,
+        signed=True,
+        advance_epochs=1,
+        builder_modifications={0: {"withdrawable_epoch": "current_epoch-1"}},
+    )
+    pre_state = state.copy()
+    expected_withdrawable_epoch = (
+        spec.get_current_epoch(state) + spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
+    )
+    # Sanity check: the exited epoch differs from the expected reset value
+    assert state.builders[0].withdrawable_epoch != expected_withdrawable_epoch
+
+    yield from run_deposit_request_processing(spec, state, deposit_request)
+
+    assert_process_deposit_request(
+        spec,
+        state,
+        pre_state,
+        deposit_request=deposit_request,
+        is_builder_deposit=True,
+        expected_builder_count=pre_builder_count,
+        expected_builder_index=0,
+        expected_builder_balance_delta=amount,
+        expected_builder_withdrawable_epoch=expected_withdrawable_epoch,
+    )
+
+
 #
 # Invalid signature tests
 #

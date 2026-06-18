@@ -1587,9 +1587,16 @@ def apply_deposit_for_builder(
         if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
             add_builder_to_registry(state, pubkey, withdrawal_credentials, amount, slot)
     else:
-        # Increase balance by deposit amount
         builder_index = builder_pubkeys.index(pubkey)
-        state.builders[builder_index].balance += amount
+        builder = state.builders[builder_index]
+
+        # Increase balance by deposit amount
+        builder.balance += amount
+
+        # If exited, reset the withdrawable epoch
+        if builder.withdrawable_epoch != FAR_FUTURE_EPOCH:
+            epoch = get_current_epoch(state)
+            builder.withdrawable_epoch = epoch + MIN_BUILDER_WITHDRAWABILITY_DELAY
 ```
 
 ###### Modified `process_deposit_request`
