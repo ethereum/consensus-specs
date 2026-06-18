@@ -12,7 +12,7 @@ from eth_consensus_specs.test.helpers.execution_requests import (
     get_non_empty_execution_requests,
 )
 from eth_consensus_specs.test.helpers.keys import pubkeys
-from tests.infra.helpers.deposit_requests import prepare_process_builder_deposit_request
+from tests.infra.helpers.builder_deposit_requests import prepare_process_builder_deposit_request
 from tests.infra.helpers.withdrawals import set_parent_block_full
 
 

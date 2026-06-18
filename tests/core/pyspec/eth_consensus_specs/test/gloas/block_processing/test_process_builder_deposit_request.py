@@ -2,8 +2,8 @@ from eth_consensus_specs.test.context import always_bls, spec_state_test, with_g
 from eth_consensus_specs.test.helpers.deposits import prepare_builder_deposit_request
 from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, privkeys, pubkeys
 from eth_consensus_specs.utils import bls
-from tests.infra.helpers.deposit_requests import (
-    assert_process_deposit_request,
+from tests.infra.helpers.builder_deposit_requests import (
+    assert_process_builder_deposit_request,
     prepare_process_builder_deposit_request,
     run_builder_deposit_request_processing,
 )
@@ -31,20 +31,20 @@ def run_builder_deposit_processing(
 
     if not valid:
         # Invalid deposit should not change state (builder not created)
-        assert_process_deposit_request(
+        assert_process_builder_deposit_request(
             spec,
             state,
             pre_state,
+            builder_deposit_request=builder_deposit_request,
             state_unchanged=True,
         )
     elif is_new_builder:
         # New builder should be added to registry
-        assert_process_deposit_request(
+        assert_process_builder_deposit_request(
             spec,
             state,
             pre_state,
-            deposit_request=builder_deposit_request,
-            is_builder_deposit=True,
+            builder_deposit_request=builder_deposit_request,
             expected_builder_balance=builder_deposit_request.amount,
             expected_execution_address=spec.ExecutionAddress(
                 builder_deposit_request.withdrawal_credentials[12:]
@@ -53,12 +53,11 @@ def run_builder_deposit_processing(
         )
     else:
         # Top-up should increase balance
-        assert_process_deposit_request(
+        assert_process_builder_deposit_request(
             spec,
             state,
             pre_state,
-            deposit_request=builder_deposit_request,
-            is_builder_deposit=True,
+            builder_deposit_request=builder_deposit_request,
             expected_builder_count=pre_builder_count,
             expected_builder_balance_delta=builder_deposit_request.amount,
         )
@@ -99,12 +98,11 @@ def test_process_builder_deposit_request__new_builder_nonzero_version(spec, stat
 
     yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
 
-    assert_process_deposit_request(
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=builder_deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=builder_deposit_request,
         expected_builder_balance=amount,
         expected_execution_address=spec.ExecutionAddress(
             builder_deposit_request.withdrawal_credentials[12:]
@@ -160,12 +158,11 @@ def test_process_builder_deposit_request__new_builder_extra_gwei(spec, state):
 
     yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
 
-    assert_process_deposit_request(
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=builder_deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=builder_deposit_request,
         expected_builder_balance=amount,
     )
 
@@ -192,12 +189,11 @@ def test_process_builder_deposit_request__new_builder_max_minus_one(spec, state)
 
     yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
 
-    assert_process_deposit_request(
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=builder_deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=builder_deposit_request,
         expected_builder_balance=amount,
     )
 
@@ -224,12 +220,11 @@ def test_process_builder_deposit_request__new_builder_empty_registry(spec, state
 
     yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
 
-    assert_process_deposit_request(
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=builder_deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=builder_deposit_request,
         expected_builder_count=1,
         expected_builder_index=0,
         expected_builder_balance=amount,
@@ -257,12 +252,11 @@ def test_process_builder_deposit_request__new_builder_pubkey_is_validator(spec, 
 
     yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
 
-    assert_process_deposit_request(
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=builder_deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=builder_deposit_request,
         expected_builder_count=pre_builder_count + 1,
         expected_builder_balance=amount,
     )
@@ -299,12 +293,11 @@ def test_process_builder_deposit_request__top_up(spec, state):
 
     yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
 
-    assert_process_deposit_request(
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=builder_deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=builder_deposit_request,
         expected_builder_count=pre_builder_count,
         expected_builder_balance=pre_balance + amount,
     )
@@ -357,12 +350,11 @@ def test_process_builder_deposit_request__top_up_single_builder(spec, state):
 
     yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
 
-    assert_process_deposit_request(
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=builder_deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=builder_deposit_request,
         expected_builder_count=1,
         expected_builder_balance=pre_balance + amount,
     )
@@ -380,7 +372,7 @@ def test_process_builder_deposit_request__top_up_last_index(spec, state):
 
     Output State Verified:
         - Last builder's balance increased
-        - Other builders unchanged (verified by assert_process_deposit_request invariant)
+        - Other builders unchanged (verified by assert_process_builder_deposit_request invariant)
     """
     last_index = len(state.builders) - 1
     pubkey = state.builders[last_index].pubkey
@@ -395,13 +387,12 @@ def test_process_builder_deposit_request__top_up_last_index(spec, state):
 
     yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
 
-    # assert_process_deposit_request verifies other builders unchanged for top-ups
-    assert_process_deposit_request(
+    # assert_process_builder_deposit_request verifies other builders unchanged for top-ups
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=builder_deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=builder_deposit_request,
         expected_builder_count=pre_builder_count,
         expected_builder_index=last_index,
         expected_builder_balance=pre_balance + amount,
@@ -438,12 +429,11 @@ def test_process_builder_deposit_request__top_up_ignores_request_fields(spec, st
     yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
 
     # Should top up the existing builder (other request fields are ignored)
-    assert_process_deposit_request(
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=builder_deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=builder_deposit_request,
         expected_builder_count=pre_builder_count,
         expected_builder_balance=pre_balance + amount,
     )
@@ -543,12 +533,11 @@ def test_process_builder_deposit_request__reuses_exited_builder_slot(spec, state
 
     yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
 
-    assert_process_deposit_request(
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=builder_deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=builder_deposit_request,
         slot_reused=True,
         expected_builder_count=pre_builder_count,
         expected_builder_index=0,
@@ -589,12 +578,11 @@ def test_process_builder_deposit_request__reuses_first_of_multiple_exited_slots(
 
     yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
 
-    assert_process_deposit_request(
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=builder_deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=builder_deposit_request,
         slot_reused=True,
         expected_builder_count=pre_builder_count,
         expected_builder_index=0,
@@ -629,12 +617,11 @@ def test_process_builder_deposit_request__reuses_slot_at_current_epoch(spec, sta
 
     yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
 
-    assert_process_deposit_request(
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=builder_deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=builder_deposit_request,
         slot_reused=True,
         expected_builder_count=pre_builder_count,
         expected_builder_index=0,
@@ -671,12 +658,11 @@ def test_process_builder_deposit_request__no_reuse_future_epoch(spec, state):
     yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
 
     # slot_reused=False also verifies original builders are unchanged
-    assert_process_deposit_request(
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=builder_deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=builder_deposit_request,
         slot_reused=False,
         expected_builder_count=pre_builder_count + 1,
         expected_builder_index=pre_builder_count,
@@ -713,12 +699,11 @@ def test_process_builder_deposit_request__no_reuse_nonzero_balance(spec, state):
     yield from run_builder_deposit_request_processing(spec, state, builder_deposit_request)
 
     # slot_reused=False also verifies original builders are unchanged
-    assert_process_deposit_request(
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=builder_deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=builder_deposit_request,
         slot_reused=False,
         expected_builder_count=pre_builder_count + 1,
         expected_builder_index=pre_builder_count,
@@ -761,12 +746,11 @@ def test_process_builder_deposit_request__exited_builder_top_up(spec, state):
 
     yield from run_builder_deposit_request_processing(spec, state, deposit_request)
 
-    assert_process_deposit_request(
+    assert_process_builder_deposit_request(
         spec,
         state,
         pre_state,
-        deposit_request=deposit_request,
-        is_builder_deposit=True,
+        builder_deposit_request=deposit_request,
         expected_builder_count=pre_builder_count,
         expected_builder_index=0,
         expected_builder_balance_delta=amount,

@@ -28,8 +28,14 @@ def test_process_deposit_request__builder_credentials_queued(spec, state):
         - No builder created (builder count unchanged)
     """
     amount = spec.MIN_DEPOSIT_AMOUNT
+    # Builder withdrawal credentials (0x03 prefix) on an otherwise ordinary deposit
+    withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
     deposit_request = prepare_process_deposit_request(
-        spec, state, for_builder=True, amount=amount, signed=True
+        spec,
+        state,
+        amount=amount,
+        signed=True,
+        withdrawal_credentials=withdrawal_credentials,
     )
     pre_state = state.copy()
 
@@ -61,8 +67,16 @@ def test_process_deposit_request__builder_pubkey_queued(spec, state):
         - Builder unchanged (no top-up)
     """
     amount = spec.MIN_DEPOSIT_AMOUNT
+    # Deposit for a pubkey that is already a builder, with builder (0x03) credentials
+    builder_pubkey = state.builders[0].pubkey
+    withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
     deposit_request = prepare_process_deposit_request(
-        spec, state, builder_index=0, amount=amount, signed=True
+        spec,
+        state,
+        pubkey=builder_pubkey,
+        amount=amount,
+        signed=True,
+        withdrawal_credentials=withdrawal_credentials,
     )
     pre_state = state.copy()
 
@@ -95,11 +109,12 @@ def test_process_deposit_request__builder_pubkey_validator_credentials(spec, sta
         - Builder unchanged (no top-up)
     """
     amount = spec.MIN_DEPOSIT_AMOUNT
+    builder_pubkey = state.builders[0].pubkey
     withdrawal_credentials = spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
     deposit_request = prepare_process_deposit_request(
         spec,
         state,
-        builder_index=0,
+        pubkey=builder_pubkey,
         amount=amount,
         signed=True,
         withdrawal_credentials=withdrawal_credentials,
