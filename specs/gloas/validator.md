@@ -19,6 +19,7 @@
       - [Signed execution payload bid](#signed-execution-payload-bid)
       - [Payload attestations](#payload-attestations)
       - [Parent execution requests](#parent-execution-requests)
+      - [Execution requests](#execution-requests)
       - [ExecutionPayload](#executionpayload)
       - [Voluntary exits](#voluntary-exits)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
@@ -248,6 +249,79 @@ parent's execution payload. The proposer constructs this field as follows:
   `store.payloads[head.root].execution_requests`.
 - Otherwise (the proposer is building on the parent's empty variant), set
   `parent_execution_requests` to an empty `ExecutionRequests()`.
+
+##### Execution requests
+
+*Note*: The function `get_execution_requests` is modified to parse the builder
+deposit requests and builder exit requests.
+
+```python
+def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
+    deposits = []
+    withdrawals = []
+    consolidations = []
+    # [New in Gloas:EIP8282]
+    builder_deposits = []
+    # [New in Gloas:EIP8282]
+    builder_exits = []
+
+    request_types = [
+        DEPOSIT_REQUEST_TYPE,
+        WITHDRAWAL_REQUEST_TYPE,
+        CONSOLIDATION_REQUEST_TYPE,
+        # [New in Gloas:EIP8282]
+        BUILDER_DEPOSIT_REQUEST_TYPE,
+        # [New in Gloas:EIP8282]
+        BUILDER_EXIT_REQUEST_TYPE,
+    ]
+
+    prev_request_type = None
+    for request in execution_requests_list:
+        request_type, request_data = request[0:1], request[1:]
+
+        # Check that the request type is valid
+        assert request_type in request_types
+        # Check that the request data is not empty
+        assert len(request_data) != 0
+        # Check that requests are in strictly ascending order
+        # Each successive type must be greater than the last with no duplicates
+        assert prev_request_type is None or prev_request_type < request_type
+        prev_request_type = request_type
+
+        if request_type == DEPOSIT_REQUEST_TYPE:
+            deposits = ssz_deserialize(
+                List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD], request_data
+            )
+        elif request_type == WITHDRAWAL_REQUEST_TYPE:
+            withdrawals = ssz_deserialize(
+                List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD], request_data
+            )
+        elif request_type == CONSOLIDATION_REQUEST_TYPE:
+            consolidations = ssz_deserialize(
+                List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD], request_data
+            )
+        # [New in Gloas:EIP8282]
+        elif request_type == BUILDER_DEPOSIT_REQUEST_TYPE:
+            builder_deposits = ssz_deserialize(
+                List[BuilderDepositRequest, MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD],
+                request_data,
+            )
+        # [New in Gloas:EIP8282]
+        elif request_type == BUILDER_EXIT_REQUEST_TYPE:
+            builder_exits = ssz_deserialize(
+                List[BuilderExitRequest, MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD], request_data
+            )
+
+    return ExecutionRequests(
+        deposits=deposits,
+        withdrawals=withdrawals,
+        consolidations=consolidations,
+        # [New in Gloas:EIP8282]
+        builder_deposits=builder_deposits,
+        # [New in Gloas:EIP8282]
+        builder_exits=builder_exits,
+    )
+```
 
 ##### ExecutionPayload
 

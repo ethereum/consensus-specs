@@ -12,7 +12,7 @@ from eth_consensus_specs.test.helpers.execution_requests import (
     get_non_empty_execution_requests,
 )
 from eth_consensus_specs.test.helpers.keys import pubkeys
-from tests.infra.helpers.deposit_requests import prepare_process_deposit_request
+from tests.infra.helpers.builder_deposit_requests import prepare_process_builder_deposit_request
 from tests.infra.helpers.withdrawals import set_parent_block_full
 
 
@@ -310,17 +310,16 @@ def test_process_parent_execution_payload__full_parent_with_execution_requests(s
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_parent_execution_payload__builder_deposit_after_pending_validator(spec, state):
+def test_process_parent_execution_payload__builder_credential_deposits_queued(spec, state):
     """
-    Test that a builder deposit cannot claim a pubkey that is already a pending validator
-    earlier in the same parent execution requests batch.
+    Test that deposit requests are queued as pending deposits regardless of
+    their withdrawal credentials. Deposit requests never create builders.
     """
     new_validator_index = len(state.validators)
     new_validator_pubkey = pubkeys[new_validator_index]
     amount = spec.MIN_DEPOSIT_AMOUNT
 
-    # First deposit: regular validator credentials with valid signature.
-    # Since no validator/builder/pending deposit exists for this pubkey, it is queued as a pending validator.
+    # First deposit: regular validator credentials with valid signature
     deposit_request_1 = prepare_deposit_request(
         spec,
         new_validator_index,
@@ -333,10 +332,7 @@ def test_process_parent_execution_payload__builder_deposit_after_pending_validat
         signed=True,
     )
 
-    # Second deposit: builder credentials for the same pubkey.
-    # ``is_pending_validator`` must see the first deposit (just queued) and route this one
-    # to the pending queue instead of the builder registry, preventing a builder from
-    # claiming a pubkey already in the validator queue.
+    # Second deposit: builder credentials for the same pubkey, also queued
     deposit_request_2 = prepare_deposit_request(
         spec,
         new_validator_index,
@@ -481,7 +477,7 @@ def test_process_parent_execution_payload__new_builder_does_not_reuse_topped_up_
     top_up_amount = spec.MIN_DEPOSIT_AMOUNT
     new_builder_amount = spec.MIN_DEPOSIT_AMOUNT
 
-    deposit_request_1 = prepare_process_deposit_request(
+    builder_deposit_request_1 = prepare_process_builder_deposit_request(
         spec,
         state,
         builder_index=0,
@@ -489,22 +485,17 @@ def test_process_parent_execution_payload__new_builder_does_not_reuse_topped_up_
         amount=top_up_amount,
         signed=True,
     )
-    deposit_request_2 = prepare_process_deposit_request(
+    builder_deposit_request_2 = prepare_process_builder_deposit_request(
         spec,
         state,
-        for_builder=True,
         amount=new_builder_amount,
         signed=True,
     )
 
     requests = spec.ExecutionRequests(
-        deposits=spec.List[spec.DepositRequest, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD](
-            [deposit_request_1, deposit_request_2]
-        ),
-        withdrawals=spec.List[spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD](),
-        consolidations=spec.List[
-            spec.ConsolidationRequest, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
-        ](),
+        builder_deposits=spec.List[
+            spec.BuilderDepositRequest, spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
+        ]([builder_deposit_request_1, builder_deposit_request_2]),
     )
 
     _commit_parent_requests(spec, state, requests)
@@ -524,10 +515,54 @@ def test_process_parent_execution_payload__new_builder_does_not_reuse_topped_up_
 
     new_builder_index = None
     for i, builder in enumerate(state.builders):
-        if builder.pubkey == deposit_request_2.pubkey:
+        if builder.pubkey == builder_deposit_request_2.pubkey:
             new_builder_index = i
             break
 
     assert new_builder_index is not None
     assert new_builder_index != 0
     assert state.builders[new_builder_index].balance == new_builder_amount
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_parent_execution_payload__builder_exit_request(spec, state):
+    """
+    Test that a builder exit request in the parent's execution requests exits an
+    active builder authorized by its execution address.
+    """
+    builder_index = 0
+
+    # Finalize the builder's deposit epoch so that it is active
+    state.finalized_checkpoint.epoch = state.builders[builder_index].deposit_epoch + 1
+    assert spec.is_active_builder(state, builder_index)
+    assert spec.get_pending_balance_to_withdraw_for_builder(state, builder_index) == 0
+
+    builder = state.builders[builder_index]
+    requests = spec.ExecutionRequests(
+        builder_exits=spec.List[
+            spec.BuilderExitRequest, spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
+        ](
+            [
+                spec.BuilderExitRequest(
+                    source_address=builder.execution_address,
+                    pubkey=builder.pubkey,
+                )
+            ]
+        ),
+    )
+
+    _commit_parent_requests(spec, state, requests)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.parent_execution_requests = requests
+
+    spec.process_slots(state, block.slot)
+    current_epoch = spec.get_current_epoch(state)
+
+    yield from run_parent_execution_payload_processing(spec, state, block)
+
+    # The builder exit was initiated
+    assert not spec.is_active_builder(state, builder_index)
+    expected_withdrawable = current_epoch + spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
+    assert state.builders[builder_index].withdrawable_epoch == expected_withdrawable
