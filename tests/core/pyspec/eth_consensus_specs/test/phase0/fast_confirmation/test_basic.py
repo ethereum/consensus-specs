@@ -2,16 +2,13 @@ from eth_consensus_specs.test.context import (
     default_activation_threshold,
     default_balances,
     MINIMAL,
+    never_bls,
     only_generator,
     single_phase,
     spec_test,
-    with_all_phases_from_to,
+    with_altair_and_later,
     with_custom_state,
     with_presets,
-)
-from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    GLOAS,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     FCRTest,
@@ -19,7 +16,7 @@ from eth_consensus_specs.test.helpers.fast_confirmation import (
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=128)),
@@ -27,6 +24,7 @@ from eth_consensus_specs.test.helpers.fast_confirmation import (
 )
 @spec_test
 @single_phase
+@never_bls
 def test_fast_confirm_an_epoch(spec, state):
     fcr_test = FCRTest(spec, seed=1)
     _store, fcr_store = fcr_test.initialize(state)

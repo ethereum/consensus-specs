@@ -2,16 +2,13 @@ from eth_consensus_specs.test.context import (
     default_activation_threshold,
     default_balances,
     MINIMAL,
+    never_bls,
     only_generator,
     single_phase,
     spec_test,
-    with_all_phases_from_to,
+    with_altair_and_later,
     with_custom_state,
     with_presets,
-)
-from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    GLOAS,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     Attesting,
@@ -26,7 +23,7 @@ Test is_confirmed_chain_safe
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -34,6 +31,7 @@ Test is_confirmed_chain_safe
 )
 @spec_test
 @single_phase
+@never_bls
 def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
     """
     1. Build until last slot of epoch 2 with 100% participation
@@ -116,7 +114,7 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -124,6 +122,7 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_reconfirmation_fails_for_block_without_uj_checkpoint_in_chain(spec, state):
     fcr = FCRTest(spec, seed=1)
     store, fcr_store = fcr.initialize(state)

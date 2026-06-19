@@ -2,16 +2,13 @@ from eth_consensus_specs.test.context import (
     default_activation_threshold,
     default_balances,
     MINIMAL,
+    never_bls,
     only_generator,
     single_phase,
     spec_test,
-    with_all_phases_from_to,
+    with_altair_and_later,
     with_custom_state,
     with_presets,
-)
-from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    GLOAS,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     Attesting,
@@ -27,7 +24,7 @@ Test will_no_conflicting_checkpoint_be_justified
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=96)),
@@ -35,6 +32,7 @@ Test will_no_conflicting_checkpoint_be_justified
 )
 @spec_test
 @single_phase
+@never_bls
 def test_will_no_conflicting_checkpoint_be_justified_fails_at_strictly_one_third(spec, state):
     """
     Based on the fact that there are 96 vals in total.
@@ -122,7 +120,7 @@ Test will_current_target_be_justified
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=96)),
@@ -130,6 +128,7 @@ Test will_current_target_be_justified
 )
 @spec_test
 @single_phase
+@never_bls
 def test_will_current_target_be_justified_passes_at_strictly_two_third(spec, state):
     """
     Based on the fact that there are 96 vals in total.

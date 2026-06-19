@@ -2,16 +2,13 @@ from eth_consensus_specs.test.context import (
     default_activation_threshold,
     default_balances,
     MINIMAL,
+    never_bls,
     only_generator,
     single_phase,
     spec_test,
-    with_all_phases_from_to,
+    with_altair_and_later,
     with_custom_state,
     with_presets,
-)
-from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    GLOAS,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     FCRTest,
@@ -26,7 +23,7 @@ Test on update FCR variables
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -34,6 +31,7 @@ Test on update FCR variables
 )
 @spec_test
 @single_phase
+@never_bls
 def test_fcr_invariants_monotone_and_canonical(spec, state):
     """
     Validates two critical properties of the Fast Confirmation Rule:
@@ -71,7 +69,7 @@ def test_fcr_invariants_monotone_and_canonical(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -79,6 +77,7 @@ def test_fcr_invariants_monotone_and_canonical(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_observed_justified_checkpoints_update_timing(spec, state):
     """
     Test the timing of observed justified checkpoint updates:
@@ -196,7 +195,7 @@ def test_observed_justified_checkpoints_update_timing(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -204,6 +203,7 @@ def test_observed_justified_checkpoints_update_timing(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_observed_justified_checkpoints_properties_across_epochs(spec, state):
     """
 
@@ -321,7 +321,7 @@ def test_observed_justified_checkpoints_properties_across_epochs(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -329,6 +329,7 @@ def test_observed_justified_checkpoints_properties_across_epochs(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_observed_justified_stalls_under_low_participation(spec, state):
     """
     Test that observed justified checkpoints stall (don't advance) under low participation.
@@ -361,7 +362,7 @@ def test_observed_justified_stalls_under_low_participation(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -369,6 +370,7 @@ def test_observed_justified_stalls_under_low_participation(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_slot_head_variables_updated_every_slot(spec, state):
     """
     Test that previous_slot_head and current_slot_head are updated every slot.
@@ -410,7 +412,7 @@ def test_slot_head_variables_updated_every_slot(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -418,6 +420,7 @@ def test_slot_head_variables_updated_every_slot(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_gu_snapshot_initialization_and_stability(spec, state):
     """
     Test properties of previous_epoch_greatest_unrealized_checkpoint:
@@ -481,7 +484,7 @@ def test_gu_snapshot_initialization_and_stability(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -489,6 +492,7 @@ def test_gu_snapshot_initialization_and_stability(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_observed_justified_stable_during_last_slot(spec, state):
     """
     At the last slot of an epoch, the observed justified checkpoints used by is_one_confirmed must still
