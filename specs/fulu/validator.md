@@ -91,13 +91,13 @@ class GetPayloadResponse:
 
 #### Modified `get_payload`
 
-The `get_payload` method is modified to return the updated `GetPayloadResponse`
+*Note*: The `get_payload` function returns the updated `GetPayloadResponse`
 object.
 
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ExecutionPayload, uint256, BlobsBundle objects.
+    Return ExecutionPayload, uint256, BlobsBundle, and execution requests (as Sequence[bytes]) objects.
     """
 ```
 
