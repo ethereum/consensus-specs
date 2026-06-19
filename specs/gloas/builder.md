@@ -10,6 +10,7 @@
   - [Process deposit](#process-deposit)
   - [Builder index](#builder-index)
   - [Activation](#activation)
+  - [Exiting](#exiting)
 - [Builder activities](#builder-activities)
   - [Constructing the `SignedExecutionPayloadBid`](#constructing-the-signedexecutionpayloadbid)
   - [Constructing the `DataColumnSidecar`s](#constructing-the-datacolumnsidecars)
@@ -49,10 +50,12 @@ deposit contract on the execution layer, as defined in
   under `DOMAIN_BUILDER_DEPOSIT`.
 
 *Note*: Builders may be onboarded at the fork by submitting a deposit to the
-validator deposit contract with a 0x03 withdrawal credential. This must be done
-late enough that the deposit is still pending at the fork. Such a deposit signs
-over `DepositMessage` under `DOMAIN_DEPOSIT`, with withdrawal credentials of the
-form `BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + execution_address`.
+validator deposit contract with a `0x03` withdrawal credential. This must be
+done late enough that the deposit is still pending at the fork, but early enough
+that the slot in which the deposit is added to the pending deposit queue is
+finalized so that the builder is considered active. Such a deposit signs over
+`DepositMessage` under `DOMAIN_DEPOSIT`, with withdrawal credentials of the form
+`BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + execution_address`.
 
 ### Process deposit
 
@@ -77,6 +80,19 @@ applied to the builder registry. The builder's `deposit_epoch` is set to the
 epoch of the pending deposit, not the fork epoch. Therefore, if that epoch is
 finalized at the fork, the builder will be immediately active. See
 `onboard_builders_from_pending_deposits` for details.
+
+### Exiting
+
+A builder exits by submitting a builder exit request to the builder exit
+contract on the execution layer, as defined in
+[EIP-8282](https://eips.ethereum.org/EIPS/eip-8282). The request contains the
+builder's `pubkey` and is authorized by the builder's `execution_address` (the
+transaction sender), not the BLS key.
+
+The consensus layer initiates the exit only if the builder is active, the
+request's `source_address` matches the builder's `execution_address`, and the
+builder has no pending balance to withdraw. Otherwise the request is consumed
+without effect and must be resubmitted once those conditions hold.
 
 ## Builder activities
 

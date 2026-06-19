@@ -252,10 +252,8 @@ parent's execution payload. The proposer constructs this field as follows:
 
 ##### Execution requests
 
-*Note*: In Gloas, execution requests are carried in the
-`ExecutionPayloadEnvelope` rather than the `BeaconBlockBody`. The function
-`get_execution_requests` is modified to parse the builder deposit and builder
-exit request types, and is used by the builder when constructing the envelope.
+*Note*: The function `get_execution_requests` is modified to parse the builder
+deposit requests and builder exit requests.
 
 ```python
 def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
