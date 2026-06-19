@@ -270,6 +270,43 @@ def test_process_execution_payload_bid_inactive_builder_exiting(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_process_execution_payload_bid_non_payload_builder_version(spec, state):
+    """
+    Test that a bid from a builder whose version is not PAYLOAD_BUILDER_VERSION fails.
+    """
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    next_epoch_with_full_participation(spec, state)
+    assert state.finalized_checkpoint.epoch == 2
+
+    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+    assert spec.is_active_builder(state, builder_index)
+
+    # Mark the builder as a non-payload builder, leaving every other condition valid
+    state.builders[builder_index].version = spec.uint8(spec.PAYLOAD_BUILDER_VERSION + 1)
+    assert state.builders[builder_index].version != spec.PAYLOAD_BUILDER_VERSION
+
+    # The builder can cover the bid, so the version check is the only failing condition
+    value = spec.Gwei(1000000)  # 0.001 ETH
+    assert spec.can_builder_cover_bid(state, builder_index, value)
+
+    signed_bid = prepare_signed_execution_payload_bid(
+        spec,
+        state,
+        builder_index=builder_index,
+        value=value,
+        slot=block.slot,
+        parent_block_root=block.parent_root,
+    )
+
+    block.body.signed_execution_payload_bid = signed_bid
+
+    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_process_execution_payload_bid_self_build_non_zero_value(spec, state):
     """
     Test self-builder with non-zero value fails (builder_index == BUILDER_INDEX_SELF_BUILD but value > 0)

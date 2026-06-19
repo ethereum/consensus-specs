@@ -11,6 +11,7 @@
   - [Domains](#domains)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
+  - [Builder versions](#builder-versions)
   - [Execution-layer triggered requests](#execution-layer-triggered-requests)
 - [Preset](#preset)
   - [Misc](#misc-1)
@@ -173,6 +174,12 @@ future validator withdrawal prefix may reuse this value.
 | Name                        | Value            | Description                                |
 | --------------------------- | ---------------- | ------------------------------------------ |
 | `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` | Withdrawal credential prefix for a builder |
+
+### Builder versions
+
+| Name                      | Value      | Description                              |
+| ------------------------- | ---------- | ---------------------------------------- |
+| `PAYLOAD_BUILDER_VERSION` | `uint8(0)` | Version for an execution payload builder |
 
 ### Execution-layer triggered requests
 
@@ -1538,6 +1545,8 @@ def process_execution_payload_bid(
     else:
         # Verify that the builder is active
         assert is_active_builder(state, builder_index)
+        # Verify that the builder is a payload builder
+        assert state.builders[builder_index].version == PAYLOAD_BUILDER_VERSION
         # Verify that the builder has funds to cover the bid
         assert can_builder_cover_bid(state, builder_index, amount)
         # Verify that the bid signature is valid

@@ -44,7 +44,8 @@ deposit contract on the execution layer, as defined in
 - `pubkey`: The builder's BLS public key.
 - `withdrawal_credentials`: The withdrawal credentials, where the first byte is
   the builder version and the last 20 bytes are the execution-layer address that
-  will receive withdrawals.
+  will receive withdrawals. For the version, execution payload builders should
+  use `PAYLOAD_BUILDER_VERSION`.
 - `amount`: At least `MIN_DEPOSIT_AMOUNT` gwei.
 - `signature`: BLS proof of possession over the corresponding `DepositMessage`
   under `DOMAIN_BUILDER_DEPOSIT`.
