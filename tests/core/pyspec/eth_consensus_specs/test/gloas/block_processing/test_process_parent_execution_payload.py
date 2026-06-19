@@ -522,3 +522,47 @@ def test_process_parent_execution_payload__new_builder_does_not_reuse_topped_up_
     assert new_builder_index is not None
     assert new_builder_index != 0
     assert state.builders[new_builder_index].balance == new_builder_amount
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_parent_execution_payload__builder_exit_request(spec, state):
+    """
+    Test that a builder exit request in the parent's execution requests exits an
+    active builder authorized by its execution address.
+    """
+    builder_index = 0
+
+    # Finalize the builder's deposit epoch so that it is active
+    state.finalized_checkpoint.epoch = state.builders[builder_index].deposit_epoch + 1
+    assert spec.is_active_builder(state, builder_index)
+    assert spec.get_pending_balance_to_withdraw_for_builder(state, builder_index) == 0
+
+    builder = state.builders[builder_index]
+    requests = spec.ExecutionRequests(
+        builder_exits=spec.List[
+            spec.BuilderExitRequest, spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
+        ](
+            [
+                spec.BuilderExitRequest(
+                    source_address=builder.execution_address,
+                    pubkey=builder.pubkey,
+                )
+            ]
+        ),
+    )
+
+    _commit_parent_requests(spec, state, requests)
+
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.parent_execution_requests = requests
+
+    spec.process_slots(state, block.slot)
+    current_epoch = spec.get_current_epoch(state)
+
+    yield from run_parent_execution_payload_processing(spec, state, block)
+
+    # The builder exit was initiated
+    assert not spec.is_active_builder(state, builder_index)
+    expected_withdrawable = current_epoch + spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
+    assert state.builders[builder_index].withdrawable_epoch == expected_withdrawable
