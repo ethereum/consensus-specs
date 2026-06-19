@@ -34,7 +34,7 @@ Heze is a consensus-layer upgrade containing a number of features. Including:
 
 | Name                              | Value                      |
 | --------------------------------- | -------------------------- |
-| `DOMAIN_INCLUSION_LIST_COMMITTEE` | `DomainType('0x0E000000')` |
+| `DOMAIN_INCLUSION_LIST_COMMITTEE` | `DomainType('0x10000000')` |
 
 ## Preset
 
