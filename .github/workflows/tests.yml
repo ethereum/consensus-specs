@@ -143,7 +143,7 @@ jobs:
         fork: ${{ fromJson(needs.config.outputs.forks) }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: ${{ needs.config.outputs.repo }}
           ref: ${{ needs.config.outputs.ref }}
@@ -154,12 +154,12 @@ jobs:
           python-version-file: "pyproject.toml"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
 
       - name: Generate tests
-        run: make test component=pyspec preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true
+        run: make test component=pyspec preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true coverage=${{ matrix.preset != 'general' && 'true' || 'false' }}
 
       - name: Upload reference tests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -167,6 +167,45 @@ jobs:
           name: reftests-${{ matrix.preset }}-${{ matrix.fork }}
           path: reftests/${{ matrix.preset }}
           if-no-files-found: ignore
+
+      # Renamed because upload-artifact excludes hidden files.
+      - name: Stage coverage data
+        if: matrix.preset != 'general'
+        run: mv .coverage coverage-data
+
+      - name: Upload coverage data
+        if: matrix.preset != 'general'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-data-${{ matrix.preset }}-${{ matrix.fork }}
+          path: coverage-data
+
+  coverage:
+    needs: [config, generate]
+    if: >-
+      contains(fromJson(needs.config.outputs.presets), 'minimal') ||
+      contains(fromJson(needs.config.outputs.presets), 'mainnet')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          repository: ${{ needs.config.outputs.repo }}
+          ref: ${{ needs.config.outputs.ref }}
+
+      - name: Combine coverages
+        uses: ./.github/actions/combine-coverages
+        with:
+          artifact-prefix: coverage-data
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage
+          path: coverage
 
   package:
     needs: [config, generate]
@@ -178,7 +217,7 @@ jobs:
         preset: ${{ fromJson(needs.config.outputs.presets) }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Package reference tests
         uses: ./.github/actions/package

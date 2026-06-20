@@ -35,22 +35,6 @@ change is made to upgrade to Heze.
 ```python
 def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
     epoch = gloas.get_current_epoch(pre)
-    latest_execution_payload_bid = ExecutionPayloadBid(
-        parent_block_hash=pre.latest_execution_payload_bid.parent_block_hash,
-        parent_block_root=pre.latest_execution_payload_bid.parent_block_root,
-        block_hash=pre.latest_execution_payload_bid.block_hash,
-        prev_randao=pre.latest_execution_payload_bid.prev_randao,
-        fee_recipient=pre.latest_execution_payload_bid.fee_recipient,
-        gas_limit=pre.latest_execution_payload_bid.gas_limit,
-        builder_index=pre.latest_execution_payload_bid.builder_index,
-        slot=pre.latest_execution_payload_bid.slot,
-        value=pre.latest_execution_payload_bid.value,
-        execution_payment=pre.latest_execution_payload_bid.execution_payment,
-        blob_kzg_commitments=pre.latest_execution_payload_bid.blob_kzg_commitments,
-        execution_requests_root=pre.latest_execution_payload_bid.execution_requests_root,
-        # [New in Heze:EIP7805]
-        inclusion_list_bits=Bitvector[INCLUSION_LIST_COMMITTEE_SIZE](),
-    )
 
     post = BeaconState(
         genesis_time=pre.genesis_time,
@@ -58,7 +42,7 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            # [Modified in Heze:EIP7805]
+            # [Modified in Heze]
             current_version=HEZE_FORK_VERSION,
             epoch=epoch,
         ),
@@ -101,8 +85,7 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         execution_payload_availability=pre.execution_payload_availability,
         builder_pending_payments=pre.builder_pending_payments,
         builder_pending_withdrawals=pre.builder_pending_withdrawals,
-        # [Modified in Heze:EIP7805]
-        latest_execution_payload_bid=latest_execution_payload_bid,
+        latest_execution_payload_bid=pre.latest_execution_payload_bid,
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
     )

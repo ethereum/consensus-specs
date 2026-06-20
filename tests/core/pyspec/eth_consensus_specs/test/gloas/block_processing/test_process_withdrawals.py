@@ -1558,3 +1558,53 @@ def test_empty_parent_preserves_populated_expected_withdrawals(spec, state):
 
     assert_process_withdrawals(spec, state, pre_state, all_state_unchanged=True)
     assert list(spec.get_expected_withdrawals(state).withdrawals) != populated_withdrawals
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_sweep_withdrawals_limit(spec, state):
+    """
+    Test that the builder sweep checks the withdrawals limit
+    """
+    # The sweep reserves one slot for the validator sweep
+    sweep_limit = spec.MAX_WITHDRAWALS_PER_PAYLOAD - 1
+
+    # More eligible builders than the limit, so the limit stops the sweep
+    eligible_builders = list(range(sweep_limit + 1))
+    for builder_index in eligible_builders:
+        if builder_index >= len(state.builders):
+            add_builder_to_registry(spec, state, builder_index)
+    assert len(state.builders) >= len(eligible_builders)
+
+    balances = {i: spec.Gwei((i + 1) * 1_000_000_000) for i in eligible_builders}
+
+    # Setup sweep withdrawals
+    prepare_process_withdrawals(
+        spec,
+        state,
+        builder_sweep_indices=eligible_builders,
+        builder_balances=balances,
+        next_withdrawal_builder_index=0,
+    )
+
+    pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    withdrawn = eligible_builders[:sweep_limit]
+    reserved = eligible_builders[sweep_limit]
+
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        withdrawal_count=sweep_limit,
+        builder_balances={
+            **dict.fromkeys(withdrawn, 0),
+            reserved: balances[reserved],
+        },
+        withdrawal_amounts_builders={i: balances[i] for i in withdrawn},
+        withdrawal_index_delta=sweep_limit,
+    )
+
+    # assert_process_withdrawals does not check the sweep cursor
+    assert state.next_withdrawal_builder_index == sweep_limit

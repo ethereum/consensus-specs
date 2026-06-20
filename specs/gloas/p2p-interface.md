@@ -21,16 +21,16 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
-        - [`beacon_block`](#beacon_block)
-        - [`execution_payload`](#execution_payload)
-        - [`payload_attestation_message`](#payload_attestation_message)
-        - [`execution_payload_bid`](#execution_payload_bid)
-        - [`proposer_preferences`](#proposer_preferences)
-      - [Blob subnets](#blob-subnets)
-        - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
+        - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
+        - [Modified `beacon_block`](#modified-beacon_block)
+        - [New `execution_payload`](#new-execution_payload)
+        - [New `payload_attestation_message`](#new-payload_attestation_message)
+        - [New `execution_payload_bid`](#new-execution_payload_bid)
+        - [New `proposer_preferences`](#new-proposer_preferences)
       - [Attestation subnets](#attestation-subnets)
-        - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
+        - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
+      - [Blob subnets](#blob-subnets)
+        - [Modified `data_column_sidecar_{subnet_id}`](#modified-data_column_sidecar_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
@@ -67,7 +67,7 @@ libp2p messages.
 | `MAX_ATTESTER_SLASHING_SIZE`            | `2097616` bytes (= ~2 MiB)  | Type-specific SSZ bound for `AttesterSlashing`          |
 | `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `8585272` bytes (= ~8 MiB)  | Type-specific SSZ bound for `DataColumnSidecar`         |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `196932` bytes (= ~192 KiB) | Type-specific SSZ bound for `SignedExecutionPayloadBid` |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE`          | `4034304` bytes (= ~4 MiB)  | Type-specific SSZ bound for `SignedBeaconBlock`         |
+| `MAX_SIGNED_BEACON_BLOCK_SIZE`          | `4082504` bytes (= ~4 MiB)  | Type-specific SSZ bound for `SignedBeaconBlock`         |
 
 ### Configuration
 
@@ -258,7 +258,7 @@ are given in this table:
 Gloas introduces new global topics for execution bid, execution payload and
 payload attestation.
 
-###### `beacon_aggregate_and_proof`
+###### Modified `beacon_aggregate_and_proof`
 
 Let `block` be the beacon block corresponding to
 `aggregate.data.beacon_block_root`.
@@ -279,7 +279,7 @@ The following validations are removed:
 
 - _[REJECT]_ `aggregate.data.index == 0`.
 
-###### `beacon_block`
+###### Modified `beacon_block`
 
 *[Modified in Gloas:EIP7732]*
 
@@ -312,8 +312,10 @@ And instead the following validations are set in place with the alias
   their respective limits -- i.e. validate that
   `len(block.body.parent_execution_requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD`,
   `len(block.body.parent_execution_requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`,
+  `len(block.body.parent_execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`,
+  `len(block.body.parent_execution_requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD`,
   and
-  `len(block.body.parent_execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`.
+  `len(block.body.parent_execution_requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`.
 - _[REJECT]_ The counts of the block body operations are within their respective
   limits -- i.e. validate that
   `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`,
@@ -333,7 +335,7 @@ And instead the following validations are set in place with the alias
 - [REJECT] The bid's parent (defined by `bid.parent_block_root`) equals the
   block's parent (defined by `block.parent_root`).
 
-###### `execution_payload`
+###### New `execution_payload`
 
 This topic is used to propagate execution payload messages as
 `SignedExecutionPayloadEnvelope`.
@@ -367,14 +369,16 @@ obtained from the `state.latest_execution_payload_bid`)
   limits -- i.e. validate that
   `len(execution_requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD`,
   `len(execution_requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`,
+  `len(execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`,
+  `len(execution_requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD`,
   and
-  `len(execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`.
+  `len(execution_requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`.
 - _[REJECT]_ The number of withdrawals is within the limit -- i.e. validate that
   `len(payload.withdrawals) <= MAX_WITHDRAWALS_PER_PAYLOAD`.
 - _[REJECT]_ `signed_execution_payload_envelope.signature` is valid as verified
   by `verify_execution_payload_envelope_signature`.
 
-###### `payload_attestation_message`
+###### New `payload_attestation_message`
 
 This topic is used to propagate signed payload attestation message.
 
@@ -400,7 +404,7 @@ The following validations MUST pass before forwarding the
 - _[REJECT]_ `payload_attestation_message.signature` is valid with respect to
   the validator's public key.
 
-###### `execution_payload_bid`
+###### New `execution_payload_bid`
 
 This topic is used to propagate signed bids as `SignedExecutionPayloadBid`.
 
@@ -417,6 +421,8 @@ where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
 - _[IGNORE]_ The matching `signed_proposer_preferences` has been seen.
 - _[REJECT]_ `bid.builder_index` is a valid/active builder index -- i.e.
   `is_active_builder(state, bid.builder_index)` returns `True`.
+- _[REJECT]_ The builder version is `PAYLOAD_BUILDER_VERSION` -- i.e.
+  `state.builders[bid.builder_index].version == PAYLOAD_BUILDER_VERSION`.
 - _[REJECT]_ `bid.execution_payment == 0`.
 - _[REJECT]_ `bid.fee_recipient == proposer_preferences.fee_recipient`.
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
@@ -438,6 +444,8 @@ where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
 - _[REJECT]_ The bid is for a higher slot than its parent block -- i.e. validate
   that `bid.slot` is greater than the slot of the block with root
   `bid.parent_block_root`.
+- _[REJECT]_ `bid.prev_randao` is the correct RANDAO mix -- i.e. validate that
+  `bid.prev_randao == get_randao_mix(parent_state, get_current_epoch(parent_state))`.
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
 
@@ -466,7 +474,7 @@ Possible strategies include: (1) only forwarding bids that exceed the current
 highest bid by a minimum threshold, or (2) forwarding only the highest observed
 bid at regular time intervals.
 
-###### `proposer_preferences`
+###### New `proposer_preferences`
 
 *[New in Gloas:EIP7732]*
 
@@ -528,9 +536,33 @@ def get_proposer_dependent_root(state: BeaconState, epoch: Epoch) -> Root:
 activation. Proposers SHOULD broadcast their preferences in the epoch before the
 fork.
 
+##### Attestation subnets
+
+###### Modified `beacon_attestation_{subnet_id}`
+
+Let `block` be the beacon block corresponding to
+`attestation.data.beacon_block_root`.
+
+The following validations are added:
+
+- _[REJECT]_ `attestation.data.index < 2`.
+- _[REJECT]_ `attestation.data.index == 0` if
+  `block.slot == attestation.data.slot`.
+- _[REJECT]_ If `attestation.data.index == 1` (payload present for a past
+  block), the execution payload for `block` passes validation.
+- _[IGNORE]_ When `attestation.data.index == 1` (payload present for a past
+  block), the execution payload for `block` has been seen (a client MAY queue
+  attestations for processing once the payload is retrieved and SHOULD request
+  the payload envelope via `ExecutionPayloadEnvelopesByRoot` using
+  `attestation.data.beacon_block_root`).
+
+The following validations are removed:
+
+- _[REJECT]_ `attestation.data.index == 0`.
+
 ##### Blob subnets
 
-###### `data_column_sidecar_{subnet_id}`
+###### Modified `data_column_sidecar_{subnet_id}`
 
 *[Modified in Gloas:EIP7732]*
 
@@ -557,30 +589,6 @@ The following validations MUST pass before forwarding the
 *Note*: If the sidecar fails deferred validation, its forwarding peers MUST be
 downscored retroactively. If validation succeeds, the client MUST re-broadcast
 the sidecar.
-
-##### Attestation subnets
-
-###### `beacon_attestation_{subnet_id}`
-
-Let `block` be the beacon block corresponding to
-`attestation.data.beacon_block_root`.
-
-The following validations are added:
-
-- _[REJECT]_ `attestation.data.index < 2`.
-- _[REJECT]_ `attestation.data.index == 0` if
-  `block.slot == attestation.data.slot`.
-- _[REJECT]_ If `attestation.data.index == 1` (payload present for a past
-  block), the execution payload for `block` passes validation.
-- _[IGNORE]_ When `attestation.data.index == 1` (payload present for a past
-  block), the execution payload for `block` has been seen (a client MAY queue
-  attestations for processing once the payload is retrieved and SHOULD request
-  the payload envelope via `ExecutionPayloadEnvelopesByRoot` using
-  `attestation.data.beacon_block_root`).
-
-The following validations are removed:
-
-- _[REJECT]_ `attestation.data.index == 0`.
 
 ### The Req/Resp domain
 

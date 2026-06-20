@@ -575,7 +575,7 @@ wheels = [
 
 [[package]]
 name = "eth-consensus-specs"
-version = "1.7.0a10"
+version = "1.7.0a11"
 source = { editable = "." }
 dependencies = [
     { name = "eth-remerkleable" },
@@ -629,7 +629,7 @@ requires-dist = [
     { name = "codespell", marker = "extra == 'lint'", specifier = "==2.4.2" },
     { name = "deepdiff", marker = "extra == 'test'", specifier = "==9.1.0" },
     { name = "eth-hash", extras = ["pycryptodome"], marker = "extra == 'test'", specifier = "==0.8.0" },
-    { name = "eth-remerkleable", specifier = "==0.1.30" },
+    { name = "eth-remerkleable", specifier = "==0.1.31" },
     { name = "eth-utils", specifier = "==6.0.0" },
     { name = "frozendict", specifier = "==2.4.7" },
     { name = "lru-dict", specifier = "==1.4.1" },
@@ -640,7 +640,7 @@ requires-dist = [
     { name = "mdformat-gfm-alerts", marker = "extra == 'lint'", specifier = "==2.0.0" },
     { name = "mdformat-toc", marker = "extra == 'lint'", specifier = "==0.5.0" },
     { name = "mdx-truly-sane-lists", marker = "extra == 'docs'", specifier = "==1.3" },
-    { name = "milagro-bls-binding", specifier = "==1.9.0" },
+    { name = "milagro-bls-binding", specifier = "==1.9.1" },
     { name = "minizinc", marker = "extra == 'test'", specifier = "==0.10.0" },
     { name = "mkdocs", marker = "extra == 'docs'", specifier = "==1.6.1" },
     { name = "mkdocs-awesome-pages-plugin", marker = "extra == 'docs'", specifier = "==2.10.1" },
@@ -650,7 +650,7 @@ requires-dist = [
     { name = "psutil", marker = "extra == 'test'", specifier = "==7.2.2" },
     { name = "py-arkworks-bls12381", specifier = "==0.4.1" },
     { name = "py-ecc", specifier = "==8.0.0" },
-    { name = "pytest", marker = "extra == 'test'", specifier = "==9.0.3" },
+    { name = "pytest", marker = "extra == 'test'", specifier = "==9.1.0" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = "==7.1.0" },
     { name = "pytest-html", marker = "extra == 'test'", specifier = "==4.2.0" },
     { name = "pytest-sugar", marker = "extra == 'test'", specifier = "==1.1.1" },
@@ -679,11 +679,11 @@ pycryptodome = [
 
 [[package]]
 name = "eth-remerkleable"
-version = "0.1.30"
+version = "0.1.31"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/93/c4/5e9ec5e8f76c0b03ad4127c5b35df50cda65a65bf1a552f081b364909104/eth_remerkleable-0.1.30.tar.gz", hash = "sha256:0dba8661d42014ca19e3acac9932877ea5981d33326bf1a0e1719f680c47efb6", size = 49438, upload-time = "2026-04-08T03:35:53.074Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/51/ac/40fde655f67fd02f07b28e3fe4b9bb4af521388ca8aa48462d622ce4fa03/eth_remerkleable-0.1.31.tar.gz", hash = "sha256:94df4b18a50dfc46f55b2e790cfece384e64032e9cb82d185cff09224682ad1d", size = 49525, upload-time = "2026-06-11T13:23:38.552Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b9/82/70c148dff9739b49ebb7607506b2b7d5d3f721c5ba372979a333ed692f0b/eth_remerkleable-0.1.30-py3-none-any.whl", hash = "sha256:eaa2acbc43158f8259e0f72eeab14c158669758522b4620d19bae59800c2ae3a", size = 57046, upload-time = "2026-04-08T03:35:51.771Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/a1/87f7c996f344c5f213c2bca657e579c3696bb99737238c0cf9f04867386a/eth_remerkleable-0.1.31-py3-none-any.whl", hash = "sha256:7e48ea1b80935977effc02300f3f9b1db19153ab87ffbcea14a6e6429bbdc56b", size = 57192, upload-time = "2026-06-11T13:23:37.208Z" },
 ]
 
 [[package]]
@@ -1146,17 +1146,16 @@ wheels = [
 
 [[package]]
 name = "milagro-bls-binding"
-version = "1.9.0"
+version = "1.9.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/8d/62/50284a3ebf16c63de11afc33eac15facc8a384f3d9f95174b776886822ef/milagro_bls_binding-1.9.0.tar.gz", hash = "sha256:43fb41b335b2a40ee21f2698c6ae27ed83921f5f6109443705f793c77d4b6d6e", size = 7026, upload-time = "2022-05-14T00:16:24.965Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4b/8f/00be421467be0c346c6d56b455511722c2f164cd2242f0bbfbf99e9269d2/milagro_bls_binding-1.9.0-cp37-abi3-macosx_10_7_x86_64.whl", hash = "sha256:b2362f0d14318a3f44a3d1e186e2069eb25859cc4b9cae3e473505a28954803e", size = 445302, upload-time = "2022-05-14T00:16:11.918Z" },
-    { url = "https://files.pythonhosted.org/packages/a9/25/c5eb45d2e1e4f230b2d5e66301b67d108166601fba741011b50f84d200be/milagro_bls_binding-1.9.0-cp37-abi3-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:8800b9a8c61c20d1fdb5593b8e1940cbf6e521b454cc6f764fc22f026337651f", size = 818945, upload-time = "2022-05-14T00:16:14.071Z" },
-    { url = "https://files.pythonhosted.org/packages/df/f5/9bb967028fe6b9e83bd814504ded0eabb11fc49eb1ea7b26942922e5cf4f/milagro_bls_binding-1.9.0-cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2c47c5e45b30d0df02b65c2da4f9e10a49cc1a773f47796294663fc564ca56ee", size = 1160022, upload-time = "2022-05-14T00:16:15.997Z" },
-    { url = "https://files.pythonhosted.org/packages/d7/d3/7c459c5276d893ad542c4c8ee4f23c1e04e3b12622dd00c4a344a8d3d45a/milagro_bls_binding-1.9.0-cp37-abi3-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:a28cbae598a01f76c5204a29b2d060c9aee8c66898e37c37b708aecc16d1b482", size = 1217504, upload-time = "2022-05-14T00:16:17.907Z" },
-    { url = "https://files.pythonhosted.org/packages/60/7a/42b86c783bffc7fe36bf5c415d37f3a93c09a03230869449d7379106273b/milagro_bls_binding-1.9.0-cp37-abi3-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:5646113ffa12a43acda419341817cf3b1b327b9e81dfd2c2a98c6aa1b38422c0", size = 1150042, upload-time = "2022-05-14T00:16:19.869Z" },
-    { url = "https://files.pythonhosted.org/packages/13/c2/892e789a5418d2cd33a088c6d7637987ab14ccbd01bc18ae60caab0048cf/milagro_bls_binding-1.9.0-cp37-abi3-win32.whl", hash = "sha256:4d91da896d8de735c828dc1815d7dcaeeed9363c25a5d4f725ec3916672cbc79", size = 310512, upload-time = "2022-05-14T00:16:21.63Z" },
-    { url = "https://files.pythonhosted.org/packages/5d/d4/87ed4b9d1ec21723ac8161d8afba5695c7a39567593e0b509c7f59239ade/milagro_bls_binding-1.9.0-cp37-abi3-win_amd64.whl", hash = "sha256:d723eac25c1c5d8ebc9937a4eebcea40be1b2fff742dcf181d83e4ee59d2b12d", size = 294383, upload-time = "2022-05-14T00:16:23.732Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/21/e948ec622ce6762fa2a1779ee91efd8be7c7a85f568792cb8a363980ef78/milagro_bls_binding-1.9.1-cp38-abi3-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:b7fd884cd7773b5dda7edf95d1c5d67664cc5037dea6e354937ad32bb0d57569", size = 689144, upload-time = "2026-06-13T13:58:12.337Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/41/1b8bab930e048c46507187f9fdb662ba97841425257cdd0b858518cc3846/milagro_bls_binding-1.9.1-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:8474c447208d44c984ca5f88311029341f268f118237e7695d66c4e287bec245", size = 350884, upload-time = "2026-06-13T13:58:13.708Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/d8/0a7a0ed3d05cc628dc26b3ae06ac112bf8375dff97698405cebe0d92b0a2/milagro_bls_binding-1.9.1-cp38-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f085898c9615b3723420fa75da3f956a02c0fe92aa04b73a3feb2088a26751fb", size = 383131, upload-time = "2026-06-13T13:58:15.079Z" },
+    { url = "https://files.pythonhosted.org/packages/7b/6e/b7baa386273def5fab6f7d6dab491da1673220f9617dd831f0e5b991b05c/milagro_bls_binding-1.9.1-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dc27c439b4d2e1767314af07d5e482b939999b80e999ec0e879da05b0fc7b5a4", size = 389422, upload-time = "2026-06-13T13:58:16.431Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/a5/1a9593da0d1f55edc05728e7b93d2c55b44e99f901727628d131739afb65/milagro_bls_binding-1.9.1-cp38-abi3-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:3cac82e840dd1efd844b3991a0371421a0f6378051cf06f7d6bfc6d91f889d2b", size = 445610, upload-time = "2026-06-13T13:58:17.987Z" },
+    { url = "https://files.pythonhosted.org/packages/df/86/ebd068d607be0e79f366667a65812f9445d10ee94d06998cca65f7a31989/milagro_bls_binding-1.9.1-cp38-abi3-win32.whl", hash = "sha256:8401d0679fa20423e0208d20ad775eb6e9db3150c44ba1621d7d649cabb8a245", size = 262406, upload-time = "2026-06-13T13:58:19.391Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/e3/5d95fbfdf918b28faa266809cc54033f47169f6f9535df960f99720cc4d8/milagro_bls_binding-1.9.1-cp38-abi3-win_amd64.whl", hash = "sha256:2971dd1575079ee1e79a98ccba3581c09a045783d0282be3ad83573f83e3587e", size = 239463, upload-time = "2026-06-13T13:58:20.751Z" },
 ]
 
 [[package]]
@@ -1714,7 +1713,7 @@ wheels = [
 
 [[package]]
 name = "pytest"
-version = "9.0.3"
+version = "9.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
@@ -1723,9 +1722,9 @@ dependencies = [
     { name = "pluggy" },
     { name = "pygments" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/0d/549bd94f1a0a402dc8cf64563a117c0f3765662e2e668477624baeec44d5/pytest-9.0.3.tar.gz", hash = "sha256:b86ada508af81d19edeb213c681b1d48246c1a91d304c6c81a427674c17eb91c", size = 1572165, upload-time = "2026-04-07T17:16:18.027Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/84/0e/b5858858d74958632c49b72cb25a3976ff9f632397626715be71c89d3971/pytest-9.1.0.tar.gz", hash = "sha256:41dd9148c08072446394cefd3d79701701335a9f4cae69ba92e39f6c7f5c061c", size = 1634181, upload-time = "2026-06-13T18:52:45.983Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d4/24/a372aaf5c9b7208e7112038812994107bc65a84cd00e0354a88c2c77a617/pytest-9.0.3-py3-none-any.whl", hash = "sha256:2c5efc453d45394fdd706ade797c0a81091eccd1d6e4bccfcd476e2b8e0ab5d9", size = 375249, upload-time = "2026-04-07T17:16:16.13Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/5a/ba30a81239b909821b3153e303e7def45178bf353da4f72380e6c5e8793b/pytest-9.1.0-py3-none-any.whl", hash = "sha256:8ebb0e7888bdf2bdfc602ec51f8f62d50200af37356c74e503c79a94f5c81f32", size = 386453, upload-time = "2026-06-13T18:52:44.045Z" },
 ]
 
 [[package]]

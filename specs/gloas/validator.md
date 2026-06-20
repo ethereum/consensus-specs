@@ -19,6 +19,7 @@
       - [Signed execution payload bid](#signed-execution-payload-bid)
       - [Payload attestations](#payload-attestations)
       - [Parent execution requests](#parent-execution-requests)
+      - [Execution requests](#execution-requests)
       - [ExecutionPayload](#executionpayload)
       - [Voluntary exits](#voluntary-exits)
   - [Payload timeliness attestation](#payload-timeliness-attestation)
@@ -182,8 +183,10 @@ def get_proposer_preferences_signature(
 
 #### Constructing the `BeaconBlockBody`
 
-Let `head = get_head(store)` be the parent block the proposer is building on,
-from which `state` was derived.
+Let `head = get_head(store)`. A proposer may set
+`head = get_proposer_head(store, head, slot)` if proposer re-orgs are
+implemented and enabled. Let `head` be the parent node the proposer builds on,
+from which `state` is derived.
 
 ##### Signed execution payload bid
 
@@ -208,6 +211,8 @@ top of a `state` MUST take the following actions in order to construct the
     `should_build_on_full(store, head)` is true, otherwise
     `state.latest_execution_payload_bid.parent_block_hash`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
+  - The `bid.prev_randao` equals
+    `get_randao_mix(state, get_current_epoch(state))`.
 - Select one bid and set
   `block.body.signed_execution_payload_bid = signed_execution_payload_bid`.
 
@@ -244,6 +249,71 @@ parent's execution payload. The proposer constructs this field as follows:
   `store.payloads[head.root].execution_requests`.
 - Otherwise (the proposer is building on the parent's empty variant), set
   `parent_execution_requests` to an empty `ExecutionRequests()`.
+
+##### Execution requests
+
+*Note*: The function `get_execution_requests` is modified to parse the builder
+deposit requests and builder exit requests.
+
+```python
+def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
+    deposits = []
+    withdrawals = []
+    consolidations = []
+    # [New in Gloas:EIP8282]
+    builder_deposits = []
+    # [New in Gloas:EIP8282]
+    builder_exits = []
+
+    request_types = [
+        DEPOSIT_REQUEST_TYPE,
+        WITHDRAWAL_REQUEST_TYPE,
+        CONSOLIDATION_REQUEST_TYPE,
+        # [New in Gloas:EIP8282]
+        BUILDER_DEPOSIT_REQUEST_TYPE,
+        # [New in Gloas:EIP8282]
+        BUILDER_EXIT_REQUEST_TYPE,
+    ]
+
+    prev_request_type = None
+    for request in execution_requests_list:
+        request_type, request_data = request[0:1], request[1:]
+
+        # Check that the request type is valid
+        assert request_type in request_types
+        # Check that the request data is not empty
+        assert len(request_data) != 0
+        # Check that requests are in strictly ascending order
+        # Each successive type must be greater than the last with no duplicates
+        assert prev_request_type is None or prev_request_type < request_type
+        prev_request_type = request_type
+
+        if request_type == DEPOSIT_REQUEST_TYPE:
+            # [Modified in Gloas:EIP7688]
+            deposits = ssz_deserialize(DepositRequests, request_data)
+        elif request_type == WITHDRAWAL_REQUEST_TYPE:
+            # [Modified in Gloas:EIP7688]
+            withdrawals = ssz_deserialize(WithdrawalRequests, request_data)
+        elif request_type == CONSOLIDATION_REQUEST_TYPE:
+            # [Modified in Gloas:EIP7688]
+            consolidations = ssz_deserialize(ConsolidationRequests, request_data)
+        # [New in Gloas:EIP8282]
+        elif request_type == BUILDER_DEPOSIT_REQUEST_TYPE:
+            builder_deposits = ssz_deserialize(BuilderDepositRequests, request_data)
+        # [New in Gloas:EIP8282]
+        elif request_type == BUILDER_EXIT_REQUEST_TYPE:
+            builder_exits = ssz_deserialize(BuilderExitRequests, request_data)
+
+    return ExecutionRequests(
+        deposits=deposits,
+        withdrawals=withdrawals,
+        consolidations=consolidations,
+        # [New in Gloas:EIP8282]
+        builder_deposits=builder_deposits,
+        # [New in Gloas:EIP8282]
+        builder_exits=builder_exits,
+    )
+```
 
 ##### ExecutionPayload
 

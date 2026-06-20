@@ -14,7 +14,7 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`inclusion_list`](#inclusion_list)
+        - [New `inclusion_list`](#new-inclusion_list)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [InclusionListByCommitteeIndices v1](#inclusionlistbycommitteeindices-v1)
@@ -34,11 +34,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 #### Type-specific SSZ bounds
 
-| Name                                         | Value                       | Description                                             |
-| -------------------------------------------- | --------------------------- | ------------------------------------------------------- |
-| `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `8344` bytes (= ~8 KiB)     | Type-specific SSZ bound for `SignedInclusionList`       |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `196934` bytes (= ~192 KiB) | Type-specific SSZ bound for `SignedExecutionPayloadBid` |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE_HEZE`          | `4034306` bytes (= ~4 MiB)  | Type-specific SSZ bound for `SignedBeaconBlock`         |
+| Name                             | Value                   | Description                                       |
+| -------------------------------- | ----------------------- | ------------------------------------------------- |
+| `MAX_SIGNED_INCLUSION_LIST_SIZE` | `8344` bytes (= ~8 KiB) | Type-specific SSZ bound for `SignedInclusionList` |
 
 ### Configuration
 
@@ -90,7 +88,7 @@ are given in this table:
 
 Heze introduces a new global topic for inclusion lists.
 
-###### `inclusion_list`
+###### New `inclusion_list`
 
 This topic is used to propagate signed inclusion list as `SignedInclusionList`.
 The following validations MUST pass before forwarding the `inclusion_list` on

@@ -1397,7 +1397,7 @@ def process_withdrawals(state: BeaconState, payload: ExecutionPayload) -> None:
 
 ```python
 def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
-    requests = [
+    requests: Sequence[Tuple[Bytes1, List]] = [
         (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
         (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
@@ -1406,7 +1406,7 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
     return [
         request_type + ssz_serialize(request_data)
         for request_type, request_data in requests
-        if request_data
+        if len(request_data) != 0
     ]
 ```
 

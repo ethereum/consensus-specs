@@ -88,14 +88,13 @@ class SignedAggregateAndProof(Container):
 
 #### Modified `get_payload`
 
-Given the `payload_id`, `get_payload` returns the most recent version of the
-execution payload that has been built since the corresponding call to
-`notify_forkchoice_updated` method.
+*Note*: The `get_payload` function returns the updated `GetPayloadResponse`
+object.
 
 ```python
 def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
     """
-    Return ExecutionPayload, uint256, BlobsBundle and execution requests (as Sequence[bytes]) objects.
+    Return ExecutionPayload, uint256, BlobsBundle, and execution requests (as Sequence[bytes]) objects.
     """
 ```
 

@@ -74,6 +74,7 @@ def upgrade_to_altair(pre: phase0.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
+            # [New in Altair]
             current_version=ALTAIR_FORK_VERSION,
             epoch=epoch,
         ),

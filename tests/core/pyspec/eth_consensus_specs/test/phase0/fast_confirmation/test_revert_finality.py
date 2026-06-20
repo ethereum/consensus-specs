@@ -2,16 +2,13 @@ from eth_consensus_specs.test.context import (
     default_activation_threshold,
     default_balances,
     MINIMAL,
+    never_bls,
     only_generator,
     single_phase,
     spec_test,
-    with_all_phases_from_to,
+    with_altair_and_later,
     with_custom_state,
     with_presets,
-)
-from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    GLOAS,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     Attesting,
@@ -28,7 +25,7 @@ Test on revert to finality
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -36,6 +33,7 @@ Test on revert to finality
 )
 @spec_test
 @single_phase
+@never_bls
 def test_fcr_no_reset_when_confirmed_exactly_one_epoch_old(spec, state):
     """
     Test that confirmed_root does NOT reset when it's exactly one epoch old.
@@ -90,7 +88,7 @@ def test_fcr_no_reset_when_confirmed_exactly_one_epoch_old(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -98,6 +96,7 @@ def test_fcr_no_reset_when_confirmed_exactly_one_epoch_old(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_fcr_no_reset_at_epoch_boundary_with_full_participation(spec, state):
     """
     Test that confirmed_root does NOT reset when crossing epoch boundaries
@@ -154,7 +153,7 @@ def test_fcr_no_reset_at_epoch_boundary_with_full_participation(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -162,6 +161,7 @@ def test_fcr_no_reset_at_epoch_boundary_with_full_participation(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_fcr_reverts_to_finalized_when_confirmed_too_old_lower_participation(spec, state):
     """
     Goal:
@@ -225,7 +225,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_too_old_lower_participation(spe
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -233,6 +233,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_too_old_lower_participation(spe
 )
 @spec_test
 @single_phase
+@never_bls
 def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_at_epoch_boundary(spec, state):
     """
     Test that confirmed_root resets when it becomes non-canonical at an epoch boundary.
@@ -319,7 +320,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_at_epoch_boundary
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -327,6 +328,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_at_epoch_boundary
 )
 @spec_test
 @single_phase
+@never_bls
 def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, state):
     """
     Test that confirmed_root resets to finalized when it becomes non-canonical due to a reorg at mid-epoch.
@@ -413,7 +415,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -421,6 +423,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
 )
 @spec_test
 @single_phase
+@never_bls
 def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivocations(
     spec, state
 ):
@@ -516,7 +519,7 @@ def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivo
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -524,6 +527,7 @@ def test_fcr_reverts_when_reconfirmation_fails_at_epoch_start_due_to_late_equivo
 )
 @spec_test
 @single_phase
+@never_bls
 def test_reset_to_finality_but_no_restart_to_gu_because_gu_too_old_epoch(spec, state):
     """
     Test that confirmed_root resets to finalized (not GU) when both are old at epoch boundary.
@@ -611,7 +615,7 @@ def test_reset_to_finality_but_no_restart_to_gu_because_gu_too_old_epoch(spec, s
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -619,6 +623,7 @@ def test_reset_to_finality_but_no_restart_to_gu_because_gu_too_old_epoch(spec, s
 )
 @spec_test
 @single_phase
+@never_bls
 def test_fcr_resets_when_bcand_not_descendant_of_gu_via_first_received_uj(spec, state):
     """
     Test that FCR resets when bcand ⊁ GU (bcand is not a descendant of the

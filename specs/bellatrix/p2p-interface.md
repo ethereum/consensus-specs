@@ -11,7 +11,7 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
+        - [Modified `beacon_block`](#modified-beacon_block)
     - [Transitioning the gossip](#transitioning-the-gossip)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
@@ -99,7 +99,7 @@ the new `beacon_block` topics.
 
 Bellatrix changes the type of the global beacon block topic.
 
-###### `beacon_block`
+###### Modified `beacon_block`
 
 The `beacon_block` topic is used solely for propagating new signed beacon blocks
 to all nodes on the networks. Signed blocks are sent in their entirety. The

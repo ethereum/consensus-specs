@@ -10,6 +10,12 @@ PTC_SIZE: 16
 # 2**2 (= 4) attestations
 MAX_PAYLOAD_ATTESTATIONS: 4
 
+# Execution
+# ---------------------------------------------------------------
+# 2**8 (= 256) builder deposit requests
+MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD: 256
+# 2**4 (= 16) builder exit requests
+MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD: 16
 # Withdrawals processing
 # ---------------------------------------------------------------
 # [customized] 2**4 (= 16) builders
@@ -27,5 +33,5 @@ MAX_DATA_COLUMN_SIDECAR_SIZE: 8585272
 MAX_PARTIAL_DATA_COLUMN_SIDECAR_SIZE: 8585741
 # 196,932 bytes, ~192 KiB
 MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE: 196932
-# 1,944,980 bytes, ~2 MiB
-MAX_SIGNED_BEACON_BLOCK_SIZE: 1944980
+# 1,993,180 bytes, ~2 MiB
+MAX_SIGNED_BEACON_BLOCK_SIZE: 1993180
