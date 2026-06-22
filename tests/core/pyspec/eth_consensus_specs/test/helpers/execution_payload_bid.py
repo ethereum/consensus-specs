@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import expect_assertion_error
-from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.keys import builder_privkeys
 
 
@@ -7,19 +6,20 @@ def run_execution_payload_bid_processing(spec, state, block, valid=True):
     """
     Run ``process_execution_payload_bid``, yielding:
     - pre-state ('pre')
-    - block ('block')
+    - execution payload bid ('execution_payload_bid')
     - post-state ('post').
     If ``valid == False``, run expecting ``AssertionError``
     """
+    signed_bid = block.body.signed_execution_payload_bid
     yield "pre", state
-    yield "block", block
+    yield "execution_payload_bid", signed_bid
 
     if not valid:
-        expect_assertion_error(lambda: spec.process_execution_payload_bid(state, block))
+        expect_assertion_error(lambda: spec.process_execution_payload_bid(state, signed_bid))
         yield "post", None
         return
 
-    spec.process_execution_payload_bid(state, block)
+    spec.process_execution_payload_bid(state, signed_bid)
     yield "post", state
 
 
@@ -36,7 +36,6 @@ def prepare_signed_execution_payload_bid(
     block_hash=None,
     blob_kzg_commitments=None,
     prev_randao=None,
-    inclusion_list_bits=None,
     valid_signature=True,
     valid_amount=True,
 ):
@@ -94,9 +93,6 @@ def prepare_signed_execution_payload_bid(
         "value": value,
         "blob_kzg_commitments": blob_kzg_commitments,
     }
-    if is_post_heze(spec) and inclusion_list_bits is not None:
-        bid_kwargs["inclusion_list_bits"] = inclusion_list_bits
-
     bid = spec.ExecutionPayloadBid(**bid_kwargs)
 
     if valid_signature:

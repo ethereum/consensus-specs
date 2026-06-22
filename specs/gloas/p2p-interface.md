@@ -818,6 +818,10 @@ def validate_execution_payload_bid_gossip(
     ):
         raise GossipIgnore("bid gas limit is not compatible with the proposer's target")
 
+    # [REJECT] The bid's previous randao is correct
+    if bid.prev_randao != get_randao_mix(parent_state, get_current_epoch(parent_state)):
+        raise GossipReject("bid's previous randao is incorrect")
+
     # [REJECT] The bid signature is valid
     if not verify_execution_payload_bid_signature(state, signed_execution_payload_bid):
         raise GossipReject("invalid bid signature")

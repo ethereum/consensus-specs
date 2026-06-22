@@ -428,7 +428,7 @@ def advance_branch_to_next_epoch(spec, branch_tip, enable_attesting=True):
     target_slot = spec.compute_start_slot_at_epoch(current_epoch + 1)
 
     while state.slot < target_slot:
-        # Produce block if the proposer is among participanting validators
+        # Produce block if the proposer is among participating validators
         proposer = spec.get_beacon_proposer_index(state)
         if state.slot > spec.GENESIS_SLOT and proposer in branch_tip.participants:
             signed_block, state, attestations, _, _ = produce_block(spec, state, attestations)
@@ -652,7 +652,7 @@ def yield_fork_choice_test_events(spec, test_data: FCTestData, test_events: list
 
     test_steps = []
 
-    def try_add_mesage(runner, message):
+    def try_add_message(runner, message):
         try:
             runner(spec, store, message, valid=True)
             return True
@@ -685,13 +685,13 @@ def yield_fork_choice_test_events(spec, test_data: FCTestData, test_events: list
         elif event_kind == "attestation":
             _, attestation, valid = event
             if valid is None:
-                valid = try_add_mesage(run_on_attestation, attestation)
+                valid = try_add_message(run_on_attestation, attestation)
             yield from add_attestation(spec, store, attestation, test_steps, valid=valid)
             output_store_checks(spec, store, test_steps)
         elif event_kind == "attester_slashing":
             _, attester_slashing, valid = event
             if valid is None:
-                valid = try_add_mesage(run_on_attester_slashing, attester_slashing)
+                valid = try_add_message(run_on_attester_slashing, attester_slashing)
             yield from add_attester_slashing(
                 spec, store, attester_slashing, test_steps, valid=valid
             )
@@ -699,13 +699,13 @@ def yield_fork_choice_test_events(spec, test_data: FCTestData, test_events: list
         elif event_kind == "execution_payload":
             _, signed_envelope, valid = event
             if valid is None:
-                valid = try_add_mesage(run_on_execution_payload_envelope, signed_envelope)
+                valid = try_add_message(run_on_execution_payload_envelope, signed_envelope)
             yield from add_execution_payload(spec, store, signed_envelope, test_steps, valid=valid)
             output_store_checks(spec, store, test_steps)
         elif event_kind == "payload_attestation":
             _, ptc_message, valid = event
             if valid is None:
-                valid = try_add_mesage(run_on_payload_attestation_message, ptc_message)
+                valid = try_add_message(run_on_payload_attestation_message, ptc_message)
             yield from add_payload_attestation_message(
                 spec, store, ptc_message, test_steps, valid=valid
             )

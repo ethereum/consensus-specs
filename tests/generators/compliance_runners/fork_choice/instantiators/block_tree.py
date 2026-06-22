@@ -233,13 +233,13 @@ def _generate_sm_link_tree(
         3. Randomly sample all active validators between a set of forks that are being advanced in the epoch.
            Validator partitions are disjoint and are changing only at the epoch boundary.
            If no new branches are created in the current epoch then partitions from the previous epoch will be used
-           to advahce the state of every fork to the next epoch.
+           to advance the state of every fork to the next epoch.
         4. Advance every fork to the next epoch respecting a validator partition assigned to it in the current epoch.
            Preserve attestations produced but not yet included on chain for potential inclusion in the next epoch.
         5. Justify required checkpoints by moving the majority of validators to the justifying fork,
            this is taken into account by step (3).
 
-    :return: Sequence of signed blocks oredered by a slot number.
+    :return: Sequence of signed blocks ordered by a slot number.
     """
     assert any(sm_links)
 

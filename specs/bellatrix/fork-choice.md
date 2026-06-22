@@ -81,7 +81,7 @@ EIP-3675, before a post-transition block is finalized,
 `finalized_block_hash = Hash32()`.
 
 *Note*: Client software MUST NOT call this function until the transition
-conditions are met on the PoW network, i.e. there exists a block for which
+conditions are met on the PoW network, i.e. there exists a block for which the
 `is_valid_terminal_pow_block` function returns `True`.
 
 *Note*: Client software MUST call this function to initiate the payload build

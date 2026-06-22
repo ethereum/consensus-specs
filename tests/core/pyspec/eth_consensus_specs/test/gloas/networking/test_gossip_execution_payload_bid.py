@@ -100,6 +100,7 @@ def build_signed_bid(
     gas_limit=None,
     value=None,
     execution_payment=None,
+    prev_randao=None,
     valid_signature=True,
 ):
     """Construct a SignedExecutionPayloadBid."""
@@ -107,7 +108,9 @@ def build_signed_bid(
         parent_block_hash=parent_block_hash,
         parent_block_root=parent_block_root,
         block_hash=spec.Hash32(b"\x02" + b"\x00" * 31),
-        prev_randao=spec.get_randao_mix(state, spec.get_current_epoch(state)),
+        prev_randao=prev_randao
+        if prev_randao is not None
+        else spec.get_randao_mix(state, spec.get_current_epoch(state)),
         fee_recipient=fee_recipient
         if fee_recipient is not None
         else spec.ExecutionAddress(b"\x11" * 20),
@@ -1557,6 +1560,118 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
     )
     assert result == "ignore"
     assert reason == "bid gas limit is not compatible with the proposer's target"
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_bid),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state):
+    """A bid whose prev_randao does not match the parent state's RANDAO mix is rejected."""
+    yield "topic", "meta", "execution_payload_bid"
+
+    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
+    activate_builders(spec, state)
+    parent_signed_block = blocks[-1]
+    yield "state", state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    seen = get_seen(spec)
+    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    common_fee = spec.ExecutionAddress(b"\x11" * 20)
+    parent_gas_limit = state.latest_execution_payload_bid.gas_limit
+    time_ms += 50
+    proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=proposal_slot,
+        validator_index=validator_index,
+        fee_recipient=common_fee,
+        target_gas_limit=parent_gas_limit,
+    )
+    yield get_filename(signed_prefs), signed_prefs
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+        }
+    )
+
+    time_ms += 10
+    parent_block_root = parent_signed_block.message.hash_tree_root()
+    signed_envelope = build_signed_execution_payload_envelope(
+        spec, state, parent_block_root, parent_signed_block
+    )
+    yield get_filename(signed_envelope), signed_envelope
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(time_ms),
+            "message": get_filename(signed_envelope),
+            "expected": result,
+        }
+    )
+
+    # All other checks pass and only prev_randao is wrong. The expected value is
+    # the parent state's current-epoch RANDAO mix, so use a clearly different one.
+    expected_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
+    wrong_randao = spec.Bytes32(b"\x42" * 32)
+    assert wrong_randao != expected_randao
+    signed_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=spec.BuilderIndex(0),
+        slot=proposal_slot,
+        parent_block_hash=signed_envelope.message.payload.block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+        prev_randao=wrong_randao,
+        valid_signature=False,
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    time_ms += 40
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        state=state,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=time_ms,
+    )
+    assert result == "reject"
+    assert reason == "bid's previous randao is incorrect"
     messages.append(
         {
             "current_time_ms": int(time_ms),

@@ -1,48 +1,62 @@
 categories:
   # Forks
   - title: Phase0
-    label: phase0
+    when:
+      label: phase0
   - title: Altair
-    label: altair
+    when:
+      label: altair
   - title: Bellatrix
-    label: bellatrix
+    when:
+      label: bellatrix
   - title: Capella
-    label: capella
+    when:
+      label: capella
   - title: Deneb
-    label: deneb
+    when:
+      label: deneb
   - title: Electra
-    label: electra
+    when:
+      label: electra
   - title: Fulu
-    labels:
-      - fulu
-      - eip7594
+    when:
+      labels:
+        - fulu
+        - eip7594
   - title: Gloas
-    labels:
-      - gloas
-      - eip7732
-      - eip7843
-      - eip7928
-      - eip8061
+    when:
+      labels:
+        - gloas
+        - eip7732
+        - eip7843
+        - eip7928
+        - eip8061
   - title: Heze
-    labels:
-      - heze
-      - eip7805
+    when:
+      labels:
+        - heze
+        - eip7805
 
   # Features
   - title: EIP-6914
-    label: eip6914
+    when:
+      label: eip6914
   - title: EIP-8025
-    label: eip8025
+    when:
+      label: eip8025
   - title: EIP-8148
-    label: eip8148
+    when:
+      label: eip8148
 
   # Testing
   - title: Testing
-    label: testing
+    when:
+      label: testing
 
   # Dependencies
   - title: Dependencies
-    label: dependencies
+    when:
+      label: dependencies
 
   # Fallback
   - title: Other
