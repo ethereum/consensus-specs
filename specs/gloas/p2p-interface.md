@@ -798,8 +798,12 @@ def validate_execution_payload_bid_gossip(
     if bid.parent_block_root not in store.block_states:
         raise GossipIgnore("bid's parent block state is unavailable")
 
-    # [IGNORE] The matching proposer preferences have been seen
+    # [IGNORE] The bid's slot is within the parent's proposer lookahead
     parent_state = store.block_states[bid.parent_block_root]
+    if proposal_epoch > get_current_epoch(parent_state) + Epoch(MIN_SEED_LOOKAHEAD):
+        raise GossipIgnore("bid's slot is past the parent's proposer lookahead")
+
+    # [IGNORE] The matching proposer preferences have been seen
     dependent_root = get_proposer_dependent_root(parent_state, proposal_epoch)
     prefs_key = (dependent_root, bid.slot)
     if prefs_key not in seen.proposer_preferences:
