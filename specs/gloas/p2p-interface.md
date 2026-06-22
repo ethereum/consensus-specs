@@ -594,7 +594,7 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_BLOCKS_DENEB]
+  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]
 )
 ```
 
