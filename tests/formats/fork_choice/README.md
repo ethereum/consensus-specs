@@ -272,6 +272,15 @@ payload_data_availability_vote: {     -- [New in Gloas]
 }
 ```
 
+From Gloas, the `get_proposer_head` check is an object:
+
+```yaml
+get_proposer_head: {
+    root: string,                     -- Encoded 32-byte root of the returned node
+    payload_status: int,              -- Payload status of the returned node
+}
+```
+
 For example:
 
 ```yaml
@@ -285,6 +294,22 @@ For example:
     viable_for_head_roots_and_weights: [
       {root: '0x533290b6f44d31c925acd08dfc8448624979d48c40b877d4e6714648866c9ddb', weight: 192000000000},
       {root: '0x5cfb9d9099cdf1d8ab68ce96cdae9f0fa6eef16914a01070580dfdc1d2d59ec3', weight: 544000000000}
+    ]
+```
+
+A Gloas example:
+
+```yaml
+- checks:
+    time: 192
+    head: {slot: 32, root: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb', payload_status: 1}
+    justified_checkpoint: {epoch: 3, root: '0xc25faab4acab38d3560864ca01e4d5cc4dc2cd473da053fbc03c2669143a2de4'}
+    finalized_checkpoint: {epoch: 2, root: '0x40d32d6283ec11c53317a46808bc88f55657d93b95a1af920403187accf48f4f'}
+    proposer_boost_root: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb'
+    get_proposer_head: {root: '0xdaa1d49d57594ced0c35688a6da133abb086d191a2ebdfd736fad95299325aeb', payload_status: 1}
+    viable_for_head_roots_and_weights: [
+      {root: '0x533290b6f44d31c925acd08dfc8448624979d48c40b877d4e6714648866c9ddb', weight: 192000000000, payload_status: 2},
+      {root: '0x5cfb9d9099cdf1d8ab68ce96cdae9f0fa6eef16914a01070580dfdc1d2d59ec3', weight: 544000000000, payload_status: 2}
     ]
 ```
 
