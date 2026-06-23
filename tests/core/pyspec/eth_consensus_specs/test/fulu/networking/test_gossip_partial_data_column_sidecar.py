@@ -113,7 +113,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -179,7 +179,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, include_header=True)
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -234,7 +234,7 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=2)
     sidecar = sidecars[0]
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     # First message: header only, populates the cache.
@@ -316,7 +316,7 @@ def test_gossip_partial_data_column_sidecar__reject_semantically_empty(spec, sta
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=False)
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -375,7 +375,7 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
     # Drop a cell so the count no longer matches the bitmap.
     partial.partial_column = list(partial.partial_column)[:-1]
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -434,7 +434,7 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
     # Drop a proof so the count no longer matches the bitmap.
     partial.kzg_proofs = list(partial.kzg_proofs)[:-1]
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -490,7 +490,7 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     good = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
@@ -577,7 +577,7 @@ def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, st
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     block_root = spec.Root(b"\xab" * 32)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -635,7 +635,7 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     partial.header[0].kzg_commitments = []
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -692,7 +692,7 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -751,7 +751,7 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     block_header = sidecar.signed_block_header.message
@@ -823,7 +823,7 @@ def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(
         len(state.validators)
     )
     block_root = spec.hash_tree_root(partial.header[0].signed_block_header.message)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -882,7 +882,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     partial.header[0].signed_block_header.signature = spec.BLSSignature(b"\x00" * 96)
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -941,7 +941,7 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
     partial.header[0].signed_block_header.message.parent_root = b"\x12" * 32
     resign_header(spec, state, partial.header[0])
     block_root = spec.hash_tree_root(partial.header[0].signed_block_header.message)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -1014,7 +1014,7 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -1089,7 +1089,7 @@ def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(
     partial.header[0].signed_block_header.message.slot = signed_parent.message.slot
     resign_header(spec, parent_state, partial.header[0])
     block_root = spec.hash_tree_root(partial.header[0].signed_block_header.message)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -1148,7 +1148,7 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     fake_finalized_root = spec.Root(b"\xab" * 32)
@@ -1215,7 +1215,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
         spec.BeaconBlockBody(), 0
     )
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -1277,7 +1277,7 @@ def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, s
     partial.header[0].signed_block_header.message.proposer_index = wrong_proposer
     resign_header(spec, state, partial.header[0])
     block_root = spec.hash_tree_root(partial.header[0].signed_block_header.message)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -1334,7 +1334,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, include_header=False)
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
@@ -1392,7 +1392,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     header_msg = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
@@ -1477,7 +1477,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     header = make_partial_header(spec, sidecar)
@@ -1568,7 +1568,7 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=2)
     sidecar = sidecars[0]
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     # Seed the cache with a valid header for `block_root`.
@@ -1657,7 +1657,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
     bad_proof = spec.KZGProof(b"\xc0" + b"\x00" * 47)
     partial.kzg_proofs = [bad_proof for _ in partial.kzg_proofs]
     block_root = block_root_of(spec, sidecar)
-    group_id = spec.PartialDataColumnGroupID(block_root=block_root)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
     yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial

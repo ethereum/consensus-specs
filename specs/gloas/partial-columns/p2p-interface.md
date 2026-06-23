@@ -45,7 +45,7 @@ class PartialDataColumnSidecar(Container):
 
 ```python
 class PartialDataColumnGroupID(Container):
-    block_root: Root
+    beacon_block_root: Root
     # [New in Gloas:EIP7732]
     slot: Slot
 ```
@@ -72,7 +72,8 @@ messages on `data_column_sidecar_{subnet_id}` as defined above.
   deferred validation and possible processing once the block is received or
   retrieved. A client SHOULD queue at least 1 sidecar per peer per subnet.
 - _[REJECT]_ The Group ID's `slot` matches the slot of the block with root
-  `block_root`. The `block_root` is also identified by the Group ID.
+  `beacon_block_root`. The `beacon_block_root` is also identified by the Group
+  ID.
 
 **Modified in Gloas:**
 
