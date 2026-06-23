@@ -8,7 +8,7 @@
 - [Modification in Gloas](#modification-in-gloas)
   - [Containers](#containers)
     - [Modified `PartialDataColumnSidecar`](#modified-partialdatacolumnsidecar)
-    - [New `PartialDataColumnGroupID`](#new-partialdatacolumngroupid)
+    - [Modified `PartialDataColumnGroupID`](#modified-partialdatacolumngroupid)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Blob subnets](#blob-subnets)
       - [Modified `data_column_sidecar_{subnet_id}` (partial messages)](#modified-data_column_sidecar_subnet_id-partial-messages)
@@ -41,12 +41,13 @@ class PartialDataColumnSidecar(Container):
     # Removed `header`
 ```
 
-#### New `PartialDataColumnGroupID`
+#### Modified `PartialDataColumnGroupID`
 
 ```python
 class PartialDataColumnGroupID(Container):
+    block_root: Root
+    # [New in Gloas:EIP7732]
     slot: Slot
-    beacon_block_root: Root
 ```
 
 ### The gossip domain: gossipsub
@@ -71,8 +72,7 @@ messages on `data_column_sidecar_{subnet_id}` as defined above.
   deferred validation and possible processing once the block is received or
   retrieved. A client SHOULD queue at least 1 sidecar per peer per subnet.
 - _[REJECT]_ The Group ID's `slot` matches the slot of the block with root
-  `beacon_block_root`. The `beacon_block_root` is also identified by the Group
-  ID.
+  `block_root`. The `block_root` is also identified by the Group ID.
 
 **Modified in Gloas:**
 
