@@ -17,7 +17,6 @@
     - [Lookahead](#lookahead)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
-      - [Signed execution payload bid](#signed-execution-payload-bid)
       - [ExecutionPayload](#executionpayload)
   - [Inclusion list proposal](#inclusion-list-proposal)
     - [Constructing the `SignedInclusionList`](#constructing-the-signedinclusionlist)
@@ -45,22 +44,22 @@ class GetInclusionListResponse:
 
 ### `ExecutionEngine`
 
-*Note*: `get_inclusion_list` function is added to the `ExecutionEngine` protocol
-for use as an inclusion list committee member.
+*Note*: The `get_inclusion_list` function is added to the `ExecutionEngine`
+protocol for use as an inclusion list committee member.
 
 The body of this function is implementation dependent. The Engine API may be
 used to implement it with an external execution engine.
 
 #### New `get_inclusion_list`
 
-`get_inclusion_list` returns `GetInclusionListResponse` with the most recent
-inclusion list transactions that has been built based on the latest view of the
-public mempool.
+*Note*: `get_inclusion_list` returns `GetInclusionListResponse` with the most
+recent inclusion list transactions that has been built based on the latest view
+of the public mempool.
 
 ```python
 def get_inclusion_list(self: ExecutionEngine) -> GetInclusionListResponse:
     """
-    Return ``GetInclusionListResponse`` object.
+    Return inclusion list transactions (as Sequence[Transaction]) object.
     """
 ```
 
@@ -107,16 +106,6 @@ list committee slot.
 ### Block and sidecar proposal
 
 #### Constructing the `BeaconBlockBody`
-
-##### Signed execution payload bid
-
-*Note*: The only change made to `signed_execution_payload_bid` is to require
-that `bid.inclusion_list_bits` must satisfy `is_inclusion_list_bits_inclusive()`
-with respect to the proposer's inclusion list view, which comprises all valid
-and non-equivocating inclusion lists they have observed.
-
-- The `bid.inclusion_list_bits` must satisfy
-  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), state, slot - 1, bid.inclusion_list_bits, only_timely=False)`.
 
 ##### ExecutionPayload
 

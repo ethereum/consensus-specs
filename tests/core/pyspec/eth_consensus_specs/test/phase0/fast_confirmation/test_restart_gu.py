@@ -2,16 +2,13 @@ from eth_consensus_specs.test.context import (
     default_activation_threshold,
     default_balances,
     MINIMAL,
+    never_bls,
     only_generator,
     single_phase,
     spec_test,
-    with_all_phases_from_to,
+    with_altair_and_later,
     with_custom_state,
     with_presets,
-)
-from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    GLOAS,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     debug_print,
@@ -28,7 +25,7 @@ Test on restart to GU
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -36,6 +33,7 @@ Test on restart to GU
 )
 @spec_test
 @single_phase
+@never_bls
 def test_fcr_restarts_to_gu_when_all_conditions_met(spec, state):
     """
     DEBUG: Verify restart-to-GU path is actually triggered.
@@ -117,7 +115,7 @@ def test_fcr_restarts_to_gu_when_all_conditions_met(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -125,6 +123,7 @@ def test_fcr_restarts_to_gu_when_all_conditions_met(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_fcr_restarts_to_gu_and_confirms_beyond_gu(spec, state):
     """
     Test that confirmed_root restarts to GU (not finalized)
@@ -197,7 +196,7 @@ def test_fcr_restarts_to_gu_and_confirms_beyond_gu(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -205,6 +204,7 @@ def test_fcr_restarts_to_gu_and_confirms_beyond_gu(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_fcr_no_restart_to_gu_mid_epoch(spec, state):
     """
     Test that restart-to-GU only triggers at epoch boundaries, not mid-epoch.
@@ -258,7 +258,7 @@ def test_fcr_no_restart_to_gu_mid_epoch(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -266,6 +266,7 @@ def test_fcr_no_restart_to_gu_mid_epoch(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_fcr_no_restart_to_gu_because_gu_too_old(spec, state):
     """
     Test that restart-to-GU fails when GU.epoch < current_epoch - 1.
@@ -349,7 +350,7 @@ def test_fcr_no_restart_to_gu_because_gu_too_old(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -357,6 +358,7 @@ def test_fcr_no_restart_to_gu_because_gu_too_old(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_fcr_no_restart_when_gu_block_is_epoch_older(spec, state):
     """
     DEBUG: Verify restart-to-GU path is actually triggered.

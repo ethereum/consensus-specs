@@ -2,16 +2,13 @@ from eth_consensus_specs.test.context import (
     default_activation_threshold,
     default_balances,
     MINIMAL,
+    never_bls,
     only_generator,
     single_phase,
     spec_test,
-    with_all_phases_from_to,
+    with_altair_and_later,
     with_custom_state,
     with_presets,
-)
-from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    GLOAS,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     FCRTest,
@@ -24,7 +21,7 @@ Test is_one_confirmed
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -32,6 +29,7 @@ Test is_one_confirmed
 )
 @spec_test
 @single_phase
+@never_bls
 def test_is_one_confirmed_passes_with_full_participation(spec, state):
     """
     Test that is_one_confirmed returns True for a block with 100% participation.
@@ -89,7 +87,7 @@ def test_is_one_confirmed_passes_with_full_participation(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -97,6 +95,7 @@ def test_is_one_confirmed_passes_with_full_participation(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_is_one_confirmed_fails_with_low_participation(spec, state):
     """
     Test that is_one_confirmed returns False when participation is too low.
@@ -155,7 +154,7 @@ def test_is_one_confirmed_fails_with_low_participation(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -163,6 +162,7 @@ def test_is_one_confirmed_fails_with_low_participation(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_is_one_confirmed_slashing_supporters_does_not_hurt(spec, state):
     """
     Test that slashing validators who voted for block B does not break is_one_confirmed.
@@ -209,7 +209,7 @@ def test_is_one_confirmed_slashing_supporters_does_not_hurt(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -217,6 +217,7 @@ def test_is_one_confirmed_slashing_supporters_does_not_hurt(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_is_one_confirmed_slashing_non_supporters_helps(spec, state):
     """
     Test that slashing non-supporting equivocators helps is_one_confirmed pass.
@@ -302,7 +303,7 @@ def test_is_one_confirmed_slashing_non_supporters_helps(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -310,6 +311,7 @@ def test_is_one_confirmed_slashing_non_supporters_helps(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_is_one_confirmed_empty_slot_discount(spec, state):
     """
     Test that the empty slot discount correctly compensates for honest
@@ -437,7 +439,7 @@ def test_is_one_confirmed_empty_slot_discount(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -445,6 +447,7 @@ def test_is_one_confirmed_empty_slot_discount(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_is_one_confirmed_support_accumulates_over_slots(spec, state):
     """
     Test that is_one_confirmed can flip from False to True as more slots
@@ -498,7 +501,7 @@ def test_is_one_confirmed_support_accumulates_over_slots(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -506,6 +509,7 @@ def test_is_one_confirmed_support_accumulates_over_slots(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_is_one_confirmed_epoch_crossing_block(spec, state):
     """
     Test is_one_confirmed for a block that crosses an epoch boundary
@@ -599,7 +603,7 @@ def test_is_one_confirmed_epoch_crossing_block(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -607,6 +611,7 @@ def test_is_one_confirmed_epoch_crossing_block(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_is_one_confirmed_fails_with_competing_branch(spec, state):
     """
     Test that is_one_confirmed fails when support is split between competing blocks.
@@ -703,7 +708,7 @@ def test_is_one_confirmed_fails_with_competing_branch(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -711,6 +716,7 @@ def test_is_one_confirmed_fails_with_competing_branch(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_is_confirmed_chain_safe_passes_full_chain(spec, state):
     """
     Test that is_confirmed_chain_safe returns True when the entire chain
@@ -769,7 +775,7 @@ def test_is_confirmed_chain_safe_passes_full_chain(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
@@ -777,6 +783,7 @@ def test_is_confirmed_chain_safe_passes_full_chain(spec, state):
 )
 @spec_test
 @single_phase
+@never_bls
 def test_is_one_confirmed_epoch_crossing_adversarial_range_matters(spec, state):
     """
     Implementation-level test for epoch-crossing adversarial range.

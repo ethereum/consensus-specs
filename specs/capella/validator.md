@@ -53,7 +53,15 @@ class GetPayloadResponse:
 
 #### Modified `get_payload`
 
-`get_payload` returns the upgraded Capella `ExecutionPayload` type.
+*Note*: The `get_payload` function returns the updated `GetPayloadResponse`
+object.
+
+```python
+def get_payload(self: ExecutionEngine, payload_id: PayloadId) -> GetPayloadResponse:
+    """
+    Return ExecutionPayload and uint256 objects.
+    """
+```
 
 ## Beacon chain responsibilities
 
