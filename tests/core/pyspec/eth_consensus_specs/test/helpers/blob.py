@@ -188,6 +188,58 @@ def get_block_with_blob_and_sidecars(spec, state, rng=None, blob_count=1):
     return block, blobs, blob_kzg_proofs, signed_block, sidecars, blob_kzg_commitments
 
 
+def make_partial_data_column_group_id(spec, sidecar):
+    """
+    Build the fork-appropriate ``PartialDataColumnGroupID`` for a
+    ``DataColumnSidecar``. Gloas added a ``slot`` field and derives the block
+    root from ``sidecar.beacon_block_root`` rather than the (removed) header.
+    """
+    if is_post_gloas(spec):
+        return spec.PartialDataColumnGroupID(
+            slot=sidecar.slot,
+            beacon_block_root=sidecar.beacon_block_root,
+        )
+    return spec.PartialDataColumnGroupID(
+        beacon_block_root=spec.hash_tree_root(sidecar.signed_block_header.message),
+    )
+
+
+def make_partial_header(spec, sidecar):
+    """Build a ``PartialDataColumnHeader`` from a (pre-Gloas) ``DataColumnSidecar``."""
+    return spec.PartialDataColumnHeader(
+        kzg_commitments=sidecar.kzg_commitments,
+        signed_block_header=sidecar.signed_block_header,
+        kzg_commitments_inclusion_proof=sidecar.kzg_commitments_inclusion_proof,
+    )
+
+
+def make_partial_sidecar(spec, sidecar, blob_indices=None, include_header=True):
+    """
+    Build a ``PartialDataColumnSidecar`` from a ``DataColumnSidecar``.
+    ``blob_indices`` selects which blob indices are present (default: all). Gloas
+    removed the optional ``header`` field, so it is only set pre-Gloas.
+    """
+    num_blobs = len(sidecar.column)
+    if blob_indices is None:
+        blob_indices = list(range(num_blobs))
+    bitmap = [i in blob_indices for i in range(num_blobs)]
+    cells = [sidecar.column[i] for i in blob_indices]
+    proofs = [sidecar.kzg_proofs[i] for i in blob_indices]
+    if is_post_gloas(spec):
+        return spec.PartialDataColumnSidecar(
+            cells_present_bitmap=bitmap,
+            partial_column=cells,
+            kzg_proofs=proofs,
+        )
+    header = [make_partial_header(spec, sidecar)] if include_header else []
+    return spec.PartialDataColumnSidecar(
+        cells_present_bitmap=bitmap,
+        partial_column=cells,
+        kzg_proofs=proofs,
+        header=header,
+    )
+
+
 @cache
 def _cached_compute_cells_and_kzg_proofs(spec, blob):
     return spec.compute_cells_and_kzg_proofs(blob)
