@@ -369,6 +369,8 @@ where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
 - _[IGNORE]_ The matching `signed_proposer_preferences` has been seen.
 - _[REJECT]_ `bid.builder_index` is a valid/active builder index -- i.e.
   `is_active_builder(state, bid.builder_index)` returns `True`.
+- _[REJECT]_ The builder version is `PAYLOAD_BUILDER_VERSION` -- i.e.
+  `state.builders[bid.builder_index].version == PAYLOAD_BUILDER_VERSION`.
 - _[REJECT]_ `bid.execution_payment == 0`.
 - _[REJECT]_ `bid.fee_recipient == proposer_preferences.fee_recipient`.
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
@@ -390,6 +392,8 @@ where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
 - _[REJECT]_ The bid is for a higher slot than its parent block -- i.e. validate
   that `bid.slot` is greater than the slot of the block with root
   `bid.parent_block_root`.
+- _[REJECT]_ `bid.prev_randao` is the correct RANDAO mix -- i.e. validate that
+  `bid.prev_randao == get_randao_mix(parent_state, get_current_epoch(parent_state))`.
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
 

@@ -493,3 +493,55 @@ def test_builder_payment_weight_no_increment_for_zero_amount(spec, state):
     yield from run_attestation_processing(spec, state, attestation, valid=True)
 
     assert state.builder_pending_payments[payment_idx].weight == pre_weight
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_payment_weight_accumulates(spec, state):
+    """
+    Test that builder payment weight accumulates across distinct same-slot
+    attesters.
+    """
+    transition_to_slot_via_block(spec, state, 2)
+
+    # Create a same-slot attestation for slot 0 with two distinct attesters
+    attestation_slot = 0
+    committee = spec.get_beacon_committee(state, attestation_slot, 0)
+    first_attester, second_attester = committee[:2]
+    attestation = get_valid_attestation(
+        spec,
+        state,
+        slot=attestation_slot,
+        index=0,
+        payload_index=0,
+        filter_participant_set=lambda _: {first_attester, second_attester},
+        signed=True,
+    )
+
+    first_weight = state.validators[first_attester].effective_balance
+    second_weight = state.validators[second_attester].effective_balance
+    assert first_weight > 0
+    assert second_weight > 0
+
+    # Manually set up a non-zero builder pending payment for slot 0
+    payment_slot_index = spec.SLOTS_PER_EPOCH + attestation_slot % spec.SLOTS_PER_EPOCH
+    test_payment_amount = spec.Gwei(1000000000)
+    state.builder_pending_payments[payment_slot_index] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(),
+            amount=test_payment_amount,
+            builder_index=0,
+        ),
+    )
+
+    # Store initial weight for slot 0
+    initial_weight = state.builder_pending_payments[payment_slot_index].weight
+
+    # Process attestation
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+    # Weight should accumulate both attesters' effective balances
+    final_weight = state.builder_pending_payments[payment_slot_index].weight
+    expected_final_weight = initial_weight + first_weight + second_weight
+    assert final_weight == expected_final_weight

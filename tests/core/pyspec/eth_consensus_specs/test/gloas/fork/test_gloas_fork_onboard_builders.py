@@ -124,6 +124,30 @@ def test_fork_single_builder_deposit(spec, phases, state):
 @spec_test
 @with_state
 @with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_builder_deposit_version(spec, phases, state):
+    """
+    Test that a builder onboarded at the fork is registered as a payload builder.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+
+    # Create a pending deposit with builder credentials
+    builder_pubkey = builder_pubkeys[0]
+    pending_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
+    state.pending_deposits = [pending_deposit]
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    # The onboarded builder is registered with the payload builder version
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == builder_pubkey
+    assert post_state.builders[0].version == post_spec.PAYLOAD_BUILDER_VERSION
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
 def test_fork_builder_deposit_uses_deposit_slot_epoch(spec, phases, state):
     """
     Test fork uses the deposit's slot epoch when onboarding builders.

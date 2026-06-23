@@ -57,7 +57,7 @@ class MessageScheduler:
             root not in self.store.blocks for root in item.dependencies
         )
 
-    def enque_message(self, item: QueueItem):
+    def enqueue_message(self, item: QueueItem):
         self.message_queue.append(item)
 
     def drain_queue(
@@ -72,7 +72,7 @@ class MessageScheduler:
         updated = False
         for item in self.drain_queue():
             if self.is_early_message(item):
-                self.enque_message(item)
+                self.enqueue_message(item)
             elif item.kind == QueueItemKind.ATTESTATION:
                 if self.process_attestation(item.message):
                     applied_events.append(("attestation", item.message, True))
@@ -127,7 +127,7 @@ class MessageScheduler:
         except AssertionError:
             item = QueueItem(attestation, QueueItemKind.ATTESTATION, is_from_block)
             if self.is_early_message(item):
-                self.enque_message(item)
+                self.enqueue_message(item)
             return False
 
     def process_slashing(self, slashing):
@@ -144,7 +144,7 @@ class MessageScheduler:
         except AssertionError:
             item = QueueItem(ptc_message, QueueItemKind.PAYLOAD_ATTESTATION, is_from_block)
             if self.is_early_message(item):
-                self.enque_message(item)
+                self.enqueue_message(item)
             return False
 
     def process_block_messages(self, signed_block):
@@ -170,7 +170,7 @@ class MessageScheduler:
         except AssertionError:
             item = QueueItem(signed_block, QueueItemKind.BLOCK)
             if self.is_early_message(item):
-                self.enque_message(item)
+                self.enqueue_message(item)
             valid = False
         if valid:
             applied_events.extend(self.purge_queue())
@@ -184,5 +184,5 @@ class MessageScheduler:
         except AssertionError:
             item = QueueItem(signed_payload, QueueItemKind.EXECUTION_PAYLOAD)
             if self.is_early_message(item):
-                self.enque_message(item)
+                self.enqueue_message(item)
             return False

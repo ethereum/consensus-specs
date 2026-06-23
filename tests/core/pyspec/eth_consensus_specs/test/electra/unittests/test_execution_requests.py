@@ -99,6 +99,6 @@ def test_requests_deserialize__reject_empty_request(spec):
 @single_phase
 def test_requests_deserialize__reject_unexpected_request_type(spec):
     serialized_execution_requests = [
-        b"\x03\xff\xff\xff",
+        b"\xff\xff\xff\xff",
     ]
     expect_assertion_error(lambda: spec.get_execution_requests(serialized_execution_requests))
