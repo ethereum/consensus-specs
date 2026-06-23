@@ -155,11 +155,11 @@ def get_upcoming_proposal_slots(
 To construct each `SignedProposerPreferences`:
 
 1. Instantiate a new `ProposerPreferences` object as `preferences`.
-2. Set `preferences.dependent_root` to
+2. Set `preferences.proposal_slot` to `upcoming_proposal_slots[i]`.
+3. Set `preferences.dependent_root` to
    `get_shuffling_dependent_root(store, head_root, compute_epoch_at_slot(preferences.proposal_slot))`,
    where `store` is the fork choice store and `head_root` is the proposer's
    current head root.
-3. Set `preferences.proposal_slot` to `upcoming_proposal_slots[i]`.
 4. Set `preferences.validator_index` to the validator's index.
 5. Set `preferences.fee_recipient` to the execution address where the validator
    wishes to receive the builder payment.
