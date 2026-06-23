@@ -91,6 +91,10 @@ _MESSAGE_INFO = {
         "file_prefix": "data_column_sidecar",
         "validation_fn": "validate_data_column_sidecar_gossip",
     },
+    "PartialDataColumnGroupID": {
+        "file_prefix": "partial_data_column_group_id",
+        "validation_fn": None,
+    },
     "PartialDataColumnHeader": {
         "file_prefix": "partial_data_column_header",
         "validation_fn": None,
@@ -113,11 +117,13 @@ def get_filename(obj):
 
 def run_validate_gossip(spec, **kwargs):
     """Dispatch to the appropriate gossip validation function based on the message's type."""
-    matches = [v for v in kwargs.values() if type(v).__name__ in _MESSAGE_INFO]
+    matches = [
+        v
+        for v in kwargs.values()
+        if _MESSAGE_INFO.get(type(v).__name__, {}).get("validation_fn") is not None
+    ]
     assert len(matches) == 1, f"expected exactly one gossip message kwarg, got {len(matches)}"
     func_name = _MESSAGE_INFO[type(matches[0]).__name__]["validation_fn"]
-    if func_name is None:
-        raise Exception(f"unsupported gossip message type: {type(matches[0]).__name__}")
     spec_func = getattr(spec, func_name)
     extras = set(kwargs) - set(inspect.signature(spec_func).parameters)
     assert not extras, f"unexpected kwargs for {func_name}: {sorted(extras)}"
