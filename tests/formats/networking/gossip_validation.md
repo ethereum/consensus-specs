@@ -53,7 +53,8 @@ messages: [{                 -- List of messages to validate in sequence.
     subnet_id: int,          -- Optional. The subnet ID for subnet-scoped topics.
     column_index: int,       -- Optional. The column index for
                              -- `partial_data_column_sidecar` vectors.
-    block_root: string,      -- Optional. Hex-encoded block/group root for
+    group_id: string,        -- Optional. The `PartialDataColumnGroupID` file
+                             -- (without extension) for
                              -- `partial_data_column_sidecar` vectors.
     message: string,         -- The name of the message file (without extension).
     expected: string,        -- Expected result: "valid", "ignore", or "reject".
@@ -74,21 +75,22 @@ An SSZ-snappy encoded `BeaconState`. This state provides:
 Message files are named with a prefix indicating their type and the 32-byte hash
 tree root:
 
-| Topic                                   | File prefix                    | SSZ type                     |
-| --------------------------------------- | ------------------------------ | ---------------------------- |
-| `beacon_block`                          | `block_`                       | `SignedBeaconBlock`          |
-| `beacon_attestation`                    | `attestation_`                 | `Attestation`                |
-| `beacon_aggregate_and_proof`            | `aggregate_`                   | `SignedAggregateAndProof`    |
-| `proposer_slashing`                     | `proposer_slashing_`           | `ProposerSlashing`           |
-| `attester_slashing`                     | `attester_slashing_`           | `AttesterSlashing`           |
-| `voluntary_exit`                        | `voluntary_exit_`              | `SignedVoluntaryExit`        |
-| `sync_committee_contribution_and_proof` | `contribution_`                | `SignedContributionAndProof` |
-| `sync_committee`                        | `sync_committee_message_`      | `SyncCommitteeMessage`       |
-| `bls_to_execution_change`               | `bls_to_execution_change_`     | `SignedBLSToExecutionChange` |
-| `blob_sidecar`                          | `blob_sidecar_`                | `BlobSidecar`                |
-| `data_column_sidecar`                   | `data_column_sidecar_`         | `DataColumnSidecar`          |
-| `partial_data_column_header`            | `partial_data_column_header_`  | `PartialDataColumnHeader`    |
-| `partial_data_column_sidecar`           | `partial_data_column_sidecar_` | `PartialDataColumnSidecar`   |
+| Topic                                   | File prefix                     | SSZ type                     |
+| --------------------------------------- | ------------------------------- | ---------------------------- |
+| `beacon_block`                          | `block_`                        | `SignedBeaconBlock`          |
+| `beacon_attestation`                    | `attestation_`                  | `Attestation`                |
+| `beacon_aggregate_and_proof`            | `aggregate_`                    | `SignedAggregateAndProof`    |
+| `proposer_slashing`                     | `proposer_slashing_`            | `ProposerSlashing`           |
+| `attester_slashing`                     | `attester_slashing_`            | `AttesterSlashing`           |
+| `voluntary_exit`                        | `voluntary_exit_`               | `SignedVoluntaryExit`        |
+| `sync_committee_contribution_and_proof` | `contribution_`                 | `SignedContributionAndProof` |
+| `sync_committee`                        | `sync_committee_message_`       | `SyncCommitteeMessage`       |
+| `bls_to_execution_change`               | `bls_to_execution_change_`      | `SignedBLSToExecutionChange` |
+| `blob_sidecar`                          | `blob_sidecar_`                 | `BlobSidecar`                |
+| `data_column_sidecar`                   | `data_column_sidecar_`          | `DataColumnSidecar`          |
+| `partial_data_column_group_id`          | `partial_data_column_group_id_` | `PartialDataColumnGroupID`   |
+| `partial_data_column_header`            | `partial_data_column_header_`   | `PartialDataColumnHeader`    |
+| `partial_data_column_sidecar`           | `partial_data_column_sidecar_`  | `PartialDataColumnSidecar`   |
 
 Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
 
@@ -131,8 +133,8 @@ Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
    - Execute the appropriate validation function.
      - For subnet-scoped topics such as `beacon_attestation`, `blob_sidecar`,
        and `data_column_sidecar`, pass `message.subnet_id`.
-     - For `partial_data_column_sidecar`, pass `message.block_root` and
-       `message.column_index`.
+     - For `partial_data_column_sidecar`, pass the `PartialDataColumnGroupID`
+       referenced by `message.group_id` and `message.column_index`.
    - Verify the result matches `expected`.
    - If the result is `valid`, update the store as the validation function would
      (e.g., add to `seen_proposer_slots`, track seen attestations).

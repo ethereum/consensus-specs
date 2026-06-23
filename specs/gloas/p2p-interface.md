@@ -804,7 +804,7 @@ def validate_execution_payload_bid_gossip(
         raise GossipIgnore("bid's slot is past the parent's proposer lookahead")
 
     # [IGNORE] The matching proposer preferences have been seen
-    dependent_root = get_proposer_dependent_root(parent_state, proposal_epoch)
+    dependent_root = get_shuffling_dependent_root(store, bid.parent_block_root, proposal_epoch)
     prefs_key = (dependent_root, bid.slot)
     if prefs_key not in seen.proposer_preferences:
         raise GossipIgnore("matching proposer preferences have not been seen")
@@ -1182,7 +1182,7 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_BLOCKS_DENEB]
+  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]
 )
 ```
 
