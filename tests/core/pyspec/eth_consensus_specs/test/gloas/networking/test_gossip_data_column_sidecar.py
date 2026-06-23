@@ -55,7 +55,9 @@ def test_gossip_data_column_sidecar__ignore_block_unseen(spec, state):
         spec,
         seen=seen,
         store=store,
+        state=state,
         sidecar=sidecar,
+        current_time_ms=time_ms,
         subnet_id=correct_subnet,
     )
     assert result == "ignore"
@@ -106,7 +108,9 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
         spec,
         seen=seen,
         store=store,
+        state=state,
         sidecar=sidecar,
+        current_time_ms=time_ms,
         subnet_id=correct_subnet,
     )
     assert result == "ignore"
@@ -158,7 +162,9 @@ def test_gossip_data_column_sidecar__reject_slot_mismatch(spec, state):
         spec,
         seen=seen,
         store=store,
+        state=state,
         sidecar=sidecar,
+        current_time_ms=time_ms,
         subnet_id=correct_subnet,
     )
     assert result == "reject"
@@ -213,7 +219,9 @@ def test_gossip_data_column_sidecar__reject_invalid_sidecar(spec, state):
         spec,
         seen=seen,
         store=store,
+        state=state,
         sidecar=sidecar,
+        current_time_ms=time_ms,
         subnet_id=correct_subnet,
     )
     assert result == "reject"

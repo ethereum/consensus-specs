@@ -938,11 +938,9 @@ the sidecar.
 def validate_data_column_sidecar_gossip(
     seen: Seen,
     store: Store,
-    # [Modified in Gloas:EIP7732]
-    # Removed `state`
+    state: BeaconState,
     sidecar: DataColumnSidecar,
-    # [Modified in Gloas:EIP7732]
-    # Removed `current_time_ms`
+    current_time_ms: uint64,
     subnet_id: SubnetID,
 ) -> None:
     """
@@ -957,6 +955,11 @@ def validate_data_column_sidecar_gossip(
     # [REJECT] The sidecar is for the correct subnet
     if compute_subnet_for_data_column_sidecar(sidecar.index) != subnet_id:
         raise GossipReject("sidecar is for wrong subnet")
+
+    # [IGNORE] The sidecar is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if not is_not_from_future_slot(state, sidecar.slot, current_time_ms):
+        raise GossipIgnore("sidecar is from a future slot")
 
     # [IGNORE] A valid block for the sidecar has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
