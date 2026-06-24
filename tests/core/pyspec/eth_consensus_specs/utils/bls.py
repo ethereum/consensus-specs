@@ -2,7 +2,7 @@
 BLS12-381 utilities backed by py_arkworks_bls12381.
 """
 
-from py_arkworks_bls12381 import G1Point, G2Point, GT, Scalar
+from py_arkworks_bls12381 import G1Point as G1, G2Point as G2, GT, Scalar
 
 ################################################################################
 # Constants
@@ -48,7 +48,7 @@ def _hash_to_G2(message):
     """
     Hash `message` to a point in G2 using the BLS signature ciphersuite.
     """
-    return G2Point.hash_to_curve(message, b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_")
+    return G2.hash_to_curve(message, b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_")
 
 
 def _pubkey_to_point(pubkey):
@@ -56,7 +56,7 @@ def _pubkey_to_point(pubkey):
     Deserialize `pubkey` to a G1 point, or `None` if the encoding is invalid.
     """
     try:
-        return G1Point.from_compressed_bytes_unchecked(pubkey)
+        return G1.from_compressed_bytes_unchecked(pubkey)
     except Exception:
         return None
 
@@ -66,7 +66,7 @@ def _signature_to_point(signature):
     Deserialize `signature` to a G2 point, or `None` if the encoding is invalid.
     """
     try:
-        return G2Point.from_compressed_bytes_unchecked(signature)
+        return G2.from_compressed_bytes_unchecked(signature)
     except Exception:
         return None
 
@@ -85,7 +85,7 @@ def _valid_pubkey_point(pubkey):
     Return the G1 point for `pubkey` if it passes KeyValidate, else `None`.
     """
     point = _pubkey_to_point(pubkey)
-    if point is None or point == G1Point.identity() or not point.is_in_subgroup():
+    if point is None or point == G1.identity() or not point.is_in_subgroup():
         return None
     return point
 
@@ -98,6 +98,19 @@ def _valid_signature_point(signature):
     if point is None or not point.is_in_subgroup():
         return None
     return point
+
+
+def _aggregate_pubkey_points(pubkeys):
+    """
+    Aggregate `pubkeys` into a single G1 point, or `None` if empty or any is invalid.
+    """
+    aggregate = None
+    for pubkey in pubkeys:
+        point = _valid_pubkey_point(pubkey)
+        if point is None:
+            return None
+        aggregate = point if aggregate is None else aggregate + point
+    return aggregate
 
 
 ################################################################################
@@ -115,7 +128,7 @@ def Verify(PK, message, signature):
         return False
     # e(PK, H(m)) == e(G1, signature)  <=>  e(-G1, signature) * e(PK, H(m)) == 1
     message_point = _hash_to_G2(message)
-    return GT.pairing_check([-G1Point(), pubkey_point], [signature_point, message_point])
+    return GT.pairing_check([-G1(), pubkey_point], [signature_point, message_point])
 
 
 @only_with_bls(alt_return=True)
@@ -135,27 +148,23 @@ def AggregateVerify(pubkeys, messages, signature):
             return False
         g1_points.append(pubkey_point)
         g2_points.append(_hash_to_G2(message))
-    g1_points.append(-G1Point())
+    g1_points.append(-G1())
     g2_points.append(signature_point)
+    # prod_i e(PK_i, H(m_i)) == e(G1, signature) <=> (prod_i e(PK_i, H(m_i))) * e(-G1, signature) = 1
     return GT.pairing_check(g1_points, g2_points)
 
 
 @only_with_bls(alt_return=True)
 def FastAggregateVerify(pubkeys, message, signature):
-    pubkeys = list(pubkeys)
-    if len(pubkeys) == 0:
+    aggregate = _aggregate_pubkey_points(pubkeys)
+    if aggregate is None:
         return False
-    aggregate = None
-    for pubkey in pubkeys:
-        pubkey_point = _valid_pubkey_point(pubkey)
-        if pubkey_point is None:
-            return False
-        aggregate = pubkey_point if aggregate is None else aggregate + pubkey_point
     signature_point = _valid_signature_point(signature)
     if signature_point is None:
         return False
     message_point = _hash_to_G2(message)
-    return GT.pairing_check([-G1Point(), aggregate], [signature_point, message_point])
+    # e(G1, signature) = e(aggregate, H(m)) <=> e(-G1, signature) * e(aggregate, H(m)) = 1
+    return GT.pairing_check([-G1(), aggregate], [signature_point, message_point])
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
@@ -178,57 +187,20 @@ def Sign(SK, message):
 
 @only_with_bls(alt_return=STUB_PUBKEY)
 def AggregatePKs(pubkeys):
-    assert len(pubkeys) > 0
-    aggregate = None
-    for pubkey in pubkeys:
-        point = _valid_pubkey_point(pubkey)
-        assert point is not None, f"invalid pubkey: {pubkey!r}"
-        aggregate = point if aggregate is None else aggregate + point
+    aggregate = _aggregate_pubkey_points(pubkeys)
+    assert aggregate is not None, f"empty or invalid pubkeys: {pubkeys!r}"
     return aggregate.to_compressed_bytes()
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def SkToPk(SK):
-    pubkey_point = G1Point() * _sk_to_scalar(SK)
+    pubkey_point = G1() * _sk_to_scalar(SK)
     return pubkey_point.to_compressed_bytes()
 
 
 @only_with_bls(alt_return=True)
 def KeyValidate(pubkey):
     return _valid_pubkey_point(pubkey) is not None
-
-
-################################################################################
-# Points
-################################################################################
-
-
-def Z1():
-    """
-    Returns the identity point in G1
-    """
-    return G1Point.identity()
-
-
-def Z2():
-    """
-    Returns the identity point in G2
-    """
-    return G2Point.identity()
-
-
-def G1():
-    """
-    Returns the chosen generator point in G1
-    """
-    return G1Point()
-
-
-def G2():
-    """
-    Returns the chosen generator point in G2
-    """
-    return G2Point()
 
 
 ################################################################################
@@ -244,7 +216,7 @@ def pairing_check(values):
     p_q_1, p_q_2 = values
     g1s = [p_q_1[0], p_q_2[0]]
     g2s = [p_q_1[1], p_q_2[1]]
-    return GT.multi_pairing(g1s, g2s) == GT.one()
+    return GT.pairing_check(g1s, g2s)
 
 
 def add(lhs, rhs):
@@ -274,10 +246,10 @@ def multi_exp(points, scalars):
         raise Exception("Cannot call multi_exp with zero points or zero scalars")
 
     # Check if we need to perform a G1 or G2 multiexp
-    if isinstance(points[0], G1Point):
-        return G1Point.multiexp_unchecked(points, scalars)
-    elif isinstance(points[0], G2Point):
-        return G2Point.multiexp_unchecked(points, scalars)
+    if isinstance(points[0], G1):
+        return G1.multiexp_unchecked(points, scalars)
+    elif isinstance(points[0], G2):
+        return G2.multiexp_unchecked(points, scalars)
     else:
         raise Exception("Invalid point type")
 
@@ -317,7 +289,7 @@ def bytes48_to_G1(bytes48):
           of a point in G1, then this method will raise
           an exception.
     """
-    return G1Point.from_compressed_bytes_unchecked(bytes48)
+    return G1.from_compressed_bytes_unchecked(bytes48)
 
 
 def bytes96_to_G2(bytes96):
@@ -328,4 +300,4 @@ def bytes96_to_G2(bytes96):
           of a point in G2, then this method will raise
           an exception.
     """
-    return G2Point.from_compressed_bytes_unchecked(bytes96)
+    return G2.from_compressed_bytes_unchecked(bytes96)

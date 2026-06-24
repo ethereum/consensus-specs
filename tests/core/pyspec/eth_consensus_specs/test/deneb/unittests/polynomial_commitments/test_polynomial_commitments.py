@@ -242,7 +242,7 @@ def test_validate_kzg_g1_neutral_element(spec):
     Verify that `validate_kzg_g1` allows the neutral element in G1
     """
 
-    spec.validate_kzg_g1(bls.G1_to_bytes48(bls.Z1()))
+    spec.validate_kzg_g1(bls.G1_to_bytes48(bls.G1.identity()))
 
 
 @with_deneb_and_later
