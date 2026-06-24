@@ -332,13 +332,13 @@ and other types of chain instances may use a different configuration.
 
 ### Time parameters
 
-| Name                                  | Value                     | Unit         | Duration   |
-| ------------------------------------- | ------------------------- | ------------ | ---------- |
-| `SLOT_DURATION_MS`                    | `uint64(12000)`           | milliseconds | 12 seconds |
-| `SECONDS_PER_ETH1_BLOCK`              | `uint64(14)`              | seconds      | 14 seconds |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256)    | epochs       |            |
-| `SHARD_COMMITTEE_PERIOD`              | `uint64(2**8)` (= 256)    | epochs       |            |
-| `ETH1_FOLLOW_DISTANCE`                | `uint64(2**11)` (= 2,048) | Eth1 blocks  |            |
+| Name                                  | Value                     | Unit         |
+| ------------------------------------- | ------------------------- | ------------ |
+| `SLOT_DURATION_MS`                    | `uint64(12000)`           | milliseconds |
+| `SECONDS_PER_ETH1_BLOCK`              | `uint64(14)`              | seconds      |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256)    | epochs       |
+| `SHARD_COMMITTEE_PERIOD`              | `uint64(2**8)` (= 256)    | epochs       |
+| `ETH1_FOLLOW_DISTANCE`                | `uint64(2**11)` (= 2,048) | Eth1 blocks  |
 
 ### Validator cycle
 
