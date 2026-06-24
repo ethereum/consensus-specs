@@ -40,9 +40,9 @@ Heze is a consensus-layer upgrade containing a number of features. Including:
 
 ### Inclusion list committee
 
-| Name                            | Value                |
-| ------------------------------- | -------------------- |
-| `INCLUSION_LIST_COMMITTEE_SIZE` | `uint64(2**4)` (=16) |
+| Name                            | Value                 |
+| ------------------------------- | --------------------- |
+| `INCLUSION_LIST_COMMITTEE_SIZE` | `uint64(2**4)` (= 16) |
 
 ## Containers
 

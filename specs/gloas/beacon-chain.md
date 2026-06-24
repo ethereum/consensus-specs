@@ -234,8 +234,8 @@ future validator withdrawal prefix may reuse this value.
 
 ### Time parameters
 
-| Name                                | Value                     |  Unit  |
-| ----------------------------------- | ------------------------- | :----: |
+| Name                                | Value                     | Unit   |
+| ----------------------------------- | ------------------------- | ------ |
 | `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `uint64(2**13)` (= 8,192) | epochs |
 
 ## Containers

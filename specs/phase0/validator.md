@@ -100,16 +100,16 @@ specifications before continuing and use as a reference throughout.
 
 ### Misc
 
-| Name                               | Value         |    Unit    |
-| ---------------------------------- | ------------- | :--------: |
+| Name                               | Value         | Unit       |
+| ---------------------------------- | ------------- | ---------- |
 | `TARGET_AGGREGATORS_PER_COMMITTEE` | `2**4` (= 16) | validators |
 
 ## Configuration
 
 ### Time parameters
 
-| Name                  | Value          |     Unit     |          Duration          |
-| --------------------- | -------------- | :----------: | :------------------------: |
+| Name                  | Value          | Unit         | Duration                   |
+| --------------------- | -------------- | ------------ | -------------------------- |
 | `ATTESTATION_DUE_BPS` | `uint64(3333)` | basis points | ~33% of `SLOT_DURATION_MS` |
 | `AGGREGATE_DUE_BPS`   | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
 

@@ -222,7 +222,7 @@ parameter. The general approach is as follows:
    `NOT_VALIDATED` to `INVALIDATED`.
 
 | `latestValidHash`       | `invalidBlock`                                                                                                                                |
-| :---------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------- |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | Execution block hash    | The *child* of a block with `body.execution_payload.block_hash == latestValidHash` in the chain containing the block with payload in question |
 | `0x00..00` (all zeroes) | The first block with `body.execution_payload != ExecutionPayload()` in the chain containing a block with payload in question                  |
 | `null`                  | Block with payload in question                                                                                                                |

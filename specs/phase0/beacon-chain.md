@@ -259,8 +259,8 @@ directory.
 
 ### Time parameters
 
-| Name                               | Value                     |  Unit  |
-| ---------------------------------- | ------------------------- | :----: |
+| Name                               | Value                     | Unit   |
+| ---------------------------------- | ------------------------- | ------ |
 | `MIN_ATTESTATION_INCLUSION_DELAY`  | `uint64(2**0)` (= 1)      | slots  |
 | `SLOTS_PER_EPOCH`                  | `uint64(2**5)` (= 32)     | slots  |
 | `MIN_SEED_LOOKAHEAD`               | `uint64(2**0)` (= 1)      | epochs |
@@ -271,12 +271,12 @@ directory.
 
 ### State list lengths
 
-| Name                           | Value                                 |       Unit       |
-| ------------------------------ | ------------------------------------- | :--------------: |
-| `EPOCHS_PER_HISTORICAL_VECTOR` | `uint64(2**16)` (= 65,536)            |      epochs      |
-| `EPOCHS_PER_SLASHINGS_VECTOR`  | `uint64(2**13)` (= 8,192)             |      epochs      |
+| Name                           | Value                                 | Unit             |
+| ------------------------------ | ------------------------------------- | ---------------- |
+| `EPOCHS_PER_HISTORICAL_VECTOR` | `uint64(2**16)` (= 65,536)            | epochs           |
+| `EPOCHS_PER_SLASHINGS_VECTOR`  | `uint64(2**13)` (= 8,192)             | epochs           |
 | `HISTORICAL_ROOTS_LIMIT`       | `uint64(2**24)` (= 16,777,216)        | historical roots |
-| `VALIDATOR_REGISTRY_LIMIT`     | `uint64(2**40)` (= 1,099,511,627,776) |    validators    |
+| `VALIDATOR_REGISTRY_LIMIT`     | `uint64(2**40)` (= 1,099,511,627,776) | validators       |
 
 ### Rewards and penalties
 
@@ -332,12 +332,12 @@ and other types of chain instances may use a different configuration.
 
 ### Time parameters
 
-| Name                                  | Value                     |     Unit     |  Duration  |
-| ------------------------------------- | ------------------------- | :----------: | :--------: |
+| Name                                  | Value                     | Unit         | Duration   |
+| ------------------------------------- | ------------------------- | ------------ | ---------- |
 | `SLOT_DURATION_MS`                    | `uint64(12000)`           | milliseconds | 12 seconds |
-| `SECONDS_PER_ETH1_BLOCK`              | `uint64(14)`              |   seconds    | 14 seconds |
-| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256)    |    epochs    |            |
-| `SHARD_COMMITTEE_PERIOD`              | `uint64(2**8)` (= 256)    |    epochs    |            |
+| `SECONDS_PER_ETH1_BLOCK`              | `uint64(14)`              | seconds      | 14 seconds |
+| `MIN_VALIDATOR_WITHDRAWABILITY_DELAY` | `uint64(2**8)` (= 256)    | epochs       |            |
+| `SHARD_COMMITTEE_PERIOD`              | `uint64(2**8)` (= 256)    | epochs       |            |
 | `ETH1_FOLLOW_DISTANCE`                | `uint64(2**11)` (= 2,048) | Eth1 blocks  |            |
 
 ### Validator cycle

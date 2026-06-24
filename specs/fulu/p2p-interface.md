@@ -821,7 +821,7 @@ fork digest, next fork version, and next fork epoch to ensure connections are
 made with peers on the intended Ethereum network.
 
 | Key    | Value           |
-| :----- | :-------------- |
+| ------ | --------------- |
 | `eth2` | SSZ `ENRForkID` |
 
 Specifically, the value of the `eth2` key MUST be the following SSZ encoded
@@ -876,7 +876,7 @@ If no next fork is scheduled, the `nfd` entry contains the default value for the
 type (i.e., the SSZ representation of a zero-filled array).
 
 | Key   | Value                   |
-| :---- | :---------------------- |
+| ----- | ----------------------- |
 | `nfd` | SSZ Bytes4 `ForkDigest` |
 
 When discovering and interfacing with peers, nodes MUST evaluate `nfd` alongside
