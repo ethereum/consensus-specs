@@ -588,7 +588,7 @@ Response Content:
 )
 ```
 
-Specifications of req\\response methods are equivalent to
+Specifications of request/response methods are equivalent to
 [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference
 being the response content type.
 
