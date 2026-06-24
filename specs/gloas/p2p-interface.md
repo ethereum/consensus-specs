@@ -166,7 +166,7 @@ def verify_data_column_sidecar_kzg_proofs(
     cell_indices = [CellIndex(sidecar.index)] * len(sidecar.column)
 
     # Batch verify that the cells match the corresponding commitments and proofs
-    return verify_cell_kzg_proof_batch(
+    return kzg.verify_cell_kzg_proof_batch(
         # [Modified in Gloas:EIP7732]
         commitments_bytes=kzg_commitments,
         cell_indices=cell_indices,

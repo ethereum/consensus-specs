@@ -27,6 +27,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
 )
+from eth_consensus_specs.utils import kzg
 
 # Helpers
 
@@ -43,7 +44,7 @@ def compute_data_column_sidecar(spec, state):
     )
 
     opaque_tx, blobs, blob_kzg_commitments, _ = get_sample_blob_tx(spec, blob_count=2)
-    cells_and_kzg_proofs = [spec.compute_cells_and_kzg_proofs(blob) for blob in blobs]
+    cells_and_kzg_proofs = [kzg.compute_cells_and_kzg_proofs(blob) for blob in blobs]
 
     if is_post_gloas(spec):
         block.body.signed_execution_payload_bid.message.blob_kzg_commitments = spec.List[

@@ -678,7 +678,7 @@ def validate_blob_sidecar_gossip(
         raise GossipReject("invalid blob sidecar inclusion proof")
 
     # [REJECT] The sidecar's blob is valid as verified by verify_blob_kzg_proof
-    if not verify_blob_kzg_proof(
+    if not kzg.verify_blob_kzg_proof(
         blob_sidecar.blob, blob_sidecar.kzg_commitment, blob_sidecar.kzg_proof
     ):
         raise GossipReject("invalid blob kzg proof")
@@ -839,7 +839,7 @@ leading up to the current head block as selected by fork choice.
 
 Before consuming the next response chunk, the response reader SHOULD verify the
 blob sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t.
-the expected KZG commitments through `verify_blob_kzg_proof`.
+the expected KZG commitments through `kzg.verify_blob_kzg_proof`.
 
 `BlobSidecarsByRange` is primarily used to sync blobs that may have been missed
 on gossip and to sync within the `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` window.
@@ -939,7 +939,7 @@ may be less in the case that the responding peer is missing blocks or sidecars.
 
 Before consuming the next response chunk, the response reader SHOULD verify the
 blob sidecar is well-formatted, has valid inclusion proof, and is correct w.r.t.
-the expected KZG commitments through `verify_blob_kzg_proof`.
+the expected KZG commitments through `kzg.verify_blob_kzg_proof`.
 
 No more than `compute_max_request_blob_sidecars()` may be requested at a time.
 

@@ -10,28 +10,7 @@ class DenebSpecBuilder(BaseSpecBuilder):
     def imports(cls, preset_name: str):
         return f"""
 from eth_consensus_specs.capella import {preset_name} as capella
-"""
-
-    @classmethod
-    def classes(cls):
-        return """
-BLSFieldElement: TypeAlias = bls.Scalar
-
-
-class Polynomial(list):
-    def __init__(self, evals: Optional[Sequence[BLSFieldElement]] = None):
-        if evals is None:
-            evals = [BLSFieldElement(0)] * FIELD_ELEMENTS_PER_BLOB
-        if len(evals) != FIELD_ELEMENTS_PER_BLOB:
-            raise ValueError("expected FIELD_ELEMENTS_PER_BLOB evals")
-        super().__init__(evals)
-"""
-
-    @classmethod
-    def preparations(cls):
-        return """
-T = TypeVar('T')  # For generic function
-TPoint = TypeVar('TPoint')  # For generic function. G1 or G2 point.
+from eth_consensus_specs.utils import kzg
 """
 
     @classmethod

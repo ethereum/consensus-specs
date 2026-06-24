@@ -10,7 +10,6 @@ from frozendict import frozendict
 from lru import LRU
 
 from eth_consensus_specs.utils import bls
-from eth_consensus_specs.utils.ckzg_utils import apply_ckzg_to_spec
 from tests.infra.yield_generator import MultiPhaseResult, vector_test
 
 from .exceptions import SkippedTest
@@ -766,14 +765,6 @@ def get_copy_of_spec(spec):
 
     # Preserve existing config overrides
     module.config = deepcopy(spec.config)
-
-    # Re-apply ckzg monkey-patches if the source spec had them. Without this,
-    # the freshly-loaded module falls back to the pure-Python KZG impl, which
-    # makes blob-heavy tests (e.g. anything that calls
-    # `compute_cells_and_kzg_proofs`) prohibitively slow.
-    ts = getattr(spec, "_ckzg_trusted_setup", None)
-    if ts is not None:
-        apply_ckzg_to_spec(module, ts)
 
     return module
 

@@ -208,17 +208,6 @@ def KeyValidate(pubkey):
 ################################################################################
 
 
-def pairing_check(values):
-    """
-    Checks that the product of the pairings in `values` is the identity in GT.
-    `values` is a pair of `(G1, G2)` points, i.e. `[(P1, Q1), (P2, Q2)]`.
-    """
-    p_q_1, p_q_2 = values
-    g1s = [p_q_1[0], p_q_2[0]]
-    g2s = [p_q_1[1], p_q_2[1]]
-    return GT.pairing_check(g1s, g2s)
-
-
 def add(lhs, rhs):
     """
     Performs point addition of `lhs` and `rhs`.
