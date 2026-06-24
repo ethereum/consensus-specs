@@ -126,8 +126,8 @@ def Verify(PK, message, signature):
     signature_point = _valid_signature_point(signature)
     if signature_point is None:
         return False
-    # e(PK, H(m)) == e(G1, signature)  <=>  e(-G1, signature) * e(PK, H(m)) == 1
     message_point = _hash_to_G2(message)
+    # e(PK, H(m)) == e(G1, signature)  <=>  e(-G1, signature) * e(PK, H(m)) == 1
     return GT.pairing_check([-G1(), pubkey_point], [signature_point, message_point])
 
 
