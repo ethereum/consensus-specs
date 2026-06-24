@@ -1,129 +1,30 @@
-import milagro_bls_binding as milagro_bls
-import py_arkworks_bls12381 as arkworks_bls
-from py_arkworks_bls12381 import (
-    G1Point as arkworks_G1,
-    G2Point as arkworks_G2,
-    GT as arkworks_GT,
-    Scalar as arkworks_Scalar,
-)
-from py_ecc.bls import G2ProofOfPossession as py_ecc_bls
-from py_ecc.bls.g2_primitives import (
-    curve_order as BLS_MODULUS,
-    G1_to_pubkey as py_ecc_G1_to_bytes48,
-    G2_to_signature as py_ecc_G2_to_bytes96,
-    pubkey_to_G1 as py_ecc_bytes48_to_G1,
-    signature_to_G2 as _signature_to_G2,
-    signature_to_G2 as py_ecc_bytes96_to_G2,
-)
-from py_ecc.optimized_bls12_381 import (
-    add as py_ecc_add,
-    final_exponentiate as py_ecc_final_exponentiate,
-    FQ,
-    FQ2,
-    FQ12 as py_ecc_GT,
-    G1 as py_ecc_G1,
-    G2 as py_ecc_G2,
-    multiply as py_ecc_mul,
-    neg as py_ecc_neg,
-    pairing as py_ecc_pairing,
-    Z1 as py_ecc_Z1,
-    Z2 as py_ecc_Z2,
-)
-from py_ecc.utils import prime_field_inv as py_ecc_prime_field_inv
+"""
+BLS12-381 utilities backed by py_arkworks_bls12381.
+"""
 
+from py_arkworks_bls12381 import G1Point, G2Point, GT, Scalar
 
-class py_ecc_Scalar(FQ):
-    field_modulus = BLS_MODULUS
-
-    def __init__(self, value):
-        """
-        Force underlying value to be a native integer.
-        """
-        super().__init__(int(value))
-
-    def pow(self, exp):
-        """
-        Raises the self to the power of the given exponent.
-        """
-        return self ** int(exp)
-
-    def inverse(self):
-        """
-        Computes the modular inverse of self.
-        """
-        return py_ecc_Scalar(py_ecc_prime_field_inv(self.n, self.field_modulus))
-
-
-class fastest_bls:
-    G1 = arkworks_G1
-    G2 = arkworks_G2
-    Scalar = arkworks_Scalar
-    GT = arkworks_GT
-    _AggregatePKs = milagro_bls._AggregatePKs
-    Sign = milagro_bls.Sign
-    Verify = milagro_bls.Verify
-    Aggregate = milagro_bls.Aggregate
-    AggregateVerify = milagro_bls.AggregateVerify
-    FastAggregateVerify = milagro_bls.FastAggregateVerify
-    SkToPk = milagro_bls.SkToPk
-
-
-# Flag to make BLS active or not. Used for testing, do not ignore BLS in production unless you know what you are doing.
-bls_active = True
-
-# Default to fastest_bls
-bls = fastest_bls
-Scalar = fastest_bls.Scalar
+################################################################################
+# Constants
+################################################################################
 
 STUB_SIGNATURE = b"\x11" * 96
 STUB_PUBKEY = b"\x22" * 48
 G2_POINT_AT_INFINITY = b"\xc0" + b"\x00" * 95
-STUB_COORDINATES = _signature_to_G2(G2_POINT_AT_INFINITY)
 
+################################################################################
+# Decorators
+################################################################################
 
-def use_milagro():
-    """
-    Shortcut to use Milagro as BLS library
-    """
-    global bls
-    bls = milagro_bls
-    global Scalar
-    Scalar = py_ecc_Scalar
-
-
-def use_arkworks():
-    """
-    Shortcut to use Arkworks as BLS library
-    """
-    global bls
-    bls = arkworks_bls
-    global Scalar
-    Scalar = arkworks_Scalar
-
-
-def use_py_ecc():
-    """
-    Shortcut to use Py-ecc as BLS library
-    """
-    global bls
-    bls = py_ecc_bls
-    global Scalar
-    Scalar = py_ecc_Scalar
-
-
-def use_fastest():
-    """
-    Shortcut to use Milagro for signatures and Arkworks for other BLS operations
-    """
-    global bls
-    bls = fastest_bls
-    global Scalar
-    Scalar = fastest_bls.Scalar
+# Flag to make BLS active or not. Used for testing, do not ignore BLS in
+# production unless you know what you are doing.
+bls_active = True
 
 
 def only_with_bls(alt_return=None):
     """
-    Decorator factory to make a function only run when BLS is active. Otherwise return the default.
+    Decorator factory to make a function only run when BLS is active.
+    Otherwise return the default.
     """
 
     def runner(fn):
@@ -138,99 +39,212 @@ def only_with_bls(alt_return=None):
     return runner
 
 
+################################################################################
+# Helpers
+################################################################################
+
+
+def _hash_to_G2(message):
+    """
+    Hash `message` to a point in G2 using the BLS signature ciphersuite.
+    """
+    return G2Point.hash_to_curve(message, b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_")
+
+
+def _pubkey_to_point(pubkey):
+    """
+    Deserialize `pubkey` to a G1 point, or `None` if the encoding is invalid.
+    """
+    try:
+        return G1Point.from_compressed_bytes_unchecked(pubkey)
+    except Exception:
+        return None
+
+
+def _signature_to_point(signature):
+    """
+    Deserialize `signature` to a G2 point, or `None` if the encoding is invalid.
+    """
+    try:
+        return G2Point.from_compressed_bytes_unchecked(signature)
+    except Exception:
+        return None
+
+
+def _sk_to_scalar(SK):
+    """
+    Convert a secret key `SK` (int or big-endian bytes) to a scalar.
+    """
+    if isinstance(SK, (bytes, bytearray)):
+        SK = int.from_bytes(SK, "big")
+    return Scalar(SK)
+
+
+def _valid_pubkey_point(pubkey):
+    """
+    Return the G1 point for `pubkey` if it passes KeyValidate, else `None`.
+    """
+    point = _pubkey_to_point(pubkey)
+    if point is None or point == G1Point.identity() or not point.is_in_subgroup():
+        return None
+    return point
+
+
+def _valid_signature_point(signature):
+    """
+    Return the G2 point for `signature` if it is a valid subgroup member, else `None`.
+    """
+    point = _signature_to_point(signature)
+    if point is None or not point.is_in_subgroup():
+        return None
+    return point
+
+
+################################################################################
+# Signatures
+################################################################################
+
+
 @only_with_bls(alt_return=True)
 def Verify(PK, message, signature):
-    try:
-        if bls == arkworks_bls:  # no signature API in arkworks
-            result = py_ecc_bls.Verify(PK, message, signature)
-        else:
-            result = bls.Verify(PK, message, signature)
-    except Exception:
-        result = False
-    return result
+    pubkey_point = _valid_pubkey_point(PK)
+    if pubkey_point is None:
+        return False
+    signature_point = _valid_signature_point(signature)
+    if signature_point is None:
+        return False
+    # e(PK, H(m)) == e(G1, signature)  <=>  e(-G1, signature) * e(PK, H(m)) == 1
+    message_point = _hash_to_G2(message)
+    return GT.pairing_check([-G1Point(), pubkey_point], [signature_point, message_point])
 
 
 @only_with_bls(alt_return=True)
 def AggregateVerify(pubkeys, messages, signature):
-    try:
-        if bls == arkworks_bls:  # no signature API in arkworks
-            result = py_ecc_bls.AggregateVerify(list(pubkeys), list(messages), signature)
-        else:
-            result = bls.AggregateVerify(list(pubkeys), list(messages), signature)
-    except Exception:
-        result = False
-    return result
+    pubkeys = list(pubkeys)
+    messages = list(messages)
+    if len(pubkeys) == 0 or len(pubkeys) != len(messages):
+        return False
+    signature_point = _valid_signature_point(signature)
+    if signature_point is None:
+        return False
+    g1_points = []
+    g2_points = []
+    for pubkey, message in zip(pubkeys, messages, strict=True):
+        pubkey_point = _valid_pubkey_point(pubkey)
+        if pubkey_point is None:
+            return False
+        g1_points.append(pubkey_point)
+        g2_points.append(_hash_to_G2(message))
+    g1_points.append(-G1Point())
+    g2_points.append(signature_point)
+    return GT.pairing_check(g1_points, g2_points)
 
 
 @only_with_bls(alt_return=True)
 def FastAggregateVerify(pubkeys, message, signature):
-    try:
-        if bls == arkworks_bls:  # no signature API in arkworks
-            result = py_ecc_bls.FastAggregateVerify(list(pubkeys), message, signature)
-        else:
-            result = bls.FastAggregateVerify(list(pubkeys), message, signature)
-    except Exception:
-        result = False
-    return result
+    pubkeys = list(pubkeys)
+    if len(pubkeys) == 0:
+        return False
+    aggregate = None
+    for pubkey in pubkeys:
+        pubkey_point = _valid_pubkey_point(pubkey)
+        if pubkey_point is None:
+            return False
+        aggregate = pubkey_point if aggregate is None else aggregate + pubkey_point
+    signature_point = _valid_signature_point(signature)
+    if signature_point is None:
+        return False
+    message_point = _hash_to_G2(message)
+    return GT.pairing_check([-G1Point(), aggregate], [signature_point, message_point])
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def Aggregate(signatures):
-    if bls == arkworks_bls:  # no signature API in arkworks
-        return py_ecc_bls.Aggregate(signatures)
-    return bls.Aggregate(signatures)
+    assert len(signatures) > 0
+    aggregate = None
+    for signature in signatures:
+        point = _signature_to_point(signature)
+        if point is None:
+            raise Exception(f"invalid signature encoding: {signature!r}")
+        aggregate = point if aggregate is None else aggregate + point
+    return aggregate.to_compressed_bytes()
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def Sign(SK, message):
-    if bls == arkworks_bls:  # no signature API in arkworks
-        return py_ecc_bls.Sign(SK, message)
-    elif bls == py_ecc_bls:
-        return bls.Sign(SK, message)
-    else:
-        return bls.Sign(SK.to_bytes(32, "big"), message)
-
-
-@only_with_bls(alt_return=STUB_COORDINATES)
-def signature_to_G2(signature):
-    return _signature_to_G2(signature)
+    signature_point = _hash_to_G2(message) * _sk_to_scalar(SK)
+    return signature_point.to_compressed_bytes()
 
 
 @only_with_bls(alt_return=STUB_PUBKEY)
 def AggregatePKs(pubkeys):
-    if bls == py_ecc_bls:
-        assert all(bls.KeyValidate(pubkey) for pubkey in pubkeys)
-    elif bls == milagro_bls:
-        # milagro_bls._AggregatePKs checks KeyValidate internally
-        pass
-
-    if bls == arkworks_bls:  # no signature API in arkworks
-        return py_ecc_bls._AggregatePKs(list(pubkeys))
-
-    return bls._AggregatePKs(list(pubkeys))
+    assert len(pubkeys) > 0
+    aggregate = None
+    for pubkey in pubkeys:
+        point = _valid_pubkey_point(pubkey)
+        assert point is not None, f"invalid pubkey: {pubkey!r}"
+        aggregate = point if aggregate is None else aggregate + point
+    return aggregate.to_compressed_bytes()
 
 
 @only_with_bls(alt_return=STUB_SIGNATURE)
 def SkToPk(SK):
-    if bls in (py_ecc_bls, arkworks_bls):  # no signature API in arkworks
-        return py_ecc_bls.SkToPk(SK)
-    else:
-        return bls.SkToPk(SK.to_bytes(32, "big"))
+    pubkey_point = G1Point() * _sk_to_scalar(SK)
+    return pubkey_point.to_compressed_bytes()
+
+
+@only_with_bls(alt_return=True)
+def KeyValidate(pubkey):
+    return _valid_pubkey_point(pubkey) is not None
+
+
+################################################################################
+# Points
+################################################################################
+
+
+def Z1():
+    """
+    Returns the identity point in G1
+    """
+    return G1Point.identity()
+
+
+def Z2():
+    """
+    Returns the identity point in G2
+    """
+    return G2Point.identity()
+
+
+def G1():
+    """
+    Returns the chosen generator point in G1
+    """
+    return G1Point()
+
+
+def G2():
+    """
+    Returns the chosen generator point in G2
+    """
+    return G2Point()
+
+
+################################################################################
+# Operations
+################################################################################
 
 
 def pairing_check(values):
-    if bls in (arkworks_bls, fastest_bls):
-        p_q_1, p_q_2 = values
-        g1s = [p_q_1[0], p_q_2[0]]
-        g2s = [p_q_1[1], p_q_2[1]]
-        return arkworks_GT.multi_pairing(g1s, g2s) == arkworks_GT.one()
-    else:
-        p_q_1, p_q_2 = values
-        final_exponentiation = py_ecc_final_exponentiate(
-            py_ecc_pairing(p_q_1[1], p_q_1[0], final_exponentiate=False)
-            * py_ecc_pairing(p_q_2[1], p_q_2[0], final_exponentiate=False)
-        )
-        return final_exponentiation == py_ecc_GT.one()
+    """
+    Checks that the product of the pairings in `values` is the identity in GT.
+    `values` is a pair of `(G1, G2)` points, i.e. `[(P1, Q1), (P2, Q2)]`.
+    """
+    p_q_1, p_q_2 = values
+    g1s = [p_q_1[0], p_q_2[0]]
+    g2s = [p_q_1[1], p_q_2[1]]
+    return GT.multi_pairing(g1s, g2s) == GT.one()
 
 
 def add(lhs, rhs):
@@ -238,157 +252,80 @@ def add(lhs, rhs):
     Performs point addition of `lhs` and `rhs`.
     The points can either be in G1 or G2.
     """
-    if bls in (arkworks_bls, fastest_bls):
-        return lhs + rhs
-    return py_ecc_add(lhs, rhs)
+    return lhs + rhs
 
 
 def multiply(point, scalar):
     """
-    Performs Scalar multiplication between
-    `point` and `scalar`.
-    `point` can either be in G1 or G2
+    Performs scalar multiplication of `point` and `scalar`.
+    The points can either be in G1 or G2.
     """
-    if bls in (arkworks_bls, fastest_bls):
-        if not isinstance(scalar, arkworks_Scalar):
-            return point * arkworks_Scalar(int(scalar))
-        return point * scalar
-    return py_ecc_mul(point, int(scalar))
+    return point * scalar
 
 
 def multi_exp(points, scalars):
     """
-    Performs a multi-scalar multiplication between
-    `points` and `scalars`.
-    `points` can either be in G1 or G2.
+    Performs a multi-scalar multiplication of `points` and `scalars`.
+    The points can either be in G1 or G2.
     """
     # Since this method accepts either G1 or G2, we need to know
     # the type of the point to return. Hence, we need at least one point.
     if not points or not scalars:
         raise Exception("Cannot call multi_exp with zero points or zero scalars")
 
-    if bls in (arkworks_bls, fastest_bls):
-        # If using py_ecc Scalars, convert to arkworks Scalars.
-        if not isinstance(scalars[0], arkworks_Scalar):
-            scalars = [arkworks_Scalar(int(s)) for s in scalars]
-
-        # Check if we need to perform a G1 or G2 multiexp
-        if isinstance(points[0], arkworks_G1):
-            return arkworks_G1.multiexp_unchecked(points, scalars)
-        elif isinstance(points[0], arkworks_G2):
-            return arkworks_G2.multiexp_unchecked(points, scalars)
-        else:
-            raise Exception("Invalid point type")
-
-    result = None
-    if isinstance(points[0][0], FQ):
-        result = Z1()
-    elif isinstance(points[0][0], FQ2):
-        result = Z2()
+    # Check if we need to perform a G1 or G2 multiexp
+    if isinstance(points[0], G1Point):
+        return G1Point.multiexp_unchecked(points, scalars)
+    elif isinstance(points[0], G2Point):
+        return G2Point.multiexp_unchecked(points, scalars)
     else:
         raise Exception("Invalid point type")
-
-    for point, scalar in zip(points, scalars, strict=False):
-        result = add(result, multiply(point, scalar))
-    return result
 
 
 def neg(point):
     """
-    Returns the point negation of `point`
-    `point` can either be in G1 or G2
+    Returns the point negation of `point`.
+    The point can either be in G1 or G2.
     """
-    if bls in (arkworks_bls, fastest_bls):
-        return -point
-    return py_ecc_neg(point)
+    return -point
 
 
-def Z1():
-    """
-    Returns the identity point in G1
-    """
-    if bls in (arkworks_bls, fastest_bls):
-        return arkworks_G1.identity()
-    return py_ecc_Z1
-
-
-def Z2():
-    """
-    Returns the identity point in G2
-    """
-    if bls in (arkworks_bls, fastest_bls):
-        return arkworks_G2.identity()
-    return py_ecc_Z2
-
-
-def G1():
-    """
-    Returns the chosen generator point in G1
-    """
-    if bls in (arkworks_bls, fastest_bls):
-        return arkworks_G1()
-    return py_ecc_G1
-
-
-def G2():
-    """
-    Returns the chosen generator point in G2
-    """
-    if bls in (arkworks_bls, fastest_bls):
-        return arkworks_G2()
-    return py_ecc_G2
+################################################################################
+# Serialization
+################################################################################
 
 
 def G1_to_bytes48(point):
     """
     Serializes a point in G1.
-    Returns a bytearray of size 48 as
-    we use the compressed format
     """
-    if bls in (arkworks_bls, fastest_bls):
-        return bytes(point.to_compressed_bytes())
-    return py_ecc_G1_to_bytes48(point)
+    return point.to_compressed_bytes()
 
 
 def G2_to_bytes96(point):
     """
     Serializes a point in G2.
-    Returns a bytearray of size 96 as
-    we use the compressed format
     """
-    if bls in (arkworks_bls, fastest_bls):
-        return bytes(point.to_compressed_bytes())
-    return py_ecc_G2_to_bytes96(point)
+    return point.to_compressed_bytes()
 
 
 def bytes48_to_G1(bytes48):
     """
-    Deserializes a purported compressed serialized
-    point in G1.
-        - No subgroup checks are performed
+    Deserializes a purported compressed serialized point in G1.
+        - No subgroup checks are performed.
         - If the bytearray is not a valid serialization
-        of a point in G1, then this method will raise
-        an exception
+          of a point in G1, then this method will raise
+          an exception.
     """
-    if bls in (arkworks_bls, fastest_bls):
-        return arkworks_G1.from_compressed_bytes_unchecked(bytes48)
-    return py_ecc_bytes48_to_G1(bytes48)
+    return G1Point.from_compressed_bytes_unchecked(bytes48)
 
 
 def bytes96_to_G2(bytes96):
     """
-    Deserializes a purported compressed serialized
-    point in G2.
-        - No subgroup checks are performed
+    Deserializes a purported compressed serialized point in G2.
+        - No subgroup checks are performed.
         - If the bytearray is not a valid serialization
-        of a point in G2, then this method will raise
-        an exception
+          of a point in G2, then this method will raise
+          an exception.
     """
-    if bls in (arkworks_bls, fastest_bls):
-        return arkworks_G2.from_compressed_bytes_unchecked(bytes96)
-    return py_ecc_bytes96_to_G2(bytes96)
-
-
-@only_with_bls(alt_return=True)
-def KeyValidate(pubkey):
-    return py_ecc_bls.KeyValidate(pubkey)
+    return G2Point.from_compressed_bytes_unchecked(bytes96)
