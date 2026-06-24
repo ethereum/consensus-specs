@@ -135,18 +135,22 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 ## Types
 
-| Name              | SSZ equivalent                        | Description                   |
-| ----------------- | ------------------------------------- | ----------------------------- |
-| `BuilderIndex`    | `uint64`                              | Builder registry index        |
-| `BlockAccessList` | `ByteList[MAX_BYTES_PER_TRANSACTION]` | RLP encoded block access list |
+| Name              | SSZ equivalent                        |
+| ----------------- | ------------------------------------- |
+| `BuilderIndex`    | `uint64`                              |
+| `BlockAccessList` | `ByteList[MAX_BYTES_PER_TRANSACTION]` |
 
 ## Constants
 
 ### Index flags
 
-| Name                 | Value           | Description                                                                                |
-| -------------------- | --------------- | ------------------------------------------------------------------------------------------ |
-| `BUILDER_INDEX_FLAG` | `uint64(2**40)` | Bitwise flag which indicates that a `ValidatorIndex` should be treated as a `BuilderIndex` |
+*Note*: The `BUILDER_INDEX_FLAG` is a bitwise flag which indicates that a
+`ValidatorIndex` should be treated as a `BuilderIndex`. This exists so that the
+same `Withdrawal` container can be used for validators and builders.
+
+| Name                 | Value           |
+| -------------------- | --------------- |
+| `BUILDER_INDEX_FLAG` | `uint64(2**40)` |
 
 ### Domains
 
@@ -159,11 +163,11 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 ### Misc
 
-| Name                                    | Value                      | Description                                          |
-| --------------------------------------- | -------------------------- | ---------------------------------------------------- |
-| `BUILDER_INDEX_SELF_BUILD`              | `BuilderIndex(UINT64_MAX)` | Value which indicates the proposer built the payload |
-| `BUILDER_PAYMENT_THRESHOLD_NUMERATOR`   | `uint64(6)`                |                                                      |
-| `BUILDER_PAYMENT_THRESHOLD_DENOMINATOR` | `uint64(10)`               |                                                      |
+| Name                                    | Value                      |
+| --------------------------------------- | -------------------------- |
+| `BUILDER_INDEX_SELF_BUILD`              | `BuilderIndex(UINT64_MAX)` |
+| `BUILDER_PAYMENT_THRESHOLD_NUMERATOR`   | `uint64(6)`                |
+| `BUILDER_PAYMENT_THRESHOLD_DENOMINATOR` | `uint64(10)`               |
 
 ### Withdrawal prefixes
 
@@ -171,15 +175,15 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 to onboard builders at the fork. It will be deprecated after the upgrade and a
 future validator withdrawal prefix may reuse this value.
 
-| Name                        | Value            | Description                                |
-| --------------------------- | ---------------- | ------------------------------------------ |
-| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` | Withdrawal credential prefix for a builder |
+| Name                        | Value            |
+| --------------------------- | ---------------- |
+| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` |
 
 ### Builder versions
 
-| Name                      | Value      | Description                              |
-| ------------------------- | ---------- | ---------------------------------------- |
-| `PAYLOAD_BUILDER_VERSION` | `uint8(0)` | Version for an execution payload builder |
+| Name                      | Value      |
+| ------------------------- | ---------- |
+| `PAYLOAD_BUILDER_VERSION` | `uint8(0)` |
 
 ### Execution-layer triggered requests
 
@@ -204,17 +208,17 @@ future validator withdrawal prefix may reuse this value.
 
 ### Execution
 
-| Name                                       | Value                  | Description                                                |
-| ------------------------------------------ | ---------------------- | ---------------------------------------------------------- |
-| `MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**8)` (= 256) | Maximum number of builder deposit requests in each payload |
-| `MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16)  | Maximum number of builder exit requests in each payload    |
+| Name                                       | Value                  |
+| ------------------------------------------ | ---------------------- |
+| `MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**8)` (= 256) |
+| `MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16)  |
 
 ### State list lengths
 
-| Name                                | Value                                 | Unit                        |
-| ----------------------------------- | ------------------------------------- | --------------------------- |
-| `BUILDER_REGISTRY_LIMIT`            | `uint64(2**40)` (= 1,099,511,627,776) | Builders                    |
-| `BUILDER_PENDING_WITHDRAWALS_LIMIT` | `uint64(2**20)` (= 1,048,576)         | Builder pending withdrawals |
+| Name                                | Value                                 |
+| ----------------------------------- | ------------------------------------- |
+| `BUILDER_REGISTRY_LIMIT`            | `uint64(2**40)` (= 1,099,511,627,776) |
+| `BUILDER_PENDING_WITHDRAWALS_LIMIT` | `uint64(2**20)` (= 1,048,576)         |
 
 ### Withdrawals processing
 

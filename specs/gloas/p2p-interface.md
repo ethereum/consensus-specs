@@ -49,9 +49,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Configuration
 
-| Name                   | Value          | Description                                                       |
-| ---------------------- | -------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
+| Name                   | Value          |
+| ---------------------- | -------------- |
+| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) |
 
 ### Containers
 
