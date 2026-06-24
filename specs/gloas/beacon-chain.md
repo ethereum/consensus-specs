@@ -202,9 +202,9 @@ future validator withdrawal prefix may reuse this value.
 
 ### Max operations per block
 
-| Name                       | Value |
-| -------------------------- | ----- |
-| `MAX_PAYLOAD_ATTESTATIONS` | `4`   |
+| Name                       | Value                |
+| -------------------------- | -------------------- |
+| `MAX_PAYLOAD_ATTESTATIONS` | `uint64(2**2)` (= 4) |
 
 ### Execution
 
@@ -222,9 +222,9 @@ future validator withdrawal prefix may reuse this value.
 
 ### Withdrawals processing
 
-| Name                                 | Value              |
-| ------------------------------------ | ------------------ |
-| `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` | `2**14` (= 16,384) |
+| Name                                 | Value                      |
+| ------------------------------------ | -------------------------- |
+| `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` | `uint64(2**14)` (= 16,384) |
 
 ## Configuration
 
