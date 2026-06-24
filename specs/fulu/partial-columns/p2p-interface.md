@@ -7,6 +7,7 @@
   - [New `PartialDataColumnSidecar`](#new-partialdatacolumnsidecar)
   - [New `PartialDataColumnPartsMetadata`](#new-partialdatacolumnpartsmetadata)
   - [New `PartialDataColumnHeader`](#new-partialdatacolumnheader)
+  - [New `PartialDataColumnGroupID`](#new-partialdatacolumngroupid)
 - [Helpers](#helpers)
   - [New `verify_partial_data_column_header_inclusion_proof`](#new-verify_partial_data_column_header_inclusion_proof)
   - [New `verify_partial_data_column_sidecar_kzg_proofs`](#new-verify_partial_data_column_sidecar_kzg_proofs)
@@ -102,6 +103,13 @@ class PartialDataColumnHeader(Container):
     kzg_commitments_inclusion_proof: Vector[Bytes32, KZG_COMMITMENTS_INCLUSION_PROOF_DEPTH]
 ```
 
+### New `PartialDataColumnGroupID`
+
+```python
+class PartialDataColumnGroupID(Container):
+    beacon_block_root: Root
+```
+
 ## Helpers
 
 ### New `verify_partial_data_column_header_inclusion_proof`
@@ -159,15 +167,24 @@ subnet (gossipsub topic), it can be used for all subnets. Due to the nature of
 partial messages, it is possible to get the `PartialDataColumnHeader` with no
 cells, and get cells in a future response.
 
+*Note*: The Partial Message Group ID is the SSZ encoded
+`PartialDataColumnGroupID` prefixed with the version byte `0x00`.
+Implementations MUST ignore unknown versions.
+
+*Note*: The optional check "for cells the receiver already has, the sidecar's
+cell and proof data are equal to the local copy" is not encoded below. The
+sender MUST always send valid cell and proof data; receivers MAY perform this
+equality check against their local copy as an additional safeguard.
+
 ```python
 def validate_partial_data_column_sidecar_gossip(
     seen: Seen,
     store: Store,
     state: BeaconState,
     sidecar: PartialDataColumnSidecar,
-    block_root: Root,
-    column_index: ColumnIndex,
     current_time_ms: uint64,
+    group_id: PartialDataColumnGroupID,
+    column_index: ColumnIndex,
 ) -> None:
     """
     Validate a PartialDataColumnSidecar for gossip propagation on a subnet.
@@ -181,11 +198,11 @@ def validate_partial_data_column_sidecar_gossip(
     if not (has_header or has_cells):
         raise GossipReject("partial message is semantically empty")
 
-    # [REJECT] The cell count equals the number of bits set in cells_present_bitmap
+    # [REJECT] The cell count equals the number of set bits in the bitmap
     if len(sidecar.partial_column) != num_cells_present:
         raise GossipReject("number of cells does not match number of set bits")
 
-    # [REJECT] The proof count equals the number of bits set in cells_present_bitmap
+    # [REJECT] The proof count equals the number of set bits in the bitmap
     if len(sidecar.kzg_proofs) != num_cells_present:
         raise GossipReject("number of proofs does not match number of set bits")
 
@@ -194,13 +211,13 @@ def validate_partial_data_column_sidecar_gossip(
         block_header = header.signed_block_header.message
 
         # [REJECT] The received header MUST equal any previously validated header for this block
-        prior_header = seen.partial_data_column_headers.get(block_root)
+        prior_header = seen.partial_data_column_headers.get(group_id.beacon_block_root)
         if prior_header is not None and prior_header != header:
             raise GossipReject("header differs from previously validated header")
 
         # [REJECT] The signed_block_header hash matches the partial message's group id
-        if hash_tree_root(block_header) != block_root:
-            raise GossipReject("header's block root does not match partial message group id")
+        if hash_tree_root(block_header) != group_id.beacon_block_root:
+            raise GossipReject("header's block root does not match group id's block root")
 
         # [REJECT] The header's kzg_commitments list is non-empty
         if len(header.kzg_commitments) == 0:
@@ -260,11 +277,11 @@ def validate_partial_data_column_sidecar_gossip(
             raise GossipReject("header proposer_index does not match expected proposer")
 
         # Mark this header as seen
-        seen.partial_data_column_headers[block_root] = header
+        seen.partial_data_column_headers[group_id.beacon_block_root] = header
 
     if has_cells:
         # [IGNORE] A valid corresponding PartialDataColumnHeader has been seen
-        header = seen.partial_data_column_headers.get(block_root)
+        header = seen.partial_data_column_headers.get(group_id.beacon_block_root)
         if header is None:
             raise GossipIgnore("valid corresponding header has not been seen")
 
@@ -282,21 +299,16 @@ def validate_partial_data_column_sidecar_gossip(
                 "corresponding header is not from a slot greater than the latest finalized slot"
             )
 
-        # [REJECT] The cells_present_bitmap length equals the number of header kzg_commitments
+        # [REJECT] The cells present bitmap length equals the number of header commitments
         if len(sidecar.cells_present_bitmap) != len(header.kzg_commitments):
             raise GossipReject("bitmap length does not match commitments length")
 
-        # [REJECT] The sidecar's cell and proof data is valid
+        # [REJECT] The sidecar's cell and proof data passes KZG verification
         if not verify_partial_data_column_sidecar_kzg_proofs(
             sidecar, header.kzg_commitments, column_index
         ):
             raise GossipReject("invalid sidecar kzg proofs")
 ```
-
-*Note*: The optional check "for cells the receiver already has, the sidecar's
-cell and proof data are equal to the local copy" is not encoded above. The
-sender MUST always send valid cell and proof data; receivers MAY perform this
-equality check against their local copy as an additional safeguard.
 
 ### Partial columns for Cell Dissemination
 
@@ -308,9 +320,10 @@ cells along with their proofs.
 
 #### Partial message group ID
 
-When sending a partial message, the gossipsub group ID MUST be the block root
-prefixed by a single byte used for versioning. The version byte MUST be zero.
-Other versions may be defined later.
+When sending a partial message, the gossipsub group ID MUST be the SSZ encoded
+`PartialDataColumnGroupID` prefixed with a single version byte. The version byte
+MUST be `0x00`. Implementations MUST ignore unknown versions. Other versions may
+be defined later.
 
 #### Parts metadata
 

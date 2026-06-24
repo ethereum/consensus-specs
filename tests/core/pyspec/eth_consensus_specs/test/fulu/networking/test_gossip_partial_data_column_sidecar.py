@@ -113,6 +113,8 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -127,7 +129,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "valid"
@@ -138,7 +140,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_only(spec, state):
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -177,6 +179,8 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, include_header=True)
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -191,7 +195,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "valid"
@@ -202,7 +206,7 @@ def test_gossip_partial_data_column_sidecar__valid_header_and_cells(spec, state)
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -230,6 +234,8 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=2)
     sidecar = sidecars[0]
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     # First message: header only, populates the cache.
     header_msg = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
@@ -252,13 +258,13 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
         state=state,
         sidecar=header_msg,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "valid"
     messages.append(
         {
-            "block_root": "0x" + block_root.hex(),
+            "group_id": get_filename(group_id),
             "column_index": int(column_index),
             "offset_ms": 500,
             "message": get_filename(header_msg),
@@ -273,14 +279,14 @@ def test_gossip_partial_data_column_sidecar__valid_cells_only_with_cached_header
         state=state,
         sidecar=cells_msg,
         current_time_ms=block_time_ms + 600,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "block_root": "0x" + block_root.hex(),
+            "group_id": get_filename(group_id),
             "column_index": int(column_index),
             "offset_ms": 600,
             "message": get_filename(cells_msg),
@@ -310,6 +316,8 @@ def test_gossip_partial_data_column_sidecar__reject_semantically_empty(spec, sta
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=False)
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -324,7 +332,7 @@ def test_gossip_partial_data_column_sidecar__reject_semantically_empty(spec, sta
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
@@ -335,7 +343,7 @@ def test_gossip_partial_data_column_sidecar__reject_semantically_empty(spec, sta
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -367,6 +375,8 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
     # Drop a cell so the count no longer matches the bitmap.
     partial.partial_column = list(partial.partial_column)[:-1]
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -381,7 +391,7 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
@@ -392,7 +402,7 @@ def test_gossip_partial_data_column_sidecar__reject_cell_count_mismatch(spec, st
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -424,6 +434,8 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
     # Drop a proof so the count no longer matches the bitmap.
     partial.kzg_proofs = list(partial.kzg_proofs)[:-1]
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -438,7 +450,7 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
@@ -449,7 +461,7 @@ def test_gossip_partial_data_column_sidecar__reject_proof_count_mismatch(spec, s
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -478,6 +490,8 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     good = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
 
@@ -504,13 +518,13 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
         state=state,
         sidecar=good,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "valid"
     messages.append(
         {
-            "block_root": "0x" + block_root.hex(),
+            "group_id": get_filename(group_id),
             "column_index": int(column_index),
             "offset_ms": 500,
             "message": get_filename(good),
@@ -525,14 +539,14 @@ def test_gossip_partial_data_column_sidecar__reject_prior_header_differs(spec, s
         state=state,
         sidecar=diverging,
         current_time_ms=block_time_ms + 600,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
     assert reason == "header differs from previously validated header"
     messages.append(
         {
-            "block_root": "0x" + block_root.hex(),
+            "group_id": get_filename(group_id),
             "column_index": int(column_index),
             "offset_ms": 600,
             "message": get_filename(diverging),
@@ -563,6 +577,8 @@ def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, st
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     block_root = spec.Root(b"\xab" * 32)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -577,18 +593,18 @@ def test_gossip_partial_data_column_sidecar__reject_block_root_mismatch(spec, st
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
-    assert reason == "header's block root does not match partial message group id"
+    assert reason == "header's block root does not match group id's block root"
 
     yield (
         "messages",
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -619,6 +635,8 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     partial.header[0].kzg_commitments = []
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -633,7 +651,7 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
@@ -644,7 +662,7 @@ def test_gossip_partial_data_column_sidecar__reject_empty_commitments(spec, stat
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -674,6 +692,8 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -689,7 +709,7 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
         state=state,
         sidecar=partial,
         current_time_ms=current_time_ms,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "ignore"
@@ -700,7 +720,7 @@ def test_gossip_partial_data_column_sidecar__ignore_future_slot(spec, state):
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 0,
                 "message": get_filename(partial),
@@ -731,6 +751,8 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     block_header = sidecar.signed_block_header.message
     sidecar_epoch = spec.compute_epoch_at_slot(block_header.slot)
@@ -757,7 +779,7 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "ignore"
@@ -768,7 +790,7 @@ def test_gossip_partial_data_column_sidecar__ignore_not_later_than_finalized_slo
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -801,6 +823,8 @@ def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(
         len(state.validators)
     )
     block_root = spec.hash_tree_root(partial.header[0].signed_block_header.message)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -815,7 +839,7 @@ def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
@@ -826,7 +850,7 @@ def test_gossip_partial_data_column_sidecar__reject_proposer_index_out_of_range(
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -858,6 +882,8 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     partial.header[0].signed_block_header.signature = spec.BLSSignature(b"\x00" * 96)
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -872,7 +898,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
@@ -883,7 +909,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_proposer_signature(s
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -915,6 +941,8 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
     partial.header[0].signed_block_header.message.parent_root = b"\x12" * 32
     resign_header(spec, state, partial.header[0])
     block_root = spec.hash_tree_root(partial.header[0].signed_block_header.message)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -929,7 +957,7 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "ignore"
@@ -940,7 +968,7 @@ def test_gossip_partial_data_column_sidecar__ignore_parent_not_seen(spec, state)
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -986,6 +1014,8 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -1000,7 +1030,7 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
@@ -1011,7 +1041,7 @@ def test_gossip_partial_data_column_sidecar__reject_parent_failed_validation(spe
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -1059,6 +1089,8 @@ def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(
     partial.header[0].signed_block_header.message.slot = signed_parent.message.slot
     resign_header(spec, parent_state, partial.header[0])
     block_root = spec.hash_tree_root(partial.header[0].signed_block_header.message)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -1075,7 +1107,7 @@ def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
@@ -1086,7 +1118,7 @@ def test_gossip_partial_data_column_sidecar__reject_slot_not_higher_than_parent(
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -1116,6 +1148,8 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     fake_finalized_root = spec.Root(b"\xab" * 32)
     store.finalized_checkpoint = spec.Checkpoint(
@@ -1137,7 +1171,7 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
@@ -1148,7 +1182,7 @@ def test_gossip_partial_data_column_sidecar__reject_non_ancestor_finalized_check
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -1181,6 +1215,8 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
         spec.BeaconBlockBody(), 0
     )
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -1195,7 +1231,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
@@ -1206,7 +1242,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_inclusion_proof(spec
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -1241,6 +1277,8 @@ def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, s
     partial.header[0].signed_block_header.message.proposer_index = wrong_proposer
     resign_header(spec, state, partial.header[0])
     block_root = spec.hash_tree_root(partial.header[0].signed_block_header.message)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -1255,7 +1293,7 @@ def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, s
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
@@ -1266,7 +1304,7 @@ def test_gossip_partial_data_column_sidecar__reject_wrong_proposer_index(spec, s
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -1296,6 +1334,8 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
     sidecar = sidecars[0]
     partial = make_partial_sidecar(spec, sidecar, include_header=False)
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -1310,7 +1350,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "ignore"
@@ -1321,7 +1361,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_without_cached_header(
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
@@ -1352,6 +1392,8 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     header_msg = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
     cells_msg = make_partial_sidecar(spec, sidecar, include_header=False)
@@ -1372,7 +1414,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
         state=state,
         sidecar=header_msg,
         current_time_ms=current_time_ms + 1,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "valid"
@@ -1385,7 +1427,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
         state=state,
         sidecar=cells_msg,
         current_time_ms=current_time_ms,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "ignore"
@@ -1396,14 +1438,14 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_fut
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 1,
                 "message": get_filename(header_msg),
                 "expected": "valid",
             },
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 0,
                 "message": get_filename(cells_msg),
@@ -1435,6 +1477,8 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=1)
     sidecar = sidecars[0]
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     header = make_partial_header(spec, sidecar)
     cells_msg = make_partial_sidecar(spec, sidecar, include_header=False)
@@ -1479,7 +1523,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
         state=state,
         sidecar=cells_msg,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "ignore"
@@ -1492,7 +1536,7 @@ def test_gossip_partial_data_column_sidecar__ignore_cells_with_cached_header_not
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(cells_msg),
@@ -1524,6 +1568,8 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
     _, sidecars = build_signed_block_and_sidecars(spec, state, blob_count=2)
     sidecar = sidecars[0]
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     # Seed the cache with a valid header for `block_root`.
     header_msg = make_partial_sidecar(spec, sidecar, blob_indices=[], include_header=True)
@@ -1548,13 +1594,13 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
         state=state,
         sidecar=header_msg,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "valid"
     messages.append(
         {
-            "block_root": "0x" + block_root.hex(),
+            "group_id": get_filename(group_id),
             "column_index": int(column_index),
             "offset_ms": 500,
             "message": get_filename(header_msg),
@@ -1569,14 +1615,14 @@ def test_gossip_partial_data_column_sidecar__reject_bitmap_length_mismatch(spec,
         state=state,
         sidecar=cells_msg,
         current_time_ms=block_time_ms + 600,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
     assert reason == "bitmap length does not match commitments length"
     messages.append(
         {
-            "block_root": "0x" + block_root.hex(),
+            "group_id": get_filename(group_id),
             "column_index": int(column_index),
             "offset_ms": 600,
             "message": get_filename(cells_msg),
@@ -1611,6 +1657,8 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
     bad_proof = spec.KZGProof(b"\xc0" + b"\x00" * 47)
     partial.kzg_proofs = [bad_proof for _ in partial.kzg_proofs]
     block_root = block_root_of(spec, sidecar)
+    group_id = spec.PartialDataColumnGroupID(beacon_block_root=block_root)
+    yield get_filename(group_id), group_id
 
     yield get_filename(partial), partial
 
@@ -1625,7 +1673,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
         state=state,
         sidecar=partial,
         current_time_ms=block_time_ms + 500,
-        block_root=block_root,
+        group_id=group_id,
         column_index=column_index,
     )
     assert result == "reject"
@@ -1636,7 +1684,7 @@ def test_gossip_partial_data_column_sidecar__reject_invalid_kzg_proofs(spec, sta
         "meta",
         [
             {
-                "block_root": "0x" + block_root.hex(),
+                "group_id": get_filename(group_id),
                 "column_index": int(column_index),
                 "offset_ms": 500,
                 "message": get_filename(partial),
