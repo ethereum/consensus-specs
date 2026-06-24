@@ -200,7 +200,7 @@ protocol IDs are, respectively: `/mplex/6.7.0` and `/yamux/1.0.0`.
 
 Because the primary QUIC transport multiplexes natively, a stream multiplexer is
 only required for the TCP fallback transport. Clients that support the TCP
-transport MAY support [mplex](https://github.com/libp2p/specs/tree/master/mplex)
+transport MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex)
 and MAY support
 [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md). If both
 are supported by the client, yamux MUST take precedence during negotiation. See
