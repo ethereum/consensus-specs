@@ -1,4 +1,3 @@
-import milagro_bls_binding as milagro_bls
 import pytest
 from eth_utils import encode_hex
 
@@ -14,7 +13,7 @@ from .constants import G1_POINT_AT_INFINITY, PRIVKEYS, ZERO_PUBKEY
 def _run_eth_aggregate_pubkeys_valid(spec, pubkeys):
     aggregate_pubkey = spec.eth_aggregate_pubkeys(pubkeys)
 
-    assert aggregate_pubkey == milagro_bls._AggregatePKs(pubkeys)
+    assert aggregate_pubkey == bls.AggregatePKs(pubkeys)
 
     yield (
         "data",
@@ -31,7 +30,7 @@ def _run_eth_aggregate_pubkeys_invalid(spec, pubkeys):
         spec.eth_aggregate_pubkeys(pubkeys)
 
     with pytest.raises(Exception):  # noqa: B017, PT011
-        milagro_bls._AggregatePKs(pubkeys)
+        bls.AggregatePKs(pubkeys)
 
     yield (
         "data",

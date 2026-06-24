@@ -16,7 +16,7 @@ from tests.generators.compliance_runners.gen_base.pytest_support import (
 # import time, so set the context before importing the generator module.
 configure_generator_context()
 
-from .instantiators.test_case import enumerate_test_groups, prepare_bls  # noqa: E402
+from .instantiators.test_case import enumerate_test_groups  # noqa: E402
 
 DEFAULT_FORKS = [ELECTRA]
 DEFAULT_PRESETS = [MINIMAL]
@@ -34,11 +34,6 @@ def pytest_generate_tests(metafunc):
         enumerate_groups=enumerate_test_groups,
         base_dir=str(Path(__file__).parent),
     )
-
-
-@pytest.fixture(scope="session", autouse=True)
-def _prepare_bls():
-    prepare_bls()
 
 
 @pytest.fixture
