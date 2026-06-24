@@ -173,6 +173,16 @@ def run_test(test_info):
                     actual = value
                     expected = get_viable_for_head_checks(spec, store)
                     assert {frozenset(e) for e in actual} == {frozenset(e) for e in expected}
+                elif check == "get_proposer_head":
+                    head = spec.get_head(store)
+                    proposer_head = spec.get_proposer_head(
+                        store, head, spec.get_current_slot(store)
+                    )
+                    if is_post_gloas(spec):
+                        assert str(proposer_head.root) == value["root"]
+                        assert int(proposer_head.payload_status) == value["payload_status"]
+                    else:
+                        assert str(proposer_head.root) == str(value)
                 elif check in ("payload_timeliness_vote", "payload_data_availability_vote"):
                     target_root = spec.Root(decode_hex(value["block_root"]))
                     assert list(getattr(store, check)[target_root]) == value["votes"]
