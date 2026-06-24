@@ -851,8 +851,6 @@ def get_attestation_participation_flag_indices(
 
 #### New `get_ptc`
 
-*Note*: `get_ptc` uses the cached `ptc_window` for lookups.
-
 ```python
 def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
     """
