@@ -1,4 +1,4 @@
-from py_ecc.bls import G2ProofOfPossession as bls
+from eth_consensus_specs.utils import bls
 
 # Enough keys for 256 builders
 builder_privkeys = [2**15 + i + 1 for i in range(256)]

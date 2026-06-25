@@ -265,7 +265,7 @@ def g1_lincomb(
     assert len(points) == len(scalars)
 
     if len(points) == 0:
-        return bls.G1_to_bytes48(bls.Z1())
+        return bls.G1_to_bytes48(bls.G1.identity())
 
     points_g1 = []
     for point in points:
