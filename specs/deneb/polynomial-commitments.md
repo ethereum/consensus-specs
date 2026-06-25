@@ -101,7 +101,7 @@ cryptographic normalization before invoking any internal functions.
 
 | Name                    | Value                                      |
 | ----------------------- | ------------------------------------------ |
-| `KZG_SETUP_G2_LENGTH`   | `65`                                       |
+| `KZG_SETUP_G2_LENGTH`   | `uint64(65)`                               |
 | `KZG_SETUP_G1_MONOMIAL` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
 | `KZG_SETUP_G1_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
 | `KZG_SETUP_G2_MONOMIAL` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]`     |
