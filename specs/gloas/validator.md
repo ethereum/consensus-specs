@@ -153,10 +153,11 @@ def get_upcoming_proposal_slots(
 ```
 
 A validator constructs each `SignedProposerPreferences` with
-`get_signed_proposer_preferences` where `head_root` is the proposer's current
-head root, `fee_recipient` is the execution address where the validator wishes
-to receive the builder payment, and `target_gas_limit` is the validator's
-preferred gas limit for the execution payload.
+`get_signed_proposer_preferences` for each `proposal_slot` in
+`get_upcoming_proposal_slots(state, validator_index)`. Let `head_root` be the
+validator's current head root, `fee_recipient` be the execution address where
+the validator wishes to receive the builder payment, and `target_gas_limit` be
+the validator's preferred gas limit for the execution payload.
 
 ```python
 def get_signed_proposer_preferences(
