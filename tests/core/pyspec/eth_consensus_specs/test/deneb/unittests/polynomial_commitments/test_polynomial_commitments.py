@@ -13,7 +13,6 @@ from eth_consensus_specs.test.helpers.blob import (
     get_sample_blob,
 )
 from eth_consensus_specs.utils import bls
-from eth_consensus_specs.utils.bls import BLS_MODULUS
 
 G1 = bls.G1_to_bytes48(bls.G1())
 P1_NOT_IN_G1 = bytes.fromhex(
@@ -72,7 +71,7 @@ def test_verify_kzg_proof_impl(spec):
     """
     Test the implementation functions (taking field element arguments) for computing and verifying KZG proofs.
     """
-    x = spec.BLSFieldElement(BLS_MODULUS - 1)
+    x = spec.BLSFieldElement(spec.BLS_MODULUS - 1)
     blob = get_sample_blob(spec)
     commitment = spec.blob_to_kzg_commitment(blob)
     polynomial = spec.blob_to_polynomial(blob)
@@ -120,9 +119,9 @@ def test_barycentric_outside_domain(spec):
 
     for _ in range(n_samples):
         # Get a random evaluation point and make sure it's not a root of unity
-        z = spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
+        z = spec.BLSFieldElement(rng.randint(0, spec.BLS_MODULUS - 1))
         while z in roots_of_unity_brp:
-            z = spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
+            z = spec.BLSFieldElement(rng.randint(0, spec.BLS_MODULUS - 1))
 
         # Get p(z) by evaluating poly in coefficient form
         p_z_coeff = eval_poly_in_coeff_form(spec, poly_coeff, z)
@@ -243,7 +242,7 @@ def test_validate_kzg_g1_neutral_element(spec):
     Verify that `validate_kzg_g1` allows the neutral element in G1
     """
 
-    spec.validate_kzg_g1(bls.G1_to_bytes48(bls.Z1()))
+    spec.validate_kzg_g1(bls.G1_to_bytes48(bls.G1.identity()))
 
 
 @with_deneb_and_later
@@ -290,7 +289,7 @@ def test_bytes_to_bls_field_modulus_minus_one(spec):
     """
 
     spec.bytes_to_bls_field(
-        (BLS_MODULUS - 1).to_bytes(spec.BYTES_PER_FIELD_ELEMENT, spec.KZG_ENDIANNESS)
+        (spec.BLS_MODULUS - 1).to_bytes(spec.BYTES_PER_FIELD_ELEMENT, spec.KZG_ENDIANNESS)
     )
 
 
@@ -304,7 +303,7 @@ def test_bytes_to_bls_field_modulus(spec):
 
     expect_assertion_error(
         lambda: spec.bytes_to_bls_field(
-            BLS_MODULUS.to_bytes(spec.BYTES_PER_FIELD_ELEMENT, spec.KZG_ENDIANNESS)
+            spec.BLS_MODULUS.to_bytes(spec.BYTES_PER_FIELD_ELEMENT, spec.KZG_ENDIANNESS)
         )
     )
 
