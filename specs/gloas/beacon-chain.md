@@ -96,6 +96,7 @@
       - [New `update_next_withdrawal_builder_index`](#new-update_next_withdrawal_builder_index)
       - [Modified `process_withdrawals`](#modified-process_withdrawals)
     - [Execution payload](#execution-payload)
+      - [Removed `process_execution_payload`](#removed-process_execution_payload)
       - [Modified `get_execution_requests_list`](#modified-get_execution_requests_list)
     - [Execution payload bid](#execution-payload-bid)
       - [New `verify_execution_payload_bid_signature`](#new-verify_execution_payload_bid_signature)
@@ -1485,6 +1486,13 @@ def process_withdrawals(
 ```
 
 #### Execution payload
+
+##### Removed `process_execution_payload`
+
+`process_execution_payload` has been replaced by
+`verify_execution_payload_envelope`, a pure verification helper called from
+`on_execution_payload_envelope`. Payload processing is deferred to the next
+beacon block via `process_parent_execution_payload`.
 
 ##### Modified `get_execution_requests_list`
 
