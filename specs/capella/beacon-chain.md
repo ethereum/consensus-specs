@@ -84,9 +84,9 @@ We define the following Python custom types for type hinting and readability:
 
 ### Max operations per block
 
-| Name                           | Value         |
-| ------------------------------ | ------------- |
-| `MAX_BLS_TO_EXECUTION_CHANGES` | `2**4` (= 16) |
+| Name                           | Value                 |
+| ------------------------------ | --------------------- |
+| `MAX_BLS_TO_EXECUTION_CHANGES` | `uint64(2**4)` (= 16) |
 
 ### Execution
 
@@ -96,9 +96,9 @@ We define the following Python custom types for type hinting and readability:
 
 ### Withdrawals processing
 
-| Name                                   | Value              |
-| -------------------------------------- | ------------------ |
-| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `2**14` (= 16,384) |
+| Name                                   | Value                      |
+| -------------------------------------- | -------------------------- |
+| `MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP` | `uint64(2**14)` (= 16,384) |
 
 ## Containers
 

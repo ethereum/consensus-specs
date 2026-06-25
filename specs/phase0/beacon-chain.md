@@ -306,13 +306,13 @@ directory.
 
 ### Max operations per block
 
-| Name                     | Value          |
-| ------------------------ | -------------- |
-| `MAX_PROPOSER_SLASHINGS` | `2**4` (= 16)  |
-| `MAX_ATTESTER_SLASHINGS` | `2**1` (= 2)   |
-| `MAX_ATTESTATIONS`       | `2**7` (= 128) |
-| `MAX_DEPOSITS`           | `2**4` (= 16)  |
-| `MAX_VOLUNTARY_EXITS`    | `2**4` (= 16)  |
+| Name                     | Value                  |
+| ------------------------ | ---------------------- |
+| `MAX_PROPOSER_SLASHINGS` | `uint64(2**4)` (= 16)  |
+| `MAX_ATTESTER_SLASHINGS` | `uint64(2**1)` (= 2)   |
+| `MAX_ATTESTATIONS`       | `uint64(2**7)` (= 128) |
+| `MAX_DEPOSITS`           | `uint64(2**4)` (= 16)  |
+| `MAX_VOLUNTARY_EXITS`    | `uint64(2**4)` (= 16)  |
 
 ## Configuration
 

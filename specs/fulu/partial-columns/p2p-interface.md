@@ -80,10 +80,10 @@ represents the bit from the available bitlist, and the second bit represents the
 bit from the requests bit.
 
 | Bits | Description                                          |
-| :--: | ---------------------------------------------------- |
-|  00  | The peer does not have the cell and does not want it |
-|  01  | The peer does not have the cell and does want it     |
-|  1X  | The peer has the cell and is willing to provide it   |
+| ---- | ---------------------------------------------------- |
+| 00   | The peer does not have the cell and does not want it |
+| 01   | The peer does not have the cell and does want it     |
+| 1X   | The peer has the cell and is willing to provide it   |
 
 Having a cell but not willing to provide it is functionally the same as not
 having the cell and not wanting it, so it does not need a separate state.
