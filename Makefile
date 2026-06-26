@@ -67,7 +67,6 @@ help-verbose:
 	@echo "    component=<comp>   What to test: all, pyspec, fw (default: all)"
 	@echo ""
 	@echo "  Libraries:"
-	@echo "    bls=<type>         BLS library: py_ecc, milagro, arkworks, fastest (default: fastest)"
 	@echo "    kzg=<type>         KZG library: spec, ckzg (default: ckzg)"
 	@echo ""
 	@echo "  Output:"
@@ -82,7 +81,6 @@ help-verbose:
 	@echo "    make test preset=mainnet"
 	@echo "    make test preset=mainnet fork=deneb k=test_verify_kzg_proof"
 	@echo "    make test component=fw"
-	@echo "    make test bls=arkworks"
 	@echo "    make test reftests=true"
 	@echo "    make test reftests=true fork=fulu"
 	@echo "    make test reftests=true preset=mainnet fork=fulu k=invalid_committee_index"
@@ -208,7 +206,6 @@ test: MAYBE_SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth_consensus_
 test: MAYBE_INFRA := $(if $(filter pyspec,$(component)),,$(CURDIR)/tests/infra)
 #
 # Libraries
-test: BLS := $(if $(filter fw,$(component)),,--bls-type=$(if $(bls),$(bls),fastest))
 test: KZG := $(if $(filter fw,$(component)),,--kzg-type=$(if $(kzg),$(kzg),ckzg))
 #
 # Output
@@ -228,7 +225,6 @@ test: _pyspec
 		$(MAYBE_TEST) \
 		$(MAYBE_FORK) \
 		$(PRESET) \
-		$(BLS) \
 		$(KZG) \
 		--junitxml=$(TEST_REPORT_DIR)/test_results.xml \
 		--html=$(TEST_REPORT_DIR)/test_results.html \
@@ -282,8 +278,8 @@ lint: _pyspec
 	@$(UV_RUN) python $(CURDIR)/scripts/check_markdown_headings.py
 	@$(UV_RUN) python $(CURDIR)/scripts/check_value_annotations.py
 	@$(UV_RUN) mdformat --number --wrap=80 $(MARKDOWN_FILES)
-	@$(UV_RUN) ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py $(CURDIR)/specs
-	@$(UV_RUN) ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/setup.py
+	@$(UV_RUN) ruff check --fix --quiet $(CURDIR)/tests $(CURDIR)/pysetup $(CURDIR)/specs
+	@$(UV_RUN) ruff format --quiet $(CURDIR)/tests $(CURDIR)/pysetup
 	@$(UV_RUN) ruff format --preview --quiet $(CURDIR)/specs
 	@output="$$($(UV_RUN) mypy $(MYPY_SCOPE) 2>&1)" || \
 		{ echo "$$output"; exit 1; }
