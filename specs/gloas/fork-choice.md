@@ -729,12 +729,6 @@ def is_head_late(store: Store, head_root: Root) -> bool:
 
 #### Modified `is_head_weak`
 
-*Note*: The function `is_head_weak` now also counts weight from equivocating
-validators from the committees of the head slot. This ensures that the counted
-weight and the output of `is_head_weak` are monotonic: more attestations can
-only increase the weight and change the output from `True` to `False`, not
-vice-versa.
-
 ```python
 def is_head_weak(store: Store, head_root: Root) -> bool:
     # Calculate weight threshold for weak head
@@ -745,6 +739,7 @@ def is_head_weak(store: Store, head_root: Root) -> bool:
     head_state = store.block_states[head_root]
     head_block = store.blocks[head_root]
     epoch = compute_epoch_at_slot(head_block.slot)
+    # [Modified in Gloas:EIP7732]
     head_node = ForkChoiceNode(root=head_root, payload_status=PAYLOAD_STATUS_PENDING)
     head_weight = get_attestation_score(store, head_node, justified_state)
     for index in range(get_committee_count_per_slot(head_state, epoch)):
