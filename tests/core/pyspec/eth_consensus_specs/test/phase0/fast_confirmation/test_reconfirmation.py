@@ -1,13 +1,9 @@
 from eth_consensus_specs.test.context import (
-    default_activation_threshold,
-    default_balances,
     MINIMAL,
     never_bls,
     only_generator,
-    single_phase,
-    spec_test,
+    spec_state_test,
     with_altair_and_later,
-    with_custom_state,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
@@ -24,13 +20,8 @@ Test is_confirmed_chain_safe
 
 @only_generator("too slow")
 @with_altair_and_later
+@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
 @never_bls
 def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
     """
@@ -115,13 +106,8 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
 
 @only_generator("too slow")
 @with_altair_and_later
+@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
 @never_bls
 def test_reconfirmation_fails_for_block_without_uj_checkpoint_in_chain(spec, state):
     fcr = FCRTest(spec, seed=1)
@@ -181,6 +167,35 @@ def test_reconfirmation_fails_for_block_without_uj_checkpoint_in_chain(spec, sta
 
     # Run fast confirmation and ensure fall back to finality
     fcr.run_fast_confirmation()
+    assert fcr_store.confirmed_root == store.finalized_checkpoint.root
+
+    yield from fcr.get_test_artefacts()
+
+
+@only_generator("too slow")
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+@never_bls
+def test_reconfirmation_is_not_failing_till_epoch_start(spec, state):
+    fcr = FCRTest(spec, seed=1)
+    store, fcr_store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+    fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+    # Confirm a block
+    confirmed_root = fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Proceed with zero participation till the last slot of an epoch
+    while fcr.current_slot() < S - 1:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=0)
+        # Reconfirmation would fail
+        assert not spec.is_confirmed_chain_safe(fcr_store, fcr_store.confirmed_root)
+        # But no reversion of confirmed block happens
+        assert fcr_store.confirmed_root == confirmed_root
+
+    # Confirmed block reverted to finalized block at the start of an epoch
+    fcr.next_slot_with_block_and_fast_confirmation(participation_rate=0)
     assert fcr_store.confirmed_root == store.finalized_checkpoint.root
 
     yield from fcr.get_test_artefacts()
