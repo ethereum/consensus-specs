@@ -306,7 +306,7 @@ class PayloadAttestationData(Container):
 #### `PayloadAttestation`
 
 ```python
-class PayloadAttestation(Container):
+class PayloadAttestation(ProgressiveContainer(active_fields=[1] * 3)):
     aggregation_bits: Bitvector[PTC_SIZE]
     data: PayloadAttestationData
     signature: BLSSignature
@@ -324,7 +324,7 @@ class PayloadAttestationMessage(Container):
 #### `IndexedPayloadAttestation`
 
 ```python
-class IndexedPayloadAttestation(Container):
+class IndexedPayloadAttestation(ProgressiveContainer(active_fields=[1] * 3)):
     attesting_indices: List[ValidatorIndex, PTC_SIZE]
     data: PayloadAttestationData
     signature: BLSSignature
@@ -333,7 +333,7 @@ class IndexedPayloadAttestation(Container):
 #### `ExecutionPayloadBid`
 
 ```python
-class ExecutionPayloadBid(Container):
+class ExecutionPayloadBid(ProgressiveContainer(active_fields=[1] * 12)):
     parent_block_hash: Hash32
     parent_block_root: Root
     block_hash: Hash32
@@ -359,7 +359,7 @@ class SignedExecutionPayloadBid(Container):
 #### `ExecutionPayloadEnvelope`
 
 ```python
-class ExecutionPayloadEnvelope(Container):
+class ExecutionPayloadEnvelope(ProgressiveContainer(active_fields=[1] * 5)):
     payload: ExecutionPayload
     execution_requests: ExecutionRequests
     builder_index: BuilderIndex
