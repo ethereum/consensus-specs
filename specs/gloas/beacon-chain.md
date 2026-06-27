@@ -146,7 +146,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 | Name                 | Value           | Description                                                                                |
 | -------------------- | --------------- | ------------------------------------------------------------------------------------------ |
-| `BUILDER_INDEX_FLAG` | `uint64(2**40)` | Bitwise flag which indicates that a `ValidatorIndex` should be treated as a `BuilderIndex` |
+| `BUILDER_INDEX_FLAG` | `uint64(2**63)` | Bitwise flag which indicates that a `ValidatorIndex` should be treated as a `BuilderIndex` |
 
 ### Domains
 
