@@ -25,8 +25,12 @@
 
 Heze is a consensus-layer upgrade containing a number of features. Including:
 
-- [EIP-7805](https://eips.ethereum.org/EIPS/eip-7805): Fork-choice enforced
-  Inclusion Lists (FOCIL)
+- [EIP-7805](https://github.com/ethereum/EIPs/blob/9a345f96c2295a678b0ce33e94d41276ddb3fdef/EIPS/eip-7805.md):
+  Fork-choice enforced Inclusion Lists (FOCIL)
+
+*Note*: These EIPs are in draft and may change or be removed. Each link above
+points to the specific version targeted by this specification, which may differ
+from the latest published version of the EIPs.
 
 ## Constants
 
