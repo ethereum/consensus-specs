@@ -14,20 +14,20 @@
       - [Global topics](#global-topics)
         - [New `sealed_transaction`](#new-sealed_transaction)
         - [New `sealed_bundle`](#new-sealed_bundle)
-        - [New `lucid_key_message`](#new-lucid_key_message)
-        - [New `lucid_key_timeliness_vote`](#new-lucid_key_timeliness_vote)
+        - [New `sealed_transaction_key_message`](#new-sealed_transaction_key_message)
+        - [New `sealed_transaction_key_timeliness_vote`](#new-sealed_transaction_key_timeliness_vote)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [SealedTransactionByCommitment v1](#sealedtransactionbycommitment-v1)
       - [SealedBundleByCommitment v1](#sealedbundlebycommitment-v1)
-      - [LucidKeyMessageByCommitment v1](#lucidkeymessagebycommitment-v1)
+      - [SealedTransactionKeyMessageByCommitment v1](#sealedtransactionkeymessagebycommitment-v1)
 
 <!-- mdformat-toc end -->
 
 ## Introduction
 
 This document contains the consensus-layer networking specifications for
-EIP-8184 (LUCID).
+EIP-8184 (encrypted mempool).
 
 The specification of these changes continues in the same format as the
 network specifications of previous upgrades, and assumes them as
@@ -37,11 +37,11 @@ pre-requisite.
 
 ### Configuration
 
-| Name                              | Value                | Description                                                            |
-| --------------------------------- | -------------------- | ---------------------------------------------------------------------- |
-| `MAX_REQUEST_SEALED_TRANSACTIONS` | `2**6` (= 64)        | Maximum number of sealed transactions in a single Req/Resp response    |
-| `MAX_REQUEST_SEALED_BUNDLES`      | `2**5` (= 32)        | Maximum number of sealed bundles in a single Req/Resp response         |
-| `MAX_REQUEST_LUCID_KEY_MESSAGES`  | `2**6` (= 64)        | Maximum number of `LucidKeyMessage`s in a single Req/Resp response     |
+| Name                                          | Value                | Description                                                                          |
+| --------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------ |
+| `MAX_REQUEST_SEALED_TRANSACTIONS`             | `2**6` (= 64)        | Maximum number of sealed transactions in a single Req/Resp response                  |
+| `MAX_REQUEST_SEALED_BUNDLES`                  | `2**5` (= 32)        | Maximum number of sealed bundles in a single Req/Resp response                       |
+| `MAX_REQUEST_SEALED_TRANSACTION_KEY_MESSAGES` | `2**6` (= 64)        | Maximum number of `SealedTransactionKeyMessage`s in a single Req/Resp response       |
 
 ### Helpers
 
@@ -80,12 +80,12 @@ def compute_fork_version(epoch: Epoch) -> Version:
 The new topics along with the type of the `data` field of a gossipsub
 message are given in this table:
 
-| Name                        | Message Type                   |
-| --------------------------- | ------------------------------ |
-| `sealed_transaction`        | `SealedTransaction`            |
-| `sealed_bundle`             | `SealedBundle`                 |
-| `lucid_key_message`         | `LucidKeyMessage`              |
-| `lucid_key_timeliness_vote` | `SignedLucidKeyTimelinessVote` |
+| Name                                     | Message Type                                |
+| ---------------------------------------- | ------------------------------------------- |
+| `sealed_transaction`                     | `SealedTransaction`                         |
+| `sealed_bundle`                          | `SealedBundle`                              |
+| `sealed_transaction_key_message`         | `SealedTransactionKeyMessage`               |
+| `sealed_transaction_key_timeliness_vote` | `SignedSealedTransactionKeyTimelinessVote`  |
 
 ##### Global topics
 
@@ -99,11 +99,11 @@ public encrypted mempool. The following validations MUST pass before
 forwarding the `sealed_transaction` on the network:
 
 - _[REJECT]_ The byte size of `ciphertext_envelope` is within upper bound
-  `MAX_BYTES_PER_ST`.
+  `MAX_BYTES_PER_SEALED_TRANSACTION`.
 - _[REJECT]_ The ticket's `ciphertext_hash` equals
   `keccak256(ciphertext_envelope)`.
 - _[REJECT]_ The ticket's `signature_id` is a recognised signature scheme
-  (currently only `EC_DSA_TYPE`).
+  (currently only `ECDSA_TYPE`).
 - _[REJECT]_ The ticket's signature recovers a valid sender address.
 - _[IGNORE]_ The `SealedTransaction` has not already been seen.
 
@@ -114,7 +114,7 @@ MUST pass before forwarding the `sealed_bundle` on the network, assuming
 the alias `members = sealed_bundle.sealed_transactions`:
 
 - _[REJECT]_ The number of bundle members is within upper bound
-  `MAX_STS_PER_BUNDLE`.
+  `MAX_SEALED_TRANSACTIONS_PER_BUNDLE`.
 - _[REJECT]_ Each member of `members` independently satisfies the
   `sealed_transaction` validations above.
 - _[REJECT]_ All members of `members` share the same `key_publisher`
@@ -122,29 +122,29 @@ the alias `members = sealed_bundle.sealed_transactions`:
   [`is_valid_key_publisher_signature`](./beacon-chain.md#new-is_valid_key_publisher_signature).
 - _[IGNORE]_ The `SealedBundle` has not already been seen.
 
-###### New `lucid_key_message`
+###### New `sealed_transaction_key_message`
 
-This topic is used to propagate `LucidKeyMessage`s released by key
-publishers. The following validations MUST pass before forwarding the
-`lucid_key_message` on the network:
+This topic is used to propagate `SealedTransactionKeyMessage`s released
+by key publishers. The following validations MUST pass before forwarding
+the `sealed_transaction_key_message` on the network:
 
 - _[IGNORE]_ The `scheduling_slot` is within
   `[current_slot - SLOTS_PER_EPOCH, current_slot]`.
 - _[REJECT]_ The `chain_id` matches the local chain.
 - _[REJECT]_ A scheduling beacon block with root
-  `scheduling_beacon_block_root` is known and contains an `STCommitment`
-  at index `commit_index`.
-- _[REJECT]_ The `LucidKeyMessage` is valid with respect to that
-  commitment per
-  [`is_valid_lucid_key_message`](./beacon-chain.md#new-is_valid_lucid_key_message).
-- _[IGNORE]_ The `LucidKeyMessage` has not already been seen.
+  `scheduling_beacon_block_root` is known and contains a
+  `SealedTransactionCommitment` at index `commit_index`.
+- _[REJECT]_ The `SealedTransactionKeyMessage` is valid with respect to
+  that commitment per
+  [`is_valid_sealed_transaction_key_message`](./beacon-chain.md#new-is_valid_sealed_transaction_key_message).
+- _[IGNORE]_ The `SealedTransactionKeyMessage` has not already been seen.
 
-###### New `lucid_key_timeliness_vote`
+###### New `sealed_transaction_key_timeliness_vote`
 
-This topic is used to propagate `SignedLucidKeyTimelinessVote` messages
-from PTC members. The following validations MUST pass before forwarding
-the `lucid_key_timeliness_vote` on the network, assuming the alias
-`message = signed_vote.message`:
+This topic is used to propagate `SignedSealedTransactionKeyTimelinessVote`
+messages from PTC members. The following validations MUST pass before
+forwarding the `sealed_transaction_key_timeliness_vote` on the network,
+assuming the alias `message = signed_vote.message`:
 
 - _[IGNORE]_ The `voting_slot` equals the current slot (with a
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance).
@@ -155,7 +155,7 @@ the `lucid_key_timeliness_vote` on the network, assuming the alias
   i.e. `message.validator_index in get_ptc(state, Slot(message.voting_slot))`.
 - _[REJECT]_ `message.chain_id` matches the local chain.
 - _[REJECT]_ The signature on `signed_vote` is valid per
-  [`is_valid_lucid_key_timeliness_vote_signature`](./beacon-chain.md#new-is_valid_lucid_key_timeliness_vote_signature).
+  [`is_valid_sealed_transaction_key_timeliness_vote_signature`](./beacon-chain.md#new-is_valid_sealed_transaction_key_timeliness_vote_signature).
 
 ### The Req/Resp domain
 
@@ -220,24 +220,24 @@ Response Content:
 )
 ```
 
-##### LucidKeyMessageByCommitment v1
+##### SealedTransactionKeyMessageByCommitment v1
 
-**Protocol ID:** `/eth2/beacon_chain/req/lucid_key_message_by_commitment/1/`
+**Protocol ID:** `/eth2/beacon_chain/req/sealed_transaction_key_message_by_commitment/1/`
 
 Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth_consensus_specs: skip -->
 
-| `fork_version`         | Chunk SSZ type            |
-| ---------------------- | ------------------------- |
-| `EIP8184_FORK_VERSION` | `eip8184.LucidKeyMessage` |
+| `fork_version`         | Chunk SSZ type                          |
+| ---------------------- | --------------------------------------- |
+| `EIP8184_FORK_VERSION` | `eip8184.SealedTransactionKeyMessage`   |
 
 Request Content:
 
 ```
 (
   scheduling_beacon_block_root: Bytes32
-  commit_indices: Bitlist[MAX_ST_COMMITS]
+  commit_indices: Bitlist[MAX_SEALED_TRANSACTION_COMMITMENTS]
 )
 ```
 
@@ -245,6 +245,6 @@ Response Content:
 
 ```
 (
-  List[LucidKeyMessage, MAX_REQUEST_LUCID_KEY_MESSAGES]
+  List[SealedTransactionKeyMessage, MAX_REQUEST_SEALED_TRANSACTION_KEY_MESSAGES]
 )
 ```

@@ -13,7 +13,7 @@
 
 ## Introduction
 
-This document describes the process of the EIP-8184 (LUCID) upgrade.
+This document describes the process of the EIP-8184 (encrypted mempool) upgrade.
 
 ## Configuration
 
