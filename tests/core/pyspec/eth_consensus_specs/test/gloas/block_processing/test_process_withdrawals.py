@@ -4,12 +4,10 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
+from eth_consensus_specs.test.helpers.builders import add_builder_to_registry
 from eth_consensus_specs.test.helpers.withdrawals import (
-    check_is_partially_withdrawable_validator,
-)
-from tests.infra.helpers.builders import add_builder_to_registry
-from tests.infra.helpers.withdrawals import (
     assert_process_withdrawals,
+    check_is_partially_withdrawable_validator,
     prepare_process_withdrawals,
     set_parent_block_empty,
 )

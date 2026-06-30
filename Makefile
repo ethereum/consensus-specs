@@ -64,7 +64,6 @@ help-verbose:
 	@echo "    k=<name>           Run only tests matching this name"
 	@echo "    fork=<fork>        Run only tests for this fork (phase0, altair, bellatrix, capella, etc.)"
 	@echo "    preset=<preset>    Preset to use: mainnet, minimal (default: minimal)"
-	@echo "    component=<comp>   What to test: all, pyspec, fw (default: all)"
 	@echo ""
 	@echo "  Libraries:"
 	@echo "    kzg=<type>         KZG library: spec, ckzg (default: ckzg)"
@@ -80,7 +79,6 @@ help-verbose:
 	@echo "    make test fork=deneb"
 	@echo "    make test preset=mainnet"
 	@echo "    make test preset=mainnet fork=deneb k=test_verify_kzg_proof"
-	@echo "    make test component=fw"
 	@echo "    make test reftests=true"
 	@echo "    make test reftests=true fork=fulu"
 	@echo "    make test reftests=true preset=mainnet fork=fulu k=invalid_committee_index"
@@ -198,15 +196,13 @@ COV_REPORT_DIR = $(PYSPEC_DIR)/.htmlcov
 #
 # Filtering
 test: MAYBE_TEST := $(if $(k),-k "$(k)")
-test: MAYBE_FORK := $(if $(filter fw,$(component)),,$(if $(fork),--fork=$(fork)))
-test: PRESET := $(if $(filter fw,$(component)),,$(if $(preset),--preset=$(preset),))
+test: MAYBE_FORK := $(if $(fork),--fork=$(fork))
+test: PRESET := $(if $(preset),--preset=$(preset),)
 # Disable parallelism when running a specific test. Makes debugging difficult (print doesn't work).
 test: MAYBE_PARALLEL := $(if $(k),,-n logical --dist=worksteal)
-test: MAYBE_SPEC := $(if $(filter fw,$(component)),,$(PYSPEC_DIR)/eth_consensus_specs)
-test: MAYBE_INFRA := $(if $(filter pyspec,$(component)),,$(CURDIR)/tests/infra)
 #
 # Libraries
-test: KZG := $(if $(filter fw,$(component)),,--kzg-type=$(if $(kzg),$(kzg),ckzg))
+test: KZG := --kzg-type=$(if $(kzg),$(kzg),ckzg)
 #
 # Output
 test: MAYBE_VERBOSE := $(if $(filter true,$(verbose)),-v)
@@ -215,7 +211,7 @@ test: COVERAGE_PRESETS := $(if $(preset),$(preset),$(if $(filter true,$(reftests
 test: COV_SCOPE_SINGLE := $(foreach P,$(COVERAGE_PRESETS), --cov=eth_consensus_specs.$(fork).$P)
 test: COV_SCOPE_ALL := $(foreach P,$(COVERAGE_PRESETS),$(foreach S,$(ALL_EXECUTABLE_SPEC_NAMES), --cov=eth_consensus_specs.$S.$P))
 test: COV_SCOPE := $(if $(filter true,$(coverage)),$(if $(fork),$(COV_SCOPE_SINGLE),$(COV_SCOPE_ALL)))
-test: COVERAGE := $(if $(filter fw,$(component)),,$(if $(filter true,$(coverage)),--coverage $(COV_SCOPE) --cov-report="html:$(COV_REPORT_DIR)" --cov-report="json:$(COV_REPORT_DIR)/coverage.json" --cov-branch --no-cov-on-fail))
+test: COVERAGE := $(if $(filter true,$(coverage)),--coverage $(COV_SCOPE) --cov-report="html:$(COV_REPORT_DIR)" --cov-report="json:$(COV_REPORT_DIR)/coverage.json" --cov-branch --no-cov-on-fail)
 test: _pyspec
 	@mkdir -p $(TEST_REPORT_DIR)
 	@$(UV_RUN) pytest \
@@ -231,8 +227,7 @@ test: _pyspec
 		--self-contained-html \
 		$(MAYBE_REFTESTS) \
 		$(COVERAGE) \
-		$(MAYBE_INFRA) \
-		$(MAYBE_SPEC)
+		$(PYSPEC_DIR)/eth_consensus_specs
 
 
 ###############################################################################
