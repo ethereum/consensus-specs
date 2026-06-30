@@ -7,8 +7,8 @@ from eth_utils.hexadecimal import encode_hex
 from eth_consensus_specs.test.context import only_generator, single_phase, spec_test, with_phases
 from eth_consensus_specs.test.helpers.constants import DENEB
 from eth_consensus_specs.test.utils.kzg_tests import VALID_BLOBS
-from tests.infra.manifest import manifest
-from tests.infra.template_test import template_test
+from eth_consensus_specs.test.utils.manifest import manifest
+from eth_consensus_specs.test.utils.template_test import template_test
 
 
 def _run_compute_challenge_test(spec, blob, commitment):

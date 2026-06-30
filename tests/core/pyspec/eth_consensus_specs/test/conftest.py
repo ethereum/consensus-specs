@@ -144,4 +144,4 @@ def kzg_type(request):
         _apply_ckzg(request)
 
 
-pytest_plugins = ["tests.infra.pytest_plugins.yield_generator"]
+pytest_plugins = ["eth_consensus_specs.test.pytest_plugins.yield_generator"]

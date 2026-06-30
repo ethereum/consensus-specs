@@ -14,8 +14,8 @@ from eth_consensus_specs.test.utils.kzg_tests import (
     INVALID_INDIVIDUAL_CELL_BYTES,
     VALID_BLOBS,
 )
-from tests.infra.manifest import manifest
-from tests.infra.template_test import template_test
+from eth_consensus_specs.test.utils.manifest import manifest
+from eth_consensus_specs.test.utils.template_test import template_test
 
 
 def _run_recover_cells_and_kzg_proofs_test(
