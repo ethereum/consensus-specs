@@ -15,6 +15,8 @@
         - [New `inclusion_list`](#new-inclusion_list)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
+      - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
+      - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
       - [InclusionListByCommitteeIndices v1](#inclusionlistbycommitteeindices-v1)
 
 <!-- mdformat-toc end -->
@@ -103,6 +105,48 @@ the network, assuming the alias `message = signed_inclusion_list.message`:
 ### The Req/Resp domain
 
 #### Messages
+
+##### BeaconBlocksByRange v2
+
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
+
+The Heze fork-digest is introduced to the `context` enum to specify Heze beacon
+block type.
+
+<!-- eth_consensus_specs: skip -->
+
+| `fork_version`           | Chunk SSZ type                |
+| ------------------------ | ----------------------------- |
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
+| `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
+| `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
+| `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
+| `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
+| `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
+| `HEZE_FORK_VERSION`      | `heze.SignedBeaconBlock`      |
+
+##### BeaconBlocksByRoot v2
+
+**Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
+
+The Heze fork-digest is introduced to the `context` enum to specify Heze beacon
+block type.
+
+<!-- eth_consensus_specs: skip -->
+
+| `fork_version`           | Chunk SSZ type                |
+| ------------------------ | ----------------------------- |
+| `GENESIS_FORK_VERSION`   | `phase0.SignedBeaconBlock`    |
+| `ALTAIR_FORK_VERSION`    | `altair.SignedBeaconBlock`    |
+| `BELLATRIX_FORK_VERSION` | `bellatrix.SignedBeaconBlock` |
+| `CAPELLA_FORK_VERSION`   | `capella.SignedBeaconBlock`   |
+| `DENEB_FORK_VERSION`     | `deneb.SignedBeaconBlock`     |
+| `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
+| `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
+| `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
+| `HEZE_FORK_VERSION`      | `heze.SignedBeaconBlock`      |
 
 ##### InclusionListByCommitteeIndices v1
 
