@@ -3,6 +3,7 @@ from eth_consensus_specs.test.context import (
     with_fork_metas,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.constants import (
     AFTER_DENEB_PRE_POST_FORKS,
     MINIMAL,
@@ -29,10 +30,10 @@ def mock_activated_validators(spec, state, mock_activations):
             activation_epoch=spec.FAR_FUTURE_EPOCH,
             exit_epoch=spec.FAR_FUTURE_EPOCH,
             withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
-            effective_balance=spec.MAX_EFFECTIVE_BALANCE,
+            effective_balance=get_min_activation_balance(spec),
         )
         state.validators.append(validator)
-        state.balances.append(spec.MAX_EFFECTIVE_BALANCE)
+        state.balances.append(get_min_activation_balance(spec))
         state.previous_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
         state.current_epoch_participation.append(spec.ParticipationFlags(0b0000_0000))
         state.inactivity_scores.append(0)

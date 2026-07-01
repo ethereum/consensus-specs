@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.context import always_bls, spec_state_test, with_gloas_and_later
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.builder_deposit_requests import (
     assert_process_builder_deposit_request,
     prepare_process_builder_deposit_request,
@@ -181,7 +182,7 @@ def test_process_builder_deposit_request__new_builder_max_minus_one(spec, state)
         - New builder created
         - Builder balance equals MAX_EFFECTIVE_BALANCE - 1
     """
-    amount = spec.MAX_EFFECTIVE_BALANCE - 1
+    amount = get_min_activation_balance(spec) - 1
     builder_deposit_request = prepare_process_builder_deposit_request(
         spec, state, amount=amount, signed=True
     )

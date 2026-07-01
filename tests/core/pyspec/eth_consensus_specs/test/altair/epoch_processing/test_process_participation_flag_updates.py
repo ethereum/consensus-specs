@@ -8,6 +8,7 @@ from eth_consensus_specs.test.context import (
     with_custom_state,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
 from eth_consensus_specs.test.helpers.state import next_epoch_via_block
@@ -137,7 +138,7 @@ def custom_validator_count(factor: float):
         num_validators = (
             spec.SLOTS_PER_EPOCH * spec.MAX_COMMITTEES_PER_SLOT * spec.TARGET_COMMITTEE_SIZE
         )
-        return [spec.MAX_EFFECTIVE_BALANCE] * int(float(int(num_validators)) * factor)
+        return [get_min_activation_balance(spec)] * int(float(int(num_validators)) * factor)
 
     return initializer
 

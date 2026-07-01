@@ -6,6 +6,7 @@ from eth_consensus_specs.test.context import (
     with_capella_and_later,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.constants import (
     CAPELLA,
     GLOAS,
@@ -76,7 +77,7 @@ def test_success_one_partial_withdrawal(spec, state):
     assert len(fully_withdrawable_indices) == 0
     assert len(partial_withdrawals_indices) == 1
     for index in partial_withdrawals_indices:
-        assert state.balances[index] > spec.MAX_EFFECTIVE_BALANCE
+        assert state.balances[index] > get_min_activation_balance(spec)
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -678,14 +679,15 @@ def test_success_no_max_effective_balance(spec, state):
         state,
         validator_index,
         # Reduce validator's effective balance to make it ineligible for withdrawals
-        effective_balance=spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT,
+        effective_balance=get_min_activation_balance(spec) - spec.EFFECTIVE_BALANCE_INCREMENT,
         # Give the validator an excess balance, so this isn't the reason it fails
-        balance=spec.MAX_EFFECTIVE_BALANCE + 1,
+        balance=get_min_activation_balance(spec) + 1,
     )
     validator = state.validators[validator_index]
 
     assert (
-        validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
+        validator.effective_balance
+        == get_min_activation_balance(spec) - spec.EFFECTIVE_BALANCE_INCREMENT
     )
     assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 
@@ -706,13 +708,13 @@ def test_success_no_excess_balance(spec, state):
         state,
         validator_index,
         # Ensure validator has the required effective balance, so this isn't the reason it fails
-        effective_balance=spec.MAX_EFFECTIVE_BALANCE,
+        effective_balance=get_min_activation_balance(spec),
         # Remove validator's excess balance to make it ineligible for withdrawals
-        balance=spec.MAX_EFFECTIVE_BALANCE,
+        balance=get_min_activation_balance(spec),
     )
     validator = state.validators[validator_index]
 
-    assert validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE
+    assert validator.effective_balance == get_min_activation_balance(spec)
     assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 
     execution_payload = build_empty_execution_payload(spec, state)
@@ -730,7 +732,7 @@ def test_success_excess_balance_but_no_max_effective_balance(spec, state):
     validator = state.validators[validator_index]
 
     # To be partially withdrawable, the validator needs both a maxed out effective balance and an excess balance
-    validator.effective_balance = spec.MAX_EFFECTIVE_BALANCE - 1
+    validator.effective_balance = get_min_activation_balance(spec) - 1
 
     assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 
@@ -951,8 +953,8 @@ def test_partially_withdrawable_validator_legacy_max_plus_one(spec, state):
         spec,
         state,
         validator_index,
-        effective_balance=spec.MAX_EFFECTIVE_BALANCE,
-        balance=spec.MAX_EFFECTIVE_BALANCE + 1,
+        effective_balance=get_min_activation_balance(spec),
+        balance=get_min_activation_balance(spec) + 1,
     )
     assert check_is_partially_withdrawable_validator(spec, state, validator_index)
 
@@ -1001,8 +1003,8 @@ def test_partially_withdrawable_validator_legacy_max_minus_one(spec, state):
         state,
         validator_index,
         # Assume effective balance updates haven't happened yet
-        effective_balance=spec.MAX_EFFECTIVE_BALANCE,
-        balance=spec.MAX_EFFECTIVE_BALANCE - 1,
+        effective_balance=get_min_activation_balance(spec),
+        balance=get_min_activation_balance(spec) - 1,
     )
     assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
 

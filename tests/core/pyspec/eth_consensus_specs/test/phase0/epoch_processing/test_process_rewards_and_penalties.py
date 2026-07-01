@@ -19,10 +19,9 @@ from eth_consensus_specs.test.helpers.attestations import (
     sign_attestation,
 )
 from eth_consensus_specs.test.helpers.attester_slashings import get_indexed_attestation_participants
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
-from eth_consensus_specs.test.helpers.forks import (
-    is_post_altair,
-)
+from eth_consensus_specs.test.helpers.forks import is_post_altair
 from eth_consensus_specs.test.helpers.rewards import leaking
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
@@ -141,7 +140,7 @@ def test_full_attestations_random_incorrect_fields(spec, state):
 @with_all_phases
 @spec_test
 @with_custom_state(
-    balances_fn=misc_balances, threshold_fn=lambda spec: spec.MAX_EFFECTIVE_BALANCE // 2
+    balances_fn=misc_balances, threshold_fn=lambda spec: get_min_activation_balance(spec) // 2
 )
 @single_phase
 def test_full_attestations_misc_balances(spec, state):

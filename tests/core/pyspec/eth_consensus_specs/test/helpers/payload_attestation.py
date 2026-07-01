@@ -1,6 +1,7 @@
 from eth_consensus_specs.test.gloas.block_processing.test_process_payload_attestation import (
     prepare_signed_payload_attestation,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
@@ -52,7 +53,7 @@ def ptc_size_balances(spec):
     """
     Return a balances list sized to PTC_SIZE so each PTC seat can be pinned to a unique validator.
     """
-    return [spec.MAX_EFFECTIVE_BALANCE] * spec.PTC_SIZE
+    return [get_min_activation_balance(spec)] * spec.PTC_SIZE
 
 
 def setup_verified_parent_with_distinct_ptc(spec, state):

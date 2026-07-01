@@ -1,6 +1,7 @@
 from random import Random
 
 from eth_consensus_specs.test.context import expect_assertion_error
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.epoch_processing import (
     run_epoch_processing_from,
     run_epoch_processing_to,
@@ -33,7 +34,7 @@ def mock_deposit(spec, state, index):
     assert spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
     state.validators[index].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
     state.validators[index].activation_epoch = spec.FAR_FUTURE_EPOCH
-    state.validators[index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
+    state.validators[index].effective_balance = get_min_activation_balance(spec)
     if is_post_altair(spec):
         state.inactivity_scores[index] = 0
     assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
@@ -131,7 +132,7 @@ def prepare_random_genesis_deposits(
     if rng is None:
         rng = Random(3131)
     if max_amount is None:
-        max_amount = spec.MAX_EFFECTIVE_BALANCE
+        max_amount = get_min_activation_balance(spec)
     if min_amount is None:
         min_amount = spec.MIN_DEPOSIT_AMOUNT
     if deposit_data_list is None:
@@ -393,7 +394,7 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
                 # Top-ups do not change effective balance
                 assert state.validators[validator_index].effective_balance == pre_effective_balance
             else:
-                effective_balance = min(spec.MAX_EFFECTIVE_BALANCE, deposit.data.amount)
+                effective_balance = min(get_min_activation_balance(spec), deposit.data.amount)
                 effective_balance -= effective_balance % spec.EFFECTIVE_BALANCE_INCREMENT
                 assert state.validators[validator_index].effective_balance == effective_balance
             assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
@@ -422,7 +423,7 @@ def run_deposit_processing_with_specific_fork_version(
     spec, state, fork_version, valid=True, effective=True
 ):
     validator_index = len(state.validators)
-    amount = spec.MAX_EFFECTIVE_BALANCE
+    amount = get_min_activation_balance(spec)
 
     pubkey = pubkeys[validator_index]
     privkey = privkeys[validator_index]

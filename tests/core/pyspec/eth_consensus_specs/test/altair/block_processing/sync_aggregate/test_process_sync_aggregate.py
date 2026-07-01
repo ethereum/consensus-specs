@@ -11,6 +11,7 @@ from eth_consensus_specs.test.context import (
     with_custom_state,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.balances import get_min_activation_balance
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
@@ -241,7 +242,7 @@ def _run_sync_committee_selected_twice(
     state.balances[validator_index] = pre_balance
     state.validators[validator_index].effective_balance = min(
         pre_balance - pre_balance % spec.EFFECTIVE_BALANCE_INCREMENT,
-        spec.MAX_EFFECTIVE_BALANCE,
+        get_min_activation_balance(spec),
     )
 
     yield from run_successful_sync_committee_test(
@@ -303,12 +304,12 @@ def test_sync_committee_rewards_duplicate_committee_max_effective_balance_only_p
     validator_index = yield from _run_sync_committee_selected_twice(
         spec,
         state,
-        pre_balance=spec.MAX_EFFECTIVE_BALANCE,
+        pre_balance=get_min_activation_balance(spec),
         participate_first_position=True,
         participate_second_position=False,
     )
 
-    assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE
+    assert state.balances[validator_index] == get_min_activation_balance(spec)
 
 
 @with_altair_and_later
@@ -320,12 +321,12 @@ def test_sync_committee_rewards_duplicate_committee_max_effective_balance_only_p
     validator_index = yield from _run_sync_committee_selected_twice(
         spec,
         state,
-        pre_balance=spec.MAX_EFFECTIVE_BALANCE,
+        pre_balance=get_min_activation_balance(spec),
         participate_first_position=False,
         participate_second_position=True,
     )
 
-    assert state.balances[validator_index] == spec.MAX_EFFECTIVE_BALANCE
+    assert state.balances[validator_index] == get_min_activation_balance(spec)
 
 
 @with_altair_and_later
