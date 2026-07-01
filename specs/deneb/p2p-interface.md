@@ -795,6 +795,9 @@ Response Content:
 )
 ```
 
+The Deneb fork-digest is introduced to the `context` enum to specify Deneb
+beacon block type.
+
 <!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
