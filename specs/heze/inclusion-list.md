@@ -161,8 +161,8 @@ def is_inclusion_list_bits_inclusive(
     """
     local_inclusion_list_bits = get_inclusion_list_bits(store, state, slot, only_timely)
 
-    return all(
-        inclusion_bit or not local_inclusion_bit
+    return not any(
+        local_inclusion_bit and not inclusion_bit
         for inclusion_bit, local_inclusion_bit in zip(
             inclusion_list_bits, local_inclusion_list_bits, strict=True
         )
