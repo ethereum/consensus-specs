@@ -619,6 +619,9 @@ beacon block type.
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
 
+The Electra fork-digest is introduced to the `context` enum to specify Electra
+beacon block type.
+
 <!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
