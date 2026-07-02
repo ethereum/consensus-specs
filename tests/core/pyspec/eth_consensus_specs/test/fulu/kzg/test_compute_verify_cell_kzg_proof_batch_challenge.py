@@ -12,7 +12,7 @@ from eth_consensus_specs.test.utils.kzg_tests import (
     encode_hex_list,
     VALID_BLOBS,
 )
-from tests.infra.manifest import manifest
+from eth_consensus_specs.test.utils.manifest import manifest
 
 
 def _run_compute_verify_cell_kzg_proof_batch_challenge_test(

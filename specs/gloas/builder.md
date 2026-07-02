@@ -38,8 +38,8 @@ builders.
 ### Submit deposit
 
 Builders are created by submitting a builder deposit request to the builder
-deposit contract on the execution layer, as defined in
-[EIP-8282](https://eips.ethereum.org/EIPS/eip-8282). The request must include:
+deposit contract on the execution layer, as defined in EIP-8282. The request
+must include:
 
 - `pubkey`: The builder's BLS public key.
 - `withdrawal_credentials`: The withdrawal credentials, where the first byte is
@@ -85,10 +85,9 @@ finalized at the fork, the builder will be immediately active. See
 ### Exiting
 
 A builder exits by submitting a builder exit request to the builder exit
-contract on the execution layer, as defined in
-[EIP-8282](https://eips.ethereum.org/EIPS/eip-8282). The request contains the
-builder's `pubkey` and is authorized by the builder's `execution_address` (the
-transaction sender), not the BLS key.
+contract on the execution layer, as defined in EIP-8282. The request contains
+the builder's `pubkey` and is authorized by the builder's `execution_address`
+(the transaction sender), not the BLS key.
 
 The consensus layer initiates the exit only if the builder is active, the
 request's `source_address` matches the builder's `execution_address`, and the

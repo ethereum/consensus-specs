@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import shutil
 
+from eth_consensus_specs.test.utils.dumper import Dumper
 from tests.generators.compliance_runners.gen_base.output import dump_test_case_result
-from tests.infra.dumper import Dumper
 
 
 def test_generate_compliance_group(test_group, comptests_output_dir):

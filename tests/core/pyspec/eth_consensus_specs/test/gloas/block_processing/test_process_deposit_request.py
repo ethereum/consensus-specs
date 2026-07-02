@@ -1,5 +1,5 @@
 from eth_consensus_specs.test.context import spec_state_test, with_gloas_and_later
-from tests.infra.helpers.deposit_requests import (
+from eth_consensus_specs.test.helpers.deposit_requests import (
     assert_process_deposit_request,
     prepare_process_deposit_request,
     run_deposit_request_processing,
