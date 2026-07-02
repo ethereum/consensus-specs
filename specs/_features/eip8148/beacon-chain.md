@@ -5,6 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Types](#types)
 - [Constants](#constants)
   - [New execution layer triggered request type](#new-execution-layer-triggered-request-type)
   - [Sweep threshold validation](#sweep-threshold-validation)
@@ -48,6 +49,12 @@ validator's sweep configuration in the beacon state. This allows validators to
 control their balance withdrawals more precisely.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
+
+## Types
+
+| Name                       | SSZ equivalent                                 |
+| -------------------------- | ---------------------------------------------- |
+| `SweepThresholdRequests`   | `ProgressiveList[SetSweepThresholdRequest]`    |
 
 ## Constants
 
@@ -139,7 +146,7 @@ class ExecutionRequests(ProgressiveContainer(active_fields=[1] * 6)):
     builder_deposits: BuilderDepositRequests
     builder_exits: BuilderExitRequests
     # [New in EIP8148]
-    sweep_thresholds: ProgressiveList[SetSweepThresholdRequest]
+    sweep_thresholds: SweepThresholdRequests
 ```
 
 ### New containers
