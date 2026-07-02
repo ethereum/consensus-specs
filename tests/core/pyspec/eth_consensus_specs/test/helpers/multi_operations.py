@@ -81,7 +81,7 @@ def get_random_attester_slashings(spec, state, rng, slashed_indices=None):
     """
     if slashed_indices is None:
         slashed_indices = []
-    num_slashings = rng.randrange(0, get_max_attester_slashings(spec))
+    num_slashings = rng.randint(0, get_max_attester_slashings(spec))
     active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     indices = [
         index
