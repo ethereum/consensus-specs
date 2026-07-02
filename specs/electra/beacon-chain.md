@@ -178,10 +178,10 @@ specification.
 
 ### Max operations per block
 
-| Name                             | Value        |
-| -------------------------------- | ------------ |
-| `MAX_ATTESTER_SLASHINGS_ELECTRA` | `2**0` (= 1) |
-| `MAX_ATTESTATIONS_ELECTRA`       | `2**3` (= 8) |
+| Name                             | Value                |
+| -------------------------------- | -------------------- |
+| `MAX_ATTESTER_SLASHINGS_ELECTRA` | `uint64(2**0)` (= 1) |
+| `MAX_ATTESTATIONS_ELECTRA`       | `uint64(2**3)` (= 8) |
 
 ### Execution
 

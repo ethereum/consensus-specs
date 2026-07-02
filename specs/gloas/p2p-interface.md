@@ -49,9 +49,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Configuration
 
-| Name                   | Value          | Description                                                       |
-| ---------------------- | -------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
+| Name                   | Value          |
+| ---------------------- | -------------- |
+| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) |
 
 ### Containers
 
@@ -594,7 +594,7 @@ Response Content:
 )
 ```
 
-Specifications of req\\response methods are equivalent to
+Specifications of request/response methods are equivalent to
 [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference
 being the response content type.
 

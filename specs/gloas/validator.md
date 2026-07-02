@@ -38,8 +38,8 @@ validator" to implement Gloas.
 
 ### Time parameters
 
-| Name                          | Value          |     Unit     |         Duration          |
-| ----------------------------- | -------------- | :----------: | :-----------------------: |
+| Name                          | Value          | Unit         | Duration                  |
+| ----------------------------- | -------------- | ------------ | ------------------------- |
 | `ATTESTATION_DUE_BPS_GLOAS`   | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
 | `AGGREGATE_DUE_BPS_GLOAS`     | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
 | `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
