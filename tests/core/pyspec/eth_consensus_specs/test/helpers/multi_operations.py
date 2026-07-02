@@ -57,7 +57,7 @@ def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
 
 
 def get_random_proposer_slashings(spec, state, rng):
-    num_slashings = rng.randrange(1, spec.MAX_PROPOSER_SLASHINGS)
+    num_slashings = rng.randint(0, spec.MAX_PROPOSER_SLASHINGS)
     active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     indices = [index for index in active_indices if not state.validators[index].slashed]
     slashings = [
@@ -114,7 +114,7 @@ def get_random_attester_slashings(spec, state, rng, slashed_indices=None):
 
 
 def get_random_attestations(spec, state, rng):
-    num_attestations = rng.randrange(1, get_max_attestations(spec))
+    num_attestations = rng.randint(0, get_max_attestations(spec))
 
     attestations = [
         get_valid_attestation(
@@ -130,7 +130,7 @@ def get_random_attestations(spec, state, rng):
 
 def get_random_deposits(spec, state, rng, num_deposits=None):
     if num_deposits is None:
-        num_deposits = rng.randrange(1, spec.MAX_DEPOSITS)
+        num_deposits = rng.randint(0, spec.MAX_DEPOSITS)
 
     if num_deposits == 0:
         return [], b"\x00" * 32
@@ -188,7 +188,7 @@ def _eligible_for_exit(spec, state, index):
 
 
 def get_random_voluntary_exits(spec, state, to_be_slashed_indices, rng):
-    num_exits = rng.randrange(1, spec.MAX_VOLUNTARY_EXITS)
+    num_exits = rng.randint(0, spec.MAX_VOLUNTARY_EXITS)
     active_indices = set(
         spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     )
