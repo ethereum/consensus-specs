@@ -39,12 +39,10 @@ from eth_consensus_specs.test.helpers.state import (
 )
 from eth_consensus_specs.test.helpers.voluntary_exits import prepare_signed_exits
 from eth_consensus_specs.test.helpers.withdrawals import (
-    prepare_withdrawal_request,
-    set_validator_fully_withdrawable,
-)
-from tests.infra.helpers.withdrawals import (
     get_expected_withdrawals,
+    prepare_withdrawal_request,
     set_parent_block_full,
+    set_validator_fully_withdrawable,
 )
 
 

@@ -9,7 +9,6 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.blob import (
     get_sample_blob,
 )
-from eth_consensus_specs.utils.bls import BLS_MODULUS
 
 
 @with_fulu_and_later
@@ -30,7 +29,7 @@ def test_fft(spec):
 
     # sample a random polynomial
     poly_coeff = [
-        spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
+        spec.BLSFieldElement(rng.randint(0, spec.BLS_MODULUS - 1))
         for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
     ]
 
@@ -69,7 +68,7 @@ def test_coset_fft(spec):
 
     # sample a random polynomial
     poly_coeff = [
-        spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
+        spec.BLSFieldElement(rng.randint(0, spec.BLS_MODULUS - 1))
         for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
     ]
 
@@ -270,18 +269,18 @@ def test_multiply_polynomial_degree_overflow(spec):
 
     # Perform a legitimate-but-maxed-out polynomial multiplication
     poly1_coeff = [
-        spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
+        spec.BLSFieldElement(rng.randint(0, spec.BLS_MODULUS - 1))
         for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
     ]
     poly2_coeff = [
-        spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
+        spec.BLSFieldElement(rng.randint(0, spec.BLS_MODULUS - 1))
         for _ in range(spec.FIELD_ELEMENTS_PER_BLOB)
     ]
     _ = spec.multiply_polynomialcoeff(poly1_coeff, poly2_coeff)
 
     # Now overflow the degree by pumping the degree of one of the inputs by one
     poly2_coeff = [
-        spec.BLSFieldElement(rng.randint(0, BLS_MODULUS - 1))
+        spec.BLSFieldElement(rng.randint(0, spec.BLS_MODULUS - 1))
         for _ in range(spec.FIELD_ELEMENTS_PER_BLOB + 1)
     ]
     expect_assertion_error(lambda: spec.multiply_polynomialcoeff(poly1_coeff, poly2_coeff))

@@ -4,7 +4,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
-from tests.infra.helpers.proposer_slashings import (
+from eth_consensus_specs.test.helpers.proposer_slashings import (
     assert_process_proposer_slashing,
     prepare_process_proposer_slashing,
     run_proposer_slashing_processing,

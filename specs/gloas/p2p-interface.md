@@ -71,9 +71,9 @@ libp2p messages.
 
 ### Configuration
 
-| Name                   | Value          | Description                                                       |
-| ---------------------- | -------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
+| Name                   | Value          |
+| ---------------------- | -------------- |
+| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) |
 
 ### Containers
 
@@ -413,8 +413,8 @@ The following validations MUST pass before forwarding the
 `bid = signed_execution_payload_bid.message`, the alias
 `signed_proposer_preferences` for the validated `SignedProposerPreferences`
 whose `message.proposal_slot` is `bid.slot` and `message.dependent_root` is
-`get_proposer_dependent_root(parent_state, compute_epoch_at_slot(bid.slot))`,
-where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
+`get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot))`,
+where `store` is the fork choice store, and the alias
 `proposer_preferences = signed_proposer_preferences.message`:
 
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
@@ -522,16 +522,6 @@ def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences)
     return state.proposer_lookahead[index] == preferences.validator_index
 ```
 
-```python
-def get_proposer_dependent_root(state: BeaconState, epoch: Epoch) -> Root:
-    """
-    Return the dependent root for the proposer lookahead at ``epoch``.
-    """
-    return get_block_root_at_slot(
-        state, Slot(compute_start_slot_at_epoch(Epoch(epoch - MIN_SEED_LOOKAHEAD)) - 1)
-    )
-```
-
 *Note*: Nodes SHOULD subscribe to this topic at least one epoch before the fork
 activation. Proposers SHOULD broadcast their preferences in the epoch before the
 fork.
@@ -598,6 +588,9 @@ the sidecar.
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
+The Gloas fork-digest is introduced to the `context` enum to specify Gloas
+beacon block type.
+
 <!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
@@ -614,6 +607,9 @@ the sidecar.
 ##### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
+
+The Gloas fork-digest is introduced to the `context` enum to specify Gloas
+beacon block type.
 
 <!-- eth_consensus_specs: skip -->
 
@@ -646,11 +642,11 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_BLOCKS_DENEB]
+  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]
 )
 ```
 
-Specifications of req\\response methods are equivalent to
+Specifications of request/response methods are equivalent to
 [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference
 being the response content type.
 
@@ -670,19 +666,6 @@ Per `fork_version = compute_fork_version(epoch)`:
 ##### ExecutionPayloadEnvelopesByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_root/1/`
-
-For each successful `response_chunk`, the `ForkDigest` context epoch is
-determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
-`beacon_block` referred to by
-`signed_execution_payload_envelope.message.beacon_block_root`.
-
-Per `fork_version = compute_fork_version(epoch)`:
-
-<!-- eth_consensus_specs: skip -->
-
-| `fork_version`       | Chunk SSZ type                         |
-| -------------------- | -------------------------------------- |
-| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
 
 Request Content:
 
@@ -725,3 +708,16 @@ payload envelope in the response.
 
 Clients MUST respond with at least one payload envelope, if they have it.
 Clients MAY limit the number of payload envelopes in the response.
+
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
+`beacon_block` referred to by
+`signed_execution_payload_envelope.message.beacon_block_root`.
+
+Per `fork_version = compute_fork_version(epoch)`:
+
+<!-- eth_consensus_specs: skip -->
+
+| `fork_version`       | Chunk SSZ type                         |
+| -------------------- | -------------------------------------- |
+| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |

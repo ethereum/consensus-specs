@@ -244,8 +244,6 @@ def objects_to_spec(
         functions_spec,
         sundry_functions,
         execution_engine_cls,
-        # Since some constants are hardcoded in setup.py, the following assertions verify that the hardcoded constants are
-        # as same as the spec definition.
         ssz_dep_constants_verification,
         func_dep_presets_verification,
     ]

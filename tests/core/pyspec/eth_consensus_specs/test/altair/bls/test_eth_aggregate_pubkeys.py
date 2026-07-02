@@ -1,12 +1,11 @@
-import milagro_bls_binding as milagro_bls
 import pytest
 from eth_utils import encode_hex
 
 from eth_consensus_specs.test.context import only_generator, single_phase, spec_test, with_phases
 from eth_consensus_specs.test.helpers.constants import ALTAIR
+from eth_consensus_specs.test.utils.manifest import manifest
+from eth_consensus_specs.test.utils.template_test import template_test
 from eth_consensus_specs.utils import bls
-from tests.infra.manifest import manifest
-from tests.infra.template_test import template_test
 
 from .constants import G1_POINT_AT_INFINITY, PRIVKEYS, ZERO_PUBKEY
 
@@ -14,7 +13,7 @@ from .constants import G1_POINT_AT_INFINITY, PRIVKEYS, ZERO_PUBKEY
 def _run_eth_aggregate_pubkeys_valid(spec, pubkeys):
     aggregate_pubkey = spec.eth_aggregate_pubkeys(pubkeys)
 
-    assert aggregate_pubkey == milagro_bls._AggregatePKs(pubkeys)
+    assert aggregate_pubkey == bls.AggregatePKs(pubkeys)
 
     yield (
         "data",
@@ -31,7 +30,7 @@ def _run_eth_aggregate_pubkeys_invalid(spec, pubkeys):
         spec.eth_aggregate_pubkeys(pubkeys)
 
     with pytest.raises(Exception):  # noqa: B017, PT011
-        milagro_bls._AggregatePKs(pubkeys)
+        bls.AggregatePKs(pubkeys)
 
     yield (
         "data",

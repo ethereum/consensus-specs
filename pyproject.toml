@@ -1,9 +1,10 @@
 [build-system]
 requires = ["setuptools==82.0.1"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "eth-consensus-specs"
-version = "1.7.0-alpha.11"
+version = "1.7.0-alpha.12"
 authors = [{ name = "ethereum" }]
 description = "Ethereum consensus layer specifications package"
 license = "CC0-1.0"
@@ -16,9 +17,7 @@ dependencies = [
   "frozendict==2.4.7",
   "lru-dict==1.4.1",
   "marko==2.2.3",
-  "milagro_bls_binding==1.9.1",
-  "py_arkworks_bls12381==0.4.1",
-  "py_ecc==8.0.0",
+  "py_arkworks_bls12381==0.5.0",
   "ruamel.yaml==0.19.1",
   "setuptools==82.0.1",
 ]
@@ -34,7 +33,7 @@ test = [
   "pytest-html==4.2.0",
   "pytest-sugar==1.1.1",
   "pytest-xdist==3.8.0",
-  "pytest==9.1.0",
+  "pytest==9.1.1",
   "python-snappy==0.7.3",
   "trie==3.1.0",
 ]
@@ -55,6 +54,27 @@ docs = [
   "mkdocs-material==9.7.6",
   "mkdocs==1.6.1",
 ]
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.package-dir]
+configs = "configs"
+eth_consensus_specs = "tests/core/pyspec/eth_consensus_specs"
+presets = "presets"
+specs = "specs"
+sync = "sync"
+
+[tool.setuptools.packages.find]
+where = ["tests/core/pyspec", "."]
+include = ["eth_consensus_specs*", "configs", "presets", "specs", "sync"]
+namespaces = true
+
+[tool.setuptools.package-data]
+configs = ["*.yaml"]
+presets = ["**/*.yaml", "**/*.json"]
+specs = ["**/*.md"]
+sync = ["optimistic.md"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

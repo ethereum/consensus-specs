@@ -5,6 +5,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation,
 )
 from eth_consensus_specs.test.helpers.attester_slashings import (
+    get_max_attester_slashings,
     get_valid_attester_slashing_by_indices,
 )
 from eth_consensus_specs.test.helpers.block import (
@@ -78,11 +79,9 @@ def get_random_attester_slashings(spec, state, rng, slashed_indices=None):
     that will be slashed by other operations in the same block as the one that
     contains the output of this function.
     """
-    # ensure at least one attester slashing, the max count
-    # is small so not much room for random inclusion
     if slashed_indices is None:
         slashed_indices = []
-    num_slashings = rng.randrange(1, spec.MAX_ATTESTER_SLASHINGS)
+    num_slashings = rng.randint(0, get_max_attester_slashings(spec))
     active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
     indices = [
         index

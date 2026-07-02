@@ -4,6 +4,9 @@ from eth_consensus_specs.test.context import (
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
+from eth_consensus_specs.test.helpers.builder_deposit_requests import (
+    prepare_process_builder_deposit_request,
+)
 from eth_consensus_specs.test.helpers.deposits import (
     make_withdrawal_credentials,
     prepare_deposit_request,
@@ -12,8 +15,7 @@ from eth_consensus_specs.test.helpers.execution_requests import (
     get_non_empty_execution_requests,
 )
 from eth_consensus_specs.test.helpers.keys import pubkeys
-from tests.infra.helpers.builder_deposit_requests import prepare_process_builder_deposit_request
-from tests.infra.helpers.withdrawals import set_parent_block_full
+from eth_consensus_specs.test.helpers.withdrawals import set_parent_block_full
 
 
 def _commit_parent_requests(spec, state, requests, value=None, builder_index=None):

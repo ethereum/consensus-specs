@@ -27,7 +27,7 @@ the
 The [fork document](./fork.md) explains how to upgrade existing Electra based
 deployments to Gloas.
 
-Additional documents describes the impact of the upgrade on certain roles:
+Additional documents describe the impact of the upgrade on certain roles:
 
 - [Full node](./full-node.md)
 - [Networking](./p2p-interface.md)

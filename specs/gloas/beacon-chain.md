@@ -125,38 +125,49 @@
 
 Gloas is a consensus-layer upgrade containing a number of features. Including:
 
-- [EIP-7732](https://eips.ethereum.org/EIPS/eip-7732): Enshrined
-  Proposer-Builder Separation
-- [EIP-7843](https://eips.ethereum.org/EIPS/eip-7843): SLOTNUM opcode
-- [EIP-8045](https://eips.ethereum.org/EIPS/eip-8045): Exclude slashed
-  validators from proposing
-- [EIP-8061](https://eips.ethereum.org/EIPS/eip-8061): Increase exit and
-  consolidation churn
-- [EIP-8282](https://eips.ethereum.org/EIPS/eip-8282): Builder Execution
-  Requests
+- [EIP-7688](https://github.com/ethereum/EIPs/blob/f2e6d7fb01194d590e16fcdcae8061d06cf1a7f1/EIPS/eip-7688.md):
+  Forward compatible consensus data structures
+- [EIP-7732](https://github.com/ethereum/EIPs/blob/c36a2e58a4496ed21bef6b1c97505b03fd159f0a/EIPS/eip-7732.md):
+  Enshrined Proposer-Builder Separation
+- [EIP-7843](https://github.com/ethereum/EIPs/blob/c3bfd4ba41cf0fcbfe8c404f33ba89f5174971e0/EIPS/eip-7843.md):
+  SLOTNUM opcode
+- [EIP-8045](https://github.com/ethereum/EIPs/blob/414a8404198c5afaa3cfed10a385a9aae1dfaae3/EIPS/eip-8045.md):
+  Exclude slashed validators from proposing
+- [EIP-8061](https://github.com/ethereum/EIPs/blob/01f15c37c64114c478cb1136e0a6966084e4db14/EIPS/eip-8061.md):
+  Increase exit and consolidation churn
+- [EIP-8282](https://github.com/wemeetagain/EIPs/blob/9753e62c5bcfd69ec557600252dcdbdcb317bb6e/EIPS/eip-8282.md):
+  Builder Execution Requests
+
+*Note*: These EIPs are in draft and may change or be removed. Each link above
+points to the specific version targeted by this specification, which may differ
+from the latest published version of the EIPs.
 
 ## Types
 
-| Name                     | SSZ equivalent                           | Description                                                                                     |
-| ------------------------ | ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `AggregationBits`        | `ProgressiveBitlist`                     | *[Modified in Gloas:EIP7688]* Combined participation info for all participating subcommittees   |
-| `AttestingIndices`       | `ProgressiveList[ValidatorIndex]`        | *[Modified in Gloas:EIP7688]* List of attesting validator indices                               |
-| `Transaction`            | `ProgressiveByteList`                    | *[Modified in Gloas:EIP7688]* Either a typed transaction envelope or a legacy transaction       |
-| `DepositRequests`        | `ProgressiveList[DepositRequest]`        | *[Modified in Gloas:EIP7688]* List of deposit requests pertaining to an execution payload       |
-| `WithdrawalRequests`     | `ProgressiveList[WithdrawalRequest]`     | *[Modified in Gloas:EIP7688]* List of withdrawal requests pertaining to an execution payload    |
-| `ConsolidationRequests`  | `ProgressiveList[ConsolidationRequest]`  | *[Modified in Gloas:EIP7688]* List of consolidation requests pertaining to an execution payload |
-| `BuilderDepositRequests` | `ProgressiveList[BuilderDepositRequest]` | *[New in Gloas:EIP8282]* List of builder deposit requests pertaining to an execution payload    |
-| `BuilderExitRequests`    | `ProgressiveList[BuilderExitRequest]`    | *[New in Gloas:EIP8282]* List of builder exit requests pertaining to an execution payload       |
-| `BuilderIndex`           | `uint64`                                 | Builder registry index                                                                          |
-| `BlockAccessList`        | `ProgressiveByteList`                    | RLP encoded block access list                                                                   |
+| Name                     | SSZ equivalent                           |
+| ------------------------ | ---------------------------------------- |
+| `AggregationBits`        | `ProgressiveBitlist`                     |
+| `AttestingIndices`       | `ProgressiveList[ValidatorIndex]`        |
+| `Transaction`            | `ProgressiveByteList`                    |
+| `DepositRequests`        | `ProgressiveList[DepositRequest]`        |
+| `WithdrawalRequests`     | `ProgressiveList[WithdrawalRequest]`     |
+| `ConsolidationRequests`  | `ProgressiveList[ConsolidationRequest]`  |
+| `BuilderDepositRequests` | `ProgressiveList[BuilderDepositRequest]` |
+| `BuilderExitRequests`    | `ProgressiveList[BuilderExitRequest]`    |
+| `BuilderIndex`           | `uint64`                                 |
+| `BlockAccessList`        | `ProgressiveByteList`                    |
 
 ## Constants
 
 ### Index flags
 
-| Name                 | Value           | Description                                                                                |
-| -------------------- | --------------- | ------------------------------------------------------------------------------------------ |
-| `BUILDER_INDEX_FLAG` | `uint64(2**40)` | Bitwise flag which indicates that a `ValidatorIndex` should be treated as a `BuilderIndex` |
+*Note*: The `BUILDER_INDEX_FLAG` is a bitwise flag which indicates that a
+`ValidatorIndex` should be treated as a `BuilderIndex`. This exists so that the
+same `Withdrawal` container can be used for validators and builders.
+
+| Name                 | Value           |
+| -------------------- | --------------- |
+| `BUILDER_INDEX_FLAG` | `uint64(2**40)` |
 
 ### Domains
 
@@ -169,11 +180,11 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 
 ### Misc
 
-| Name                                    | Value                      | Description                                          |
-| --------------------------------------- | -------------------------- | ---------------------------------------------------- |
-| `BUILDER_INDEX_SELF_BUILD`              | `BuilderIndex(UINT64_MAX)` | Value which indicates the proposer built the payload |
-| `BUILDER_PAYMENT_THRESHOLD_NUMERATOR`   | `uint64(6)`                |                                                      |
-| `BUILDER_PAYMENT_THRESHOLD_DENOMINATOR` | `uint64(10)`               |                                                      |
+| Name                                    | Value                      |
+| --------------------------------------- | -------------------------- |
+| `BUILDER_INDEX_SELF_BUILD`              | `BuilderIndex(UINT64_MAX)` |
+| `BUILDER_PAYMENT_THRESHOLD_NUMERATOR`   | `uint64(6)`                |
+| `BUILDER_PAYMENT_THRESHOLD_DENOMINATOR` | `uint64(10)`               |
 
 ### Withdrawal prefixes
 
@@ -181,15 +192,15 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
 to onboard builders at the fork. It will be deprecated after the upgrade and a
 future validator withdrawal prefix may reuse this value.
 
-| Name                        | Value            | Description                                |
-| --------------------------- | ---------------- | ------------------------------------------ |
-| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` | Withdrawal credential prefix for a builder |
+| Name                        | Value            |
+| --------------------------- | ---------------- |
+| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` |
 
 ### Builder versions
 
-| Name                      | Value      | Description                              |
-| ------------------------- | ---------- | ---------------------------------------- |
-| `PAYLOAD_BUILDER_VERSION` | `uint8(0)` | Version for an execution payload builder |
+| Name                      | Value      |
+| ------------------------- | ---------- |
+| `PAYLOAD_BUILDER_VERSION` | `uint8(0)` |
 
 ### Execution-layer triggered requests
 
@@ -208,22 +219,22 @@ future validator withdrawal prefix may reuse this value.
 
 ### Max operations per block
 
-| Name                       | Value |
-| -------------------------- | ----- |
-| `MAX_PAYLOAD_ATTESTATIONS` | `4`   |
+| Name                       | Value                |
+| -------------------------- | -------------------- |
+| `MAX_PAYLOAD_ATTESTATIONS` | `uint64(2**2)` (= 4) |
 
 ### Execution
 
-| Name                                       | Value                  | Description                                                |
-| ------------------------------------------ | ---------------------- | ---------------------------------------------------------- |
-| `MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**8)` (= 256) | Maximum number of builder deposit requests in each payload |
-| `MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16)  | Maximum number of builder exit requests in each payload    |
+| Name                                       | Value                  |
+| ------------------------------------------ | ---------------------- |
+| `MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**8)` (= 256) |
+| `MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16)  |
 
 ### Withdrawals processing
 
-| Name                                 | Value              |
-| ------------------------------------ | ------------------ |
-| `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` | `2**14` (= 16,384) |
+| Name                                 | Value                      |
+| ------------------------------------ | -------------------------- |
+| `MAX_BUILDERS_PER_WITHDRAWALS_SWEEP` | `uint64(2**14)` (= 16,384) |
 
 ## Configuration
 
@@ -237,8 +248,8 @@ future validator withdrawal prefix may reuse this value.
 
 ### Time parameters
 
-| Name                                | Value                     |  Unit  |
-| ----------------------------------- | ------------------------- | :----: |
+| Name                                | Value                     | Unit   |
+| ----------------------------------- | ------------------------- | ------ |
 | `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `uint64(2**13)` (= 8,192) | epochs |
 
 ## Containers
@@ -915,8 +926,6 @@ def get_attestation_participation_flag_indices(
 ```
 
 #### New `get_ptc`
-
-*Note*: `get_ptc` uses the cached `ptc_window` for lookups.
 
 ```python
 def get_ptc(state: BeaconState, slot: Slot) -> Vector[ValidatorIndex, PTC_SIZE]:
@@ -1785,13 +1794,13 @@ def process_builder_deposit_request(state: BeaconState, request: BuilderDepositR
         builder_index = BuilderIndex(builder_pubkeys.index(request.pubkey))
         builder = state.builders[builder_index]
 
-        # Increase balance by deposit amount
-        builder.balance += request.amount
-
-        # If exited, reset the withdrawable epoch
-        if builder.withdrawable_epoch != FAR_FUTURE_EPOCH:
+        # If exited and swept, reset the withdrawable epoch
+        if builder.withdrawable_epoch != FAR_FUTURE_EPOCH and builder.balance == 0:
             epoch = get_current_epoch(state)
             builder.withdrawable_epoch = epoch + MIN_BUILDER_WITHDRAWABILITY_DELAY
+
+        # Increase balance by deposit amount
+        builder.balance += request.amount
 ```
 
 ##### Builder exit requests

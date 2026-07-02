@@ -38,8 +38,8 @@ validator" to implement Gloas.
 
 ### Time parameters
 
-| Name                          | Value          |     Unit     |         Duration          |
-| ----------------------------- | -------------- | :----------: | :-----------------------: |
+| Name                          | Value          | Unit         | Duration                  |
+| ----------------------------- | -------------- | ------------ | ------------------------- |
 | `ATTESTATION_DUE_BPS_GLOAS`   | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
 | `AGGREGATE_DUE_BPS_GLOAS`     | `uint64(5000)` | basis points | 50% of `SLOT_DURATION_MS` |
 | `SYNC_MESSAGE_DUE_BPS_GLOAS`  | `uint64(2500)` | basis points | 25% of `SLOT_DURATION_MS` |
@@ -152,33 +152,37 @@ def get_upcoming_proposal_slots(
     return upcoming_proposal_slots
 ```
 
-To construct each `SignedProposerPreferences`:
-
-1. Instantiate a new `ProposerPreferences` object as `preferences`.
-2. Set `preferences.dependent_root` to
-   `get_proposer_dependent_root(state, compute_epoch_at_slot(preferences.proposal_slot))`,
-   where `state` is the proposer's current head state. Use the genesis block
-   root in case of underflow.
-3. Set `preferences.proposal_slot` to `upcoming_proposal_slots[i]`.
-4. Set `preferences.validator_index` to the validator's index.
-5. Set `preferences.fee_recipient` to the execution address where the validator
-   wishes to receive the builder payment.
-6. Set `preferences.target_gas_limit` to the validator's preferred gas limit for
-   this execution payload.
-7. Instantiate a new `SignedProposerPreferences` object as `signed_preferences`.
-8. Set `signed_preferences.message` to `preferences`.
-9. Set `signed_preferences.signature` to the result of
-   `get_proposer_preferences_signature(state, preferences, privkey)`.
+A validator constructs each `SignedProposerPreferences` with
+`get_signed_proposer_preferences` for each `proposal_slot` in
+`get_upcoming_proposal_slots(state, validator_index)`. Let `head_root` be the
+validator's current head root, `fee_recipient` be the execution address where
+the validator wishes to receive the builder payment, and `target_gas_limit` be
+the validator's preferred gas limit for the execution payload.
 
 ```python
-def get_proposer_preferences_signature(
-    state: BeaconState, preferences: ProposerPreferences, privkey: int
-) -> BLSSignature:
-    domain = get_domain(
-        state, DOMAIN_PROPOSER_PREFERENCES, compute_epoch_at_slot(preferences.proposal_slot)
+def get_signed_proposer_preferences(
+    store: Store,
+    state: BeaconState,
+    head_root: Root,
+    proposal_slot: Slot,
+    validator_index: ValidatorIndex,
+    fee_recipient: ExecutionAddress,
+    target_gas_limit: uint64,
+    privkey: int,
+) -> SignedProposerPreferences:
+    proposal_epoch = compute_epoch_at_slot(proposal_slot)
+    dependent_root = get_shuffling_dependent_root(store, head_root, proposal_epoch)
+    preferences = ProposerPreferences(
+        dependent_root=dependent_root,
+        proposal_slot=proposal_slot,
+        validator_index=validator_index,
+        fee_recipient=fee_recipient,
+        target_gas_limit=target_gas_limit,
     )
+    domain = get_domain(state, DOMAIN_PROPOSER_PREFERENCES, proposal_epoch)
     signing_root = compute_signing_root(preferences, domain)
-    return bls.Sign(privkey, signing_root)
+    signature = bls.Sign(privkey, signing_root)
+    return SignedProposerPreferences(message=preferences, signature=signature)
 ```
 
 #### Constructing the `BeaconBlockBody`
