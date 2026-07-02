@@ -207,32 +207,9 @@ def verify_data_column_sidecar(
 
 ### The gossip domain: gossipsub
 
-Some gossip meshes are upgraded in Gloas to support upgraded types.
-
 #### Topics and messages
 
-Topics follow the same specification as in prior upgrades.
-
-The `beacon_block` topic is updated to support the modified type
-
-| Name           | Message Type        |
-| -------------- | ------------------- |
-| `beacon_block` | `SignedBeaconBlock` |
-
-The new topics along with the type of the `data` field of a gossipsub message
-are given in this table:
-
-| Name                          | Message Type                     |
-| ----------------------------- | -------------------------------- |
-| `execution_payload_bid`       | `SignedExecutionPayloadBid`      |
-| `execution_payload`           | `SignedExecutionPayloadEnvelope` |
-| `payload_attestation_message` | `PayloadAttestationMessage`      |
-| `proposer_preferences`        | `SignedProposerPreferences`      |
-
 ##### Global topics
-
-Gloas introduces new global topics for execution bid, execution payload and
-payload attestation.
 
 ###### Modified `beacon_aggregate_and_proof`
 
