@@ -52,9 +52,9 @@ control their balance withdrawals more precisely.
 
 ## Types
 
-| Name                       | SSZ equivalent                                 |
-| -------------------------- | ---------------------------------------------- |
-| `SweepThresholdRequests`   | `ProgressiveList[SetSweepThresholdRequest]`    |
+| Name                     | SSZ equivalent                              |
+| ------------------------ | ------------------------------------------- |
+| `SweepThresholdRequests` | `ProgressiveList[SetSweepThresholdRequest]` |
 
 ## Constants
 
