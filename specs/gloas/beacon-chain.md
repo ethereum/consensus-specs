@@ -182,7 +182,7 @@ future validator withdrawal prefix may reuse this value.
 
 | Name                        | Value            |
 | --------------------------- | ---------------- |
-| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` |
+| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0xB0')` |
 
 ### Builder versions
 
