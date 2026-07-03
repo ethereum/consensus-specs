@@ -159,7 +159,7 @@ jobs:
           enable-cache: true
 
       - name: Generate tests
-        run: make test component=pyspec preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true coverage=${{ matrix.preset != 'general' && 'true' || 'false' }}
+        run: make test preset=${{ matrix.preset }} fork=${{ matrix.fork }} reftests=true coverage=${{ matrix.preset != 'general' && 'true' || 'false' }}
 
       - name: Upload reference tests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

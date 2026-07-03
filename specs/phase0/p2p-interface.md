@@ -214,8 +214,8 @@ We define the following Python custom types for type hinting and readability:
 
 ### Constants
 
-| Name           | Value |               Unit               |
-| -------------- | ----- | :------------------------------: |
+| Name           | Value | Unit                             |
+| -------------- | ----- | -------------------------------- |
 | `NODE_ID_BITS` | `256` | The bit length of uint256 is 256 |
 
 ### Configuration
@@ -1652,7 +1652,7 @@ following form to more easily discover peers participating in particular
 attestation gossip subnets.
 
 | Key       | Value                                     |
-| :-------- | :---------------------------------------- |
+| --------- | ----------------------------------------- |
 | `attnets` | SSZ `Bitvector[ATTESTATION_SUBNET_COUNT]` |
 
 If a node's `MetaData.attnets` has any non-zero bit, the ENR MUST include the
@@ -1668,7 +1668,7 @@ fork digest, next fork version, and next fork epoch to ensure connections are
 made with peers on the intended Ethereum network.
 
 | Key    | Value           |
-| :----- | :-------------- |
+| ------ | --------------- |
 | `eth2` | SSZ `ENRForkID` |
 
 Specifically, the value of the `eth2` key MUST be the following SSZ encoded

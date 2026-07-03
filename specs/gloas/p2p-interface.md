@@ -49,9 +49,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Configuration
 
-| Name                   | Value          | Description                                                       |
-| ---------------------- | -------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
+| Name                   | Value          |
+| ---------------------- | -------------- |
+| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) |
 
 ### Containers
 
@@ -536,6 +536,9 @@ the sidecar.
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
+The Gloas fork-digest is introduced to the `context` enum to specify Gloas
+beacon block type.
+
 <!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
@@ -552,6 +555,9 @@ the sidecar.
 ##### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
+
+The Gloas fork-digest is introduced to the `context` enum to specify Gloas
+beacon block type.
 
 <!-- eth_consensus_specs: skip -->
 
@@ -588,7 +594,7 @@ Response Content:
 )
 ```
 
-Specifications of req\\response methods are equivalent to
+Specifications of request/response methods are equivalent to
 [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference
 being the response content type.
 
@@ -608,19 +614,6 @@ Per `fork_version = compute_fork_version(epoch)`:
 ##### ExecutionPayloadEnvelopesByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_root/1/`
-
-For each successful `response_chunk`, the `ForkDigest` context epoch is
-determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
-`beacon_block` referred to by
-`signed_execution_payload_envelope.message.beacon_block_root`.
-
-Per `fork_version = compute_fork_version(epoch)`:
-
-<!-- eth_consensus_specs: skip -->
-
-| `fork_version`       | Chunk SSZ type                         |
-| -------------------- | -------------------------------------- |
-| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
 
 Request Content:
 
@@ -663,3 +656,16 @@ payload envelope in the response.
 
 Clients MUST respond with at least one payload envelope, if they have it.
 Clients MAY limit the number of payload envelopes in the response.
+
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
+`beacon_block` referred to by
+`signed_execution_payload_envelope.message.beacon_block_root`.
+
+Per `fork_version = compute_fork_version(epoch)`:
+
+<!-- eth_consensus_specs: skip -->
+
+| `fork_version`       | Chunk SSZ type                         |
+| -------------------- | -------------------------------------- |
+| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |

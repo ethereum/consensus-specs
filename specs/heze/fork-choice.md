@@ -33,8 +33,8 @@ This is the modification of the fork choice accompanying the Heze upgrade.
 
 ### Time parameters
 
-| Name                     | Value          |     Unit     |          Duration          |
-| ------------------------ | -------------- | :----------: | :------------------------: |
+| Name                     | Value          | Unit         | Duration                   |
+| ------------------------ | -------------- | ------------ | -------------------------- |
 | `INCLUSION_LIST_DUE_BPS` | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
 
 ## Protocols

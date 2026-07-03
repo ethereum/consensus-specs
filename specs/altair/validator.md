@@ -74,17 +74,17 @@ and use as a reference throughout.
 
 ### Misc
 
-| Name                                       | Value         |                                      Unit                                       |
-| ------------------------------------------ | ------------- | :-----------------------------------------------------------------------------: |
-| `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `2**4` (= 16) |                                   validators                                    |
-| `SYNC_COMMITTEE_SUBNET_COUNT`              | `4`           | The number of sync committee subnets used in the gossipsub aggregation protocol |
+| Name                                       | Value                 | Unit       |
+| ------------------------------------------ | --------------------- | ---------- |
+| `TARGET_AGGREGATORS_PER_SYNC_SUBCOMMITTEE` | `uint64(2**4)` (= 16) | validators |
+| `SYNC_COMMITTEE_SUBNET_COUNT`              | `uint64(2**2)` (= 4)  | subnets    |
 
 ## Configuration
 
 ### Time parameters
 
-| Name                   | Value          |     Unit     |          Duration          |
-| ---------------------- | -------------- | :----------: | :------------------------: |
+| Name                   | Value          | Unit         | Duration                   |
+| ---------------------- | -------------- | ------------ | -------------------------- |
 | `SYNC_MESSAGE_DUE_BPS` | `uint64(3333)` | basis points | ~33% of `SLOT_DURATION_MS` |
 | `CONTRIBUTION_DUE_BPS` | `uint64(6667)` | basis points | ~67% of `SLOT_DURATION_MS` |
 

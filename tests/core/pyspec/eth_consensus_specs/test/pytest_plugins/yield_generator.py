@@ -10,12 +10,12 @@ import pytest
 
 from eth_consensus_specs.test import context
 from eth_consensus_specs.test.helpers.constants import TESTGEN_FORKS
-from tests.infra.dumper import Dumper
-from tests.infra.manifest import Manifest
+from eth_consensus_specs.test.utils.dumper import Dumper
+from eth_consensus_specs.test.utils.manifest import Manifest
 
 if TYPE_CHECKING:
     from eth_consensus_specs.test.helpers.typing import SpecForkName
-    from tests.infra.yield_generator import MultiPhaseResult
+    from eth_consensus_specs.test.utils.yield_generator import MultiPhaseResult
 
 
 class RunnerConfig(TypedDict, total=False):
