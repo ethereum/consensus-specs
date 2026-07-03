@@ -186,9 +186,10 @@ future validator withdrawal prefix may reuse this value.
 
 ### Builder versions
 
-| Name                      | Value      |
-| ------------------------- | ---------- |
-| `PAYLOAD_BUILDER_VERSION` | `uint8(0)` |
+| Name                               | Value        |
+| ---------------------------------- | ------------ |
+| `PAYLOAD_BUILDER_ALLOWED_VERSION`  | `uint8(1)`   |
+| `PAYLOAD_BUILDER_RESERVED_VERSION` | `uint8(128)` |
 
 ### Execution-layer triggered requests
 
@@ -1553,7 +1554,7 @@ def process_execution_payload_bid(
         # Verify that the builder is active
         assert is_active_builder(state, builder_index)
         # Verify that the builder is a payload builder
-        assert state.builders[builder_index].version == PAYLOAD_BUILDER_VERSION
+        assert state.builders[builder_index].version <= PAYLOAD_BUILDER_ALLOWED_VERSION
         # Verify that the builder has funds to cover the bid
         assert can_builder_cover_bid(state, builder_index, amount)
         # Verify that the bid signature is valid
@@ -1694,11 +1695,13 @@ caching should account for this behavior.
 def process_builder_deposit_request(state: BeaconState, request: BuilderDepositRequest) -> None:
     builder_pubkeys = [b.pubkey for b in state.builders]
     if request.pubkey not in builder_pubkeys:
-        if is_valid_builder_deposit_signature(request):
+        version = uint8(request.withdrawal_credentials[0])
+        is_valid_version = version <= PAYLOAD_BUILDER_RESERVED_VERSION
+        if is_valid_builder_deposit_signature(request) and is_valid_version:
             add_builder_to_registry(
                 state,
                 request.pubkey,
-                uint8(request.withdrawal_credentials[0]),
+                version,
                 ExecutionAddress(request.withdrawal_credentials[12:]),
                 request.amount,
                 state.slot,

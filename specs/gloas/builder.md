@@ -45,7 +45,7 @@ must include:
 - `withdrawal_credentials`: The withdrawal credentials, where the first byte is
   the builder version and the last 20 bytes are the execution-layer address that
   will receive withdrawals. For the version, execution payload builders should
-  use `PAYLOAD_BUILDER_VERSION`.
+  use a version lower or equal than `PAYLOAD_BUILDER_ALLOWED_VERSION`.
 - `amount`: At least `MIN_DEPOSIT_AMOUNT` gwei.
 - `signature`: BLS proof of possession over the corresponding `DepositMessage`
   under `DOMAIN_BUILDER_DEPOSIT`.
