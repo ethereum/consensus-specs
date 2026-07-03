@@ -188,7 +188,7 @@ future validator withdrawal prefix may reuse this value.
 
 | Name                               | Value        |
 | ---------------------------------- | ------------ |
-| `PAYLOAD_BUILDER_ALLOWED_VERSION`  | `uint8(1)`   |
+| `PAYLOAD_BUILDER_ALLOWED_VERSION`  | `uint8(8)`   |
 | `PAYLOAD_BUILDER_RESERVED_VERSION` | `uint8(128)` |
 
 ### Execution-layer triggered requests
