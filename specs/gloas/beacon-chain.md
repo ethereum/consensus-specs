@@ -213,10 +213,10 @@ future validator withdrawal prefix may reuse this value.
 
 ### Execution
 
-| Name                                       | Value                  |
-| ------------------------------------------ | ---------------------- |
-| `MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**8)` (= 256) |
-| `MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16)  |
+| Name                                       | Value                 |
+| ------------------------------------------ | --------------------- |
+| `MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**6)` (= 64) |
+| `MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16) |
 
 ### State list lengths
 
