@@ -70,9 +70,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 #### Topics and messages
 
-Topics follow the same specification as in prior upgrades.
-
-The `execution_payload_bid` topic is updated to support the modified type
+The `execution_payload_bid` topic is modified to support Heze bids.
 
 The new topics along with the type of the `data` field of a gossipsub message
 are given in this table:
