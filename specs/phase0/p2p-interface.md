@@ -2384,7 +2384,7 @@ epoch range, we use the worst case event of a very large validator size
 
 #### Why must the proposer signature be checked when backfilling blocks in the database?
 
-When backfilling blocks in a database from a know safe block/state (e.g. when
+When backfilling blocks in a database from a known safe block/state (e.g. when
 starting from a weak subjectivity state), the node not only must ensure the
 `BeaconBlock`s form a chain to the known safe block, but also must check that
 the proposer signature is valid in the `SignedBeaconBlock` wrapper.
