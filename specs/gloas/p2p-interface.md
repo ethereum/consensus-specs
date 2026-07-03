@@ -383,9 +383,10 @@ where `store` is the fork choice store, and the alias
 - _[IGNORE]_ `bid.value` is less or equal than the builder's excess balance --
   i.e. `can_builder_cover_bid(state, builder_index, amount)` returns `True`.
 - _[IGNORE]_ `bid.parent_block_hash` is the block hash of a known execution
-  payload in fork choice and
+  payload in fork choice.
+- _[REJECT]_
   `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit)`
-  is `True` where `parent_gas_limit` is the `gas_limit` of that execution
+  is `True`, where `parent_gas_limit` is the `gas_limit` of that execution
   payload.
 - _[IGNORE]_ `bid.parent_block_root` is the hash tree root of a known beacon
   block in fork choice.
