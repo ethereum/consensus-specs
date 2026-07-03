@@ -182,7 +182,7 @@ future validator withdrawal prefix may reuse this value.
 
 | Name                        | Value            |
 | --------------------------- | ---------------- |
-| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` |
+| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0xB0')` |
 
 ### Builder versions
 
@@ -213,10 +213,10 @@ future validator withdrawal prefix may reuse this value.
 
 ### Execution
 
-| Name                                       | Value                  |
-| ------------------------------------------ | ---------------------- |
-| `MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**8)` (= 256) |
-| `MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16)  |
+| Name                                       | Value                 |
+| ------------------------------------------ | --------------------- |
+| `MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**6)` (= 64) |
+| `MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16) |
 
 ### State list lengths
 
