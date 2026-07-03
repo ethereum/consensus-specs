@@ -211,13 +211,7 @@ Some gossip meshes are upgraded in Gloas to support upgraded types.
 
 #### Topics and messages
 
-Topics follow the same specification as in prior upgrades.
-
-The `beacon_block` topic is updated to support the modified type
-
-| Name           | Message Type        |
-| -------------- | ------------------- |
-| `beacon_block` | `SignedBeaconBlock` |
+The `beacon_block` topic is modified to support Gloas blocks.
 
 The new topics along with the type of the `data` field of a gossipsub message
 are given in this table:

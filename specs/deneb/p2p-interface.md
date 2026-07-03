@@ -164,10 +164,7 @@ Some gossip meshes are upgraded in Deneb to support upgraded types.
 
 #### Topics and messages
 
-Topics follow the same specification as in prior upgrades.
-
-The `beacon_block` topic is modified to also support Deneb blocks and new topics
-are added per table below.
+The `beacon_block` topic is modified to support Deneb blocks.
 
 The `voluntary_exit` topic is implicitly modified despite the lock-in use of
 `CAPELLA_FORK_VERSION` for this message signature validation for EIP-7044.

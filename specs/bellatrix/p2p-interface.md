@@ -77,8 +77,7 @@ Some gossip meshes are upgraded in Bellatrix to support upgraded types.
 
 #### Topics and messages
 
-Topics follow the same specification as in prior upgrades. All topics remain
-stable except the beacon block topic which is updated with the modified type.
+The `beacon_block` topic is modified to support Bellatrix blocks.
 
 The specification around the creation, validation, and dissemination of messages
 has not changed from the Altair document unless explicitly noted here.

@@ -105,9 +105,7 @@ Some gossip meshes are upgraded in Electra to support upgraded types.
 
 #### Topics and messages
 
-Topics follow the same specification as in prior upgrades.
-
-The `beacon_block` topic is modified to also support Electra blocks.
+The `beacon_block` topic is modified to support Electra blocks.
 
 The `beacon_aggregate_and_proof` and `beacon_attestation_{subnet_id}` topics are
 modified to support the gossip of the new attestation type.

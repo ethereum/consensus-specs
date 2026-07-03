@@ -74,9 +74,7 @@ messages. And an existing topic is upgraded for updated types in Capella.
 
 #### Topics and messages
 
-Topics follow the same specification as in prior upgrades. All existing topics
-remain stable except the beacon block topic which is updated with the modified
-type.
+The `beacon_block` topic is modified to support Capella blocks.
 
 The new topics along with the type of the `data` field of a gossipsub message
 are given in this table:

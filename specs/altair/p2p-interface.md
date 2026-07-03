@@ -146,9 +146,8 @@ and networking load across all of the relevant actors.
 
 #### Topics and messages
 
-Topics follow the same specification as in the Phase 0 document. New topics are
-added in Altair to support the sync committees and the beacon block topic is
-updated with the modified type.
+New topics are added in Altair to support the sync committees and the beacon
+block topic is updated with the modified type.
 
 The specification around the creation, validation, and dissemination of messages
 has not changed from the Phase 0 document unless explicitly noted here.
