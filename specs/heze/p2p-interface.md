@@ -20,7 +20,7 @@
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
       - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
-      - [InclusionListByCommitteeIndices v1](#inclusionlistbycommitteeindices-v1)
+      - [InclusionListsByIndices v1](#inclusionlistsbyindices-v1)
 
 <!-- mdformat-toc end -->
 
@@ -172,9 +172,62 @@ block type.
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 | `HEZE_FORK_VERSION`      | `heze.SignedBeaconBlock`      |
 
-##### InclusionListByCommitteeIndices v1
+##### InclusionListsByIndices v1
 
-**Protocol ID:** `/eth2/beacon_chain/req/inclusion_list_by_committee_indices/1/`
+**Protocol ID:** `/eth2/beacon_chain/req/inclusion_lists_by_indices/1/`
+
+*[New in Heze:EIP7805]*
+
+Request Content:
+
+```
+(
+  slot: Slot
+  inclusion_list_committee_root: Root
+  indices: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]
+)
+```
+
+Response Content:
+
+```
+(
+  List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]
+)
+```
+
+Requests inclusion lists by `slot`, `inclusion_list_committee_root` and
+inclusion list committee `indices`. The response is a list of
+`SignedInclusionList` whose length is less than or equal to the number of
+requested inclusion lists. It may be less in the case that the responding peer
+is missing inclusion lists.
+
+No more than `MAX_REQUEST_INCLUSION_LIST` may be requested at a time.
+
+`InclusionListsByIndices` is primarily used to fetch inclusion lists that may
+have been missed on gossip (e.g. when producing an execution payload for a slot
+for which some inclusion lists are missing).
+
+The request MUST be encoded as an SSZ-container.
+
+The response MUST consist of zero or more `response_chunk`. Each successful
+`response_chunk` MUST contain a single `SignedInclusionList` payload.
+
+Clients MUST support requesting inclusion lists since `minimum_request_slot`,
+where
+`minimum_request_slot = max(current_slot - MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS, compute_start_slot_at_epoch(HEZE_FORK_EPOCH))`.
+If `slot` in the request content references a slot earlier than
+`minimum_request_slot`, peers MAY respond with error code
+`3: ResourceUnavailable` or not include the inclusion lists in the response.
+
+Clients MUST respond with at least one inclusion list, if they have it. Clients
+MAY limit the number of inclusion lists in the response.
+
+Clients SHOULD include an inclusion list in the response as soon as it passes
+the gossip validation rules. Clients SHOULD NOT respond with inclusion lists
+that fail the gossip validation rules. Clients SHOULD NOT respond with inclusion
+lists from equivocators for the requested `slot` and
+`inclusion_list_committee_root`.
 
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(signed_inclusion_list.message.slot)`.
@@ -186,20 +239,3 @@ Per `fork_version = compute_fork_version(epoch)`:
 | `fork_version`      | Chunk SSZ type             |
 | ------------------- | -------------------------- |
 | `HEZE_FORK_VERSION` | `heze.SignedInclusionList` |
-
-Request Content:
-
-```
-(
-  slot: Slot
-  committee_indices: Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]
-)
-```
-
-Response Content:
-
-```
-(
-  List[SignedInclusionList, MAX_REQUEST_INCLUSION_LIST]
-)
-```
