@@ -209,10 +209,10 @@ future validator withdrawal prefix may reuse this value.
 
 ### Execution
 
-| Name                                       | Value                  | Description                                                |
-| ------------------------------------------ | ---------------------- | ---------------------------------------------------------- |
-| `MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**8)` (= 256) | Maximum number of builder deposit requests in each payload |
-| `MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16)  | Maximum number of builder exit requests in each payload    |
+| Name                                       | Value                 | Description                                                |
+| ------------------------------------------ | --------------------- | ---------------------------------------------------------- |
+| `MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**6)` (= 64) | Maximum number of builder deposit requests in each payload |
+| `MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16) | Maximum number of builder exit requests in each payload    |
 
 ### State list lengths
 
