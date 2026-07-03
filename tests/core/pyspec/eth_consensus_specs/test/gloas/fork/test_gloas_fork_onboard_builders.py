@@ -141,7 +141,7 @@ def test_fork_builder_deposit_version(spec, phases, state):
     # The onboarded builder is registered with the payload builder version
     assert len(post_state.builders) == 1
     assert post_state.builders[0].pubkey == builder_pubkey
-    assert post_state.builders[0].version == spec.uint8(0)
+    assert post_state.builders[0].version == spec.uint8(spec.PAYLOAD_BUILDERS_RESERVED_VERSION)
 
 
 @with_phases(phases=[FULU], other_phases=[GLOAS])

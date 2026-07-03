@@ -186,10 +186,10 @@ future validator withdrawal prefix may reuse this value.
 
 ### Builder versions
 
-| Name                               | Value        |
-| ---------------------------------- | ------------ |
-| `PAYLOAD_BUILDER_ALLOWED_VERSION`  | `uint8(8)`   |
-| `PAYLOAD_BUILDER_RESERVED_VERSION` | `uint8(128)` |
+| Name                               | Value         |
+| ---------------------------------- | ------------- |
+| `PAYLOAD_BUILDER_ALLOWED_VERSION`  | `uint8(0xB1)` |
+| `PAYLOAD_BUILDER_RESERVED_VERSION` | `uint8(0xB0)` |
 
 ### Execution-layer triggered requests
 
@@ -1696,7 +1696,7 @@ def process_builder_deposit_request(state: BeaconState, request: BuilderDepositR
     builder_pubkeys = [b.pubkey for b in state.builders]
     if request.pubkey not in builder_pubkeys:
         version = uint8(request.withdrawal_credentials[0])
-        is_valid_version = version <= PAYLOAD_BUILDER_RESERVED_VERSION
+        is_valid_version = version >= PAYLOAD_BUILDER_RESERVED_VERSION
         if is_valid_builder_deposit_signature(request) and is_valid_version:
             add_builder_to_registry(
                 state,
