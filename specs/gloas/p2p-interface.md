@@ -369,8 +369,7 @@ where `store` is the fork choice store, and the alias
 - _[IGNORE]_ The matching `signed_proposer_preferences` has been seen.
 - _[REJECT]_ `bid.builder_index` is a valid/active builder index -- i.e.
   `is_active_builder(state, bid.builder_index)` returns `True`.
-- _[REJECT]_
-  `state.builders[bid.builder_index].version <= PAYLOAD_BUILDER_ALLOWED_VERSION`.
+- _[REJECT]_ `state.builders[bid.builder_index].version <= BUILDER_MAX_VERSION`.
 - _[REJECT]_ `bid.execution_payment == 0`.
 - _[REJECT]_ `bid.fee_recipient == proposer_preferences.fee_recipient`.
 - _[REJECT]_ The length of KZG commitments is less than or equal to the

@@ -186,10 +186,10 @@ future validator withdrawal prefix may reuse this value.
 
 ### Builder versions
 
-| Name                               | Value         |
-| ---------------------------------- | ------------- |
-| `PAYLOAD_BUILDER_ALLOWED_VERSION`  | `uint8(0xB1)` |
-| `PAYLOAD_BUILDER_RESERVED_VERSION` | `uint8(0xB0)` |
+| Name                            | Value         |
+| ------------------------------- | ------------- |
+| `BUILDER_MAX_VERSION`           | `uint8(1)`    |
+| `BUILDER_MIN_WITHDRAWAL_PREFIX` | `uint8(0xB0)` |
 
 ### Execution-layer triggered requests
 
@@ -1554,7 +1554,7 @@ def process_execution_payload_bid(
         # Verify that the builder is active
         assert is_active_builder(state, builder_index)
         # Verify that the builder is a payload builder
-        assert state.builders[builder_index].version <= PAYLOAD_BUILDER_ALLOWED_VERSION
+        assert state.builders[builder_index].version <= BUILDER_MAX_VERSION
         # Verify that the builder has funds to cover the bid
         assert can_builder_cover_bid(state, builder_index, amount)
         # Verify that the bid signature is valid
@@ -1695,8 +1695,9 @@ caching should account for this behavior.
 def process_builder_deposit_request(state: BeaconState, request: BuilderDepositRequest) -> None:
     builder_pubkeys = [b.pubkey for b in state.builders]
     if request.pubkey not in builder_pubkeys:
-        version = uint8(request.withdrawal_credentials[0])
-        is_valid_version = version >= PAYLOAD_BUILDER_RESERVED_VERSION
+        prefix = uint8(request.withdrawal_credentials[0])
+        is_valid_version = prefix >= BUILDER_MIN_WITHDRAWAL_PREFIX
+        version = prefix - BUILDER_MIN_WITHDRAWAL_PREFIX
         if is_valid_builder_deposit_signature(request) and is_valid_version:
             add_builder_to_registry(
                 state,
