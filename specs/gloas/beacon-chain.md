@@ -131,7 +131,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
   Exclude slashed validators from proposing
 - [EIP-8061](https://github.com/ethereum/EIPs/blob/01f15c37c64114c478cb1136e0a6966084e4db14/EIPS/eip-8061.md):
   Increase exit and consolidation churn
-- [EIP-8282](https://github.com/wemeetagain/EIPs/blob/9753e62c5bcfd69ec557600252dcdbdcb317bb6e/EIPS/eip-8282.md):
+- [EIP-8282](https://github.com/ethereum/EIPs/blob/de4c6f02c7bec4686762c55f8ab6abcf97a77d7d/EIPS/eip-8282.md):
   Builder Execution Requests
 
 *Note*: These EIPs are in draft and may change or be removed. Each link above
