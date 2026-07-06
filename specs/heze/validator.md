@@ -17,6 +17,7 @@
     - [Lookahead](#lookahead)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [Signed execution payload bid](#signed-execution-payload-bid)
       - [ExecutionPayload](#executionpayload)
   - [Inclusion list proposal](#inclusion-list-proposal)
     - [Constructing the `SignedInclusionList`](#constructing-the-signedinclusionlist)
@@ -106,6 +107,16 @@ list committee slot.
 ### Block and sidecar proposal
 
 #### Constructing the `BeaconBlockBody`
+
+##### Signed execution payload bid
+
+*Note*: The only change made to `signed_execution_payload_bid` is to require
+that `bid.inclusion_list_bits` must satisfy `is_inclusion_list_bits_inclusive()`
+with respect to the proposer's inclusion list view, which comprises all valid
+and non-equivocating inclusion lists they have observed.
+
+- The `bid.inclusion_list_bits` must satisfy
+  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), state, slot - 1, bid.inclusion_list_bits, only_timely=False)`.
 
 ##### ExecutionPayload
 

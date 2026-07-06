@@ -131,7 +131,7 @@ Gloas is a consensus-layer upgrade containing a number of features. Including:
   Exclude slashed validators from proposing
 - [EIP-8061](https://github.com/ethereum/EIPs/blob/01f15c37c64114c478cb1136e0a6966084e4db14/EIPS/eip-8061.md):
   Increase exit and consolidation churn
-- [EIP-8282](https://github.com/wemeetagain/EIPs/blob/9753e62c5bcfd69ec557600252dcdbdcb317bb6e/EIPS/eip-8282.md):
+- [EIP-8282](https://github.com/ethereum/EIPs/blob/de4c6f02c7bec4686762c55f8ab6abcf97a77d7d/EIPS/eip-8282.md):
   Builder Execution Requests
 
 *Note*: These EIPs are in draft and may change or be removed. Each link above
@@ -182,7 +182,7 @@ future validator withdrawal prefix may reuse this value.
 
 | Name                        | Value            |
 | --------------------------- | ---------------- |
-| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0x03')` |
+| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0xB0')` |
 
 ### Builder versions
 
@@ -213,10 +213,10 @@ future validator withdrawal prefix may reuse this value.
 
 ### Execution
 
-| Name                                       | Value                  |
-| ------------------------------------------ | ---------------------- |
-| `MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**8)` (= 256) |
-| `MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16)  |
+| Name                                       | Value                 |
+| ------------------------------------------ | --------------------- |
+| `MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD` | `uint64(2**6)` (= 64) |
+| `MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`    | `uint64(2**4)` (= 16) |
 
 ### State list lengths
 
@@ -243,9 +243,9 @@ future validator withdrawal prefix may reuse this value.
 
 ### Time parameters
 
-| Name                                | Value                     | Unit   |
-| ----------------------------------- | ------------------------- | ------ |
-| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `uint64(2**13)` (= 8,192) | epochs |
+| Name                                | Value                 | Unit   |
+| ----------------------------------- | --------------------- | ------ |
+| `MIN_BUILDER_WITHDRAWABILITY_DELAY` | `uint64(2**6)` (= 64) | epochs |
 
 ## Containers
 
