@@ -84,7 +84,7 @@ def upgrade_to_eip8148(pre: heze.BeaconState) -> BeaconState:
         execution_payload_availability=pre.execution_payload_availability,
         builder_pending_payments=pre.builder_pending_payments,
         builder_pending_withdrawals=pre.builder_pending_withdrawals,
-        latest_execution_payload_bid=latest_execution_payload_bid,
+        latest_execution_payload_bid=pre.latest_execution_payload_bid,
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
         # [New in EIP8148]

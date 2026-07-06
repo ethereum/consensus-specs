@@ -1,4 +1,4 @@
-from eth_consensus_specs.test.helpers.forks import is_post_eip8148
+from eth_consensus_specs.test.helpers.forks import is_post_eip8148, is_post_heze
 
 
 def build_max_size_attestation(spec):
@@ -196,13 +196,18 @@ def get_max_partial_data_column_sidecar_size(spec):
 
 
 def get_max_signed_execution_payload_bid_size(spec):
-    return spec.MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE
+    size = spec.MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE
+    if is_post_heze(spec):
+        size = spec.MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE
+    return size
 
 
 def get_max_signed_beacon_block_size(spec):
     size = spec.MAX_SIGNED_BEACON_BLOCK_SIZE
     if is_post_eip8148(spec):
         size = spec.MAX_SIGNED_BEACON_BLOCK_SIZE_EIP8148
+    elif is_post_heze(spec):
+        size = spec.MAX_SIGNED_BEACON_BLOCK_SIZE_HEZE
     return size
 
 

@@ -7,5 +7,9 @@ INCLUSION_LIST_COMMITTEE_SIZE: 16
 
 # Type-specific SSZ bounds
 # ---------------------------------------------------------------
+# 196,934 bytes, ~192 KiB
+MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE: 196934
+# 4,047,178 bytes, ~4 MiB
+MAX_SIGNED_BEACON_BLOCK_SIZE_HEZE: 4047178
 # 8,344 bytes, ~8 KiB
 MAX_SIGNED_INCLUSION_LIST_SIZE: 8344

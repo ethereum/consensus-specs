@@ -67,7 +67,7 @@ libp2p messages.
 | `MAX_ATTESTER_SLASHING_SIZE`            | `2097616` bytes (= ~2 MiB)  | Type-specific SSZ bound for `AttesterSlashing`          |
 | `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `8585272` bytes (= ~8 MiB)  | Type-specific SSZ bound for `DataColumnSidecar`         |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `196932` bytes (= ~192 KiB) | Type-specific SSZ bound for `SignedExecutionPayloadBid` |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE`          | `4082504` bytes (= ~4 MiB)  | Type-specific SSZ bound for `SignedBeaconBlock`         |
+| `MAX_SIGNED_BEACON_BLOCK_SIZE`          | `4047176` bytes (= ~4 MiB)  | Type-specific SSZ bound for `SignedBeaconBlock`         |
 
 ### Configuration
 

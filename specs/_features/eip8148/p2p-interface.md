@@ -34,7 +34,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                   | Value                      | Description                                     |
 | -------------------------------------- | -------------------------- | ----------------------------------------------- |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE_EIP8148` | `4083724` bytes (= ~4 MiB) | Type-specific SSZ bound for `SignedBeaconBlock` |
+| `MAX_SIGNED_BEACON_BLOCK_SIZE_EIP8148` | `4048398` bytes (= ~4 MiB) | Type-specific SSZ bound for `SignedBeaconBlock` |
 
 ### Helpers
 
