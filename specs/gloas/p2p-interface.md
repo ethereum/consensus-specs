@@ -6,6 +6,8 @@
 
 - [Introduction](#introduction)
 - [Modification in Gloas](#modification-in-gloas)
+  - [Preset](#preset)
+    - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
@@ -47,6 +49,26 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modification in Gloas
 
+### Preset
+
+#### Type-specific SSZ bounds
+
+*[New in Gloas:EIP7688]*
+
+These constants supersede
+[type-specific SSZ bounds](../phase0/p2p-interface.md#what-are-ssz-type-size-bounds)
+for the corresponding
+[variable-size](../../ssz/simple-serialize.md#variable-size-and-fixed-size)
+libp2p messages.
+
+| Name                                    | Value                         |
+| --------------------------------------- | ----------------------------- |
+| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `uint64(16829)` (= ~16 KiB)   |
+| `MAX_ATTESTER_SLASHING_SIZE`            | `uint64(2097616)` (= ~2 MiB)  |
+| `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `uint64(8585272)` (= ~8 MiB)  |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `uint64(196932)` (= ~192 KiB) |
+| `MAX_SIGNED_BEACON_BLOCK_SIZE`          | `uint64(4027336)` (= ~4 MiB)  |
+
 ### Configuration
 
 | Name                   | Value          |
@@ -67,10 +89,12 @@ longer required in Gloas. The KZG commitments are now located at
 ```python
 class DataColumnSidecar(Container):
     index: ColumnIndex
-    column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    # [Modified in Gloas:EIP7688]
+    column: ProgressiveList[Cell]
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments`
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    # [Modified in Gloas:EIP7688]
+    kzg_proofs: ProgressiveList[KZGProof]
     # [Modified in Gloas:EIP7732]
     # Removed `signed_block_header`
     # [Modified in Gloas:EIP7732]
@@ -157,7 +181,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 def verify_data_column_sidecar_kzg_proofs(
     sidecar: DataColumnSidecar,
     # [New in Gloas:EIP7732]
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    kzg_commitments: ProgressiveList[KZGCommitment],
 ) -> bool:
     """
     Verify if the KZG proofs are correct.
@@ -181,7 +205,7 @@ def verify_data_column_sidecar_kzg_proofs(
 def verify_data_column_sidecar(
     sidecar: DataColumnSidecar,
     # [New in Gloas:EIP7732]
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    kzg_commitments: ProgressiveList[KZGCommitment],
 ) -> bool:
     """
     Verify if the data column sidecar is valid.
@@ -246,9 +270,11 @@ The following validations are added:
 - _[REJECT]_ If `aggregate.data.index == 1` (payload present for a past block)
   the corresponding execution payload for `block` passes validation.
 - _[IGNORE]_ When `aggregate.data.index == 1` (payload present for a past
-  block), the corresponding execution payload for `block` has been seen (a
-  client MAY queue attestations for processing once the payload is retrieved and
-  SHOULD request the payload envelope via `ExecutionPayloadEnvelopesByRoot`
+  block), the corresponding execution payload for `block` has been fully
+  imported, including its data -- i.e.
+  `is_payload_verified(store, aggregate.data.beacon_block_root)` returns `True`
+  (a client MAY queue attestations for processing until the payload is imported
+  and SHOULD request the payload envelope via `ExecutionPayloadEnvelopesByRoot`
   using `aggregate.data.beacon_block_root`).
 
 The following validations are removed:
@@ -284,6 +310,23 @@ And instead the following validations are set in place with the alias
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in the consensus layer -- i.e. validate that
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
+- _[REJECT]_ The counts of `block.body.parent_execution_requests` are within
+  their respective limits -- i.e. validate that
+  `len(block.body.parent_execution_requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD`,
+  `len(block.body.parent_execution_requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`,
+  `len(block.body.parent_execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`,
+  `len(block.body.parent_execution_requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD`,
+  and
+  `len(block.body.parent_execution_requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`.
+- _[REJECT]_ The counts of the block body operations are within their respective
+  limits -- i.e. validate that
+  `len(block.body.proposer_slashings) <= MAX_PROPOSER_SLASHINGS`,
+  `len(block.body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA`,
+  `len(block.body.attestations) <= MAX_ATTESTATIONS_ELECTRA`,
+  `len(block.body.deposits) == 0`,
+  `len(block.body.voluntary_exits) <= MAX_VOLUNTARY_EXITS`,
+  `len(block.body.bls_to_execution_changes) <= MAX_BLS_TO_EXECUTION_CHANGES`,
+  and `len(block.body.payload_attestations) <= MAX_PAYLOAD_ATTESTATIONS`.
 - _[IGNORE]_ The block's parent execution payload (defined by
   `bid.parent_block_hash`) has been seen (via gossip or non-gossip sources) (a
   client MAY queue blocks for processing once the parent payload is retrieved).
@@ -302,7 +345,8 @@ This topic is used to propagate execution payload messages as
 The following validations MUST pass before forwarding the
 `signed_execution_payload_envelope` on the network, assuming the alias
 `envelope = signed_execution_payload_envelope.message`,
-`payload = envelope.payload`:
+`payload = envelope.payload`,
+`execution_requests = envelope.execution_requests`:
 
 - _[IGNORE]_ The envelope's block root `envelope.beacon_block_root` has been
   seen (via gossip or non-gossip sources) (a client MAY queue payload for
@@ -323,6 +367,16 @@ obtained from the `state.latest_execution_payload_bid`)
 - _[REJECT]_ `payload.block_hash == bid.block_hash`
 - _[REJECT]_
   `hash_tree_root(envelope.execution_requests) == bid.execution_requests_root`
+- _[REJECT]_ The counts of `execution_requests` are within their respective
+  limits -- i.e. validate that
+  `len(execution_requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD`,
+  `len(execution_requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`,
+  `len(execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`,
+  `len(execution_requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD`,
+  and
+  `len(execution_requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD`.
+- _[REJECT]_ The number of withdrawals is within the limit -- i.e. validate that
+  `len(payload.withdrawals) <= MAX_WITHDRAWALS_PER_PAYLOAD`.
 - _[REJECT]_ `signed_execution_payload_envelope.signature` is valid as verified
   by `verify_execution_payload_envelope_signature`.
 
@@ -372,7 +426,7 @@ where `store` is the fork choice store, and the alias
 - _[REJECT]_ The builder version is `PAYLOAD_BUILDER_VERSION` -- i.e.
   `state.builders[bid.builder_index].version == PAYLOAD_BUILDER_VERSION`.
 - _[REJECT]_ `bid.execution_payment == 0`.
-- _[REJECT]_ `bid.fee_recipient == proposer_preferences.fee_recipient`.
+- _[IGNORE]_ `bid.fee_recipient == proposer_preferences.fee_recipient`.
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in the consensus layer -- i.e. validate that
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(compute_epoch_at_slot(bid.slot)).max_blobs_per_block`.
@@ -489,10 +543,12 @@ The following validations are added:
 - _[REJECT]_ If `attestation.data.index == 1` (payload present for a past
   block), the execution payload for `block` passes validation.
 - _[IGNORE]_ When `attestation.data.index == 1` (payload present for a past
-  block), the execution payload for `block` has been seen (a client MAY queue
-  attestations for processing once the payload is retrieved and SHOULD request
-  the payload envelope via `ExecutionPayloadEnvelopesByRoot` using
-  `attestation.data.beacon_block_root`).
+  block), the execution payload for `block` has been fully imported, including
+  its data -- i.e.
+  `is_payload_verified(store, attestation.data.beacon_block_root)` returns
+  `True` (a client MAY queue attestations for processing until the payload is
+  imported and SHOULD request the payload envelope via
+  `ExecutionPayloadEnvelopesByRoot` using `attestation.data.beacon_block_root`).
 
 The following validations are removed:
 

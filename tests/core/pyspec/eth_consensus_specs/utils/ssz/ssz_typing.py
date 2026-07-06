@@ -28,6 +28,7 @@ from remerkleable.core import BasicView, Path, View
 from remerkleable.progressive import (
     CompatibleUnion,
     ProgressiveBitlist,
+    ProgressiveByteList,
     ProgressiveContainer,
     ProgressiveList,
 )

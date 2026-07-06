@@ -42,9 +42,9 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 
 *Note*: The execution values are not definitive.
 
-| Name             | Value                          |
-| ---------------- | ------------------------------ |
-| `MAX_PROOF_SIZE` | `4194304` (= 4,096 KiB, 4 MiB) |
+| Name             | Value                                  |
+| ---------------- | -------------------------------------- |
+| `MAX_PROOF_SIZE` | `uint64(4194304)` (= 4,096 KiB, 4 MiB) |
 
 ### Domains
 
@@ -65,7 +65,7 @@ class PublicInput(Container):
 
 ```python
 class ExecutionProof(Container):
-    proof_data: ByteList[MAX_PROOF_SIZE]
+    proof_data: ProgressiveByteList
     proof_type: ProofType
     public_input: PublicInput
 ```
@@ -94,6 +94,7 @@ def process_execution_proof(
     proof_engine: ProofEngine,
 ) -> None:
     proof_message = signed_proof.message
+    assert len(proof_message.proof_data) <= MAX_PROOF_SIZE
 
     # Verify prover is an active validator
     validator = state.validators[signed_proof.validator_index]

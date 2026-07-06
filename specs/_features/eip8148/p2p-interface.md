@@ -6,8 +6,15 @@
 
 - [Introduction](#introduction)
 - [Modifications in EIP-8148](#modifications-in-eip-8148)
+  - [Preset](#preset)
+    - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
+    - [Topics and messages](#topics-and-messages)
+      - [Global topics](#global-topics)
+        - [Modified `beacon_block`](#modified-beacon_block)
+        - [Modified `execution_payload`](#modified-execution_payload)
 
 <!-- mdformat-toc end -->
 
@@ -20,6 +27,14 @@ The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in EIP-8148
+
+### Preset
+
+#### Type-specific SSZ bounds
+
+| Name                                   | Value                        |
+| -------------------------------------- | ---------------------------- |
+| `MAX_SIGNED_BEACON_BLOCK_SIZE_EIP8148` | `uint64(4028558)` (= ~4 MiB) |
 
 ### Helpers
 
@@ -50,3 +65,31 @@ def compute_fork_version(epoch: Epoch) -> Version:
         return ALTAIR_FORK_VERSION
     return GENESIS_FORK_VERSION
 ```
+
+### The gossip domain: gossipsub
+
+#### Topics and messages
+
+##### Global topics
+
+###### Modified `beacon_block`
+
+*[Modified in EIP8148]*
+
+**Added in EIP8148:**
+
+- _[REJECT]_ The count of
+  `block.body.parent_execution_requests.sweep_thresholds` is within its limit --
+  i.e. validate that
+  `len(block.body.parent_execution_requests.sweep_thresholds) <= MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD`.
+
+###### Modified `execution_payload`
+
+*[Modified in EIP8148]*
+
+**Added in EIP8148:**
+
+- _[REJECT]_ The count of `execution_requests.sweep_thresholds` is within its
+  limit -- i.e. validate that
+  `len(execution_requests.sweep_thresholds) <= MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD`,
+  with the alias `execution_requests = envelope.execution_requests`.
