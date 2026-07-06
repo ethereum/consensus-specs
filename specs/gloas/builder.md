@@ -42,13 +42,18 @@ deposit contract on the execution layer, as defined in EIP-8282. The request
 must include:
 
 - `pubkey`: The builder's BLS public key.
-- `withdrawal_credentials`: The withdrawal credentials, where the first byte is
-  the builder version and the last 20 bytes are the execution-layer address that
-  will receive withdrawals. For the version, execution payload builders should
-  use `PAYLOAD_BUILDER_VERSION`.
+- `withdrawal_credentials`: The withdrawal credentials, where the first byte
+  combines the `BUILDER_WITHDRAWAL_PREFIX` in its high nibble with the builder
+  version in its low nibble, and the last 20 bytes are the execution-layer
+  address that will receive withdrawals. For the version, execution payload
+  builders should use `PAYLOAD_BUILDER_VERSION`.
 - `amount`: At least `MIN_DEPOSIT_AMOUNT` gwei.
 - `signature`: BLS proof of possession over the corresponding `DepositMessage`
   under `DOMAIN_BUILDER_DEPOSIT`.
+
+*Note*: A deposit registering a new builder is ignored unless the high nibble of
+the first withdrawal credentials byte matches the `BUILDER_WITHDRAWAL_PREFIX`.
+The request is consumed with no effect and the deposited funds are lost.
 
 *Note*: Builders may be onboarded at the fork by submitting a deposit to the
 validator deposit contract with a `BUILDER_WITHDRAWAL_PREFIX` withdrawal
