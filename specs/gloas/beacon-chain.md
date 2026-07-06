@@ -176,10 +176,6 @@ same `Withdrawal` container can be used for validators and builders.
 
 ### Withdrawal prefixes
 
-*Note*: `BUILDER_WITHDRAWAL_PREFIX` is a temporary constant which is only used
-to onboard builders at the fork. It will be deprecated after the upgrade and a
-future validator withdrawal prefix may reuse this value.
-
 | Name                        | Value            |
 | --------------------------- | ---------------- |
 | `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0xB0')` |
@@ -1694,11 +1690,14 @@ caching should account for this behavior.
 def process_builder_deposit_request(state: BeaconState, request: BuilderDepositRequest) -> None:
     builder_pubkeys = [b.pubkey for b in state.builders]
     if request.pubkey not in builder_pubkeys:
+        prefix = request.withdrawal_credentials[0]
+        if (prefix & 0xF0) != BUILDER_WITHDRAWAL_PREFIX[0]:
+            return
         if is_valid_builder_deposit_signature(request):
             add_builder_to_registry(
                 state,
                 request.pubkey,
-                uint8(request.withdrawal_credentials[0]),
+                uint8(prefix & 0x0F),
                 ExecutionAddress(request.withdrawal_credentials[12:]),
                 request.amount,
                 state.slot,

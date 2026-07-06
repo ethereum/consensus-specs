@@ -4,7 +4,10 @@ from eth_consensus_specs.test.helpers.builder_deposit_requests import (
     prepare_process_builder_deposit_request,
     run_builder_deposit_request_processing,
 )
-from eth_consensus_specs.test.helpers.deposits import prepare_builder_deposit_request
+from eth_consensus_specs.test.helpers.deposits import (
+    make_withdrawal_credentials,
+    prepare_builder_deposit_request,
+)
 from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, privkeys, pubkeys
 from eth_consensus_specs.utils import bls
 
@@ -80,17 +83,11 @@ def test_process_builder_deposit_request__new_builder(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_builder_deposit_request__new_builder_nonzero_version(spec, state):
-    """
-    Test fresh builder deposit with a non-zero version.
-
-    The version (the first byte of the withdrawal credentials) is not
-    constrained: it is recorded on the builder verbatim and is committed to by
-    the proof of possession.
-    """
+def test_process_builder_deposit_request__new_builder_max_version(spec, state):
+    """Test fresh builder deposit with the maximum version."""
     amount = spec.MIN_DEPOSIT_AMOUNT
-    version = spec.uint8(7)
-    withdrawal_credentials = bytes([version]) + b"\x00" * 11 + b"\x42" * 20
+    version = 15
+    withdrawal_credentials = make_withdrawal_credentials(spec, b"\xbf", b"\x42")
     builder_deposit_request = prepare_builder_deposit_request(
         spec, state, amount, withdrawal_credentials=withdrawal_credentials, signed=True
     )
@@ -444,6 +441,44 @@ def test_process_builder_deposit_request__top_up_ignores_request_fields(spec, st
 #
 # Invalid deposits
 #
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_builder_deposit_request__new_builder_prefix_below_range(spec, state):
+    """
+    Test that a new builder deposit is dropped when the prefix is just below the
+    builder range. ``0xAF`` is not a ``0xB*`` prefix, so no builder is created
+    even though the signature is valid.
+    """
+    amount = spec.MIN_DEPOSIT_AMOUNT
+    withdrawal_credentials = make_withdrawal_credentials(spec, b"\xaf", b"\x42")
+    builder_deposit_request = prepare_builder_deposit_request(
+        spec, state, amount, withdrawal_credentials=withdrawal_credentials, signed=True
+    )
+
+    yield from run_builder_deposit_processing(
+        spec, state, builder_deposit_request, is_new_builder=True, valid=False
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_builder_deposit_request__new_builder_prefix_above_range(spec, state):
+    """
+    Test that a new builder deposit is dropped when the prefix is just above the
+    builder range. ``0xC0`` is not a ``0xB*`` prefix, so no builder is created
+    even though the signature is valid.
+    """
+    amount = spec.MIN_DEPOSIT_AMOUNT
+    withdrawal_credentials = make_withdrawal_credentials(spec, b"\xc0", b"\x42")
+    builder_deposit_request = prepare_builder_deposit_request(
+        spec, state, amount, withdrawal_credentials=withdrawal_credentials, signed=True
+    )
+
+    yield from run_builder_deposit_processing(
+        spec, state, builder_deposit_request, is_new_builder=True, valid=False
+    )
 
 
 @with_gloas_and_later

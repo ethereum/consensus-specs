@@ -70,8 +70,9 @@ def prepare_process_builder_deposit_request(
     if withdrawal_credentials is not None:
         effective_withdrawal_credentials = withdrawal_credentials
     else:
-        # Version zero followed by an eth1 address derived from the pubkey
-        effective_withdrawal_credentials = b"\x00" * 12 + spec.hash(effective_pubkey)[12:]
+        effective_withdrawal_credentials = (
+            spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.hash(effective_pubkey)[12:]
+        )
 
     # Phase 3: Apply state overrides (before creating request)
     if builders is not None:
