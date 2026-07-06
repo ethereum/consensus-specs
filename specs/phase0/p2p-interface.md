@@ -65,7 +65,7 @@
     - [Can clients support other transports/handshakes than the ones mandated by the specification?](#can-clients-support-other-transportshandshakes-than-the-ones-mandated-by-the-specification)
     - [What are the advantages of using TCP/QUIC/Websockets?](#what-are-the-advantages-of-using-tcpquicwebsockets)
     - [Why do we not just support a single transport?](#why-do-we-not-just-support-a-single-transport)
-    - [Why are we not using QUIC from the start?](#why-are-we-not-using-quic-from-the-start)
+    - [Why is QUIC the primary transport?](#why-is-quic-the-primary-transport)
   - [Multiplexing](#multiplexing-1)
     - [Why are we using mplex/yamux?](#why-are-we-using-mplexyamux)
   - [Protocol negotiation](#protocol-negotiation-1)
@@ -145,10 +145,14 @@ Even though libp2p is a multi-transport stack (designed to listen on multiple
 simultaneous transports and endpoints transparently), we hereby define a profile
 for basic interoperability.
 
-All implementations MUST support the TCP libp2p transport, MAY support the QUIC
-(UDP) libp2p transport, and MUST be enabled for both dialing and listening (i.e.
-outbound and inbound connections). The libp2p TCP and QUIC (UDP) transports
-support listening on IPv4 and IPv6 addresses (and on multiple simultaneously).
+All implementations MUST support the QUIC (UDP) libp2p transport and the TCP
+libp2p transport. Any supported transport MUST be enabled for both dialing and
+listening (i.e. outbound and inbound connections). The libp2p QUIC (UDP) and TCP
+transports support listening on IPv4 and IPv6 addresses (and on multiple
+simultaneously).
+
+QUIC is the primary transport. When a peer is reachable over both TCP and QUIC,
+clients SHOULD prioritise peer's QUIC addresses.
 
 Clients must support listening on at least one of IPv4 or IPv6. Clients that do
 _not_ have support for listening on IPv4 SHOULD be cognizant of the potential
@@ -166,11 +170,13 @@ inbound traffic on the announced public listening endpoint.
 
 ### Encryption and identification
 
-The [Libp2p-noise](https://github.com/libp2p/specs/tree/master/noise) secure
-channel handshake with `secp256k1` identities will be used for encryption.
+The QUIC transport is secured using TLS 1.3, configured according to the
+[libp2p TLS specification](https://github.com/libp2p/specs/blob/master/tls/tls.md).
 
-As specified in the libp2p specification, clients MUST support the `XX`
-handshake pattern.
+For the TCP fallback transport, the
+[Libp2p-noise](https://github.com/libp2p/specs/tree/master/noise) secure channel
+handshake with `secp256k1` identities will be used for encryption. As specified
+in the libp2p specification, clients MUST support the `XX` handshake pattern.
 
 ### Protocol negotiation
 
@@ -195,8 +201,10 @@ Two multiplexers are commonplace in libp2p implementations:
 [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md). Their
 protocol IDs are, respectively: `/mplex/6.7.0` and `/yamux/1.0.0`.
 
-Clients MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex)
-and MAY support
+Because the primary QUIC transport multiplexes natively, a stream multiplexer is
+only required for the TCP fallback transport. Clients that support the TCP
+transport MUST support
+[mplex](https://github.com/libp2p/specs/tree/master/mplex) and MAY support
 [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md). If both
 are supported by the client, yamux MUST take precedence during negotiation. See
 the [Rationale](#design-decision-rationale) section below for tradeoffs.
@@ -1635,10 +1643,10 @@ present in an ENR):
 The ENR MAY contain the following entries:
 
 - An IPv4 address (`ip` field) and/or IPv6 address (`ip6` field).
-- An IPv4 TCP port (`tcp` field) representing the local libp2p TCP listening
-  port and/or the corresponding IPv6 port (`tcp6` field).
 - An IPv4 QUIC port (`quic` field) representing the local libp2p QUIC (UDP)
   listening port and/or the corresponding IPv6 port (`quic6` field).
+- An IPv4 TCP port (`tcp` field) representing the local libp2p TCP listening
+  port and/or the corresponding IPv6 port (`tcp6` field).
 - An IPv4 UDP port (`udp` field) representing the local discv5 listening port
   and/or the corresponding IPv6 port (`udp6` field).
 
@@ -1775,18 +1783,12 @@ purposes.
 
 #### Can clients support other transports/handshakes than the ones mandated by the specification?
 
-Clients may support other transports such as libp2p QUIC, WebSockets, and WebRTC
-transports, if available in the language of choice. While interoperability shall
-not be harmed by lack of such support, the advantages are desirable:
+Beyond the mandated QUIC transport and the TCP fallback, clients may support
+other transports such as WebSockets and WebRTC, if available in the language of
+choice. While interoperability shall not be harmed by lack of such support, the
+advantages are desirable:
 
-- Better latency, performance, and other QoS characteristics (QUIC).
 - Paving the way for interfacing with future light clients (WebSockets, WebRTC).
-
-The libp2p QUIC transport inherently relies on TLS 1.3 per requirement in
-section 7 of the
-[QUIC protocol specification](https://tools.ietf.org/html/draft-ietf-quic-transport-22#section-7)
-and the accompanying
-[QUIC-TLS document](https://tools.ietf.org/html/draft-ietf-quic-tls-22).
 
 The usage of one handshake procedure or the other shall be transparent to the
 application layer, once the libp2p Host/Node object has been configured
@@ -1798,21 +1800,21 @@ TCP is a reliable, ordered, full-duplex, congestion-controlled network protocol
 that powers much of the Internet as we know it today. HTTP/1.1 and HTTP/2 run
 atop TCP.
 
-QUIC is a new protocol that’s in the final stages of specification by the IETF
-QUIC WG. It emerged from Google’s SPDY experiment. The QUIC transport is
-undoubtedly promising. It’s UDP-based yet reliable, ordered, multiplexed,
-natively secure (TLS 1.3), reduces latency vs. TCP, and offers stream-level and
-connection-level congestion control (thus removing head-of-line blocking), 0-RTT
-connection establishment, and endpoint migration, amongst other features. UDP
-also has better NAT traversal properties than TCP—something we desperately
-pursue in peer-to-peer networks.
+QUIC is a UDP-based transport standardized by the IETF in
+[RFC 9000](https://www.rfc-editor.org/rfc/rfc9000). It’s reliable, ordered,
+multiplexed, natively secure (TLS 1.3), reduces connection establishment latency
+vs. TCP, offers stream-level flow control (thus removing head-of-line blocking),
+0-RTT connection establishment, and endpoint migration, amongst other features.
+UDP also has better NAT traversal properties than TCP—something we desperately
+pursue in peer-to-peer networks. These characteristics are why QUIC is the
+primary transport for the consensus-layer network.
 
-QUIC is being adopted as the underlying protocol for HTTP/3. This has the
-potential to award us censorship resistance via deep packet inspection for free.
-Provided that we use the same port numbers and encryption mechanisms as HTTP/3,
-our traffic may be indistinguishable from standard web traffic, and we may only
-become subject to standard IP-based firewall filtering—something we can
-counteract via other mechanisms.
+QUIC is also the underlying protocol for HTTP/3. This has the potential to award
+us censorship resistance against deep packet inspection for free. Provided that
+we use the same port numbers and encryption mechanisms as HTTP/3, our traffic
+may be indistinguishable from standard web traffic, and we may only become
+subject to standard IP-based firewall filtering—something we can counteract via
+other mechanisms.
 
 WebSockets and/or WebRTC transports are necessary for interaction with browsers,
 and will become increasingly important as we incorporate browser-based light
@@ -1834,24 +1836,20 @@ browsers, embedded devices) to interact with the network as first-class citizens
 via suitable/native transports (e.g. WSS), without the need for proxying or
 trust delegation to servers.
 
-#### Why are we not using QUIC from the start?
+#### Why is QUIC the primary transport?
 
-The QUIC standard is still not finalized (at working draft 22 at the time of
-writing), and not all mainstream runtimes/languages have mature, standard,
-and/or fully-interoperable
-[QUIC support](https://github.com/quicwg/base-drafts/wiki/Implementations). One
-remarkable example is node.js, where the QUIC implementation is
-[in early development](https://github.com/nodejs/quic).
+When this networking specification was first written, the QUIC standard was not
+yet finalized (working draft 22 at the time), and mainstream runtimes lacked
+mature, interoperable QUIC support. TCP was therefore mandated as the baseline
+transport, with QUIC offered as an optional improvement.
 
-*Note*:
-[TLS 1.3 is a prerequisite of the QUIC transport](https://tools.ietf.org/html/draft-ietf-quic-transport-22#section-7),
-although an experiment exists to integrate Noise as the QUIC crypto layer:
-[nQUIC](https://eprint.iacr.org/2019/028).
-
-On the other hand, TLS 1.3 is the newest, simplified iteration of TLS. Old,
-insecure, obsolete ciphers and algorithms have been removed, adopting Ed25519 as
-the sole ECDH key agreement function. Handshakes are faster, 1-RTT data is
-supported, and session resumption is a reality, amongst other features.
+QUIC has since been standardized as
+[RFC 9000](https://www.rfc-editor.org/rfc/rfc9000) and is widely implemented
+across the libp2p ecosystem. Its native stream multiplexing, built-in TLS 1.3
+security, lower connection-establishment latency (including 0-RTT), and superior
+NAT-traversal properties make it a better fit for the consensus-layer p2p
+network than TCP. It is therefore now the primary transport, with TCP retained
+as a fallback for environments where QUIC or UDP is unavailable or blocked.
 
 ### Multiplexing
 
