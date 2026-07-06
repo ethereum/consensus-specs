@@ -166,6 +166,10 @@ To optimistically import a block:
   function MUST return `True` if the execution engine returns `NOT_VALIDATED` or
   `VALID`. An `INVALIDATED` response MUST return `False`.
 - The
+  [`is_inclusion_list_satisfied`](../specs/heze/fork-choice.md#new-is_inclusion_list_satisfied)
+  function MUST return `True` if the execution engine returns `NOT_VALIDATED`.
+  An `INVALIDATED` response MUST return `False`.
+- The
   [`validate_merge_block`](../specs/bellatrix/fork-choice.md#validate_merge_block)
   function MUST NOT raise an assertion if both the `pow_block` and `pow_parent`
   are unknown to the execution engine.
@@ -194,6 +198,12 @@ When a block transitions from `NOT_VALIDATED` -> `VALID`, all *ancestors* of the
 block MUST also transition from `NOT_VALIDATED` -> `VALID`. Such a block and any
 previously `NOT_VALIDATED` ancestors are no longer considered "optimistically
 imported".
+
+The response from the execution engine that triggers the `NOT_VALIDATED` ->
+`VALID` transition also indicates whether the block's execution payload
+satisfied the inclusion list constraints. The consensus engine MUST record the
+result for that block. The recorded inclusion list satisfaction of its ancestors
+remains unchanged.
 
 When a block transitions from `NOT_VALIDATED` -> `INVALIDATED`, all
 *descendants* of the block MUST also transition from `NOT_VALIDATED` ->
