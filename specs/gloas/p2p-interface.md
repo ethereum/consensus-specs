@@ -372,7 +372,7 @@ where `store` is the fork choice store, and the alias
 - _[REJECT]_ The builder version is `PAYLOAD_BUILDER_VERSION` -- i.e.
   `state.builders[bid.builder_index].version == PAYLOAD_BUILDER_VERSION`.
 - _[REJECT]_ `bid.execution_payment == 0`.
-- _[REJECT]_ `bid.fee_recipient == proposer_preferences.fee_recipient`.
+- _[IGNORE]_ `bid.fee_recipient == proposer_preferences.fee_recipient`.
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in the consensus layer -- i.e. validate that
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(compute_epoch_at_slot(bid.slot)).max_blobs_per_block`.
