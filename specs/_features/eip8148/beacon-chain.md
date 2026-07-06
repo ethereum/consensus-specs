@@ -5,6 +5,7 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Types](#types)
 - [Constants](#constants)
   - [New execution layer triggered request type](#new-execution-layer-triggered-request-type)
   - [Sweep threshold validation](#sweep-threshold-validation)
@@ -49,13 +50,19 @@ control their balance withdrawals more precisely.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
+## Types
+
+| Name                     | SSZ equivalent                              |
+| ------------------------ | ------------------------------------------- |
+| `SweepThresholdRequests` | `ProgressiveList[SetSweepThresholdRequest]` |
+
 ## Constants
 
 ### New execution layer triggered request type
 
 | Name                           | Value            |
 | ------------------------------ | ---------------- |
-| `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1('0x03')` |
+| `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1('0x05')` |
 
 ### Sweep threshold validation
 
@@ -78,7 +85,7 @@ control their balance withdrawals more precisely.
 #### `BeaconState`
 
 ```python
-class BeaconState(Container):
+class BeaconState(ProgressiveContainer(active_fields=[1] * 47)):
     genesis_time: uint64
     genesis_validators_root: Root
     slot: Slot
@@ -90,17 +97,17 @@ class BeaconState(Container):
     eth1_data: Eth1Data
     eth1_data_votes: List[Eth1Data, EPOCHS_PER_ETH1_VOTING_PERIOD * SLOTS_PER_EPOCH]
     eth1_deposit_index: uint64
-    validators: List[Validator, VALIDATOR_REGISTRY_LIMIT]
-    balances: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
+    validators: ProgressiveList[Validator]
+    balances: ProgressiveList[Gwei]
     randao_mixes: Vector[Bytes32, EPOCHS_PER_HISTORICAL_VECTOR]
     slashings: Vector[Gwei, EPOCHS_PER_SLASHINGS_VECTOR]
-    previous_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
-    current_epoch_participation: List[ParticipationFlags, VALIDATOR_REGISTRY_LIMIT]
+    previous_epoch_participation: ProgressiveList[ParticipationFlags]
+    current_epoch_participation: ProgressiveList[ParticipationFlags]
     justification_bits: Bitvector[JUSTIFICATION_BITS_LENGTH]
     previous_justified_checkpoint: Checkpoint
     current_justified_checkpoint: Checkpoint
     finalized_checkpoint: Checkpoint
-    inactivity_scores: List[uint64, VALIDATOR_REGISTRY_LIMIT]
+    inactivity_scores: ProgressiveList[uint64]
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     latest_block_hash: Hash32
@@ -113,32 +120,33 @@ class BeaconState(Container):
     earliest_exit_epoch: Epoch
     consolidation_balance_to_consume: Gwei
     earliest_consolidation_epoch: Epoch
-    pending_deposits: List[PendingDeposit, PENDING_DEPOSITS_LIMIT]
-    pending_partial_withdrawals: List[PendingPartialWithdrawal, PENDING_PARTIAL_WITHDRAWALS_LIMIT]
-    pending_consolidations: List[PendingConsolidation, PENDING_CONSOLIDATIONS_LIMIT]
+    pending_deposits: ProgressiveList[PendingDeposit]
+    pending_partial_withdrawals: ProgressiveList[PendingPartialWithdrawal]
+    pending_consolidations: ProgressiveList[PendingConsolidation]
     proposer_lookahead: Vector[ValidatorIndex, (MIN_SEED_LOOKAHEAD + 1) * SLOTS_PER_EPOCH]
-    builders: List[Builder, BUILDER_REGISTRY_LIMIT]
+    builders: ProgressiveList[Builder]
     next_withdrawal_builder_index: BuilderIndex
     execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
     builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
-    builder_pending_withdrawals: List[BuilderPendingWithdrawal, BUILDER_PENDING_WITHDRAWALS_LIMIT]
-    # [Modified in Heze:EIP7805]
+    builder_pending_withdrawals: ProgressiveList[BuilderPendingWithdrawal]
     latest_execution_payload_bid: ExecutionPayloadBid
-    payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
+    payload_expected_withdrawals: ProgressiveList[Withdrawal]
     ptc_window: Vector[Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]
     # [New in EIP8148]
-    validator_sweep_thresholds: List[Gwei, VALIDATOR_REGISTRY_LIMIT]
+    validator_sweep_thresholds: ProgressiveList[Gwei]
 ```
 
 #### `ExecutionRequests`
 
 ```python
-class ExecutionRequests(Container):
-    deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]
-    withdrawals: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
-    consolidations: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]
+class ExecutionRequests(ProgressiveContainer(active_fields=[1] * 6)):
+    deposits: DepositRequests
+    withdrawals: WithdrawalRequests
+    consolidations: ConsolidationRequests
+    builder_deposits: BuilderDepositRequests
+    builder_exits: BuilderExitRequests
     # [New in EIP8148]
-    sweep_thresholds: List[SetSweepThresholdRequest, MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD]
+    sweep_thresholds: SweepThresholdRequests
 ```
 
 ### New containers
@@ -235,10 +243,12 @@ def add_validator_to_registry(
 
 ```python
 def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
-    requests = [
+    requests: Sequence[Tuple[Bytes1, ProgressiveList]] = [
         (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
         (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
+        (BUILDER_DEPOSIT_REQUEST_TYPE, execution_requests.builder_deposits),
+        (BUILDER_EXIT_REQUEST_TYPE, execution_requests.builder_exits),
         # [New in EIP8148]
         (SWEEP_THRESHOLD_REQUEST_TYPE, execution_requests.sweep_thresholds),
     ]
@@ -367,6 +377,14 @@ def apply_parent_execution_payload(
     parent_slot = parent_bid.slot
     parent_epoch = compute_epoch_at_slot(parent_slot)
 
+    assert len(requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD
+    assert len(requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
+    assert len(requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
+    assert len(requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
+    assert len(requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
+    # [New in EIP8148]
+    assert len(requests.sweep_thresholds) <= MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD
+
     # Process execution requests from parent's payload. The execution
     # requests are processed at state.slot (child's slot), not the parent's slot.
     def for_ops(operations: Sequence[Any], fn: Callable[[BeaconState, Any], None]) -> None:
@@ -376,6 +394,8 @@ def apply_parent_execution_payload(
     for_ops(requests.deposits, process_deposit_request)
     for_ops(requests.withdrawals, process_withdrawal_request)
     for_ops(requests.consolidations, process_consolidation_request)
+    for_ops(requests.builder_deposits, process_builder_deposit_request)
+    for_ops(requests.builder_exits, process_builder_exit_request)
     # [New in EIP8148]
     for_ops(requests.sweep_thresholds, process_set_sweep_threshold_request)
 

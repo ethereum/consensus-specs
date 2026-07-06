@@ -4,7 +4,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
-from tests.infra.helpers.proposer_slashings import (
+from eth_consensus_specs.test.helpers.proposer_slashings import (
     assert_process_proposer_slashing,
     prepare_process_proposer_slashing,
     run_proposer_slashing_processing,
@@ -412,6 +412,58 @@ def test_builder_payment_deletion_previous_epoch_last_slot(spec, state):
     slashed_slot = proposer_slashing.signed_header_1.message.slot
     assert slashed_slot % spec.SLOTS_PER_EPOCH == spec.SLOTS_PER_EPOCH - 1
     assert spec.compute_epoch_at_slot(slashed_slot) == spec.get_previous_epoch(state)
+
+    pre_state = state.copy()
+
+    yield from run_proposer_slashing_processing(spec, state, proposer_slashing)
+
+    assert_process_proposer_slashing(
+        spec,
+        state,
+        pre_state,
+        proposer_slashing,
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_payment_not_deleted_foreign_equivocation(spec, state):
+    """
+    Test that a proposer slashing does NOT delete a builder pending payment recorded for
+    a different proposer. This guards against a griefing vector: the clear is keyed only
+    by header slot, so without the proposer check any validator equivocating on a slot
+    could clear an honest proposer's payment for that slot.
+
+    Input State Configured:
+        - builder_pending_payments: current-epoch entry recorded for the payment proposer
+        - proposer_slashing: valid slashing of a different validator for the same slot,
+          within the 2-epoch window
+
+    Output State Verified:
+        - validators[slashed_index].slashed: True
+        - builder_pending_payments: entry left intact (slashed validator is not the
+          payment's proposer)
+    """
+    active = spec.get_active_validator_indices(state, spec.get_current_epoch(state))
+    payment_proposer = active[0]  # the payment is recorded for this proposer
+    slashed_proposer = active[-1]  # equivocates on the slot, not the payment's proposer
+    assert payment_proposer != slashed_proposer
+
+    proposer_slashing, _ = prepare_process_proposer_slashing(
+        spec,
+        state,
+        advance_epochs=2,
+        slot_offset=Random(2024).randrange(spec.SLOTS_PER_EPOCH),
+        proposer_index=slashed_proposer,
+        parent_root_2=b"\x99" * 32,  # Make headers different
+        builder_payment_amount=spec.MIN_ACTIVATION_BALANCE,
+        builder_payment_fee_recipient=b"\x42" * 20,
+        builder_payment_weight=1000,
+        builder_payment_proposer_index=payment_proposer,
+    )
+
+    slashed_slot = proposer_slashing.signed_header_1.message.slot
+    assert spec.compute_epoch_at_slot(slashed_slot) == spec.get_current_epoch(state)
 
     pre_state = state.copy()
 

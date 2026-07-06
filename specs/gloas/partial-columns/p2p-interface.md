@@ -6,11 +6,14 @@
 
 - [Introduction](#introduction)
 - [Modification in Gloas](#modification-in-gloas)
+  - [Preset](#preset)
+    - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
   - [Containers](#containers)
     - [Modified `PartialDataColumnSidecar`](#modified-partialdatacolumnsidecar)
-    - [New `PartialDataColumnGroupID`](#new-partialdatacolumngroupid)
+    - [Modified `PartialDataColumnGroupID`](#modified-partialdatacolumngroupid)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Partial Messages on `data_column_sidecar_{subnet_id}`](#partial-messages-on-data_column_sidecar_subnet_id)
+    - [Blob subnets](#blob-subnets)
+      - [Modified `data_column_sidecar_{subnet_id}` (partial messages)](#modified-data_column_sidecar_subnet_id-partial-messages)
 
 <!-- mdformat-toc end -->
 
@@ -27,30 +30,43 @@ and the [Gloas networking specification](../p2p-interface.md).
 
 ## Modification in Gloas
 
+### Preset
+
+#### Type-specific SSZ bounds
+
+*[New in Gloas:EIP7688]*
+
+| Name                                   | Value                        |
+| -------------------------------------- | ---------------------------- |
+| `MAX_PARTIAL_DATA_COLUMN_SIDECAR_SIZE` | `uint64(8585741)` (= ~8 MiB) |
+
 ### Containers
 
 #### Modified `PartialDataColumnSidecar`
 
 ```python
 class PartialDataColumnSidecar(Container):
-    cells_present_bitmap: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    partial_column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    cells_present_bitmap: ProgressiveBitlist
+    partial_column: ProgressiveList[Cell]
+    kzg_proofs: ProgressiveList[KZGProof]
     # [Modified in Gloas:EIP7732]
     # Removed `header`
 ```
 
-#### New `PartialDataColumnGroupID`
+#### Modified `PartialDataColumnGroupID`
 
 ```python
 class PartialDataColumnGroupID(Container):
-    slot: Slot
     beacon_block_root: Root
+    # [New in Gloas:EIP7732]
+    slot: Slot
 ```
 
 ### The gossip domain: gossipsub
 
-#### Partial Messages on `data_column_sidecar_{subnet_id}`
+#### Blob subnets
+
+##### Modified `data_column_sidecar_{subnet_id}` (partial messages)
 
 *[Modified in Gloas:EIP7732]*
 

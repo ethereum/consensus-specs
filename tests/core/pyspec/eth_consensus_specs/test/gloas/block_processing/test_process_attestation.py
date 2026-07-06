@@ -310,111 +310,38 @@ def test_builder_payment_weight_no_double_counting(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_matching_payload_true_same_slot(spec, state):
+def test_same_slot_attestation_ignores_payload_availability(spec, state):
     """
-    Test is_matching_payload = True path for same-slot attestations
-    (same-slot always sets is_matching_payload = True regardless of availability bit).
+    Test that a same-slot attestation receives the timely head flag even when
+    execution_payload_availability for that slot disagrees with data.index.
     """
-    # Use slot 0 to trigger same-slot condition
-    transition_to_slot_via_block(spec, state, 2)
+    transition_to_slot_via_block(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    attestation_slot = spec.Slot(0)
 
-    # Set payload availability bit to 0 for slot 0 (payload not available)
-    attestation_slot = 0
-    state.execution_payload_availability[attestation_slot % spec.SLOTS_PER_HISTORICAL_ROOT] = 0
+    # Availability disagrees with data.index so a bad client comparison would fail payload_matches.
+    state.execution_payload_availability[attestation_slot % spec.SLOTS_PER_HISTORICAL_ROOT] = 1
 
-    # Create attestation for slot 0
-    attestation = get_valid_attestation(spec, state, slot=attestation_slot)
-    attestation.data.index = 0  # Same-slot must use index 0
-    sign_attestation(spec, state, attestation)
-
-    assert spec.is_attestation_same_slot(state, attestation.data) is True
-
-    # This should pass because same-slot always sets is_matching_payload = True
-    # regardless of the execution_payload_availability bit
-    yield from run_attestation_processing(spec, state, attestation, valid=True)
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_matching_payload_true_historical_slot(spec, state):
-    """
-    Test is_matching_payload = True path for historical slots
-    (when data.index matches the payload availability bit).
-    """
-    # Advance to slot 3 (only creates one block at slot 3)
-    transition_to_slot_via_block(spec, state, 3)
-
-    # Move forward to satisfy MIN_ATTESTATION_INCLUSION_DELAY requirement
-    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
-
-    # Set payload availability bit to 1 for slot 1
-    availability_bit_index = 1
-    state.execution_payload_availability[availability_bit_index] = 1
-
-    # Create attestation for slot 1 - should now satisfy inclusion delay and get head flag
-    historical_slot = 1
-    attestation = get_valid_attestation(spec, state, slot=historical_slot)
-    attestation.data.index = 1  # Should match the availability bit
-    sign_attestation(spec, state, attestation)
-
-    # Get the attesting validator
-    attesting_indices = spec.get_attesting_indices(state, attestation)
-    validator_index = next(iter(attesting_indices))
-
-    assert spec.is_attestation_same_slot(state, attestation.data) is False
-
-    # This should pass because data.index (1) matches the availability bit (1)
-    yield from run_attestation_processing(spec, state, attestation, valid=True)
-
-    final_participation = state.current_epoch_participation[validator_index]
-    source_flag = spec.has_flag(final_participation, spec.TIMELY_SOURCE_FLAG_INDEX)
-    target_flag = spec.has_flag(final_participation, spec.TIMELY_TARGET_FLAG_INDEX)
-    head_flag = spec.has_flag(final_participation, spec.TIMELY_HEAD_FLAG_INDEX)
-
-    # Verify the core functionality: attestation processes and gets some participation flags
-    assert source_flag or target_flag, (
-        "Should have participation flags when attestation processes successfully"
+    committee = spec.get_beacon_committee(state, attestation_slot, 0)
+    attestation = get_valid_attestation(
+        spec,
+        state,
+        slot=attestation_slot,
+        index=0,
+        payload_index=0,
+        filter_participant_set=lambda _: {committee[0]},
+        signed=True,
     )
 
-    assert not head_flag, "Should not get head flag for historical slot attestation"
+    assert spec.is_attestation_same_slot(state, attestation.data) is True
+    assert state.slot - attestation.data.slot == spec.MIN_ATTESTATION_INCLUSION_DELAY
 
-
-@with_gloas_and_later
-@spec_state_test
-def test_matching_payload_false_historical_slot(spec, state):
-    """
-    Test is_matching_payload = False path for historical slots
-    (when data.index does NOT match the payload availability bit).
-    """
-    apply_empty_block(spec, state, 1)
-    apply_empty_block(spec, state, 2)
-    apply_empty_block(spec, state, 3)
-    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
-
-    # Choose slot 2 which now has a real block root different from genesis
-    # Set payload availability bit to 0 for slot 2
-    state.execution_payload_availability[2] = 0
-
-    # Create attestation for slot 2 but with slot 1's block root to make it historical (not same-slot)
-    slot_1_block_root = spec.get_block_root_at_slot(state, 1)
-    attestation = get_valid_attestation(spec, state, slot=2, beacon_block_root=slot_1_block_root)
-    attestation.data.index = 1  # Does not match the availability bit (0)
-    sign_attestation(spec, state, attestation)
-
-    # Get the attesting validator
     attesting_indices = spec.get_attesting_indices(state, attestation)
     validator_index = next(iter(attesting_indices))
 
-    assert spec.is_attestation_same_slot(state, attestation.data) is False
-
-    # This should still pass (the attestation is valid)
-    # but is_matching_payload will be False, affecting participation flags
     yield from run_attestation_processing(spec, state, attestation, valid=True)
 
-    # Verify that head flag was NOT set due to mismatched payload
     final_participation = state.current_epoch_participation[validator_index]
-    final_head_flag = spec.has_flag(final_participation, spec.TIMELY_HEAD_FLAG_INDEX)
-    assert not final_head_flag, "Should not get head flag when payload doesn't match"
+    assert spec.has_flag(final_participation, spec.TIMELY_HEAD_FLAG_INDEX)
 
 
 @with_gloas_and_later
@@ -566,3 +493,55 @@ def test_builder_payment_weight_no_increment_for_zero_amount(spec, state):
     yield from run_attestation_processing(spec, state, attestation, valid=True)
 
     assert state.builder_pending_payments[payment_idx].weight == pre_weight
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_payment_weight_accumulates(spec, state):
+    """
+    Test that builder payment weight accumulates across distinct same-slot
+    attesters.
+    """
+    transition_to_slot_via_block(spec, state, 2)
+
+    # Create a same-slot attestation for slot 0 with two distinct attesters
+    attestation_slot = 0
+    committee = spec.get_beacon_committee(state, attestation_slot, 0)
+    first_attester, second_attester = committee[:2]
+    attestation = get_valid_attestation(
+        spec,
+        state,
+        slot=attestation_slot,
+        index=0,
+        payload_index=0,
+        filter_participant_set=lambda _: {first_attester, second_attester},
+        signed=True,
+    )
+
+    first_weight = state.validators[first_attester].effective_balance
+    second_weight = state.validators[second_attester].effective_balance
+    assert first_weight > 0
+    assert second_weight > 0
+
+    # Manually set up a non-zero builder pending payment for slot 0
+    payment_slot_index = spec.SLOTS_PER_EPOCH + attestation_slot % spec.SLOTS_PER_EPOCH
+    test_payment_amount = spec.Gwei(1000000000)
+    state.builder_pending_payments[payment_slot_index] = spec.BuilderPendingPayment(
+        weight=spec.Gwei(0),
+        withdrawal=spec.BuilderPendingWithdrawal(
+            fee_recipient=spec.ExecutionAddress(),
+            amount=test_payment_amount,
+            builder_index=0,
+        ),
+    )
+
+    # Store initial weight for slot 0
+    initial_weight = state.builder_pending_payments[payment_slot_index].weight
+
+    # Process attestation
+    yield from run_attestation_processing(spec, state, attestation, valid=True)
+
+    # Weight should accumulate both attesters' effective balances
+    final_weight = state.builder_pending_payments[payment_slot_index].weight
+    expected_final_weight = initial_weight + first_weight + second_weight
+    assert final_weight == expected_final_weight

@@ -166,6 +166,10 @@ To optimistically import a block:
   function MUST return `True` if the execution engine returns `NOT_VALIDATED` or
   `VALID`. An `INVALIDATED` response MUST return `False`.
 - The
+  [`is_inclusion_list_satisfied`](../specs/heze/fork-choice.md#new-is_inclusion_list_satisfied)
+  function MUST return `True` if the execution engine returns `NOT_VALIDATED`.
+  An `INVALIDATED` response MUST return `False`.
+- The
   [`validate_merge_block`](../specs/bellatrix/fork-choice.md#validate_merge_block)
   function MUST NOT raise an assertion if both the `pow_block` and `pow_parent`
   are unknown to the execution engine.
@@ -195,6 +199,12 @@ block MUST also transition from `NOT_VALIDATED` -> `VALID`. Such a block and any
 previously `NOT_VALIDATED` ancestors are no longer considered "optimistically
 imported".
 
+The response from the execution engine that triggers the `NOT_VALIDATED` ->
+`VALID` transition also indicates whether the block's execution payload
+satisfied the inclusion list constraints. The consensus engine MUST record the
+result for that block. The recorded inclusion list satisfaction of its ancestors
+remains unchanged.
+
 When a block transitions from `NOT_VALIDATED` -> `INVALIDATED`, all
 *descendants* of the block MUST also transition from `NOT_VALIDATED` ->
 `INVALIDATED`.
@@ -222,7 +232,7 @@ parameter. The general approach is as follows:
    `NOT_VALIDATED` to `INVALIDATED`.
 
 | `latestValidHash`       | `invalidBlock`                                                                                                                                |
-| :---------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------- |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | Execution block hash    | The *child* of a block with `body.execution_payload.block_hash == latestValidHash` in the chain containing the block with payload in question |
 | `0x00..00` (all zeroes) | The first block with `body.execution_payload != ExecutionPayload()` in the chain containing a block with payload in question                  |
 | `null`                  | Block with payload in question                                                                                                                |

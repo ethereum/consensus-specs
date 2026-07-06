@@ -172,7 +172,9 @@ def run_test(test_info):
                 elif check == "viable_for_head_roots_and_weights":
                     actual = value
                     expected = get_viable_for_head_checks(spec, store)
-                    assert {frozenset(e) for e in actual} == {frozenset(e) for e in expected}
+                    assert {frozenset(e.items()) for e in actual} == {
+                        frozenset(e.items()) for e in expected
+                    }
                 elif check in ("payload_timeliness_vote", "payload_data_availability_vote"):
                     target_root = spec.Root(decode_hex(value["block_root"]))
                     assert list(getattr(store, check)[target_root]) == value["votes"]

@@ -3,6 +3,9 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_gloas_and_later,
 )
+from eth_consensus_specs.test.helpers.block import (
+    build_empty_block_for_next_slot,
+)
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
     build_signed_execution_payload_envelope,
@@ -10,9 +13,15 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_execution_payload,
     check_head_against_root,
+    output_head_check,
     setup_one_block_store,
+    tick_and_add_block,
+    tick_store_to_slot,
 )
 from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
+from eth_consensus_specs.test.helpers.state import (
+    state_transition_and_sign_block,
+)
 
 
 def _build_invalid_envelope(spec, state, block_root, signed_block, **overrides):
@@ -235,7 +244,7 @@ def test_on_execution_payload_envelope_wrong_execution_requests_root(spec, state
 
     # Build envelope with non-empty requests but bid commits to empty requests
     non_empty_requests = spec.ExecutionRequests(
-        deposits=spec.List[spec.DepositRequest, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD](
+        deposits=spec.ProgressiveList[spec.DepositRequest](
             [
                 spec.DepositRequest(
                     pubkey=spec.BLSPubkey(b"\x01" * 48),
@@ -246,10 +255,8 @@ def test_on_execution_payload_envelope_wrong_execution_requests_root(spec, state
                 )
             ]
         ),
-        withdrawals=spec.List[spec.WithdrawalRequest, spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD](),
-        consolidations=spec.List[
-            spec.ConsolidationRequest, spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
-        ](),
+        withdrawals=spec.ProgressiveList[spec.WithdrawalRequest](),
+        consolidations=spec.ProgressiveList[spec.ConsolidationRequest](),
     )
 
     envelope = _build_invalid_envelope(
@@ -282,9 +289,7 @@ def test_on_execution_payload_envelope_wrong_withdrawals(spec, state):
         state,
         block_root,
         signed_block,
-        withdrawals=spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](
-            [wrong_withdrawal]
-        ),
+        withdrawals=spec.ProgressiveList[spec.Withdrawal]([wrong_withdrawal]),
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
@@ -305,9 +310,9 @@ def test_on_execution_payload_envelope_missing_expected_withdrawal(spec, state):
     expected_withdrawal = spec.Withdrawal(
         index=0, validator_index=0, address=b"\x22" * 20, amount=spec.Gwei(1)
     )
-    state.payload_expected_withdrawals = spec.List[
-        spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD
-    ]([expected_withdrawal])
+    state.payload_expected_withdrawals = spec.ProgressiveList[spec.Withdrawal](
+        [expected_withdrawal]
+    )
 
     store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
 
@@ -320,7 +325,7 @@ def test_on_execution_payload_envelope_missing_expected_withdrawal(spec, state):
         state,
         block_root,
         signed_block,
-        withdrawals=spec.List[spec.Withdrawal, spec.MAX_WITHDRAWALS_PER_PAYLOAD](),
+        withdrawals=spec.ProgressiveList[spec.Withdrawal](),
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
@@ -414,4 +419,42 @@ def test_on_execution_payload_envelope_wrong_timestamp(spec, state):
 
     assert block_root not in store.payloads
 
+    yield "steps", test_steps
+
+
+@with_gloas_and_later
+@spec_state_test
+@always_bls
+def test_on_execution_payload_envelope_invalid_full_child(spec, state):
+    """
+    Test that a rejected invalid envelope cannot mark the parent payload as
+    verified and make a later FULL child pass on_block validation.
+    """
+    store, block_root, block_state, signed_block, test_steps = yield from setup_one_block_store(
+        spec, state
+    )
+
+    envelope = _build_invalid_envelope(
+        spec,
+        block_state,
+        block_root,
+        signed_block,
+        valid_signature=False,
+    )
+    yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
+
+    tick_store_to_slot(spec, store, block_state.slot + 1, test_steps)
+
+    # Build a child that points its bid at parent.bid.block_hash so it claims
+    # the parent is FULL
+    child_state = block_state.copy()
+    child = build_empty_block_for_next_slot(spec, child_state)
+    child.body.signed_execution_payload_bid.message.parent_block_hash = (
+        signed_block.message.body.signed_execution_payload_bid.message.block_hash
+    )
+    signed_child = state_transition_and_sign_block(spec, child_state, child)
+
+    # The FULL child must fail because the parent's invalid envelope did not verify its payload
+    yield from tick_and_add_block(spec, store, signed_child, test_steps, valid=False)
+    output_head_check(spec, store, test_steps)
     yield "steps", test_steps

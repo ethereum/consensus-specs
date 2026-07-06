@@ -12,14 +12,15 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 - [Table of contents](#table-of-contents)
 - [Constants](#constants)
   - [Execution](#execution)
+  - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
 - [Containers](#containers)
-  - [`ProofByRootIdentifier`](#proofbyrootidentifier)
+  - [New `ProofByRootIdentifier`](#new-proofbyrootidentifier)
 - [Helpers](#helpers)
   - [New `compute_max_request_execution_proofs`](#new-compute_max_request_execution_proofs)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
-      - [`execution_proof`](#execution_proof)
+      - [New `execution_proof`](#new-execution_proof)
 - [The Req/Resp domain](#the-reqresp-domain)
   - [Messages](#messages)
     - [ExecutionProofsByRange](#executionproofsbyrange)
@@ -41,9 +42,15 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 | ---------------------------------- | ----------- |
 | `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)` |
 
+### Type-specific SSZ bounds
+
+| Name                              | Value                        |
+| --------------------------------- | ---------------------------- |
+| `MAX_SIGNED_EXECUTION_PROOF_SIZE` | `uint64(4194449)` (= ~4 MiB) |
+
 ## Containers
 
-### `ProofByRootIdentifier`
+### New `ProofByRootIdentifier`
 
 ```python
 class ProofByRootIdentifier(Container):
@@ -69,7 +76,7 @@ def compute_max_request_execution_proofs() -> uint64:
 
 #### Global topics
 
-##### `execution_proof`
+##### New `execution_proof`
 
 This topic is used to propagate `SignedExecutionProof` messages.
 

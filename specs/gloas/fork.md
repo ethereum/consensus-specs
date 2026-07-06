@@ -12,6 +12,7 @@
 - [Fork to Gloas](#fork-to-gloas)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
+  - [Upgrading attestations and attester slashings](#upgrading-attestations-and-attester-slashings)
 
 <!-- mdformat-toc end -->
 
@@ -57,6 +58,10 @@ def initialize_ptc_window(
 
 ### New `onboard_builders_from_pending_deposits`
 
+*Note*: This one-time onboarding is the only path through the validator deposit
+contract that creates builders. From the fork onward, builders are created and
+topped up only via `BuilderDepositRequest`.
+
 *Note*: In the slots leading up to the fork, implementations SHOULD validate
 pending deposit signatures and cache the results. The pending deposit queue
 might be large and verifying many signatures at the fork could be slow.
@@ -76,9 +81,9 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
             pending_deposits.append(deposit)
             continue
 
-        # Note that the function apply_deposit_for_builder can mutate the
-        # state and may add a builder to the registry. For this reason, the
-        # list of builder pubkeys must be recomputed each iteration.
+        # Note that applying a deposit below can mutate the state and
+        # may add a builder to the registry. For this reason, the list
+        # of builder pubkeys must be recomputed each iteration.
         builder_pubkeys = [b.pubkey for b in state.builders]
 
         # Deposits for non-builders stay in the pending queue. If there is a
@@ -91,15 +96,25 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
             if is_pending_validator(pending_deposits, deposit.pubkey):
                 pending_deposits.append(deposit)
                 continue
+            if not is_valid_deposit_signature(
+                deposit.pubkey,
+                deposit.withdrawal_credentials,
+                deposit.amount,
+                deposit.signature,
+            ):
+                continue
 
-        apply_deposit_for_builder(
-            state,
-            deposit.pubkey,
-            deposit.withdrawal_credentials,
-            deposit.amount,
-            deposit.signature,
-            deposit.slot,
-        )
+            add_builder_to_registry(
+                state,
+                deposit.pubkey,
+                PAYLOAD_BUILDER_VERSION,
+                ExecutionAddress(deposit.withdrawal_credentials[12:]),
+                deposit.amount,
+                deposit.slot,
+            )
+        else:
+            builder_index = BuilderIndex(builder_pubkeys.index(deposit.pubkey))
+            state.builders[builder_index].balance += deposit.amount
 
     state.pending_deposits = pending_deposits
 ```
@@ -126,7 +141,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            # [Modified in Gloas:EIP7732]
+            # [Modified in Gloas]
             current_version=GLOAS_FORK_VERSION,
             epoch=epoch,
         ),
@@ -137,17 +152,26 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         eth1_data=pre.eth1_data,
         eth1_data_votes=pre.eth1_data_votes,
         eth1_deposit_index=pre.eth1_deposit_index,
-        validators=pre.validators,
-        balances=pre.balances,
+        # [Modified in Gloas:EIP7688]
+        validators=ProgressiveList[Validator](list(pre.validators)),
+        # [Modified in Gloas:EIP7688]
+        balances=ProgressiveList[Gwei](list(pre.balances)),
         randao_mixes=pre.randao_mixes,
         slashings=pre.slashings,
-        previous_epoch_participation=pre.previous_epoch_participation,
-        current_epoch_participation=pre.current_epoch_participation,
+        # [Modified in Gloas:EIP7688]
+        previous_epoch_participation=ProgressiveList[ParticipationFlags](
+            list(pre.previous_epoch_participation)
+        ),
+        # [Modified in Gloas:EIP7688]
+        current_epoch_participation=ProgressiveList[ParticipationFlags](
+            list(pre.current_epoch_participation)
+        ),
         justification_bits=pre.justification_bits,
         previous_justified_checkpoint=pre.previous_justified_checkpoint,
         current_justified_checkpoint=pre.current_justified_checkpoint,
         finalized_checkpoint=pre.finalized_checkpoint,
-        inactivity_scores=pre.inactivity_scores,
+        # [Modified in Gloas:EIP7688]
+        inactivity_scores=ProgressiveList[uint64](list(pre.inactivity_scores)),
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         # [Modified in Gloas:EIP7732]
@@ -163,9 +187,16 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         earliest_exit_epoch=pre.earliest_exit_epoch,
         consolidation_balance_to_consume=pre.consolidation_balance_to_consume,
         earliest_consolidation_epoch=pre.earliest_consolidation_epoch,
-        pending_deposits=pre.pending_deposits,
-        pending_partial_withdrawals=pre.pending_partial_withdrawals,
-        pending_consolidations=pre.pending_consolidations,
+        # [Modified in Gloas:EIP7688]
+        pending_deposits=ProgressiveList[PendingDeposit](list(pre.pending_deposits)),
+        # [Modified in Gloas:EIP7688]
+        pending_partial_withdrawals=ProgressiveList[PendingPartialWithdrawal](
+            list(pre.pending_partial_withdrawals)
+        ),
+        # [Modified in Gloas:EIP7688]
+        pending_consolidations=ProgressiveList[PendingConsolidation](
+            list(pre.pending_consolidations)
+        ),
         proposer_lookahead=pre.proposer_lookahead,
         # [New in Gloas:EIP7732]
         builders=[],
@@ -193,4 +224,37 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
     onboard_builders_from_pending_deposits(post)
 
     return post
+```
+
+### Upgrading attestations and attester slashings
+
+A Gloas `BeaconBlockBody` can still contain earlier attestations and attester
+slashings. In order to pack them, the pre-Gloas data needs to be locally
+upgraded to Gloas before creating the block.
+
+```python
+def upgrade_attestation_to_gloas(pre: fulu.Attestation) -> Attestation:
+    return Attestation(
+        aggregation_bits=AggregationBits(list(pre.aggregation_bits)),
+        data=pre.data,
+        signature=pre.signature,
+        committee_bits=pre.committee_bits,
+    )
+```
+
+```python
+def upgrade_indexed_attestation_to_gloas(pre: fulu.IndexedAttestation) -> IndexedAttestation:
+    return IndexedAttestation(
+        attesting_indices=AttestingIndices(list(pre.attesting_indices)),
+        data=pre.data,
+        signature=pre.signature,
+    )
+```
+
+```python
+def upgrade_attester_slashing_to_gloas(pre: fulu.AttesterSlashing) -> AttesterSlashing:
+    return AttesterSlashing(
+        attestation_1=upgrade_indexed_attestation_to_gloas(pre.attestation_1),
+        attestation_2=upgrade_indexed_attestation_to_gloas(pre.attestation_2),
+    )
 ```

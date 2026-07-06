@@ -124,6 +124,30 @@ def test_fork_single_builder_deposit(spec, phases, state):
 @spec_test
 @with_state
 @with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_builder_deposit_version(spec, phases, state):
+    """
+    Test that a builder onboarded at the fork is registered as a payload builder.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+
+    # Create a pending deposit with builder credentials
+    builder_pubkey = builder_pubkeys[0]
+    pending_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
+    state.pending_deposits = [pending_deposit]
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    # The onboarded builder is registered with the payload builder version
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == builder_pubkey
+    assert post_state.builders[0].version == post_spec.PAYLOAD_BUILDER_VERSION
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
 def test_fork_builder_deposit_uses_deposit_slot_epoch(spec, phases, state):
     """
     Test fork uses the deposit's slot epoch when onboarding builders.
@@ -374,8 +398,8 @@ def test_fork_builder_deposit_with_existing_validator_pubkey_builder_creds(spec,
 def test_fork_builder_deposit_followed_by_non_builder_credentials(spec, phases, state):
     """
     Test fork with two deposits for the same builder pubkey:
-    - First deposit has builder credentials (0x03)
-    - Second deposit has non-builder credentials (0x02)
+    - First deposit has builder credentials
+    - Second deposit has non-builder credentials
     Both should be applied to the builder.
     """
     post_spec = phases[GLOAS]
@@ -384,7 +408,7 @@ def test_fork_builder_deposit_followed_by_non_builder_credentials(spec, phases, 
     builder_pubkey = builder_pubkeys[0]
     privkey = builder_pubkey_to_privkey[builder_pubkey]
 
-    # First deposit: builder credentials (0x03)
+    # First deposit: builder credentials
     builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
 
     # Second deposit: compounding credentials (0x02) for the same pubkey
@@ -429,8 +453,8 @@ def test_fork_builder_deposit_followed_by_non_builder_credentials(spec, phases, 
 def test_fork_validator_deposit_followed_by_builder_credentials(spec, phases, state):
     """
     Test fork with two deposits for the same pubkey:
-    - First deposit has validator credentials (0x02)
-    - Second deposit has builder credentials (0x03)
+    - First deposit has validator credentials
+    - Second deposit has builder credentials
     Both deposits should stay in pending (no builder created).
     """
     post_spec = phases[GLOAS]
@@ -459,7 +483,7 @@ def test_fork_validator_deposit_followed_by_builder_credentials(spec, phases, st
         slot=post_spec.GENESIS_SLOT,
     )
 
-    # Second deposit: builder credentials (0x03) for the same pubkey
+    # Second deposit: builder credentials for the same pubkey
     builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
 
     state.pending_deposits = [validator_deposit, builder_deposit]
@@ -489,8 +513,8 @@ def test_fork_validator_deposit_followed_by_builder_credentials(spec, phases, st
 def test_fork_invalid_validator_deposit_followed_by_builder_credentials(spec, phases, state):
     """
     Test fork with two deposits for the same pubkey:
-    - First deposit has validator credentials (0x02) but INVALID signature
-    - Second deposit has builder credentials (0x03) with valid signature
+    - First deposit has validator credentials but INVALID signature
+    - Second deposit has builder credentials with valid signature
     The invalid validator deposit should not block the builder deposit.
     """
     post_spec = phases[GLOAS]
@@ -510,7 +534,7 @@ def test_fork_invalid_validator_deposit_followed_by_builder_credentials(spec, ph
         slot=post_spec.GENESIS_SLOT,
     )
 
-    # Second deposit: builder credentials (0x03) with valid signature
+    # Second deposit: builder credentials with valid signature
     builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
 
     state.pending_deposits = [invalid_validator_deposit, builder_deposit]
@@ -537,8 +561,8 @@ def test_fork_invalid_validator_deposit_followed_by_builder_credentials(spec, ph
 def test_fork_invalid_builder_deposit_followed_by_valid_builder_deposit(spec, phases, state):
     """
     Test fork with two builder deposits for the same pubkey:
-    - First deposit has builder credentials (0x03) but INVALID signature
-    - Second deposit has builder credentials (0x03) with valid signature
+    - First deposit has builder credentials but INVALID signature
+    - Second deposit has builder credentials with valid signature
     The valid second deposit should create the builder.
     """
     post_spec = phases[GLOAS]
@@ -547,7 +571,7 @@ def test_fork_invalid_builder_deposit_followed_by_valid_builder_deposit(spec, ph
     builder_pubkey = builder_pubkeys[0]
     builder_withdrawal_credentials = get_builder_withdrawal_credentials(post_spec, builder_pubkey)
 
-    # First deposit: builder credentials (0x03) with INVALID signature
+    # First deposit: builder credentials with INVALID signature
     invalid_builder_deposit = post_spec.PendingDeposit(
         pubkey=builder_pubkey,
         withdrawal_credentials=builder_withdrawal_credentials,
@@ -556,7 +580,7 @@ def test_fork_invalid_builder_deposit_followed_by_valid_builder_deposit(spec, ph
         slot=post_spec.GENESIS_SLOT,
     )
 
-    # Second deposit: builder credentials (0x03) with valid signature
+    # Second deposit: builder credentials with valid signature
     valid_builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
 
     state.pending_deposits = [invalid_builder_deposit, valid_builder_deposit]
@@ -580,8 +604,8 @@ def test_fork_invalid_builder_deposit_followed_by_valid_builder_deposit(spec, ph
 def test_fork_valid_builder_deposit_followed_by_invalid_builder_deposit(spec, phases, state):
     """
     Test fork with two builder deposits for the same pubkey:
-    - First deposit has builder credentials (0x03) with valid signature
-    - Second deposit has builder credentials (0x03) but INVALID signature
+    - First deposit has builder credentials with valid signature
+    - Second deposit has builder credentials but INVALID signature
     The valid first deposit should create the builder, second adds to balance.
     """
     post_spec = phases[GLOAS]
@@ -590,10 +614,10 @@ def test_fork_valid_builder_deposit_followed_by_invalid_builder_deposit(spec, ph
     builder_pubkey = builder_pubkeys[0]
     builder_withdrawal_credentials = get_builder_withdrawal_credentials(post_spec, builder_pubkey)
 
-    # First deposit: builder credentials (0x03) with valid signature
+    # First deposit: builder credentials with valid signature
     valid_builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkey, amount)
 
-    # Second deposit: builder credentials (0x03) with INVALID signature
+    # Second deposit: builder credentials with INVALID signature
     invalid_builder_deposit = post_spec.PendingDeposit(
         pubkey=builder_pubkey,
         withdrawal_credentials=builder_withdrawal_credentials,

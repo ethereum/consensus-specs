@@ -51,6 +51,7 @@ class CosetEvals(list):
     @classmethod
     def deprecate_functions(cls) -> set[str]:
         return {
+            "apply_deposit",
             "compute_max_request_blob_sidecars",
             "compute_subnet_for_blob_sidecar",
             "get_blob_sidecars",

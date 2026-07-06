@@ -124,7 +124,7 @@ def get_inclusion_list_bits(
 ) -> Bitvector[INCLUSION_LIST_COMMITTEE_SIZE]:
     """
     Return a ``Bitvector`` over inclusion list committee indices with bits set
-    for valid and non-equivocating inclusion list submissions for the given ``slot``.
+    for those who provided valid, non-equivocating inclusion lists for the given ``slot``.
     """
     committee = get_inclusion_list_committee(state, slot)
     key = hash_tree_root(committee)
@@ -156,13 +156,13 @@ def is_inclusion_list_bits_inclusive(
     only_timely: bool = True,
 ) -> bool:
     """
-    Return ``True`` if and only if ``inclusion_list_bits`` is a superset of
-    the locally observed inclusion list bits for the given ``slot``.
+    Return ``True`` if and only if ``inclusion_list_bits`` has a bit set for
+    every bit set in the local inclusion list bits for the given ``slot``.
     """
     local_inclusion_list_bits = get_inclusion_list_bits(store, state, slot, only_timely)
 
-    return all(
-        inclusion_bit or not local_inclusion_bit
+    return not any(
+        local_inclusion_bit and not inclusion_bit
         for inclusion_bit, local_inclusion_bit in zip(
             inclusion_list_bits, local_inclusion_list_bits, strict=True
         )

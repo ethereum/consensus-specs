@@ -78,30 +78,30 @@ cryptographic normalization before invoking any internal functions.
 
 | Name                      | Value                                                                           | Notes                                                                       |
 | ------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `PRIMITIVE_ROOT_OF_UNITY` | `7`                                                                             | The primitive root of unity from which all roots of unity should be derived |
 | `BLS_MODULUS`             | `52435875175126190479447740508185965837690552500527637822603658699938581184513` | Scalar field modulus of BLS12-381                                           |
 | `BYTES_PER_COMMITMENT`    | `uint64(48)`                                                                    | The number of bytes in a KZG commitment                                     |
 | `BYTES_PER_PROOF`         | `uint64(48)`                                                                    | The number of bytes in a KZG proof                                          |
 | `BYTES_PER_FIELD_ELEMENT` | `uint64(32)`                                                                    | Bytes used to encode a BLS scalar field element                             |
-| `BYTES_PER_BLOB`          | `uint64(BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB)`                     | The number of bytes in a blob                                               |
+| `BYTES_PER_BLOB`          | `BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB`                             | The number of bytes in a blob                                               |
 | `G1_POINT_AT_INFINITY`    | `Bytes48(b'\xc0' + b'\x00' * 47)`                                               | Serialized form of the point at infinity on the G1 group                    |
 | `KZG_ENDIANNESS`          | `'big'`                                                                         | The endianness of the field elements including blobs                        |
-| `PRIMITIVE_ROOT_OF_UNITY` | `7`                                                                             | The primitive root of unity from which all roots of unity should be derived |
 
 ## Preset
 
 ### Blob
 
-| Name                                | Value                 |
-| ----------------------------------- | --------------------- |
-| `FIELD_ELEMENTS_PER_BLOB`           | `uint64(4096)`        |
-| `FIAT_SHAMIR_PROTOCOL_DOMAIN`       | `b'FSBLOBVERIFY_V1_'` |
-| `RANDOM_CHALLENGE_KZG_BATCH_DOMAIN` | `b'RCKZGBATCH___V1_'` |
+| Name                                | Value                     |
+| ----------------------------------- | ------------------------- |
+| `FIELD_ELEMENTS_PER_BLOB`           | `uint64(2**12)` (= 4,096) |
+| `FIAT_SHAMIR_PROTOCOL_DOMAIN`       | `b'FSBLOBVERIFY_V1_'`     |
+| `RANDOM_CHALLENGE_KZG_BATCH_DOMAIN` | `b'RCKZGBATCH___V1_'`     |
 
 ### Trusted setup
 
 | Name                    | Value                                      |
 | ----------------------- | ------------------------------------------ |
-| `KZG_SETUP_G2_LENGTH`   | `65`                                       |
+| `KZG_SETUP_G2_LENGTH`   | `uint64(65)`                               |
 | `KZG_SETUP_G1_MONOMIAL` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
 | `KZG_SETUP_G1_LAGRANGE` | `Vector[G1Point, FIELD_ELEMENTS_PER_BLOB]` |
 | `KZG_SETUP_G2_MONOMIAL` | `Vector[G2Point, KZG_SETUP_G2_LENGTH]`     |
@@ -265,7 +265,7 @@ def g1_lincomb(
     assert len(points) == len(scalars)
 
     if len(points) == 0:
-        return bls.G1_to_bytes48(bls.Z1())
+        return bls.G1_to_bytes48(bls.G1.identity())
 
     points_g1 = []
     for point in points:
