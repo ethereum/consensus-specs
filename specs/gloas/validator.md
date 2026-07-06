@@ -293,13 +293,10 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         prev_request_type = request_type
 
         if request_type == DEPOSIT_REQUEST_TYPE:
-            # [Modified in Gloas:EIP7688]
             deposits = ssz_deserialize(DepositRequests, request_data)
         elif request_type == WITHDRAWAL_REQUEST_TYPE:
-            # [Modified in Gloas:EIP7688]
             withdrawals = ssz_deserialize(WithdrawalRequests, request_data)
         elif request_type == CONSOLIDATION_REQUEST_TYPE:
-            # [Modified in Gloas:EIP7688]
             consolidations = ssz_deserialize(ConsolidationRequests, request_data)
         # [New in Gloas:EIP8282]
         elif request_type == BUILDER_DEPOSIT_REQUEST_TYPE:

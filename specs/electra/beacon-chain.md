@@ -131,7 +131,7 @@ Electra is a consensus-layer upgrade containing a number of features. Including:
 
 | Name                    | SSZ equivalent                                                                 | Description                                                       |
 | ----------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| `AggregationBits`       | `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]`              | Combined participation info for all participating subcommittees   |
+| `AggregationBits`       | `Bitlist[MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]`              | Combined participation info for all participating committees      |
 | `AttestingIndices`      | `List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT]` | List of attesting validator indices                               |
 | `DepositRequests`       | `List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]`                       | List of deposit requests pertaining to an execution payload       |
 | `WithdrawalRequests`    | `List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]`                 | List of withdrawal requests pertaining to an execution payload    |
