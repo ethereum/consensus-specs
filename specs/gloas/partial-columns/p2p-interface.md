@@ -36,9 +36,9 @@ and the [Gloas networking specification](../p2p-interface.md).
 
 *[New in Gloas:EIP7688]*
 
-| Name                                   | Value                      | Description                                            |
-| -------------------------------------- | -------------------------- | ------------------------------------------------------ |
-| `MAX_PARTIAL_DATA_COLUMN_SIDECAR_SIZE` | `8585741` bytes (= ~8 MiB) | Type-specific SSZ bound for `PartialDataColumnSidecar` |
+| Name                                   | Value                        |
+| -------------------------------------- | ---------------------------- |
+| `MAX_PARTIAL_DATA_COLUMN_SIDECAR_SIZE` | `uint64(8585741)` (= ~8 MiB) |
 
 ### Containers
 

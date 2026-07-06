@@ -13,8 +13,8 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
-        - [`execution_payload`](#execution_payload)
+        - [Modified `beacon_block`](#modified-beacon_block)
+        - [Modified `execution_payload`](#modified-execution_payload)
 
 <!-- mdformat-toc end -->
 
@@ -32,9 +32,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 #### Type-specific SSZ bounds
 
-| Name                                   | Value                      | Description                                     |
-| -------------------------------------- | -------------------------- | ----------------------------------------------- |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE_EIP8148` | `4048398` bytes (= ~4 MiB) | Type-specific SSZ bound for `SignedBeaconBlock` |
+| Name                                   | Value                        |
+| -------------------------------------- | ---------------------------- |
+| `MAX_SIGNED_BEACON_BLOCK_SIZE_EIP8148` | `uint64(4048398)` (= ~4 MiB) |
 
 ### Helpers
 
@@ -72,7 +72,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 
 ##### Global topics
 
-###### `beacon_block`
+###### Modified `beacon_block`
 
 *[Modified in EIP8148]*
 
@@ -83,7 +83,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
   i.e. validate that
   `len(block.body.parent_execution_requests.sweep_thresholds) <= MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD`.
 
-###### `execution_payload`
+###### Modified `execution_payload`
 
 *[Modified in EIP8148]*
 

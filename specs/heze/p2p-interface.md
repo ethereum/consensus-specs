@@ -37,11 +37,11 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 #### Type-specific SSZ bounds
 
-| Name                                         | Value                       | Description                                             |
-| -------------------------------------------- | --------------------------- | ------------------------------------------------------- |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `196934` bytes (= ~192 KiB) | Type-specific SSZ bound for `SignedExecutionPayloadBid` |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE_HEZE`          | `4047178` bytes (= ~4 MiB)  | Type-specific SSZ bound for `SignedBeaconBlock`         |
-| `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `8344` bytes (= ~8 KiB)     | Type-specific SSZ bound for `SignedInclusionList`       |
+| Name                                         | Value                         |
+| -------------------------------------------- | ----------------------------- |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `uint64(196934)` (= ~192 KiB) |
+| `MAX_SIGNED_BEACON_BLOCK_SIZE_HEZE`          | `uint64(4047178)` (= ~4 MiB)  |
+| `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `uint64(8344)` (= ~8 KiB)     |
 
 ### Configuration
 

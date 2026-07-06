@@ -44,9 +44,9 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 
 ### Type-specific SSZ bounds
 
-| Name                              | Value                | Description                                        |
-| --------------------------------- | -------------------- | -------------------------------------------------- |
-| `MAX_SIGNED_EXECUTION_PROOF_SIZE` | `4194449` (= ~4 MiB) | Type-specific SSZ bound for `SignedExecutionProof` |
+| Name                              | Value                        |
+| --------------------------------- | ---------------------------- |
+| `MAX_SIGNED_EXECUTION_PROOF_SIZE` | `uint64(4194449)` (= ~4 MiB) |
 
 ## Containers
 

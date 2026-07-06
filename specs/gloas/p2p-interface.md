@@ -61,13 +61,13 @@ for the corresponding
 [variable-size](../../ssz/simple-serialize.md#variable-size-and-fixed-size)
 libp2p messages.
 
-| Name                                    | Value                       | Description                                             |
-| --------------------------------------- | --------------------------- | ------------------------------------------------------- |
-| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `16829` bytes (= ~16 KiB)   | Type-specific SSZ bound for `SignedAggregateAndProof`   |
-| `MAX_ATTESTER_SLASHING_SIZE`            | `2097616` bytes (= ~2 MiB)  | Type-specific SSZ bound for `AttesterSlashing`          |
-| `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `8585272` bytes (= ~8 MiB)  | Type-specific SSZ bound for `DataColumnSidecar`         |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `196932` bytes (= ~192 KiB) | Type-specific SSZ bound for `SignedExecutionPayloadBid` |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE`          | `4047176` bytes (= ~4 MiB)  | Type-specific SSZ bound for `SignedBeaconBlock`         |
+| Name                                    | Value                         |
+| --------------------------------------- | ----------------------------- |
+| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `uint64(16829)` (= ~16 KiB)   |
+| `MAX_ATTESTER_SLASHING_SIZE`            | `uint64(2097616)` (= ~2 MiB)  |
+| `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `uint64(8585272)` (= ~8 MiB)  |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `uint64(196932)` (= ~192 KiB) |
+| `MAX_SIGNED_BEACON_BLOCK_SIZE`          | `uint64(4047176)` (= ~4 MiB)  |
 
 ### Configuration
 
