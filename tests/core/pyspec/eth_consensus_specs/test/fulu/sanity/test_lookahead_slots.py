@@ -59,7 +59,7 @@ def test_effective_decrease_balance_updates_lookahead(spec, state):
     actual_lookahead = simulate_lookahead(spec, state)[: spec.SLOTS_PER_EPOCH]
 
     if not is_post_fulu(spec):
-        # Pre-EIP-7917, effective balance changes changes the next epoch's lookahead
+        # Pre-EIP-7917, effective balance changes the next epoch's lookahead
         assert next_epoch_lookahead != actual_lookahead
     else:
         # Post-EIP-7917, effective balance changes do not change the next epoch's lookahead
