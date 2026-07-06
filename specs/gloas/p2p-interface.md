@@ -67,7 +67,7 @@ libp2p messages.
 | `MAX_ATTESTER_SLASHING_SIZE`            | `uint64(2097616)` (= ~2 MiB)  |
 | `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `uint64(8585272)` (= ~8 MiB)  |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `uint64(196932)` (= ~192 KiB) |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE`          | `uint64(4047176)` (= ~4 MiB)  |
+| `MAX_SIGNED_BEACON_BLOCK_SIZE`          | `uint64(4027336)` (= ~4 MiB)  |
 
 ### Configuration
 

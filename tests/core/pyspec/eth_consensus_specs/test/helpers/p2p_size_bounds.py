@@ -128,7 +128,8 @@ def build_max_size_signed_beacon_block(spec):
         attestations=spec.ProgressiveList[spec.Attestation](
             [build_max_size_attestation(spec)] * spec.MAX_ATTESTATIONS_ELECTRA
         ),
-        deposits=spec.ProgressiveList[spec.Deposit]([spec.Deposit()] * spec.MAX_DEPOSITS),
+        # Post-electra deposits must be empty
+        deposits=spec.ProgressiveList[spec.Deposit](),
         voluntary_exits=spec.ProgressiveList[spec.SignedVoluntaryExit](
             [spec.SignedVoluntaryExit()] * spec.MAX_VOLUNTARY_EXITS
         ),
@@ -153,8 +154,7 @@ def build_max_size_signed_beacon_block(spec):
 
 
 def build_max_size_signed_inclusion_list(spec):
-    bytes_per_length_offset = 4
-    payload_size = spec.config.MAX_BYTES_PER_INCLUSION_LIST - bytes_per_length_offset
+    payload_size = spec.config.MAX_BYTES_PER_INCLUSION_LIST
     transactions = spec.ProgressiveList[spec.Transaction](
         [spec.Transaction(b"\x00" * payload_size)]
     )

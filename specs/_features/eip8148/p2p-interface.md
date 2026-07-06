@@ -34,7 +34,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                   | Value                        |
 | -------------------------------------- | ---------------------------- |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE_EIP8148` | `uint64(4048398)` (= ~4 MiB) |
+| `MAX_SIGNED_BEACON_BLOCK_SIZE_EIP8148` | `uint64(4028558)` (= ~4 MiB) |
 
 ### Helpers
 
