@@ -5,6 +5,26 @@ from ruamel.yaml import YAML
 from snappy import compress
 
 from eth_consensus_specs.test import context
+from eth_consensus_specs.utils.ssz.ssz_typing import boolean, uint
+
+
+def _add_basic_type_representers(yaml: YAML) -> None:
+    """Teach the YAML instance to represent basic SSZ types.
+
+    ruamel.yaml matches representers by exact type, so int and bool subclasses
+    like uint64 or boolean are not covered by the built-in representers. Without
+    this, yielding such a value (e.g. a uint config value) as meta or data would
+    raise a RepresenterError. Represent them as the plain scalars they wrap.
+    """
+
+    def _represent_uint(self, data):
+        return self.represent_int(int(data))
+
+    def _represent_boolean(self, data):
+        return self.represent_bool(bool(data))
+
+    yaml.representer.add_multi_representer(uint, _represent_uint)
+    yaml.representer.add_multi_representer(boolean, _represent_boolean)
 
 
 def get_default_yaml():
@@ -22,6 +42,7 @@ def get_default_yaml():
 
     yaml.representer.add_representer(type(None), _represent_none)
     yaml.representer.add_representer(str, _represent_str)
+    _add_basic_type_representers(yaml)
 
     return yaml
 
@@ -41,6 +62,7 @@ def get_cfg_yaml():
 
     cfg_yaml.representer.add_representer(bytes, cfg_represent_bytes)
     cfg_yaml.representer.add_representer(context.quoted_str, cfg_represent_quoted_str)
+    _add_basic_type_representers(cfg_yaml)
 
     return cfg_yaml
 

@@ -275,7 +275,7 @@ def test_process_builder_deposit_request__top_up(spec, state):
 
     Input State Configured:
         - Existing builder pubkey
-        - Builder withdrawal credentials (0x03 prefix)
+        - Builder withdrawal credentials
 
     Output State Verified:
         - Builder balance increased (top-up)
