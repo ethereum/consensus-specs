@@ -12,6 +12,7 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 - [Table of contents](#table-of-contents)
 - [Constants](#constants)
   - [Execution](#execution)
+  - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
 - [Containers](#containers)
   - [New `ProofByRootIdentifier`](#new-proofbyrootidentifier)
 - [Helpers](#helpers)
@@ -40,6 +41,12 @@ and imports proof types from [proof-engine.md](./proof-engine.md).
 | Name                               | Value       |
 | ---------------------------------- | ----------- |
 | `MAX_EXECUTION_PROOFS_PER_PAYLOAD` | `uint64(4)` |
+
+### Type-specific SSZ bounds
+
+| Name                              | Value                        |
+| --------------------------------- | ---------------------------- |
+| `MAX_SIGNED_EXECUTION_PROOF_SIZE` | `uint64(4194449)` (= ~4 MiB) |
 
 ## Containers
 

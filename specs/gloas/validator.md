@@ -293,28 +293,17 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         prev_request_type = request_type
 
         if request_type == DEPOSIT_REQUEST_TYPE:
-            deposits = ssz_deserialize(
-                List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD], request_data
-            )
+            deposits = ssz_deserialize(DepositRequests, request_data)
         elif request_type == WITHDRAWAL_REQUEST_TYPE:
-            withdrawals = ssz_deserialize(
-                List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD], request_data
-            )
+            withdrawals = ssz_deserialize(WithdrawalRequests, request_data)
         elif request_type == CONSOLIDATION_REQUEST_TYPE:
-            consolidations = ssz_deserialize(
-                List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD], request_data
-            )
+            consolidations = ssz_deserialize(ConsolidationRequests, request_data)
         # [New in Gloas:EIP8282]
         elif request_type == BUILDER_DEPOSIT_REQUEST_TYPE:
-            builder_deposits = ssz_deserialize(
-                List[BuilderDepositRequest, MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD],
-                request_data,
-            )
+            builder_deposits = ssz_deserialize(BuilderDepositRequests, request_data)
         # [New in Gloas:EIP8282]
         elif request_type == BUILDER_EXIT_REQUEST_TYPE:
-            builder_exits = ssz_deserialize(
-                List[BuilderExitRequest, MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD], request_data
-            )
+            builder_exits = ssz_deserialize(BuilderExitRequests, request_data)
 
     return ExecutionRequests(
         deposits=deposits,

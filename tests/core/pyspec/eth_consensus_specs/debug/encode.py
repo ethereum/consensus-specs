@@ -3,6 +3,7 @@ from eth_consensus_specs.utils.ssz.ssz_typing import (
     Bitlist,
     Bitvector,
     boolean,
+    byte,
     CompatibleUnion,
     Container,
     List,
@@ -23,7 +24,9 @@ def encode(value, include_hash_tree_roots=False):
         return int(value)
     elif isinstance(value, boolean):
         return value == 1
-    elif isinstance(value, Bitlist | ProgressiveBitlist | Bitvector):
+    elif isinstance(value, Bitlist | ProgressiveBitlist | Bitvector) or (
+        isinstance(value, ProgressiveList) and issubclass(value.element_cls(), byte)
+    ):
         return "0x" + serialize(value).hex()
     elif isinstance(value, (list, List | ProgressiveList | Vector)):  # normal python lists
         return [encode(element, include_hash_tree_roots) for element in value]
