@@ -92,7 +92,10 @@ def build_max_size_partial_data_column_sidecar(spec):
 def build_max_size_execution_requests(spec):
     requests = spec.ExecutionRequests(
         deposits=spec.ProgressiveList[spec.DepositRequest](
-            [spec.DepositRequest()] * spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD
+            # Starting in Gloas, this limitation is removed in the consensus layer
+            # and is now controlled by the gas limit on the execution layer.
+            # Set this to reasonably high arbitrary limit.
+            [spec.DepositRequest()] * 40_000
         ),
         withdrawals=spec.ProgressiveList[spec.WithdrawalRequest](
             [spec.WithdrawalRequest()] * spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD

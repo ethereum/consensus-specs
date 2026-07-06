@@ -32,9 +32,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 #### Type-specific SSZ bounds
 
-| Name                                   | Value                        |
-| -------------------------------------- | ---------------------------- |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE_EIP8148` | `uint64(4028558)` (= ~4 MiB) |
+| Name                                   | Value                          |
+| -------------------------------------- | ------------------------------ |
+| `MAX_SIGNED_BEACON_BLOCK_SIZE_EIP8148` | `uint64(10135694)` (= ~10 MiB) |
 
 ### Helpers
 

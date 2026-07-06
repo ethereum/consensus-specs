@@ -1281,7 +1281,8 @@ def apply_parent_execution_payload(
     parent_slot = parent_bid.slot
     parent_epoch = compute_epoch_at_slot(parent_slot)
 
-    assert len(requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD
+    # [Modified in Gloas]
+    # Removed deposit requests length check
     assert len(requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
     assert len(requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
     # [New in Gloas:EIP8282]
