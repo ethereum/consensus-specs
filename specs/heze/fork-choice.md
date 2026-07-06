@@ -168,9 +168,15 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
 
 ### New `record_payload_inclusion_list_satisfaction`
 
-*Note*: Payloads previously validated as satisfying the inclusion list
-constraints SHOULD NOT be invalidated even if their associated `InclusionList`s
-have subsequently been pruned.
+*Note*: Payloads declared `VALID` by an execution engine and recorded as
+satisfying the inclusion list constraints SHOULD NOT be marked as unsatisfied
+even if their associated `InclusionList`s have subsequently been pruned.
+
+*Note*: A `NOT_VALIDATED` payload is optimistically recorded as satisfying the
+inclusion list constraints. When the `NOT_VALIDATED` payload transitions to
+`VALID`, whether the payload satisfies the inclusion list constraints MUST be
+recorded according to the [Optimistic sync](../../sync/optimistic.md)
+specification.
 
 *Note*: Whether a payload satisfies the inclusion list constraints MUST NOT
 affect payload validation. A valid payload that fails to satisfy those

@@ -78,7 +78,7 @@ def prepare_signed_execution_payload_bid(
         )
 
     if blob_kzg_commitments is None:
-        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+        blob_kzg_commitments = spec.ProgressiveList[spec.KZGCommitment]()
 
     if prev_randao is None:
         prev_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
