@@ -6,6 +6,8 @@
 
 - [Introduction](#introduction)
 - [Modifications in Heze](#modifications-in-heze)
+  - [Preset](#preset)
+    - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
   - [Configuration](#configuration)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
@@ -30,6 +32,16 @@ The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in Heze
+
+### Preset
+
+#### Type-specific SSZ bounds
+
+| Name                                         | Value                         |
+| -------------------------------------------- | ----------------------------- |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `uint64(196934)` (= ~192 KiB) |
+| `MAX_SIGNED_BEACON_BLOCK_SIZE_HEZE`          | `uint64(4027338)` (= ~4 MiB)  |
+| `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `uint64(8348)` (= ~8 KiB)     |
 
 ### Configuration
 
