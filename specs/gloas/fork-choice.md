@@ -48,12 +48,13 @@
     - [Modified `is_head_late`](#modified-is_head_late)
     - [Modified `is_head_weak`](#modified-is_head_weak)
     - [Modified `is_parent_strong`](#modified-is_parent_strong)
+    - [Modified `get_proposer_head`](#modified-get_proposer_head)
   - [`on_attestation` helpers](#on_attestation-helpers)
     - [Modified `validate_on_attestation`](#modified-validate_on_attestation)
     - [Modified `update_latest_messages`](#modified-update_latest_messages)
   - [`on_block` helpers](#on_block-helpers)
     - [Modified `record_block_timeliness`](#modified-record_block_timeliness)
-    - [Modified `get_dependent_root`](#modified-get_dependent_root)
+    - [Modified `get_shuffling_dependent_root`](#modified-get_shuffling_dependent_root)
     - [Modified `update_proposer_boost_root`](#modified-update_proposer_boost_root)
 - [Handlers](#handlers)
   - [Modified `on_block`](#modified-on_block)
@@ -416,9 +417,8 @@ def is_previous_slot_payload_decision(store: Store, node: ForkChoiceNode) -> boo
 
 *Note*: This function is called by the proposer to decide whether to build on
 top of the *empty* or *full* parent node. For a node from an earlier slot, it
-follows the payload status resolved by `get_head`. For a *full* node from the
-previous slot, it considers the PTC view on both payload timeliness and data
-availability.
+follows the node's payload status. For a *full* node from the previous slot, it
+considers the PTC view on both payload timeliness and data availability.
 
 ```python
 def should_build_on_full(store: Store, head: ForkChoiceNode) -> bool:
@@ -762,15 +762,80 @@ def is_head_weak(store: Store, head_root: Root) -> bool:
 
 #### Modified `is_parent_strong`
 
+*Note*: This function is modified to measure support for the parent beacon block
+root regardless of its payload status.
+
 ```python
 def is_parent_strong(store: Store, root: Root) -> bool:
     justified_state = store.checkpoint_states[store.justified_checkpoint]
     parent_threshold = calculate_committee_fraction(justified_state, REORG_PARENT_WEIGHT_THRESHOLD)
-    block = store.blocks[root]
-    parent_payload_status = get_parent_payload_status(store, block)
-    parent_node = ForkChoiceNode(root=block.parent_root, payload_status=parent_payload_status)
+    parent_root = store.blocks[root].parent_root
+    # [Modified in Gloas:EIP7732]
+    parent_node = ForkChoiceNode(root=parent_root, payload_status=PAYLOAD_STATUS_PENDING)
     parent_weight = get_attestation_score(store, parent_node, justified_state)
     return parent_weight > parent_threshold
+```
+
+#### Modified `get_proposer_head`
+
+*Note*: This function is modified to preserve the payload status of the parent
+node when a proposer re-org is selected.
+
+```python
+def get_proposer_head(store: Store, head_node: ForkChoiceNode, slot: Slot) -> ForkChoiceNode:
+    head_block = store.blocks[head_node.root]
+    parent_root = head_block.parent_root
+    parent_block = store.blocks[parent_root]
+    # [Modified in Gloas:EIP7732]
+    parent_payload_status = get_parent_payload_status(store, head_block)
+    parent_node = ForkChoiceNode(root=parent_root, payload_status=parent_payload_status)
+
+    # Only re-org the head block if it arrived later than the attestation deadline.
+    head_late = is_head_late(store, head_node.root)
+
+    # Do not re-org on an epoch boundary.
+    not_epoch_boundary = is_not_epoch_boundary(slot)
+
+    # Ensure that the FFG information of the new head will be competitive with the current head.
+    ffg_competitive = is_ffg_competitive(store, head_node.root, parent_root)
+
+    # Do not re-org if the chain is not finalizing with acceptable frequency.
+    finalization_ok = is_finalization_ok(store, slot)
+
+    # Only re-org if we are proposing on-time.
+    proposing_on_time = is_proposing_on_time(store)
+
+    # Only re-org a single slot at most.
+    parent_slot_ok = parent_block.slot + 1 == head_block.slot
+    current_time_ok = head_block.slot + 1 == slot
+    single_slot_reorg = parent_slot_ok and current_time_ok
+
+    # Check that the head has few enough votes to be overpowered by our proposer boost.
+    assert store.proposer_boost_root != head_node.root  # ensure boost has worn off
+    head_weak = is_head_weak(store, head_node.root)
+
+    # Check that the missing votes are assigned to the parent and not being hoarded.
+    parent_strong = is_parent_strong(store, head_node.root)
+
+    # Re-org more aggressively if there is a proposer equivocation in the previous slot.
+    proposer_equivocation = is_proposer_equivocation(store, head_node.root)
+
+    if all([
+        head_late,
+        not_epoch_boundary,
+        ffg_competitive,
+        finalization_ok,
+        proposing_on_time,
+        single_slot_reorg,
+        head_weak,
+        parent_strong,
+    ]):
+        # We can re-org the current head by building upon its parent node.
+        return parent_node
+    elif all([head_weak, current_time_ok, proposer_equivocation]):
+        return parent_node
+    else:
+        return head_node
 ```
 
 ### `on_attestation` helpers
@@ -868,11 +933,10 @@ def record_block_timeliness(store: Store, root: Root) -> None:
     ]
 ```
 
-#### Modified `get_dependent_root`
+#### Modified `get_shuffling_dependent_root`
 
 ```python
-def get_dependent_root(store: Store, root: Root) -> Root:
-    epoch = get_current_store_epoch(store)
+def get_shuffling_dependent_root(store: Store, root: Root, epoch: Epoch) -> Root:
     if epoch <= MIN_SEED_LOOKAHEAD:
         # Genesis block parent
         return Root()
@@ -893,7 +957,10 @@ def update_proposer_boost_root(store: Store, head: Root, root: Root) -> None:
     is_first_block = store.proposer_boost_root == Root()
     # [Modified in Gloas:EIP7732]
     is_timely = store.block_timeliness[root][ATTESTATION_TIMELINESS_INDEX]
-    is_same_dependent_root = get_dependent_root(store, root) == get_dependent_root(store, head)
+    epoch = get_current_store_epoch(store)
+    head_dependent_root = get_shuffling_dependent_root(store, head, epoch)
+    block_dependent_root = get_shuffling_dependent_root(store, root, epoch)
+    is_same_dependent_root = head_dependent_root == block_dependent_root
 
     # Add proposer score boost if the block is timely, not conflicting with an
     # existing block, with the same dependent root as the canonical chain head.

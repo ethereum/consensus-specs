@@ -58,7 +58,7 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         slot=pre.slot,
         fork=Fork(
             previous_version=pre.fork.current_version,
-            # [Modified in Heze:EIP7805]
+            # [Modified in Heze]
             current_version=HEZE_FORK_VERSION,
             epoch=epoch,
         ),

@@ -19,16 +19,16 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
-        - [`beacon_block`](#beacon_block)
-        - [`execution_payload`](#execution_payload)
-        - [`payload_attestation_message`](#payload_attestation_message)
-        - [`execution_payload_bid`](#execution_payload_bid)
-        - [`proposer_preferences`](#proposer_preferences)
-      - [Blob subnets](#blob-subnets)
-        - [`data_column_sidecar_{subnet_id}`](#data_column_sidecar_subnet_id)
+        - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
+        - [Modified `beacon_block`](#modified-beacon_block)
+        - [New `execution_payload`](#new-execution_payload)
+        - [New `payload_attestation_message`](#new-payload_attestation_message)
+        - [New `execution_payload_bid`](#new-execution_payload_bid)
+        - [New `proposer_preferences`](#new-proposer_preferences)
       - [Attestation subnets](#attestation-subnets)
-        - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
+        - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
+      - [Blob subnets](#blob-subnets)
+        - [Modified `data_column_sidecar_{subnet_id}`](#modified-data_column_sidecar_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
@@ -49,9 +49,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ### Configuration
 
-| Name                   | Value          | Description                                                       |
-| ---------------------- | -------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
+| Name                   | Value          |
+| ---------------------- | -------------- |
+| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) |
 
 ### Containers
 
@@ -234,7 +234,7 @@ are given in this table:
 Gloas introduces new global topics for execution bid, execution payload and
 payload attestation.
 
-###### `beacon_aggregate_and_proof`
+###### Modified `beacon_aggregate_and_proof`
 
 Let `block` be the beacon block corresponding to
 `aggregate.data.beacon_block_root`.
@@ -257,7 +257,7 @@ The following validations are removed:
 
 - _[REJECT]_ `aggregate.data.index == 0`.
 
-###### `beacon_block`
+###### Modified `beacon_block`
 
 *[Modified in Gloas:EIP7732]*
 
@@ -296,7 +296,7 @@ And instead the following validations are set in place with the alias
 - [REJECT] The bid's parent (defined by `bid.parent_block_root`) equals the
   block's parent (defined by `block.parent_root`).
 
-###### `execution_payload`
+###### New `execution_payload`
 
 This topic is used to propagate execution payload messages as
 `SignedExecutionPayloadEnvelope`.
@@ -328,7 +328,7 @@ obtained from the `state.latest_execution_payload_bid`)
 - _[REJECT]_ `signed_execution_payload_envelope.signature` is valid as verified
   by `verify_execution_payload_envelope_signature`.
 
-###### `payload_attestation_message`
+###### New `payload_attestation_message`
 
 This topic is used to propagate signed payload attestation message.
 
@@ -354,7 +354,7 @@ The following validations MUST pass before forwarding the
 - _[REJECT]_ `payload_attestation_message.signature` is valid with respect to
   the validator's public key.
 
-###### `execution_payload_bid`
+###### New `execution_payload_bid`
 
 This topic is used to propagate signed bids as `SignedExecutionPayloadBid`.
 
@@ -363,16 +363,18 @@ The following validations MUST pass before forwarding the
 `bid = signed_execution_payload_bid.message`, the alias
 `signed_proposer_preferences` for the validated `SignedProposerPreferences`
 whose `message.proposal_slot` is `bid.slot` and `message.dependent_root` is
-`get_proposer_dependent_root(parent_state, compute_epoch_at_slot(bid.slot))`,
-where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
+`get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot))`,
+where `store` is the fork choice store, and the alias
 `proposer_preferences = signed_proposer_preferences.message`:
 
 - _[IGNORE]_ `bid.slot` is the current slot or the next slot.
 - _[IGNORE]_ The matching `signed_proposer_preferences` has been seen.
 - _[REJECT]_ `bid.builder_index` is a valid/active builder index -- i.e.
   `is_active_builder(state, bid.builder_index)` returns `True`.
+- _[REJECT]_ The builder version is `PAYLOAD_BUILDER_VERSION` -- i.e.
+  `state.builders[bid.builder_index].version == PAYLOAD_BUILDER_VERSION`.
 - _[REJECT]_ `bid.execution_payment == 0`.
-- _[REJECT]_ `bid.fee_recipient == proposer_preferences.fee_recipient`.
+- _[IGNORE]_ `bid.fee_recipient == proposer_preferences.fee_recipient`.
 - _[REJECT]_ The length of KZG commitments is less than or equal to the
   limitation defined in the consensus layer -- i.e. validate that
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(compute_epoch_at_slot(bid.slot)).max_blobs_per_block`.
@@ -392,6 +394,8 @@ where `parent_state` is the post-state of `bid.parent_block_root`, and the alias
 - _[REJECT]_ The bid is for a higher slot than its parent block -- i.e. validate
   that `bid.slot` is greater than the slot of the block with root
   `bid.parent_block_root`.
+- _[REJECT]_ `bid.prev_randao` is the correct RANDAO mix -- i.e. validate that
+  `bid.prev_randao == get_randao_mix(parent_state, get_current_epoch(parent_state))`.
 - _[REJECT]_ `signed_execution_payload_bid.signature` is valid with respect to
   the `bid.builder_index`.
 
@@ -420,7 +424,7 @@ Possible strategies include: (1) only forwarding bids that exceed the current
 highest bid by a minimum threshold, or (2) forwarding only the highest observed
 bid at regular time intervals.
 
-###### `proposer_preferences`
+###### New `proposer_preferences`
 
 *[New in Gloas:EIP7732]*
 
@@ -468,23 +472,39 @@ def is_valid_proposal_slot(state: BeaconState, preferences: ProposerPreferences)
     return state.proposer_lookahead[index] == preferences.validator_index
 ```
 
-```python
-def get_proposer_dependent_root(state: BeaconState, epoch: Epoch) -> Root:
-    """
-    Return the dependent root for the proposer lookahead at ``epoch``.
-    """
-    return get_block_root_at_slot(
-        state, Slot(compute_start_slot_at_epoch(Epoch(epoch - MIN_SEED_LOOKAHEAD)) - 1)
-    )
-```
-
 *Note*: Nodes SHOULD subscribe to this topic at least one epoch before the fork
 activation. Proposers SHOULD broadcast their preferences in the epoch before the
 fork.
 
+##### Attestation subnets
+
+###### Modified `beacon_attestation_{subnet_id}`
+
+Let `block` be the beacon block corresponding to
+`attestation.data.beacon_block_root`.
+
+The following validations are added:
+
+- _[REJECT]_ `attestation.data.index < 2`.
+- _[REJECT]_ `attestation.data.index == 0` if
+  `block.slot == attestation.data.slot`.
+- _[REJECT]_ If `attestation.data.index == 1` (payload present for a past
+  block), the execution payload for `block` passes validation.
+- _[IGNORE]_ When `attestation.data.index == 1` (payload present for a past
+  block), the execution payload for `block` has been fully imported, including
+  its data -- i.e.
+  `is_payload_verified(store, attestation.data.beacon_block_root)` returns
+  `True` (a client MAY queue attestations for processing until the payload is
+  imported and SHOULD request the payload envelope via
+  `ExecutionPayloadEnvelopesByRoot` using `attestation.data.beacon_block_root`).
+
+The following validations are removed:
+
+- _[REJECT]_ `attestation.data.index == 0`.
+
 ##### Blob subnets
 
-###### `data_column_sidecar_{subnet_id}`
+###### Modified `data_column_sidecar_{subnet_id}`
 
 *[Modified in Gloas:EIP7732]*
 
@@ -512,32 +532,6 @@ The following validations MUST pass before forwarding the
 downscored retroactively. If validation succeeds, the client MUST re-broadcast
 the sidecar.
 
-##### Attestation subnets
-
-###### `beacon_attestation_{subnet_id}`
-
-Let `block` be the beacon block corresponding to
-`attestation.data.beacon_block_root`.
-
-The following validations are added:
-
-- _[REJECT]_ `attestation.data.index < 2`.
-- _[REJECT]_ `attestation.data.index == 0` if
-  `block.slot == attestation.data.slot`.
-- _[REJECT]_ If `attestation.data.index == 1` (payload present for a past
-  block), the execution payload for `block` passes validation.
-- _[IGNORE]_ When `attestation.data.index == 1` (payload present for a past
-  block), the execution payload for `block` has been fully imported, including
-  its data -- i.e.
-  `is_payload_verified(store, attestation.data.beacon_block_root)` returns
-  `True` (a client MAY queue attestations for processing until the payload is
-  imported and SHOULD request the payload envelope via
-  `ExecutionPayloadEnvelopesByRoot` using `attestation.data.beacon_block_root`).
-
-The following validations are removed:
-
-- _[REJECT]_ `attestation.data.index == 0`.
-
 ### The Req/Resp domain
 
 #### Messages
@@ -545,6 +539,9 @@ The following validations are removed:
 ##### BeaconBlocksByRange v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
+
+The Gloas fork-digest is introduced to the `context` enum to specify Gloas
+beacon block type.
 
 <!-- eth_consensus_specs: skip -->
 
@@ -562,6 +559,9 @@ The following validations are removed:
 ##### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
+
+The Gloas fork-digest is introduced to the `context` enum to specify Gloas
+beacon block type.
 
 <!-- eth_consensus_specs: skip -->
 
@@ -594,11 +594,11 @@ Response Content:
 
 ```
 (
-  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_BLOCKS_DENEB]
+  List[SignedExecutionPayloadEnvelope, MAX_REQUEST_PAYLOADS]
 )
 ```
 
-Specifications of req\\response methods are equivalent to
+Specifications of request/response methods are equivalent to
 [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference
 being the response content type.
 
@@ -618,19 +618,6 @@ Per `fork_version = compute_fork_version(epoch)`:
 ##### ExecutionPayloadEnvelopesByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_root/1/`
-
-For each successful `response_chunk`, the `ForkDigest` context epoch is
-determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
-`beacon_block` referred to by
-`signed_execution_payload_envelope.message.beacon_block_root`.
-
-Per `fork_version = compute_fork_version(epoch)`:
-
-<!-- eth_consensus_specs: skip -->
-
-| `fork_version`       | Chunk SSZ type                         |
-| -------------------- | -------------------------------------- |
-| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
 
 Request Content:
 
@@ -673,3 +660,16 @@ payload envelope in the response.
 
 Clients MUST respond with at least one payload envelope, if they have it.
 Clients MAY limit the number of payload envelopes in the response.
+
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
+`beacon_block` referred to by
+`signed_execution_payload_envelope.message.beacon_block_root`.
+
+Per `fork_version = compute_fork_version(epoch)`:
+
+<!-- eth_consensus_specs: skip -->
+
+| `fork_version`       | Chunk SSZ type                         |
+| -------------------- | -------------------------------------- |
+| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |

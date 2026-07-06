@@ -1,19 +1,13 @@
 from eth_consensus_specs.test.context import (
-    default_activation_threshold,
-    default_balances,
     MINIMAL,
+    never_bls,
     only_generator,
-    single_phase,
-    spec_test,
-    with_all_phases_from_to,
-    with_custom_state,
+    spec_state_test,
+    with_altair_and_later,
     with_presets,
 )
-from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    GLOAS,
-)
 from eth_consensus_specs.test.helpers.fast_confirmation import (
+    Attesting,
     FCRTest,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
@@ -26,14 +20,10 @@ Test on update FCR variables
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
+@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
+@never_bls
 def test_fcr_invariants_monotone_and_canonical(spec, state):
     """
     Validates two critical properties of the Fast Confirmation Rule:
@@ -71,14 +61,10 @@ def test_fcr_invariants_monotone_and_canonical(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
+@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
+@never_bls
 def test_observed_justified_checkpoints_update_timing(spec, state):
     """
     Test the timing of observed justified checkpoint updates:
@@ -196,17 +182,12 @@ def test_observed_justified_checkpoints_update_timing(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
+@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
+@never_bls
 def test_observed_justified_checkpoints_properties_across_epochs(spec, state):
     """
-
     1. At the last slot of epoch e, the GU snapshot is taken:
        previous_epoch_greatest_unrealized_checkpoint := unrealized_justified_checkpoint
     2. At the first slot of epoch e+1, observed checkpoints rotate:
@@ -321,14 +302,10 @@ def test_observed_justified_checkpoints_properties_across_epochs(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
+@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
+@never_bls
 def test_observed_justified_stalls_under_low_participation(spec, state):
     """
     Test that observed justified checkpoints stall (don't advance) under low participation.
@@ -361,14 +338,10 @@ def test_observed_justified_stalls_under_low_participation(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
+@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
+@never_bls
 def test_slot_head_variables_updated_every_slot(spec, state):
     """
     Test that previous_slot_head and current_slot_head are updated every slot.
@@ -410,14 +383,10 @@ def test_slot_head_variables_updated_every_slot(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
+@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
+@never_bls
 def test_gu_snapshot_initialization_and_stability(spec, state):
     """
     Test properties of previous_epoch_greatest_unrealized_checkpoint:
@@ -481,14 +450,10 @@ def test_gu_snapshot_initialization_and_stability(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
+@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
+@never_bls
 def test_observed_justified_stable_during_last_slot(spec, state):
     """
     At the last slot of an epoch, the observed justified checkpoints used by is_one_confirmed must still
@@ -538,5 +503,46 @@ def test_observed_justified_stable_during_last_slot(spec, state):
         fcr_store.previous_epoch_greatest_unrealized_checkpoint
         == store.unrealized_justified_checkpoint
     ), "GU snapshot should be taken at last slot even though observed checkpoints don't rotate"
+
+    yield from fcr.get_test_artefacts()
+
+
+@only_generator("too slow")
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+@never_bls
+def test_current_slot_head_correct_after_reorg(spec, state):
+    """
+    1. Run several slots into an epoch.
+    2. Create block A and B. Set head to A.
+    3. Switch head to B and wait for current_slot_head sampling.
+    4. Reorg back to A and check that current_slot_head == B.
+    """
+    fcr = FCRTest(spec, seed=1)
+    store, fcr_store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+    while fcr.current_slot() < S - 3:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    block_r = fcr.head_root()
+
+    # A is the head
+    block_a = fcr.next_slot_with_block_and_fast_confirmation(participation_rate=0)
+    # B is the head and is the current_slot_head
+    block_b = fcr.next_slot_with_block_and_fast_confirmation(
+        participation_rate=20, parent_root=block_r
+    )
+    # Reorg back to A by applying attestations from slot(A)
+    Attesting(
+        participation_rate=100,
+        block_id=block_a,
+        committee_slot_or_offset=spec.get_block_slot(store, block_a),
+    ).execute(fcr)
+
+    # Check post conditions
+    assert fcr.head_root() == block_a
+    assert fcr_store.current_slot_head == block_b
 
     yield from fcr.get_test_artefacts()

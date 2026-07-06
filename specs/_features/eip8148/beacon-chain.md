@@ -55,7 +55,7 @@ control their balance withdrawals more precisely.
 
 | Name                           | Value            |
 | ------------------------------ | ---------------- |
-| `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1('0x03')` |
+| `SWEEP_THRESHOLD_REQUEST_TYPE` | `Bytes1('0x05')` |
 
 ### Sweep threshold validation
 
@@ -122,7 +122,6 @@ class BeaconState(Container):
     execution_payload_availability: Bitvector[SLOTS_PER_HISTORICAL_ROOT]
     builder_pending_payments: Vector[BuilderPendingPayment, 2 * SLOTS_PER_EPOCH]
     builder_pending_withdrawals: List[BuilderPendingWithdrawal, BUILDER_PENDING_WITHDRAWALS_LIMIT]
-    # [Modified in Heze:EIP7805]
     latest_execution_payload_bid: ExecutionPayloadBid
     payload_expected_withdrawals: List[Withdrawal, MAX_WITHDRAWALS_PER_PAYLOAD]
     ptc_window: Vector[Vector[ValidatorIndex, PTC_SIZE], (2 + MIN_SEED_LOOKAHEAD) * SLOTS_PER_EPOCH]
@@ -137,6 +136,8 @@ class ExecutionRequests(Container):
     deposits: List[DepositRequest, MAX_DEPOSIT_REQUESTS_PER_PAYLOAD]
     withdrawals: List[WithdrawalRequest, MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD]
     consolidations: List[ConsolidationRequest, MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD]
+    builder_deposits: List[BuilderDepositRequest, MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD]
+    builder_exits: List[BuilderExitRequest, MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD]
     # [New in EIP8148]
     sweep_thresholds: List[SetSweepThresholdRequest, MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD]
 ```
@@ -239,6 +240,8 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
         (DEPOSIT_REQUEST_TYPE, execution_requests.deposits),
         (WITHDRAWAL_REQUEST_TYPE, execution_requests.withdrawals),
         (CONSOLIDATION_REQUEST_TYPE, execution_requests.consolidations),
+        (BUILDER_DEPOSIT_REQUEST_TYPE, execution_requests.builder_deposits),
+        (BUILDER_EXIT_REQUEST_TYPE, execution_requests.builder_exits),
         # [New in EIP8148]
         (SWEEP_THRESHOLD_REQUEST_TYPE, execution_requests.sweep_thresholds),
     ]
@@ -376,6 +379,8 @@ def apply_parent_execution_payload(
     for_ops(requests.deposits, process_deposit_request)
     for_ops(requests.withdrawals, process_withdrawal_request)
     for_ops(requests.consolidations, process_consolidation_request)
+    for_ops(requests.builder_deposits, process_builder_deposit_request)
+    for_ops(requests.builder_exits, process_builder_exit_request)
     # [New in EIP8148]
     for_ops(requests.sweep_thresholds, process_set_sweep_threshold_request)
 

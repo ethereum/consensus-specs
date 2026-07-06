@@ -257,7 +257,7 @@ def add_attestations_to_state(spec, state, attestations, slot):
 
 
 def get_valid_attestations_at_slot(
-    state, spec, slot_to_attest, participation_fn=None, beacon_block_root=None
+    state, spec, slot_to_attest, participation_fn=None, beacon_block_root=None, payload_index=None
 ):
     """
     Return attestations at slot `slot_to_attest`.
@@ -282,6 +282,7 @@ def get_valid_attestations_at_slot(
             signed=True,
             filter_participant_set=participants_filter,
             beacon_block_root=beacon_block_root,
+            payload_index=payload_index,
         )
 
         # Valid attestation must have at least one aggregation bit set
@@ -293,7 +294,7 @@ def get_valid_attestations_at_slot(
 
 
 def get_valid_attestation_at_slot(
-    state, spec, slot_to_attest, participation_fn=None, beacon_block_root=None
+    state, spec, slot_to_attest, participation_fn=None, beacon_block_root=None, payload_index=None
 ):
     """
     Return the aggregate attestation post Electra.
@@ -306,6 +307,7 @@ def get_valid_attestation_at_slot(
         slot_to_attest,
         participation_fn=participation_fn,
         beacon_block_root=beacon_block_root,
+        payload_index=payload_index,
     )
     if not attestations:
         raise Exception("No valid attestations found")
@@ -335,7 +337,7 @@ def next_slots_with_attestations(
 
 
 def get_valid_attestations_for_block_at_slot(
-    spec, state, slot_to_attest, beacon_block_root=None, participation_fn=None
+    spec, state, slot_to_attest, beacon_block_root=None, participation_fn=None, payload_index=None
 ):
     if is_post_electra(spec):
         return [
@@ -345,6 +347,7 @@ def get_valid_attestations_for_block_at_slot(
                 slot_to_attest,
                 participation_fn=participation_fn,
                 beacon_block_root=beacon_block_root,
+                payload_index=payload_index,
             )
         ]
     else:

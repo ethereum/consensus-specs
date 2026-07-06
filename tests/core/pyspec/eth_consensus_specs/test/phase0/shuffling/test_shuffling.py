@@ -8,7 +8,7 @@ from eth_consensus_specs.test.context import (
     with_test_suite_name,
 )
 from eth_consensus_specs.test.helpers.constants import PHASE0
-from tests.infra.template_test import template_test
+from eth_consensus_specs.test.utils.template_test import template_test
 
 
 def _generate_random_bytes(rng):

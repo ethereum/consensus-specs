@@ -21,7 +21,6 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     on_tick_and_append_step,
     output_store_checks,
 )
-from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.gen_base.gen_typing import (
     TestCase,
     TestCasePart,
@@ -453,10 +452,6 @@ def yield_test_parts(spec, store, test_data: FCTestData, events):
     output_store_checks(spec, store, test_steps, with_viable_for_head_weights=True)
 
     yield "steps", test_steps
-
-
-def prepare_bls():
-    bls.use_milagro()
 
 
 def get_test_kind(test_type, with_attester_slashings, with_invalid_messages):

@@ -12,12 +12,13 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
-        - [`beacon_aggregate_and_proof`](#beacon_aggregate_and_proof)
-        - [`attester_slashing`](#attester_slashing)
-        - [`blob_sidecar_{subnet_id}`](#blob_sidecar_subnet_id)
+        - [Modified `beacon_block`](#modified-beacon_block)
+        - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
+        - [Modified `attester_slashing`](#modified-attester_slashing)
       - [Attestation subnets](#attestation-subnets)
-        - [`beacon_attestation_{subnet_id}`](#beacon_attestation_subnet_id)
+        - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
+      - [Blob subnets](#blob-subnets)
+        - [Modified `blob_sidecar_{subnet_id}`](#modified-blob_sidecar_subnet_id)
   - [The Req/Resp domain](#the-reqresp-domain)
     - [Messages](#messages)
       - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
@@ -41,9 +42,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 *[New in Electra:EIP7691]*
 
-| Name                                | Value | Description                                                       |
-| ----------------------------------- | ----- | ----------------------------------------------------------------- |
-| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`   | The number of blob sidecar subnets used in the gossipsub protocol |
+| Name                                | Value | Description                                                   |
+| ----------------------------------- | ----- | ------------------------------------------------------------- |
+| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`   | Number of blob sidecar subnets used in the gossipsub protocol |
 
 ### Helpers
 
@@ -121,7 +122,7 @@ The derivation of the `message-id` remains stable.
 
 ##### Global topics
 
-###### `beacon_block`
+###### Modified `beacon_block`
 
 *Note*: This function is modified per EIP-7691. The block's KZG commitment count
 is bounded by `MAX_BLOBS_PER_BLOCK_ELECTRA`.
@@ -222,7 +223,7 @@ def validate_beacon_block_gossip(
     seen.proposer_slots.add((block.proposer_index, block.slot))
 ```
 
-###### `beacon_aggregate_and_proof`
+###### Modified `beacon_aggregate_and_proof`
 
 *Note*: This function is modified per EIP-7549. The committee index is now
 encoded in `aggregate.committee_bits`, `aggregate.data.index` MUST be zero, and
@@ -368,114 +369,16 @@ def validate_beacon_aggregate_and_proof_gossip(
     seen.aggregate_data_roots[aggregate_cache_key].add(aggregate_bits)
 ```
 
-###### `attester_slashing`
+###### Modified `attester_slashing`
 
 *Note*: This function is modified per EIP-7549. The new `AttesterSlashing` type
 wraps an `IndexedAttestation` payload sized for
 `MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT` attesting indices; the
 validation logic is otherwise unchanged.
 
-###### `blob_sidecar_{subnet_id}`
-
-*Note*: This function is modified per EIP-7691. The sidecar's index is bounded
-by `MAX_BLOBS_PER_BLOCK_ELECTRA`.
-
-```python
-def validate_blob_sidecar_gossip(
-    seen: Seen,
-    store: Store,
-    state: BeaconState,
-    blob_sidecar: BlobSidecar,
-    current_time_ms: uint64,
-    subnet_id: SubnetID,
-) -> None:
-    """
-    Validate a BlobSidecar for gossip propagation on a subnet.
-    Raises GossipIgnore or GossipReject on validation failure.
-    """
-    block_header = blob_sidecar.signed_block_header.message
-
-    # [Modified in Electra:EIP7691]
-    # [REJECT] The sidecar's index is consistent with MAX_BLOBS_PER_BLOCK_ELECTRA
-    if blob_sidecar.index >= MAX_BLOBS_PER_BLOCK_ELECTRA:
-        raise GossipReject("blob index out of range")
-
-    # [REJECT] The sidecar is for the correct subnet
-    if compute_subnet_for_blob_sidecar(blob_sidecar.index) != subnet_id:
-        raise GossipReject("blob sidecar is for wrong subnet")
-
-    # [IGNORE] The sidecar is not from a future slot
-    # (MAY be queued for processing at the appropriate slot)
-    if not is_not_from_future_slot(state, block_header.slot, current_time_ms):
-        raise GossipIgnore("blob sidecar is from a future slot")
-
-    # [IGNORE] The sidecar is from a slot greater than the latest finalized slot
-    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
-    if block_header.slot <= finalized_slot:
-        raise GossipIgnore("blob sidecar is not from a slot greater than the latest finalized slot")
-
-    # [REJECT] The proposer index is a valid validator index
-    if block_header.proposer_index >= len(state.validators):
-        raise GossipReject("proposer index out of range")
-
-    # [REJECT] The proposer signature of blob_sidecar.signed_block_header is valid
-    proposer = state.validators[block_header.proposer_index]
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block_header.slot))
-    signing_root = compute_signing_root(block_header, domain)
-    if not bls.Verify(proposer.pubkey, signing_root, blob_sidecar.signed_block_header.signature):
-        raise GossipReject("invalid proposer signature on blob sidecar block header")
-
-    # [IGNORE] The sidecar's block's parent has been seen
-    # (MAY be queued for processing once the parent block is retrieved)
-    if block_header.parent_root not in store.blocks:
-        raise GossipIgnore("blob sidecar's parent has not been seen")
-
-    # [REJECT] The sidecar's block's parent passes validation
-    if block_header.parent_root not in store.block_states:
-        raise GossipReject("blob sidecar's parent failed validation")
-
-    # [REJECT] The sidecar is from a higher slot than the sidecar's block's parent
-    if block_header.slot <= store.blocks[block_header.parent_root].slot:
-        raise GossipReject("blob sidecar is not from a higher slot than its parent")
-
-    # [REJECT] The current finalized_checkpoint is an ancestor of the sidecar's block
-    checkpoint_block = get_checkpoint_block(
-        store, block_header.parent_root, store.finalized_checkpoint.epoch
-    )
-    if checkpoint_block != store.finalized_checkpoint.root:
-        raise GossipReject("finalized checkpoint is not an ancestor of blob sidecar's block")
-
-    # [REJECT] The sidecar's inclusion proof is valid as verified by verify_blob_sidecar_inclusion_proof
-    if not verify_blob_sidecar_inclusion_proof(blob_sidecar):
-        raise GossipReject("invalid blob sidecar inclusion proof")
-
-    # [REJECT] The sidecar's blob is valid as verified by verify_blob_kzg_proof
-    if not verify_blob_kzg_proof(
-        blob_sidecar.blob, blob_sidecar.kzg_commitment, blob_sidecar.kzg_proof
-    ):
-        raise GossipReject("invalid blob kzg proof")
-
-    # [IGNORE] The sidecar is the first sidecar for the tuple
-    # (block_header.slot, block_header.proposer_index, blob_sidecar.index)
-    sidecar_tuple = (block_header.slot, block_header.proposer_index, blob_sidecar.index)
-    if sidecar_tuple in seen.blob_sidecar_tuples:
-        raise GossipIgnore("already seen blob sidecar from this proposer for this slot and index")
-
-    # [REJECT] The sidecar is proposed by the expected proposer_index
-    # (if shuffling is not available, IGNORE instead and MAY be queued for later)
-    parent_state = store.block_states[block_header.parent_root].copy()
-    process_slots(parent_state, block_header.slot)
-    expected_proposer = get_beacon_proposer_index(parent_state)
-    if block_header.proposer_index != expected_proposer:
-        raise GossipReject("blob sidecar proposer_index does not match expected proposer")
-
-    # Mark this blob sidecar as seen
-    seen.blob_sidecar_tuples.add(sidecar_tuple)
-```
-
 ##### Attestation subnets
 
-###### `beacon_attestation_{subnet_id}`
+###### Modified `beacon_attestation_{subnet_id}`
 
 *Note*: This function is modified per EIP-7549. The topic now propagates
 `SingleAttestation` objects: the attesting validator's index is carried directly
@@ -590,6 +493,106 @@ def validate_beacon_attestation_gossip(
     seen.attestation_validator_epochs.add((attester_index, target_epoch))
 ```
 
+##### Blob subnets
+
+###### Modified `blob_sidecar_{subnet_id}`
+
+*Note*: This function is modified per EIP-7691. The sidecar's index is bounded
+by `MAX_BLOBS_PER_BLOCK_ELECTRA`.
+
+```python
+def validate_blob_sidecar_gossip(
+    seen: Seen,
+    store: Store,
+    state: BeaconState,
+    blob_sidecar: BlobSidecar,
+    current_time_ms: uint64,
+    subnet_id: SubnetID,
+) -> None:
+    """
+    Validate a BlobSidecar for gossip propagation on a subnet.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    block_header = blob_sidecar.signed_block_header.message
+
+    # [Modified in Electra:EIP7691]
+    # [REJECT] The sidecar's index is consistent with MAX_BLOBS_PER_BLOCK_ELECTRA
+    if blob_sidecar.index >= MAX_BLOBS_PER_BLOCK_ELECTRA:
+        raise GossipReject("blob index out of range")
+
+    # [REJECT] The sidecar is for the correct subnet
+    if compute_subnet_for_blob_sidecar(blob_sidecar.index) != subnet_id:
+        raise GossipReject("blob sidecar is for wrong subnet")
+
+    # [IGNORE] The sidecar is not from a future slot
+    # (MAY be queued for processing at the appropriate slot)
+    if not is_not_from_future_slot(state, block_header.slot, current_time_ms):
+        raise GossipIgnore("blob sidecar is from a future slot")
+
+    # [IGNORE] The sidecar is from a slot greater than the latest finalized slot
+    finalized_slot = compute_start_slot_at_epoch(store.finalized_checkpoint.epoch)
+    if block_header.slot <= finalized_slot:
+        raise GossipIgnore("blob sidecar is not from a slot greater than the latest finalized slot")
+
+    # [REJECT] The proposer index is a valid validator index
+    if block_header.proposer_index >= len(state.validators):
+        raise GossipReject("proposer index out of range")
+
+    # [REJECT] The proposer signature of blob_sidecar.signed_block_header is valid
+    proposer = state.validators[block_header.proposer_index]
+    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block_header.slot))
+    signing_root = compute_signing_root(block_header, domain)
+    if not bls.Verify(proposer.pubkey, signing_root, blob_sidecar.signed_block_header.signature):
+        raise GossipReject("invalid proposer signature on blob sidecar block header")
+
+    # [IGNORE] The sidecar's block's parent has been seen
+    # (MAY be queued for processing once the parent block is retrieved)
+    if block_header.parent_root not in store.blocks:
+        raise GossipIgnore("blob sidecar's parent has not been seen")
+
+    # [REJECT] The sidecar's block's parent passes validation
+    if block_header.parent_root not in store.block_states:
+        raise GossipReject("blob sidecar's parent failed validation")
+
+    # [REJECT] The sidecar is from a higher slot than the sidecar's block's parent
+    if block_header.slot <= store.blocks[block_header.parent_root].slot:
+        raise GossipReject("blob sidecar is not from a higher slot than its parent")
+
+    # [REJECT] The current finalized_checkpoint is an ancestor of the sidecar's block
+    checkpoint_block = get_checkpoint_block(
+        store, block_header.parent_root, store.finalized_checkpoint.epoch
+    )
+    if checkpoint_block != store.finalized_checkpoint.root:
+        raise GossipReject("finalized checkpoint is not an ancestor of blob sidecar's block")
+
+    # [REJECT] The sidecar's inclusion proof is valid as verified by verify_blob_sidecar_inclusion_proof
+    if not verify_blob_sidecar_inclusion_proof(blob_sidecar):
+        raise GossipReject("invalid blob sidecar inclusion proof")
+
+    # [REJECT] The sidecar's blob is valid as verified by verify_blob_kzg_proof
+    if not verify_blob_kzg_proof(
+        blob_sidecar.blob, blob_sidecar.kzg_commitment, blob_sidecar.kzg_proof
+    ):
+        raise GossipReject("invalid blob kzg proof")
+
+    # [IGNORE] The sidecar is the first sidecar for the tuple
+    # (block_header.slot, block_header.proposer_index, blob_sidecar.index)
+    sidecar_tuple = (block_header.slot, block_header.proposer_index, blob_sidecar.index)
+    if sidecar_tuple in seen.blob_sidecar_tuples:
+        raise GossipIgnore("already seen blob sidecar from this proposer for this slot and index")
+
+    # [REJECT] The sidecar is proposed by the expected proposer_index
+    # (if shuffling is not available, IGNORE instead and MAY be queued for later)
+    parent_state = store.block_states[block_header.parent_root].copy()
+    process_slots(parent_state, block_header.slot)
+    expected_proposer = get_beacon_proposer_index(parent_state)
+    if block_header.proposer_index != expected_proposer:
+        raise GossipReject("blob sidecar proposer_index does not match expected proposer")
+
+    # Mark this blob sidecar as seen
+    seen.blob_sidecar_tuples.add(sidecar_tuple)
+```
+
 ### The Req/Resp domain
 
 #### Messages
@@ -615,6 +618,9 @@ beacon block type.
 ##### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
+
+The Electra fork-digest is introduced to the `context` enum to specify Electra
+beacon block type.
 
 <!-- eth_consensus_specs: skip -->
 

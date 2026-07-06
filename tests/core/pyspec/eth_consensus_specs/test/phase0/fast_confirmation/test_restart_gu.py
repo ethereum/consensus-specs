@@ -1,17 +1,10 @@
 from eth_consensus_specs.test.context import (
-    default_activation_threshold,
-    default_balances,
     MINIMAL,
+    never_bls,
     only_generator,
-    single_phase,
-    spec_test,
-    with_all_phases_from_to,
-    with_custom_state,
+    spec_state_test,
+    with_altair_and_later,
     with_presets,
-)
-from eth_consensus_specs.test.helpers.constants import (
-    ALTAIR,
-    GLOAS,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     debug_print,
@@ -28,14 +21,10 @@ Test on restart to GU
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
+@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
+@never_bls
 def test_fcr_restarts_to_gu_when_all_conditions_met(spec, state):
     """
     DEBUG: Verify restart-to-GU path is actually triggered.
@@ -117,14 +106,10 @@ def test_fcr_restarts_to_gu_when_all_conditions_met(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
+@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
+@never_bls
 def test_fcr_restarts_to_gu_and_confirms_beyond_gu(spec, state):
     """
     Test that confirmed_root restarts to GU (not finalized)
@@ -197,14 +182,10 @@ def test_fcr_restarts_to_gu_and_confirms_beyond_gu(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
+@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
+@never_bls
 def test_fcr_no_restart_to_gu_mid_epoch(spec, state):
     """
     Test that restart-to-GU only triggers at epoch boundaries, not mid-epoch.
@@ -258,14 +239,10 @@ def test_fcr_no_restart_to_gu_mid_epoch(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
+@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
+@never_bls
 def test_fcr_no_restart_to_gu_because_gu_too_old(spec, state):
     """
     Test that restart-to-GU fails when GU.epoch < current_epoch - 1.
@@ -349,14 +326,10 @@ def test_fcr_no_restart_to_gu_because_gu_too_old(spec, state):
 
 
 @only_generator("too slow")
-@with_all_phases_from_to(ALTAIR, GLOAS)
+@with_altair_and_later
+@spec_state_test
 @with_presets([MINIMAL], reason="too slow")
-@with_custom_state(
-    balances_fn=(lambda spec: default_balances(spec, num_validators=64)),
-    threshold_fn=default_activation_threshold,
-)
-@spec_test
-@single_phase
+@never_bls
 def test_fcr_no_restart_when_gu_block_is_epoch_older(spec, state):
     """
     DEBUG: Verify restart-to-GU path is actually triggered.
@@ -437,5 +410,77 @@ def test_fcr_no_restart_when_gu_block_is_epoch_older(spec, state):
     )
 
     assert fcr_store.confirmed_root == finalized_root, "MUST stay at finalized"
+
+    yield from fcr.get_test_artefacts()
+
+
+@only_generator("too slow")
+@with_altair_and_later
+@spec_state_test
+@with_presets([MINIMAL], reason="too slow")
+@never_bls
+def test_fcr_no_restart_if_head_gu_is_stale(spec, state):
+    fcr = FCRTest(spec, seed=1)
+    store, fcr_store = fcr.initialize(state)
+
+    S = spec.SLOTS_PER_EPOCH
+    justifying_slot = spec.SLOTS_PER_EPOCH * 2 // 3 + 1
+
+    # Move to a slot before the justifying slot
+    while fcr.current_slot() < S + justifying_slot - 1:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    # Withhold epoch 1 justification
+    atts_justifying_epoch_1 = fcr.attest(pool_and_disseminate=False)
+    fcr.next_slot()
+    fcr.run_fast_confirmation()
+
+    # Move to the start of epoch 2 with zero participation to prevent epoch 1 justification
+    while fcr.current_slot() < 2 * S:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=0)
+
+    # Justify epoch 1 with the first block from epoch 2
+    fcr.add_and_apply_block(attestations=atts_justifying_epoch_1)
+    fcr.attest_and_next_slot_with_fast_confirmation(participation_rate=100)
+
+    # Move to the justifying slot of epoch 2 with 100% participation
+    while fcr.current_slot() < 2 * S + justifying_slot:
+        fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
+
+    pivot_root = fcr.head_root()
+    # Justify epoch 2
+    fcr.next_slot_with_block_and_fast_confirmation(participation_rate=0)
+
+    # Create a 'head' block that doesn't justify epoch 2, attest to 'head'
+    head_root = fcr.next_slot_with_block_and_fast_confirmation(
+        participation_rate=100, parent_root=pivot_root, graffiti="head"
+    )
+
+    # Move to the start of the next epoch, attest to 'head'
+    while fcr.current_slot() < 3 * S:
+        fcr.attest_and_next_slot_with_fast_confirmation(
+            participation_rate=100, block_root=head_root
+        )
+
+    # Check preconditions,
+    # 'head' block is the head but it doesn't justify epoch 2 on chain
+    # thus no restart happens
+    assert spec.is_start_slot_at_epoch(spec.get_current_slot(store))
+    observed_justified_block_slot = spec.get_block_slot(
+        store, fcr_store.current_epoch_observed_justified_checkpoint.root
+    )
+    assert spec.compute_epoch_at_slot(
+        observed_justified_block_slot
+    ) + 1 == spec.get_current_store_epoch(store)
+    assert spec.get_block_slot(store, fcr_store.confirmed_root) < observed_justified_block_slot
+    # Head's GU is stale
+    assert (
+        store.unrealized_justifications[fcr.head_root()]
+        != fcr_store.current_epoch_observed_justified_checkpoint
+    )
+
+    # Run fast confirmation and check that no restart happens
+    fcr.run_fast_confirmation()
+    assert fcr_store.confirmed_root == store.finalized_checkpoint.root
 
     yield from fcr.get_test_artefacts()

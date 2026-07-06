@@ -2,9 +2,9 @@ from eth_utils import encode_hex
 
 from eth_consensus_specs.test.context import only_generator, single_phase, spec_test, with_phases
 from eth_consensus_specs.test.helpers.constants import ALTAIR
+from eth_consensus_specs.test.utils.manifest import manifest
+from eth_consensus_specs.test.utils.template_test import template_test
 from eth_consensus_specs.utils import bls
-from tests.infra.manifest import manifest
-from tests.infra.template_test import template_test
 
 from .constants import (
     G1_POINT_AT_INFINITY,

@@ -13,10 +13,10 @@
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
     - [Topics and messages](#topics-and-messages)
       - [Global topics](#global-topics)
-        - [`beacon_block`](#beacon_block)
-        - [`sync_committee_contribution_and_proof`](#sync_committee_contribution_and_proof)
+        - [Modified `beacon_block`](#modified-beacon_block)
+        - [New `sync_committee_contribution_and_proof`](#new-sync_committee_contribution_and_proof)
       - [Sync committee subnets](#sync-committee-subnets)
-        - [`sync_committee_{subnet_id}`](#sync_committee_subnet_id)
+        - [New `sync_committee_{subnet_id}`](#new-sync_committee_subnet_id)
       - [Sync committees and aggregation](#sync-committees-and-aggregation)
     - [Transitioning the gossip](#transitioning-the-gossip)
   - [The Req/Resp domain](#the-reqresp-domain)
@@ -199,7 +199,7 @@ Altair changes the type of the global beacon block topic and adds one global
 topic to propagate partially aggregated sync committee messages to all potential
 proposers of beacon blocks.
 
-###### `beacon_block`
+###### Modified `beacon_block`
 
 The existing specification for this topic does not change from the Phase 0
 document, but the type of the payload does change to the (modified)
@@ -209,7 +209,7 @@ document, but the type of the payload does change to the (modified)
 See the [state transition document](./beacon-chain.md#beaconblockbody) for
 Altair for further details.
 
-###### `sync_committee_contribution_and_proof`
+###### New `sync_committee_contribution_and_proof`
 
 This topic is used to propagate partially aggregated sync committee messages to
 be included in future blocks. The `state` parameter is the head state.
@@ -324,7 +324,7 @@ def validate_sync_committee_contribution_and_proof_gossip(
 Sync committee subnets are used to propagate unaggregated sync committee
 messages to subsections of the network.
 
-###### `sync_committee_{subnet_id}`
+###### New `sync_committee_{subnet_id}`
 
 The `sync_committee_{subnet_id}` topics are used to propagate unaggregated sync
 committee messages to the subnet `subnet_id` to be aggregated before being
@@ -545,7 +545,7 @@ bitfield if the validator is currently subscribed to the `sync_committee_{i}`
 topic.
 
 | Key        | Value                                        |
-| :--------- | :------------------------------------------- |
+| ---------- | -------------------------------------------- |
 | `syncnets` | SSZ `Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]` |
 
 See the [validator document](./validator.md#sync-committee-subnet-stability) for

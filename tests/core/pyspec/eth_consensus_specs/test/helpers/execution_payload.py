@@ -460,6 +460,7 @@ def build_signed_execution_payload_envelope(
     payload.block_hash = state.latest_execution_payload_bid.block_hash
     payload.gas_limit = state.latest_execution_payload_bid.gas_limit
     payload.parent_hash = state.latest_block_hash
+    payload.withdrawals = state.payload_expected_withdrawals
 
     if execution_requests is None:
         execution_requests = spec.ExecutionRequests()

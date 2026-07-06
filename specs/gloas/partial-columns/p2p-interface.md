@@ -8,9 +8,10 @@
 - [Modification in Gloas](#modification-in-gloas)
   - [Containers](#containers)
     - [Modified `PartialDataColumnSidecar`](#modified-partialdatacolumnsidecar)
-    - [New `PartialDataColumnGroupID`](#new-partialdatacolumngroupid)
+    - [Modified `PartialDataColumnGroupID`](#modified-partialdatacolumngroupid)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
-    - [Partial Messages on `data_column_sidecar_{subnet_id}`](#partial-messages-on-data_column_sidecar_subnet_id)
+    - [Blob subnets](#blob-subnets)
+      - [Modified `data_column_sidecar_{subnet_id}` (partial messages)](#modified-data_column_sidecar_subnet_id-partial-messages)
 
 <!-- mdformat-toc end -->
 
@@ -40,17 +41,20 @@ class PartialDataColumnSidecar(Container):
     # Removed `header`
 ```
 
-#### New `PartialDataColumnGroupID`
+#### Modified `PartialDataColumnGroupID`
 
 ```python
 class PartialDataColumnGroupID(Container):
-    slot: Slot
     beacon_block_root: Root
+    # [New in Gloas:EIP7732]
+    slot: Slot
 ```
 
 ### The gossip domain: gossipsub
 
-#### Partial Messages on `data_column_sidecar_{subnet_id}`
+#### Blob subnets
+
+##### Modified `data_column_sidecar_{subnet_id}` (partial messages)
 
 *[Modified in Gloas:EIP7732]*
 
