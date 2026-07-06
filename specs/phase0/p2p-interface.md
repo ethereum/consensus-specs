@@ -145,12 +145,14 @@ Even though libp2p is a multi-transport stack (designed to listen on multiple
 simultaneous transports and endpoints transparently), we hereby define a profile
 for basic interoperability.
 
-All implementations MUST support the QUIC (UDP) libp2p transport and the TCP libp2p transport. Any supported transport MUST be
-enabled for both dialing and listening (i.e. outbound and inbound connections).
-The libp2p QUIC (UDP) and TCP transports support listening on IPv4 and IPv6
-addresses (and on multiple simultaneously).
+All implementations MUST support the QUIC (UDP) libp2p transport and the TCP
+libp2p transport. Any supported transport MUST be enabled for both dialing and
+listening (i.e. outbound and inbound connections). The libp2p QUIC (UDP) and TCP
+transports support listening on IPv4 and IPv6 addresses (and on multiple
+simultaneously).
 
-QUIC is the primary transport. When a peer is reachable over both TCP and QUIC, clients SHOULD prioritise peer's QUIC addresses.
+QUIC is the primary transport. When a peer is reachable over both TCP and QUIC,
+clients SHOULD prioritise peer's QUIC addresses.
 
 Clients must support listening on at least one of IPv4 or IPv6. Clients that do
 _not_ have support for listening on IPv4 SHOULD be cognizant of the potential
@@ -168,7 +170,8 @@ inbound traffic on the announced public listening endpoint.
 
 ### Encryption and identification
 
-The QUIC transport is secured using TLS 1.3, configured according to the [libp2p TLS specification](https://github.com/libp2p/specs/blob/master/tls/tls.md).
+The QUIC transport is secured using TLS 1.3, configured according to the
+[libp2p TLS specification](https://github.com/libp2p/specs/blob/master/tls/tls.md).
 
 For the TCP fallback transport, the
 [Libp2p-noise](https://github.com/libp2p/specs/tree/master/noise) secure channel
@@ -200,8 +203,8 @@ protocol IDs are, respectively: `/mplex/6.7.0` and `/yamux/1.0.0`.
 
 Because the primary QUIC transport multiplexes natively, a stream multiplexer is
 only required for the TCP fallback transport. Clients that support the TCP
-transport MUST support [mplex](https://github.com/libp2p/specs/tree/master/mplex)
-and MAY support
+transport MUST support
+[mplex](https://github.com/libp2p/specs/tree/master/mplex) and MAY support
 [yamux](https://github.com/libp2p/specs/blob/master/yamux/README.md). If both
 are supported by the client, yamux MUST take precedence during negotiation. See
 the [Rationale](#design-decision-rationale) section below for tradeoffs.
@@ -1798,19 +1801,20 @@ that powers much of the Internet as we know it today. HTTP/1.1 and HTTP/2 run
 atop TCP.
 
 QUIC is a UDP-based transport standardized by the IETF in
-[RFC 9000](https://www.rfc-editor.org/rfc/rfc9000). It’s reliable, ordered, multiplexed, natively secure (TLS 1.3),
-reduces connection establishmen latency vs. TCP, offers stream-level flow control(thus removing head-of-line blocking), 0-RTT connection establishment,
-and endpoint migration, amongst other features. UDP also has better NAT
-traversal properties than TCP—something we desperately pursue in peer-to-peer
-networks. These characteristics are why QUIC is the primary transport for the
-consensus-layer network.
+[RFC 9000](https://www.rfc-editor.org/rfc/rfc9000). It’s reliable, ordered,
+multiplexed, natively secure (TLS 1.3), reduces connection establishment latency
+vs. TCP, offers stream-level flow control (thus removing head-of-line blocking),
+0-RTT connection establishment, and endpoint migration, amongst other features.
+UDP also has better NAT traversal properties than TCP—something we desperately
+pursue in peer-to-peer networks. These characteristics are why QUIC is the
+primary transport for the consensus-layer network.
 
 QUIC is also the underlying protocol for HTTP/3. This has the potential to award
-us censorship resistance against deep packet inspection for free. Provided that we
-use the same port numbers and encryption mechanisms as HTTP/3, our traffic may
-be indistinguishable from standard web traffic, and we may only become subject
-to standard IP-based firewall filtering—something we can counteract via other
-mechanisms.
+us censorship resistance against deep packet inspection for free. Provided that
+we use the same port numbers and encryption mechanisms as HTTP/3, our traffic
+may be indistinguishable from standard web traffic, and we may only become
+subject to standard IP-based firewall filtering—something we can counteract via
+other mechanisms.
 
 WebSockets and/or WebRTC transports are necessary for interaction with browsers,
 and will become increasingly important as we incorporate browser-based light
