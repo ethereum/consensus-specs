@@ -198,10 +198,6 @@ future validator withdrawal prefix may reuse this value.
 
 ### Builder versions
 
-*Note*: In Gloas, builder deposit requests require withdrawal credentials with
-`BUILDER_WITHDRAWAL_PREFIX`. New builder registrations set `Builder.version` to
-`PAYLOAD_BUILDER_VERSION`. Future forks may define additional builder versions.
-
 | Name                      | Value      |
 | ------------------------- | ---------- |
 | `PAYLOAD_BUILDER_VERSION` | `uint8(0)` |
