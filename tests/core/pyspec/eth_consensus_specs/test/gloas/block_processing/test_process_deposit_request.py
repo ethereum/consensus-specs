@@ -29,7 +29,7 @@ def test_process_deposit_request__builder_credentials_queued(spec, state):
     """
     amount = spec.MIN_DEPOSIT_AMOUNT
     # Builder withdrawal credentials on an otherwise ordinary deposit
-    withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
+    withdrawal_credentials = spec.PAYLOAD_BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
     deposit_request = prepare_process_deposit_request(
         spec,
         state,
@@ -69,7 +69,7 @@ def test_process_deposit_request__builder_pubkey_queued(spec, state):
     amount = spec.MIN_DEPOSIT_AMOUNT
     # Deposit for a pubkey that is already a builder, with builder credentials
     builder_pubkey = state.builders[0].pubkey
-    withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
+    withdrawal_credentials = spec.PAYLOAD_BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x59" * 20
     deposit_request = prepare_process_deposit_request(
         spec,
         state,

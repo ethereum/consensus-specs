@@ -283,7 +283,9 @@ def set_builder_withdrawal_credential(spec, state, index, address=None):
         address = b"\x11" * 20
 
     validator = state.validators[index]
-    validator.withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + address
+    validator.withdrawal_credentials = (
+        spec.PAYLOAD_BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + address
+    )
 
 
 def set_builder_withdrawal_credential_with_balance(

@@ -86,7 +86,7 @@ def test_process_builder_deposit_request__new_builder(spec, state):
 def test_process_builder_deposit_request__new_builder_max_version(spec, state):
     """Test fresh builder deposit with the maximum version."""
     amount = spec.MIN_DEPOSIT_AMOUNT
-    version = 15
+    version = spec.Bytes1("0xBF")
     withdrawal_credentials = make_withdrawal_credentials(spec, b"\xbf", b"\x42")
     builder_deposit_request = prepare_builder_deposit_request(
         spec, state, amount, withdrawal_credentials=withdrawal_credentials, signed=True
@@ -410,7 +410,7 @@ def test_process_builder_deposit_request__top_up_ignores_request_fields(spec, st
 
     # Use withdrawal credentials that differ from the registration
     withdrawal_credentials = b"\x07" + b"\x00" * 11 + b"\x42" * 20
-    assert state.builders[0].version != spec.uint8(withdrawal_credentials[0])
+    assert state.builders[0].version != spec.Bytes1(withdrawal_credentials[:1])
     assert state.builders[0].execution_address != spec.ExecutionAddress(withdrawal_credentials[12:])
 
     builder_deposit_request = prepare_builder_deposit_request(

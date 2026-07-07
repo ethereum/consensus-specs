@@ -281,7 +281,7 @@ def prepare_builder_deposit_request(
 
     if withdrawal_credentials is None:
         withdrawal_credentials = (
-            spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.hash(pubkey)[12:]
+            spec.PAYLOAD_BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.hash(pubkey)[12:]
         )
 
     request = spec.BuilderDepositRequest(

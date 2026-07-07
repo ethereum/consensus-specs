@@ -270,7 +270,7 @@ def test_process_execution_payload_bid_inactive_builder_exiting(spec, state):
 @spec_state_test
 def test_process_execution_payload_bid_non_payload_builder_version(spec, state):
     """
-    Test that a bid from a builder whose version is not PAYLOAD_BUILDER_VERSION fails.
+    Test that a bid from a builder whose version is not PAYLOAD_BUILDER_WITHDRAWAL_PREFIX fails.
     """
     next_epoch_with_full_participation(spec, state)
     next_epoch_with_full_participation(spec, state)
@@ -282,8 +282,8 @@ def test_process_execution_payload_bid_non_payload_builder_version(spec, state):
     assert spec.is_active_builder(state, builder_index)
 
     # Mark the builder as a non-payload builder, leaving every other condition valid
-    state.builders[builder_index].version = spec.uint8(spec.PAYLOAD_BUILDER_VERSION + 1)
-    assert state.builders[builder_index].version != spec.PAYLOAD_BUILDER_VERSION
+    state.builders[builder_index].version = spec.Bytes1("0xB1")
+    assert state.builders[builder_index].version != spec.PAYLOAD_BUILDER_WITHDRAWAL_PREFIX
 
     # The builder can cover the bid, so the version check is the only failing condition
     value = spec.Gwei(1000000)  # 0.001 ETH

@@ -11,7 +11,6 @@
   - [Domains](#domains)
   - [Misc](#misc)
   - [Withdrawal prefixes](#withdrawal-prefixes)
-  - [Builder versions](#builder-versions)
   - [Execution-layer triggered requests](#execution-layer-triggered-requests)
 - [Preset](#preset)
   - [Misc](#misc-1)
@@ -188,15 +187,11 @@ same `Withdrawal` container can be used for validators and builders.
 
 ### Withdrawal prefixes
 
-| Name                        | Value            |
-| --------------------------- | ---------------- |
-| `BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0xB0')` |
-
-### Builder versions
-
-| Name                      | Value      |
-| ------------------------- | ---------- |
-| `PAYLOAD_BUILDER_VERSION` | `uint8(0)` |
+| Name                                | Value            |
+| ----------------------------------- | ---------------- |
+| `BUILDER_WITHDRAWAL_PREFIX_MIN`     | `Bytes1('0xB0')` |
+| `BUILDER_WITHDRAWAL_PREFIX_MAX`     | `Bytes1('0xBF')` |
+| `PAYLOAD_BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0xB0')` |
 
 ### Execution-layer triggered requests
 
@@ -257,7 +252,7 @@ same `Withdrawal` container can be used for validators and builders.
 ```python
 class Builder(Container):
     pubkey: BLSPubkey
-    version: uint8
+    version: Bytes1
     execution_address: ExecutionAddress
     balance: Gwei
     deposit_epoch: Epoch
@@ -633,7 +628,7 @@ def is_active_builder(state: BeaconState, builder_index: BuilderIndex) -> bool:
 
 ```python
 def is_builder_withdrawal_credential(withdrawal_credentials: Bytes32) -> bool:
-    return withdrawal_credentials[:1] == BUILDER_WITHDRAWAL_PREFIX
+    return withdrawal_credentials[:1] == PAYLOAD_BUILDER_WITHDRAWAL_PREFIX
 ```
 
 #### New `is_attestation_same_slot`
@@ -1628,7 +1623,7 @@ def process_execution_payload_bid(
         # Verify that the builder is active
         assert is_active_builder(state, builder_index)
         # Verify that the builder is a payload builder
-        assert state.builders[builder_index].version == PAYLOAD_BUILDER_VERSION
+        assert state.builders[builder_index].version == PAYLOAD_BUILDER_WITHDRAWAL_PREFIX
         # Verify that the builder has funds to cover the bid
         assert can_builder_cover_bid(state, builder_index, amount)
         # Verify that the bid signature is valid
@@ -1745,7 +1740,7 @@ def get_index_for_new_builder(state: BeaconState) -> BuilderIndex:
 def add_builder_to_registry(
     state: BeaconState,
     pubkey: BLSPubkey,
-    version: uint8,
+    version: Bytes1,
     execution_address: ExecutionAddress,
     amount: uint64,
     slot: Slot,
@@ -1778,13 +1773,15 @@ def process_builder_deposit_request(state: BeaconState, request: BuilderDepositR
     builder_pubkeys = [b.pubkey for b in state.builders]
     if request.pubkey not in builder_pubkeys:
         prefix = request.withdrawal_credentials[0]
-        if (prefix & 0xF0) != BUILDER_WITHDRAWAL_PREFIX[0]:
+        if prefix < BUILDER_WITHDRAWAL_PREFIX_MIN[0]:
+            return
+        if prefix > BUILDER_WITHDRAWAL_PREFIX_MAX[0]:
             return
         if is_valid_builder_deposit_signature(request):
             add_builder_to_registry(
                 state,
                 request.pubkey,
-                uint8(prefix & 0x0F),
+                request.withdrawal_credentials[:1],
                 ExecutionAddress(request.withdrawal_credentials[12:]),
                 request.amount,
                 state.slot,

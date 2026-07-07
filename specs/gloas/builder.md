@@ -42,27 +42,27 @@ deposit contract on the execution layer, as defined in EIP-8282. The request
 must include:
 
 - `pubkey`: The builder's BLS public key.
-- `withdrawal_credentials`: The withdrawal credentials, where the first byte
-  combines the `BUILDER_WITHDRAWAL_PREFIX` in its high nibble with the builder
-  version in its low nibble, and the last 20 bytes are the execution-layer
-  address that will receive withdrawals. For the version, execution payload
-  builders should use `PAYLOAD_BUILDER_VERSION`.
+- `withdrawal_credentials`: The withdrawal credentials, where the first byte is
+  the builder version and the last 20 bytes are the execution-layer address that
+  will receive withdrawals. Execution payload builders should use
+  `PAYLOAD_BUILDER_WITHDRAWAL_PREFIX`.
 - `amount`: At least `MIN_DEPOSIT_AMOUNT` gwei.
 - `signature`: BLS proof of possession over the corresponding `DepositMessage`
   under `DOMAIN_BUILDER_DEPOSIT`.
 
 *Note*: A deposit registering a new builder is ignored unless the high nibble of
-the first withdrawal credentials byte matches the `BUILDER_WITHDRAWAL_PREFIX`.
-The request is consumed with no effect and the deposited funds are lost.
+the first withdrawal credentials byte matches the
+`PAYLOAD_BUILDER_WITHDRAWAL_PREFIX`. The request is consumed with no effect and
+the deposited funds are lost.
 
 *Note*: Builders may be onboarded at the fork by submitting a deposit to the
-validator deposit contract with a `BUILDER_WITHDRAWAL_PREFIX` withdrawal
+validator deposit contract with a `PAYLOAD_BUILDER_WITHDRAWAL_PREFIX` withdrawal
 credential. This must be done late enough that the deposit is still pending at
 the fork, but early enough that the slot in which the deposit is added to the
 pending deposit queue is finalized so that the builder is considered active.
 Such a deposit signs over `DepositMessage` under `DOMAIN_DEPOSIT`, with
 withdrawal credentials of the form
-`BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + execution_address`.
+`PAYLOAD_BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + execution_address`.
 
 ### Process deposit
 
@@ -82,11 +82,11 @@ index) has been finalized. Since registrations occur as soon as deposits reach
 the beacon chain, builders typically become active two epochs after submitting
 their deposit.
 
-*Note*: At the fork, pending deposits with the `BUILDER_WITHDRAWAL_PREFIX` are
-applied to the builder registry. The builder's `deposit_epoch` is set to the
-epoch of the pending deposit, not the fork epoch. Therefore, if that epoch is
-finalized at the fork, the builder will be immediately active. See
-`onboard_builders_from_pending_deposits` for details.
+*Note*: At the fork, pending deposits with the
+`PAYLOAD_BUILDER_WITHDRAWAL_PREFIX` are applied to the builder registry. The
+builder's `deposit_epoch` is set to the epoch of the pending deposit, not the
+fork epoch. Therefore, if that epoch is finalized at the fork, the builder will
+be immediately active. See `onboard_builders_from_pending_deposits` for details.
 
 ### Exiting
 

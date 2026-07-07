@@ -107,7 +107,7 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
             add_builder_to_registry(
                 state,
                 deposit.pubkey,
-                PAYLOAD_BUILDER_VERSION,
+                PAYLOAD_BUILDER_WITHDRAWAL_PREFIX,
                 ExecutionAddress(deposit.withdrawal_credentials[12:]),
                 deposit.amount,
                 deposit.slot,

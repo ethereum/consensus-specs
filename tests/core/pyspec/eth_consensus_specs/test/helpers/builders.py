@@ -39,7 +39,7 @@ def add_builder_to_registry(
     builder.withdrawable_epoch = (
         withdrawable_epoch if withdrawable_epoch is not None else spec.FAR_FUTURE_EPOCH
     )
-    builder.version = 0
+    builder.version = spec.PAYLOAD_BUILDER_WITHDRAWAL_PREFIX
 
 
 def set_builder_balance(spec, state, builder_index, balance):

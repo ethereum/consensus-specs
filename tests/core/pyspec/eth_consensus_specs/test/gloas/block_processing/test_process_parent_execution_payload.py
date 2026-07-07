@@ -340,7 +340,7 @@ def test_process_parent_execution_payload__builder_credential_deposits_queued(sp
         index=1,
         pubkey=new_validator_pubkey,
         withdrawal_credentials=make_withdrawal_credentials(
-            spec, spec.BUILDER_WITHDRAWAL_PREFIX, b"\x59"
+            spec, spec.PAYLOAD_BUILDER_WITHDRAWAL_PREFIX, b"\x59"
         ),
         signed=True,
     )

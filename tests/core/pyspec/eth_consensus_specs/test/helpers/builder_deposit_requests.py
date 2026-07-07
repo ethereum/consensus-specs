@@ -71,7 +71,7 @@ def prepare_process_builder_deposit_request(
         effective_withdrawal_credentials = withdrawal_credentials
     else:
         effective_withdrawal_credentials = (
-            spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.hash(effective_pubkey)[12:]
+            spec.PAYLOAD_BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.hash(effective_pubkey)[12:]
         )
 
     # Phase 3: Apply state overrides (before creating request)

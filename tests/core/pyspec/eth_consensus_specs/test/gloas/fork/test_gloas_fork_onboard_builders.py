@@ -23,7 +23,7 @@ from eth_consensus_specs.test.utils import with_meta_tags
 
 def get_builder_withdrawal_credentials(spec, pubkey):
     """Create builder withdrawal credentials from a pubkey."""
-    return spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.hash(pubkey)[12:]
+    return spec.PAYLOAD_BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.hash(pubkey)[12:]
 
 
 def create_pending_deposit_for_builder(spec, pubkey, amount, signed=True):
@@ -141,7 +141,7 @@ def test_fork_builder_deposit_version(spec, phases, state):
     # The onboarded builder is registered with the payload builder version
     assert len(post_state.builders) == 1
     assert post_state.builders[0].pubkey == builder_pubkey
-    assert post_state.builders[0].version == post_spec.PAYLOAD_BUILDER_VERSION
+    assert post_state.builders[0].version == post_spec.PAYLOAD_BUILDER_WITHDRAWAL_PREFIX
 
 
 @with_phases(phases=[FULU], other_phases=[GLOAS])

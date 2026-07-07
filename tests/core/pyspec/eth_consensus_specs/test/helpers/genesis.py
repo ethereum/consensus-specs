@@ -30,6 +30,7 @@ from eth_consensus_specs.test.helpers.keys import builder_pubkeys, pubkeys
 def build_mock_builder(spec, i: int, balance: int):
     return spec.Builder(
         pubkey=builder_pubkeys[i],
+        version=spec.PAYLOAD_BUILDER_WITHDRAWAL_PREFIX,
         execution_address=spec.ExecutionAddress(spec.hash(builder_pubkeys[i])[12:]),
         balance=balance,
         deposit_epoch=0,
