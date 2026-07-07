@@ -1774,6 +1774,7 @@ caching should account for this behavior.
 
 ```python
 def process_builder_deposit_request(state: BeaconState, request: BuilderDepositRequest) -> None:
+    # Ignore deposits with unexpected withdrawal credential prefixes
     if not is_builder_withdrawal_credential(request.withdrawal_credentials):
         return
 

@@ -49,6 +49,9 @@ must include:
 - `signature`: BLS proof of possession over the corresponding `DepositMessage`
   under `DOMAIN_BUILDER_DEPOSIT`.
 
+*Note*: A builder deposit request with withdrawal credentials that do not start
+with `BUILDER_WITHDRAWAL_PREFIX` will be ignored and the funds will be lost.
+
 *Note*: Builders may be onboarded at the fork by submitting a deposit to the
 validator deposit contract with a `BUILDER_WITHDRAWAL_PREFIX` withdrawal
 credential. This must be done late enough that the deposit is still pending at
@@ -60,10 +63,8 @@ withdrawal credentials of the form
 
 ### Process deposit
 
-A builder deposit request is ignored unless its withdrawal credentials start
-with `BUILDER_WITHDRAWAL_PREFIX`. For accepted requests, a new pubkey registers
-a builder with `PAYLOAD_BUILDER_VERSION`, while an existing builder's pubkey
-tops up its balance.
+A builder deposit request for a new pubkey registers a builder. A request for an
+existing builder's pubkey tops up its balance.
 
 ### Builder index
 
