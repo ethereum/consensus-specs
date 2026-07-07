@@ -190,7 +190,7 @@ same `Withdrawal` container can be used for validators and builders.
 | Name                                | Value            |
 | ----------------------------------- | ---------------- |
 | `BUILDER_WITHDRAWAL_PREFIX_MIN`     | `Bytes1('0xB0')` |
-| `BUILDER_WITHDRAWAL_PREFIX_MAX`     | `Bytes1('0xBF')` |
+| `BUILDER_WITHDRAWAL_PREFIX_MAX`     | `Bytes1('0xB1')` |
 | `PAYLOAD_BUILDER_WITHDRAWAL_PREFIX` | `Bytes1('0xB0')` |
 
 ### Execution-layer triggered requests

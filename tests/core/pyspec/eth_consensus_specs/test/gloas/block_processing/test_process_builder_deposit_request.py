@@ -86,8 +86,8 @@ def test_process_builder_deposit_request__new_builder(spec, state):
 def test_process_builder_deposit_request__new_builder_max_version(spec, state):
     """Test fresh builder deposit with the maximum version."""
     amount = spec.MIN_DEPOSIT_AMOUNT
-    version = spec.Bytes1("0xBF")
-    withdrawal_credentials = make_withdrawal_credentials(spec, b"\xbf", b"\x42")
+    prefix = bytes(spec.uint8(spec.BUILDER_WITHDRAWAL_PREFIX_MAX[0]))
+    withdrawal_credentials = make_withdrawal_credentials(spec, prefix, b"\x42")
     builder_deposit_request = prepare_builder_deposit_request(
         spec, state, amount, withdrawal_credentials=withdrawal_credentials, signed=True
     )
@@ -108,7 +108,7 @@ def test_process_builder_deposit_request__new_builder_max_version(spec, state):
     )
 
     builder_index = [b.pubkey for b in state.builders].index(builder_deposit_request.pubkey)
-    assert state.builders[builder_index].version == version
+    assert state.builders[builder_index].version == spec.BUILDER_WITHDRAWAL_PREFIX_MAX
 
 
 @with_gloas_and_later
@@ -448,11 +448,11 @@ def test_process_builder_deposit_request__top_up_ignores_request_fields(spec, st
 def test_process_builder_deposit_request__new_builder_prefix_below_range(spec, state):
     """
     Test that a new builder deposit is dropped when the prefix is just below the
-    builder range. ``0xAF`` is not a ``0xB*`` prefix, so no builder is created
-    even though the signature is valid.
+    builder range.
     """
     amount = spec.MIN_DEPOSIT_AMOUNT
-    withdrawal_credentials = make_withdrawal_credentials(spec, b"\xaf", b"\x42")
+    prefix = bytes(spec.uint8(spec.BUILDER_WITHDRAWAL_PREFIX_MIN[0]) - 1)
+    withdrawal_credentials = make_withdrawal_credentials(spec, prefix, b"\x42")
     builder_deposit_request = prepare_builder_deposit_request(
         spec, state, amount, withdrawal_credentials=withdrawal_credentials, signed=True
     )
@@ -467,11 +467,11 @@ def test_process_builder_deposit_request__new_builder_prefix_below_range(spec, s
 def test_process_builder_deposit_request__new_builder_prefix_above_range(spec, state):
     """
     Test that a new builder deposit is dropped when the prefix is just above the
-    builder range. ``0xC0`` is not a ``0xB*`` prefix, so no builder is created
-    even though the signature is valid.
+    builder range.
     """
     amount = spec.MIN_DEPOSIT_AMOUNT
-    withdrawal_credentials = make_withdrawal_credentials(spec, b"\xc0", b"\x42")
+    prefix = bytes(spec.uint8(spec.BUILDER_WITHDRAWAL_PREFIX_MAX[0]) + 1)
+    withdrawal_credentials = make_withdrawal_credentials(spec, prefix, b"\x42")
     builder_deposit_request = prepare_builder_deposit_request(
         spec, state, amount, withdrawal_credentials=withdrawal_credentials, signed=True
     )
