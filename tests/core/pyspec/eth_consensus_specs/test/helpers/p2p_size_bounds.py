@@ -1,4 +1,4 @@
-from eth_consensus_specs.test.helpers.forks import is_post_eip8148, is_post_heze
+from eth_consensus_specs.test.helpers.forks import is_post_heze
 
 
 def build_max_size_attestation(spec):
@@ -87,34 +87,6 @@ def build_max_size_partial_data_column_sidecar(spec):
         partial_column=partial_column,
         kzg_proofs=kzg_proofs,
     )
-
-
-def build_max_size_execution_requests(spec):
-    requests = spec.ExecutionRequests(
-        deposits=spec.ProgressiveList[spec.DepositRequest](
-            # Starting in Gloas, this limitation is removed in the consensus layer
-            # and is now controlled by the gas limit on the execution layer.
-            # Set this to reasonably high arbitrary limit.
-            [spec.DepositRequest()] * 40_000
-        ),
-        withdrawals=spec.ProgressiveList[spec.WithdrawalRequest](
-            [spec.WithdrawalRequest()] * spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
-        ),
-        consolidations=spec.ProgressiveList[spec.ConsolidationRequest](
-            [spec.ConsolidationRequest()] * spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
-        ),
-        builder_deposits=spec.ProgressiveList[spec.BuilderDepositRequest](
-            [spec.BuilderDepositRequest()] * spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
-        ),
-        builder_exits=spec.ProgressiveList[spec.BuilderExitRequest](
-            [spec.BuilderExitRequest()] * spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
-        ),
-    )
-    if is_post_eip8148(spec):
-        requests.sweep_thresholds = spec.ProgressiveList[spec.SetSweepThresholdRequest](
-            [spec.SetSweepThresholdRequest()] * spec.MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD
-        )
-    return requests
 
 
 def build_max_size_signed_inclusion_list(spec):
