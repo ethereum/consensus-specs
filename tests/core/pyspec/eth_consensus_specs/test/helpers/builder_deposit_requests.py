@@ -72,9 +72,7 @@ def prepare_process_builder_deposit_request(
     else:
         # Payload builder version followed by an eth1 address derived from the pubkey
         effective_withdrawal_credentials = (
-            bytes([spec.PAYLOAD_BUILDER_VERSION])
-            + b"\x00" * 11
-            + spec.hash(effective_pubkey)[12:]
+            bytes([spec.PAYLOAD_BUILDER_VERSION]) + b"\x00" * 11 + spec.hash(effective_pubkey)[12:]
         )
 
     # Phase 3: Apply state overrides (before creating request)

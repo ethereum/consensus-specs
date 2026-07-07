@@ -87,9 +87,7 @@ def test_process_builder_deposit_request__new_builder_non_payload_version(spec, 
     Gloas registers new builders with PAYLOAD_BUILDER_VERSION.
     """
     amount = spec.MIN_DEPOSIT_AMOUNT
-    withdrawal_credentials = (
-        bytes([spec.PAYLOAD_BUILDER_VERSION + 1]) + b"\x00" * 11 + b"\x42" * 20
-    )
+    withdrawal_credentials = bytes([spec.PAYLOAD_BUILDER_VERSION + 1]) + b"\x00" * 11 + b"\x42" * 20
     builder_deposit_request = prepare_builder_deposit_request(
         spec, state, amount, withdrawal_credentials=withdrawal_credentials, signed=True
     )
