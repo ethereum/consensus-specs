@@ -117,45 +117,6 @@ def build_max_size_execution_requests(spec):
     return requests
 
 
-def build_max_size_signed_beacon_block(spec):
-    body = spec.BeaconBlockBody(
-        randao_reveal=spec.BLSSignature(),
-        eth1_data=spec.Eth1Data(),
-        graffiti=spec.Bytes32(),
-        proposer_slashings=spec.ProgressiveList[spec.ProposerSlashing](
-            [spec.ProposerSlashing()] * spec.MAX_PROPOSER_SLASHINGS
-        ),
-        attester_slashings=spec.ProgressiveList[spec.AttesterSlashing](
-            [build_max_size_attester_slashing(spec)] * spec.MAX_ATTESTER_SLASHINGS_ELECTRA
-        ),
-        attestations=spec.ProgressiveList[spec.Attestation](
-            [build_max_size_attestation(spec)] * spec.MAX_ATTESTATIONS_ELECTRA
-        ),
-        # Post-electra deposits must be empty
-        deposits=spec.ProgressiveList[spec.Deposit](),
-        voluntary_exits=spec.ProgressiveList[spec.SignedVoluntaryExit](
-            [spec.SignedVoluntaryExit()] * spec.MAX_VOLUNTARY_EXITS
-        ),
-        sync_aggregate=spec.SyncAggregate(),
-        bls_to_execution_changes=spec.ProgressiveList[spec.SignedBLSToExecutionChange](
-            [spec.SignedBLSToExecutionChange()] * spec.MAX_BLS_TO_EXECUTION_CHANGES
-        ),
-        signed_execution_payload_bid=build_max_size_signed_execution_payload_bid(spec),
-        payload_attestations=spec.ProgressiveList[spec.PayloadAttestation](
-            [build_max_size_payload_attestation(spec)] * spec.MAX_PAYLOAD_ATTESTATIONS
-        ),
-        parent_execution_requests=build_max_size_execution_requests(spec),
-    )
-    block = spec.BeaconBlock(
-        slot=spec.Slot(0),
-        proposer_index=spec.ValidatorIndex(0),
-        parent_root=spec.Root(),
-        state_root=spec.Root(),
-        body=body,
-    )
-    return spec.SignedBeaconBlock(message=block, signature=spec.BLSSignature())
-
-
 def build_max_size_signed_inclusion_list(spec):
     payload_size = spec.config.MAX_BYTES_PER_INCLUSION_LIST
     transactions = spec.ProgressiveList[spec.Transaction](
@@ -202,15 +163,6 @@ def get_max_signed_execution_payload_bid_size(spec):
     size = spec.MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE
     if is_post_heze(spec):
         size = spec.MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE
-    return size
-
-
-def get_max_signed_beacon_block_size(spec):
-    size = spec.MAX_SIGNED_BEACON_BLOCK_SIZE
-    if is_post_eip8148(spec):
-        size = spec.MAX_SIGNED_BEACON_BLOCK_SIZE_EIP8148
-    elif is_post_heze(spec):
-        size = spec.MAX_SIGNED_BEACON_BLOCK_SIZE_HEZE
     return size
 
 

@@ -37,11 +37,10 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 #### Type-specific SSZ bounds
 
-| Name                                         | Value                          |
-| -------------------------------------------- | ------------------------------ |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `uint64(196934)` (= ~192 KiB)  |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE_HEZE`          | `uint64(10134474)` (= ~10 MiB) |
-| `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `uint64(8348)` (= ~8 KiB)      |
+| Name                                         | Value                         |
+| -------------------------------------------- | ----------------------------- |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `uint64(196934)` (= ~192 KiB) |
+| `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `uint64(8348)` (= ~8 KiB)     |
 
 ### Configuration
 
