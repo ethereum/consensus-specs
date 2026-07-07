@@ -8,24 +8,13 @@ from eth_consensus_specs.test.helpers.p2p_size_bounds import (
     build_max_size_data_column_sidecar,
     build_max_size_partial_data_column_sidecar,
     build_max_size_signed_aggregate_and_proof,
-    build_max_size_signed_beacon_block,
     build_max_size_signed_execution_payload_bid,
     get_max_attester_slashing_size,
     get_max_data_column_sidecar_size,
     get_max_partial_data_column_sidecar_size,
     get_max_signed_aggregate_and_proof_size,
-    get_max_signed_beacon_block_size,
     get_max_signed_execution_payload_bid_size,
 )
-
-
-@with_gloas_and_later
-@spec_test
-@single_phase
-def test_max_signed_beacon_block_size(spec):
-    encoded = build_max_size_signed_beacon_block(spec).encode_bytes()
-    assert len(encoded) == get_max_signed_beacon_block_size(spec)
-    assert len(encoded) <= spec.config.MAX_PAYLOAD_SIZE
 
 
 @with_gloas_and_later

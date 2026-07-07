@@ -13,7 +13,7 @@ from eth_consensus_specs.test.helpers.block import (
 )
 from eth_consensus_specs.test.helpers.bls_to_execution_changes import get_signed_address_change
 from eth_consensus_specs.test.helpers.deposits import build_deposit, deposit_from_context
-from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_fulu
+from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_fulu, is_post_gloas
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth_consensus_specs.test.helpers.state import (
@@ -303,7 +303,13 @@ def get_random_execution_requests(spec, state, rng):
 
 def get_random_deposit_requests(spec, state, rng, num_deposits=None):
     if num_deposits is None:
-        num_deposits = rng.randint(0, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD)
+        if is_post_gloas(spec):
+            # Starting in Gloas, this limitation is removed in the consensus layer
+            # and is now controlled by the gas limit on the execution layer.
+            # Set this to reasonably high arbitrary limit.
+            num_deposits = rng.randint(0, 40_000)
+        else:
+            num_deposits = rng.randint(0, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD)
 
     deposit_data_leaves = [spec.DepositData() for _ in range(len(state.validators))]
 

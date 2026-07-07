@@ -261,7 +261,8 @@ class FCRTest:
             execution_requests = self.spec.ExecutionRequests()
         if deposit_requests is not None:
             assert is_post_electra(self.spec)
-            assert len(deposit_requests) <= self.spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD
+            if not is_post_gloas(self.spec):
+                assert len(deposit_requests) <= self.spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD
             for d in deposit_requests:
                 execution_requests.deposits.append(d)
             if is_post_gloas(self.spec):

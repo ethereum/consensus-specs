@@ -67,7 +67,6 @@ libp2p messages.
 | `MAX_ATTESTER_SLASHING_SIZE`            | `uint64(2097616)` (= ~2 MiB)  |
 | `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `uint64(8585272)` (= ~8 MiB)  |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `uint64(196932)` (= ~192 KiB) |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE`          | `uint64(4027336)` (= ~4 MiB)  |
 
 ### Configuration
 
@@ -312,7 +311,6 @@ And instead the following validations are set in place with the alias
   `len(bid.blob_kzg_commitments) <= get_blob_parameters(get_current_epoch(state)).max_blobs_per_block`
 - _[REJECT]_ The counts of `block.body.parent_execution_requests` are within
   their respective limits -- i.e. validate that
-  `len(block.body.parent_execution_requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD`,
   `len(block.body.parent_execution_requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`,
   `len(block.body.parent_execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`,
   `len(block.body.parent_execution_requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD`,
@@ -369,7 +367,6 @@ obtained from the `state.latest_execution_payload_bid`)
   `hash_tree_root(envelope.execution_requests) == bid.execution_requests_root`
 - _[REJECT]_ The counts of `execution_requests` are within their respective
   limits -- i.e. validate that
-  `len(execution_requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD`,
   `len(execution_requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD`,
   `len(execution_requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD`,
   `len(execution_requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD`,

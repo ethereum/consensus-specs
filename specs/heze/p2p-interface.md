@@ -40,7 +40,6 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 | Name                                         | Value                         |
 | -------------------------------------------- | ----------------------------- |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `uint64(196934)` (= ~192 KiB) |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE_HEZE`          | `uint64(4027338)` (= ~4 MiB)  |
 | `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `uint64(8348)` (= ~8 KiB)     |
 
 ### Configuration
