@@ -39,7 +39,7 @@ from eth_consensus_specs.test.helpers.keys import (
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
 )
-from eth_consensus_specs.utils.ssz.ssz_typing import View
+from eth_consensus_specs.utils.ssz.ssz_typing import ProgressiveList, View
 
 from .debug_helpers import print_epoch, print_head
 
@@ -256,6 +256,18 @@ def _compute_pseudo_randao_reveal(spec, proposer_index, epoch):
     return spec.BLSSignature(randao_reveal_bytes)
 
 
+def _max_operations_in_block(list_type, spec_limit):
+    """
+    Return the maximum number of elements the block builder may include for an
+    operation list. Bounded List types carry the cap as their SSZ limit. With EIP-7688,
+    forks use an unbounded ProgressiveList, so the cap enforced by process_operations
+    (spec_limit) applies instead.
+    """
+    if issubclass(list_type, ProgressiveList):
+        return spec_limit
+    return list_type.limit()
+
+
 def produce_block(
     spec,
     state,
@@ -282,7 +294,7 @@ def produce_block(
     )
 
     # Prepare attestations
-    limit = type(block.body.attestations).limit()
+    limit = _max_operations_in_block(type(block.body.attestations), spec.MAX_ATTESTATIONS_ELECTRA)
     attestation_in_block = [
         a
         for a in attestations
@@ -298,7 +310,9 @@ def produce_block(
         block.body.attestations.append(a)
 
     # Add attester slashings
-    limit = type(block.body.attester_slashings).limit()
+    limit = _max_operations_in_block(
+        type(block.body.attester_slashings), spec.MAX_ATTESTER_SLASHINGS_ELECTRA
+    )
     attester_slashings_in_block = attester_slashings[:limit]
     for s in attester_slashings_in_block:
         block.body.attester_slashings.append(s)
