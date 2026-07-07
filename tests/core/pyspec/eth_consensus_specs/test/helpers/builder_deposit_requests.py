@@ -43,7 +43,7 @@ def prepare_process_builder_deposit_request(
             (a new builder).
         pubkey: Explicit BLSPubkey. Default: derived from builder_index.
         withdrawal_credentials: Explicit Bytes32 credentials. Default:
-            PAYLOAD_BUILDER_VERSION followed by an eth1 address derived from the pubkey.
+            BUILDER_WITHDRAWAL_PREFIX followed by an eth1 address derived from the pubkey.
         amount: Deposit amount in Gwei. Default: MIN_ACTIVATION_BALANCE.
         signed: If True, sign with a valid builder deposit signature.
         builders: Override state.builders list entirely. Use [] for empty registry.
@@ -70,9 +70,9 @@ def prepare_process_builder_deposit_request(
     if withdrawal_credentials is not None:
         effective_withdrawal_credentials = withdrawal_credentials
     else:
-        # Payload builder version followed by an eth1 address derived from the pubkey
+        # Builder withdrawal prefix followed by an eth1 address derived from the pubkey
         effective_withdrawal_credentials = (
-            bytes([spec.PAYLOAD_BUILDER_VERSION]) + b"\x00" * 11 + spec.hash(effective_pubkey)[12:]
+            spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.hash(effective_pubkey)[12:]
         )
 
     # Phase 3: Apply state overrides (before creating request)

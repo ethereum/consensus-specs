@@ -42,9 +42,9 @@ deposit contract on the execution layer, as defined in EIP-8282. The request
 must include:
 
 - `pubkey`: The builder's BLS public key.
-- `withdrawal_credentials`: The withdrawal credentials. The last 20 bytes are
-  the execution-layer address that will receive withdrawals. In Gloas, the first
-  byte does not determine the registered builder version.
+- `withdrawal_credentials`: The withdrawal credentials, where the first byte is
+  `BUILDER_WITHDRAWAL_PREFIX` and the last 20 bytes are the execution-layer
+  address that will receive withdrawals.
 - `amount`: At least `MIN_DEPOSIT_AMOUNT` gwei.
 - `signature`: BLS proof of possession over the corresponding `DepositMessage`
   under `DOMAIN_BUILDER_DEPOSIT`.
@@ -60,9 +60,10 @@ withdrawal credentials of the form
 
 ### Process deposit
 
-A builder deposit request for a new pubkey registers a builder with
-`PAYLOAD_BUILDER_VERSION`. A request for an existing builder's pubkey tops up
-its balance.
+A builder deposit request is ignored unless its withdrawal credentials start
+with `BUILDER_WITHDRAWAL_PREFIX`. For accepted requests, a new pubkey registers
+a builder with `PAYLOAD_BUILDER_VERSION`, while an existing builder's pubkey
+tops up its balance.
 
 ### Builder index
 

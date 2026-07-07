@@ -198,9 +198,9 @@ future validator withdrawal prefix may reuse this value.
 
 ### Builder versions
 
-*Note*: In Gloas, new builder registrations set `Builder.version` to
-`PAYLOAD_BUILDER_VERSION` regardless of the first byte in the deposit request's
-withdrawal credentials. Future forks may define additional builder versions.
+*Note*: In Gloas, builder deposit requests require withdrawal credentials with
+`BUILDER_WITHDRAWAL_PREFIX`. New builder registrations set `Builder.version` to
+`PAYLOAD_BUILDER_VERSION`. Future forks may define additional builder versions.
 
 | Name                      | Value      |
 | ------------------------- | ---------- |
@@ -1778,6 +1778,9 @@ caching should account for this behavior.
 
 ```python
 def process_builder_deposit_request(state: BeaconState, request: BuilderDepositRequest) -> None:
+    if not is_builder_withdrawal_credential(request.withdrawal_credentials):
+        return
+
     builder_pubkeys = [b.pubkey for b in state.builders]
     if request.pubkey not in builder_pubkeys:
         if is_valid_builder_deposit_signature(request):
