@@ -43,17 +43,17 @@ must include:
 
 - `pubkey`: The builder's BLS public key.
 - `withdrawal_credentials`: The withdrawal credentials, where the first byte is
-  the builder version and the last 20 bytes are the execution-layer address that
-  will receive withdrawals. Execution payload builders should use
-  `PAYLOAD_BUILDER_WITHDRAWAL_PREFIX`.
+  a valid builder withdrawal prefix and the last 20 bytes are the
+  execution-layer address that will receive withdrawals. Execution payload
+  builders should use `PAYLOAD_BUILDER_WITHDRAWAL_PREFIX`.
 - `amount`: At least `MIN_DEPOSIT_AMOUNT` gwei.
 - `signature`: BLS proof of possession over the corresponding `DepositMessage`
   under `DOMAIN_BUILDER_DEPOSIT`.
 
-*Note*: A deposit registering a new builder is ignored unless the high nibble of
-the first withdrawal credentials byte matches the
-`PAYLOAD_BUILDER_WITHDRAWAL_PREFIX`. The request is consumed with no effect and
-the deposited funds are lost.
+*Note*: A deposit registering a new builder is ignored if the first byte of the
+withdrawal credentials is outside of the `BUILDER_WITHDRAWAL_PREFIX_MIN` and
+`BUILDER_WITHDRAWAL_PREFIX_MAX` range. Such requests are consumed with no effect
+and the deposited funds are lost.
 
 *Note*: Builders may be onboarded at the fork by submitting a deposit to the
 validator deposit contract with a `PAYLOAD_BUILDER_WITHDRAWAL_PREFIX` withdrawal
