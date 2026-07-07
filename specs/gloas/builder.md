@@ -43,9 +43,8 @@ must include:
 
 - `pubkey`: The builder's BLS public key.
 - `withdrawal_credentials`: The withdrawal credentials. The last 20 bytes are
-  the execution-layer address that will receive withdrawals. In Gloas, new
-  builders are registered with `PAYLOAD_BUILDER_VERSION` regardless of the first
-  byte.
+  the execution-layer address that will receive withdrawals. In Gloas, the first
+  byte does not determine the registered builder version.
 - `amount`: At least `MIN_DEPOSIT_AMOUNT` gwei.
 - `signature`: BLS proof of possession over the corresponding `DepositMessage`
   under `DOMAIN_BUILDER_DEPOSIT`.
