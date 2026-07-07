@@ -280,8 +280,12 @@ def prepare_builder_deposit_request(
         privkey = builder_pubkey_to_privkey[pubkey]
 
     if withdrawal_credentials is None:
-        # Version zero followed by an eth1 address derived from the pubkey
-        withdrawal_credentials = b"\x00" * 12 + spec.hash(pubkey)[12:]
+        # Payload builder version followed by an eth1 address derived from the pubkey
+        withdrawal_credentials = (
+            bytes([spec.PAYLOAD_BUILDER_VERSION])
+            + b"\x00" * 11
+            + spec.hash(pubkey)[12:]
+        )
 
     request = spec.BuilderDepositRequest(
         pubkey=pubkey,

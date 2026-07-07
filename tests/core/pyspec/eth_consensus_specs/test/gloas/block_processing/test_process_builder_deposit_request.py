@@ -80,17 +80,16 @@ def test_process_builder_deposit_request__new_builder(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_process_builder_deposit_request__new_builder_nonzero_version(spec, state):
+def test_process_builder_deposit_request__new_builder_non_payload_version(spec, state):
     """
-    Test fresh builder deposit with a non-zero version.
+    Test fresh builder deposit with a non-payload builder version.
 
-    The version (the first byte of the withdrawal credentials) is not
-    constrained: it is recorded on the builder verbatim and is committed to by
-    the proof of possession.
+    Gloas registers new builders with PAYLOAD_BUILDER_VERSION.
     """
     amount = spec.MIN_DEPOSIT_AMOUNT
-    version = spec.uint8(7)
-    withdrawal_credentials = bytes([version]) + b"\x00" * 11 + b"\x42" * 20
+    withdrawal_credentials = (
+        bytes([spec.PAYLOAD_BUILDER_VERSION + 1]) + b"\x00" * 11 + b"\x42" * 20
+    )
     builder_deposit_request = prepare_builder_deposit_request(
         spec, state, amount, withdrawal_credentials=withdrawal_credentials, signed=True
     )
@@ -111,7 +110,7 @@ def test_process_builder_deposit_request__new_builder_nonzero_version(spec, stat
     )
 
     builder_index = [b.pubkey for b in state.builders].index(builder_deposit_request.pubkey)
-    assert state.builders[builder_index].version == version
+    assert state.builders[builder_index].version == spec.PAYLOAD_BUILDER_VERSION
 
 
 @with_gloas_and_later

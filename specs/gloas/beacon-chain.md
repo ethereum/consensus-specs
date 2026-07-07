@@ -198,6 +198,10 @@ future validator withdrawal prefix may reuse this value.
 
 ### Builder versions
 
+*Note*: Gloas registers new builders with `PAYLOAD_BUILDER_VERSION` regardless
+of the first byte in the deposit request's withdrawal credentials. Future forks
+may define additional builder versions.
+
 | Name                      | Value      |
 | ------------------------- | ---------- |
 | `PAYLOAD_BUILDER_VERSION` | `uint8(0)` |
@@ -1780,7 +1784,7 @@ def process_builder_deposit_request(state: BeaconState, request: BuilderDepositR
             add_builder_to_registry(
                 state,
                 request.pubkey,
-                uint8(request.withdrawal_credentials[0]),
+                PAYLOAD_BUILDER_VERSION,
                 ExecutionAddress(request.withdrawal_credentials[12:]),
                 request.amount,
                 state.slot,
