@@ -524,36 +524,6 @@ def _assert_beacon_block_gossip(spec, state, mutate_block, expected, reason=None
 
 @with_gloas_and_later
 @spec_state_test
-def test_gossip_beacon_block__valid_max_parent_deposit_requests(spec, state):
-    """A block with the maximum number of parent deposit requests is valid."""
-
-    def mutate(spec, block):
-        count = int(spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD)
-        block.body.parent_execution_requests = spec.ExecutionRequests(
-            deposits=spec.DepositRequests(*([spec.DepositRequest()] * count))
-        )
-
-    yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_gossip_beacon_block__reject_too_many_parent_deposit_requests(spec, state):
-    """A block whose parent execution requests exceed the deposit-request limit is rejected."""
-
-    def mutate(spec, block):
-        count = int(spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD) + 1
-        block.body.parent_execution_requests = spec.ExecutionRequests(
-            deposits=spec.DepositRequests(*([spec.DepositRequest()] * count))
-        )
-
-    yield from _assert_beacon_block_gossip(
-        spec, state, mutate, "reject", "too many parent deposit requests"
-    )
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_gossip_beacon_block__valid_max_parent_withdrawal_requests(spec, state):
     """A block with the maximum number of parent withdrawal requests is valid."""
 

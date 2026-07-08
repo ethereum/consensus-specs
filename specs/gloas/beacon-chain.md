@@ -1281,12 +1281,9 @@ def apply_parent_execution_payload(
     parent_slot = parent_bid.slot
     parent_epoch = compute_epoch_at_slot(parent_slot)
 
-    assert len(requests.deposits) <= MAX_DEPOSIT_REQUESTS_PER_PAYLOAD
     assert len(requests.withdrawals) <= MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD
     assert len(requests.consolidations) <= MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD
-    # [New in Gloas:EIP8282]
     assert len(requests.builder_deposits) <= MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD
-    # [New in Gloas:EIP8282]
     assert len(requests.builder_exits) <= MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
 
     # Process execution requests from parent's payload. The execution
@@ -1298,9 +1295,7 @@ def apply_parent_execution_payload(
     for_ops(requests.deposits, process_deposit_request)
     for_ops(requests.withdrawals, process_withdrawal_request)
     for_ops(requests.consolidations, process_consolidation_request)
-    # [New in Gloas:EIP8282]
     for_ops(requests.builder_deposits, process_builder_deposit_request)
-    # [New in Gloas:EIP8282]
     for_ops(requests.builder_exits, process_builder_exit_request)
 
     # Settle the builder payment
@@ -1779,13 +1774,17 @@ caching should account for this behavior.
 
 ```python
 def process_builder_deposit_request(state: BeaconState, request: BuilderDepositRequest) -> None:
+    # Ignore deposits with unexpected withdrawal credential prefixes
+    if not is_builder_withdrawal_credential(request.withdrawal_credentials):
+        return
+
     builder_pubkeys = [b.pubkey for b in state.builders]
     if request.pubkey not in builder_pubkeys:
         if is_valid_builder_deposit_signature(request):
             add_builder_to_registry(
                 state,
                 request.pubkey,
-                uint8(request.withdrawal_credentials[0]),
+                PAYLOAD_BUILDER_VERSION,
                 ExecutionAddress(request.withdrawal_credentials[12:]),
                 request.amount,
                 state.slot,

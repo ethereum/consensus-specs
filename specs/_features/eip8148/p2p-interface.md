@@ -6,8 +6,6 @@
 
 - [Introduction](#introduction)
 - [Modifications in EIP-8148](#modifications-in-eip-8148)
-  - [Preset](#preset)
-    - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
   - [Helpers](#helpers)
     - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
@@ -27,14 +25,6 @@ The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modifications in EIP-8148
-
-### Preset
-
-#### Type-specific SSZ bounds
-
-| Name                                   | Value                        |
-| -------------------------------------- | ---------------------------- |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE_EIP8148` | `uint64(4028558)` (= ~4 MiB) |
 
 ### Helpers
 

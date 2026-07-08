@@ -33,6 +33,12 @@ from eth_consensus_specs.fulu import {preset_name} as fulu
         }
 
     @classmethod
+    def deprecate_constants(cls) -> set[str]:
+        return {
+            "MAX_DEPOSIT_REQUESTS_PER_PAYLOAD",
+        }
+
+    @classmethod
     def deprecate_containers(cls) -> set[str]:
         return {
             "ExecutionPayloadHeader",

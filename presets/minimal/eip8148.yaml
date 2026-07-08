@@ -4,8 +4,3 @@
 # ---------------------------------------------------------------
 # 2**4 (= 16)
 MAX_SET_SWEEP_THRESHOLD_REQUESTS_PER_PAYLOAD: 16
-
-# Type-specific SSZ bounds
-# ---------------------------------------------------------------
-# [customized] 1,939,234 bytes, ~2 MiB
-MAX_SIGNED_BEACON_BLOCK_SIZE_EIP8148: 1939234

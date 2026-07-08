@@ -570,30 +570,6 @@ def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
 
 @with_gloas_and_later
 @spec_state_test
-def test_gossip_execution_payload_envelope__valid_max_deposit_requests(spec, state):
-    """An envelope with the maximum number of deposit requests is valid."""
-    count = int(spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD)
-    requests = spec.ExecutionRequests(
-        deposits=spec.DepositRequests(*([spec.DepositRequest()] * count))
-    )
-    yield from _assert_envelope_requests(spec, state, requests, "valid")
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_gossip_execution_payload_envelope__reject_too_many_deposit_requests(spec, state):
-    """An envelope whose execution requests exceed the deposit-request limit is rejected."""
-    count = int(spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD) + 1
-    requests = spec.ExecutionRequests(
-        deposits=spec.DepositRequests(*([spec.DepositRequest()] * count))
-    )
-    yield from _assert_envelope_requests(
-        spec, state, requests, "reject", "too many deposit requests"
-    )
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_gossip_execution_payload_envelope__valid_max_withdrawal_requests(spec, state):
     """An envelope with the maximum number of withdrawal requests is valid."""
     count = int(spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD)

@@ -71,7 +71,6 @@ libp2p messages.
 | `MAX_ATTESTER_SLASHING_SIZE`            | `uint64(2097616)` (= ~2 MiB)  |
 | `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `uint64(8585272)` (= ~8 MiB)  |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `uint64(196932)` (= ~192 KiB) |
-| `MAX_SIGNED_BEACON_BLOCK_SIZE`          | `uint64(4027336)` (= ~4 MiB)  |
 
 ### Configuration
 
@@ -597,11 +596,6 @@ def validate_beacon_block_gossip(
     parent_requests = block.body.parent_execution_requests
 
     # [New in Gloas:EIP7688]
-    # [REJECT] The parent deposit request count is within the limit
-    if len(parent_requests.deposits) > MAX_DEPOSIT_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many parent deposit requests")
-
-    # [New in Gloas:EIP7688]
     # [REJECT] The parent withdrawal request count is within the limit
     if len(parent_requests.withdrawals) > MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
         raise GossipReject("too many parent withdrawal requests")
@@ -735,11 +729,6 @@ def validate_execution_payload_envelope_gossip(
         raise GossipReject("envelope's execution requests root does not match the bid")
 
     execution_requests = envelope.execution_requests
-
-    # [New in Gloas:EIP7688]
-    # [REJECT] The deposit request count is within the limit
-    if len(execution_requests.deposits) > MAX_DEPOSIT_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many deposit requests")
 
     # [New in Gloas:EIP7688]
     # [REJECT] The withdrawal request count is within the limit
