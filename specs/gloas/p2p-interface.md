@@ -534,7 +534,6 @@ def validate_beacon_block_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     block = signed_beacon_block.message
-    # [New in Gloas:EIP7732]
     bid = block.body.signed_execution_payload_bid.message
 
     # [IGNORE] The block is not from a future slot
