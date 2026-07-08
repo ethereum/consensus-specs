@@ -25,6 +25,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
 from eth_consensus_specs.test.helpers.forks import (
+    is_post_bellatrix,
     is_post_electra,
     is_post_gloas,
 )
@@ -60,6 +61,12 @@ def output_fast_confirmation_checks(spec, fcr_store, test_steps):
         "current_slot_head": encode_hex(fcr_store.current_slot_head),
         "confirmed_root": encode_hex(fcr_store.confirmed_root),
     }
+
+    if is_post_bellatrix(spec):
+        fcr_checks["safe_execution_block_hash"] = encode_hex(
+            spec.get_safe_execution_block_hash(fcr_store)
+        )
+
     test_steps.append({"checks": basic_checks | fcr_checks})
 
 
