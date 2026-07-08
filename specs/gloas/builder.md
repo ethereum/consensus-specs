@@ -38,8 +38,8 @@ builders.
 ### Submit deposit
 
 Builders are created by submitting a builder deposit request to the builder
-deposit contract on the execution layer, as defined in
-[EIP-8282](https://eips.ethereum.org/EIPS/eip-8282). The request must include:
+deposit contract on the execution layer, as defined in EIP-8282. The request
+must include:
 
 - `pubkey`: The builder's BLS public key.
 - `withdrawal_credentials`: The withdrawal credentials, where the first byte is
@@ -51,11 +51,12 @@ deposit contract on the execution layer, as defined in
   under `DOMAIN_BUILDER_DEPOSIT`.
 
 *Note*: Builders may be onboarded at the fork by submitting a deposit to the
-validator deposit contract with a `0x03` withdrawal credential. This must be
-done late enough that the deposit is still pending at the fork, but early enough
-that the slot in which the deposit is added to the pending deposit queue is
-finalized so that the builder is considered active. Such a deposit signs over
-`DepositMessage` under `DOMAIN_DEPOSIT`, with withdrawal credentials of the form
+validator deposit contract with a `BUILDER_WITHDRAWAL_PREFIX` withdrawal
+credential. This must be done late enough that the deposit is still pending at
+the fork, but early enough that the slot in which the deposit is added to the
+pending deposit queue is finalized so that the builder is considered active.
+Such a deposit signs over `DepositMessage` under `DOMAIN_DEPOSIT`, with
+withdrawal credentials of the form
 `BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + execution_address`.
 
 ### Process deposit
@@ -85,10 +86,9 @@ finalized at the fork, the builder will be immediately active. See
 ### Exiting
 
 A builder exits by submitting a builder exit request to the builder exit
-contract on the execution layer, as defined in
-[EIP-8282](https://eips.ethereum.org/EIPS/eip-8282). The request contains the
-builder's `pubkey` and is authorized by the builder's `execution_address` (the
-transaction sender), not the BLS key.
+contract on the execution layer, as defined in EIP-8282. The request contains
+the builder's `pubkey` and is authorized by the builder's `execution_address`
+(the transaction sender), not the BLS key.
 
 The consensus layer initiates the exit only if the builder is active, the
 request's `source_address` matches the builder's `execution_address`, and the
@@ -127,22 +127,22 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
     that is `payload.prev_randao`. This value **MUST** equal
     `get_randao_mix(parent_state, get_current_epoch(parent_state))`, where
     `parent_state` is the post-state of `bid.parent_block_root`.
-06. Set `bid.fee_recipient` to be an execution address to receive the payment.
+06. Set `bid.slot` to be the slot for which this bid is aimed. This slot
+    **MUST** be either the current slot or the next slot.
+07. Set `bid.fee_recipient` to be an execution address to receive the payment.
     The proposer's preferred fee recipient is obtained from the
     `SignedProposerPreferences` whose `message.proposal_slot` matches `bid.slot`
     and whose `message.dependent_root` matches
     `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot))`,
     where `store` is the fork choice store.
-07. Set `bid.gas_limit` to be the gas limit of the constructed payload, which
+08. Set `bid.gas_limit` to be the gas limit of the constructed payload, which
     **MUST** satisfy
     `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, target_gas_limit)`,
     where `parent_gas_limit` is the `gas_limit` of the parent execution payload
     and `target_gas_limit` is the `target_gas_limit` in the
-    `SignedProposerPreferences` referenced in step 6.
-08. Set `bid.builder_index` to be the index of the builder performing these
+    `SignedProposerPreferences` referenced in step 7.
+09. Set `bid.builder_index` to be the index of the builder performing these
     actions.
-09. Set `bid.slot` to be the slot for which this bid is aimed. This slot
-    **MUST** be either the current slot or the next slot.
 10. Set `bid.value` to be the value (in gwei) that the builder will pay the
     proposer if the bid is accepted. The builder **MUST** have enough excess
     balance to fulfill this bid and all pending payments.

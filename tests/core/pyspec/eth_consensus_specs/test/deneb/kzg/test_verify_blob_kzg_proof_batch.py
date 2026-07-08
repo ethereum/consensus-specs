@@ -12,8 +12,8 @@ from eth_consensus_specs.test.utils.kzg_tests import (
     INVALID_G1_POINTS,
     VALID_BLOBS,
 )
-from tests.infra.manifest import manifest
-from tests.infra.template_test import template_test
+from eth_consensus_specs.test.utils.manifest import manifest
+from eth_consensus_specs.test.utils.template_test import template_test
 
 
 def _run_verify_blob_kzg_proof_batch_test(

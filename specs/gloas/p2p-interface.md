@@ -6,6 +6,8 @@
 
 - [Introduction](#introduction)
 - [Modification in Gloas](#modification-in-gloas)
+  - [Preset](#preset)
+    - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
   - [Configuration](#configuration)
   - [Containers](#containers)
     - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
@@ -51,11 +53,31 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 ## Modification in Gloas
 
+### Preset
+
+#### Type-specific SSZ bounds
+
+*[New in Gloas:EIP7688]*
+
+These constants supersede
+[type-specific SSZ bounds](../phase0/p2p-interface.md#what-are-ssz-type-size-bounds)
+for the corresponding
+[variable-size](../../ssz/simple-serialize.md#variable-size-and-fixed-size)
+libp2p messages.
+
+| Name                                    | Value                         |
+| --------------------------------------- | ----------------------------- |
+| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `uint64(16829)` (= ~16 KiB)   |
+| `MAX_ATTESTER_SLASHING_SIZE`            | `uint64(2097616)` (= ~2 MiB)  |
+| `MAX_DATA_COLUMN_SIDECAR_SIZE`          | `uint64(8585272)` (= ~8 MiB)  |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `uint64(196932)` (= ~192 KiB) |
+| `MAX_SIGNED_BEACON_BLOCK_SIZE`          | `uint64(4027336)` (= ~4 MiB)  |
+
 ### Configuration
 
-| Name                   | Value          | Description                                                       |
-| ---------------------- | -------------- | ----------------------------------------------------------------- |
-| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) | Maximum number of execution payload envelopes in a single request |
+| Name                   | Value          |
+| ---------------------- | -------------- |
+| `MAX_REQUEST_PAYLOADS` | `2**7` (= 128) |
 
 ### Containers
 
@@ -71,10 +93,12 @@ longer required in Gloas. The KZG commitments are now located at
 ```python
 class DataColumnSidecar(Container):
     index: ColumnIndex
-    column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    # [Modified in Gloas:EIP7688]
+    column: ProgressiveList[Cell]
     # [Modified in Gloas:EIP7732]
     # Removed `kzg_commitments`
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    # [Modified in Gloas:EIP7688]
+    kzg_proofs: ProgressiveList[KZGProof]
     # [Modified in Gloas:EIP7732]
     # Removed `signed_block_header`
     # [Modified in Gloas:EIP7732]
@@ -174,7 +198,7 @@ def compute_fork_version(epoch: Epoch) -> Version:
 def verify_data_column_sidecar_kzg_proofs(
     sidecar: DataColumnSidecar,
     # [New in Gloas:EIP7732]
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    kzg_commitments: ProgressiveList[KZGCommitment],
 ) -> bool:
     """
     Verify if the KZG proofs are correct.
@@ -198,7 +222,7 @@ def verify_data_column_sidecar_kzg_proofs(
 def verify_data_column_sidecar(
     sidecar: DataColumnSidecar,
     # [New in Gloas:EIP7732]
-    kzg_commitments: List[KZGCommitment, MAX_BLOB_COMMITMENTS_PER_BLOCK],
+    kzg_commitments: ProgressiveList[KZGCommitment],
 ) -> bool:
     """
     Verify if the data column sidecar is valid.
@@ -570,6 +594,68 @@ def validate_beacon_block_gossip(
     if len(bid.blob_kzg_commitments) > max_blobs:
         raise GossipReject("too many blob kzg commitments")
 
+    parent_requests = block.body.parent_execution_requests
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The parent deposit request count is within the limit
+    if len(parent_requests.deposits) > MAX_DEPOSIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many parent deposit requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The parent withdrawal request count is within the limit
+    if len(parent_requests.withdrawals) > MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many parent withdrawal requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The parent consolidation request count is within the limit
+    if len(parent_requests.consolidations) > MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many parent consolidation requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The parent builder deposit request count is within the limit
+    if len(parent_requests.builder_deposits) > MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many parent builder deposit requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The parent builder exit request count is within the limit
+    if len(parent_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many parent builder exit requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The proposer slashing count is within the limit
+    if len(block.body.proposer_slashings) > MAX_PROPOSER_SLASHINGS:
+        raise GossipReject("too many proposer slashings")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The attester slashing count is within the limit
+    if len(block.body.attester_slashings) > MAX_ATTESTER_SLASHINGS_ELECTRA:
+        raise GossipReject("too many attester slashings")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The attestation count is within the limit
+    if len(block.body.attestations) > MAX_ATTESTATIONS_ELECTRA:
+        raise GossipReject("too many attestations")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The block contains no deposits
+    if len(block.body.deposits) != 0:
+        raise GossipReject("block must not contain deposits")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The voluntary exit count is within the limit
+    if len(block.body.voluntary_exits) > MAX_VOLUNTARY_EXITS:
+        raise GossipReject("too many voluntary exits")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The BLS to execution change count is within the limit
+    if len(block.body.bls_to_execution_changes) > MAX_BLS_TO_EXECUTION_CHANGES:
+        raise GossipReject("too many bls to execution changes")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The payload attestation count is within the limit
+    if len(block.body.payload_attestations) > MAX_PAYLOAD_ATTESTATIONS:
+        raise GossipReject("too many payload attestations")
+
     # [Modified in Gloas:EIP7732]
     # [REJECT] The bid's parent equals the block's parent
     if bid.parent_block_root != block.parent_root:
@@ -647,6 +733,38 @@ def validate_execution_payload_envelope_gossip(
     # [REJECT] The envelope's execution requests root matches the bid's execution requests root
     if hash_tree_root(envelope.execution_requests) != bid.execution_requests_root:
         raise GossipReject("envelope's execution requests root does not match the bid")
+
+    execution_requests = envelope.execution_requests
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The deposit request count is within the limit
+    if len(execution_requests.deposits) > MAX_DEPOSIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many deposit requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The withdrawal request count is within the limit
+    if len(execution_requests.withdrawals) > MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many withdrawal requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The consolidation request count is within the limit
+    if len(execution_requests.consolidations) > MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many consolidation requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The builder deposit request count is within the limit
+    if len(execution_requests.builder_deposits) > MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many builder deposit requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The builder exit request count is within the limit
+    if len(execution_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many builder exit requests")
+
+    # [New in Gloas:EIP7688]
+    # [REJECT] The number of withdrawals is within the limit
+    if len(payload.withdrawals) > MAX_WITHDRAWALS_PER_PAYLOAD:
+        raise GossipReject("too many withdrawals")
 
     # [REJECT] The envelope signature is valid
     if not verify_execution_payload_envelope_signature(state, signed_execution_payload_envelope):
@@ -811,9 +929,10 @@ def validate_execution_payload_bid_gossip(
 
     proposer_preferences = seen.proposer_preferences[prefs_key]
 
-    # [REJECT] The bid's fee recipient matches the proposer's preference
+    # [Modified in Gloas:EIP7732]
+    # [IGNORE] The bid's fee recipient matches the proposer's preference
     if bid.fee_recipient != proposer_preferences.fee_recipient:
-        raise GossipReject("bid's fee recipient does not match the proposer's preference")
+        raise GossipIgnore("bid's fee recipient does not match the proposer's preference")
 
     # [IGNORE] The bid's gas limit is compatible with the proposer's target gas limit
     parent_gas_limit = seen.execution_payloads[bid.parent_block_hash].gas_limit
@@ -1137,6 +1256,9 @@ def validate_beacon_attestation_gossip(
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_range/2/`
 
+The Gloas fork-digest is introduced to the `context` enum to specify Gloas
+beacon block type.
+
 <!-- eth_consensus_specs: skip -->
 
 | `fork_version`           | Chunk SSZ type                |
@@ -1153,6 +1275,9 @@ def validate_beacon_attestation_gossip(
 ##### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
+
+The Gloas fork-digest is introduced to the `context` enum to specify Gloas
+beacon block type.
 
 <!-- eth_consensus_specs: skip -->
 
@@ -1189,7 +1314,7 @@ Response Content:
 )
 ```
 
-Specifications of req\\response methods are equivalent to
+Specifications of request/response methods are equivalent to
 [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference
 being the response content type.
 
@@ -1209,19 +1334,6 @@ Per `fork_version = compute_fork_version(epoch)`:
 ##### ExecutionPayloadEnvelopesByRoot v1
 
 **Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_root/1/`
-
-For each successful `response_chunk`, the `ForkDigest` context epoch is
-determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
-`beacon_block` referred to by
-`signed_execution_payload_envelope.message.beacon_block_root`.
-
-Per `fork_version = compute_fork_version(epoch)`:
-
-<!-- eth_consensus_specs: skip -->
-
-| `fork_version`       | Chunk SSZ type                         |
-| -------------------- | -------------------------------------- |
-| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
 
 Request Content:
 
@@ -1264,3 +1376,16 @@ payload envelope in the response.
 
 Clients MUST respond with at least one payload envelope, if they have it.
 Clients MAY limit the number of payload envelopes in the response.
+
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
+`beacon_block` referred to by
+`signed_execution_payload_envelope.message.beacon_block_root`.
+
+Per `fork_version = compute_fork_version(epoch)`:
+
+<!-- eth_consensus_specs: skip -->
+
+| `fork_version`       | Chunk SSZ type                         |
+| -------------------- | -------------------------------------- |
+| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |

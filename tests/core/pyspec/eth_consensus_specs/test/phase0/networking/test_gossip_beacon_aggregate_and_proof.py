@@ -513,13 +513,11 @@ def test_gossip_beacon_aggregate_and_proof__ignore_same_data_root_without_supers
         raise AssertionError("Need at least one additional committee participant for this test")
 
     if is_post_electra(spec):
-        # Electra ``Attestation`` carries an EIP-7549 aggregation bitlist sized for
-        # ``MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT`` and includes
-        # ``committee_bits``; preserve both from the first aggregate.
+        # Post-Electra ``Attestation`` includes ``committee_bits`` and uses the
+        # fork's ``AggregationBits`` type, which is a progressive bitlist since
+        # Gloas. Preserve both from the first aggregate.
         aggregate_2 = spec.Attestation(
-            aggregation_bits=spec.Bitlist[
-                spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT
-            ](*modified_bits),
+            aggregation_bits=spec.AggregationBits(*modified_bits),
             data=signed_agg_1.message.aggregate.data,
             committee_bits=signed_agg_1.message.aggregate.committee_bits,
             signature=signed_agg_1.message.aggregate.signature,

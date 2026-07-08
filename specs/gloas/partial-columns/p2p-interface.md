@@ -5,6 +5,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Preset](#preset)
+  - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
 - [Containers](#containers)
   - [Modified `PartialDataColumnSidecar`](#modified-partialdatacolumnsidecar)
   - [Modified `PartialDataColumnGroupID`](#modified-partialdatacolumngroupid)
@@ -25,15 +27,25 @@ particular, this document builds on the
 [Fulu partial columns networking specification](../../fulu/partial-columns/p2p-interface.md)
 and the [Gloas networking specification](../p2p-interface.md).
 
+## Preset
+
+### Type-specific SSZ bounds
+
+*[New in Gloas:EIP7688]*
+
+| Name                                   | Value                        |
+| -------------------------------------- | ---------------------------- |
+| `MAX_PARTIAL_DATA_COLUMN_SIDECAR_SIZE` | `uint64(8585741)` (= ~8 MiB) |
+
 ## Containers
 
 ### Modified `PartialDataColumnSidecar`
 
 ```python
 class PartialDataColumnSidecar(Container):
-    cells_present_bitmap: Bitlist[MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    partial_column: List[Cell, MAX_BLOB_COMMITMENTS_PER_BLOCK]
-    kzg_proofs: List[KZGProof, MAX_BLOB_COMMITMENTS_PER_BLOCK]
+    cells_present_bitmap: ProgressiveBitlist
+    partial_column: ProgressiveList[Cell]
+    kzg_proofs: ProgressiveList[KZGProof]
     # [Modified in Gloas:EIP7732]
     # Removed `header`
 ```

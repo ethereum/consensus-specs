@@ -58,11 +58,11 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 *[New in Deneb:EIP4844]*
 
-| Name                                    | Value                    | Description                                                        |
-| --------------------------------------- | ------------------------ | ------------------------------------------------------------------ |
-| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)           | Maximum number of blocks in a single request                       |
-| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4,096 epochs) | The minimum epoch range over which a node must serve blob sidecars |
-| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                      | The number of blob sidecar subnets used in the gossipsub protocol  |
+| Name                                    | Value                    | Description                                                    |
+| --------------------------------------- | ------------------------ | -------------------------------------------------------------- |
+| `MAX_REQUEST_BLOCKS_DENEB`              | `2**7` (= 128)           | Maximum number of blocks in a single request                   |
+| `MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS` | `2**12` (= 4,096 epochs) | Minimum epoch range over which a node must serve blob sidecars |
+| `BLOB_SIDECAR_SUBNET_COUNT`             | `6`                      | Number of blob sidecar subnets used in the gossipsub protocol  |
 
 ### Containers
 
@@ -794,6 +794,9 @@ Response Content:
   List[SignedBeaconBlock, MAX_REQUEST_BLOCKS_DENEB]
 )
 ```
+
+The Deneb fork-digest is introduced to the `context` enum to specify Deneb
+beacon block type.
 
 <!-- eth_consensus_specs: skip -->
 

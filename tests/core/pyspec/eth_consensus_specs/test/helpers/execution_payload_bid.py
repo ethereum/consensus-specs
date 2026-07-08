@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.context import expect_assertion_error
+from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.keys import builder_privkeys
 
 
@@ -36,6 +37,7 @@ def prepare_signed_execution_payload_bid(
     block_hash=None,
     blob_kzg_commitments=None,
     prev_randao=None,
+    inclusion_list_bits=None,
     valid_signature=True,
     valid_amount=True,
 ):
@@ -76,7 +78,7 @@ def prepare_signed_execution_payload_bid(
         )
 
     if blob_kzg_commitments is None:
-        blob_kzg_commitments = spec.List[spec.KZGCommitment, spec.MAX_BLOB_COMMITMENTS_PER_BLOCK]()
+        blob_kzg_commitments = spec.ProgressiveList[spec.KZGCommitment]()
 
     if prev_randao is None:
         prev_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
@@ -93,6 +95,9 @@ def prepare_signed_execution_payload_bid(
         "value": value,
         "blob_kzg_commitments": blob_kzg_commitments,
     }
+    if is_post_heze(spec) and inclusion_list_bits is not None:
+        bid_kwargs["inclusion_list_bits"] = inclusion_list_bits
+
     bid = spec.ExecutionPayloadBid(**bid_kwargs)
 
     if valid_signature:

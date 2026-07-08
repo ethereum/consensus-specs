@@ -4,7 +4,11 @@ from dataclasses import dataclass, field
 
 from eth_consensus_specs.test.context import spec_test
 from eth_consensus_specs.test.helpers.attestations import (
+    get_max_attestations,
     get_valid_attestation,
+)
+from eth_consensus_specs.test.helpers.attester_slashings import (
+    get_max_attester_slashings,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
@@ -282,7 +286,7 @@ def produce_block(
     )
 
     # Prepare attestations
-    limit = type(block.body.attestations).limit()
+    limit = get_max_attestations(spec)
     attestation_in_block = [
         a
         for a in attestations
@@ -298,7 +302,7 @@ def produce_block(
         block.body.attestations.append(a)
 
     # Add attester slashings
-    limit = type(block.body.attester_slashings).limit()
+    limit = get_max_attester_slashings(spec)
     attester_slashings_in_block = attester_slashings[:limit]
     for s in attester_slashings_in_block:
         block.body.attester_slashings.append(s)

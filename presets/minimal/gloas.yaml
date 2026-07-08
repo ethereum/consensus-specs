@@ -12,19 +12,27 @@ MAX_PAYLOAD_ATTESTATIONS: 4
 
 # Execution
 # ---------------------------------------------------------------
-# 2**8 (= 256) builder deposit requests
-MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD: 256
+# 2**6 (= 64) builder deposit requests
+MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD: 64
 # 2**4 (= 16) builder exit requests
 MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD: 16
-
-# State list lengths
-# ---------------------------------------------------------------
-# 2**40 (= 1,099,511,627,776) builder spots
-BUILDER_REGISTRY_LIMIT: 1099511627776
-# 2**20 (= 1,048,576) builder pending withdrawals
-BUILDER_PENDING_WITHDRAWALS_LIMIT: 1048576
 
 # Withdrawals processing
 # ---------------------------------------------------------------
 # [customized] 2**4 (= 16) builders
 MAX_BUILDERS_PER_WITHDRAWALS_SWEEP: 16
+
+# Type-specific SSZ bounds
+# ---------------------------------------------------------------
+# [customized] 1,462 bytes, ~1 KiB
+MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE: 1462
+# [customized] 131,536 bytes, ~128 KiB
+MAX_ATTESTER_SLASHING_SIZE: 131536
+# 8,585,272 bytes, ~8 MiB
+MAX_DATA_COLUMN_SIDECAR_SIZE: 8585272
+# 8,585,741 bytes, ~8 MiB
+MAX_PARTIAL_DATA_COLUMN_SIDECAR_SIZE: 8585741
+# 196,932 bytes, ~192 KiB
+MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE: 196932
+# [customized] 1,938,012 bytes, ~2 MiB
+MAX_SIGNED_BEACON_BLOCK_SIZE: 1938012

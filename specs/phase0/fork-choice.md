@@ -40,7 +40,7 @@
     - [`get_aggregate_due_ms`](#get_aggregate_due_ms)
     - [Proposer head and reorg helpers](#proposer-head-and-reorg-helpers)
       - [`is_head_late`](#is_head_late)
-      - [`is_epoch_boundary`](#is_epoch_boundary)
+      - [`is_not_epoch_boundary`](#is_not_epoch_boundary)
       - [`is_ffg_competitive`](#is_ffg_competitive)
       - [`is_finalization_ok`](#is_finalization_ok)
       - [`is_proposing_on_time`](#is_proposing_on_time)
@@ -136,8 +136,8 @@ handlers must not modify `store`.
 
 #### Time parameters
 
-| Name                        | Value          |     Unit     |          Duration          |
-| --------------------------- | -------------- | :----------: | :------------------------: |
+| Name                        | Value          | Unit         | Duration                   |
+| --------------------------- | -------------- | ------------ | -------------------------- |
 | `PROPOSER_REORG_CUTOFF_BPS` | `uint64(1667)` | basis points | ~17% of `SLOT_DURATION_MS` |
 
 ### Helpers
@@ -587,10 +587,10 @@ def is_head_late(store: Store, head_root: Root) -> bool:
     return not store.block_timeliness[head_root]
 ```
 
-##### `is_epoch_boundary`
+##### `is_not_epoch_boundary`
 
 ```python
-def is_epoch_boundary(slot: Slot) -> bool:
+def is_not_epoch_boundary(slot: Slot) -> bool:
     return slot % SLOTS_PER_EPOCH != 0
 ```
 
@@ -672,7 +672,7 @@ def get_proposer_head(store: Store, head_node: ForkChoiceNode, slot: Slot) -> Fo
     head_late = is_head_late(store, head_node.root)
 
     # Do not re-org on an epoch boundary.
-    epoch_boundary = is_epoch_boundary(slot)
+    not_epoch_boundary = is_not_epoch_boundary(slot)
 
     # Ensure that the FFG information of the new head will be competitive with the current head.
     ffg_competitive = is_ffg_competitive(store, head_node.root, parent_root)
@@ -700,7 +700,7 @@ def get_proposer_head(store: Store, head_node: ForkChoiceNode, slot: Slot) -> Fo
 
     if all([
         head_late,
-        epoch_boundary,
+        not_epoch_boundary,
         ffg_competitive,
         finalization_ok,
         proposing_on_time,

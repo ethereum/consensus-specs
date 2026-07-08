@@ -63,10 +63,10 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 *[New in Fulu:EIP7594]*
 
-| Name                                           | Value                    | Description                                                               |
-| ---------------------------------------------- | ------------------------ | ------------------------------------------------------------------------- |
-| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `128`                    | The number of data column sidecar subnets used in the gossipsub protocol  |
-| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `2**12` (= 4,096 epochs) | The minimum epoch range over which a node must serve data column sidecars |
+| Name                                           | Value                     | Description                                                           |
+| ---------------------------------------------- | ------------------------- | --------------------------------------------------------------------- |
+| `DATA_COLUMN_SIDECAR_SUBNET_COUNT`             | `uint64(2**7)` (= 128)    | Number of data column sidecar subnets used in the gossipsub protocol  |
+| `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` | `uint64(2**12)` (= 4,096) | Minimum epoch range over which a node must serve data column sidecars |
 
 ### Containers
 
@@ -819,7 +819,7 @@ fork digest, next fork version, and next fork epoch to ensure connections are
 made with peers on the intended Ethereum network.
 
 | Key    | Value           |
-| :----- | :-------------- |
+| ------ | --------------- |
 | `eth2` | SSZ `ENRForkID` |
 
 Specifically, the value of the `eth2` key MUST be the following SSZ encoded
@@ -874,7 +874,7 @@ If no next fork is scheduled, the `nfd` entry contains the default value for the
 type (i.e., the SSZ representation of a zero-filled array).
 
 | Key   | Value                   |
-| :---- | :---------------------- |
+| ----- | ----------------------- |
 | `nfd` | SSZ Bytes4 `ForkDigest` |
 
 When discovering and interfacing with peers, nodes MUST evaluate `nfd` alongside

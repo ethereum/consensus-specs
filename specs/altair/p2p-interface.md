@@ -545,7 +545,7 @@ bitfield if the validator is currently subscribed to the `sync_committee_{i}`
 topic.
 
 | Key        | Value                                        |
-| :--------- | :------------------------------------------- |
+| ---------- | -------------------------------------------- |
 | `syncnets` | SSZ `Bitvector[SYNC_COMMITTEE_SUBNET_COUNT]` |
 
 See the [validator document](./validator.md#sync-committee-subnet-stability) for

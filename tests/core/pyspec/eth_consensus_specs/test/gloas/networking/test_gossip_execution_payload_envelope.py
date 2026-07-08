@@ -434,9 +434,7 @@ def test_gossip_execution_payload_envelope__reject_execution_requests_root_misma
     # Use execution_requests with a non-empty deposits list so its root differs
     # from the bid's empty execution_requests_root.
     non_empty_requests = spec.ExecutionRequests(
-        deposits=spec.List[spec.DepositRequest, spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD](
-            spec.DepositRequest()
-        )
+        deposits=spec.DepositRequests(spec.DepositRequest())
     )
     signed_envelope = build_signed_execution_payload_envelope(
         spec, state, block_root, signed_block, execution_requests=non_empty_requests

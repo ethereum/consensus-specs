@@ -5,7 +5,6 @@ import pytest
 from eth_consensus_specs.test import context
 from eth_consensus_specs.test.helpers.constants import ALL_PHASES, ALLOWED_TEST_RUNNER_FORKS
 from eth_consensus_specs.test.helpers.specs import spec_targets
-from eth_consensus_specs.utils import bls as bls_utils
 from eth_consensus_specs.utils.ckzg_utils import apply_ckzg_to_spec, load_trusted_setup
 
 # We import pytest only when it's present, i.e. when we are running tests.
@@ -54,17 +53,6 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help="coverage: enable code coverage tracking",
-    )
-    parser.addoption(
-        "--bls-type",
-        action="store",
-        type=str,
-        default="fastest",
-        choices=["py_ecc", "milagro", "arkworks", "fastest"],
-        help=(
-            "bls-type: use specified BLS implementation;"
-            "fastest: use milagro for signatures and arkworks for everything else (e.g. KZG)"
-        ),
     )
     parser.addoption(
         "--kzg-type",
@@ -131,21 +119,6 @@ def run_phases(request):
         context.DEFAULT_PYTEST_FORKS = ALL_PHASES
 
 
-@fixture(autouse=True)
-def bls_type(request):
-    bls_type = request.config.getoption("--bls-type")
-    if bls_type == "py_ecc":
-        bls_utils.use_py_ecc()
-    elif bls_type == "milagro":
-        bls_utils.use_milagro()
-    elif bls_type == "arkworks":
-        bls_utils.use_arkworks()
-    elif bls_type == "fastest":
-        bls_utils.use_fastest()
-    else:
-        raise Exception(f"unrecognized bls type: {bls_type}")
-
-
 def _apply_ckzg(request):
     """
     Patch all spec modules to use ckzg for KZG functions.
@@ -171,4 +144,4 @@ def kzg_type(request):
         _apply_ckzg(request)
 
 
-pytest_plugins = ["tests.infra.pytest_plugins.yield_generator"]
+pytest_plugins = ["eth_consensus_specs.test.pytest_plugins.yield_generator"]

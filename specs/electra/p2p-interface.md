@@ -42,9 +42,9 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 *[New in Electra:EIP7691]*
 
-| Name                                | Value | Description                                                       |
-| ----------------------------------- | ----- | ----------------------------------------------------------------- |
-| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`   | The number of blob sidecar subnets used in the gossipsub protocol |
+| Name                                | Value | Description                                                   |
+| ----------------------------------- | ----- | ------------------------------------------------------------- |
+| `BLOB_SIDECAR_SUBNET_COUNT_ELECTRA` | `9`   | Number of blob sidecar subnets used in the gossipsub protocol |
 
 ### Helpers
 
@@ -618,6 +618,9 @@ beacon block type.
 ##### BeaconBlocksByRoot v2
 
 **Protocol ID:** `/eth2/beacon_chain/req/beacon_blocks_by_root/2/`
+
+The Electra fork-digest is introduced to the `context` enum to specify Electra
+beacon block type.
 
 <!-- eth_consensus_specs: skip -->
 

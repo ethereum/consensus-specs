@@ -38,14 +38,6 @@ situations. The mainnet tests are very slow and should only be run in targeted
 commands. Note that there are some tests which are only executed under a single
 preset.
 
-## Filter by component
-
-Tests can be scoped to a component via the `component=<comp>` flag. Three values
-are accepted: `all` (the default), `pyspec`, and `fw` (short for framework). The
-`pyspec` value runs only the spec tests under `./tests/core/pyspec`, while `fw`
-runs only the tests under `./tests/infra`. Some flags (`fork`, `preset`, etc)
-are ignored with `component=fw` since those tests do not depend on the spec.
-
 ## Generate reference tests
 
 Reference tests can be generated for clients to ensure compliance with the

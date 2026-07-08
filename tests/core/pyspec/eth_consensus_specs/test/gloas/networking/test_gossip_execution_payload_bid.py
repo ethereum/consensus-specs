@@ -1450,8 +1450,8 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_gossip_execution_payload_bid__reject_fee_recipient_mismatch(spec, state):
-    """A bid whose fee_recipient does not match the proposer's preference is rejected."""
+def test_gossip_execution_payload_bid__ignore_fee_recipient_mismatch(spec, state):
+    """A bid whose fee_recipient does not match the proposer's preference is ignored."""
     yield "topic", "meta", "execution_payload_bid"
 
     store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
@@ -1541,7 +1541,7 @@ def test_gossip_execution_payload_bid__reject_fee_recipient_mismatch(spec, state
         signed_execution_payload_bid=signed_bid,
         current_time_ms=time_ms,
     )
-    assert result == "reject"
+    assert result == "ignore"
     assert reason == "bid's fee recipient does not match the proposer's preference"
     messages.append(
         {
