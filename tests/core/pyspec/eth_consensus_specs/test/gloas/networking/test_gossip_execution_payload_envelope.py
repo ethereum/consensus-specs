@@ -16,6 +16,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     setup_store_with_failed_block,
     wrap_genesis_block,
 )
+from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
@@ -461,3 +462,243 @@ def test_gossip_execution_payload_envelope__reject_execution_requests_root_misma
     )
 
     yield "messages", "meta", messages
+
+
+def _progressive(spec, element_type, count):
+    """A progressive list of ``count`` default ``element_type`` values."""
+    return spec.ProgressiveList[element_type](*([element_type()] * count))
+
+
+def _assert_envelope_requests(spec, state, execution_requests, expected, reason=None):
+    """Assert an envelope carrying ``execution_requests`` returns ``expected``.
+
+    The bid commits to the same requests so the requests-root check passes and the
+    request-count checks are reached. For the reject cases the requests are oversized,
+    so the context block is malformed by construction and is provided only as trusted
+    fork-choice context.
+    """
+    yield "topic", "meta", "execution_payload"
+
+    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    # Point the bid's commitment at the requests, then re-key the store under the
+    # block's new root.
+    bid = signed_block.message.body.signed_execution_payload_bid.message
+    bid.execution_requests_root = execution_requests.hash_tree_root()
+    block_root = signed_block.message.hash_tree_root()
+    store.blocks[block_root] = signed_block.message
+    store.block_states[block_root] = state.copy()
+
+    yield "state", state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    seen = get_seen(spec)
+    signed_envelope = build_signed_execution_payload_envelope(
+        spec, state, block_root, signed_block, execution_requests=execution_requests
+    )
+    yield get_filename(signed_envelope), signed_envelope
+
+    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 100
+    result, reason_out = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
+    assert result == expected
+    assert reason_out == reason
+    message = {
+        "current_time_ms": int(time_ms),
+        "message": get_filename(signed_envelope),
+        "expected": result,
+    }
+    if reason is not None:
+        message["reason"] = reason
+    messages.append(message)
+
+    yield "messages", "meta", messages
+
+
+def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
+    """Assert an envelope whose payload carries ``count`` withdrawals returns ``expected``."""
+    yield "topic", "meta", "execution_payload"
+
+    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    yield "state", state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    seen = get_seen(spec)
+    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
+    # Set the payload's withdrawals, then re-sign so the withdrawal count is the only
+    # check under test.
+    envelope = signed_envelope.message
+    envelope.payload.withdrawals = _progressive(spec, spec.Withdrawal, count)
+    if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
+        privkey = privkeys[signed_block.message.proposer_index]
+    else:
+        privkey = builder_privkeys[envelope.builder_index]
+    signed_envelope.signature = spec.get_execution_payload_envelope_signature(
+        state, envelope, privkey
+    )
+    yield get_filename(signed_envelope), signed_envelope
+
+    time_ms = spec.compute_time_at_slot_ms(state, state.slot)
+    yield "current_time_ms", "meta", int(time_ms)
+    messages = []
+
+    time_ms += 100
+    result, reason_out = run_validate_gossip(
+        spec, seen=seen, store=store, state=state, signed_execution_payload_envelope=signed_envelope
+    )
+    assert result == expected
+    assert reason_out == reason
+    message = {
+        "current_time_ms": int(time_ms),
+        "message": get_filename(signed_envelope),
+        "expected": result,
+    }
+    if reason is not None:
+        message["reason"] = reason
+    messages.append(message)
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__valid_max_deposit_requests(spec, state):
+    """An envelope with the maximum number of deposit requests is valid."""
+    count = int(spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD)
+    requests = spec.ExecutionRequests(
+        deposits=spec.DepositRequests(*([spec.DepositRequest()] * count))
+    )
+    yield from _assert_envelope_requests(spec, state, requests, "valid")
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__reject_too_many_deposit_requests(spec, state):
+    """An envelope whose execution requests exceed the deposit-request limit is rejected."""
+    count = int(spec.MAX_DEPOSIT_REQUESTS_PER_PAYLOAD) + 1
+    requests = spec.ExecutionRequests(
+        deposits=spec.DepositRequests(*([spec.DepositRequest()] * count))
+    )
+    yield from _assert_envelope_requests(
+        spec, state, requests, "reject", "too many deposit requests"
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__valid_max_withdrawal_requests(spec, state):
+    """An envelope with the maximum number of withdrawal requests is valid."""
+    count = int(spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD)
+    requests = spec.ExecutionRequests(
+        withdrawals=spec.WithdrawalRequests(*([spec.WithdrawalRequest()] * count))
+    )
+    yield from _assert_envelope_requests(spec, state, requests, "valid")
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__reject_too_many_withdrawal_requests(spec, state):
+    """An envelope whose execution requests exceed the withdrawal-request limit is rejected."""
+    count = int(spec.MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD) + 1
+    requests = spec.ExecutionRequests(
+        withdrawals=spec.WithdrawalRequests(*([spec.WithdrawalRequest()] * count))
+    )
+    yield from _assert_envelope_requests(
+        spec, state, requests, "reject", "too many withdrawal requests"
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__valid_max_consolidation_requests(spec, state):
+    """An envelope with the maximum number of consolidation requests is valid."""
+    count = int(spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD)
+    requests = spec.ExecutionRequests(
+        consolidations=spec.ConsolidationRequests(*([spec.ConsolidationRequest()] * count))
+    )
+    yield from _assert_envelope_requests(spec, state, requests, "valid")
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__reject_too_many_consolidation_requests(spec, state):
+    """An envelope whose execution requests exceed the consolidation-request limit is rejected."""
+    count = int(spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD) + 1
+    requests = spec.ExecutionRequests(
+        consolidations=spec.ConsolidationRequests(*([spec.ConsolidationRequest()] * count))
+    )
+    yield from _assert_envelope_requests(
+        spec, state, requests, "reject", "too many consolidation requests"
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__valid_max_builder_deposit_requests(spec, state):
+    """An envelope with the maximum number of builder deposit requests is valid."""
+    count = int(spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD)
+    requests = spec.ExecutionRequests(
+        builder_deposits=spec.BuilderDepositRequests(*([spec.BuilderDepositRequest()] * count))
+    )
+    yield from _assert_envelope_requests(spec, state, requests, "valid")
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__reject_too_many_builder_deposit_requests(spec, state):
+    """An envelope whose execution requests exceed the builder-deposit-request limit is rejected."""
+    count = int(spec.MAX_BUILDER_DEPOSIT_REQUESTS_PER_PAYLOAD) + 1
+    requests = spec.ExecutionRequests(
+        builder_deposits=spec.BuilderDepositRequests(*([spec.BuilderDepositRequest()] * count))
+    )
+    yield from _assert_envelope_requests(
+        spec, state, requests, "reject", "too many builder deposit requests"
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__valid_max_builder_exit_requests(spec, state):
+    """An envelope with the maximum number of builder exit requests is valid."""
+    count = int(spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD)
+    requests = spec.ExecutionRequests(
+        builder_exits=spec.BuilderExitRequests(*([spec.BuilderExitRequest()] * count))
+    )
+    yield from _assert_envelope_requests(spec, state, requests, "valid")
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__reject_too_many_builder_exit_requests(spec, state):
+    """An envelope whose execution requests exceed the builder-exit-request limit is rejected."""
+    count = int(spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD) + 1
+    requests = spec.ExecutionRequests(
+        builder_exits=spec.BuilderExitRequests(*([spec.BuilderExitRequest()] * count))
+    )
+    yield from _assert_envelope_requests(
+        spec, state, requests, "reject", "too many builder exit requests"
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__valid_max_withdrawals(spec, state):
+    """An envelope with the maximum number of payload withdrawals is valid."""
+    count = int(spec.MAX_WITHDRAWALS_PER_PAYLOAD)
+    yield from _assert_envelope_withdrawals(spec, state, count, "valid")
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__reject_too_many_withdrawals(spec, state):
+    """An envelope whose payload carries more withdrawals than the limit is rejected."""
+    count = int(spec.MAX_WITHDRAWALS_PER_PAYLOAD) + 1
+    yield from _assert_envelope_withdrawals(spec, state, count, "reject", "too many withdrawals")
